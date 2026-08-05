@@ -9,6 +9,7 @@ import {
   TApprovalRequestFactoryValidateConstraints,
   TApprovalResourceFactory
 } from "../approval-policy-types";
+import { normalizeCodeSigningScope } from "./code-signing-policy-fns";
 import {
   TCodeSigningGrantAttributes,
   TCodeSigningPolicy,
@@ -142,6 +143,10 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
     }
     if (requestData.requestedWindowEnd) {
       expiresAt = new Date(requestData.requestedWindowEnd);
+    }
+    const scope = normalizeCodeSigningScope(requestData.scope);
+    if (scope) {
+      grantAttributes.scope = scope;
     }
 
     await approvalRequestGrantsDAL.create({

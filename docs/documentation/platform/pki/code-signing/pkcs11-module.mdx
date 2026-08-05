@@ -201,8 +201,12 @@ When a Signer has a policy attached, sign calls without active access normally f
 
 Set one or both depending on what the Signer's policy expects. The values are capped at the policy's `maxWindow` / `maxSignings`.
 
+The request is [scoped](/documentation/platform/pki/code-signing/approvals#scoping-an-approval) to what the module saw: the command, the tool, the machine, the OS account, and the artifact. Approvers review the real signing situation, and the approval only covers that situation.
+
 <Note>
-  The first sign call **still fails** until an approver approves the auto-created request. Once approved, retry the sign and it succeeds. The module logs that the request was created so you know what to do.
+  The first sign call **still fails**, because an approver has to act on the request. Once approved, run the same command again and it succeeds.
+
+  The approval covers that exact command and artifact, so a different artifact, a changed argument, or reordered flags needs a new request. Widen the scope in Infisical when one approval should cover a batch.
 </Note>
 
 ### Example CI workflow
@@ -214,7 +218,7 @@ Set one or both depending on what the Signer's policy expects. The values are ca
 5. A reviewer approves the request in the Infisical UI.
 6. Pipeline is rerun and the sign call succeeds under the freshly-issued access record.
 
-For fully unattended CI, have an Administrator **pre-approve** signing access via [Pre-approve signing](/documentation/platform/pki/code-signing/approvals#pre-approve-signing) before the pipeline runs.
+For fully unattended CI, have an Administrator **pre-approve** signing access via [Pre-approve signing](/documentation/platform/pki/code-signing/approvals#approval-paths) before the pipeline runs.
 
 ## Troubleshooting
 
@@ -236,7 +240,7 @@ Turn on debug logging in the config first. It'll usually tell you exactly what w
   </Accordion>
   <Accordion title="CKR_GENERAL_ERROR on sign">
     Almost always means the server rejected the sign. Common reasons (visible in the debug log):
-    - **No active access.** The Signer has an approval policy and you don't yet have access. See [Request to sign](/documentation/platform/pki/code-signing/approvals#request-to-sign).
+    - **No active access.** The Signer has an approval policy and you don't yet have access. See [Request to sign](/documentation/platform/pki/code-signing/approvals#approval-paths).
     - **Access expired or signatures exhausted.** Request access again.
     - **Signer is Disabled.** Re-enable it in the UI.
     - **Certificate expired.** Issue a new one or wait for auto-renewal.

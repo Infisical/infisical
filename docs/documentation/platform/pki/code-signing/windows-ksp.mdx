@@ -123,6 +123,8 @@ $env:INFISICAL_TOKEN = "<your-access-token>"
 | `cache.token_ttl_seconds` | No | `300` | How long to reuse a login token before logging in again. |
 | `cache.cert_ttl_seconds` | No | `3600` | How long to reuse a downloaded certificate. |
 | `cache.signer_ttl_seconds` | No | `300` | How long to reuse the list of Signers. |
+| `approval.signing_duration` | No | None | Ask for an access window of this length when signing is denied for want of approved access (`30m`, `8h`, `2d`). The provider accepts 1m to 30d as a sanity check; the real limit is the Signer's approval policy. The window starts when the request is opened, not when it is approved, so allow for review time. |
+| `approval.signing_count` | No | None | Ask for access good for this many signing operations. |
 | `log_level` | No | `info` | How much detail to log: `trace`, `debug`, `info`, `warn`, or `error`. |
 | `log_file` | No | `%ProgramData%\Infisical\ksp.log` | Where to write the log. `signtool` has no window to print to, so the plug-in writes here by default. |
 
@@ -177,6 +179,48 @@ signtool verify /pa /v MyApp.exe
 <Note>
   If your certificate comes from your own private CA (instead of one Windows already trusts), `signtool verify` shows the warning `A certificate chain could not be built to a trusted root authority` (`0x800B010A`). The signature is still valid; Windows just does not recognize who issued the certificate. To clear the warning, add your CA to the computer's Trusted Root store.
 </Note>
+
+## Automatic signing access requests
+
+When a Signer has an approval policy, `signtool` fails until someone has active signing access. The provider can open that request for you on the first denied signing attempt. Add an `approval` block to `%ProgramData%\Infisical\config.json`:
+
+```json
+{
+  "server_url": "https://app.infisical.com",
+  "approval": {
+    "signing_duration": "8h",
+    "signing_count": 10
+  }
+}
+```
+
+- **`signing_duration`** asks for an access window of this length (`30m`, `8h`, `2d`).
+- **`signing_count`** asks for access good for this many signing operations.
+
+Set one or both, depending on what the Signer's policy expects. Both are capped by the policy's own limits.
+
+The request is [scoped](/documentation/platform/pki/code-signing/approvals#scoping-an-approval) to what the provider saw: the command, the host process, the machine, the Windows account, and the artifact. Approvers review the real signing situation, and the approval only covers that situation.
+
+<Warning>
+  Values following credential flags (`/p`, `-storepass`, `-keypass`, `-pass`, `--password`, and MSBuild's `/p:Password=`) are redacted before the command line leaves the machine, because it is stored on the approval record where approvers and auditors can read it. Everything else in the command line is sent as-is, so review your commands if they carry other sensitive arguments.
+</Warning>
+
+<Note>
+  The first signing attempt **still fails**, because an approver has to act on the request. Once approved, run the same command again and it succeeds.
+
+  The approval covers that exact command and artifact, so a different artifact, a changed argument, or reordered flags needs a new request. Widen the scope in Infisical when one approval should cover a batch.
+</Note>
+
+### Example CI workflow
+
+1. The pipeline runs `signtool sign ... /csp "Infisical Key Storage Provider" /kc <signer>`.
+2. No active access exists, so Infisical returns 403.
+3. The provider sees the `approval` block and opens a scoped signing request.
+4. This run fails.
+5. A reviewer approves the request in Infisical.
+6. The pipeline is rerun and signing succeeds under the freshly issued access.
+
+For fully unattended CI, have an Administrator [pre-approve signing](/documentation/platform/pki/code-signing/approvals#approval-paths) before the pipeline runs.
 
 ## Troubleshooting
 

@@ -28,11 +28,38 @@ export const registerSignerSigningRouter = async (server: FastifyZodProvider) =>
         isDigest: z.boolean().default(false),
         clientMetadata: z
           .object({
-            tool: z.string().max(128).optional(),
-            hostname: z.string().max(256).optional(),
-            reportedIp: z.string().max(64).optional()
+            tool: z
+              .string()
+              .max(128)
+              .optional()
+              .describe("The signing application. Compared against a 'signingApplication' scope on the approval."),
+            hostname: z.string().max(256).optional().describe("The machine the sign call is made from."),
+            reportedIp: z
+              .string()
+              .max(64)
+              .optional()
+              .describe("Recorded for audit only. Approvals are matched against the address the call arrives from."),
+            command: z.string().max(2048).optional().describe("The command line that issued the sign call."),
+            osUsername: z
+              .string()
+              .max(256)
+              .optional()
+              .describe("The operating system account running the signing tool."),
+            signingApplicationHash: z
+              .string()
+              .max(64)
+              .optional()
+              .describe("SHA-256 checksum of the signing application binary."),
+            moduleVersion: z
+              .string()
+              .max(64)
+              .optional()
+              .describe("Version of the Infisical client that made the sign call. Recorded for audit only.")
           })
           .optional()
+          .describe(
+            "Context describing the signing situation. Values here are compared against any scope declared on the approval, and are recorded on the signing operation for audit."
+          )
       }),
       response: {
         200: z.object({
@@ -54,6 +81,7 @@ export const registerSignerSigningRouter = async (server: FastifyZodProvider) =>
       const result = await server.services.pkiSigner.sign({
         signerId: req.params.signerId,
         ...req.body,
+        ipAddress: req.realIp,
         actorName,
         actor: req.permission.type,
         actorId: req.permission.id,

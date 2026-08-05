@@ -47,7 +47,7 @@ flowchart LR
 
 Each step runs in order. Once the last step's required approvals are reached, Infisical issues an **active access record** bounded by the policy's per-approval limits. The Operator can then sign through the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) or the [Sign API](/api-reference/endpoints/code-signing/signers/sign).
 
-Administrators can also [pre-approve signing](#pre-approve-signing) directly when the approval flow isn't a fit, for example during an incident response where waiting on approvers would block recovery.
+Administrators can also [pre-approve signing](#approval-paths) directly when the approval flow isn't a fit, for example during an incident response where waiting on approvers would block recovery.
 
 ## Configure the approval policy
 
@@ -82,10 +82,96 @@ Open the Signer's **Approvals** tab and click the pencil icon on the **Approval 
 
     You can combine both. For example: `maxSignings=10` with `signing window=1h` issues access good for at most 10 sign calls within one hour of approval, whichever comes first.
 
+    [Scoping](#scoping-an-approval) is not configured here. Whoever opens a request or pre-approval chooses, per request, which signing parameters to lock it to.
   </Step>
 </Steps>
 
 Press **Save policy**. The new policy applies to **new** requests; existing active access keeps its original terms until it expires or is revoked.
+
+<Warning>
+  **The signing window starts when the request is opened, not when it is approved.** A request that asks for 8 hours and waits 3 hours for an approver leaves 5 usable hours, and one approved after 8 hours is already expired. Set the window wide enough to cover how long approvals usually take.
+</Warning>
+
+## Scoping an approval
+
+By default an approval means "this member may sign N times before it expires". Expanding **Scope this request** on a request or pre-approval lets you narrow that to a specific signing situation. Every parameter is optional, and the ones you fill in are the only ones that get restricted.
+
+| Parameter | What it locks the approval to |
+|-----------|-------------------------------|
+| **Command** | The exact signing command that must be issued, compared character for character apart from whitespace. |
+| **Signing Application** | The signing tool's executable filename, exactly as it appears on the machine. Signing clients report `os.Executable`, so this is `signtool.exe` on Windows and `pkcs11-tool` on Linux, extension included. |
+| **Signing Application Checksum** | The SHA-256 checksum of the signing tool binary, so a modified or different tool no longer matches. |
+| **Hostname** | The machine the sign calls come from. |
+| **OS Username** | The operating system account running the signing tool. |
+| **IP Address** | The address sign calls have to arrive from, for example a build agent's egress address. Infisical reads the address off the sign call itself, the same way audit logs record it, so the caller cannot present a different one. |
+| **Data Digest** | The SHA-256 digest of the payload submitted for signing, which pins the approval to one artifact. Signing tools submit a digest of the file rather than the file itself, so this is not the same value as `sha256sum yourfile`. The [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) and the Windows KSP fill it in for you. |
+
+<Warning>
+  **A parameter you fill in has to match every time.** If a scoped approval still has 999 signatures left but you switch to a different machine, tool, or command than the one you declared, those sign calls are denied. When signing suddenly stops working under an approval that clearly has signatures remaining, compare your current signing setup against the scope on the request: that mismatch is almost always the cause. To sign in a different situation, open a new request describing it.
+</Warning>
+
+<Note>
+  A command scope is compared exactly. Only whitespace is forgiven: a run of spaces or a tab where the approval has a single space still matches. Everything else counts as a different command and needs its own approval, including reordering the options, invoking the tool by a different path, changing an argument, and writing `--flag value` as `--flag=value`. Infisical cannot know which flags take values in an arbitrary tool, so it does not try to guess whether a rearranged command is equivalent.
+</Note>
+
+### How much each parameter can be trusted
+
+Two of these parameters are decided by Infisical rather than by the caller, which makes them the ones worth relying on when the goal is to genuinely limit what a credential can do:
+
+- **IP Address** is read from the connection on every sign call. You choose the address the approval is limited to, but whether a sign call is coming from it is decided by Infisical, not reported by the client, so a caller cannot claim to be somewhere they are not.
+
+  <Warning>
+    On a self-hosted instance this holds only once [`TRUSTED_PROXY_CIDRS`](/self-hosting/configuration/envars) names the reverse proxies in front of Infisical. Until it is set, forwarded-IP headers are honored from any source for backwards compatibility, so a caller can present an address that is not theirs. Set it before relying on an IP scope. Infisical Cloud is already configured this way.
+  </Warning>
+
+- **Data Digest** is computed from the payload submitted for signing. A caller can only obtain a signature over the bytes they actually sent, so an approval pinned to a digest cannot be turned into a signature over different content.
+
+The remaining parameters (command, signing application, checksum, hostname, OS username) are reported by the signing client. With the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) they are captured from the real signing process, so they describe what is happening on well-behaved machines and give approvers useful context. Someone calling the [Sign API](/api-reference/endpoints/code-signing/signers/sign) directly, however, can report whatever values they like. Treat them as identification, not as a security boundary, and reach for **IP address** and **data digest** when you need a limit that holds regardless of how the caller behaves.
+
+<Tip>
+  For release pipelines, the strongest combination is a **data digest** scope on the artifact you just built plus a signature count of **1**. The approval then covers exactly one signature over exactly one file, whatever tooling is used.
+</Tip>
+
+### Pre-qualifying a build artifact
+
+A pipeline can ask for approval of one specific artifact before it signs. Build first, hash the artifact, then open a request scoped to that digest: the approval it produces cannot sign anything else, so the approver is signing off on a file rather than on a window of time.
+
+The digest to declare is the SHA-256 of **the bytes your sign call submits**, because that is what Infisical hashes to check the scope. The recipe below therefore applies when the pipeline posts the file itself to the Sign API:
+
+```bash
+# 1. Hash the artifact you intend to sign
+DIGEST=$(sha256sum installer-v2.4.0.msi | cut -d' ' -f1)
+
+# 2. Ask for one signature over exactly that artifact
+curl -s -X POST "$INFISICAL_URL/api/v1/cert-manager/signers/$SIGNER_ID/requests" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"justification\": \"Release v2.4.0 Windows installer\",
+    \"requestedSignings\": 1,
+    \"scope\": { \"dataHash\": \"$DIGEST\" }
+  }"
+
+# 3. Sign the file itself, so the digest Infisical computes is the one you declared
+curl -s -X POST "$INFISICAL_URL/api/v1/cert-manager/signers/$SIGNER_ID/sign" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"data\": \"$(base64 -w0 installer-v2.4.0.msi)\",
+    \"signingAlgorithm\": \"RSASSA_PKCS1_V1_5_SHA_256\",
+    \"isDigest\": false
+  }"
+```
+
+<Warning>
+  **Do not use `sha256sum yourfile` when your tool pre-hashes.** Tools like `signtool` and `jarsigner` submit a digest rather than the file, so Infisical hashes that digest and the scope value becomes a digest of a digest. Declaring `sha256sum yourfile` in that case never matches and every sign call is denied. Let the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) or the Windows KSP fill the digest in for you instead of computing it by hand.
+</Warning>
+
+An approver reviews the request and approves it. The pipeline then signs that artifact, and only that artifact: any other payload is refused because Infisical recomputes the digest from whatever is submitted. An Administrator can do the same up front with **Pre-approve signing**, which skips the review step.
+
+<Note>
+  Signing tools that go through the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) do this automatically when signing is denied: the request they open is already scoped to the digest of the payload the denied call attempted, along with the command and machine it came from. Because that request is pinned to one artifact, a signature count above 1 only allows re-signing that same artifact.
+</Note>
 
 ## Access lifecycle
 
@@ -123,6 +209,7 @@ There are two ways someone gets active access on a Signer: Administrators **pre-
         | **Signatures allowed** | How many sign operations the access permits. Capped at the policy's **Signatures per approval**. Leave empty to fall back to the policy ceiling. |
         | **When access begins** | Defaults to "now". |
         | **When access expires** | Capped at the policy's **Signing window**. Leave empty to fall back to the policy ceiling. |
+        | **Scope this request** | Optional. Expand it to [scope](#scoping-an-approval) the access to a specific command, signing tool, checksum, machine, OS account, IP address, or payload digest. Useful for pre-approving a known build agent: set its address and the access only works from there. |
 
         <Note>
           Per-access values cannot exceed the policy ceilings. Requesting `maxSignings=10` against a policy that allows 3 returns a 400 with a clear message. Omitting a field that the policy caps simply clamps to the ceiling, never silently unlimited.
@@ -152,6 +239,11 @@ There are two ways someone gets active access on a Signer: Administrators **pre-
         | **Signatures requested** | How many sign operations you need. Capped at the policy's **Signatures per approval**. Leave empty to fall back to the policy ceiling. |
         | **When access begins** | When the access window should start once approvals complete. Defaults to "now". |
         | **When access expires** | When the access window should end. Capped at the policy's **Signing window**. Leave empty to fall back to the policy ceiling. |
+        | **Scope this request** | Optional. Expand it to [scope](#scoping-an-approval) your access to the command, signing tool, checksum, machine, OS account, IP address, or payload digest you will sign with. Approvers see whatever you declare, and the access only covers matching sign calls. |
+
+        <Note>
+          Submitting a request with the same scope as one you already have pending returns the pending request instead of opening a duplicate. Signing clients that auto-request access can safely retry without flooding approvers.
+        </Note>
 
         <Note>
           Per-access values cannot exceed the policy ceilings. Requesting `maxSignings=10` against a policy that allows 3 returns a 400 with a clear message. Omitting a field that the policy caps simply clamps to the ceiling, never silently unlimited.
@@ -175,7 +267,7 @@ If you're an eligible approver for the **current** step of a pending request, an
     Click the row on the Signer's **Approvals** tab. Full details: requester, recipient, justification, requested signings, requested window, and which step is currently pending.
   </Step>
   <Step title="Review">
-    Verify who's asking, for how many signings, for how long, and why.
+    Verify who's asking, for how many signings, for how long, and why. If the requester scoped the request, the detail page lists every parameter the access will be limited to, so you can see exactly which signing situation you are approving.
   </Step>
   <Step title="Decide">
     - **Approve** counts toward the current step's required approvals. When the last step's count is reached, the access record is created.
@@ -216,6 +308,9 @@ In-flight sign calls already in progress complete normally; revocation is checke
   </Accordion>
   <Accordion title="What's the difference between Expired and Revoked?">
     **Expired** is automatic: the window ended or the signature count was reached. **Revoked** is explicit: an Administrator (or the requester via cancel) ended the access before its natural expiry. Either way, signing under it is no longer possible. The status difference shows up in the audit log.
+  </Accordion>
+  <Accordion title="My sign call is denied even though I have active access.">
+    If the error mentions your access being scoped to specific signing parameters, the request was scoped and your sign call does not match one of the declared values. Open the request to see the scope, and compare it against what you are signing with now: a different machine, tool, command, IP address, or payload is enough to be denied even when signatures remain. Send the declared command, signing application, hostname or OS username in `clientMetadata` on the sign call, and to sign in a different situation open a new request describing it.
   </Accordion>
   <Accordion title="What happens to a pending request when I edit the policy?">
     Pending requests run under the policy that was active when they were submitted. Edits affect only new requests. To force a refresh, revoke the pending request and have the requester submit again.

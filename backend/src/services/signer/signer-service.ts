@@ -45,6 +45,15 @@ import {
   ApprovalRequestGrantStatus
 } from "../approval-policy/approval-policy-enums";
 import { TApprovalRequestDALFactory, TApprovalRequestGrantsDALFactory } from "../approval-policy/approval-request-dal";
+import {
+  CODE_SIGNING_SCOPE_FIELD_LABELS,
+  CodeSigningScopeField
+} from "../approval-policy/code-signing/code-signing-policy-enums";
+import {
+  buildObservedSigningContext,
+  getCodeSigningScopeMismatches,
+  TObservedSigningContext
+} from "../approval-policy/code-signing/code-signing-policy-fns";
 import { TCodeSigningGrantAttributes } from "../approval-policy/code-signing/code-signing-policy-types";
 import { ActorType } from "../auth/auth-type";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
@@ -63,7 +72,13 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { isBuiltInSignerRole, unknownSignerRoleMessage } from "../signer-membership/signer-membership-service";
 import { TSignerDALFactory } from "./signer-dal";
-import { CertKeySource, HsmKeyAlgorithm, SignerStatus, SigningOperationStatus } from "./signer-enums";
+import {
+  CertKeySource,
+  HsmKeyAlgorithm,
+  SIGNER_APPROVAL_REQUIRED_ERROR_NAME,
+  SignerStatus,
+  SigningOperationStatus
+} from "./signer-enums";
 import { formatSignerIssuanceErrorReason } from "./signer-issuance-errors";
 import {
   issueHsmBackedSignerCertificate,
@@ -81,6 +96,7 @@ import {
   TExportCertificateDTO,
   TGetPublicKeyDTO,
   TGetSignerDTO,
+  TGetSigningOperationDTO,
   TListSignersDTO,
   TListSigningOperationsDTO,
   TReissueCertificateDTO,
@@ -200,6 +216,37 @@ const validateSigningAlgorithmForKey = (signingAlgorithm: SigningAlgorithm, keyA
       message: `ECC key cannot be used with signing algorithm ${signingAlgorithm}`
     });
   }
+};
+
+enum SigningGrantVerdict {
+  NotApplicable = "not-applicable",
+  Expired = "expired",
+  ScopeMismatch = "scope-mismatch",
+  Usable = "usable"
+}
+
+const classifyGrantForSigning = (
+  grant: { expiresAt?: Date | null; attributes?: unknown },
+  signerId: string,
+  observedContext: TObservedSigningContext,
+  now: Date
+): { verdict: SigningGrantVerdict; mismatchedFields: CodeSigningScopeField[] } => {
+  const attributes = grant.attributes as TCodeSigningGrantAttributes | null;
+  if (!attributes || attributes.signerId !== signerId) {
+    return { verdict: SigningGrantVerdict.NotApplicable, mismatchedFields: [] };
+  }
+  if (attributes.windowStart && new Date(attributes.windowStart) > now) {
+    return { verdict: SigningGrantVerdict.NotApplicable, mismatchedFields: [] };
+  }
+  if (grant.expiresAt && new Date(grant.expiresAt) < now) {
+    return { verdict: SigningGrantVerdict.Expired, mismatchedFields: [] };
+  }
+
+  const mismatchedFields = getCodeSigningScopeMismatches(attributes.scope, observedContext);
+  if (mismatchedFields.length > 0) {
+    return { verdict: SigningGrantVerdict.ScopeMismatch, mismatchedFields };
+  }
+  return { verdict: SigningGrantVerdict.Usable, mismatchedFields: [] };
 };
 
 type TResolvedHsmReissue = {
@@ -1400,6 +1447,152 @@ export const signerServiceFactory = ({
     };
   };
 
+  type TSigningAccessResolution = {
+    grantId: string | null;
+    matchedGrantAttributes: TCodeSigningGrantAttributes | null;
+    pendingOperationId: string | null;
+    deniedReason?: string;
+  };
+
+  const $resolveSigningAccess = async ({
+    signer,
+    projectId,
+    dto,
+    dataHash,
+    observedContext,
+    operationClientMetadata
+  }: {
+    signer: { id: string; name: string };
+    projectId: string;
+    dto: TSignDataDTO;
+    dataHash: string;
+    observedContext: TObservedSigningContext;
+    operationClientMetadata: Record<string, unknown> | null;
+  }): Promise<TSigningAccessResolution> =>
+    projectDAL.transaction(async (tx) => {
+      const [userGrants, identityGrants] = await Promise.all([
+        approvalRequestGrantsDAL.find(
+          {
+            granteeUserId: dto.actorId,
+            type: ApprovalPolicyType.CertCodeSigning,
+            status: ApprovalRequestGrantStatus.Active,
+            projectId,
+            revokedAt: null
+          },
+          { tx }
+        ),
+        approvalRequestGrantsDAL.find(
+          {
+            granteeMachineIdentityId: dto.actorId,
+            type: ApprovalPolicyType.CertCodeSigning,
+            status: ApprovalRequestGrantStatus.Active,
+            projectId,
+            revokedAt: null
+          },
+          { tx }
+        )
+      ]);
+
+      const activeGrants = [...userGrants, ...identityGrants];
+
+      let matchingGrant: (typeof activeGrants)[number] | undefined;
+
+      const now = new Date();
+      const expiredGrantIds: string[] = [];
+      const mismatchedScopeFields = new Set<CodeSigningScopeField>();
+
+      for (const grant of activeGrants) {
+        const { verdict, mismatchedFields } = classifyGrantForSigning(grant, signer.id, observedContext, now);
+
+        if (verdict === SigningGrantVerdict.Expired) {
+          expiredGrantIds.push(grant.id);
+        } else if (verdict === SigningGrantVerdict.ScopeMismatch) {
+          mismatchedFields.forEach((field) => mismatchedScopeFields.add(field));
+        } else if (verdict === SigningGrantVerdict.Usable) {
+          matchingGrant ??= grant;
+        }
+      }
+
+      await Promise.all(
+        expiredGrantIds.map((id) =>
+          approvalRequestGrantsDAL.updateById(id, { status: ApprovalRequestGrantStatus.Expired }, tx)
+        )
+      );
+
+      let selectedGrantBecameUnusable = false;
+
+      if (matchingGrant) {
+        const lockedGrant = await approvalRequestGrantsDAL.findByIdForUpdate(matchingGrant.id, tx);
+        if (!lockedGrant || lockedGrant.status !== ApprovalRequestGrantStatus.Active) {
+          matchingGrant = undefined;
+          selectedGrantBecameUnusable = true;
+        } else {
+          const lockedAttributes = lockedGrant.attributes as TCodeSigningGrantAttributes | null;
+          if (lockedAttributes?.maxSignings) {
+            const signingsUsed = await signingOperationDAL.countByGrantId(matchingGrant.id, tx);
+            if (signingsUsed >= lockedAttributes.maxSignings) {
+              await approvalRequestGrantsDAL.updateById(
+                matchingGrant.id,
+                { status: ApprovalRequestGrantStatus.Expired },
+                tx
+              );
+              matchingGrant = undefined;
+              selectedGrantBecameUnusable = true;
+            }
+          }
+        }
+      }
+
+      if (!matchingGrant) {
+        if (mismatchedScopeFields.size > 0 && !selectedGrantBecameUnusable) {
+          const fieldLabels = Array.from(mismatchedScopeFields)
+            .map((field) => CODE_SIGNING_SCOPE_FIELD_LABELS[field])
+            .join(", ");
+          return {
+            grantId: null,
+            matchedGrantAttributes: null,
+            pendingOperationId: null,
+            deniedReason:
+              `Signing with signer '${signer.name}' was denied: your approved access is scoped to specific signing parameters, ` +
+              `and this request does not match the approved ${fieldLabels}. ` +
+              `Sign with the parameters you were approved for, or request new signing access for these parameters.`
+          };
+        }
+        return {
+          grantId: null,
+          matchedGrantAttributes: null,
+          pendingOperationId: null,
+          deniedReason:
+            `Signing with signer '${signer.name}' requires approved access, but none is currently active. ` +
+            `Access may not have been requested or approved yet, may have expired, or may have reached its signature limit. ` +
+            `Request signing access for this signer and try again once it's approved.`
+        };
+      }
+
+      const pendingOperation = await signingOperationDAL.create(
+        {
+          signerId: dto.signerId,
+          projectId,
+          status: SigningOperationStatus.Pending,
+          signingAlgorithm: dto.signingAlgorithm,
+          dataHash,
+          actorType: dto.actor,
+          actorId: dto.actorId,
+          actorName: dto.actorName ?? null,
+          approvalGrantId: matchingGrant.id,
+          clientMetadata: operationClientMetadata
+        },
+        tx
+      );
+
+      return {
+        grantId: matchingGrant.id,
+        matchedGrantAttributes: matchingGrant.attributes as TCodeSigningGrantAttributes | null,
+        pendingOperationId: pendingOperation.id,
+        deniedReason: undefined
+      };
+    });
+
   const $countPolicySteps = async (policyId: string): Promise<number> => {
     const steps = await approvalPolicyDAL.findStepsByPolicyId(policyId);
     return steps.length;
@@ -1484,114 +1677,38 @@ export const signerServiceFactory = ({
 
     const requiresApproval = signer.approvalPolicyId ? (await $countPolicySteps(signer.approvalPolicyId)) > 0 : false;
 
+    const observedContext = buildObservedSigningContext({
+      clientMetadata: dto.clientMetadata,
+      ipAddress: dto.ipAddress,
+      dataHash
+    });
+    const operationClientMetadata =
+      dto.clientMetadata || dto.ipAddress ? { ...dto.clientMetadata, sourceIp: dto.ipAddress } : null;
+
     let grantId: string | null = null;
-    let matchedGrantAttrs: TCodeSigningGrantAttributes | null = null;
+    let matchedGrantAttributes: TCodeSigningGrantAttributes | null = null;
     let pendingOperationId: string | null = null;
 
     if (requiresApproval) {
-      ({ grantId, matchedGrantAttrs, pendingOperationId } = await projectDAL.transaction(async (tx) => {
-        const [userGrants, identityGrants] = await Promise.all([
-          approvalRequestGrantsDAL.find(
-            {
-              granteeUserId: dto.actorId,
-              type: ApprovalPolicyType.CertCodeSigning,
-              status: ApprovalRequestGrantStatus.Active,
-              projectId,
-              revokedAt: null
-            },
-            { tx }
-          ),
-          approvalRequestGrantsDAL.find(
-            {
-              granteeMachineIdentityId: dto.actorId,
-              type: ApprovalPolicyType.CertCodeSigning,
-              status: ApprovalRequestGrantStatus.Active,
-              projectId,
-              revokedAt: null
-            },
-            { tx }
-          )
-        ]);
+      const access = await $resolveSigningAccess({
+        signer,
+        projectId,
+        dto,
+        dataHash,
+        observedContext,
+        operationClientMetadata
+      });
 
-        const activeGrants = [...userGrants, ...identityGrants];
+      if (access.deniedReason) {
+        throw new ForbiddenRequestError({
+          message: access.deniedReason,
+          name: SIGNER_APPROVAL_REQUIRED_ERROR_NAME
+        });
+      }
 
-        let matchingGrant: (typeof activeGrants)[number] | undefined;
-
-        const now = new Date();
-        const expiredGrantIds: string[] = [];
-
-        for (const grant of activeGrants) {
-          const attrs = grant.attributes as TCodeSigningGrantAttributes | null;
-          if (attrs && attrs.signerId === signer.id) {
-            const windowNotStarted = attrs.windowStart && new Date(attrs.windowStart) > now;
-            if (!windowNotStarted) {
-              if (grant.expiresAt && new Date(grant.expiresAt) < now) {
-                expiredGrantIds.push(grant.id);
-              } else if (!matchingGrant) {
-                matchingGrant = grant;
-              }
-            }
-          }
-        }
-
-        await Promise.all(
-          expiredGrantIds.map((id) =>
-            approvalRequestGrantsDAL.updateById(id, { status: ApprovalRequestGrantStatus.Expired }, tx)
-          )
-        );
-
-        if (matchingGrant) {
-          const lockedGrant = await approvalRequestGrantsDAL.findByIdForUpdate(matchingGrant.id, tx);
-          if (!lockedGrant || lockedGrant.status !== ApprovalRequestGrantStatus.Active) {
-            matchingGrant = undefined;
-          } else {
-            const matchAttrs = lockedGrant.attributes as TCodeSigningGrantAttributes | null;
-            if (matchAttrs?.maxSignings) {
-              const usedCount = await signingOperationDAL.countByGrantId(matchingGrant.id, tx);
-              if (usedCount >= matchAttrs.maxSignings) {
-                await approvalRequestGrantsDAL.updateById(
-                  matchingGrant.id,
-                  { status: ApprovalRequestGrantStatus.Expired },
-                  tx
-                );
-                matchingGrant = undefined;
-              }
-            }
-          }
-        }
-
-        if (!matchingGrant) {
-          throw new ForbiddenRequestError({
-            message:
-              `Signing with signer '${signer.name}' requires approved access, but none is currently active. ` +
-              `Access may not have been requested or approved yet, may have expired, or may have reached its signature limit. ` +
-              `Request signing access for this signer and try again once it's approved.`,
-            name: "ApprovalRequired"
-          });
-        }
-
-        const pendingOp = await signingOperationDAL.create(
-          {
-            signerId: dto.signerId,
-            projectId,
-            status: SigningOperationStatus.Pending,
-            signingAlgorithm: dto.signingAlgorithm,
-            dataHash,
-            actorType: dto.actor,
-            actorId: dto.actorId,
-            actorName: dto.actorName ?? null,
-            approvalGrantId: matchingGrant.id,
-            clientMetadata: dto.clientMetadata ?? null
-          },
-          tx
-        );
-
-        return {
-          grantId: matchingGrant.id,
-          matchedGrantAttrs: matchingGrant.attributes as TCodeSigningGrantAttributes | null,
-          pendingOperationId: pendingOp.id
-        };
-      }));
+      grantId = access.grantId;
+      matchedGrantAttributes = access.matchedGrantAttributes;
+      pendingOperationId = access.pendingOperationId;
     }
 
     let signatureBuffer: Buffer;
@@ -1640,7 +1757,7 @@ export const signerServiceFactory = ({
             actorId: dto.actorId,
             actorName: dto.actorName ?? null,
             approvalGrantId: grantId,
-            clientMetadata: dto.clientMetadata ?? null,
+            clientMetadata: operationClientMetadata,
             errorMessage: errorMessage.substring(0, 255)
           });
         }
@@ -1665,15 +1782,15 @@ export const signerServiceFactory = ({
             actorId: dto.actorId,
             actorName: dto.actorName ?? null,
             approvalGrantId: grantId,
-            clientMetadata: dto.clientMetadata ?? null
+            clientMetadata: operationClientMetadata
           },
           tx
         );
       }
 
-      if (grantId && matchedGrantAttrs?.maxSignings) {
+      if (grantId && matchedGrantAttributes?.maxSignings) {
         const newCount = await signingOperationDAL.countByGrantId(grantId, tx);
-        if (newCount >= matchedGrantAttrs.maxSignings) {
+        if (newCount >= matchedGrantAttributes.maxSignings) {
           await approvalRequestGrantsDAL.updateById(grantId, { status: ApprovalRequestGrantStatus.Expired }, tx);
         }
       }
@@ -1792,6 +1909,30 @@ export const signerServiceFactory = ({
     const totalCount = await signingOperationDAL.countBySignerId(dto.signerId, dto.status);
 
     return { operations, totalCount, projectId: signer.projectId };
+  };
+
+  const getOperationById = async (dto: TGetSigningOperationDTO) => {
+    const signer = await signerDAL.findById(dto.signerId);
+    if (!signer) {
+      throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
+    }
+
+    const { permission } = await $loadSignerResourcePermission(
+      signer.id,
+      signer.projectId,
+      dto.actor,
+      dto.actorId,
+      dto.actorAuthMethod,
+      dto.actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ResourcePermissionSignerActions.Read, ResourcePermissionSub.Signer);
+
+    const operation = await signingOperationDAL.findByIdWithActor(dto.operationId);
+    if (!operation || operation.signerId !== signer.id) {
+      throw new NotFoundError({ message: `Signing operation '${dto.operationId}' not found on this signer.` });
+    }
+
+    return { operation, signerName: signer.name, projectId: signer.projectId };
   };
 
   const attachIssuedCertificate = async (
@@ -1981,6 +2122,7 @@ export const signerServiceFactory = ({
     sign,
     getPublicKey,
     listOperations,
+    getOperationById,
     attachIssuedCertificate,
     markIssuanceFailed,
     autoRenewCertificate

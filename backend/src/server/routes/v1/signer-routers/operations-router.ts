@@ -64,4 +64,51 @@ export const registerSignerOperationsRouter = async (server: FastifyZodProvider)
       return result;
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/:signerId/operations/:operationId",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "getSigningOperation",
+      tags: [ApiDocsTags.PkiSigners],
+      description: "Get a signing operation with its full client context",
+      params: z.object({ signerId: z.string().uuid(), operationId: z.string().uuid() }),
+      response: {
+        200: z.object({
+          operation: PkiSigningOperationsSchema.extend({
+            actorName: z.string().nullable(),
+            actorMembershipId: z.string().uuid().nullable()
+          }),
+          signerName: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const result = await server.services.pkiSigner.getOperationById({
+        signerId: req.params.signerId,
+        operationId: req.params.operationId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: result.projectId,
+        event: {
+          type: EventType.GET_PKI_SIGNING_OPERATION,
+          metadata: {
+            signerId: req.params.signerId,
+            operationId: req.params.operationId
+          }
+        }
+      });
+
+      return result;
+    }
+  });
 };

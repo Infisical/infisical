@@ -1,4 +1,5 @@
 import { ApprovalPolicyScope, ApprovalPolicyType, ApproverType } from "../approvalPolicies";
+import { TCodeSigningScope } from "../signers/types";
 
 export enum ApprovalRequestStatus {
   Pending = "pending",
@@ -91,6 +92,7 @@ export type CodeSigningRequestData = {
   requestedWindowStart?: string;
   requestedWindowEnd?: string;
   requestedSignings?: number;
+  scope?: TCodeSigningScope;
 };
 
 export type TApprovalRequest = {

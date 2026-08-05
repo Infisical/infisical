@@ -393,7 +393,7 @@ export const ROUTE_PATHS = Object.freeze({
     ),
     SignerDetailByIDPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing/$signerId"
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing/$signerId/"
     ),
     CodeSigningPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/code-signing",

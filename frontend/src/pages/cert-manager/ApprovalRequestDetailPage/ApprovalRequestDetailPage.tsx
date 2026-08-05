@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, ConfirmActionModal, ContentLoader, EmptyState } from "@app/components/v2";
@@ -19,6 +20,11 @@ import {
   useCancelApprovalRequest
 } from "@app/hooks/api/approvalRequests";
 import { useGetPkiApplicationById } from "@app/hooks/api/pkiApplications";
+import {
+  CodeSigningScopeField,
+  codeSigningScopeFieldLabels,
+  MONOSPACED_SCOPE_FIELDS
+} from "@app/hooks/api/signers";
 
 import {
   ApprovalStepsSection,
@@ -89,6 +95,33 @@ const CodeSigningDetailsSection = ({
             </div>
           )}
         </div>
+        {requestData.scope && Object.values(requestData.scope).some(Boolean) && (
+          <div className="mt-4 border-t border-mineshaft-600 pt-4">
+            <h4 className="mb-1 text-sm font-medium text-mineshaft-100">Request Scope</h4>
+            <p className="mb-3 text-xs text-mineshaft-400">
+              Signing is only allowed when every parameter below matches exactly.
+            </p>
+            <div className="flex flex-col gap-4">
+              {Object.values(CodeSigningScopeField)
+                .filter((field) => requestData.scope?.[field])
+                .map((field) => (
+                  <div key={field}>
+                    <span className="text-xs text-mineshaft-400">
+                      {codeSigningScopeFieldLabels[field]}
+                    </span>
+                    <p
+                      className={twMerge(
+                        "text-sm break-all text-mineshaft-100",
+                        MONOSPACED_SCOPE_FIELDS.includes(field) && "font-mono text-xs"
+                      )}
+                    >
+                      {requestData.scope?.[field]}
+                    </p>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
