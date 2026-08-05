@@ -30,6 +30,8 @@ import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
+import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -75,6 +77,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
 };
 
 export type TScopedIdentityV2ServiceFactory = ReturnType<typeof identityV2ServiceFactory>;
@@ -92,7 +95,8 @@ export const identityV2ServiceFactory = ({
   projectDAL,
   orgDAL,
   roleDAL,
-  usageMeteringService
+  usageMeteringService,
+  alertService
 }: TScopedIdentityV2ServiceFactoryDep) => {
   const orgFactory = newOrgIdentityFactory({
     permissionService
@@ -387,6 +391,14 @@ export const identityV2ServiceFactory = ({
     // so any JWT issued for this identity (with iat < now) is rejected.
     const deletedIdentity = await identityDAL.transaction(async (tx) => {
       await identityAccessTokenService.insertIdentityWideRevocationMarker({ identityId: dto.selector.identityId, tx });
+
+      await alertService.deleteAlertsForDeletedResource(
+        {
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: dto.selector.identityId
+        },
+        tx
+      );
       return identityDAL.deleteById(dto.selector.identityId, tx);
     });
     await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.selector.identityId });

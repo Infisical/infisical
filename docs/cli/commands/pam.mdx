@@ -97,6 +97,23 @@ Based on the account's template, the CLI starts the appropriate local proxy or c
     | MongoDB | `mongodb://127.0.0.1:<port>/<database>` |
   </Accordion>
 
+  <Accordion title="Redis">
+    Starts a local Redis proxy on `127.0.0.1`. Connect using any Redis client with no password, as authentication is handled by the proxy.
+
+    ```bash
+    # Example
+    infisical pam access production/cache-primary --duration 2h
+    ```
+
+    Then connect with `redis-cli` or any Redis client:
+
+    ```bash
+    redis-cli -h 127.0.0.1 -p <port>
+    ```
+
+    Connection string format: `redis://127.0.0.1:<port>`
+  </Accordion>
+
   <Accordion title="SSH">
     Starts a local SSH proxy. Use standard SSH/SCP/SFTP/rsync commands to connect.
 

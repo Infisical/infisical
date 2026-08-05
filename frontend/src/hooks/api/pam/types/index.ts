@@ -149,6 +149,7 @@ export type TPamFieldDescriptor = {
   widget: PamFieldWidget;
   required: boolean;
   secret: boolean;
+  optional?: boolean;
   options?: { label: string; value: string }[];
   defaultValue?: string | number | boolean;
   showWhen?: { field: string; equals: string | boolean };
@@ -168,6 +169,7 @@ export type TPamAccountTypeMetadata = {
   supportsWebAccess: boolean;
   requiresGateway: boolean;
   supportsDependencies: boolean;
+  connectionStringSchemes?: string[];
   connectionFields: TPamFieldDescriptor[];
   credentialFields: TPamFieldDescriptor[];
   applicablePolicies: TPamPolicyDescriptor[];

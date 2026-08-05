@@ -4,13 +4,23 @@
   "name": "Infisical",
   "colors": {
     "primary": "#26272b",
-    "light": "#97b31d",
+    "light": "#EFFF33",
     "dark": "#A1B659"
   },
   "styling": {
     "codeblocks": "dark"
   },
   "favicon": "/favicon.ico",
+  "contextual": {
+    "options": [
+      "assistant",
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "mcp"
+    ]
+  },
   "navigation": {
     "tabs": [
       {
@@ -1123,6 +1133,7 @@
                       "documentation/platform/pam/accounts/mysql",
                       "documentation/platform/pam/accounts/mssql",
                       "documentation/platform/pam/accounts/mongodb",
+                      "documentation/platform/pam/accounts/redis",
                       "documentation/platform/pam/accounts/ssh",
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
@@ -4192,10 +4203,6 @@
     "mdx": {
       "server": ["https://app.infisical.com"]
     }
-  },
-  "appearance": {
-    "default": "light",
-    "strict": true
   },
   "background": {
     "color": {

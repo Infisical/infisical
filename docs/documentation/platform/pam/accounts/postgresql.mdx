@@ -16,6 +16,10 @@ PostgreSQL accounts let you manage access to your PostgreSQL databases. Users co
     Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a PostgreSQL [template](/documentation/platform/pam/templates/overview) (e.g., the default `postgres` or a custom one).
   </Step>
   <Step title="Enter connection details">
+    <Tip>
+      Already have a connection string? Paste it into the **Host** field and the remaining fields are filled in for you, credentials included. Both `postgresql://user:password@host:5432/database` and `host=... port=... dbname=...` forms work.
+    </Tip>
+
     | Field | Description |
     |-------|-------------|
     | **Name** | A descriptive name (e.g., `orders-db-readonly`) |

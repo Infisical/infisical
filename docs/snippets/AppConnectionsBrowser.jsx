@@ -693,7 +693,7 @@ export const AppConnectionsBrowser = () => {
           <input
             type="text"
             placeholder="Search app connections..."
-            className="block w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white shadow-sm"
+            className="block w-full pl-9 pr-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white shadow-sm dark:bg-black dark:text-gray-100 dark:border-gray-700 dark:placeholder-gray-400"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -709,8 +709,8 @@ export const AppConnectionsBrowser = () => {
               onClick={() => setSelectedCategory(category)}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm ${
                 selectedCategory === category
-                  ? "bg-yellow-100 text-yellow-700 border border-yellow-200"
-                  : "bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200"
+                  ? "bg-yellow-100 text-yellow-700 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700"
+                  : "bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200 dark:bg-black dark:text-gray-200 dark:border-gray-700 dark:hover:bg-yellow-950/20 dark:hover:border-yellow-700"
               }`}
             >
               {category}
@@ -721,7 +721,7 @@ export const AppConnectionsBrowser = () => {
 
       {/* Results Count */}
       <div className="mb-4">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           {filteredConnections.length} app connection
           {filteredConnections.length !== 1 ? "s" : ""} found
           {selectedCategory !== "All" && ` in ${selectedCategory}`}
@@ -736,18 +736,18 @@ export const AppConnectionsBrowser = () => {
             <a
               key={connection.slug}
               href={connection.path}
-              className="group block px-4 py-3 border border-gray-200 rounded-xl hover:border-yellow-200 hover:bg-yellow-50/50 hover:shadow-sm transition-all duration-200 bg-white shadow-sm"
+              className="group block px-4 py-3 border border-gray-200 rounded-xl hover:border-yellow-200 hover:bg-yellow-50/50 hover:shadow-sm transition-all duration-200 bg-white shadow-sm dark:bg-black dark:border-gray-700 dark:hover:bg-yellow-950/20 dark:hover:border-yellow-700"
             >
               <div className="w-full">
                 <div className="flex items-center justify-between mb-0.5">
-                  <h3 className="text-base font-medium text-gray-900 leading-none m-0">
+                  <h3 className="text-base font-medium text-gray-900 leading-none m-0 dark:text-gray-100">
                     {connection.name}
                   </h3>
-                  <span className="ml-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 flex-shrink-0">
+                  <span className="ml-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 flex-shrink-0 dark:bg-yellow-900/30 dark:text-yellow-300">
                     {connection.category}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed">
+                <p className="text-sm text-gray-600 leading-relaxed dark:text-gray-400">
                   {connection.description}
                 </p>
               </div>
@@ -757,7 +757,7 @@ export const AppConnectionsBrowser = () => {
       ) : (
         <div className="text-center py-8">
           <div className="flex flex-col items-center space-y-2">
-            <p className="text-gray-500">
+            <p className="text-gray-500 dark:text-gray-400">
               No app connections found matching your criteria
             </p>
             {searchTerm && (

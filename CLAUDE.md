@@ -90,6 +90,8 @@ Both handlers and services define narrow interfaces for their dependencies (cons
 
 All user-facing "notify me when X happens" features share one module: `backend/src/services/alert/`. It owns the alert CRUD, the channel stack (email, Slack, webhook, PagerDuty), recipients, dedup, history, and dispatch. To alert on a new resource, register an `IResourceAlertProvider` on the shared registry — do not stand up a per-domain alert service, channel table, or notification cron. See `backend/CLAUDE.md` for the provider contract and invariants.
 
+**If you touch a code path that deletes or detaches an alertable resource, it must reap that resource's alerts.** `alerts.resourceId` has no foreign key, so nothing cascades and the alert is left dangling. Use `alertService.deleteAlertsForDeletedResource` when the row is gone (unscoped, reaps across every org) and `deleteAlertsForResource` when the resource only left a scope. See the alerting invariants in `backend/CLAUDE.md`.
+
 ### API Layer (Frontend)
 
 React Query + Axios with query key factories per domain. Each API domain in `frontend/src/hooks/api/` has `queries.tsx`, `mutations.tsx`, and `types.tsx` — see `frontend/CLAUDE.md` for conventions.

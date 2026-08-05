@@ -54,6 +54,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
   [PamAccountType.Postgres]: {
     name: "PostgreSQL",
     icon: "Postgres.png",
+    connectionStringSchemes: ["postgres", "postgresql"],
     connectionDetails: z.object({
       host: z.string().trim().min(1).max(255),
       port: z.coerce.number(),
@@ -307,6 +308,46 @@ export const ACCOUNT_TYPE_CONFIGS = {
         showWhen: { field: "sslEnabled", equals: true }
       },
       password: { widget: PamFieldWidget.Password, secret: true }
+    }
+  },
+
+  [PamAccountType.Redis]: {
+    name: "Redis",
+    icon: "Redis.png",
+    connectionDetails: z.object({
+      host: z.string().trim().min(1).max(255),
+      port: z.coerce.number().int().min(1).max(65535),
+      sslEnabled: z.boolean(),
+      sslRejectUnauthorized: z.boolean(),
+      sslCertificate: optionalTrimmedString
+    }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(256),
+      password: z
+        .string()
+        .trim()
+        .max(256)
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    sanitizedCredentials: z.object({ username: z.string() }),
+    ui: {
+      port: { defaultValue: 6379 },
+      username: {
+        defaultValue: "default",
+        tooltip: "The Redis ACL username. Use 'default' for the default user."
+      },
+      password: { widget: PamFieldWidget.Password, secret: true, optional: true },
+      sslEnabled: { label: "SSL Enabled" },
+      sslRejectUnauthorized: {
+        label: "Reject Unauthorized",
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      sslCertificate: {
+        label: "SSL Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "sslEnabled", equals: true }
+      }
     }
   },
 
@@ -626,6 +667,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       name: string;
       icon: string;
       requiresGateway?: boolean;
+      connectionStringSchemes?: readonly string[];
       connectionDetails: z.ZodTypeAny;
       credentials: z.ZodTypeAny;
       sanitizedCredentials: z.ZodTypeAny;
@@ -635,6 +677,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
           label?: string;
           widget?: PamFieldWidget;
           secret?: boolean;
+          optional?: boolean;
           defaultValue?: string | number | boolean;
           showWhen?: { field: string; equals: string | boolean };
           tooltip?: string;
@@ -719,6 +762,7 @@ export const extractGatewayTarget = async (
     case PamAccountType.Postgres:
     case PamAccountType.MySQL:
     case PamAccountType.MsSQL:
+    case PamAccountType.Redis:
     case PamAccountType.Windows:
       return {
         host: (validated as { host: string; port: number }).host,
@@ -852,6 +896,17 @@ export const accountTypeRequiresGateway = (accountType: PamAccountType): boolean
   return config?.requiresGateway !== false;
 };
 
+const accountTypeConnectionStringSchemes = (accountType: PamAccountType): string[] | undefined => {
+  const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType] as
+    | { connectionStringSchemes?: readonly string[] }
+    | undefined;
+  return config?.connectionStringSchemes ? [...config.connectionStringSchemes] : undefined;
+};
+
+// redis can be reached without credentials
+export const accountTypeRequiresCredential = (accountType: PamAccountType): boolean =>
+  accountType !== PamAccountType.Redis;
+
 export const getAccountAccessibilityIssues = (account: {
   accountType: PamAccountType | string;
   gatewayId?: string | null;
@@ -890,7 +945,9 @@ export const getAccountAccessibilityIssues = (account: {
     if (!hasRecordingConfig) issues.push(PamAccountAccessibilityIssue.NoRecordingConfig);
   }
 
-  if (!account.credentialConfigured) issues.push(PamAccountAccessibilityIssue.NoCredential);
+  if (accountTypeRequiresCredential(account.accountType as PamAccountType) && !account.credentialConfigured) {
+    issues.push(PamAccountAccessibilityIssue.NoCredential);
+  }
   return issues;
 };
 
@@ -912,6 +969,7 @@ export const PamFieldDescriptorSchema = z.object({
   widget: z.nativeEnum(PamFieldWidget),
   required: z.boolean(),
   secret: z.boolean(),
+  optional: z.boolean().optional(),
   options: z.array(z.object({ label: z.string(), value: z.string() })).optional(),
 
   // Value the form prefills the field with on create
@@ -933,6 +991,8 @@ export const PamAccountTypeMetadataSchema = z.object({
   supportsWebAccess: z.boolean(),
   requiresGateway: z.boolean(),
   supportsDependencies: z.boolean(),
+
+  connectionStringSchemes: z.array(z.string()).optional(),
   connectionFields: z.array(PamFieldDescriptorSchema),
   credentialFields: z.array(PamFieldDescriptorSchema),
   applicablePolicies: z.array(PamPolicyDescriptorSchema)
@@ -944,6 +1004,7 @@ type TFieldUiHint = {
   label?: string;
   widget?: PamFieldWidget;
   secret?: boolean;
+  optional?: boolean;
   defaultValue?: string | number | boolean;
   showWhen?: PamFieldDescriptor["showWhen"];
   tooltip?: string;
@@ -1006,6 +1067,7 @@ const describeField = (
     widget,
     required,
     secret: hint.secret ?? widget === PamFieldWidget.Password,
+    ...(hint.optional ? { optional: true } : {}),
     ...(widget === PamFieldWidget.Select
       ? { options: hint.options ?? (enumValues ? enumValues.map((v) => ({ label: humanizeKey(v), value: v })) : []) }
       : {}),
@@ -1090,6 +1152,7 @@ export const buildPamAccountTypeMetadata = (webAccessSupportedTypes: Set<PamAcco
     supportsWebAccess: webAccessSupportedTypes.has(type),
     requiresGateway: accountTypeRequiresGateway(type),
     supportsDependencies: isWindowsRotatableType(type),
+    connectionStringSchemes: accountTypeConnectionStringSchemes(type),
     connectionFields: fieldsFromSchema(config.connectionDetails, config.ui),
     credentialFields: fieldsFromSchema(config.credentials, config.ui),
     applicablePolicies: getApplicablePolicies(type)
