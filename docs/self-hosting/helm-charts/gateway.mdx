@@ -94,6 +94,7 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 | `affinity` | `{}` | Pod affinity rules. |
 | `extraEnv` | `[]` | Extra environment variables for the gateway container. |
 | `extraEnvFrom` | `[]` | Load environment variables from Secrets or ConfigMaps. |
+| `extraArgs` | `[]` | Extra arguments appended to the gateway container command. |
 | `extraObjects` | `[]` | Extra Kubernetes manifests to deploy with this chart. |
 
 ## Default Helm Values
@@ -213,6 +214,10 @@ extraEnvFrom: []
 #      name: my-secret
 #  - configMapRef:
 #      name: my-configmap
+
+# Extra arguments appended to the gateway container command
+extraArgs: []
+#  - --log-level=debug
 
 # Extra Kubernetes manifests to deploy with this chart
 extraObjects: []
