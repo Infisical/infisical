@@ -51,6 +51,7 @@ import { TPkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-types
 import { TPkiDiscoveryServiceFactory } from "@app/ee/services/pki-discovery/pki-discovery-service";
 import { TPkiInstallationServiceFactory } from "@app/ee/services/pki-discovery/pki-installation-service";
 import { TPkiScepServiceFactory } from "@app/ee/services/pki-scep/pki-scep-service";
+import { TProductInsightsServiceFactory } from "@app/ee/services/product-insights/product-insights-service";
 import { TProjectEventsService } from "@app/ee/services/project-events/project-events-service";
 import { TProjectEventsSSEService } from "@app/ee/services/project-events/project-events-sse-service";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-types";
@@ -381,6 +382,7 @@ declare module "fastify" {
       dynamicSecret: TDynamicSecretServiceFactory;
       dynamicSecretLease: TDynamicSecretLeaseServiceFactory;
       emailDomain: TEmailDomainServiceFactory;
+      productInsights: TProductInsightsServiceFactory;
       secretSharing: TSecretSharingServiceFactory;
       rateLimit: TRateLimitServiceFactory;
       userActivation: TUserActivationServiceFactory;

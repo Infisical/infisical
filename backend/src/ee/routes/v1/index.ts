@@ -38,6 +38,7 @@ import { registerPITRouter } from "./pit-router";
 import { registerPkiAcmeRouter } from "./pki-acme-router";
 import { registerPkiDiscoveryRouter } from "./pki-discovery-router";
 import { registerPkiInstallationRouter } from "./pki-installation-router";
+import { registerProductInsightsRouter } from "./product-insights-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
 import { registerProxiedServiceRouter } from "./proxied-service-router";
@@ -110,6 +111,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerAgentProxyCaRouter, { prefix: "/organization/agent-proxy-ca" });
 
   await server.register(registerInsightsRouter, { prefix: "/insights" });
+  await server.register(registerProductInsightsRouter, { prefix: "/product-insights" });
 
   await server.register(
     async (pkiRouter) => {
