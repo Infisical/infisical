@@ -1298,9 +1298,15 @@ export const certificateV3ServiceFactory = ({
           ResourcePermissionSub.Certificates
         );
       } else {
+        // Evaluate the private-key read permission against this certificate's subject so that
+        // attribute-scoped grants are honored here as they are on the certificate-request path.
         canReadPrivateKey = permission.can(
           ProjectPermissionCertificateActions.ReadPrivateKey,
-          ProjectPermissionSub.Certificates
+          subject(ProjectPermissionSub.Certificates, {
+            commonName: subjectCommonName,
+            altNames: selfSignedResult.subjectAlternativeNames.map((san) => san.value),
+            metadata
+          })
         );
       }
 
@@ -1532,9 +1538,15 @@ export const certificateV3ServiceFactory = ({
         ResourcePermissionSub.Certificates
       );
     } else {
+      // Evaluate the private-key read permission against this certificate's subject so that
+      // attribute-scoped grants are honored here as they are on the certificate-request path.
       canReadPrivateKey = permission.can(
         ProjectPermissionCertificateActions.ReadPrivateKey,
-        ProjectPermissionSub.Certificates
+        subject(ProjectPermissionSub.Certificates, {
+          commonName: cert.commonName,
+          altNames: cert.altNames ? cert.altNames.split(",").map((san) => san.trim()) : undefined,
+          metadata
+        })
       );
     }
 
