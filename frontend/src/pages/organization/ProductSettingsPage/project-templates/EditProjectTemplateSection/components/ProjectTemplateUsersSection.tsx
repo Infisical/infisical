@@ -340,7 +340,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
       </form>
 
       <Dialog open={isAddUserModalOpen} onOpenChange={setIsAddUserModalOpen}>
-        <DialogContent className="max-w-xl overflow-visible">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Add Users to Template</DialogTitle>
             <DialogDescription>

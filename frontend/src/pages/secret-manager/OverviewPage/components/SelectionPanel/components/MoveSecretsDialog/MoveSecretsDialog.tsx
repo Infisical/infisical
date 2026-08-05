@@ -1261,7 +1261,7 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
         else onOpenChange(open);
       }}
     >
-      <DialogContent className="max-w-xl overflow-visible [&>*]:min-w-0">
+      <DialogContent className="max-w-xl [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle>{moveCopy.title}</DialogTitle>
           <DialogDescription>

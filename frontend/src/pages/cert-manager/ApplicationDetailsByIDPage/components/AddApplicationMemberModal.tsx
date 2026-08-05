@@ -271,7 +271,7 @@ export const AddApplicationMemberModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl overflow-visible">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add Member</DialogTitle>
           <DialogDescription>

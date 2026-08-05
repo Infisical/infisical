@@ -469,7 +469,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
       </form>
 
       <Dialog open={isAddIdentityModalOpen} onOpenChange={setIsAddIdentityModalOpen}>
-        <DialogContent className="max-w-xl overflow-visible">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Add Machine Identity to Template</DialogTitle>
             <DialogDescription>

@@ -395,7 +395,7 @@ export const BulkTagDialog = ({ isOpen, onOpenChange, ...contentProps }: Props) 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       {isOpen && (
-        <DialogContent className="max-w-7xl overflow-visible">
+        <DialogContent className="max-w-7xl">
           <BulkTagDialogContent {...contentProps} onClose={() => onOpenChange(false)} />
         </DialogContent>
       )}

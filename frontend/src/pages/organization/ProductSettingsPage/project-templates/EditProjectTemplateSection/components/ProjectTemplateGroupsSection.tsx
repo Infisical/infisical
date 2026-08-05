@@ -339,7 +339,7 @@ export const ProjectTemplateGroupsSection = ({ projectTemplate }: Props) => {
       </form>
 
       <Dialog open={isAddGroupModalOpen} onOpenChange={setIsAddGroupModalOpen}>
-        <DialogContent className="max-w-xl overflow-visible">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Add Groups to Template</DialogTitle>
             <DialogDescription>
