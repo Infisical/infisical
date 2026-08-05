@@ -64,7 +64,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
             committerIdentity: z
               .object({
                 identityId: z.string(),
-                name: z.string()
+                name: z.string().nullable()
               })
               .nullish(),
             commits: z.object({ op: z.string(), secretId: z.string().nullable().optional() }).array(),
@@ -368,7 +368,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               committerIdentity: z
                 .object({
                   identityId: z.string(),
-                  name: z.string()
+                  name: z.string().nullable()
                 })
                 .nullish(),
               reviewers: approvalRequestUser
