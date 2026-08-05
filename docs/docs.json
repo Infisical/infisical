@@ -1133,6 +1133,7 @@
                     ]
                   },
                   "documentation/platform/pam/access-requests/overview",
+                  "documentation/platform/pam/ai-agents/overview",
                   {
                     "group": "Credential Rotation",
                     "pages": [
@@ -1195,7 +1196,10 @@
                   "cli/commands/secrets",
                   "cli/commands/agent-proxy",
                   "cli/commands/dynamic-secrets",
-                  "cli/commands/pam",
+                  {
+                    "group": "infisical pam",
+                    "pages": ["cli/commands/pam", "cli/commands/pam-agentic"]
+                  },
                   "cli/commands/gateway",
                   "cli/commands/kmip",
                   "cli/commands/relay",

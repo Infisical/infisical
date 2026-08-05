@@ -6,7 +6,7 @@ description: "Manage credentials for databases and servers."
 
 Accounts are the databases and servers you want to manage through PAM. Each account stores the connection details and credentials needed to connect — hostname, port, username, password, and so on.
 
-When users connect to an account, they never see the actual credentials. The connection is proxied, credentials are injected automatically, and everything is recorded.
+Whoever connects to an account never sees the actual credentials, whether that is a person or an [AI agent](/documentation/platform/pam/ai-agents/overview). The connection is proxied, credentials are injected automatically, and everything is recorded.
 
 ## Account Types
 
@@ -53,7 +53,7 @@ Accounts live inside [folders](/documentation/platform/pam/folders/overview). To
 
 ## Connecting to an Account
 
-Once an account exists, users with access can connect from the **Accounts** page:
+Once an account exists, anyone with access can connect: people in the browser or through the CLI, [machine identities](/documentation/platform/identities/machine-identities) through the CLI.
 
 ### Web Access
 
@@ -80,6 +80,8 @@ The command outputs the local port to connect to. Then connect with your preferr
 | `--port` | Use a specific local port (otherwise one is assigned automatically) |
 | `--reason` | Provide a reason (if required by the template) |
 
+To let an [AI agent](/documentation/platform/pam/ai-agents/overview) reach an account, use [`infisical pam agentic access`](/cli/commands/pam-agentic) instead.
+
 ## Direct Account Memberships
 
 Most access is granted at the folder level — if you have access to the folder, you have access to all accounts in it.
@@ -88,10 +90,10 @@ But sometimes you need to grant access to just one account. For that, use direct
 
 1. Open the account and go to the **Permissions** tab
 2. Click **Assign Access**
-3. Select the user/group, role, and optional expiration
+3. Select the user, group, or machine identity, then set the role and an optional expiration
 4. Click **Add**
 
-Direct memberships are for exceptions — a contractor who needs one specific database, or temporary elevated access to a single account.
+Direct memberships are for exceptions: a contractor who needs one specific database, temporary elevated access to a single account, or a job that should reach one account and nothing else.
 
 ## Next Steps
 
