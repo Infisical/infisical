@@ -14,55 +14,41 @@ import {
 
 export const MAX_PREVENT_VALUE_REUSE_VERSIONS = 25;
 
-// Targets that constraints are allowed to apply to per rule type.
-// Generated-credential rules currently only target the generated password
-// (the username slot is reserved for future use).
-const STATIC_RULE_TARGETS = new Set<ConstraintTarget>([ConstraintTarget.SecretKey, ConstraintTarget.SecretValue]);
-const GENERATED_RULE_TARGETS = new Set<ConstraintTarget>([ConstraintTarget.GeneratedPassword]);
+const STATIC_RULE_TARGETS = [ConstraintTarget.SecretKey, ConstraintTarget.SecretValue] as const;
+const GENERATED_RULE_TARGETS = [ConstraintTarget.GeneratedPassword] as const;
 
-// Constraint types disallowed on generated-credential rules (dynamic secrets
-// and secret rotations). PreventValueReuse is intentionally static-secret-only:
-// for dynamic secrets it has no anchor (each lease is independent and ephemeral),
-// and for rotations we explicitly want users to drive uniqueness through
-// password generation (length/regex) rather than a reuse check that would
-// surface a rotation as a failed lease at issue time.
-const GENERATED_RULE_DISALLOWED_CONSTRAINTS = new Set<ConstraintType>([ConstraintType.PreventValueReuse]);
+const GENERATED_CONSTRAINT_TYPES = [
+  ConstraintType.MinLength,
+  ConstraintType.MaxLength,
+  ConstraintType.RegexPattern,
+  ConstraintType.RequiredPrefix,
+  ConstraintType.RequiredSuffix
+] as const;
+const STATIC_CONSTRAINT_TYPES = [...GENERATED_CONSTRAINT_TYPES, ConstraintType.PreventValueReuse] as const;
 
-const baseConstraintSchema = z.object({
-  type: z.nativeEnum(ConstraintType).describe(SECRET_VALIDATION_RULES.RULE.constraintType),
-  appliesTo: z.nativeEnum(ConstraintTarget).describe(SECRET_VALIDATION_RULES.RULE.appliesTo),
-  value: z.string().describe(SECRET_VALIDATION_RULES.RULE.constraintValue)
-});
+/** Embed description + example so Mintlify/OpenAPI curl samples include enum fields. */
+const openApiField = (description: string, example: string) => JSON.stringify({ description, example });
 
-const valueRequiredRefinement = (c: z.infer<typeof baseConstraintSchema>) =>
+type TConstraintInput = {
+  type: ConstraintType;
+  appliesTo: ConstraintTarget;
+  value: string;
+};
+
+const valueRequiredRefinement = (c: TConstraintInput) =>
   c.type === ConstraintType.PreventValueReuse || c.value.length > 0;
 
-const preventValueReuseTargetRefinement = (c: z.infer<typeof baseConstraintSchema>) =>
+const preventValueReuseTargetRefinement = (c: TConstraintInput) =>
   c.type !== ConstraintType.PreventValueReuse || c.appliesTo === ConstraintTarget.SecretValue;
 
-const preventValueReuseRangeRefinement = (c: z.infer<typeof baseConstraintSchema>) => {
+const preventValueReuseRangeRefinement = (c: TConstraintInput) => {
   if (c.type !== ConstraintType.PreventValueReuse) return true;
   const num = Number(c.value);
   return Number.isInteger(num) && num >= 1 && num <= MAX_PREVENT_VALUE_REUSE_VERSIONS;
 };
 
-const buildConstraintSchemaForRuleType = (ruleType: SecretValidationRuleType) => {
-  const allowedTargets =
-    ruleType === SecretValidationRuleType.StaticSecrets ? STATIC_RULE_TARGETS : GENERATED_RULE_TARGETS;
-  const disallowedTypes =
-    ruleType === SecretValidationRuleType.StaticSecrets
-      ? new Set<ConstraintType>()
-      : GENERATED_RULE_DISALLOWED_CONSTRAINTS;
-
-  return baseConstraintSchema
-    .refine((c) => allowedTargets.has(c.appliesTo), {
-      message: `Constraint target is not allowed for ${ruleType} rules`,
-      path: ["appliesTo"]
-    })
-    .refine((c) => !disallowedTypes.has(c.type), {
-      message: `Constraint type is not supported for ${ruleType} rules`,
-      path: ["type"]
-    })
+const withConstraintRefinements = <T extends z.ZodType<TConstraintInput>>(schema: T) =>
+  schema
     .refine(valueRequiredRefinement, { message: "Value is required", path: ["value"] })
     .refine(preventValueReuseTargetRefinement, {
       message: "No value reuse constraint can only apply to secret values",
@@ -72,6 +58,33 @@ const buildConstraintSchemaForRuleType = (ruleType: SecretValidationRuleType) =>
       message: `Prevent value reuse version count must be between 1 and ${MAX_PREVENT_VALUE_REUSE_VERSIONS}`,
       path: ["value"]
     });
+
+const buildConstraintSchemaForRuleType = (ruleType: SecretValidationRuleType) => {
+  if (ruleType === SecretValidationRuleType.StaticSecrets) {
+    return withConstraintRefinements(
+      z.object({
+        type: z
+          .enum(STATIC_CONSTRAINT_TYPES)
+          .describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintTypeStatic, ConstraintType.MinLength)),
+        appliesTo: z
+          .enum(STATIC_RULE_TARGETS)
+          .describe(openApiField(SECRET_VALIDATION_RULES.RULE.appliesToStatic, ConstraintTarget.SecretValue)),
+        value: z.string().describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintValue, "8"))
+      })
+    );
+  }
+
+  return withConstraintRefinements(
+    z.object({
+      type: z
+        .enum(GENERATED_CONSTRAINT_TYPES)
+        .describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintTypeGenerated, ConstraintType.MinLength)),
+      appliesTo: z
+        .enum(GENERATED_RULE_TARGETS)
+        .describe(openApiField(SECRET_VALIDATION_RULES.RULE.appliesToGenerated, ConstraintTarget.GeneratedPassword)),
+      value: z.string().describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintValue, "8"))
+    })
+  );
 };
 
 export const staticSecretsInputsSchema = z.object({
