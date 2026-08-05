@@ -1,0 +1,65 @@
+version: v0.162.16
+releasedAt: 2026-08-04T23:05:39+05:30
+sourceTag: v0.162.16
+previousTag: v0.162.15
+impactLevel: medium
+summary: Startup runs new schema migrations, including a destructive cleanup of
+  removed SSH and Agent Sentinel tables. Existing initialized instances are
+  backfilled for the new admin onboarding flag.
+requiresDbMigration: true
+breakingChanges:
+  - title: SSH and AI MCP tables removal
+    description: Startup drops database tables for removed SSH and Agent Sentinel
+      products, including SSH certificate, host, and AI MCP data. Existing
+      project rows remain, but product data in those tables is deleted.
+    action: If you still need SSH or Agent Sentinel data, back up the database
+      before upgrading. If startup fails during migration, keep the previous
+      version running and inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260729150000_drop-ssh-and-ai-mcp-tables.ts
+        path: backend/src/db/migrations/20260729150000_drop-ssh-and-ai-mcp-tables.ts
+        description: Drops SSH and AI MCP tables
+      - type: pr
+        ref: "#7518"
+        url: https://github.com/Infisical/infisical/pull/7518
+        description: Removes SSH and Agent Sentinel products
+dbSchemaChanges:
+  - title: Super admin onboarding flag
+    description: Adds a non-null onboardingCompleted column to super_admin and
+      backfills initialized records to true, so existing initialized instances
+      are not sent through the new setup flow.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260727120000_add_onboarding_completed_to_super_admin.ts
+        path: backend/src/db/migrations/20260727120000_add_onboarding_completed_to_super_admin.ts
+        description: Adds and backfills onboardingCompleted
+      - type: pr
+        ref: "#7448"
+        url: https://github.com/Infisical/infisical/pull/7448
+        description: Existing instances marked complete
+  - title: Signup onboarding responses table
+    description: Adds a signup_onboarding_responses table for onboarding answers,
+      with user and organization foreign keys, uniqueness, and update trigger
+      support.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260728234251_create-signup-onboarding-responses.ts
+        path: backend/src/db/migrations/20260728234251_create-signup-onboarding-responses.ts
+        description: Creates signup onboarding table
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-08-04T18:21:29.630Z
+  sourceRange:
+    from: v0.162.15
+    to: v0.162.16
