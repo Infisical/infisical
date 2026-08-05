@@ -3,6 +3,33 @@ import RE2 from "re2";
 import { CodeSigningScopeField } from "./code-signing-policy-enums";
 import { TCodeSigningScope } from "./code-signing-policy-types";
 
+const REDACTED_VALUE = "***";
+
+const SECRET_ARGUMENT_NAMES = "storepass|keypass|passphrase|password|passwd|passin|passout|pass|pin|pw|p";
+const SECRET_NAME_SUFFIXES = "password|passphrase|passwd";
+
+const INLINE_SECRET_RE = new RE2(
+  `((?:^|\\s)[-/]{0,2}[A-Za-z0-9._:-]*(?:${SECRET_NAME_SUFFIXES})\\s*=\\s*)("[^"]*"|\\S+)`,
+  "gi"
+);
+const INLINE_NAMED_SECRET_RE = new RE2(`((?:^|\\s)[-/]{1,2}(?:${SECRET_ARGUMENT_NAMES})\\s*=\\s*)("[^"]*"|\\S+)`, "gi");
+const SEPARATED_SECRET_RE = new RE2(
+  `((?:^|\\s)[-/]{1,2}(?:${SECRET_ARGUMENT_NAMES}|[A-Za-z0-9._:-]*(?:${SECRET_NAME_SUFFIXES}))[ \\t]+)("[^"]*"|[^-/\\s]\\S*)`,
+  "gi"
+);
+const COLON_SECRET_RE = new RE2(`((?:^|\\s)[-/]{1,2}(?:${SECRET_ARGUMENT_NAMES}):)("[^"]*"|[^=\\s]+)(\\s|$)`, "gi");
+
+/**
+ * Strips credential values out of a command line.
+ */
+export const redactCommandCredentials = (command: string): string => {
+  const withoutInlineSecrets = [INLINE_SECRET_RE, INLINE_NAMED_SECRET_RE, SEPARATED_SECRET_RE].reduce(
+    (redacted, pattern) => redacted.replace(pattern, `$1${REDACTED_VALUE}`),
+    command
+  );
+  return withoutInlineSecrets.replace(COLON_SECRET_RE, `$1${REDACTED_VALUE}$3`);
+};
+
 export const normalizeCodeSigningScope = (scope: TCodeSigningScope | undefined): TCodeSigningScope | undefined => {
   if (!scope) return undefined;
 
@@ -11,7 +38,7 @@ export const normalizeCodeSigningScope = (scope: TCodeSigningScope | undefined):
   for (const field of Object.values(CodeSigningScopeField)) {
     const value = scope[field]?.trim();
     if (value) {
-      declared[field] = value;
+      declared[field] = field === CodeSigningScopeField.Command ? redactCommandCredentials(value) : value;
       hasAny = true;
     }
   }
@@ -44,7 +71,9 @@ export const buildObservedSigningContext = ({
   ipAddress?: string;
   dataHash: string;
 }): TObservedSigningContext => ({
-  [CodeSigningScopeField.Command]: clientMetadata?.command,
+  [CodeSigningScopeField.Command]: clientMetadata?.command
+    ? redactCommandCredentials(clientMetadata.command)
+    : clientMetadata?.command,
   [CodeSigningScopeField.SigningApplication]: clientMetadata?.tool,
   [CodeSigningScopeField.SigningApplicationHash]: clientMetadata?.signingApplicationHash,
   [CodeSigningScopeField.Hostname]: clientMetadata?.hostname,

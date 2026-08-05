@@ -52,6 +52,7 @@ import {
 import {
   buildObservedSigningContext,
   getCodeSigningScopeMismatches,
+  redactCommandCredentials,
   TObservedSigningContext
 } from "../approval-policy/code-signing/code-signing-policy-fns";
 import { TCodeSigningGrantAttributes } from "../approval-policy/code-signing/code-signing-policy-types";
@@ -1683,7 +1684,13 @@ export const signerServiceFactory = ({
       dataHash
     });
     const operationClientMetadata =
-      dto.clientMetadata || dto.ipAddress ? { ...dto.clientMetadata, sourceIp: dto.ipAddress } : null;
+      dto.clientMetadata || dto.ipAddress
+        ? {
+            ...dto.clientMetadata,
+            ...(dto.clientMetadata?.command ? { command: redactCommandCredentials(dto.clientMetadata.command) } : {}),
+            sourceIp: dto.ipAddress
+          }
+        : null;
 
     let grantId: string | null = null;
     let matchedGrantAttributes: TCodeSigningGrantAttributes | null = null;

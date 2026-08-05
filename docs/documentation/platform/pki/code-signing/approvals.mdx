@@ -126,6 +126,8 @@ Two of these parameters are decided by Infisical rather than by the caller, whic
 
 - **Data Digest** is computed from the payload submitted for signing. A caller can only obtain a signature over the bytes they actually sent, so an approval pinned to a digest cannot be turned into a signature over different content.
 
+A command is stored on the approval and on the signing operation, where approvers and auditors can read it. Infisical strips the values of credential arguments it recognises, and the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) and [Windows KSP](/documentation/platform/pki/code-signing/windows-ksp) strip them before sending too, but recognition is best-effort on both sides. Keep secrets off the command lines you sign with.
+
 The remaining parameters (command, signing application, checksum, hostname, OS username) are reported by the signing client. With the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) they are captured from the real signing process, so they describe what is happening on well-behaved machines and give approvers useful context. Someone calling the [Sign API](/api-reference/endpoints/code-signing/signers/sign) directly, however, can report whatever values they like. Treat them as identification, not as a security boundary, and reach for **IP address** and **data digest** when you need a limit that holds regardless of how the caller behaves.
 
 <Tip>

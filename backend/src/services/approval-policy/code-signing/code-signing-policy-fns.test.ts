@@ -1,9 +1,11 @@
 import { CodeSigningScopeField } from "./code-signing-policy-enums";
 import {
+  buildObservedSigningContext,
   commandsMatch,
   getCodeSigningScopeMismatches,
   isSameRequestedSigningWindow,
-  normalizeCodeSigningScope
+  normalizeCodeSigningScope,
+  redactCommandCredentials
 } from "./code-signing-policy-fns";
 
 const DIGEST = "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9";
@@ -264,5 +266,44 @@ describe("isSameRequestedSigningWindow", () => {
 
     expect(isSameRequestedSigningWindow(MACHINE, windowed, {})).toBe(false);
     expect(isSameRequestedSigningWindow(HUMAN, windowed, {})).toBe(false);
+  });
+});
+
+describe("redactCommandCredentials", () => {
+  test.each([
+    ["custom-signer --api-token hunter2 --in app.exe", "custom-signer --api-token hunter2 --in app.exe"],
+    ["jarsigner -storepass hunter2 app.jar", "jarsigner -storepass *** app.jar"],
+    ["jarsigner -keypass=hunter2 app.jar", "jarsigner -keypass=*** app.jar"],
+    ["signtool sign /p hunter2 app.exe", "signtool sign /p *** app.exe"],
+    ["msbuild /p:Password=hunter2 a.sln", "msbuild /p:Password=*** a.sln"],
+    ["gradle -Psigning.password=hunter2", "gradle -Psigning.password=***"],
+    ["java -Dsigning.keyPassword=hunter2 -jar x.jar", "java -Dsigning.keyPassword=*** -jar x.jar"],
+    ["make sign PASSWORD=hunter2", "make sign PASSWORD=***"],
+    ["tool --db-passwd=hunter2", "tool --db-passwd=***"],
+    ["tool -pass:hunter2", "tool -pass:***"],
+    // A suffix name has to behave the same whether the value is inline or the next token.
+    ["tool --cert-password hunter2", "tool --cert-password ***"],
+    ["tool --cert-password=hunter2", "tool --cert-password=***"],
+    ["openssl -passin pass:hunter2", "openssl -passin ***"],
+    ['jarsigner -storepass "two words" app.jar', "jarsigner -storepass *** app.jar"],
+    // A secret flag with no value must not swallow the following flag.
+    ["signtool sign /p /f cert.pfx", "signtool sign /p /f cert.pfx"],
+    // Already redacted input stays put, so a client-redacted command is untouched.
+    ["jarsigner -storepass *** app.jar", "jarsigner -storepass *** app.jar"]
+  ])("redacts %j", (input, expected) => {
+    expect(redactCommandCredentials(input)).toBe(expected);
+  });
+
+  test("is idempotent", () => {
+    const once = redactCommandCredentials("jarsigner -storepass hunter2 -keypass=s3cret app.jar");
+    expect(redactCommandCredentials(once)).toBe(once);
+  });
+
+  test("keeps a bound and an observed command comparable after redaction", () => {
+    const raw = "custom-signer --password hunter2 --in app.exe";
+    const bound = normalizeCodeSigningScope({ command: raw });
+    const observed = buildObservedSigningContext({ clientMetadata: { command: raw }, dataHash: "d" });
+    expect(getCodeSigningScopeMismatches(bound, observed)).toEqual([]);
+    expect(bound?.command).not.toContain("hunter2");
   });
 });
