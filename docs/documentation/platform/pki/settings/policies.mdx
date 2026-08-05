@@ -178,10 +178,6 @@ Control whether certificates can act as CAs:
 
 **Maximum Path Length**: Limits how many intermediate CAs can exist below this certificate. `0` means the CA can only sign end-entity certificates.
 
-<Note>
-  [AWS Private CA](/documentation/platform/pki/ca/aws-pca#issuing-ca-certificates) requires a path length between `0` and `3` on every CA certificate, even when this is left unlimited.
-</Note>
-
 ## Next Steps
 
 Once you've created a policy, combine it with a CA in a [Certificate Profile](/documentation/platform/pki/settings/profiles) that teams can consume.
