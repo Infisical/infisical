@@ -360,36 +360,9 @@ const DestinationPathField = ({
     }
   };
 
-  const createFolderButton = (
-    <Button
-      type="button"
-      variant="ghost"
-      size="xs"
-      isDisabled={!canCreate}
-      isPending={isCreating}
-      onClick={() => handleCreatePath(inputPath)}
-    >
-      <FolderPlusIcon />
-      New Folder
-    </Button>
-  );
-
   return (
     <Field>
-      <div className="flex min-w-0 items-center justify-between gap-2">
-        <FieldLabel htmlFor={inputId}>Destination folder</FieldLabel>
-        {!canCreate ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-              <span tabIndex={0}>{createFolderButton}</span>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-64">{disabledReason}</TooltipContent>
-          </Tooltip>
-        ) : (
-          createFolderButton
-        )}
-      </div>
+      <FieldLabel htmlFor={inputId}>Destination folder</FieldLabel>
       <FieldContent>
         <div className="flex min-w-0 items-center gap-2">
           <span className="w-3 shrink-0 text-center font-mono text-accent" aria-hidden="true">
