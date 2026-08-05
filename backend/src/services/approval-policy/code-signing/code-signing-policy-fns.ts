@@ -102,8 +102,8 @@ type TRequestedSigningWindow = { start?: string; end?: string };
  *
  * A signing client re-derives its window from a configured duration on every call, so a retry asks
  * for identical terms at a later absolute window. Comparing instants would never match and every
- * retry would open a duplicate request. A person picks absolute times, where 10:00-11:00 and
- * 11:00-12:00 are two different asks that merely share a duration.
+ * retry would open a duplicate request. A person picks absolute times, so both ends of the window
+ * are compared: 10:00-18:00 and 12:00-18:00 are different asks even though they end together.
  */
 export const isSameRequestedSigningWindow = (
   isHumanRequester: boolean,
@@ -111,7 +111,7 @@ export const isSameRequestedSigningWindow = (
   incoming: TRequestedSigningWindow
 ): boolean => {
   const sameEnd = (pending.end ?? null) === (incoming.end ?? null);
-  if (isHumanRequester) return sameEnd;
+  if (isHumanRequester) return sameEnd && (pending.start ?? null) === (incoming.start ?? null);
 
   if (!pending.start || !pending.end || !incoming.start || !incoming.end) return sameEnd;
 

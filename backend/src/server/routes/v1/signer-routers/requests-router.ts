@@ -6,7 +6,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import {
   CODE_SIGNING_SCOPE_API_DESCRIPTION,
-  CodeSigningScopeSchema
+  CodeSigningScopeInputSchema
 } from "@app/services/approval-policy/code-signing/code-signing-policy-schemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -71,9 +71,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         requestedSignings: z.number().int().min(1).optional(),
         requestedWindowStart: z.string().datetime().optional(),
         requestedWindowEnd: z.string().datetime().optional(),
-        // Strict: an unrecognized key here would otherwise be dropped, turning a scoped
-        // request into an unscoped one that authorizes every signing context.
-        scope: CodeSigningScopeSchema.strict().optional().describe(CODE_SIGNING_SCOPE_API_DESCRIPTION)
+        scope: CodeSigningScopeInputSchema.optional().describe(CODE_SIGNING_SCOPE_API_DESCRIPTION)
       })
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -117,7 +115,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         requestedSignings: z.number().int().min(1).optional(),
         requestedWindowStart: z.string().datetime().optional(),
         requestedWindowEnd: z.string().datetime().optional(),
-        scope: CodeSigningScopeSchema.strict().optional().describe(CODE_SIGNING_SCOPE_API_DESCRIPTION)
+        scope: CodeSigningScopeInputSchema.optional().describe(CODE_SIGNING_SCOPE_API_DESCRIPTION)
       })
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),

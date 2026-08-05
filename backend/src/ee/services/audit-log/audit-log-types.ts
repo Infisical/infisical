@@ -4715,6 +4715,7 @@ interface GetPkiSigningOperationsEvent {
   type: EventType.GET_PKI_SIGNING_OPERATIONS;
   metadata: {
     signerId: string;
+    signerName: string;
     count: number;
   };
 }
@@ -4723,6 +4724,7 @@ interface GetPkiSigningOperationEvent {
   type: EventType.GET_PKI_SIGNING_OPERATION;
   metadata: {
     signerId: string;
+    signerName: string;
     operationId: string;
   };
 }

@@ -139,32 +139,35 @@ A pipeline can ask for approval of one specific artifact before it signs. Build 
 The digest to declare is the SHA-256 of **the bytes your sign call submits**, because that is what Infisical hashes to check the scope. The recipe below therefore applies when the pipeline posts the file itself to the Sign API:
 
 ```bash
-# 1. Hash the artifact you intend to sign
+# 1. Digest the artifact. This is what a signing tool submits, and what you will sign.
 DIGEST=$(sha256sum installer-v2.4.0.msi | cut -d' ' -f1)
 
-# 2. Ask for one signature over exactly that artifact
+# 2. Scope the request to it. Infisical hashes whatever the sign call submits, so the value
+#    to declare is the hash of those digest bytes rather than the hash of the file.
+SCOPE_HASH=$(echo -n "$DIGEST" | xxd -r -p | sha256sum | cut -d' ' -f1)
+
 curl -s -X POST "$INFISICAL_URL/api/v1/cert-manager/signers/$SIGNER_ID/requests" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
     \"justification\": \"Release v2.4.0 Windows installer\",
     \"requestedSignings\": 1,
-    \"scope\": { \"dataHash\": \"$DIGEST\" }
+    \"scope\": { \"dataHash\": \"$SCOPE_HASH\" }
   }"
 
-# 3. Sign the file itself, so the digest Infisical computes is the one you declared
+# 3. Once it is approved, sign the digest
 curl -s -X POST "$INFISICAL_URL/api/v1/cert-manager/signers/$SIGNER_ID/sign" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
-    \"data\": \"$(base64 -w0 installer-v2.4.0.msi)\",
+    \"data\": \"$(echo -n "$DIGEST" | xxd -r -p | base64 -w0)\",
     \"signingAlgorithm\": \"RSASSA_PKCS1_V1_5_SHA_256\",
-    \"isDigest\": false
+    \"isDigest\": true
   }"
 ```
 
 <Warning>
-  **Do not use `sha256sum yourfile` when your tool pre-hashes.** Tools like `signtool` and `jarsigner` submit a digest rather than the file, so Infisical hashes that digest and the scope value becomes a digest of a digest. Declaring `sha256sum yourfile` in that case never matches and every sign call is denied. Let the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) or the Windows KSP fill the digest in for you instead of computing it by hand.
+  **`sha256sum yourfile` is not the value to declare.** A sign call carries a digest, not the file, so the value Infisical compares is the hash of that digest, as in step 2 above. Declaring the file's own hash never matches and every sign call is denied. The [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) and the [Windows KSP](/documentation/platform/pki/code-signing/windows-ksp) work this out for you, so scoping by artifact is far easier through them than by hand.
 </Warning>
 
 An approver reviews the request and approves it. The pipeline then signs that artifact, and only that artifact: any other payload is refused because Infisical recomputes the digest from whatever is submitted. An Administrator can do the same up front with **Pre-approve signing**, which skips the review step.

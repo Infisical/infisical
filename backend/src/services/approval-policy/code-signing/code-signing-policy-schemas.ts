@@ -69,6 +69,8 @@ export const CodeSigningScopeSchema = z.object({
   [CodeSigningScopeField.DataHash]: scopeSha256("Data digest must be a 64-character SHA-256 hex string")
 });
 
+export const CodeSigningScopeInputSchema = CodeSigningScopeSchema.strict();
+
 export const CODE_SIGNING_SCOPE_API_DESCRIPTION =
   "Optional parameters to scope this approval to (command, signingApplication, signingApplicationHash, hostname, osUsername, ipAddress, dataHash). Every value declared here must match at signing time or the sign call is denied; parameters left out are not restricted. A command must match exactly, apart from whitespace, so a different order of options is a different command. ipAddress is compared against the address the sign call arrives from and dataHash against the digest of the submitted payload, so those two hold even if a caller reports something else.";
 
@@ -121,7 +123,9 @@ export const CodeSigningRequestSchema = BaseApprovalRequestSchema.extend({
 });
 
 export const CreateCodeSigningRequestSchema = BaseCreateApprovalRequestSchema.extend({
-  requestData: CodeSigningPolicyRequestDataSchema
+  requestData: CodeSigningPolicyRequestDataSchema.extend({
+    scope: CodeSigningScopeInputSchema.optional()
+  })
 });
 
 export const CodeSigningRequestGrantSchema = BaseApprovalRequestGrantSchema.extend({

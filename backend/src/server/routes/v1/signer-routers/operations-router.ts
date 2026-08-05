@@ -56,6 +56,7 @@ export const registerSignerOperationsRouter = async (server: FastifyZodProvider)
           type: EventType.GET_PKI_SIGNING_OPERATIONS,
           metadata: {
             signerId: req.params.signerId,
+            signerName: result.signerName,
             count: result.operations.length
           }
         }
@@ -103,6 +104,7 @@ export const registerSignerOperationsRouter = async (server: FastifyZodProvider)
           type: EventType.GET_PKI_SIGNING_OPERATION,
           metadata: {
             signerId: req.params.signerId,
+            signerName: result.signerName,
             operationId: req.params.operationId
           }
         }

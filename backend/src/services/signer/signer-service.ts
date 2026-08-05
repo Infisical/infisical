@@ -1908,7 +1908,7 @@ export const signerServiceFactory = ({
 
     const totalCount = await signingOperationDAL.countBySignerId(dto.signerId, dto.status);
 
-    return { operations, totalCount, projectId: signer.projectId };
+    return { operations, totalCount, signerName: signer.name, projectId: signer.projectId };
   };
 
   const getOperationById = async (dto: TGetSigningOperationDTO) => {
