@@ -67,6 +67,10 @@
   padding-top: 10px;
 }
 
+#page-context-menu button:hover {
+  background-color: #F3F4F6;
+}
+
 #content-area .mt-8 .block{
   border-width: 1px;
   background-color: #FCFBFA;
@@ -138,6 +142,10 @@
 .dark #header {
   background-color: #292B16;
   border-left-color: #DCEB30;
+}
+
+.dark #page-context-menu button:hover {
+  background-color: #343434;
 }
 
 .dark #content-area .mt-8 .block {

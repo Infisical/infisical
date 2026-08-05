@@ -11,6 +11,16 @@
     "codeblocks": "dark"
   },
   "favicon": "/favicon.ico",
+  "contextual": {
+    "options": [
+      "assistant",
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "mcp"
+    ]
+  },
   "navigation": {
     "tabs": [
       {
