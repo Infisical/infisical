@@ -84,7 +84,7 @@ const STEP_META: Record<
     subtitle: "Optionally run a command on the host after certificates are written.",
     rightLabel: "POST-SYNC COMMAND",
     rightDescription:
-      "Run a command on the destination host after certificates are written, for example to reload a service so it picks up the new certificate."
+      "The gateway runs your command on the destination host once the run's files are in place, so a service can reload and pick up the new certificate. It only runs when the sync delivers a file, and a failure marks the sync failed."
   },
   details: {
     short: "Name and description",
