@@ -289,32 +289,6 @@ const validateProfileAndPermissions = async ({
   return profile;
 };
 
-const assertCaPathLengthStillFitsPolicy = ({
-  commonName,
-  pathLength,
-  policyMaxPathLength
-}: {
-  commonName?: string | null;
-  pathLength?: number | null;
-  policyMaxPathLength?: number | null;
-}) => {
-  if (policyMaxPathLength === undefined || policyMaxPathLength === null || policyMaxPathLength === -1) return;
-
-  const certificateLabel = `CA certificate '${commonName ?? ""}'`;
-
-  if (pathLength === undefined || pathLength === null) {
-    throw new BadRequestError({
-      message: `Cannot renew ${certificateLabel}: it has no path length, but the policy sets a Max Path Length of ${policyMaxPathLength}. Set Max Path Length to unlimited on the certificate policy, or issue a new CA certificate with a path length of ${policyMaxPathLength} or lower.`
-    });
-  }
-
-  if (pathLength > policyMaxPathLength) {
-    throw new BadRequestError({
-      message: `Cannot renew ${certificateLabel}: its path length (${pathLength}) exceeds the policy's Max Path Length (${policyMaxPathLength}). Raise Max Path Length on the certificate policy, or issue a new CA certificate with a path length of ${policyMaxPathLength} or lower.`
-    });
-  }
-};
-
 const validateRenewalEligibility = (
   certificate: {
     id: string;
@@ -2666,7 +2640,10 @@ export const certificateV3ServiceFactory = ({
           ttl
         },
         signatureAlgorithm: originalCert.signatureAlgorithm || undefined,
-        keyAlgorithm: originalCert.keyAlgorithm || undefined
+        keyAlgorithm: originalCert.keyAlgorithm || undefined,
+        ...(originalCert.isCA && {
+          basicConstraints: { isCA: true, pathLength: originalCert.pathLength ?? undefined }
+        })
       };
 
       let validationResult: { isValid: boolean; errors: string[] } = { isValid: true, errors: [] };
@@ -2729,14 +2706,6 @@ export const certificateV3ServiceFactory = ({
         }
 
         if (caType === CaType.INTERNAL) {
-          if (originalCert.isCA) {
-            assertCaPathLengthStillFitsPolicy({
-              commonName: originalCert.commonName,
-              pathLength: originalCert.pathLength,
-              policyMaxPathLength: policy?.basicConstraints?.maxPathLength
-            });
-          }
-
           // Internal CA renewal - existing logic
           const caResult = await internalCaService.issueCertFromCa({
             caId: ca.id,

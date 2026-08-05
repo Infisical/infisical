@@ -2085,24 +2085,28 @@ describe("CertificateV3Service", () => {
       );
     });
 
-    it("refuses to renew a CA certificate whose path length no longer fits the policy", async () => {
+    // The policy only sees a CA renewal as a CA request if basicConstraints are passed to it,
+    // so this covers denied policies and tightened path lengths on both renewal paths.
+    it("sends the certificate's CA constraints to policy validation on renewal", async () => {
       const caCert = { ...mockOriginalCert, isCA: true, pathLength: 3 };
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(caCert);
       vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
-      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue({
-        ...mockPolicy,
-        basicConstraints: { isCA: "allowed", maxPathLength: 2 }
-      } as any);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy);
       vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
-        isValid: true,
-        errors: [],
+        isValid: false,
+        errors: ["Requested path length (3) exceeds maximum allowed by policy (2)."],
         warnings: []
       } as any);
 
       await expect(service.renewCertificate({ certificateId: "cert-123", ...mockActor })).rejects.toThrow(
-        "its path length (3) exceeds the policy's Max Path Length (2)"
+        "exceeds maximum allowed by policy"
+      );
+
+      expect(mockCertificatePolicyService.validateCertificateRequest).toHaveBeenCalledWith(
+        "policy-123",
+        expect.objectContaining({ basicConstraints: { isCA: true, pathLength: 3 } })
       );
       expect(mockInternalCaService.issueCertFromCa).not.toHaveBeenCalled();
     });
