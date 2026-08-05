@@ -599,8 +599,8 @@ describe("CertificateV3Service", () => {
         vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(mockCertRecord as any);
         vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCertRecord as any);
         vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCertRecord as any);
-        vi.mocked(mockCertificateDAL.transaction).mockImplementation(
-          async (callback: (tx: any) => Promise<unknown>) => callback(undefined as any)
+        vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) =>
+          callback(undefined as any)
         );
       });
 
