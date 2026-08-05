@@ -2,6 +2,10 @@
   border-radius: 0 !important;
 }
 
+.chat-assistant-floating-input {
+  display: none !important;
+}
+
 #navbar .max-w-8xl {
   max-width: 100%;
   border-bottom: 1px solid #ebebeb;
