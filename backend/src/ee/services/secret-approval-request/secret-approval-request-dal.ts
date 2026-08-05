@@ -5,6 +5,7 @@ import {
   AccessScope,
   SecretApprovalRequestsSchema,
   TableName,
+  TIdentities,
   TMemberships,
   TSecretApprovalRequests,
   TSecretApprovalRequestsSecrets,
@@ -109,7 +110,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         `${TableName.SecretApprovalRequest}.committerUserId`,
         `committerUser.id`
       )
-      .leftJoin(
+      .leftJoin<TIdentities>(
         db(TableName.Identity).as("committerIdentity"),
         `${TableName.SecretApprovalRequest}.committerIdentityId`,
         `committerIdentity.id`
