@@ -29,8 +29,10 @@ import {
 
 const BASE_URL = "/api/v1/cert-manager/applications";
 
-const invalidateAll = (qc: ReturnType<typeof useQueryClient>) =>
+const invalidateAll = (qc: ReturnType<typeof useQueryClient>) => {
   qc.invalidateQueries({ queryKey: pkiApplicationKeys.all });
+  qc.invalidateQueries({ queryKey: ["certificate-profiles", "list"] });
+};
 
 export const useCreatePkiApplication = () => {
   const qc = useQueryClient();
