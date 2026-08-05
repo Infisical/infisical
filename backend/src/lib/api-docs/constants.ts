@@ -892,6 +892,15 @@ export const ORGANIZATIONS = {
   }
 } as const;
 
+export const PRODUCT_INSIGHTS = {
+  GET_SECRETS_USAGE_INSIGHTS: {
+    activeLeases:
+      "The number of dynamic secret leases currently active across the organization's secret management projects. Revoked and expired leases are not counted.",
+    users: "The number of users who have accepted an active membership in the organization.",
+    identities: "The number of machine identities that belong to the organization."
+  }
+} as const;
+
 export const ORG_IDENTITY_MEMBERSHIP = {
   CREATE_IDENTITY_MEMBERSHIP: {
     identityId: "The ID of the machine identity to create the membership for.",

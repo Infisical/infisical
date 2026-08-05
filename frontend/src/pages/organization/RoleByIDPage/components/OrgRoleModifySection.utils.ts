@@ -19,6 +19,7 @@ import {
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionProjectActions,
   OrgPermissionSecretShareAction,
+  OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSsoActions,
   OrgPermissionSubOrgActions,
   OrgRelayPermissionActions
@@ -193,6 +194,16 @@ const honeyTokenPermissionSchema = z
   .array(z.object({ [OrgPermissionHoneyTokenActions.Setup]: z.boolean().optional() }))
   .optional();
 
+const secretsManagementInsightsPermissionSchema = z
+  .array(
+    z.object({
+      [OrgPermissionSecretsManagementInsightsActions.Read]: z.boolean().optional(),
+      [OrgPermissionSecretsManagementInsightsActions.GenerateReport]: z.boolean().optional(),
+      [OrgPermissionSecretsManagementInsightsActions.DeleteReport]: z.boolean().optional()
+    })
+  )
+  .optional();
+
 const projectPermissionSchema = z
   .array(
     z.object({
@@ -252,7 +263,8 @@ export const formSchema = z.object({
       "secret-share": secretSharingPermissionSchema,
       "sub-organization": subOrganizationPermissionSchema,
       "email-domains": emailDomainPermissionSchema,
-      "honey-tokens": honeyTokenPermissionSchema
+      "honey-tokens": honeyTokenPermissionSchema,
+      [OrgPermissionSubjects.SecretsManagementInsights]: secretsManagementInsightsPermissionSchema
     })
     .optional()
     .superRefine((permissions, ctx) => {
@@ -903,6 +915,27 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         value: OrgPermissionSecretShareAction.ManageSettings,
         label: "Manage settings",
         description: "Configure settings for sharing secrets externally"
+      }
+    ]
+  },
+  [OrgPermissionSubjects.SecretsManagementInsights]: {
+    title: "Secrets Management Insights",
+    description: "View organization-wide secrets management insights and reports",
+    actions: [
+      {
+        value: OrgPermissionSecretsManagementInsightsActions.Read,
+        label: "Read",
+        description: "View secrets management insights"
+      },
+      {
+        value: OrgPermissionSecretsManagementInsightsActions.GenerateReport,
+        label: "Generate Report",
+        description: "Generate new secrets management insight reports"
+      },
+      {
+        value: OrgPermissionSecretsManagementInsightsActions.DeleteReport,
+        label: "Delete Report",
+        description: "Delete secrets management insight reports"
       }
     ]
   },
