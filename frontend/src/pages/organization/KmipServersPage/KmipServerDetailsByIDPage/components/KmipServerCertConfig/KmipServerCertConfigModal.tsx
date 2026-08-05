@@ -39,7 +39,7 @@ const schema = z.object({
     .trim()
     .min(1, "At least one hostname or IP is required")
     .max(4096, "Hostnames or IPs must be at most 4096 characters"),
-  ttl: z.string().trim().min(1, "TTL is required").max(64, "TTL is too long"),
+  ttl: z.string().trim().max(64, "TTL is too long").optional(),
   keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
 });
 
@@ -57,7 +57,7 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
 
   const defaults: FormData = {
     hostnamesOrIps: kmipServer.hostnamesOrIps ?? "",
-    ttl: kmipServer.ttl ?? "1y",
+    ttl: kmipServer.ttl ?? "",
     keyAlgorithm: (kmipServer.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048
   };
 
@@ -81,12 +81,12 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
       await updateKmipServer({
         kmipServerId: kmipServer.id,
         hostnamesOrIps: form.hostnamesOrIps,
-        ttl: form.ttl,
+        ttl: form.ttl || undefined,
         keyAlgorithm: form.keyAlgorithm
       });
       createNotification({
         type: "success",
-        text: "Certificate configuration updated. Restart the KMIP server to apply it."
+        text: "Certificate configuration updated. It applies at the next automatic certificate renewal; restart the KMIP server to apply it immediately."
       });
       onOpenChange(false);
     } catch {
@@ -100,7 +100,8 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
         <DialogHeader>
           <DialogTitle>Edit Certificate Configuration</DialogTitle>
           <DialogDescription>
-            Restart the KMIP server after saving for the new certificate to take effect.
+            Changes apply when the server next renews its certificate. Restart the KMIP server to
+            apply them immediately.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

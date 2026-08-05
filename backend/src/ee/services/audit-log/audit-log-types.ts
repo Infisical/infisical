@@ -5016,6 +5016,7 @@ interface RegisterKmipServerEvent {
     commonName: string;
     keyAlgorithm: CertKeyAlgorithm;
     ttl: string;
+    isRenewal?: boolean;
   };
 }
 
