@@ -141,6 +141,7 @@ export type TIssueCertificateFromProfileJobData = {
   state?: string;
   locality?: string;
   applicationId?: string;
+  basicConstraints?: { isCA: boolean; pathLength?: number | null } | null;
 };
 
 type TCertificateIssuanceQueueFactoryDep = {
@@ -346,7 +347,8 @@ export const certificateIssuanceQueueFactory = ({
     country,
     state,
     locality,
-    applicationId
+    applicationId,
+    basicConstraints
   }: TIssueCertificateFromProfileJobData) => {
     const jobData: TIssueCertificateFromProfileJobData = {
       certificateId,
@@ -369,7 +371,8 @@ export const certificateIssuanceQueueFactory = ({
       country,
       state,
       locality,
-      applicationId
+      applicationId,
+      basicConstraints
     };
 
     // ACM DNS validation can take 5–30 minutes; the function is fully idempotent via
@@ -419,7 +422,8 @@ export const certificateIssuanceQueueFactory = ({
       organizationalUnit,
       country,
       state,
-      locality
+      locality,
+      basicConstraints
     } = data;
 
     const setPending = async (message: string) => {
@@ -782,6 +786,7 @@ export const certificateIssuanceQueueFactory = ({
         const awsPcaParams = {
           caId,
           profileId,
+          idempotencyKey: certificateId,
           commonName: commonName || "",
           altNames: (altNames || []) as Array<{ type: CertSubjectAlternativeNameType; value: string }>,
           keyUsages: keyUsages as CertKeyUsage[],
@@ -797,6 +802,7 @@ export const certificateIssuanceQueueFactory = ({
           country,
           state,
           locality,
+          basicConstraints,
           isCancelled
         };
 

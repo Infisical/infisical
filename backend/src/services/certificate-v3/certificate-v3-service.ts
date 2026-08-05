@@ -41,6 +41,7 @@ import {
   CertStatus
 } from "@app/services/certificate/certificate-types";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
+import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-validators";
 import {
   TCertificateAuthorityDALFactory,
   TCertificateAuthorityWithAssociatedCa
@@ -286,6 +287,32 @@ const validateProfileAndPermissions = async ({
   );
 
   return profile;
+};
+
+const assertCaPathLengthStillFitsPolicy = ({
+  commonName,
+  pathLength,
+  policyMaxPathLength
+}: {
+  commonName?: string | null;
+  pathLength?: number | null;
+  policyMaxPathLength?: number | null;
+}) => {
+  if (policyMaxPathLength === undefined || policyMaxPathLength === null || policyMaxPathLength === -1) return;
+
+  const certificateLabel = `CA certificate '${commonName ?? ""}'`;
+
+  if (pathLength === undefined || pathLength === null) {
+    throw new BadRequestError({
+      message: `Cannot renew ${certificateLabel}: it has no path length, but the policy sets a Max Path Length of ${policyMaxPathLength}. Set Max Path Length to unlimited on the certificate policy, or issue a new CA certificate with a path length of ${policyMaxPathLength} or lower.`
+    });
+  }
+
+  if (pathLength > policyMaxPathLength) {
+    throw new BadRequestError({
+      message: `Cannot renew ${certificateLabel}: its path length (${pathLength}) exceeds the policy's Max Path Length (${policyMaxPathLength}). Raise Max Path Length on the certificate policy, or issue a new CA certificate with a path length of ${policyMaxPathLength} or lower.`
+    });
+  }
 };
 
 const validateRenewalEligibility = (
@@ -2092,6 +2119,7 @@ export const certificateV3ServiceFactory = ({
         notAfter: certificateOrder.notAfter,
         signatureAlgorithm: certificateOrder.signatureAlgorithm,
         keyAlgorithm: certificateOrder.keyAlgorithm,
+        basicConstraints: certificateOrder.basicConstraints,
         organization: certificateOrder.organization,
         organizationalUnit: certificateOrder.organizationalUnit,
         country: certificateOrder.country,
@@ -2101,13 +2129,26 @@ export const certificateV3ServiceFactory = ({
       certificateRequest = applyProfileDefaults(rawRequest, profile.defaults);
     }
 
+    const preflightCa = profile.caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId) : undefined;
+    if (preflightCa) {
+      assertCaInProfileProject(preflightCa, profile);
+    }
+
     // Check if this is a CA certificate request (either explicit basicConstraints or keyCertSign in key usages)
     // Per RFC 5280, keyCertSign implies CA certificate. Some clients (like cert-manager) only send keyCertSign without basicConstraints.
     const orderCsrHasKeyCertSign = certificateRequest.keyUsages?.includes(CertKeyUsageType.KEY_CERT_SIGN) ?? false;
-    if (certificateRequest.basicConstraints?.isCA || orderCsrHasKeyCertSign) {
-      throw new BadRequestError({
-        message: "CA certificate issuance is not supported for external certificate authorities."
-      });
+    const orderWantsCaCertificate = certificateRequest.basicConstraints?.isCA || orderCsrHasKeyCertSign;
+    if (orderWantsCaCertificate) {
+      if (preflightCa?.externalCa?.type !== CaType.AWS_PCA) {
+        throw new BadRequestError({
+          message: "CA certificate issuance is not supported for this external certificate authority."
+        });
+      }
+
+      certificateRequest.basicConstraints = {
+        isCA: true,
+        pathLength: certificateRequest.basicConstraints?.pathLength
+      };
     }
 
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
@@ -2115,11 +2156,6 @@ export const certificateV3ServiceFactory = ({
     if (certificateOrder.csr) {
       mappedCertificateRequest.keyAlgorithm = extractedKeyAlgorithm;
       mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
-    }
-
-    const preflightCa = profile.caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId) : undefined;
-    if (preflightCa) {
-      assertCaInProfileProject(preflightCa, profile);
     }
 
     const validationResult = await certificatePolicyService.validateCertificateRequest(
@@ -2150,6 +2186,10 @@ export const certificateV3ServiceFactory = ({
         state: certificateRequest.state,
         locality: certificateRequest.locality
       });
+    }
+
+    if (preflightCa?.externalCa?.type === CaType.AWS_PCA) {
+      validateAwsPcaCaIssuanceInputs({ basicConstraints: certificateRequest.basicConstraints });
     }
 
     const orderApprovalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
@@ -2199,6 +2239,10 @@ export const certificateV3ServiceFactory = ({
               : null,
             enrollmentType: EnrollmentType.API,
             status: CertificateRequestStatus.PENDING_APPROVAL,
+            // Issuance after approval reads this row, not the approval payload.
+            basicConstraints: certificateRequest.basicConstraints
+              ? JSON.stringify(certificateRequest.basicConstraints)
+              : null,
             createdAt: certRequestCreatedAt
           } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
           tx
@@ -2232,7 +2276,8 @@ export const certificateV3ServiceFactory = ({
             notBefore: certificateOrder.notBefore?.toISOString(),
             notAfter: certificateOrder.notAfter?.toISOString(),
             signatureAlgorithm: certificateOrder.signatureAlgorithm,
-            keyAlgorithm: certificateOrder.keyAlgorithm
+            keyAlgorithm: certificateOrder.keyAlgorithm,
+            basicConstraints: certificateRequest.basicConstraints
           },
           certificateRequestId: certRequest.id
         };
@@ -2375,7 +2420,8 @@ export const certificateV3ServiceFactory = ({
         country: certificateRequest.country,
         state: certificateRequest.state,
         locality: certificateRequest.locality,
-        domainComponents: certificateRequest.domainComponents
+        domainComponents: certificateRequest.domainComponents,
+        basicConstraints: certificateRequest.basicConstraints
       });
 
       if (metadata && metadata.length > 0) {
@@ -2407,6 +2453,7 @@ export const certificateV3ServiceFactory = ({
         country: certificateRequest.country,
         state: certificateRequest.state,
         locality: certificateRequest.locality,
+        basicConstraints: certificateRequest.basicConstraints,
         ...(applicationId && { applicationId })
       });
 
@@ -2682,12 +2729,24 @@ export const certificateV3ServiceFactory = ({
         }
 
         if (caType === CaType.INTERNAL) {
+          if (originalCert.isCA) {
+            assertCaPathLengthStillFitsPolicy({
+              commonName: originalCert.commonName,
+              pathLength: originalCert.pathLength,
+              policyMaxPathLength: policy?.basicConstraints?.maxPathLength
+            });
+          }
+
           // Internal CA renewal - existing logic
           const caResult = await internalCaService.issueCertFromCa({
             caId: ca.id,
             friendlyName: originalCert.friendlyName || originalCert.commonName || "Renewed Certificate",
             commonName: originalCert.commonName || "",
             altNames: originalCert.altNames || "",
+            ...(originalCert.isCA && {
+              basicConstraints: { isCA: true, pathLength: policy?.basicConstraints?.maxPathLength },
+              pathLength: originalCert.pathLength ?? undefined
+            }),
             ttl,
             notBefore: normalizeDateForApi(notBefore),
             notAfter: normalizeDateForApi(notAfter),
@@ -2863,7 +2922,10 @@ export const certificateV3ServiceFactory = ({
         country: certificateRequest.country,
         state: certificateRequest.state,
         locality: certificateRequest.locality,
-        domainComponents: certificateRequest.domainComponents
+        domainComponents: certificateRequest.domainComponents,
+        ...(originalCert.isCA && {
+          basicConstraints: { isCA: true, pathLength: originalCert.pathLength ?? undefined }
+        })
       });
 
       // Copy metadata from original cert to new cert and cert request
@@ -2900,6 +2962,10 @@ export const certificateV3ServiceFactory = ({
         : [];
       const structuredAltNames = altNamesArray.map((san) => detectSanType(san));
 
+      const renewalBasicConstraints = originalCert.isCA
+        ? { isCA: true, pathLength: originalCert.pathLength ?? undefined }
+        : undefined;
+
       const certificateRequest = await certificateRequestService.createCertificateRequest({
         internal: true,
         actor,
@@ -2927,7 +2993,8 @@ export const certificateV3ServiceFactory = ({
         locality: originalCert.subjectLocality || undefined,
         domainComponents: originalCert.subjectDomainComponents
           ? originalCert.subjectDomainComponents.split(",")
-          : undefined
+          : undefined,
+        basicConstraints: renewalBasicConstraints
       });
 
       certificateRequestId = certificateRequest.id;
@@ -2960,6 +3027,7 @@ export const certificateV3ServiceFactory = ({
         isRenewal: true,
         originalCertificateId: certificateId,
         certificateRequestId: certificateRequest.id,
+        basicConstraints: renewalBasicConstraints,
         ...(originalCert.applicationId && { applicationId: originalCert.applicationId })
       });
 

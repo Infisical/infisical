@@ -456,3 +456,7 @@ export const generateSelfSignedCertificate = async ({
     subjectAlternativeNames: certificateRequest.altNames || []
   };
 };
+
+// Strip hyphens from a UUID to produce a 32-char token that
+// satisfies AWS's IdempotencyToken constraints (max 32 chars, alphanumeric).
+export const buildIdempotencyToken = (id: string) => id.split("-").join("").slice(0, 32);

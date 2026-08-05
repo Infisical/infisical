@@ -10,6 +10,13 @@ Build your Internal PKI through a Private Certificate Authority (CA) hierarchy. 
   This page is for product admins setting up PKI infrastructure. Teams issuing certificates should see [Applications](/documentation/platform/pki/applications/overview).
 </Info>
 
+<Note>
+  An Internal CA is managed by Infisical, which holds its signing key and uses it to issue
+  certificates on request. If instead you want to hand a team a CA certificate of their own to run
+  their own chain with their own key, that is a certificate, not a CA — see
+  [issuing CA certificates from AWS Private CA](/documentation/platform/pki/ca/aws-pca#issuing-ca-certificates).
+</Note>
+
 ```mermaid
 graph TD
     A[Root CA]
