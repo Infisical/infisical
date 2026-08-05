@@ -42,7 +42,7 @@ import { TMembershipIdentityDALFactory } from "../membership-identity/membership
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityAwsAuthDALFactory } from "./identity-aws-auth-dal";
-import { extractPrincipalArn, extractPrincipalArnEntity } from "./identity-aws-auth-fns";
+import { extractPrincipalArn, extractPrincipalArnEntity, resolveStsLoginUrl } from "./identity-aws-auth-fns";
 import {
   TAttachAwsAuthDTO,
   TAwsGetCallerIdentityHeaders,
@@ -154,7 +154,10 @@ export const identityAwsAuthServiceFactory = ({
         throw new BadRequestError({ message: "Invalid AWS region" });
       }
 
-      const url = region ? `https://sts.${region}.amazonaws.com` : identityAwsAuth.stsEndpoint;
+      const url = resolveStsLoginUrl(identityAwsAuth.stsEndpoint, region);
+      if (!url) {
+        throw new BadRequestError({ message: "Signed STS region does not match the configured STS endpoint" });
+      }
 
       const {
         data: {
