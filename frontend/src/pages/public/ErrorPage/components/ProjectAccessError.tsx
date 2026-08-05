@@ -55,13 +55,13 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
   const productName = getProductNameFromPath();
   const needsPamFallback = !projectIdProp && !routeProjectId;
   const pamOrgId = needsPamFallback ? getPamOrgIdFromPath() : undefined;
-  const { data: pamOrg } = useGetOrganizationById(pamOrgId ?? "", {
+  const { data: pamOrg, isPending: isPamOrgPending } = useGetOrganizationById(pamOrgId ?? "", {
     enabled: Boolean(pamOrgId)
   });
 
   const projectId = projectIdProp ?? routeProjectId ?? pamOrg?.pamProjectId ?? undefined;
 
-  const { data, isPending: isProjectLoading } = useSearchProjects({
+  const { data, isPending: isProjectSearchPending } = useSearchProjects({
     projectIds: projectId ? [projectId] : [],
     options: {
       enabled: Boolean(projectId)
@@ -69,6 +69,17 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
   });
 
   const [project] = data?.projects ?? [];
+
+  // A disabled query reports isPending forever, so only an enabled query counts as in-flight
+  const isResolvingProjectId = Boolean(pamOrgId) && isPamOrgPending;
+  const isProjectResolving = isResolvingProjectId || (Boolean(projectId) && isProjectSearchPending);
+  // Nothing in flight and still no project: the search errored or returned nothing, or no id
+  // could be resolved. The request flow needs the resolved project (the modal renders nothing
+  // without it), so disable it rather than leave it enabled but inert.
+  const isProjectUnavailable = !isProjectResolving && !project;
+  // Joining only needs the id (the server re-validates it), so it survives a failed project
+  // lookup and is blocked only when no id could be resolved at all
+  const isJoinUnavailable = !projectId && !isResolvingProjectId;
 
   const canJoinAsAdmin = permission.can(
     OrgPermissionAdminConsoleAction.AccessAllProjects,
@@ -83,9 +94,9 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
   );
 
   const handleAccessProject = async () => {
-    if (!project) return;
+    if (!projectId) return;
     await orgAdminAccessProject.mutateAsync({
-      projectId: project.id
+      projectId
     });
     await navigate({
       to: "."
@@ -99,16 +110,25 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
     ? `Requesting access to ${productName}. You may include an optional note for admins to review your request.`
     : undefined;
 
+  const lookupFailedCopy = (action: string) =>
+    `We couldn't load its details, so ${action} isn't available right now. Refresh to try again, or head back home.`;
+
   const monoRows: [string, string][] = [
     ...(project ? ([["project", project.name]] as [string, string][]) : []),
     ["route", window.location.pathname],
     ["time", occurredAt]
   ];
 
+  const projectReportValue = (() => {
+    if (!projectId) return null;
+    if (project) return `${projectId} (${project.name})`;
+    return isProjectUnavailable ? `${projectId} (name lookup failed)` : projectId;
+  })();
+
   const report = [
     `route: ${window.location.pathname}`,
     "error: 403 ProjectMembershipNotFound",
-    projectId ? `project: ${projectId}${project ? ` (${project.name})` : ""}` : null,
+    projectReportValue ? `project: ${projectReportValue}` : null,
     `time: ${occurredAt}`
   ]
     .filter(Boolean)
@@ -130,10 +150,14 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
         <>
           You&rsquo;re not currently a member of {accessTargetName}.{" "}
           {(() => {
-            if (canJoinAsAdmin)
+            if (canJoinAsAdmin) {
+              if (isJoinUnavailable) return lookupFailedCopy("joining");
               return "As an organization admin, you can join directly, or head back home.";
-            if (canRequestAccess)
+            }
+            if (canRequestAccess) {
+              if (isProjectUnavailable) return lookupFailedCopy("requesting access");
               return "Send an access request for an admin to review, or head back home.";
+            }
             return "Your organization role doesn't allow requesting access, so ask an organization admin to add you.";
           })()}
         </>
@@ -143,7 +167,8 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
           {canJoinAsAdmin && (
             <Button
               variant="project"
-              isPending={isProjectLoading || orgAdminAccessProject.isPending}
+              isPending={isResolvingProjectId || orgAdminAccessProject.isPending}
+              isDisabled={isJoinUnavailable}
               onClick={() => handleAccessProject()}
             >
               <UserPlusIcon />
@@ -153,7 +178,8 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
           {!canJoinAsAdmin && canRequestAccess && (
             <Button
               variant="project"
-              isPending={isProjectLoading}
+              isPending={isProjectResolving}
+              isDisabled={isProjectUnavailable}
               onClick={() => handlePopUpOpen("requestAccessConfirmation")}
             >
               <SendIcon />
