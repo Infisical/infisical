@@ -277,7 +277,7 @@ export const pamAccessRequestServiceFactory = ({
           type: approved ? TriggerFeature.PAM_ACCESS_REQUEST_APPROVED : TriggerFeature.PAM_ACCESS_REQUEST_DENIED,
           payload: {
             requesterFullName: params.requesterName || "Unknown",
-            requesterEmail: params.requesterEmail || "",
+            requesterEmail: params.requesterEmail || "Machine Identity",
             accountName: params.accountName ?? "a PAM account",
             folderName: folder?.name ?? "",
             comment: params.comment,
@@ -1276,7 +1276,11 @@ export const pamAccessRequestServiceFactory = ({
     );
 
     const attrs = grant.attributes as { accountId?: string } | null;
-    if (attrs?.accountId) {
+    // granteeUserId is SET NULL when the grantee user is deleted, so an orphaned grant has neither
+    // actor column. Sweeping on a null userId would match every machine identity session on the
+    // account (they carry userId null), so skip the sweep when there is no actor to scope it to.
+    const hasGrantee = Boolean(grant.granteeMachineIdentityId || grant.granteeUserId);
+    if (attrs?.accountId && hasGrantee) {
       // Cover both active and starting sessions; a session mid-handshake would otherwise slip past
       // revocation and go live. terminateSessionById flips the row, and the ALPN signal cuts the live
       // tunnel, since neither the gateway nor the web-access loop watches the status column.
@@ -1287,7 +1291,7 @@ export const pamAccessRequestServiceFactory = ({
           // with a null userId, so filter on whichever the grant was issued to.
           ...(grant.granteeMachineIdentityId
             ? { identityId: grant.granteeMachineIdentityId }
-            : { userId: grant.granteeUserId ?? null }),
+            : { userId: grant.granteeUserId }),
           $in: { status: [PamSessionStatus.Active, PamSessionStatus.Starting] }
         },
         { tx }
