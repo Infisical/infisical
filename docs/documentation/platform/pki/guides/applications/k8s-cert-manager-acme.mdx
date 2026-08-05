@@ -179,7 +179,7 @@ For complete details, see the official [cert-manager documentation](https://cert
     <Info>
       cert-manager does not currently support specifying a `pathLen` in the Certificate resource. When issuing CA certificates with `isCA: true`, ensure your Infisical certificate policy does not set a **Maximum Allowed Path Length** restriction, otherwise the request will fail validation.
 
-      For the same reason, `isCA: true` cannot be used with a profile backed by [AWS Private CA](/documentation/platform/pki/ca/aws-pca#issuing-ca-certificates), which requires an explicit path length on every CA certificate request.
+      For the same reason, `isCA: true` is not supported with an [AWS Private CA](/documentation/platform/pki/ca/aws-pca#issuing-ca-certificates) profile, which always requires a path length.
     </Info>
 
     You can check that the certificate was created successfully by running the following command:

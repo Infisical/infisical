@@ -105,50 +105,13 @@ See the [AWS Connection](/integrations/app-connections/aws) page for full setup 
 
 ## Issuing CA Certificates
 
-AWS PCA can issue a certificate that is itself a CA, so a team can run its own certificate chain
-without Infisical holding the signing key. The result is an ordinary Infisical certificate with
-`CA:TRUE` set, not a [Private CA](/documentation/platform/pki/ca/private-ca) in Infisical.
+Certificates from AWS Private CA can be issued with `CA:TRUE`, the same as with an [Internal CA](/documentation/platform/pki/ca/private-ca). Set **Basic Constraints** to allow CA certificates on the [Certificate Policy](/documentation/platform/pki/settings/policies), then tick **Issue as Certificate Authority** when requesting one.
 
-This is useful when a team needs to sign certificates themselves — for example a database cluster
-managing its own node certificates — while you keep the request under an Infisical policy that
-constrains the subject, SANs, and path length.
+AWS Private CA applies its own rules to CA certificates:
 
-<Steps>
-  <Step title="Allow CA certificates in the policy">
-    In the [Certificate Policy](/documentation/platform/pki/settings/policies) used by your profile,
-    set **Basic Constraints** to **Allow CA** or **Require CA**. Requests for a CA certificate are
-    rejected while the policy forbids them.
-  </Step>
-  <Step title="Request the certificate">
-    Issue a certificate from the profile, tick **Issue as Certificate Authority**, and set a
-    **Path Length** between `0` and `3`. Supply your own CSR if the requesting team should keep the
-    private key.
-  </Step>
-</Steps>
-
-<Note>
-  AWS PCA constrains CA certificates in ways that end-entity certificates are not:
-
-  - **Path length is required and must be between 0 and 3.** AWS PCA publishes no template for a
-    longer or unconstrained path length, so leaving it empty is rejected. A path length of `0` means
-    the issued CA can only sign end-entity certificates.
-  - **Key usages are fixed** to digital signature, certificate signing, and CRL signing. Whatever key
-    usages the profile configures are overridden for CA certificates.
-  - **The CA must be general-purpose.** An AWS PCA in short-lived certificate mode cannot issue CA
-    certificates.
-  - **The path length must be shorter than the issuing CA's own.** An AWS PCA whose own path length is
-    `0` cannot issue CA certificates at all.
-</Note>
-
-If your IAM policy restricts issuance with an `acm-pca:TemplateArn` condition, add the subordinate CA
-templates for the path lengths you intend to use, otherwise issuance fails with a permission error:
-
-```
-arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen0_APICSRPassthrough/V1
-arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen1_APICSRPassthrough/V1
-arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen2_APICSRPassthrough/V1
-arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen3_APICSRPassthrough/V1
-```
+- **Path length is required**, and must be between `0` and `3`. There is no unlimited option.
+- **Key usages are set by AWS** to digital signature, certificate signing and CRL signing, overriding the profile.
+- The CA must be general-purpose, and its own path length must leave room beneath it.
 
 ## Troubleshooting
 
@@ -164,14 +127,6 @@ arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen3_APICSRPassthrough/V
 
 - Double-check the ARN format: `arn:aws:acm-pca:<region>:<account-id>:certificate-authority/<ca-id>`.
 
-**Path Length Rejected When Issuing a CA Certificate**
+**CA Certificate Rejected**
 
-- AWS PCA supports path lengths `0` through `3` only, and requires one to be set. If your policy's
-  **Maximum Path Length** is unlimited, still enter a value on the request. See
-  [Issuing CA Certificates](#issuing-ca-certificates).
-
-**CA Certificate Issuance Rejected**
-
-- Confirm the policy's **Basic Constraints** allow or require CA certificates, that the AWS PCA is
-  general-purpose rather than short-lived, and that its own path length leaves room for a
-  subordinate.
+- Check the path length is between `0` and `3`, the policy's **Basic Constraints** allow CA certificates, and the CA is general-purpose. See [Issuing CA Certificates](#issuing-ca-certificates).

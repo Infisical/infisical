@@ -179,9 +179,7 @@ Control whether certificates can act as CAs:
 **Maximum Path Length**: Limits how many intermediate CAs can exist below this certificate. `0` means the CA can only sign end-entity certificates.
 
 <Note>
-  If the profile's issuing CA is [AWS Private CA](/documentation/platform/pki/ca/aws-pca#issuing-ca-certificates),
-  a CA certificate request must carry a path length between `0` and `3` even when this policy leaves
-  the maximum unlimited. AWS Private CA has no template for an unconstrained path length.
+  [AWS Private CA](/documentation/platform/pki/ca/aws-pca#issuing-ca-certificates) requires a path length between `0` and `3` on every CA certificate, even when this is left unlimited.
 </Note>
 
 ## Next Steps
