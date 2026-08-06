@@ -466,7 +466,7 @@ export const resourceAuthMethodServiceFactory = ({
         ) {
           throw new BadRequestError({
             message:
-              "Re-enter the token reviewer JWT when changing the Kubernetes host, or send an empty value to remove it. The stored token is never sent to a different host."
+              "Re-enter the token reviewer JWT when changing the Kubernetes host, or reset it to remove it. The stored token is never sent to a different host."
           });
         }
 

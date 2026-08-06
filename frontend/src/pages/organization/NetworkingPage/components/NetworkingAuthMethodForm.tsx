@@ -40,9 +40,9 @@ const schema = z
     allowedNames: z.string(),
     allowedAudience: z.string(),
     verifyTlsCertificate: z.boolean(),
-    // The reviewer token is never returned, so a blank field cannot mean "delete". This is the
-    // only way to remove one, and clearing it is required to change the host.
-    removeTokenReviewerJwt: z.boolean()
+    // True once Reset is clicked, which swaps the stored token for an editable field. Saving with
+    // that field empty is what removes the token, since a never-returned value cannot be blanked.
+    resetTokenReviewerJwt: z.boolean()
   })
   .superRefine((data, ctx) => {
     if (
@@ -92,6 +92,11 @@ export type NetworkingAuthMethodFormData = z.infer<typeof schema>;
 
 type FormData = NetworkingAuthMethodFormData;
 
+const toTokenReviewerJwtInput = (form: FormData) => {
+  if (form.tokenReviewerJwt.trim()) return form.tokenReviewerJwt;
+  return form.resetTokenReviewerJwt ? "" : undefined;
+};
+
 export const toNetworkingAuthMethodInput = (form: FormData) => {
   if (form.method === "aws") {
     return {
@@ -107,13 +112,8 @@ export const toNetworkingAuthMethodInput = (form: FormData) => {
       method: "kubernetes" as const,
       kubernetesHost: form.kubernetesHost,
       caCertificate: form.caCertificate,
-      // Write-only: blank means "leave the stored value alone", empty string means "remove it".
-      // eslint-disable-next-line no-nested-ternary
-      tokenReviewerJwt: form.removeTokenReviewerJwt
-        ? ""
-        : form.tokenReviewerJwt.trim()
-          ? form.tokenReviewerJwt
-          : undefined,
+      // Write-only: undefined keeps the stored value, empty string removes it.
+      tokenReviewerJwt: toTokenReviewerJwtInput(form),
       allowedNamespaces: form.allowedNamespaces,
       allowedNames: form.allowedNames,
       allowedAudience: form.allowedAudience,
@@ -186,7 +186,7 @@ export const NetworkingAuthMethodForm = ({
     allowedNames: initialKubernetes?.allowedNames ?? "",
     allowedAudience: initialKubernetes?.allowedAudience ?? "",
     verifyTlsCertificate: initialKubernetes?.verifyTlsCertificate ?? true,
-    removeTokenReviewerJwt: false
+    resetTokenReviewerJwt: false
   };
 
   const {
@@ -194,6 +194,7 @@ export const NetworkingAuthMethodForm = ({
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { isSubmitting, isDirty }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -220,10 +221,14 @@ export const NetworkingAuthMethodForm = ({
 
   const method = watch("method");
   const isSaving = isSubmitting || isPending;
+  const isTokenReviewerJwtConfigured =
+    Boolean(initialKubernetes?.hasTokenReviewerJwt) && !watch("resetTokenReviewerJwt");
 
   const submit = async (form: FormData) => {
     if (await onUpdate(form)) {
-      reset(form);
+      // Drop the reviewer token from form state so a saved one collapses back to "Configured"
+      // instead of leaving the value on screen.
+      reset({ ...form, tokenReviewerJwt: "", resetTokenReviewerJwt: false });
     }
   };
 
@@ -541,64 +546,44 @@ export const NetworkingAuthMethodForm = ({
                       long-lived token will be used to validate service account tokens during
                       authentication. If omitted, the gateway&apos;s own JWT will be used instead,
                       which requires the gateway to have the system:auth-delegator ClusterRole
-                      binding.
+                      binding. A stored token is never shown again, so Reset is the only way to
+                      replace or remove one. Resetting is also required to change the Kubernetes
+                      host, since a stored token is never sent to a different host.
                     </TooltipContent>
                   </Tooltip>
                 </FieldLabel>
                 <FieldContent>
-                  <TextArea
-                    {...field}
-                    id="k8s-token-reviewer"
-                    disabled={isDisabled || isSaving}
-                    isError={Boolean(error)}
-                    rows={2}
-                    className="font-mono text-xs"
-                    placeholder={
-                      initialKubernetes?.hasTokenReviewerJwt
-                        ? "A reviewer token is configured. Paste a new one to replace it."
-                        : "eyJhbGciOiJSUzI1NiIs..."
-                    }
-                  />
+                  {isTokenReviewerJwtConfigured ? (
+                    <div className="flex items-center gap-2">
+                      <Input id="k8s-token-reviewer" value="Configured" disabled />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        isDisabled={isDisabled || isSaving}
+                        onClick={() =>
+                          setValue("resetTokenReviewerJwt", true, { shouldDirty: true })
+                        }
+                      >
+                        Reset
+                      </Button>
+                    </div>
+                  ) : (
+                    <TextArea
+                      {...field}
+                      id="k8s-token-reviewer"
+                      disabled={isDisabled || isSaving}
+                      isError={Boolean(error)}
+                      rows={2}
+                      className="font-mono text-xs"
+                      placeholder="eyJhbGciOiJSUzI1NiIs..."
+                    />
+                  )}
                   <FieldError errors={[error]} />
                 </FieldContent>
               </Field>
             )}
           />
-          {initialKubernetes?.hasTokenReviewerJwt && (
-            <Controller
-              control={control}
-              name="removeTokenReviewerJwt"
-              render={({ field }) => (
-                <Field>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="gateway-k8s-remove-reviewer"
-                      variant="org"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={isDisabled || isSaving}
-                    />
-                    <FieldLabel
-                      htmlFor="gateway-k8s-remove-reviewer"
-                      className="mb-0 inline-flex items-center gap-1.5"
-                    >
-                      Remove the stored token reviewer JWT
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircleIcon className="size-3.5 text-muted" />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-md">
-                          The stored token is never shown, so this is the only way to remove it. It
-                          is also required to change the Kubernetes host, since a stored reviewer
-                          token is never sent to a different host.
-                        </TooltipContent>
-                      </Tooltip>
-                    </FieldLabel>
-                  </div>
-                </Field>
-              )}
-            />
-          )}
           <Controller
             control={control}
             name="verifyTlsCertificate"
