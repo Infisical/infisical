@@ -8,6 +8,7 @@ import {
   FormControl,
   Input,
   Modal,
+  ModalClose,
   ModalContent,
   Select,
   SelectItem
@@ -163,9 +164,11 @@ export const TaxIDModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props
             >
               Add
             </Button>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
+            <ModalClose asChild>
+              <Button colorSchema="secondary" variant="plain">
+                Cancel
+              </Button>
+            </ModalClose>
           </div>
         </form>
       </ModalContent>
