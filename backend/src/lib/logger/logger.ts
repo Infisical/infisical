@@ -107,9 +107,14 @@ const extractOrgId = () => {
 };
 
 export const initLogger = () => {
+  // Each transport target filters independently of the root logger level, so this has to honor
+  // PINO_LOG_LEVEL too — otherwise raising the level has no effect and every logger.debug call
+  // is discarded by the transport.
+  const logLevel = process.env.PINO_LOG_LEVEL || "info";
+
   const targets: pino.TransportMultiOptions["targets"][number][] = [
     {
-      level: "info",
+      level: logLevel,
       target: "pino/file",
       options: {
         destination: 1,
@@ -151,7 +156,7 @@ export const initLogger = () => {
       mixin(_context, level) {
         return { severity: logLevelToSeverityLookup[level] || logLevelToSeverityLookup["30"] };
       },
-      level: process.env.PINO_LOG_LEVEL || "info",
+      level: logLevel,
       formatters: {
         bindings: (bindings) => ({
           pid: bindings.pid,
