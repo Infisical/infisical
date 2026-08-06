@@ -1651,7 +1651,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Revoke",
       params: z.object({
-        id: z.string().trim().uuid().describe(CERTIFICATES.REVOKE.id)
+        id: z.string().trim().describe(CERTIFICATES.REVOKE.id)
       }),
       body: z.object({
         revocationReason: z.nativeEnum(CrlReason).describe(CERTIFICATES.REVOKE.revocationReason)
