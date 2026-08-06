@@ -1,10 +1,14 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { MultiValue, SingleValue } from "react-select";
 import { Info, TriangleAlert } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Alert,
   AlertDescription,
   AlertTitle,
@@ -41,6 +45,8 @@ const formatOptionLabel = ({ displayName, locationId }: TGcpLocation) => (
   </div>
 );
 
+const ADVANCED_ITEM_VALUE = "gcp-secret-manager-advanced";
+
 export const GcpSyncFields = () => {
   const { control, setValue, formState } = useFormContext<
     TSecretSyncForm & { destination: SecretSync.GCPSecretManager }
@@ -69,6 +75,30 @@ export const GcpSyncFields = () => {
   const isGlobalScope = selectedScope === GcpSyncScope.Global;
   const isCommittedGlobalSync = committedReplicaLocationIds.length > 0;
   const lockReplicaRegions = isCommittedGlobalSync && isGlobalScope;
+
+  const hasConfiguredReplicaRegions = isGlobalScope && (userReplicaLocationIds?.length ?? 0) > 0;
+  const hasAccordionError = Boolean(
+    formState.errors.destinationConfig &&
+      "userReplicaLocationIds" in formState.errors.destinationConfig
+  );
+
+  const [openItem, setOpenItem] = useState<string>(
+    hasConfiguredReplicaRegions || hasAccordionError ? ADVANCED_ITEM_VALUE : ""
+  );
+
+  // Selects do not work well inside dynamic containers (e.g. Accordion)
+  // We use menuPortalTarget to ensure this is render correctly without
+  // hiding any option due to the container heigh.
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [menuPortalTarget, setMenuPortalTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setMenuPortalTarget(containerRef.current?.closest<HTMLElement>('[role="dialog"]') ?? null);
+  }, []);
+
+  useEffect(() => {
+    if (hasAccordionError) setOpenItem(ADVANCED_ITEM_VALUE);
+  }, [hasAccordionError, formState.submitCount]);
 
   const { data: projects, isPending } = useGcpConnectionListProjects(connectionId, {
     enabled: Boolean(connectionId)
@@ -108,7 +138,7 @@ export const GcpSyncFields = () => {
   ]);
 
   return (
-    <FieldGroup>
+    <FieldGroup ref={containerRef} className="min-h-0 flex-1">
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.projectId", "");
@@ -238,60 +268,84 @@ export const GcpSyncFields = () => {
         />
       )}
       {selectedScope === GcpSyncScope.Global && (
-        <Controller
-          name="destinationConfig.userReplicaLocationIds"
-          control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field>
-              <FieldLabel>
-                Replica Regions
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-md">
-                    Optionally specify one or more regions for user-managed replication. If none are
-                    set, automatic replication will be used.
-                  </TooltipContent>
-                </Tooltip>
-              </FieldLabel>
-              <FieldContent>
-                <FilterableSelect
-                  isMulti
-                  isLoading={areLocationsPending && Boolean(projectId)}
-                  isDisabled={!projectId || lockReplicaRegions}
-                  isClearable={!lockReplicaRegions}
-                  value={
-                    locations?.filter((option) => (value || []).includes(option.locationId)) ?? []
-                  }
-                  onChange={(option) =>
-                    onChange((option as MultiValue<TGcpLocation>).map((o) => o.locationId))
-                  }
-                  options={locations}
-                  placeholder="Automatic replication"
-                  getOptionValue={(option) => option.locationId}
-                  formatOptionLabel={formatOptionLabel}
-                />
+        <Accordion
+          type="single"
+          collapsible
+          variant="ghost"
+          value={openItem}
+          onValueChange={setOpenItem}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <AccordionItem
+            value={ADVANCED_ITEM_VALUE}
+            className="flex min-h-0 flex-1 flex-col [&>[data-slot=accordion-content]]:flex [&>[data-slot=accordion-content]]:min-h-0 [&>[data-slot=accordion-content]]:flex-1 [&>[data-slot=accordion-content]]:flex-col"
+          >
+            <AccordionTrigger>Advanced</AccordionTrigger>
+            <AccordionContent>
+              <Controller
+                name="destinationConfig.userReplicaLocationIds"
+                control={control}
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel>
+                      Replica Regions
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">
+                          When set, secrets are replicated only in the selected regions. When empty,
+                          GCP automatically manages replication.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <FieldContent>
+                      <FilterableSelect
+                        isMulti
+                        isLoading={areLocationsPending && Boolean(projectId)}
+                        isDisabled={!projectId || lockReplicaRegions}
+                        isClearable={!lockReplicaRegions}
+                        value={
+                          locations?.filter((option) =>
+                            (value || []).includes(option.locationId)
+                          ) ?? []
+                        }
+                        onChange={(option) =>
+                          onChange((option as MultiValue<TGcpLocation>).map((o) => o.locationId))
+                        }
+                        options={locations}
+                        placeholder="Automatic replication"
+                        getOptionValue={(option) => option.locationId}
+                        formatOptionLabel={formatOptionLabel}
+                        menuPortalTarget={menuPortalTarget ?? undefined}
+                        menuPosition="fixed"
+                        menuPlacement="auto"
+                      />
 
-                {(value?.length ?? 0) > 0 && (
-                  <Alert variant="warning">
-                    <TriangleAlert />
-                    <AlertTitle>Replica regions can&apos;t be changed after creation</AlertTitle>
-                    <AlertDescription>
-                      <p>
-                        Replica regions are fixed when the sync is created and cannot be changed
-                        later, since GCP does not support it. It is still possible to change the
-                        scope to <span className="font-medium">Region</span> and specify a region
-                        for the secret.
-                      </p>
-                    </AlertDescription>
-                  </Alert>
+                      {(value?.length ?? 0) > 0 && (
+                        <Alert variant="warning">
+                          <TriangleAlert />
+                          <AlertTitle>
+                            Replica regions can&apos;t be changed after creation
+                          </AlertTitle>
+                          <AlertDescription>
+                            <p>
+                              Replica regions are fixed when the sync is created and cannot be
+                              changed later, since GCP does not support it. It is still possible to
+                              change the scope to <span className="font-medium">Region</span> and
+                              specify a region for the secret.
+                            </p>
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
                 )}
-                <FieldError errors={[error]} />
-              </FieldContent>
-            </Field>
-          )}
-        />
+              />
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       )}
     </FieldGroup>
   );
