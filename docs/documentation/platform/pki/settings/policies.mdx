@@ -94,12 +94,15 @@ For each attribute, configure enforcement:
   Common Name. Domain components form an ordered chain in the distinguished name, so a DC rule
   constrains whole sequences rather than individual labels:
 
-  - Enter the full sequence in distinguished name order, separated by commas. `corp,example,com`
-    matches `CN=host,DC=corp,DC=example,DC=com`.
+  - Enter the full sequence most specific component first, separated by commas. `corp,example,com`
+    describes the domain `corp.example.com`.
   - A request matches a sequence only when its components line up position by position, so the same
-    labels in another order are rejected. Requests are read in distinguished name order whichever way
-    the client encoded the name, so a CSR from Windows, Active Directory or Intune matches the same
-    rule as one from OpenSSL.
+    labels in another order are rejected.
+  - A request's domain components are read the way the standard defines the encoding, with the
+    top-level component first, which is how Windows, Active Directory, Intune and OpenSSL all write
+    them. A CSR built with `openssl req -subj "/DC=com/DC=example/DC=corp/CN=host"` matches
+    `corp,example,com`. Writing the same subject in the reverse order describes `com.example.corp`
+    instead, and is rejected against this rule.
   - Wildcards apply within a single component. `*,example,com` matches any three-component sequence
     ending in `example`, `com`.
   - Deny is the exception to position-by-position matching: a denied sequence is rejected wherever it

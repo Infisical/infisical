@@ -279,8 +279,8 @@ describe("extractDnParts", () => {
     expect(parse("DC=com, DC=example, DC=corp, CN=host").domainComponents).toEqual(["corp", "example", "com"]);
   });
 
-  it("should read a forward-encoded chain in display order", () => {
-    expect(parse("CN=host, DC=corp, DC=example, DC=com").domainComponents).toEqual(["corp", "example", "com"]);
+  it("should read a chain encoded leaf first as the chain those bytes denote", () => {
+    expect(parse("CN=host, DC=corp, DC=example, DC=com").domainComponents).toEqual(["com", "example", "corp"]);
   });
 
   it("should read a chain carrying no other attributes as root first", () => {

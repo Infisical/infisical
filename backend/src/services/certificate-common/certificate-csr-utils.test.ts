@@ -75,8 +75,8 @@ describe("extractCertificateRequestFromCSR domain components", () => {
     expect(extractCertificateRequestFromCSR(WINDOWS_ORDER_CSR).domainComponents).toEqual(["corp", "example", "com"]);
   });
 
-  it("should read a chain encoded after the common name, as older Infisical releases wrote it", () => {
-    expect(extractCertificateRequestFromCSR(FORWARD_ORDER_CSR).domainComponents).toEqual(["corp", "example", "com"]);
+  it("should read a chain encoded after the common name as the chain those bytes denote", () => {
+    expect(extractCertificateRequestFromCSR(FORWARD_ORDER_CSR).domainComponents).toEqual(["com", "example", "corp"]);
   });
 
   it("should read a chain with no other subject attribute as encoded root first", () => {

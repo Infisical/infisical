@@ -80,29 +80,21 @@ const getNameField = (name: x509.Name, field: string): string | undefined => {
 
 const DOMAIN_COMPONENT_RDN_KEYS = new Set(["DC", "0.9.2342.19200300.100.1.25"]);
 
-/** Reads a DC chain in display order, whichever direction the DN encoded it in. */
+/**
+ * Reads a DC chain into display order, most specific component first. An RDNSequence is encoded
+ * root-first, so the encoded order is reversed. Reading it any other way would let the same bytes
+ * denote two different domains, and a CSR forwarded to an external CA keeps whatever it encoded.
+ */
 const extractDomainComponentsInDisplayOrder = (name: x509.Name): string[] | undefined => {
-  const rdns = name.toJSON();
-  const domainComponents: string[] = [];
-  let lastDomainComponentIndex = -1;
-  let lastOtherAttributeIndex = -1;
-
-  rdns.forEach((rdn, index) => {
-    const isDomainComponent = Object.keys(rdn).some((key) => DOMAIN_COMPONENT_RDN_KEYS.has(key));
-    if (isDomainComponent) {
-      lastDomainComponentIndex = index;
-      Object.entries(rdn).forEach(([key, values]) => {
-        if (DOMAIN_COMPONENT_RDN_KEYS.has(key)) domainComponents.push(...values);
-      });
-    } else {
-      lastOtherAttributeIndex = index;
-    }
-  });
+  const domainComponents = name
+    .toJSON()
+    .flatMap((rdn) =>
+      Object.entries(rdn).flatMap(([key, values]) => (DOMAIN_COMPONENT_RDN_KEYS.has(key) ? values : []))
+    );
 
   if (domainComponents.length === 0) return undefined;
 
-  const isEncodedRootFirst = lastOtherAttributeIndex === -1 || lastDomainComponentIndex < lastOtherAttributeIndex;
-  return isEncodedRootFirst ? domainComponents.reverse() : domainComponents;
+  return domainComponents.reverse();
 };
 
 /**
