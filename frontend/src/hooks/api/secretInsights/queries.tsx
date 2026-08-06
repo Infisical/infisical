@@ -58,9 +58,10 @@ export const useGetCalendarInsights = (
   return useQuery({
     queryKey: secretInsightsKeys.calendarEvents(params),
     queryFn: async () => {
+      const { projectId, ...query } = params;
       const { data } = await apiRequest.get<TGetCalendarInsightsResponse>(
-        "/api/v1/insights/secrets/calendar",
-        { params }
+        `/api/v1/insights/${projectId}/secrets/calendar`,
+        { params: query }
       );
       return data;
     },
@@ -85,8 +86,7 @@ export const useGetSecretAccessVolume = (
     queryKey: secretInsightsKeys.accessVolume(params),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetSecretAccessVolumeResponse>(
-        "/api/v1/insights/secrets/access-volume",
-        { params }
+        `/api/v1/insights/${params.projectId}/secrets/access-volume`
       );
       return data;
     },
@@ -110,9 +110,10 @@ export const useGetSecretAccessVolume = (
 //   return useQuery({
 //     queryKey: secretInsightsKeys.accessLocations(params),
 //     queryFn: async () => {
+//       const { projectId, ...query } = params;
 //       const { data } = await apiRequest.get<TGetSecretAccessLocationsResponse>(
-//         "/api/v1/insights/secrets/access-locations",
-//         { params }
+//         `/api/v1/insights/${projectId}/secrets/access-locations`,
+//         { params: query }
 //       );
 //       return data;
 //     },
@@ -136,9 +137,10 @@ export const useGetAuthMethodDistribution = (
   return useQuery({
     queryKey: secretInsightsKeys.authMethodDistribution(params),
     queryFn: async () => {
+      const { projectId, ...query } = params;
       const { data } = await apiRequest.get<TGetAuthMethodDistributionResponse>(
-        "/api/v1/insights/auth/method-distribution",
-        { params }
+        `/api/v1/insights/${projectId}/auth/method-distribution`,
+        { params: query }
       );
       return data;
     },
@@ -162,9 +164,10 @@ export const useGetInsightsSummary = (
   return useQuery({
     queryKey: secretInsightsKeys.summary(params),
     queryFn: async () => {
+      const { projectId, ...query } = params;
       const { data } = await apiRequest.get<TGetInsightsSummaryResponse>(
-        "/api/v1/insights/secrets/summary",
-        { params }
+        `/api/v1/insights/${projectId}/secrets/summary`,
+        { params: query }
       );
       return data;
     },
@@ -189,8 +192,7 @@ export const useGetInsightsCounts = (
     queryKey: secretInsightsKeys.counts(params),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetInsightsCountsResponse>(
-        "/api/v1/insights/secrets/counts",
-        { params }
+        `/api/v1/insights/${params.projectId}/secrets/counts`
       );
       return data;
     },
@@ -215,8 +217,7 @@ export const useGetSecretsDuplication = (
     queryKey: secretInsightsKeys.secretsDuplication(params),
     queryFn: async () => {
       const res = await apiRequest.get<TGetSecretsDuplicationResponse>(
-        "/api/v1/insights/secrets/secrets-duplication",
-        { params }
+        `/api/v1/insights/${params.projectId}/secrets/secrets-duplication`
       );
       const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
       return { ...res.data, remainingTtl };

@@ -49,14 +49,16 @@ const AuditReportSchema = z.object({
 export const registerInsightsRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
-    url: "/secrets/calendar",
+    url: "/:projectId/secrets/calendar",
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getInsightsCalendar",
       description: "Get secret rotation and reminder events for a calendar month view",
       security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
       querystring: z.object({
-        projectId: z.string().trim(),
         month: z.coerce.number().min(1).max(12),
         year: z.coerce.number().min(2000).max(2100)
       }),
@@ -93,7 +95,8 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, month, year } = req.query;
+      const { projectId } = req.params;
+      const { month, year } = req.query;
       const result = await server.services.insights.getCalendar({ projectId, month, year }, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -106,13 +109,13 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/secrets/access-volume",
+    url: "/:projectId/secrets/access-volume",
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getInsightsAccessVolume",
       description: "Get secret access volume aggregated by day and actor for the past week",
       security: [{ bearerAuth: [] }],
-      querystring: z.object({
+      params: z.object({
         projectId: z.string().trim()
       }),
       response: {
@@ -129,7 +132,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId } = req.query;
+      const { projectId } = req.params;
       const result = await server.services.insights.getAccessVolume({ projectId }, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -142,14 +145,16 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   // server.route({
   //   method: "GET",
-  //   url: "/secrets/access-locations",
+  //   url: "/:projectId/secrets/access-locations",
   //   config: { rateLimit: readLimit },
   //   schema: {
   //     operationId: "getInsightsAccessLocations",
   //     description: "Get geographic locations of secret access based on audit log IP addresses",
   //     security: [{ bearerAuth: [] }],
+  //     params: z.object({
+  //       projectId: z.string().trim()
+  //     }),
   //     querystring: z.object({
-  //       projectId: z.string().trim(),
   //       days: z.coerce.number().min(1).max(90).default(30)
   //     }),
   //     response: {
@@ -162,7 +167,8 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
   //   },
   //   onRequest: verifyAuth([AuthMode.JWT]),
   //   handler: async (req) => {
-  //     const { projectId, days } = req.query;
+  //     const { projectId } = req.params;
+  //     const { days } = req.query;
   //     const result = await server.services.insights.getAccessLocations({ projectId, days }, req.permission);
   //     await server.services.auditLog.createAuditLog({
   //       projectId,
@@ -175,14 +181,16 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/auth/method-distribution",
+    url: "/:projectId/auth/method-distribution",
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getInsightsAuthMethodDistribution",
       description: "Get distribution of authentication methods from secret access audit logs",
       security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
       querystring: z.object({
-        projectId: z.string().trim(),
         days: z.coerce.number().min(1).max(90).default(30)
       }),
       response: {
@@ -193,7 +201,8 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, days } = req.query;
+      const { projectId } = req.params;
+      const { days } = req.query;
       const result = await server.services.insights.getAuthMethodDistribution({ projectId, days }, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -206,13 +215,13 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/secrets/secrets-duplication",
+    url: "/:projectId/secrets/secrets-duplication",
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getInsightsSecretsDuplication",
       description: "Get groups of duplicated secrets across environments and paths",
       security: [{ bearerAuth: [] }],
-      querystring: z.object({
+      params: z.object({
         projectId: z.string().trim()
       }),
       response: {
@@ -237,7 +246,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req, reply) => {
-      const { projectId } = req.query;
+      const { projectId } = req.params;
       const { result, remainingTTL } = await server.services.insights.getSecretsDuplication(
         { projectId },
         req.permission
@@ -258,15 +267,17 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/secrets/summary",
+    url: "/:projectId/secrets/summary",
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getInsightsSummary",
       description:
         "Get summary stats for the insights dashboard: upcoming rotations, upcoming reminders, and stale secrets",
       security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
       querystring: z.object({
-        projectId: z.string().trim(),
         staleSecretsOffset: z.coerce.number().min(0).max(10000).default(0),
         staleSecretsLimit: z.coerce.number().min(1).max(100).default(50)
       }),
@@ -315,7 +326,8 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, staleSecretsOffset, staleSecretsLimit } = req.query;
+      const { projectId } = req.params;
+      const { staleSecretsOffset, staleSecretsLimit } = req.query;
       const result = await server.services.insights.getSummary(
         { projectId, staleSecretsOffset, staleSecretsLimit },
         req.permission
@@ -331,13 +343,13 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/secrets/counts",
+    url: "/:projectId/secrets/counts",
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getInsightsCounts",
       description: "Get project-wide entity counts for the insights dashboard header",
       security: [{ bearerAuth: [] }],
-      querystring: z.object({
+      params: z.object({
         projectId: z.string().trim()
       }),
       response: {
@@ -352,7 +364,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId } = req.query;
+      const { projectId } = req.params;
       const result = await server.services.insights.getCounts({ projectId }, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -365,12 +377,14 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/secrets/reports",
+    url: "/:projectId/secrets/reports",
     config: { rateLimit: writeLimit },
     schema: {
       hide: true,
+      params: z.object({
+        projectId: z.string().trim()
+      }),
       body: z.object({
-        projectId: z.string().trim(),
         reports: AuditReportRequestConfigSchema.array().min(1),
         emailRecipients: z.array(z.string().email()).optional()
       }),
@@ -380,7 +394,10 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const report = await server.services.auditReport.generateReport(req.body, req.permission);
+      const report = await server.services.auditReport.generateReport(
+        { projectId: req.params.projectId, ...req.body },
+        req.permission
+      );
       await server.services.auditLog.createAuditLog({
         projectId: report.projectId,
         event: {
@@ -400,12 +417,14 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/secrets/reports",
+    url: "/:projectId/secrets/reports",
     config: { rateLimit: readLimit },
     schema: {
       hide: true,
+      params: z.object({
+        projectId: z.string().trim()
+      }),
       querystring: z.object({
-        projectId: z.string().trim(),
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(10)
       }),
@@ -415,7 +434,8 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, offset, limit } = req.query;
+      const { projectId } = req.params;
+      const { offset, limit } = req.query;
       const { reports, totalCount } = await server.services.auditReport.listReports(
         { projectId, offset, limit },
         req.permission
@@ -431,11 +451,11 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/secrets/reports/:reportId",
+    url: "/:projectId/secrets/reports/:reportId",
     config: { rateLimit: readLimit },
     schema: {
       hide: true,
-      params: z.object({ reportId: z.string().uuid() }),
+      params: z.object({ projectId: z.string().trim(), reportId: z.string().uuid() }),
       response: {
         200: AuditReportSchema
       }
@@ -457,11 +477,11 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "DELETE",
-    url: "/secrets/reports/:reportId",
+    url: "/:projectId/secrets/reports/:reportId",
     config: { rateLimit: writeLimit },
     schema: {
       hide: true,
-      params: z.object({ reportId: z.string().uuid() }),
+      params: z.object({ projectId: z.string().trim(), reportId: z.string().uuid() }),
       response: {
         200: AuditReportSchema
       }

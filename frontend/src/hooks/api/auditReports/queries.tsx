@@ -30,10 +30,11 @@ export const useGetAuditReports = (
   return useQuery({
     queryKey: auditReportKeys.list(params),
     queryFn: async () => {
+      const { projectId, ...query } = params;
       const { data } = await apiRequest.get<TGetAuditReportsResponse>(
-        "/api/v1/insights/secrets/reports",
+        `/api/v1/insights/${projectId}/secrets/reports`,
         {
-          params
+          params: query
         }
       );
       return data;
