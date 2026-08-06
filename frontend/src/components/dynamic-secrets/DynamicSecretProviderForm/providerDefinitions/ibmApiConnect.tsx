@@ -22,7 +22,11 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import { DynamicSecretProviderFields } from "../DynamicSecretProviderFields";
 import { DynamicSecretProviderGroup } from "../DynamicSecretProviderGroup";
-import { defineDynamicSecretProvider, TDynamicSecretProviderField } from "../types";
+import {
+  defineDynamicSecretProvider,
+  TDynamicSecretProviderField,
+  TDynamicSecretProviderFormMode
+} from "../types";
 import {
   getIbmApiConnectCreateDefaultValues,
   getIbmApiConnectCreatePayload,
@@ -31,6 +35,7 @@ import {
   IBM_API_CONNECT_CUSTOM_RENDERER_REASONS,
   ibmApiConnectCreateFormSchema,
   ibmApiConnectEditFormSchema,
+  normalizeIbmApiConnectGatewayValueForMode,
   TIbmApiConnectFormValues
 } from "./ibmApiConnectContract";
 
@@ -50,7 +55,7 @@ const credentialFields = [
 const getSingleOption = <T,>(selection: T | readonly T[] | null): T | null =>
   Array.isArray(selection) ? null : (selection as T | null);
 
-const IbmApiConnectFields = () => {
+const IbmApiConnectFields = ({ mode }: { mode: TDynamicSecretProviderFormMode }) => {
   const { control, setValue, watch } = useFormContext<TIbmApiConnectFormValues>();
   const instanceUrl = watch("inputs.instanceUrl");
   const apiKey = watch("inputs.apiKey");
@@ -110,8 +115,16 @@ const IbmApiConnectFields = () => {
                 isDisabled={!isAllowed}
                 value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
                 onChange={({ gatewayId: nextId, gatewayPoolId: nextPoolId }) => {
-                  setValue("inputs.gatewayId", nextId ?? undefined, { shouldDirty: true });
-                  setValue("inputs.gatewayPoolId", nextPoolId ?? undefined, { shouldDirty: true });
+                  setValue(
+                    "inputs.gatewayId",
+                    normalizeIbmApiConnectGatewayValueForMode(mode, nextId),
+                    { shouldDirty: true }
+                  );
+                  setValue(
+                    "inputs.gatewayPoolId",
+                    normalizeIbmApiConnectGatewayValueForMode(mode, nextPoolId),
+                    { shouldDirty: true }
+                  );
                 }}
               />
               {!isAllowed && (

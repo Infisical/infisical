@@ -9,6 +9,7 @@ import {
 import {
   TCreateDynamicSecretProviderDTO,
   TCreateDynamicSecretProviderFormContext,
+  TDynamicSecretProviderFormMode,
   TDynamicSecretProviderFormValues,
   TEditDynamicSecretProviderFormContext
 } from "../types";
@@ -57,6 +58,11 @@ export type TIbmApiConnectCreateFormValues =
 export type TIbmApiConnectEditFormValues =
   TDynamicSecretProviderFormValues<TIbmApiConnectEditFormInputs>;
 export type TIbmApiConnectFormValues = TIbmApiConnectEditFormValues;
+
+export const normalizeIbmApiConnectGatewayValueForMode = (
+  mode: TDynamicSecretProviderFormMode,
+  value: string | null
+) => (mode === "create" ? (value ?? undefined) : value);
 
 const ibmBaseSchema = {
   name: z.string().refine((value) => value.toLowerCase() === value, "Must be lowercase"),

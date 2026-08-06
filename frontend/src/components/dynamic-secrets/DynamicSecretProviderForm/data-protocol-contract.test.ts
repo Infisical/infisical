@@ -33,7 +33,8 @@ import {
   getIbmApiConnectEditPayload,
   IBM_API_CONNECT_CUSTOM_RENDERER_REASONS,
   ibmApiConnectCreateFormSchema,
-  ibmApiConnectEditFormSchema
+  ibmApiConnectEditFormSchema,
+  normalizeIbmApiConnectGatewayValueForMode
 } from "./providerDefinitions/ibmApiConnectContract";
 import {
   getKubernetesCreateDefaultValues,
@@ -1214,7 +1215,7 @@ describe("data-service and protocol provider-specific branches", () => {
     assert.equal(imported.inputs.sslEnabled, true);
   });
 
-  it("keeps IBM API Connect's one-second TTL and remote identifiers", () => {
+  it("keeps IBM API Connect's TTL, remote IDs, and edit gateway detachment", () => {
     assert.equal(
       ibmApiConnectCreateFormSchema.safeParse({
         ...ibmApiConnectCreateValues,
@@ -1239,6 +1240,47 @@ describe("data-service and protocol provider-specific branches", () => {
       "consumer-org-id"
     );
     assert.equal(payload.provider.inputs.appId, "app-id");
+
+    assert.equal(normalizeIbmApiConnectGatewayValueForMode("create", null), undefined);
+    assert.equal(normalizeIbmApiConnectGatewayValueForMode("edit", null), null);
+
+    const attachedGatewayContext = getEditContext({
+      provider: DynamicSecretProviders.IbmApiConnect,
+      inputs: {
+        ...ibmApiConnectEditInputs,
+        gatewayId: "gateway-id",
+        gatewayPoolId: null
+      }
+    });
+    const detachedGatewayPayload = getIbmApiConnectEditPayload(
+      {
+        ...ibmApiConnectEditValues,
+        inputs: {
+          ...ibmApiConnectEditValues.inputs,
+          gatewayId: normalizeIbmApiConnectGatewayValueForMode("edit", null),
+          gatewayPoolId: normalizeIbmApiConnectGatewayValueForMode("edit", null)
+        }
+      },
+      attachedGatewayContext
+    );
+    const detachedGatewayInputs = detachedGatewayPayload.data.inputs as {
+      gatewayId: string | null;
+      gatewayPoolId: string | null;
+    };
+    assert.equal(detachedGatewayInputs.gatewayId, null);
+    assert.equal(detachedGatewayInputs.gatewayPoolId, null);
+    assert.deepEqual(JSON.parse(JSON.stringify(detachedGatewayInputs)), {
+      gatewayId: null,
+      gatewayPoolId: null,
+      clientId: "client-id",
+      clientSecret: "********",
+      instanceUrl: "https://api.example.com",
+      apiKey: "********",
+      orgId: "org-id",
+      catalogId: "catalog-id",
+      consumerOrgId: "consumer-org-id",
+      appId: "app-id"
+    });
   });
 
   it("accepts both TOTP modes and omits unchanged edit inputs when requested", () => {
