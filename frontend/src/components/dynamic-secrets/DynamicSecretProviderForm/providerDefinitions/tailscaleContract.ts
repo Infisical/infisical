@@ -101,15 +101,18 @@ const makeSchema = (create: boolean) =>
       usernameTemplate: z.string().nullable().optional()
     })
     .superRefine((value, context) => {
-      if (
-        value.inputs.authType === TailscaleKeyAuthType.AuthKeys &&
-        value.inputs.auth.method === TailscaleAuthMethod.OAuth &&
-        !value.inputs.tags?.trim()
-      ) {
+      const tagsRequired =
+        value.inputs.authType !== TailscaleKeyAuthType.AuthKeys ||
+        value.inputs.auth.method === TailscaleAuthMethod.OAuth;
+
+      if (tagsRequired && !value.inputs.tags?.trim()) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["inputs", "tags"],
-          message: "Tags are required when creating auth keys with OAuth authentication"
+          message:
+            value.inputs.authType === TailscaleKeyAuthType.AuthKeys
+              ? "Tags are required when creating auth keys with OAuth authentication"
+              : "Tags are required when the key type is OAuth or Federated Identity"
         });
       }
     });
