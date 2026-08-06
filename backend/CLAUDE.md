@@ -173,6 +173,30 @@ Auth extraction happens in `src/server/plugins/auth/`:
 - **JWT** — user browser sessions (decoded from `Authorization: Bearer` header)
 - **IDENTITY_ACCESS_TOKEN** — machine-to-machine identity tokens
 - **SCIM_TOKEN** — SCIM provisioning tokens
+- **OAUTH**: delegated user tokens minted by the `oauth-client` module. Same JWT shape and session
+  binding as `JWT`, distinguished only by an `oauthClientId` claim. **Opt-in per route**: `verify-auth.ts`
+  rejects them on every route that does not list `AuthMode.OAUTH`, because a route that authenticates on
+  bare `userId` (account self-management) never builds the permission that enforces delegation.
+
+**Delegated OAuth tokens carry exactly one delegation marker, never both** (`oauth-client-types.ts`):
+- `scopes: [...]`: from the authorization code grant. `permission-service` intersects the user's CASL
+  rules with these (`applyOauthScopeToOrgRules` / `applyOauthScopeToProjectRules`).
+- `delegation: "full"`: from the RFC 8693 token exchange grant, which has no scope concept and carries
+  the user's effective authorization unnarrowed.
+
+**Absence of both must keep meaning zero permissions.** `inject-identity.ts` sets
+`RequestContextKey.OauthScopes` for every scope-narrowed token (even to `[]`, which denies everything)
+and leaves it unset only for `delegation: "full"`. `getDelegatedOauthScopes` in `permission-service.ts`
+reads an unset key as "no narrowing". Matching the full-delegation marker positively is what makes a
+dropped claim fail closed instead of silently promoting the token to unrestricted.
+
+**Token exchange's trust anchor is the org's OIDC SSO config**, not per-client configuration
+(`oauth-token-exchange-fns.ts`). The set of issuers that can vouch for a user through exchange is
+exactly the set that can already log them in, under the permission that already governs it. The one
+per-application field is `tokenExchangeAudience`, and it is the control that does the security work:
+without it, any token that issuer signed for any application in the customer's estate is exchangeable.
+Enabling the grant or changing the audience therefore requires `OrgPermissionSsoActions.Edit` on top of
+the usual `OauthClients` check.
 
 **Deprecated auth modes (do not use in new code):**
 - **API_KEY** — user API keys (from `x-api-key` header). Deprecated — use identity access tokens instead.

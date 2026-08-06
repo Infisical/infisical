@@ -86,9 +86,12 @@ import {
   ProjectPermissionSub
 } from "./project-permission";
 
-// Returns the delegated OAuth scopes for the current request, or undefined when this is not an
-// OAuth-delegated request. The distinction matters: a returned array (even empty) means scope
-// narrowing applies, while undefined means a first-party session / background job is untouched.
+// Returns the scopes to narrow this request to, or undefined when no narrowing applies. A returned
+// array, even empty, means narrowing applies, so [] denies all scope-guarded access.
+//
+// undefined covers a first-party session or background job, and a fully-delegated token from the RFC
+// 8693 exchange grant. inject-identity leaves the key unset only for the latter and sets it for every
+// scope-narrowed delegation, so a token carrying neither marker still ends up with zero permissions.
 const getDelegatedOauthScopes = (): OauthScope[] | undefined => {
   const raw = requestContext.get(RequestContextKey.OauthScopes);
   if (!raw) return undefined;

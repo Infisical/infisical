@@ -2,19 +2,25 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TOauthAuthorizeInfo, TOauthClient } from "./types";
+import { OauthGrantType, TOauthAuthorizeInfo, TOauthClient } from "./types";
 
 export const oauthClientKeys = {
-  list: (orgId: string) => [{ orgId }, "oauth-clients"] as const,
+  allLists: (orgId: string) => [{ orgId }, "oauth-clients"] as const,
+  list: (orgId: string, grantType?: OauthGrantType) =>
+    [...oauthClientKeys.allLists(orgId), grantType ?? ""] as const,
   authorizeInfo: (clientId: string, redirectUri: string, scope?: string) =>
     ["oauth-authorize-info", clientId, redirectUri, scope ?? ""] as const
 };
 
-export const useGetOauthClients = (orgId: string) => {
+// `grantType` narrows the list to applications registered for one grant. The SSO page uses it to show
+// which applications depend on the org's OIDC issuer.
+export const useGetOauthClients = (orgId: string, grantType?: OauthGrantType) => {
   return useQuery({
-    queryKey: oauthClientKeys.list(orgId),
+    queryKey: oauthClientKeys.list(orgId, grantType),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ clients: TOauthClient[] }>("/api/v1/oauth/clients");
+      const { data } = await apiRequest.get<{ clients: TOauthClient[] }>("/api/v1/oauth/clients", {
+        params: grantType ? { grantType } : undefined
+      });
       return data.clients;
     },
     enabled: Boolean(orgId)
