@@ -56,6 +56,7 @@ import {
   useGetOauthClients,
   useRotateOauthClientSecret
 } from "@app/hooks/api";
+import { OauthGrantType } from "@app/hooks/api/oauthClients/types";
 
 import { OauthClientModal } from "./OauthClientModal";
 import { OauthClientSecretModal } from "./OauthClientSecretModal";
@@ -188,6 +189,7 @@ export const OrgOauthClientsTab = () => {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Client ID</TableHead>
+                      <TableHead>Flow</TableHead>
                       <TableHead>PKCE</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead className="w-px text-right" aria-label="Actions" />
@@ -198,88 +200,111 @@ export const OrgOauthClientsTab = () => {
                       Array.from({ length: 3 }).map((_, idx) => (
                         // eslint-disable-next-line react/no-array-index-key
                         <TableRow key={`oauth-client-skeleton-${idx}`}>
-                          <TableCell colSpan={5}>
+                          <TableCell colSpan={6}>
                             <Skeleton className="h-5 w-full" />
                           </TableCell>
                         </TableRow>
                       ))}
-                    {filteredClients.map((client) => (
-                      <TableRow key={client.id}>
-                        <TableCell className="font-medium text-foreground">{client.name}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <span className="font-mono text-xs">{client.clientId}</span>
-                            <CopyButton value={client.clientId} ariaLabel="Copy client ID" />
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {client.requirePkce ? (
-                            <Badge variant="success">Required</Badge>
-                          ) : (
-                            <span className="text-muted">Optional</span>
-                          )}
-                        </TableCell>
-                        <TableCell>{format(new Date(client.createdAt), "MMM d, yyyy")}</TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton
-                                variant="ghost"
-                                size="xs"
-                                aria-label={`Actions for ${client.name}`}
-                              >
-                                <MoreHorizontal />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44">
-                              <OrgPermissionCan
-                                I={OrgPermissionActions.Edit}
-                                a={OrgPermissionSubjects.OauthClients}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    isDisabled={!isAllowed}
-                                    onClick={() => handlePopUpOpen("clientForm", client)}
-                                  >
-                                    <Pencil />
-                                    Edit
-                                  </DropdownMenuItem>
-                                )}
-                              </OrgPermissionCan>
-                              <OrgPermissionCan
-                                I={OrgPermissionActions.Edit}
-                                a={OrgPermissionSubjects.OauthClients}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    isDisabled={!isAllowed}
-                                    onClick={() => handlePopUpOpen("rotateSecret", client)}
-                                  >
-                                    <RefreshCw />
-                                    Rotate Secret
-                                  </DropdownMenuItem>
-                                )}
-                              </OrgPermissionCan>
-                              <OrgPermissionCan
-                                I={OrgPermissionActions.Delete}
-                                a={OrgPermissionSubjects.OauthClients}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    variant="danger"
-                                    isDisabled={!isAllowed}
-                                    onClick={() => handlePopUpOpen("deleteClient", client)}
-                                  >
-                                    <Trash2 />
-                                    Delete
-                                  </DropdownMenuItem>
-                                )}
-                              </OrgPermissionCan>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredClients.map((client) => {
+                      const usesAuthorizationCode = client.grantTypes.includes(
+                        OauthGrantType.AuthorizationCode
+                      );
+                      const usesTokenExchange = client.grantTypes.includes(
+                        OauthGrantType.TokenExchange
+                      );
+
+                      return (
+                        <TableRow key={client.id}>
+                          <TableCell className="font-medium text-foreground">
+                            {client.name}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <span className="font-mono text-xs">{client.clientId}</span>
+                              <CopyButton value={client.clientId} ariaLabel="Copy client ID" />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {usesAuthorizationCode && (
+                                <Badge variant="neutral">Authorization code</Badge>
+                              )}
+                              {usesTokenExchange && <Badge variant="info">Token exchange</Badge>}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {!usesAuthorizationCode && (
+                              <span className="text-muted">Not applicable</span>
+                            )}
+                            {usesAuthorizationCode && client.requirePkce && (
+                              <Badge variant="success">Required</Badge>
+                            )}
+                            {usesAuthorizationCode && !client.requirePkce && (
+                              <span className="text-muted">Optional</span>
+                            )}
+                          </TableCell>
+                          <TableCell>{format(new Date(client.createdAt), "MMM d, yyyy")}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <IconButton
+                                  variant="ghost"
+                                  size="xs"
+                                  aria-label={`Actions for ${client.name}`}
+                                >
+                                  <MoreHorizontal />
+                                </IconButton>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-44">
+                                <OrgPermissionCan
+                                  I={OrgPermissionActions.Edit}
+                                  a={OrgPermissionSubjects.OauthClients}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      isDisabled={!isAllowed}
+                                      onClick={() => handlePopUpOpen("clientForm", client)}
+                                    >
+                                      <Pencil />
+                                      Edit
+                                    </DropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                                <OrgPermissionCan
+                                  I={OrgPermissionActions.Edit}
+                                  a={OrgPermissionSubjects.OauthClients}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      isDisabled={!isAllowed}
+                                      onClick={() => handlePopUpOpen("rotateSecret", client)}
+                                    >
+                                      <RefreshCw />
+                                      Rotate Secret
+                                    </DropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                                <OrgPermissionCan
+                                  I={OrgPermissionActions.Delete}
+                                  a={OrgPermissionSubjects.OauthClients}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      variant="danger"
+                                      isDisabled={!isAllowed}
+                                      onClick={() => handlePopUpOpen("deleteClient", client)}
+                                    >
+                                      <Trash2 />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}
