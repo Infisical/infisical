@@ -1,6 +1,6 @@
 # infisical-standalone
 
-![Version: 1.10.0](https://img.shields.io/badge/Version-1.10.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.1](https://img.shields.io/badge/AppVersion-1.0.1-informational?style=flat-square)
+![Version: 1.11.0](https://img.shields.io/badge/Version-1.11.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.1](https://img.shields.io/badge/AppVersion-1.0.1-informational?style=flat-square)
 
 A helm chart to deploy Infisical
 
@@ -60,7 +60,7 @@ A helm chart to deploy Infisical
 | postgresql.enabled | bool | `true` | Enables an in-cluster PostgreSQL deployment. To achieve HA for Postgres, we recommend deploying https://github.com/zalando/postgres-operator instead. |
 | postgresql.fullnameOverride | string | `"postgresql"` | Full name override for PostgreSQL resources |
 | postgresql.name | string | `"postgresql"` | PostgreSQL resource name |
-| postgresql.useExistingPostgresSecret.enabled | bool | `false` | Set to true if using an existing Kubernetes secret that contains PostgreSQL connection string |
+| postgresql.useExistingPostgresSecret.enabled | bool | `false` | Set to true if using an existing Kubernetes secret that contains PostgreSQL connection string. Also set `postgresql.enabled: false` or the bundled PostgreSQL instance is deployed and left unused. |
 | postgresql.useExistingPostgresSecret.existingConnectionStringSecret.key | string | `""` | Key name in the Kubernetes secret that holds the connection string |
 | postgresql.useExistingPostgresSecret.existingConnectionStringSecret.name | string | `""` | Kubernetes secret name containing the PostgreSQL connection string |
 | redis.architecture | string | `"standalone"` | Redis deployment type (e.g., standalone or cluster) |
@@ -70,6 +70,9 @@ A helm chart to deploy Infisical
 | redis.fullnameOverride | string | `"redis"` | Full name override for Redis resources |
 | redis.name | string | `"redis"` | Redis resource name |
 | redis.usePassword | bool | `true` | Requires a password for Redis authentication |
+| redis.useExistingRedisSecret.enabled | bool | `false` | Set to true if using an existing Kubernetes secret that contains the Redis connection string. Also set `redis.enabled: false` or the bundled Redis instance is deployed and left unused. |
+| redis.useExistingRedisSecret.existingConnectionStringSecret.key | string | `""` | Key name in the Kubernetes secret that holds the connection string |
+| redis.useExistingRedisSecret.existingConnectionStringSecret.name | string | `""` | Kubernetes secret name containing the Redis connection string |
 | ingress-nginx.controller.ingressClassResource.name | string | `"infisical-nginx"` | IngressClass name used by the bundled NGINX controller. Uses a unique name to avoid conflicts with existing cluster ingress controllers |
 | ingress-nginx.controller.ingressClassResource.controllerValue | string | `"k8s.io/infisical-nginx"` | Controller value for the bundled IngressClass |
 | ingress-nginx.controller.ingressClassResource.default | bool | `false` | Whether the bundled IngressClass should be set as the cluster default |
