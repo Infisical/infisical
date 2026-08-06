@@ -350,12 +350,11 @@ All meters emit at the same time. If you are a self-hosted instance and find the
 To eliminate the cost of the high-cardinality meters entirely, set `OTEL_DROP_HIGH_CARDINALITY_METERS=true`. Infisical then stops recording to the `Infisical`, `API`, `SecretSyncs`, `PkiSyncs`, and `Integrations` meters altogether, so nothing is measured, stored, exported, or held in memory for them. The instruments still exist in code, so nothing errors. Only `InfisicalCore` metrics are emitted. Defaults to `false`.
 
 <Warning>
-  **With the high-cardinality meters enabled, memory use grows with label cardinality.** Prometheus
-  requires cumulative metrics, so with `OTEL_EXPORT_TYPE=prometheus` the SDK keeps one entry in memory
-  for every distinct label combination it has recorded since the process started, and never releases
-  them. `client.address`, `user_agent.original`, `secret.path`, and `secret.name` have no natural
-  ceiling, so on a busy instance this shows up as heap that climbs with uptime and longer garbage
-  collection pauses.
+  **With the high-cardinality meters enabled and `OTEL_EXPORT_TYPE=prometheus`, memory use grows with
+  label cardinality for the lifetime of the process.** Labels such as `client.address`,
+  `user_agent.original`, `secret.path`, and `secret.name` have no natural ceiling. On a busy instance
+  this shows up as heap that climbs with uptime and longer garbage collection pauses. Restarting the
+  instance releases the memory.
 
   Whether that matters depends on churn rather than on how many organizations you have. If your secret
   paths and names, users, source IP addresses, and client versions are all largely stable, the growth
@@ -363,10 +362,10 @@ To eliminate the cost of the high-cardinality meters entirely, set `OTEL_DROP_HI
   created, renamed, or reorganized over time; clients on dynamic or short-lived IP addresses such as CI
   runners and autoscaled pods; or a fleet that upgrades often. If any of those describe your
   deployment, set `OTEL_DROP_HIGH_CARDINALITY_METERS=true` and get per-actor detail from audit logs
-  instead. Restarting the instance releases the memory.
+  instead.
 
-  `OTEL_EXPORT_TYPE=otlp` is not affected: it exports delta metrics, so each push interval starts
-  fresh and nothing accumulates across the process lifetime.
+  This tradeoff applies only to Prometheus export. With `OTEL_EXPORT_TYPE=otlp`, memory for these
+  meters does not accumulate across the process lifetime.
 </Warning>
 
 For per-user / per-identity / per-IP / per-project breakdowns, query the audit log table. It carries `actorId`, `actorType`, `projectId`, `ip`, `userAgent` and full event detail. Metrics give you the *rate* and *latency*; audit logs give you the *who* and *where*.

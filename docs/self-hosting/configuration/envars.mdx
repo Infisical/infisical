@@ -1103,7 +1103,7 @@ If the export type is set to `otlp`, you will have to configure a value for `OTE
 </ParamField>
 
 <ParamField query="OTEL_DROP_HIGH_CARDINALITY_METERS" type="string" default="false" optional>
-  When set to `true`, Infisical stops recording to the high-cardinality, per-actor `Infisical`, `API`, `SecretSyncs`, `PkiSyncs`, and `Integrations` meters. Nothing is measured, stored, exported, or held in memory for them; the instruments still exist in code, so nothing errors. Only bounded-cardinality `InfisicalCore` metrics are emitted. Recommended for large or multi-tenant deployments: while these meters are enabled and `OTEL_EXPORT_TYPE=prometheus`, memory use grows with the number of distinct label combinations recorded since startup. See [Monitoring & Telemetry](/self-hosting/guides/monitoring-telemetry#available-metrics) for details.
+  When set to `true`, Infisical stops recording the high-cardinality, per-actor `Infisical`, `API`, `SecretSyncs`, `PkiSyncs`, and `Integrations` meters. Nothing is measured, exported, or held in memory for them. Only bounded-cardinality `InfisicalCore` metrics are emitted. Recommended when those meters are enabled with `OTEL_EXPORT_TYPE=prometheus` and label combinations turn over often (many secret paths, source IPs, or clients), because memory then grows with uptime until the process restarts. See [Monitoring & Telemetry](/self-hosting/guides/monitoring-telemetry#available-metrics) for details.
 </ParamField>
 
 ## Identity Auth Method
