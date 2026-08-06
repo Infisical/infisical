@@ -1,5 +1,6 @@
 import nodeCrypto from "node:crypto";
 
+import { importPKCS8, SignJWT } from "jose";
 import jwt from "jsonwebtoken";
 
 import { TOidcConfigs } from "@app/db/schemas";
@@ -10,10 +11,13 @@ import { resolveOidcTrustAnchor, verifySubjectToken } from "./oauth-token-exchan
 
 const { publicKey, privateKey } = nodeCrypto.generateKeyPairSync("rsa", { modulusLength: 2048 });
 const otherKeyPair = nodeCrypto.generateKeyPairSync("rsa", { modulusLength: 2048 });
+const ed25519KeyPair = nodeCrypto.generateKeyPairSync("ed25519");
 
 const PUBLIC_KEY_PEM = publicKey.export({ type: "spki", format: "pem" }).toString();
 const PRIVATE_KEY_PEM = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
 const OTHER_PRIVATE_KEY_PEM = otherKeyPair.privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+const ED25519_PUBLIC_KEY_PEM = ed25519KeyPair.publicKey.export({ type: "spki", format: "pem" }).toString();
+const ED25519_PRIVATE_KEY_PEM = ed25519KeyPair.privateKey.export({ type: "pkcs8", format: "pem" }).toString();
 
 const getSigningKey = vi.fn<(kid: string) => Promise<{ getPublicKey: () => string }>>();
 
@@ -94,6 +98,21 @@ const signSubjectToken = ({
     ...(notBefore !== undefined ? { notBefore } : {}),
     ...(keyId ? { keyid: keyId } : {})
   });
+
+// jsonwebtoken cannot sign EdDSA, so the EdDSA cases mint their tokens with jose.
+const signEddsaSubjectToken = async ({
+  audience = AUDIENCE,
+  issuer = ISSUER
+}: { audience?: string; issuer?: string } = {}) => {
+  const signingKey = await importPKCS8(ED25519_PRIVATE_KEY_PEM, OIDCJWTSignatureAlgorithm.EDDSA);
+
+  return new SignJWT({ sub: SUBJECT })
+    .setProtectedHeader({ alg: OIDCJWTSignatureAlgorithm.EDDSA, kid: "adfs-key-1" })
+    .setIssuer(issuer)
+    .setAudience(audience)
+    .setExpirationTime("10m")
+    .sign(signingKey);
+};
 
 beforeAll(async () => {
   process.env.FIPS_ENABLED = "false";
@@ -261,21 +280,50 @@ describe("verifySubjectToken", () => {
     await expect(verify(token)).rejects.toThrow(/could not be verified against your organization/);
   });
 
-  // Pinning `algorithms` closes this off. jsonwebtoken reports it as a missing signature rather than an
-  // algorithm mismatch, so assert on the generic message.
+  // Pinning `algorithms` closes this off before the signature is ever looked at.
   test("rejects an unsigned (alg: none) token", async () => {
     const token = jwt.sign({ sub: SUBJECT, aud: AUDIENCE, iss: ISSUER }, "", {
       algorithm: "none",
       keyid: "adfs-key-1"
     });
 
-    await expect(verify(token)).rejects.toThrow(/could not be verified against your organization/);
+    await expect(verify(token)).rejects.toThrow(/not signed with the algorithm/);
   });
 
   test("rejects a token signed with an algorithm the configuration does not expect", async () => {
     const token = signSubjectToken({ algorithm: "RS512" });
 
     await expect(verify(token)).rejects.toThrow(/not signed with the algorithm/);
+  });
+
+  // EdDSA is selectable in the OIDC SSO configuration and works for browser SSO login, so it has to work
+  // here too. jsonwebtoken cannot verify it at all, which is why verification runs through jose.
+  test("verifies an EdDSA-signed token for an EdDSA configuration", async () => {
+    getSigningKey.mockResolvedValue({ getPublicKey: () => ED25519_PUBLIC_KEY_PEM });
+    const token = await signEddsaSubjectToken();
+
+    await expect(
+      verify(token, buildOidcConfig({ jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm.EDDSA }))
+    ).resolves.toEqual({ subject: SUBJECT, issuer: ISSUER });
+  });
+
+  test("still enforces the audience on an EdDSA-signed token", async () => {
+    getSigningKey.mockResolvedValue({ getPublicKey: () => ED25519_PUBLIC_KEY_PEM });
+    const token = await signEddsaSubjectToken({ audience: "api://expenses-app" });
+
+    await expect(
+      verify(token, buildOidcConfig({ jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm.EDDSA }))
+    ).rejects.toThrow(/audience does not match/);
+  });
+
+  // An RSA key cannot carry EdDSA. That is the provider's configuration disagreeing with itself, not a
+  // bad token, so it must not surface as an unhandled 500.
+  test("reports a signing key that cannot carry the configured algorithm", async () => {
+    const token = await signEddsaSubjectToken();
+
+    await expect(
+      verify(token, buildOidcConfig({ jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm.EDDSA }))
+    ).rejects.toThrow(/cannot be used with the JWT signature algorithm/);
   });
 
   test("rejects a token with no kid header", async () => {
