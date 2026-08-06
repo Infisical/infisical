@@ -1548,7 +1548,7 @@ export const secretFolderServiceFactory = ({
       tx
     );
     const sourcePolicyBlock = await checkFolderMovePolicyBlock(
-      { subtree, projectId, environment: sourceEnvironment, rootFolderPath: sourceFolderPath, accessScope },
+      { subtree, projectId, environment: sourceEnvironment, rootFolderPath: sourceFolderPath },
       folderMoveBlockDeps
     );
     const sourceBlock = secretTypeBlock ?? sourcePolicyBlock;
