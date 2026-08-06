@@ -2,8 +2,13 @@ import { Controller, useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { DEFAULT_PASSWORD_REQUIREMENTS } from "@app/components/secret-rotations-v2/forms/schemas/shared";
+import { ValidationRuleOverrideNotice } from "@app/components/secret-validation/ValidationRuleOverrideNotice";
 import { Checkbox, FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+import {
+  SecretRotationRuleProvider,
+  SecretValidationRuleType
+} from "@app/hooks/api/secretValidationRules";
 import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 
 export const UnixLinuxLocalAccountRotationParametersFields = () => {
@@ -14,6 +19,8 @@ export const UnixLinuxLocalAccountRotationParametersFields = () => {
   >();
 
   const id = watch("id");
+  const environmentSlug = watch("environment")?.slug;
+  const secretPath = watch("secretPath");
   const rotationMethod = watch(
     "parameters.rotationMethod",
     UnixLinuxLocalAccountRotationMethod.LoginAsTarget
@@ -151,6 +158,12 @@ export const UnixLinuxLocalAccountRotationParametersFields = () => {
         )}
       </div>
       <div className="flex flex-col gap-3">
+        <ValidationRuleOverrideNotice
+          type={SecretValidationRuleType.SecretRotations}
+          provider={SecretRotationRuleProvider.UnixLinuxLocalAccount}
+          environmentSlug={environmentSlug}
+          secretPath={secretPath}
+        />
         <div className="w-full border-b border-mineshaft-600">
           <span className="text-sm text-mineshaft-300">Password Requirements</span>
         </div>

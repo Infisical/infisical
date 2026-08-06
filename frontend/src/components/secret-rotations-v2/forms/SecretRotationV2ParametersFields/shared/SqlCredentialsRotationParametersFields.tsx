@@ -26,6 +26,7 @@ export const SqlCredentialsRotationParametersFields = () => {
     TSecretRotationV2Form & {
       type:
         | SecretRotation.PostgresCredentials
+        | SecretRotation.MySqlCredentials
         | SecretRotation.MsSqlCredentials
         | SecretRotation.OracleDBCredentials;
     }
@@ -158,6 +159,30 @@ export const SqlCredentialsRotationParametersFields = () => {
             <ValidationRuleOverrideNotice
               type={SecretValidationRuleType.SecretRotations}
               provider={SecretRotationRuleProvider.PostgresCredentials}
+              environmentSlug={environmentSlug}
+              secretPath={secretPath}
+            />
+          )}
+          {type === SecretRotation.MySqlCredentials && (
+            <ValidationRuleOverrideNotice
+              type={SecretValidationRuleType.SecretRotations}
+              provider={SecretRotationRuleProvider.MySqlCredentials}
+              environmentSlug={environmentSlug}
+              secretPath={secretPath}
+            />
+          )}
+          {type === SecretRotation.MsSqlCredentials && (
+            <ValidationRuleOverrideNotice
+              type={SecretValidationRuleType.SecretRotations}
+              provider={SecretRotationRuleProvider.MsSqlCredentials}
+              environmentSlug={environmentSlug}
+              secretPath={secretPath}
+            />
+          )}
+          {type === SecretRotation.OracleDBCredentials && (
+            <ValidationRuleOverrideNotice
+              type={SecretValidationRuleType.SecretRotations}
+              provider={SecretRotationRuleProvider.OracleDBCredentials}
               environmentSlug={environmentSlug}
               secretPath={secretPath}
             />

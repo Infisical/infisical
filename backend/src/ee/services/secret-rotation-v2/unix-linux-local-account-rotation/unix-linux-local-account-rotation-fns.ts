@@ -17,6 +17,7 @@ import {
   TSshConnectionConfig
 } from "@app/services/app-connection/ssh";
 
+import { generatePasswordWithConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-password-generator";
 import { generatePassword } from "../shared/utils";
 import { UnixLinuxLocalAccountRotationMethod } from "./unix-linux-local-account-rotation-schemas";
 import {
@@ -307,7 +308,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   TUnixLinuxLocalAccountRotationWithConnection,
   TUnixLinuxLocalAccountRotationGeneratedCredentials,
   TUnixLinuxLocalAccountRotationInput["temporaryParameters"]
-> = (secretRotation, appConnectionDAL, kmsService, _gatewayService, gatewayV2Service, gatewayPoolService) => {
+> = (secretRotation, appConnectionDAL, kmsService, _gatewayService, gatewayV2Service, gatewayPoolService, passwordValidationContext) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const {
     username,
@@ -395,7 +396,9 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   const $rotatePassword = async (currentPassword?: string): Promise<{ username: string; password: string }> => {
     const conn = await getResolvedConnection();
     const { credentials } = conn;
-    const newPassword = generatePassword(passwordRequirements);
+    const newPassword = passwordValidationContext?.constraints?.length
+      ? generatePasswordWithConstraints(passwordValidationContext.constraints)
+      : generatePassword(passwordRequirements);
 
     const isSelfRotation = rotationMethod === UnixLinuxLocalAccountRotationMethod.LoginAsTarget;
     if (username === credentials.username)

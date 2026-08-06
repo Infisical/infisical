@@ -29,7 +29,12 @@ export enum DynamicSecretRuleProvider {
 // Provider identifiers selectable in secret-rotation rules.
 // Mirror of backend `SecretRotationRuleProvider`.
 export enum SecretRotationRuleProvider {
-  PostgresCredentials = "postgres-credentials"
+  PostgresCredentials = "postgres-credentials",
+  MySqlCredentials = "mysql-credentials",
+  MsSqlCredentials = "mssql-credentials",
+  OracleDBCredentials = "oracledb-credentials",
+  UnixLinuxLocalAccount = "unix-linux-local-account",
+  LdapPassword = "ldap-password"
 }
 
 export type TConstraint = {
