@@ -559,7 +559,6 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         numUsesLimit: z.number().min(0).default(0).describe(UNIVERSAL_AUTH.CREATE_CLIENT_SECRET.numUsesLimit),
         ttl: z
           .number()
-          .int()
           .min(0)
           .max(MAX_UA_CLIENT_SECRET_TTL_SECONDS)
           .default(0)
