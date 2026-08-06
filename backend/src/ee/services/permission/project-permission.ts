@@ -1886,7 +1886,8 @@ export const buildServiceTokenProjectPermission = (
             environment
           });
         }
-        if (canRead) {
+        // Folder read is implied-for-all, so it isn't granted explicitly for read-scoped tokens.
+        if (canRead && subject !== ProjectPermissionSub.SecretFolders) {
           if (!useLegacyRead && subject === ProjectPermissionSub.Secrets) {
             // @ts-expect-error CASL's per-action condition schema doesn't expose $glob, but the
             // conditionsMatcher resolves it at runtime; same pattern is used in the legacy branch.
