@@ -109,7 +109,13 @@ const extendedKeyUsagesField = z
   })
   .default({});
 
-const buildFormSchema = (isAdcs: boolean) => {
+type CaFormVariant = "default" | "adcs" | "awsPca";
+
+// Mirrored in backend aws-pca-certificate-authority-enums.ts; update both.
+const AWS_PCA_MAX_CA_PATH_LENGTH = 3;
+
+const buildFormSchema = (variant: CaFormVariant) => {
+  const isAdcs = variant === "adcs";
   const baseSchema = z.object({
     profileId: z.string().min(1, "Profile is required"),
     ttl: isAdcs ? z.string().trim().optional() : z.string().trim().min(1, "TTL is required"),
@@ -141,11 +147,34 @@ const buildFormSchema = (isAdcs: boolean) => {
     extendedKeyUsages: extendedKeyUsagesField
   });
 
-  return z.discriminatedUnion("requestMethod", [csrSchema, managedSchema]);
+  return z
+    .discriminatedUnion("requestMethod", [csrSchema, managedSchema])
+    .superRefine((data, ctx) => {
+      if (variant !== "awsPca" || data.requestMethod !== RequestMethod.MANAGED) return;
+      if (!data.basicConstraints?.isCA) return;
+
+      const { pathLength } = data.basicConstraints;
+      if (pathLength === undefined || pathLength === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["basicConstraints", "pathLength"],
+          message: `AWS Private CA requires a path length between 0 and ${AWS_PCA_MAX_CA_PATH_LENGTH} for CA certificates`
+        });
+        return;
+      }
+      if (pathLength > AWS_PCA_MAX_CA_PATH_LENGTH) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["basicConstraints", "pathLength"],
+          message: `AWS Private CA supports a maximum path length of ${AWS_PCA_MAX_CA_PATH_LENGTH}`
+        });
+      }
+    });
 };
 
-const strictFormSchema = buildFormSchema(false);
-const adcsFormSchema = buildFormSchema(true);
+const strictFormSchema = buildFormSchema("default");
+const adcsFormSchema = buildFormSchema("adcs");
+const awsPcaFormSchema = buildFormSchema("awsPca");
 
 export type FormData = z.infer<typeof adcsFormSchema>;
 
@@ -274,6 +303,7 @@ export const CertificateIssuanceModal = ({
   const { mutateAsync: issueCertificate } = useUnifiedCertificateIssuance();
 
   const isAdcsProfileRef = useRef(false);
+  const isAwsPcaProfileRef = useRef(false);
 
   const {
     control,
@@ -284,12 +314,12 @@ export const CertificateIssuanceModal = ({
     formState,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: (values, context, options) =>
-      zodResolver(isAdcsProfileRef.current ? adcsFormSchema : strictFormSchema)(
-        values,
-        context,
-        options
-      ),
+    resolver: (values, context, options) => {
+      let schema = strictFormSchema;
+      if (isAdcsProfileRef.current) schema = adcsFormSchema;
+      else if (isAwsPcaProfileRef.current) schema = awsPcaFormSchema;
+      return zodResolver(schema)(values, context, options);
+    },
     defaultValues: {
       requestMethod: RequestMethod.MANAGED,
       profileId: profileId || "",
@@ -325,6 +355,9 @@ export const CertificateIssuanceModal = ({
   const externalCaType = actualSelectedProfile?.certificateAuthority?.externalType;
   const isAdcsProfile = externalCaType === CaType.ADCS || externalCaType === CaType.AZURE_AD_CS;
   isAdcsProfileRef.current = isAdcsProfile;
+
+  const isAwsPcaProfile = externalCaType === CaType.AWS_PCA;
+  isAwsPcaProfileRef.current = isAwsPcaProfile;
 
   const externalCaHint =
     "Validity, key usages, extended key usages and basic constraints are controlled by the external CA's certificate template.";
@@ -862,8 +895,9 @@ export const CertificateIssuanceModal = ({
                                       name="basicConstraints.pathLength"
                                       render={({ field, fieldState: { error } }) => {
                                         const isPathLengthRequired =
-                                          typeof constraints.maxPathLength === "number" &&
-                                          constraints.maxPathLength !== -1;
+                                          isAwsPcaProfile ||
+                                          (typeof constraints.maxPathLength === "number" &&
+                                            constraints.maxPathLength !== -1);
                                         return (
                                           <Field>
                                             <FieldLabel>
@@ -876,6 +910,11 @@ export const CertificateIssuanceModal = ({
                                               {...field}
                                               type="number"
                                               min={0}
+                                              max={
+                                                isAwsPcaProfile
+                                                  ? AWS_PCA_MAX_CA_PATH_LENGTH
+                                                  : undefined
+                                              }
                                               isError={Boolean(error)}
                                               placeholder={
                                                 isPathLengthRequired
@@ -896,10 +935,9 @@ export const CertificateIssuanceModal = ({
                                               }}
                                             />
                                             <FieldDescription>
-                                              Sets the pathLen for this CA certificate. Controls how
-                                              many levels of sub-CAs can exist below. Empty means
-                                              unlimited; 0 means it can only sign end-entity
-                                              certificates.
+                                              {isAwsPcaProfile
+                                                ? `Sets the pathLen for this CA certificate. Controls how many levels of sub-CAs can exist below. AWS Private CA supports 0 to ${AWS_PCA_MAX_CA_PATH_LENGTH}; 0 means it can only sign end-entity certificates.`
+                                                : "Sets the pathLen for this CA certificate. Controls how many levels of sub-CAs can exist below. Empty means unlimited; 0 means it can only sign end-entity certificates."}
                                             </FieldDescription>
                                             <FieldError errors={[error]} />
                                           </Field>
