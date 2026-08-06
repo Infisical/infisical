@@ -198,6 +198,13 @@ without it, any token that issuer signed for any application in the customer's e
 Enabling the grant or changing the audience therefore requires `OrgPermissionSsoActions.Edit` on top of
 the usual `OauthClients` check.
 
+**That gate covers secret rotation too, and leaving it off any one path defeats it.** Rotation returns
+the new secret in its response, so on an exchange application it hands the caller a working credential
+for acting as any of the org's users — the same authority as enabling the grant. `OauthClients` Edit
+alone would otherwise be enough to rotate an existing exchange application's secret and use it, making
+the check on create/update a speed bump. Any future operation that establishes this trust or hands out a
+credential for it goes through `checkSsoConfigPermission` (`oauth-client-service.ts`) as well.
+
 **Deprecated auth modes (do not use in new code):**
 - **API_KEY** — user API keys (from `x-api-key` header). Deprecated — use identity access tokens instead.
 - **SERVICE_TOKEN** — service tokens (Bearer tokens starting with `st.` prefix). Deprecated — use identity access tokens instead.
