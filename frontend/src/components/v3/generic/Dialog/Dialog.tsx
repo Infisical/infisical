@@ -7,9 +7,7 @@ import { cn } from "../../utils";
 const DIALOG_CONTENT_WIDTH_CLASSNAME = "w-lg max-w-[calc(100%-2rem)]";
 
 const isAllowedOutsideInteraction = (target: EventTarget | null) =>
-  Boolean(
-    (target as HTMLElement)?.closest?.("[data-sonner-toast], .react-select-menu-portal")
-  );
+  Boolean((target as HTMLElement)?.closest?.("[data-sonner-toast], .react-select-menu-portal"));
 
 function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />;
