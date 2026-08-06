@@ -161,7 +161,11 @@ Next, choose how Docker should receive your application secrets:
     Replace `<client-id>` and `<client-secret>` with the machine identity credentials you created earlier. The access token is passed to the container at runtime and isn't stored in the image.
 
     <Note>
-      If you use Infisical EU Cloud or a self-hosted instance, set `INFISICAL_DOMAIN` before authenticating and pass it to the container with `--env INFISICAL_DOMAIN`.
+      If you use Infisical EU Cloud or a self-hosted instance, set `INFISICAL_DOMAIN` before authenticating and pass it to the container with `--env INFISICAL_DOMAIN`:
+
+      ```bash
+      docker run --rm --env INFISICAL_TOKEN --env INFISICAL_DOMAIN orders-service
+      ```
     </Note>
 
     <Check>
