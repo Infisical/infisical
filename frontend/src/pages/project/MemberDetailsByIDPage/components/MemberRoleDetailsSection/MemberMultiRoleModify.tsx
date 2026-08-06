@@ -71,7 +71,7 @@ type Props = {
   onOpenUpgradeModal: () => void;
 };
 
-export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) => {
+export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) => {
   const { subscription } = useSubscription();
   const { projectId, currentProject } = useProject();
   const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(
