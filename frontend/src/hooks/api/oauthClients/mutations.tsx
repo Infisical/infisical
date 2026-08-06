@@ -24,7 +24,7 @@ export const useCreateOauthClient = () => {
     },
     onSuccess: ({ client }) => {
       queryClient.invalidateQueries({
-        queryKey: oauthClientKeys.list(client.orgId)
+        queryKey: oauthClientKeys.allLists(client.orgId)
       });
     }
   });
@@ -42,7 +42,7 @@ export const useUpdateOauthClient = () => {
     },
     onSuccess: ({ orgId }) => {
       queryClient.invalidateQueries({
-        queryKey: oauthClientKeys.list(orgId)
+        queryKey: oauthClientKeys.allLists(orgId)
       });
     }
   });
@@ -59,7 +59,7 @@ export const useDeleteOauthClient = () => {
     },
     onSuccess: ({ orgId }) => {
       queryClient.invalidateQueries({
-        queryKey: oauthClientKeys.list(orgId)
+        queryKey: oauthClientKeys.allLists(orgId)
       });
     }
   });
@@ -76,7 +76,7 @@ export const useRotateOauthClientSecret = () => {
     },
     onSuccess: ({ client }) => {
       queryClient.invalidateQueries({
-        queryKey: oauthClientKeys.list(client.orgId)
+        queryKey: oauthClientKeys.allLists(client.orgId)
       });
     }
   });
