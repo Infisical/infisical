@@ -5509,7 +5509,7 @@ interface ViewSecretManagementInsightsOrgAuthMethodDistributionEvent {
 interface ViewSecretManagementInsightsStaticSecretUsageEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_STATIC_SECRET_USAGE;
   metadata: {
-    totalSecrets: number;
+    totalSecretsCreated: number;
   };
 }
 

@@ -738,8 +738,11 @@ export const insightsServiceFactory = ({
     });
   };
 
-  // How many static secrets the org held at the end of each of the last 12 weeks, as a running
-  // total rather than per-week additions.
+  // How many static secrets the org created in each of the last 12 UTC calendar weeks.
+  //
+  // Deleting a secret is a hard delete with no tombstone, so a week can only be counted from the
+  // createdAt of secrets that still exist. Past weeks therefore understate what was created then
+  // and drift lower as those secrets are deleted.
   const getStaticSecretsUsage = async (dto: TGetStaticSecretsUsageDTO): Promise<TStaticSecretsUsage> => {
     await checkSecretsProductInsightsPermission(
       permissionService,
@@ -776,18 +779,14 @@ export const insightsServiceFactory = ({
     const creationsByWeek = new Map(priorWeeks.map((row) => [row.weekStart, row.count]));
     creationsByWeek.set(currentWeekStartStr, createdThisWeek);
 
-    let runningTotal = 0;
-
+    // Weeks the org created nothing in are absent from the query, so they are filled with zero
+    // here rather than being skipped, keeping the series at one entry per week.
     return {
-      weeks: weekStarts.map((weekStart) => {
-        runningTotal += creationsByWeek.get(weekStart) ?? 0;
-
-        return {
-          weekStart,
-          totalSecrets: runningTotal,
-          isPartial: weekStart === currentWeekStartStr
-        };
-      })
+      weeks: weekStarts.map((weekStart) => ({
+        weekStart,
+        totalSecrets: creationsByWeek.get(weekStart) ?? 0,
+        isPartial: weekStart === currentWeekStartStr
+      }))
     };
   };
 
