@@ -311,7 +311,7 @@ export const OauthClientModal = ({
                           params={{ orgId: currentOrg?.id ?? "" }}
                           className="underline underline-offset-2 hover:text-foreground"
                         >
-                          Organization Settings &gt; SSO
+                          Settings &gt; SSO & Provisioning
                         </Link>
                         . Disabling OIDC SSO stops token exchange working.
                       </p>
@@ -324,7 +324,7 @@ export const OauthClientModal = ({
                           params={{ orgId: currentOrg?.id ?? "" }}
                           className="underline underline-offset-2 hover:text-foreground"
                         >
-                          Organization Settings &gt; SSO
+                          Settings &gt; SSO & Provisioning
                         </Link>{" "}
                         first.
                       </p>

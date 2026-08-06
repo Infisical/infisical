@@ -30,6 +30,42 @@ const buildDiscoveryDocumentUrl = (discoveryUrl: string) => {
   return url.toString();
 };
 
+type TOidcDiscoveryMetadata = { jwks_uri?: string; issuer?: string };
+
+// Fetching the discovery document is a network round trip, and token exchange runs on every request the
+// middleware makes, so resolving it per exchange would put the identity provider in the path of every
+// Infisical API call that middleware makes, and make a blip at the provider fail all of them.
+//
+// Only the fetch is cached, never the resolved trust anchor. The algorithm and the preferred issuer come
+// from the org's own SSO configuration, so an admin changing either still takes effect on the next
+// request.
+//
+// Keyed on the document URL rather than the org, so orgs on a shared provider share one entry, and an
+// admin correcting the discovery URL moves to a different key instead of waiting out the TTL.
+const DISCOVERY_METADATA_TTL_MS = 10 * 60 * 1000;
+const MAX_CACHED_DISCOVERY_DOCUMENTS = 512;
+const discoveryMetadataCache = new Map<string, { metadata: Promise<TOidcDiscoveryMetadata>; expiresAt: number }>();
+
+const getDiscoveryMetadata = (documentUrl: string) => {
+  const now = Date.now();
+  const cached = discoveryMetadataCache.get(documentUrl);
+  if (cached && cached.expiresAt > now) return cached.metadata;
+
+  if (discoveryMetadataCache.size >= MAX_CACHED_DISCOVERY_DOCUMENTS) discoveryMetadataCache.clear();
+
+  const metadata = safeRequest.get<TOidcDiscoveryMetadata>(documentUrl, { timeout: 10_000 }).then(({ data }) => data);
+
+  discoveryMetadataCache.set(documentUrl, { metadata, expiresAt: now + DISCOVERY_METADATA_TTL_MS });
+
+  metadata.catch(() => {
+    if (discoveryMetadataCache.get(documentUrl)?.metadata === metadata) {
+      discoveryMetadataCache.delete(documentUrl);
+    }
+  });
+
+  return metadata;
+};
+
 // jwks-rsa caches signing keys per instance, so reusing one per JWKS URI keeps a network fetch off the
 // hot path. Token exchange runs on every request the middleware makes.
 //
@@ -87,13 +123,9 @@ export const resolveOidcTrustAnchor = async (oidcConfig: TOidcConfigs): Promise<
       });
     }
 
-    let metadata: { jwks_uri?: string; issuer?: string };
+    let metadata: TOidcDiscoveryMetadata;
     try {
-      const { data } = await safeRequest.get<{ jwks_uri?: string; issuer?: string }>(
-        buildDiscoveryDocumentUrl(oidcConfig.discoveryURL),
-        { timeout: 10_000 }
-      );
-      metadata = data;
+      metadata = await getDiscoveryMetadata(buildDiscoveryDocumentUrl(oidcConfig.discoveryURL));
     } catch (error) {
       logger.error(
         { error, orgId: oidcConfig.orgId },
