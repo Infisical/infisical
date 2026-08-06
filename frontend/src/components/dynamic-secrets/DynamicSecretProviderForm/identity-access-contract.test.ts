@@ -591,6 +591,11 @@ testDynamicSecretProviderContract({
     })),
     invalidValues: [
       {
+        name: "no users are selected",
+        values: { ...azureCreateValues, selectedUsers: [] },
+        issuePaths: [["selectedUsers"]]
+      },
+      {
         name: "selected user is missing an id",
         values: {
           ...azureCreateValues,
@@ -813,6 +818,36 @@ testDynamicSecretProviderContract({
         issuePaths: [["inputs", "tags"]]
       },
       {
+        name: "OAuth key has no tags",
+        values: {
+          ...tailscaleCreateValues,
+          inputs: {
+            authType: TailscaleKeyAuthType.OAuthKeys,
+            auth: tailscaleCreateValues.inputs.auth,
+            tailnet: "-",
+            tags: "",
+            scopes: "devices:core"
+          }
+        },
+        issuePaths: [["inputs", "tags"]]
+      },
+      {
+        name: "federated key has no tags",
+        values: {
+          ...tailscaleCreateValues,
+          inputs: {
+            authType: TailscaleKeyAuthType.FederatedKeys,
+            auth: tailscaleCreateValues.inputs.auth,
+            tailnet: "-",
+            tags: "",
+            scopes: "devices:core",
+            issuer: "https://issuer.example.com",
+            subject: "repo:example/project"
+          }
+        },
+        issuePaths: [["inputs", "tags"]]
+      },
+      {
         name: "TTL is not a duration",
         values: {
           ...tailscaleCreateValues,
@@ -839,6 +874,16 @@ testDynamicSecretProviderContract({
       }
     },
     validValues: tailscaleEditValues,
+    invalidValues: [
+      {
+        name: "OAuth key has no tags",
+        values: {
+          ...tailscaleEditValues,
+          inputs: { ...tailscaleEditValues.inputs, tags: "" }
+        },
+        issuePaths: [["inputs", "tags"]]
+      }
+    ],
     payload: {
       name: "existing-secret",
       path: "/folder",
