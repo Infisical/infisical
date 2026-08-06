@@ -76,14 +76,21 @@ export const getSapHanaCreateDefaultValues = (
 
 export const getSapHanaEditDefaultValues = (
   context: TEditDynamicSecretProviderFormContext
-): TSapHanaEditFormValues => ({
-  name: context.dynamicSecret.name,
-  defaultTTL: context.dynamicSecret.defaultTTL,
-  maxTTL: context.dynamicSecret.maxTTL,
-  usernameTemplate:
-    context.dynamicSecret.usernameTemplate || DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE,
-  inputs: { ...(context.dynamicSecret.inputs as TSapHanaEditInputs) }
-});
+): TSapHanaEditFormValues => {
+  const inputs = context.dynamicSecret.inputs as TSapHanaEditInputs;
+
+  return {
+    name: context.dynamicSecret.name,
+    defaultTTL: context.dynamicSecret.defaultTTL,
+    maxTTL: context.dynamicSecret.maxTTL,
+    usernameTemplate:
+      context.dynamicSecret.usernameTemplate || DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE,
+    inputs: {
+      ...inputs,
+      sslRejectUnauthorized: inputs.sslRejectUnauthorized ?? true
+    }
+  };
+};
 
 export const getSapHanaCreatePayload = (
   values: TSapHanaCreateFormValues,

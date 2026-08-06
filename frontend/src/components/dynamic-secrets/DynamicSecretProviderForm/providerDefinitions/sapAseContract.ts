@@ -37,10 +37,7 @@ export const sapAseCreateInputsSchema = z.object({
   revocationStatement: z.string().min(1)
 });
 
-// Existing SAP ASE records may expose a CA during edit even though create does not accept one.
-export const sapAseEditInputsSchema = sapAseCreateInputsSchema
-  .extend({ ca: z.string().optional() })
-  .partial();
+export const sapAseEditInputsSchema = sapAseCreateInputsSchema.partial();
 
 export type TSapAseCreateInputs = z.infer<typeof sapAseCreateInputsSchema>;
 export type TSapAseEditInputs = z.infer<typeof sapAseEditInputsSchema>;
@@ -81,7 +78,7 @@ export const getSapAseEditDefaultValues = (
   maxTTL: context.dynamicSecret.maxTTL,
   usernameTemplate:
     context.dynamicSecret.usernameTemplate || DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE,
-  inputs: { ...(context.dynamicSecret.inputs as TSapAseEditInputs) }
+  inputs: sapAseEditInputsSchema.parse(context.dynamicSecret.inputs)
 });
 
 export const getSapAseCreatePayload = (

@@ -36,7 +36,7 @@ const SapHanaFields = () => (
       <DynamicSecretProviderFields fields={sapHanaConnectionFields} />
       <SslRejectUnauthorizedField
         id="sap-hana-ssl-reject-unauthorized"
-        fallbackChecked={false}
+        fallbackChecked
         layout="labeled"
       />
     </DynamicSecretProviderGroup>

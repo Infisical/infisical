@@ -28,11 +28,6 @@ const sapAseCreateConnectionFields = [
   }
 ] as const;
 
-const sapAseEditConnectionFields = [
-  ...sapAseCreateConnectionFields,
-  { name: "inputs.ca", type: "secret", label: "CA (SSL)", isOptional: true }
-] as const;
-
 const sapAseAdvancedFields = buildStatementFields({
   includeRenew: false,
   copy: {
@@ -55,7 +50,7 @@ const SapAseCreateFields = () => (
 const SapAseEditFields = () => (
   <>
     <DynamicSecretProviderGroup id="sap-ase-connection" presentation="panel">
-      <DynamicSecretProviderFields fields={sapAseEditConnectionFields} />
+      <DynamicSecretProviderFields fields={sapAseCreateConnectionFields} />
     </DynamicSecretProviderGroup>
     <StatementAccordion title="Modify SQL Statements" fields={sapAseAdvancedFields} />
   </>

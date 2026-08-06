@@ -134,16 +134,21 @@ describe("simple SQL dynamic-secret contracts", () => {
 
     assert.equal(hanaValues.inputs.password, "********");
     assert.equal(hanaValues.inputs.ca, "********");
+    assert.equal(hanaValues.inputs.sslRejectUnauthorized, true);
     assert.equal(snowflakeValues.inputs.password, "********");
     assert.equal((hanaPayload.data.inputs as { password?: string }).password, "********");
     assert.equal((hanaPayload.data.inputs as { ca?: string }).ca, "********");
+    assert.equal(
+      (hanaPayload.data.inputs as { sslRejectUnauthorized?: boolean }).sslRejectUnauthorized,
+      true
+    );
     assert.equal((snowflakePayload.data.inputs as { password?: string }).password, "********");
     assert.equal(hanaPayload.data.newName, "renamed-hana-secret");
     assert.equal(hanaPayload.data.usernameTemplate, null);
     assert.equal(snowflakePayload.data.usernameTemplate, null);
   });
 
-  it("preserves the SAP ASE create/edit CA asymmetry", () => {
+  it("strips the unsupported SAP ASE CA from edit values and payloads", () => {
     const createValues = getSapAseCreateDefaultValues(createContext);
     assert.equal("ca" in createValues.inputs, false);
 
@@ -158,10 +163,35 @@ describe("simple SQL dynamic-secret contracts", () => {
       ca: "********"
     });
     const editValues = getSapAseEditDefaultValues(editContext);
-    assert.equal(editValues.inputs.ca, "********");
+    assert.equal("ca" in editValues.inputs, false);
     assert.equal(sapAseEditFormSchema.safeParse(editValues).success, true);
 
     const payload = getSapAseEditPayload(editValues, editContext);
-    assert.equal((payload.data.inputs as { ca?: string }).ca, "********");
+    assert.equal("ca" in (payload.data.inputs as Record<string, unknown>), false);
+  });
+
+  it("defaults missing SAP HANA TLS verification to true and preserves explicit false", () => {
+    const enabledContext = getEditContext({ host: "hana.example.com" });
+    const enabledValues = getSapHanaEditDefaultValues(enabledContext);
+    const enabledPayload = getSapHanaEditPayload(enabledValues, enabledContext);
+
+    assert.equal(enabledValues.inputs.sslRejectUnauthorized, true);
+    assert.equal(
+      (enabledPayload.data.inputs as { sslRejectUnauthorized?: boolean }).sslRejectUnauthorized,
+      true
+    );
+
+    const disabledContext = getEditContext({
+      host: "hana.example.com",
+      sslRejectUnauthorized: false
+    });
+    const disabledValues = getSapHanaEditDefaultValues(disabledContext);
+    const disabledPayload = getSapHanaEditPayload(disabledValues, disabledContext);
+
+    assert.equal(disabledValues.inputs.sslRejectUnauthorized, false);
+    assert.equal(
+      (disabledPayload.data.inputs as { sslRejectUnauthorized?: boolean }).sslRejectUnauthorized,
+      false
+    );
   });
 });
