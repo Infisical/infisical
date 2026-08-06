@@ -21,6 +21,13 @@ const deleteClient = async (clientDbId: string) =>
     headers: { authorization: `Bearer ${jwtAuthToken}` }
   });
 
+const rotateClientSecret = async (clientDbId: string) =>
+  testServer.inject({
+    method: "POST",
+    url: `/api/v1/oauth/clients/${clientDbId}/rotate-secret`,
+    headers: { authorization: `Bearer ${jwtAuthToken}` }
+  });
+
 const postToken = async (body: Record<string, string>) =>
   testServer.inject({
     method: "POST",
@@ -99,6 +106,29 @@ describe("OAuth client grant type registration", async () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.payload).toContain("audience only applies");
+  });
+
+  // Rotation on a token exchange application needs SSO edit permission on top of OauthClients edit, but
+  // it must stay a plain OauthClients operation for every other application. The seed actor holds both
+  // permissions, so this pins the non-exchange path rather than the denial.
+  test("rotating a redirect-flow application's secret needs no SSO permission", async () => {
+    const created = await createClient({
+      name: "e2e-rotate-redirect-client",
+      redirectUris: ["https://app.example.com/callback"]
+    });
+
+    const { client, clientSecret } = JSON.parse(created.payload) as {
+      client: { id: string };
+      clientSecret: string;
+    };
+
+    const rotated = await rotateClientSecret(client.id);
+
+    expect(rotated.statusCode).toBe(200);
+    const { clientSecret: rotatedSecret } = JSON.parse(rotated.payload) as { clientSecret: string };
+    expect(rotatedSecret).not.toBe(clientSecret);
+
+    await deleteClient(client.id);
   });
 
   // The seed org has no OIDC config, and that config is the only trust anchor token exchange has.
