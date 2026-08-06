@@ -190,7 +190,7 @@ export const Page = () => {
       <DuplicateOrgRoleModal
         isOpen={popUp.duplicateRole.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("duplicateRole", isOpen)}
-        roleId={data?.id}
+        role={data}
       />
     </div>
   );

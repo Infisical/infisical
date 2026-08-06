@@ -558,7 +558,7 @@ export const OrgRoleTable = () => {
       <DuplicateOrgRoleModal
         isOpen={popUp.duplicateRole.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("duplicateRole", isOpen)}
-        roleId={(popUp?.duplicateRole?.data as TOrgRole)?.id}
+        role={popUp?.duplicateRole?.data as TOrgRole | undefined}
       />
     </>
   );

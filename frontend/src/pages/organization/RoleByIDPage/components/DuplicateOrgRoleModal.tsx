@@ -18,11 +18,10 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-  Input,
-  PageLoader
+  Input
 } from "@app/components/v3";
-import { useOrganization, useSubscription } from "@app/context";
-import { useCreateOrgRole, useGetOrgRole } from "@app/hooks/api";
+import { useSubscription } from "@app/context";
+import { useCreateOrgRole } from "@app/hooks/api";
 import { TOrgRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
@@ -30,7 +29,7 @@ import { slugSchema } from "@app/lib/schemas";
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  roleId?: string;
+  role?: TOrgRole;
 };
 
 const schema = z
@@ -165,12 +164,8 @@ const Content = ({ role, onClose }: ContentProps) => {
   );
 };
 
-export const DuplicateOrgRoleModal = ({ isOpen, onOpenChange, roleId }: Props) => {
-  const { currentOrg } = useOrganization();
-
-  const { data: role, isPending } = useGetOrgRole(currentOrg.id, roleId ?? "");
-
-  if (!roleId) return null;
+export const DuplicateOrgRoleModal = ({ isOpen, onOpenChange, role }: Props) => {
+  if (!role) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -181,18 +176,7 @@ export const DuplicateOrgRoleModal = ({ isOpen, onOpenChange, roleId }: Props) =
             Duplicate this role to create a new role with the same permissions.
           </DialogDescription>
         </DialogHeader>
-        {/* eslint-disable-next-line no-nested-ternary */}
-        {isPending ? (
-          <div className="h-32">
-            <PageLoader lottieClassName="w-16" />
-          </div>
-        ) : role ? (
-          <Content role={role!} onClose={() => onOpenChange(false)} />
-        ) : (
-          <p className="w-full text-center text-danger">
-            Error: could not find role with slug &#34;{roleId}&#34;
-          </p>
-        )}
+        <Content role={role} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );
