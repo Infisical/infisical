@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { certificateProfileKeys } from "../certificateProfiles/queries";
 import { projectKeys } from "../projects";
 import { CaRenewalStatus, CaType } from "./enums";
 import { caKeys } from "./queries";
@@ -174,7 +175,7 @@ export const useCreateCertificateV3 = () => {
       });
 
       queryClient.invalidateQueries({
-        queryKey: ["certificate-profiles"]
+        queryKey: certificateProfileKeys.all
       });
     }
   });

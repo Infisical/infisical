@@ -268,10 +268,16 @@ export const CertificateIssuanceModal = ({
     const apiEnabledProfileIds = new Set(
       (appProfiles ?? []).filter((p) => Boolean(p.apiConfigId)).map((p) => p.profileId)
     );
-    return allProfiles.map((profile) => ({
-      profile,
-      isApiEnabled: apiEnabledProfileIds.has(profile.id)
-    }));
+    return allProfiles
+      .map((profile) => ({
+        profile,
+        isApiEnabled: apiEnabledProfileIds.has(profile.id)
+      }))
+      .sort(
+        (a, b) =>
+          Number(b.isApiEnabled) - Number(a.isApiEnabled) ||
+          a.profile.slug.localeCompare(b.profile.slug)
+      );
   }, [profilesData?.certificateProfiles, appProfiles, applicationId]);
 
   const availableProfiles = useMemo(
