@@ -27,12 +27,18 @@ import {
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { productInsightsDALFactory } from "@app/ee/services/product-insights/product-insights-dal";
-import { productInsightsServiceFactory } from "@app/ee/services/product-insights/product-insights-service";
-import { TProductInsightsDTO } from "@app/ee/services/product-insights/product-insights-types";
+import { insightsDALFactory } from "@app/ee/services/insights/insights-dal";
+import { insightsServiceFactory } from "@app/ee/services/insights/insights-service";
+import { TOrgInsightsDTO } from "@app/ee/services/insights/insights-types";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
+
+import {
+  passThroughKeyStore,
+  projectScopedInsightsDepStubs,
+  unreachableGetProjectPermission
+} from "./testUtils/insights";
 
 declare const testDb: Knex;
 
@@ -94,7 +100,8 @@ const buildPermission = (canRead: boolean): MongoAbility<OrgPermissionSet> =>
 let canReadInsights = true;
 let planHasInsights = true;
 
-const permissionService: Pick<TPermissionServiceFactory, "getOrgPermission"> = {
+const permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission"> = {
+  ...unreachableGetProjectPermission,
   getOrgPermission: async () => ({
     permission: buildPermission(canReadInsights),
     memberships: [],
@@ -106,18 +113,18 @@ const licenseService = {
   getPlan: async () => ({ secretAccessInsights: planHasInsights }) as unknown as TFeatureSet
 };
 
-const productInsightsService = productInsightsServiceFactory({
+const insightsService = insightsServiceFactory({
+  ...projectScopedInsightsDepStubs,
   permissionService,
   licenseService,
   orgDAL: orgDALFactory(testDb),
   identityOrgMembershipDAL: identityOrgDALFactory(testDb),
   dynamicSecretLeaseDAL: dynamicSecretLeaseDALFactory(testDb),
-  productInsightsDAL: productInsightsDALFactory(testDb),
-  // Pass-through stub: every read misses so each call hits the database directly.
-  keyStore: { getItem: async () => null, setItemWithExpiry: async () => "OK" }
+  insightsDAL: insightsDALFactory(testDb),
+  keyStore: passThroughKeyStore
 });
 
-const actor = (orgId: string): TProductInsightsDTO => ({
+const actor = (orgId: string): TOrgInsightsDTO => ({
   actor: ActorType.USER,
   actorId: ids.uCounted,
   actorAuthMethod: AuthMethod.EMAIL,
@@ -136,7 +143,7 @@ const lease = (dynamicSecretId: string): TDynamicSecretLeasesInsert & { id: stri
   };
 };
 
-describe("product-insights secrets usage insights", () => {
+describe("insights secrets usage insights", () => {
   beforeAll(async () => {
     // The generated *Insert types omit the immutable `id` key, and TS's excess-property check only
     // fires on fresh object literals, so fixtures are held in typed consts to set explicit ids.
@@ -322,7 +329,7 @@ describe("product-insights secrets usage insights", () => {
   });
 
   test("returns the three usage counts for the organization", async () => {
-    const insights = await productInsightsService.getSecretsUsageInsights(actor(ORG_ID));
+    const insights = await insightsService.getSecretsUsageInsights(actor(ORG_ID));
 
     // uCounted only: the ghost, the invited and the deactivated membership are all excluded.
     expect(insights.users).toBe(1);
@@ -343,22 +350,22 @@ describe("product-insights secrets usage insights", () => {
     // every lease ever created.
     await testDb(TableName.DynamicSecretLease).where({ id: revoked!.id }).delete();
 
-    const insights = await productInsightsService.getSecretsUsageInsights(actor(ORG_ID));
+    const insights = await insightsService.getSecretsUsageInsights(actor(ORG_ID));
     expect(insights.activeLeases).toBe(1);
 
     await testDb(TableName.DynamicSecretLease).insert(lease(scopes.counted.dynamicSecretId));
-    expect((await productInsightsService.getSecretsUsageInsights(actor(ORG_ID))).activeLeases).toBe(2);
+    expect((await insightsService.getSecretsUsageInsights(actor(ORG_ID))).activeLeases).toBe(2);
   });
 
   test("an organization with no resources reports zeroes", async () => {
-    const insights = await productInsightsService.getSecretsUsageInsights(actor(randomUUID()));
+    const insights = await insightsService.getSecretsUsageInsights(actor(randomUUID()));
     expect(insights).toEqual({ activeLeases: 0, users: 0, identities: 0 });
   });
 
   test("throws when the actor cannot read secrets management insights", async () => {
     canReadInsights = false;
     try {
-      await expect(productInsightsService.getSecretsUsageInsights(actor(ORG_ID))).rejects.toBeInstanceOf(
+      await expect(insightsService.getSecretsUsageInsights(actor(ORG_ID))).rejects.toBeInstanceOf(
         ForbiddenError
       );
     } finally {
@@ -369,7 +376,7 @@ describe("product-insights secrets usage insights", () => {
   test("throws when the plan does not include secret access insights", async () => {
     planHasInsights = false;
     try {
-      await expect(productInsightsService.getSecretsUsageInsights(actor(ORG_ID))).rejects.toThrow(/Upgrade your plan/);
+      await expect(insightsService.getSecretsUsageInsights(actor(ORG_ID))).rejects.toThrow(/Upgrade your plan/);
     } finally {
       planHasInsights = true;
     }

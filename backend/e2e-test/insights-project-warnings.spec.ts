@@ -28,12 +28,18 @@ import {
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { productInsightsDALFactory } from "@app/ee/services/product-insights/product-insights-dal";
-import { productInsightsServiceFactory } from "@app/ee/services/product-insights/product-insights-service";
-import { TGetSecretsProjectWarningsDTO } from "@app/ee/services/product-insights/product-insights-types";
+import { insightsDALFactory } from "@app/ee/services/insights/insights-dal";
+import { insightsServiceFactory } from "@app/ee/services/insights/insights-service";
+import { TGetSecretsProjectWarningsDTO } from "@app/ee/services/insights/insights-types";
 import { SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { SecretSyncStatus } from "@app/services/secret-sync/secret-sync-types";
+
+import {
+  passThroughKeyStore,
+  projectScopedInsightsDepStubs,
+  unreachableGetProjectPermission
+} from "./testUtils/insights";
 
 declare const testDb: Knex;
 
@@ -87,7 +93,8 @@ const buildPermission = (canRead: boolean): MongoAbility<OrgPermissionSet> =>
 let canReadInsights = true;
 let planHasInsights = true;
 
-const permissionService: Pick<TPermissionServiceFactory, "getOrgPermission"> = {
+const permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission"> = {
+  ...unreachableGetProjectPermission,
   getOrgPermission: async () => ({
     permission: buildPermission(canReadInsights),
     memberships: [],
@@ -99,15 +106,15 @@ const licenseService = {
   getPlan: async () => ({ secretAccessInsights: planHasInsights }) as unknown as TFeatureSet
 };
 
-const productInsightsService = productInsightsServiceFactory({
+const insightsService = insightsServiceFactory({
+  ...projectScopedInsightsDepStubs,
   permissionService,
   licenseService,
   orgDAL: { countAllOrgMembers: async () => 0 },
   identityOrgMembershipDAL: { countAllOrgIdentities: async () => 0 },
   dynamicSecretLeaseDAL: { countLeasesForOrg: async () => 0 },
-  productInsightsDAL: productInsightsDALFactory(testDb),
-  // Pass-through stub: every read misses so each call hits the database directly.
-  keyStore: { getItem: async () => null, setItemWithExpiry: async () => "OK" }
+  insightsDAL: insightsDALFactory(testDb),
+  keyStore: passThroughKeyStore
 });
 
 const actor = (orgId: string, page?: { offset: number; limit: number }): TGetSecretsProjectWarningsDTO => ({
@@ -127,7 +134,7 @@ const secret = (folderId: string, overrides: Partial<TSecretsV2Insert> = {}): TS
   ...overrides
 });
 
-describe("product-insights secrets project warnings", () => {
+describe("insights secrets project warnings", () => {
   beforeAll(async () => {
     const orgRows: (TOrganizationsInsert & { id: string })[] = [
       { id: ORG_ID, name: `warnings-${suffix}`, slug: `warnings-${suffix}` },
@@ -310,7 +317,7 @@ describe("product-insights secrets project warnings", () => {
   });
 
   test("returns all secret-manager projects ordered by severity with correct counts", async () => {
-    const result = await productInsightsService.getSecretsProjectWarnings(actor(ORG_ID));
+    const result = await insightsService.getSecretsProjectWarnings(actor(ORG_ID));
 
     // warn, clean, noBlindIndex, deletedEnv. The PAM project, the soft-deleted
     // project, the v1 project and the other org's project are excluded from the listing.
@@ -369,7 +376,7 @@ describe("product-insights secrets project warnings", () => {
   });
 
   test("pagination slices rows while window totals stay constant", async () => {
-    const page = await productInsightsService.getSecretsProjectWarnings(actor(ORG_ID, { offset: 1, limit: 2 }));
+    const page = await insightsService.getSecretsProjectWarnings(actor(ORG_ID, { offset: 1, limit: 2 }));
 
     expect(page.totalProjects).toBe(4);
     expect(page.projectsWithIssues).toBe(1);
@@ -379,7 +386,7 @@ describe("product-insights secrets project warnings", () => {
   });
 
   test("an organization with no projects reports empty results", async () => {
-    const result = await productInsightsService.getSecretsProjectWarnings(actor(randomUUID()));
+    const result = await insightsService.getSecretsProjectWarnings(actor(randomUUID()));
     expect(result.projects).toEqual([]);
     expect(result.totalProjects).toBe(0);
     expect(result.projectsWithIssues).toBe(0);
@@ -388,7 +395,7 @@ describe("product-insights secrets project warnings", () => {
   test("throws when the actor cannot read secrets management insights", async () => {
     canReadInsights = false;
     try {
-      await expect(productInsightsService.getSecretsProjectWarnings(actor(ORG_ID))).rejects.toBeInstanceOf(
+      await expect(insightsService.getSecretsProjectWarnings(actor(ORG_ID))).rejects.toBeInstanceOf(
         ForbiddenError
       );
     } finally {
@@ -399,7 +406,7 @@ describe("product-insights secrets project warnings", () => {
   test("throws when the plan does not include secret access insights", async () => {
     planHasInsights = false;
     try {
-      await expect(productInsightsService.getSecretsProjectWarnings(actor(ORG_ID))).rejects.toThrow(
+      await expect(insightsService.getSecretsProjectWarnings(actor(ORG_ID))).rejects.toThrow(
         /Upgrade your plan/
       );
     } finally {

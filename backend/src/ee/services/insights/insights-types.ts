@@ -1,3 +1,7 @@
+import { TOrgPermission } from "@app/lib/types";
+
+// Project-scoped insights: the dashboard for a single secret management project.
+
 export type TGetInsightsCalendarDTO = {
   projectId: string;
   month: number;
@@ -30,4 +34,47 @@ export type TGetSecretsDuplicationDTO = {
 
 export type TGetInsightsCountsDTO = {
   projectId: string;
+};
+
+// Org-scoped insights: aggregates spanning every secret management project in the organization.
+
+export type TOrgInsightsDTO = TOrgPermission;
+
+export type TGetSecretsUsageInsightsDTO = TOrgInsightsDTO;
+
+export type TSecretsUsageInsights = {
+  activeLeases: number;
+  users: number;
+  identities: number;
+};
+
+export type TGetSecretsProjectWarningsDTO = TOrgInsightsDTO & {
+  offset: number;
+  limit: number;
+};
+
+export type TProjectWarningCounts = {
+  // null when the project does not have secret blind indexing enabled (the metric is unknowable, not zero)
+  duplicatedSecrets: number | null;
+  staleSecrets: number;
+  failedRotations: number;
+  failedSyncs: number;
+  orphanedLeases: number;
+};
+
+export type TSecretsProjectWarning = {
+  projectId: string;
+  projectName: string;
+  projectSlug: string;
+  totalSecrets: number;
+  severityScore: number;
+  warnings: TProjectWarningCounts;
+};
+
+export type TSecretsProjectWarnings = {
+  projects: TSecretsProjectWarning[];
+  totalProjects: number;
+  projectsWithIssues: number;
+  offset: number;
+  limit: number;
 };

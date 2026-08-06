@@ -74,6 +74,7 @@ import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { identityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { identityAuthTemplateServiceFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-service";
+import { insightsDALFactory } from "@app/ee/services/insights/insights-dal";
 import { insightsServiceFactory } from "@app/ee/services/insights/insights-service";
 import { kmipClientCertificateDALFactory } from "@app/ee/services/kmip/kmip-client-certificate-dal";
 import { kmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
@@ -139,8 +140,6 @@ import { pkiInstallationServiceFactory } from "@app/ee/services/pki-discovery/pk
 import { scepDynamicChallengeDALFactory } from "@app/ee/services/pki-scep/pki-scep-dynamic-challenge-dal";
 import { pkiScepServiceFactory } from "@app/ee/services/pki-scep/pki-scep-service";
 import { scepTransactionDALFactory } from "@app/ee/services/pki-scep/pki-scep-transaction-dal";
-import { productInsightsDALFactory } from "@app/ee/services/product-insights/product-insights-dal";
-import { productInsightsServiceFactory } from "@app/ee/services/product-insights/product-insights-service";
 import { projectEventsServiceFactory } from "@app/ee/services/project-events/project-events-service";
 import { projectEventsSSEServiceFactory } from "@app/ee/services/project-events/project-events-sse-service";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
@@ -619,7 +618,7 @@ export const registerRoutes = async (
   const integrationDAL = integrationDALFactory(db);
   const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
   const orgProductStatsDAL = orgProductStatsDALFactory(db);
-  const productInsightsDAL = productInsightsDALFactory(db);
+  const insightsDAL = insightsDALFactory(db);
   const integrationAuthDAL = integrationAuthDALFactory(db);
   const webhookDAL = webhookDALFactory(db);
   const serviceTokenDAL = serviceTokenDALFactory(db);
@@ -2750,16 +2749,6 @@ export const registerRoutes = async (
     licenseService
   });
 
-  const productInsightsService = productInsightsServiceFactory({
-    permissionService,
-    licenseService,
-    orgDAL,
-    identityOrgMembershipDAL,
-    dynamicSecretLeaseDAL,
-    productInsightsDAL,
-    keyStore
-  });
-
   // DAILY
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     scimService,
@@ -3097,7 +3086,11 @@ export const registerRoutes = async (
     projectDAL,
     userDAL,
     kmsService,
-    keyStore
+    keyStore,
+    orgDAL,
+    identityOrgMembershipDAL,
+    dynamicSecretLeaseDAL,
+    insightsDAL
   });
 
   const auditReportDAL = auditReportDALFactory(db);
@@ -3913,7 +3906,6 @@ export const registerRoutes = async (
     dynamicSecret: dynamicSecretService,
     dynamicSecretLease: dynamicSecretLeaseService,
     emailDomain: emailDomainService,
-    productInsights: productInsightsService,
     saml: samlService,
     ldap: ldapService,
     auditLog: auditLogService,

@@ -7,7 +7,7 @@ import { SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret
 import { DatabaseError } from "@app/lib/errors";
 import { SecretSyncStatus } from "@app/services/secret-sync/secret-sync-types";
 
-import { TSecretsProjectWarning } from "./product-insights-types";
+import { TSecretsProjectWarning } from "./insights-types";
 
 // Relative severity weights for ranking projects by outstanding issues. Failed
 // rotations are the most urgent signal (a credential that should have changed
@@ -36,9 +36,9 @@ type TProjectWarningRow = {
   projectsWithIssues: string | number;
 };
 
-export type TProductInsightsDALFactory = ReturnType<typeof productInsightsDALFactory>;
+export type TInsightsDALFactory = ReturnType<typeof insightsDALFactory>;
 
-export const productInsightsDALFactory = (db: TDbClient) => {
+export const insightsDALFactory = (db: TDbClient) => {
   const findProjectWarningsForOrg = async (
     orgId: string,
     { offset, limit, staleBefore }: { offset: number; limit: number; staleBefore: Date },

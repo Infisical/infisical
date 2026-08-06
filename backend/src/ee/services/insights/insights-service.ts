@@ -1,12 +1,17 @@
 import { ForbiddenError } from "@casl/ability";
 
 // import geoip from "geoip-lite";
-import { ActionProjectType, IdentityAuthMethod } from "@app/db/schemas";
+import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope, TableName } from "@app/db/schemas";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
+import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  OrgPermissionSecretsManagementInsightsActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionHoneyTokenActions,
@@ -19,8 +24,10 @@ import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
 import { BadRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TReminderDALFactory } from "@app/services/reminder/reminder-dal";
@@ -29,6 +36,7 @@ import { containsSecretReference } from "@app/services/secret-v2-bridge/secret-r
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TInsightsDALFactory } from "./insights-dal";
 import {
   // TGetAccessLocationsDTO,
   TGetAccessVolumeDTO,
@@ -36,11 +44,16 @@ import {
   TGetInsightsCalendarDTO,
   TGetInsightsCountsDTO,
   TGetInsightsSummaryDTO,
-  TGetSecretsDuplicationDTO
+  TGetSecretsDuplicationDTO,
+  TGetSecretsProjectWarningsDTO,
+  TGetSecretsUsageInsightsDTO,
+  TOrgInsightsDTO,
+  TSecretsProjectWarnings,
+  TSecretsUsageInsights
 } from "./insights-types";
 
-type TInsightsServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+export type TInsightsServiceFactoryDep = {
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByIpAddress" | "countByAuthMethod">;
   secretRotationV2DAL: Pick<
@@ -60,9 +73,17 @@ type TInsightsServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
+  orgDAL: Pick<TOrgDALFactory, "countAllOrgMembers">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countAllOrgIdentities">;
+  dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "countLeasesForOrg">;
+  insightsDAL: Pick<TInsightsDALFactory, "findProjectWarningsForOrg">;
 };
 
 export type TInsightsServiceFactory = ReturnType<typeof insightsServiceFactory>;
+
+// Secrets untouched for longer than this count as stale in the org-wide project warnings.
+// getSummary derives the same 90 days inline, where it doubles as the rotation/reminder lookback window.
+const STALE_SECRET_THRESHOLD_DAYS = 90;
 
 const VALUE_EVENT_TYPES = [
   EventType.GET_SECRETS,
@@ -100,6 +121,27 @@ const checkInsightsPermission = async (
   return { permission };
 };
 
+// Org-wide insights are gated on a separate org-level subject, so they get their own check rather than
+// reusing the project one above.
+const checkSecretsManagementInsightsPermission = async (
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">,
+  action: OrgPermissionSecretsManagementInsightsActions,
+  { actor, actorId, orgId, actorAuthMethod, actorOrgId }: TOrgInsightsDTO
+) => {
+  const { permission } = await permissionService.getOrgPermission({
+    scope: OrganizationActionScope.Any,
+    actor,
+    actorId,
+    orgId,
+    actorAuthMethod,
+    actorOrgId
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.SecretsManagementInsights);
+
+  return { permission };
+};
+
 export const insightsServiceFactory = ({
   permissionService,
   licenseService,
@@ -114,7 +156,11 @@ export const insightsServiceFactory = ({
   projectDAL,
   userDAL,
   kmsService,
-  keyStore
+  keyStore,
+  orgDAL,
+  identityOrgMembershipDAL,
+  dynamicSecretLeaseDAL,
+  insightsDAL
 }: TInsightsServiceFactoryDep) => {
   const fetchReminders = async (projectId: string, startDate: Date, endDate: Date) => {
     const rawReminders = await reminderDAL.findByProjectAndDateRange({ projectId, startDate, endDate });
@@ -628,6 +674,67 @@ export const insightsServiceFactory = ({
     };
   };
 
+  const getSecretsUsageInsights = async (dto: TGetSecretsUsageInsightsDTO): Promise<TSecretsUsageInsights> => {
+    await checkSecretsManagementInsightsPermission(
+      permissionService,
+      OrgPermissionSecretsManagementInsightsActions.Read,
+      dto
+    );
+
+    const plan = await licenseService.getPlan(dto.orgId);
+    if (!plan.secretAccessInsights) {
+      throw new BadRequestError({
+        message: "Secrets management insights are not available on your plan. Upgrade your plan to access insights."
+      });
+    }
+
+    const [activeLeases, users, identities] = await Promise.all([
+      dynamicSecretLeaseDAL.countLeasesForOrg(dto.orgId),
+      orgDAL.countAllOrgMembers(dto.orgId),
+      identityOrgMembershipDAL.countAllOrgIdentities({
+        [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: dto.orgId
+      })
+    ]);
+
+    return { activeLeases, users, identities };
+  };
+
+  const getSecretsProjectWarnings = async (dto: TGetSecretsProjectWarningsDTO): Promise<TSecretsProjectWarnings> => {
+    // Permission and plan checks run before the cache lookup so cached data is
+    // never served to an unauthorized actor.
+    await checkSecretsManagementInsightsPermission(
+      permissionService,
+      OrgPermissionSecretsManagementInsightsActions.Read,
+      dto
+    );
+
+    const plan = await licenseService.getPlan(dto.orgId);
+    if (!plan.secretAccessInsights) {
+      throw new BadRequestError({
+        message: "Secrets management insights are not available on your plan. Upgrade your plan to access insights."
+      });
+    }
+
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, `project-warnings:${dto.offset}:${dto.limit}`);
+    return withCache({
+      keyStore,
+      key: cacheKey,
+      ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
+      fetcher: async () => {
+        const staleBefore = new Date();
+        staleBefore.setDate(staleBefore.getDate() - STALE_SECRET_THRESHOLD_DAYS);
+
+        const { projects, totalProjects, projectsWithIssues } = await insightsDAL.findProjectWarningsForOrg(dto.orgId, {
+          offset: dto.offset,
+          limit: dto.limit,
+          staleBefore
+        });
+
+        return { projects, totalProjects, projectsWithIssues, offset: dto.offset, limit: dto.limit };
+      }
+    });
+  };
+
   return {
     getCalendar,
     getAccessVolume,
@@ -635,6 +742,8 @@ export const insightsServiceFactory = ({
     getAuthMethodDistribution,
     getSummary,
     getSecretsDuplication,
-    getCounts
+    getCounts,
+    getSecretsUsageInsights,
+    getSecretsProjectWarnings
   };
 };

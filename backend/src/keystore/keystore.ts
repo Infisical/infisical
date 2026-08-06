@@ -142,8 +142,9 @@ export const KeyStorePrefixes = {
   EmailSignupOtpHash: (hash: string) => `email-signup-otp:${hash}:hash` as const,
   EmailSignupOtpLock: (hash: string) => `email-signup-otp:${hash}:lock` as const,
   EmailSignupResendCooldown: (hash: string) => `email-signup-otp:${hash}:cd` as const,
-  InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const,
-  ProductInsightsCache: (orgId: string, endpoint: string) => `product-insights-cache:${orgId}:${endpoint}` as const,
+  // scopeId is a projectId for the per-project dashboard and an orgId for the org-wide aggregates. Both are
+  // UUIDs and the endpoint segments do not overlap, so one prefix serves both without collision.
+  InsightsCache: (scopeId: string, endpoint: string) => `insights-cache:${scopeId}:${endpoint}` as const,
 
   AdminConfig: "infisical-admin-cfg",
   UpdateCheckLatestVersion: "update-check-latest-version",

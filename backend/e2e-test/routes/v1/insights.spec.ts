@@ -1,11 +1,11 @@
 import { describe, expect, test } from "vitest";
 
-const URL = "/api/v1/product-insights/secrets/usage-insights";
+const URL = "/api/v1/insights/secrets/usage-insights";
 
-// The counting itself is covered against a real database in e2e-test/product-insights-service.spec.ts.
+// The counting itself is covered against a real database in e2e-test/insights-usage.spec.ts.
 // This file only asserts the route wiring, because the e2e instance runs unlicensed and the plan gate
 // therefore rejects every request before any count is taken.
-describe("Product Insights V1 Router", async () => {
+describe("Insights V1 Router (org-scoped)", async () => {
   test("GET usage insights is registered and refuses on plan restriction", async () => {
     const res = await testServer.inject({
       method: "GET",
@@ -19,7 +19,7 @@ describe("Product Insights V1 Router", async () => {
     expect(res.json().message).toContain("Upgrade your plan");
   });
 
-  const WARNINGS_URL = "/api/v1/product-insights/secrets/project-warnings";
+  const WARNINGS_URL = "/api/v1/insights/secrets/project-warnings";
 
   test("GET project warnings is registered and refuses on plan restriction", async () => {
     const res = await testServer.inject({

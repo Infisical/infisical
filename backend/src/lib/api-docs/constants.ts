@@ -892,7 +892,7 @@ export const ORGANIZATIONS = {
   }
 } as const;
 
-export const PRODUCT_INSIGHTS = {
+export const INSIGHTS = {
   GET_SECRETS_USAGE_INSIGHTS: {
     activeLeases:
       "The number of dynamic secret leases currently active across the organization's secret management projects. Revoked and expired leases are not counted.",
