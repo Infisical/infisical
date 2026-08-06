@@ -1,9 +1,8 @@
-import jwt, { JwtPayload } from "jsonwebtoken";
+import { decodeProtectedHeader, errors as joseErrors, importSPKI, JWTPayload, jwtVerify } from "jose";
 import { JwksClient } from "jwks-rsa";
 
 import { TOidcConfigs } from "@app/db/schemas";
 import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
-import { crypto } from "@app/lib/crypto";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { buildSsrfSafeAgent, safeRequest } from "@app/lib/validator/safe-request";
@@ -131,38 +130,42 @@ export const resolveOidcTrustAnchor = async (oidcConfig: TOidcConfigs): Promise<
   return { issuer: oidcConfig.issuer, jwksUri: oidcConfig.jwksUri, algorithm };
 };
 
-// jsonwebtoken reports failures with terse developer-facing text ("jwt audience invalid"). Translate to
-// something the caller can act on without leaking the raw message.
+// jose reports failures with terse developer-facing text ("unexpected \"aud\" claim value"). Translate to
+// something the caller can act on without leaking the raw message. Each branch keys off jose's error
+// class and its `claim` field rather than the message text, so a wording change upstream cannot silently
+// collapse a specific failure into the generic one.
 const toSubjectTokenError = (error: unknown, anchor: TOidcTrustAnchor, expectedAudience: string) => {
-  if (error instanceof jwt.TokenExpiredError) {
+  if (error instanceof joseErrors.JWTExpired) {
     return new UnauthorizedError({ message: "The subject token has expired." });
   }
 
-  if (error instanceof jwt.NotBeforeError) {
-    return new UnauthorizedError({ message: "The subject token is not valid yet (its 'nbf' claim is in the future)." });
-  }
-
-  if (error instanceof jwt.JsonWebTokenError) {
-    const reason = error.message;
-
-    if (reason.includes("audience")) {
+  if (error instanceof joseErrors.JWTClaimValidationFailed) {
+    if (error.claim === "aud") {
       return new UnauthorizedError({
         message: `The subject token's audience does not match this application's configured token exchange audience ('${expectedAudience}').`
       });
     }
 
-    if (reason.includes("issuer")) {
+    if (error.claim === "iss") {
       return new UnauthorizedError({
         message: `The subject token was not issued by your organization's configured OIDC SSO issuer ('${anchor.issuer}').`
       });
     }
 
-    if (reason.includes("algorithm")) {
+    if (error.claim === "nbf") {
       return new UnauthorizedError({
-        message: `The subject token is not signed with the algorithm your organization's OIDC SSO configuration expects ('${anchor.algorithm}').`
+        message: "The subject token is not valid yet (its 'nbf' claim is in the future)."
       });
     }
+  }
 
+  if (error instanceof joseErrors.JOSEAlgNotAllowed) {
+    return new UnauthorizedError({
+      message: `The subject token is not signed with the algorithm your organization's OIDC SSO configuration expects ('${anchor.algorithm}').`
+    });
+  }
+
+  if (error instanceof joseErrors.JOSEError) {
     return new UnauthorizedError({
       message: "The subject token could not be verified against your organization's identity provider."
     });
@@ -182,12 +185,14 @@ type TVerifySubjectTokenDTO = {
 export const verifySubjectToken = async ({ subjectToken, oidcConfig, expectedAudience }: TVerifySubjectTokenDTO) => {
   const anchor = await resolveOidcTrustAnchor(oidcConfig);
 
-  const decoded = crypto.jwt().decode(subjectToken, { complete: true });
-  if (!decoded) {
+  let header: ReturnType<typeof decodeProtectedHeader>;
+  try {
+    header = decodeProtectedHeader(subjectToken);
+  } catch {
     throw new UnauthorizedError({ message: "The subject token is not a well-formed JWT." });
   }
 
-  const { kid } = decoded.header;
+  const { kid } = header;
   if (!kid) {
     throw new UnauthorizedError({
       message:
@@ -216,13 +221,27 @@ export const verifySubjectToken = async ({ subjectToken, oidcConfig, expectedAud
     });
   }
 
-  let claims: JwtPayload;
+  let publicKey;
   try {
-    claims = crypto.jwt().verify(subjectToken, signingKey.getPublicKey(), {
+    publicKey = await importSPKI(signingKey.getPublicKey(), anchor.algorithm);
+  } catch (error) {
+    logger.error(
+      { error, orgId: oidcConfig.orgId, kid },
+      `Subject token signing key could not be imported during token exchange [orgId=${oidcConfig.orgId}] [kid=${kid}]`
+    );
+
+    throw new BadRequestError({
+      message: `Your organization's identity provider published a signing key ('${kid}') that cannot be used with the JWT signature algorithm its OIDC SSO configuration declares ('${anchor.algorithm}'). ${SSO_TAB_HINT}`
+    });
+  }
+
+  let claims: JWTPayload;
+  try {
+    ({ payload: claims } = await jwtVerify(subjectToken, publicKey, {
       issuer: anchor.issuer,
       audience: expectedAudience,
-      algorithms: [anchor.algorithm as jwt.Algorithm]
-    }) as JwtPayload;
+      algorithms: [anchor.algorithm]
+    }));
   } catch (error) {
     logger.error(
       { error, orgId: oidcConfig.orgId },
