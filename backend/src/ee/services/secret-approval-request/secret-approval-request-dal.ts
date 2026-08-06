@@ -273,7 +273,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           committerIdentity: el.committerIdentityId
             ? {
                 identityId: el.committerIdentityId,
-                name: el.committerIdentityName
+                name: el.committerIdentityName ?? ""
               }
             : null,
           policy: {
@@ -640,7 +640,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           committerIdentity: el.committerIdentityId
             ? {
                 identityId: el.committerIdentityId,
-                name: el.committerIdentityName
+                name: el.committerIdentityName ?? ""
               }
             : null
         }),
