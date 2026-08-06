@@ -607,7 +607,7 @@ export const pamSessionServiceFactory = ({
 
     const session = await pamSessionDAL.create({
       status: PamSessionStatus.Starting,
-      accessMethod: PamAccessMethod.Cli,
+      accessMethod,
       expiresAt,
       accountName: account.name,
       accountType: account.accountType,
@@ -664,7 +664,7 @@ export const pamSessionServiceFactory = ({
       if (rawCredentials.serviceAccountName) {
         metadata.serviceAccountName = rawCredentials.serviceAccountName as string;
       }
-    } else {
+    } else if (account.accountType !== PamAccountType.Web) {
       metadata.username = rawCredentials.username as string;
       if (
         (account.accountType === PamAccountType.Postgres ||
@@ -684,7 +684,7 @@ export const pamSessionServiceFactory = ({
       accountName: account.name,
       metadata,
       sessionDurationMs,
-      accessMethod: PamAccessMethod.Cli,
+      accessMethod,
       relayHost: certs.relayHost,
       relayClientCertificate: certs.relay.clientCertificate,
       relayClientPrivateKey: certs.relay.clientPrivateKey,

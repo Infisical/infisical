@@ -44,6 +44,20 @@ const SanitizedSessionSchema = PamSessionsSchema.pick({
   gatewayIdentityId: z.string().nullable().optional()
 });
 
+const serializeProxyBody = (body: unknown, contentType: string | undefined): Buffer | undefined => {
+  if (body === undefined || body === null) return undefined;
+  if (Buffer.isBuffer(body)) return body;
+  if (typeof body === "string") return Buffer.from(body);
+  if (contentType?.includes("application/x-www-form-urlencoded") && typeof body === "object") {
+    const form = new URLSearchParams();
+    Object.entries(body as Record<string, unknown>).forEach(([key, value]) => {
+      if (typeof value === "string") form.append(key, value);
+    });
+    return Buffer.from(form.toString());
+  }
+  return Buffer.from(JSON.stringify(body));
+};
+
 export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -336,7 +350,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           gatewayServerCertificateChain: z
             .string()
             .optional()
-            .describe("Server certificate chain for the gateway connection")
+            .describe("Server certificate chain for the gateway connection"),
+          proxyUrl: z.string().optional().describe("Same-origin URL for a browser-based web application session")
         })
       }
     },
@@ -395,18 +410,129 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         })
         .catch(() => {});
 
+      let proxyUrl: string | undefined;
+      if (result.accountType === PamAccountType.Web && result.accessMethod === PamAccessMethod.Web) {
+        if (
+          !result.relayHost ||
+          !result.relayClientCertificate ||
+          !result.relayClientPrivateKey ||
+          !result.relayServerCertificateChain ||
+          !result.gatewayClientCertificate ||
+          !result.gatewayClientPrivateKey ||
+          !result.gatewayServerCertificateChain
+        ) {
+          throw new BadRequestError({ message: "Unable to establish the internal web application session" });
+        }
+
+        const proxySession = await server.services.pamWebAccess.registerHttpProxySession({
+          sessionId: result.sessionId,
+          sessionDurationMs: result.sessionDurationMs,
+          relayHost: result.relayHost,
+          relay: {
+            clientCertificate: result.relayClientCertificate,
+            clientPrivateKey: result.relayClientPrivateKey,
+            serverCertificateChain: result.relayServerCertificateChain
+          },
+          gateway: {
+            clientCertificate: result.gatewayClientCertificate,
+            clientPrivateKey: result.gatewayClientPrivateKey,
+            serverCertificateChain: result.gatewayServerCertificateChain
+          }
+        });
+        proxyUrl = `/api/v1/pam/accounts/web-proxy/${proxySession.token}/`;
+      }
+
       return {
         sessionId: result.sessionId,
         accountType: result.accountType,
         metadata: result.metadata,
-        relayHost: result.relayHost,
-        relayClientCertificate: result.relayClientCertificate,
-        relayClientPrivateKey: result.relayClientPrivateKey,
-        relayServerCertificateChain: result.relayServerCertificateChain,
-        gatewayClientCertificate: result.gatewayClientCertificate,
-        gatewayClientPrivateKey: result.gatewayClientPrivateKey,
-        gatewayServerCertificateChain: result.gatewayServerCertificateChain
+        proxyUrl,
+        relayHost: proxyUrl ? undefined : result.relayHost,
+        relayClientCertificate: proxyUrl ? undefined : result.relayClientCertificate,
+        relayClientPrivateKey: proxyUrl ? undefined : result.relayClientPrivateKey,
+        relayServerCertificateChain: proxyUrl ? undefined : result.relayServerCertificateChain,
+        gatewayClientCertificate: proxyUrl ? undefined : result.gatewayClientCertificate,
+        gatewayClientPrivateKey: proxyUrl ? undefined : result.gatewayClientPrivateKey,
+        gatewayServerCertificateChain: proxyUrl ? undefined : result.gatewayServerCertificateChain
       };
+    }
+  });
+
+  server.route({
+    method: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],
+    url: "/web-proxy/:token/",
+    schema: {
+      hide: true,
+      params: z.object({
+        token: z.string().length(64).regex(/^[a-f0-9]+$/)
+      })
+    },
+    handler: async (req, reply) => {
+      const requestUrl = new URL(req.raw.url ?? "/", "http://pam-web-proxy");
+      const response = await server.services.pamWebAccess.proxyHttpRequest({
+        token: req.params.token,
+        method: req.method,
+        path: `/${requestUrl.search}`,
+        headers: req.headers,
+        body: serializeProxyBody(req.body, req.headers["content-type"])
+      });
+
+      Object.entries(response.headers).forEach(([name, value]) => {
+        if (value !== undefined) reply.header(name, value);
+      });
+
+      const location = response.headers.location;
+      if (typeof location === "string" && location.startsWith("/")) {
+        reply.header("location", `/api/v1/pam/accounts/web-proxy/${req.params.token}${location}`);
+      }
+
+      reply.header("cache-control", "no-store");
+      reply.header("referrer-policy", "no-referrer");
+      reply.header(
+        "content-security-policy",
+        "default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'self'"
+      );
+      return reply.code(response.statusCode).send(response.body);
+    }
+  });
+
+  server.route({
+    method: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],
+    url: "/web-proxy/:token/*",
+    schema: {
+      hide: true,
+      params: z.object({
+        token: z.string().length(64).regex(/^[a-f0-9]+$/),
+        "*": z.string().max(2048)
+      })
+    },
+    handler: async (req, reply) => {
+      const requestUrl = new URL(req.raw.url ?? "/", "http://pam-web-proxy");
+      const targetPath = `/${req.params["*"]}${requestUrl.search}`;
+      const response = await server.services.pamWebAccess.proxyHttpRequest({
+        token: req.params.token,
+        method: req.method,
+        path: targetPath,
+        headers: req.headers,
+        body: serializeProxyBody(req.body, req.headers["content-type"])
+      });
+
+      Object.entries(response.headers).forEach(([name, value]) => {
+        if (value !== undefined) reply.header(name, value);
+      });
+
+      const location = response.headers.location;
+      if (typeof location === "string" && location.startsWith("/")) {
+        reply.header("location", `/api/v1/pam/accounts/web-proxy/${req.params.token}${location}`);
+      }
+
+      reply.header("cache-control", "no-store");
+      reply.header("referrer-policy", "no-referrer");
+      reply.header(
+        "content-security-policy",
+        "default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'self'"
+      );
+      return reply.code(response.statusCode).send(response.body);
     }
   });
 

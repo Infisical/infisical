@@ -428,6 +428,34 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }
   },
 
+  [PamAccountType.Web]: {
+    name: "Web Application",
+    icon: "Web.png",
+    connectionDetails: z.object({
+      url: z
+        .string()
+        .trim()
+        .url()
+        .max(2048)
+        .refine((value) => value.startsWith("http://") || value.startsWith("https://"), {
+          message: "URL must use HTTP or HTTPS"
+        }),
+      sslRejectUnauthorized: z.boolean()
+    }),
+    credentials: z.object({}),
+    sanitizedCredentials: z.object({}),
+    ui: {
+      url: {
+        label: "Application URL",
+        tooltip: "The URL that the Gateway can reach inside the private network."
+      },
+      sslRejectUnauthorized: {
+        label: "Verify TLS Certificate",
+        defaultValue: true
+      }
+    }
+  },
+
   [PamAccountType.GcpServiceAccount]: {
     name: "GCP Service Account",
     icon: "Google Cloud Platform.png",
@@ -768,7 +796,8 @@ export const extractGatewayTarget = async (
         host: (validated as { host: string; port: number }).host,
         port: (validated as { host: string; port: number }).port
       };
-    case PamAccountType.Kubernetes: {
+    case PamAccountType.Kubernetes:
+    case PamAccountType.Web: {
       const { url } = validated as { url: string };
       const parsed = new URL(url);
       const defaultPort = parsed.protocol === "http:" ? 80 : 443;

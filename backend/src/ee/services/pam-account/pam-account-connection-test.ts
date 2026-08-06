@@ -243,6 +243,7 @@ export const buildGatewayConnectionTest = async (
       };
     }
     case PamAccountType.Windows:
+    case PamAccountType.Web:
       return tcp(host, port);
     default:
       return null;

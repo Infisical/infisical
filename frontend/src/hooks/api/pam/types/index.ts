@@ -179,6 +179,7 @@ export type TPamAccessResponse = {
   sessionId: string;
   accountType: string;
   metadata?: Record<string, string>;
+  proxyUrl?: string;
 };
 
 // New model types

@@ -78,6 +78,10 @@ metadata; **gateway-injection** (`GcpServiceAccount`, `AzureCli`) proxies the cl
 gateway and injects a backend-minted short-lived token so no credential reaches the client. See
 `access()` / `getSessionCredentials` and the CLI `packages/pam/handlers/<provider>`.
 
+`Web` accounts use a browser-rendered reverse proxy. The platform owns a short-lived opaque proxy URL and
+relays HTTP through PAM mTLS; the Gateway fixes the upstream target and records metadata-only HTTP events.
+The demo registry is instance-local, so production requires a shared session registry or sticky routing.
+
 ## Policies & Settings
 
 **Policies** are governance controls on a template (MFA, reason, session duration, command-blocking),

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { Copy, Globe, Rocket, Terminal } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -63,6 +62,24 @@ const LaunchTab = ({
   const handleCopyCommand = async () => {
     await navigator.clipboard.writeText(cliCommand);
     createNotification({ text: "Command copied to clipboard", type: "success" });
+  };
+
+  const handleBrowserLaunch = () => {
+    const accessUrl = new URL(
+      `/organizations/${currentOrg.id}/pam/accounts/${account.accountType}/${account.id}/access`,
+      window.location.origin
+    );
+    if (selectedHost) accessUrl.searchParams.set("host", selectedHost);
+
+    const openedWindow = window.open(accessUrl.toString(), "_blank");
+    if (openedWindow) {
+      openedWindow.opener = null;
+    } else {
+      createNotification({
+        text: "Your browser blocked the new tab. Allow popups for Infisical and try again.",
+        type: "error"
+      });
+    }
   };
 
   return (
@@ -134,20 +151,9 @@ const LaunchTab = ({
                   Connect in Browser
                 </Button>
               ) : (
-                <Button variant="pam" className="w-full" asChild>
-                  <Link
-                    to="/organizations/$orgId/pam/accounts/$accountType/$accountId/access"
-                    params={{
-                      orgId: currentOrg.id,
-                      accountType: account.accountType,
-                      accountId: account.id
-                    }}
-                    search={{ host: selectedHost }}
-                    target="_blank"
-                  >
-                    <Rocket className="size-4" />
-                    Connect in Browser
-                  </Link>
+                <Button variant="pam" className="w-full" onClick={handleBrowserLaunch}>
+                  <Rocket className="size-4" />
+                  Connect in Browser
                 </Button>
               )}
             </div>

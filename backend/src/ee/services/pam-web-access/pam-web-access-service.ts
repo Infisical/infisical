@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+import http from "node:http";
 import net from "node:net";
 
 import type WebSocket from "ws";
@@ -95,6 +97,58 @@ type THandleWebSocketConnectionDTO = {
   preAuthHandler: (raw: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => void;
 };
 
+type TGatewayCertificates = {
+  clientCertificate: string;
+  clientPrivateKey: string;
+  serverCertificateChain: string;
+};
+
+type THttpProxySession = {
+  sessionId: string;
+  expiresAt: number;
+  relayHost: string;
+  relay: TGatewayCertificates;
+  gateway: TGatewayCertificates;
+  relayServer: Awaited<ReturnType<typeof setupRelayServer>>;
+  agent: http.Agent;
+  expiryTimer: ReturnType<typeof setTimeout>;
+};
+
+type TRegisterHttpProxySessionDTO = {
+  sessionId: string;
+  sessionDurationMs: number;
+  relayHost: string;
+  relay: TGatewayCertificates;
+  gateway: TGatewayCertificates;
+};
+
+type TProxyHttpRequestDTO = {
+  token: string;
+  method: string;
+  path: string;
+  headers: http.IncomingHttpHeaders;
+  body?: Buffer;
+};
+
+const MAX_HTTP_PROXY_RESPONSE_BYTES = 16 * 1024 * 1024;
+const HOP_BY_HOP_HEADERS = new Set([
+  "connection",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade"
+]);
+const SENSITIVE_REQUEST_HEADERS = new Set(["authorization", "cookie", "origin", "referer"]);
+const UNSAFE_RESPONSE_HEADERS = new Set([
+  ...HOP_BY_HOP_HEADERS,
+  "content-security-policy",
+  "set-cookie",
+  "x-frame-options"
+]);
+
 export const pamWebAccessServiceFactory = ({
   pamAccountDAL,
   pamAccessRequestService,
@@ -110,9 +164,161 @@ export const pamWebAccessServiceFactory = ({
   orgDAL,
   telemetryService
 }: TPamWebAccessServiceFactoryDep) => {
+  const httpProxySessions = new Map<string, THttpProxySession>();
+
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
     return JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;
+  };
+
+  const cleanupHttpProxySession = async (token: string) => {
+    const proxySession = httpProxySessions.get(token);
+    if (!proxySession) return;
+
+    httpProxySessions.delete(token);
+    clearTimeout(proxySession.expiryTimer);
+    proxySession.agent.destroy();
+    await proxySession.relayServer.cleanup();
+
+    let relayConnection: net.Socket | null = null;
+    try {
+      relayConnection = await createRelayConnection({
+        relayHost: proxySession.relayHost,
+        clientCertificate: proxySession.relay.clientCertificate,
+        clientPrivateKey: proxySession.relay.clientPrivateKey,
+        serverCertificateChain: proxySession.relay.serverCertificateChain
+      });
+      const cancellationConnection = await createGatewayConnection(
+        relayConnection,
+        proxySession.gateway,
+        GatewayProxyProtocol.PamSessionCancellation
+      );
+      cancellationConnection.end();
+    } catch (err) {
+      logger.debug(err, "Web application session cancellation signal failed");
+    } finally {
+      relayConnection?.destroy();
+    }
+  };
+
+  const registerHttpProxySession = async ({
+    sessionId,
+    sessionDurationMs,
+    relayHost,
+    relay,
+    gateway
+  }: TRegisterHttpProxySessionDTO) => {
+    const relayServer = await setupRelayServer({
+      protocol: GatewayProxyProtocol.Pam,
+      relayHost,
+      relay,
+      gateway,
+      longLived: true
+    });
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = Date.now() + sessionDurationMs;
+    const agent = new http.Agent({ keepAlive: true, maxSockets: 8 });
+    const expiryTimer = setTimeout(() => {
+      void cleanupHttpProxySession(token);
+    }, sessionDurationMs);
+    expiryTimer.unref();
+
+    httpProxySessions.set(token, {
+      sessionId,
+      expiresAt,
+      relayHost,
+      relay,
+      gateway,
+      relayServer,
+      agent,
+      expiryTimer
+    });
+
+    return { token, sessionId, expiresAt: new Date(expiresAt) };
+  };
+
+  const proxyHttpRequest = async ({ token, method, path, headers, body }: TProxyHttpRequestDTO) => {
+    const proxySession = httpProxySessions.get(token);
+    if (!proxySession || proxySession.expiresAt <= Date.now()) {
+      if (proxySession) void cleanupHttpProxySession(token);
+      throw new NotFoundError({ message: "Web application session not found or expired" });
+    }
+
+    const forwardedHeaders: http.OutgoingHttpHeaders = {};
+    Object.entries(headers).forEach(([name, value]) => {
+      const normalizedName = name.toLowerCase();
+      if (
+        value !== undefined &&
+        normalizedName !== "host" &&
+        normalizedName !== "content-length" &&
+        !HOP_BY_HOP_HEADERS.has(normalizedName) &&
+        !SENSITIVE_REQUEST_HEADERS.has(normalizedName)
+      ) {
+        forwardedHeaders[name] = value;
+      }
+    });
+    if (body) forwardedHeaders["content-length"] = body.byteLength;
+
+    return new Promise<{
+      statusCode: number;
+      headers: http.IncomingHttpHeaders;
+      body: Buffer;
+      sessionId: string;
+    }>((resolve, reject) => {
+      const request = http.request(
+        {
+          host: "127.0.0.1",
+          port: proxySession.relayServer.port,
+          method,
+          path,
+          headers: forwardedHeaders,
+          agent: proxySession.agent
+        },
+        (response) => {
+          const chunks: Buffer[] = [];
+          let totalBytes = 0;
+          response.on("data", (chunk: Buffer) => {
+            totalBytes += chunk.byteLength;
+            if (totalBytes > MAX_HTTP_PROXY_RESPONSE_BYTES) {
+              response.destroy(new Error("Internal web application response exceeds the 16 MB demo limit"));
+              return;
+            }
+            chunks.push(chunk);
+          });
+          response.on("end", () => {
+            const responseHeaders: http.IncomingHttpHeaders = {};
+            Object.entries(response.headers).forEach(([name, value]) => {
+              if (value !== undefined && !UNSAFE_RESPONSE_HEADERS.has(name.toLowerCase())) {
+                responseHeaders[name] = value;
+              }
+            });
+            resolve({
+              statusCode: response.statusCode ?? 502,
+              headers: responseHeaders,
+              body: Buffer.concat(chunks),
+              sessionId: proxySession.sessionId
+            });
+          });
+          response.on("error", (err) => {
+            logger.error({ err, sessionId: proxySession.sessionId }, "Internal web application response failed");
+            reject(
+              new BadRequestError({
+                message: err.message.includes("16 MB")
+                  ? "The internal web application response exceeds the 16 MB demo limit"
+                  : "The internal web application response was interrupted"
+              })
+            );
+          });
+        }
+      );
+      request.on("error", (err) => {
+        logger.error({ err, sessionId: proxySession.sessionId }, "Internal web application request failed");
+        reject(new BadRequestError({ message: "Unable to reach the internal web application through the Gateway" }));
+      });
+      request.setTimeout(30_000, () => request.destroy(new Error("Internal web application request timed out")));
+      if (body) request.write(body);
+      request.end();
+    });
   };
 
   const sendMessage = (socket: WebSocket, message: TWebSocketServerMessage): void => {
@@ -167,7 +373,7 @@ export const pamWebAccessServiceFactory = ({
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
-    if (!SESSION_HANDLERS[account.accountType as PamAccountType]) {
+    if (!SESSION_HANDLERS[account.accountType as PamAccountType] && account.accountType !== PamAccountType.Web) {
       throw new BadRequestError({ message: "Web access is not supported for this account type" });
     }
 
@@ -651,6 +857,9 @@ export const pamWebAccessServiceFactory = ({
 
   return {
     issueWebSocketTicket,
-    handleWebSocketConnection
+    handleWebSocketConnection,
+    registerHttpProxySession,
+    proxyHttpRequest,
+    cleanupHttpProxySession
   };
 };
