@@ -74,7 +74,7 @@ seed-dev-ldap:
 	docker compose -f docker-compose.dev.yml exec -T backend npx tsx ./src/db/seed-ldap.ts $(ORG_ID)
 
 seed-dev-oidc:
-	# Sets up the Infisical side for OIDC SSO testing: an oidc@infisical.com admin, a verified
+	# Sets up the Infisical side for OIDC SSO testing: an admin@oidc.com admin, a verified
 	# domain, and an active OIDC config. With ORG_ID=<uuid> it configures that existing org;
 	# otherwise it bootstraps a dedicated `oidc` org. Needs the stack up (`make up-dev-oidc`).
 	docker compose -f docker-compose.dev.yml exec -T backend npx tsx ./src/db/seed-oidc.ts $(ORG_ID)

@@ -69,6 +69,9 @@ export const LogsTableRow = ({ auditLog, rowNumber, timezone, onClick }: Props) 
           {auditLog.actor.type === ActorType.USER && (
             <Tag label="user_email" value={auditLog.actor.metadata.email} />
           )}
+          {auditLog.actor.type === ActorType.USER && auditLog.actor.metadata.oauthClientId && (
+            <Tag label="oauth_application" value={auditLog.actor.metadata.oauthClientId} />
+          )}
           {auditLog.actor.type === ActorType.IDENTITY && (
             <Tag label="identity_name" value={auditLog.actor.metadata.name} />
           )}
