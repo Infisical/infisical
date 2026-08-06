@@ -26,10 +26,23 @@ module.exports = {
       files: ["./src/**/*"],
       excludedFiles: ["./src/lib/telemetry/*"],
       rules: {
+        "no-restricted-imports": [
+          "error",
+          {
+            patterns: [
+              {
+                group: ["@opentelemetry/*"],
+                message:
+                  "OpenTelemetry may only be imported from src/lib/telemetry. Record through the instruments exported by @app/lib/telemetry/metrics, or add your instrument there."
+              }
+            ]
+          }
+        ],
         "no-restricted-syntax": [
           "error",
           {
-            selector: "MemberExpression[property.name='getMeter']",
+            selector:
+              "MemberExpression[property.name='getMeter'], MemberExpression[property.value='getMeter'], ObjectPattern > Property[key.name='getMeter']",
             message:
               "Do not acquire an OpenTelemetry meter directly. Use highCardinalityMeter (per-actor labels) or resolveCoreMeter (observable gauges) from @app/lib/telemetry/metrics."
           }

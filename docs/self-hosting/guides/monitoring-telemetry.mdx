@@ -357,10 +357,13 @@ To eliminate the cost of the high-cardinality meters entirely, set `OTEL_DROP_HI
   ceiling, so on a busy instance this shows up as heap that climbs with uptime and longer garbage
   collection pauses.
 
-  This is fine for a single-organization deployment with a stable set of users, IP addresses, and
-  clients: the label combinations converge and the memory does too. If you serve many organizations,
-  many source IPs, or many client versions, set `OTEL_DROP_HIGH_CARDINALITY_METERS=true` and get
-  per-actor detail from audit logs instead. Restarting the instance releases the memory.
+  Whether that matters depends on churn rather than on how many organizations you have. If your secret
+  paths and names, users, source IP addresses, and client versions are all largely stable, the growth
+  is slow enough to ignore. It keeps going as long as any one of them keeps turning over: secrets
+  created, renamed, or reorganized over time; clients on dynamic or short-lived IP addresses such as CI
+  runners and autoscaled pods; or a fleet that upgrades often. If any of those describe your
+  deployment, set `OTEL_DROP_HIGH_CARDINALITY_METERS=true` and get per-actor detail from audit logs
+  instead. Restarting the instance releases the memory.
 
   `OTEL_EXPORT_TYPE=otlp` is not affected: it exports delta metrics, so each push interval starts
   fresh and nothing accumulates across the process lifetime.
