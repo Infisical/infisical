@@ -66,17 +66,11 @@ That list describes what the guide currently covers; it is **not** a test for wh
 
 ### Code Comments
 
-**Default to writing no comments.** This is house style across `backend/`, `backend-go/`, `frontend/`, and `wasm/`. Well-named identifiers already say what the code does, so a comment earns its place only by explaining *why*: a non-obvious constraint, a workaround for a specific bug, an ordering dependency the code cannot express, or logic that looks wrong until you know the reason.
+**Default to no comments.** One earns its place only by explaining *why*: a non-obvious constraint, a workaround, an ordering dependency, or logic that looks wrong until you know the reason.
 
-Do not write:
-- Narration that restates the next line (`// loop over the users`, `// set the flag`)
-- Section headers inside a function (`// --- validation ---`)
-- Change history or status (`// Added retry logic`, `// NEW`, `// now uses the alert registry`)
-- Process references. Plans, phases, Linear tickets, PR numbers, and reviewer names rot fast and mean nothing to the next reader. 
-- Docstrings or JSDoc that restate the signature
-- Commented-out code. Delete it; git remembers.
+Never write: narration restating the next line; section headers inside a function (`// --- validation ---`); change history (`// Added retry logic`, `// NEW`); references to plans, tickets, PRs, or reviewers; docstrings restating the signature; commented-out code.
 
-Before calling the work done, re-read every comment you added and delete the ones that only describe what the code already says. When in doubt, match the density of the surrounding file: most of this codebase has none.
+Before finishing, delete any comment you added that only says what the code says.
 
 ### Design System & Voice
 
