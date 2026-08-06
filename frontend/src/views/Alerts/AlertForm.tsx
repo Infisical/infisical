@@ -1,37 +1,30 @@
-import { ReactNode } from "react";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CircleHelpIcon, FingerprintIcon, KeyRoundIcon } from "lucide-react";
+import { ClockAlertIcon, KeyRoundIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
+  Alert,
+  AlertDescription,
   Button,
-  Card,
+  Checkbox,
   Field,
   FieldContent,
   FieldError,
   FieldLabel,
   Input,
   Label,
-  OrgIcon,
-  ProjectIcon,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
   SheetFooter,
-  SubOrgIcon,
   Switch,
-  TextArea,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TextArea
 } from "@app/components/v3";
 import { useScopeVariant } from "@app/hooks";
 import {
-  ALERT_EVENT_TYPE_LABELS,
   ALERT_RESOURCE_TYPE_LABELS,
   AlertEventType,
   alertFormSchema,
@@ -60,18 +53,8 @@ type Props = {
   onCancel: () => void;
 };
 
-const SectionHeader = ({ title }: { title: string }) => (
-  <p className="text-[11px] font-medium tracking-wider text-muted uppercase">{title}</p>
-);
-
-const FixedField = ({ label, children }: { label: string; children: ReactNode }) => (
-  <div className="flex flex-col gap-1.5">
-    <FieldLabel>{label}</FieldLabel>
-    <Card className="flex-row items-center gap-3">{children}</Card>
-  </div>
-);
-
 const DEFAULT_ALERT_BEFORE_DAYS = 7;
+const DEFAULT_ALERT_NAME = "Secret expiration alert";
 
 const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm => ({
   id: channel.id,
@@ -91,7 +74,7 @@ const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm => ({
 const buildFormDefaults = (alert?: TAlert): TAlertForm => {
   if (!alert) {
     return {
-      name: "",
+      name: DEFAULT_ALERT_NAME,
       description: "",
       resourceType: AlertResourceType.IdentityAuthentication,
       eventType: AlertEventType.IdentityAuthenticationExpiry,
@@ -145,31 +128,12 @@ export const AlertForm = ({
   const resourceTypeValue = useWatch({ control, name: "resourceType" });
   const isProjectScope = Boolean(projectId);
   const isResourceScope = Boolean(resourceId ?? alert?.resourceId);
-  const resolveScopeIcon = () => {
-    if (isResourceScope) return FingerprintIcon;
-    if (isProjectScope) return ProjectIcon;
-    if (scopeVariant === "sub-org") return SubOrgIcon;
-    return OrgIcon;
-  };
-  const ScopeIcon = resolveScopeIcon();
   // eslint-disable-next-line no-nested-ternary
-  const scopeColor = isProjectScope
-    ? "text-project"
-    : scopeVariant === "sub-org"
-      ? "text-sub-org"
-      : "text-org";
-  // eslint-disable-next-line no-nested-ternary
-  const scopeTitle = isResourceScope
-    ? `${resourceName ?? "this identity"}`
+  const watchTarget = isResourceScope
+    ? (resourceName ?? "this machine identity")
     : isProjectScope
-      ? `Project · ${scopeName ?? "this project"}`
-      : "Organization";
-  // eslint-disable-next-line no-nested-ternary
-  const scopeDescription = isResourceScope
-    ? "Watches this machine identity's authentications"
-    : isProjectScope
-      ? "Watches every machine identity authentication in this project"
-      : "Watches every machine identity authentication in this organization";
+      ? `every machine identity in ${scopeName ?? "this project"}`
+      : `every machine identity in this ${scopeVariant === "sub-org" ? "sub-organization" : "organization"}`;
 
   const onSubmit = async (data: TAlertForm) => {
     const condition = {
@@ -215,209 +179,150 @@ export const AlertForm = ({
         noValidate
         className="flex min-h-0 flex-1 flex-col overflow-y-auto"
       >
-        <div className="flex flex-col gap-8 p-4">
-          <section className="flex flex-col gap-4">
-            <SectionHeader title="Details" />
-            <Field>
-              <FieldLabel htmlFor="alert-name">Name</FieldLabel>
-              <FieldContent>
-                <Input
-                  id="alert-name"
-                  autoFocus
-                  placeholder="Secret Expiration Alert"
-                  isError={Boolean(errors.name)}
-                  {...register("name")}
+        <div className="flex flex-col gap-5 p-4">
+          <Field>
+            <FieldLabel htmlFor="alert-name">Name</FieldLabel>
+            <FieldContent>
+              <Input
+                id="alert-name"
+                autoFocus
+                placeholder={DEFAULT_ALERT_NAME}
+                isError={Boolean(errors.name)}
+                {...register("name")}
+              />
+              <FieldError errors={[errors.name]} />
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="alert-description">
+              Description <span className="text-muted">(optional)</span>
+            </FieldLabel>
+            <FieldContent>
+              <TextArea
+                id="alert-description"
+                rows={3}
+                placeholder="What is this alert for?"
+                isError={Boolean(errors.description)}
+                {...register("description")}
+              />
+              <FieldError errors={[errors.description]} />
+            </FieldContent>
+          </Field>
+
+          <Alert className="items-start [&>svg]:mt-0.5 [&>svg]:text-info">
+            <ClockAlertIcon />
+            <AlertDescription>
+              <span>
+                Watching <span className="font-medium text-foreground">{watchTarget}</span> ·
+                Universal Auth client secret expiration
+              </span>
+            </AlertDescription>
+          </Alert>
+
+          <Controller
+            control={control}
+            name="enabled"
+            render={({ field }) => (
+              <Label
+                htmlFor="alert-enabled"
+                className="cursor-pointer justify-between rounded-md border border-border px-3 py-2.5 font-normal"
+              >
+                Enabled
+                <Switch
+                  id="alert-enabled"
+                  variant={scopeVariant}
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
                 />
-                <FieldError errors={[errors.name]} />
-              </FieldContent>
-            </Field>
+              </Label>
+            )}
+          />
 
-            <Field>
-              <FieldLabel htmlFor="alert-description">
-                Description <span className="text-muted">(optional)</span>
-              </FieldLabel>
-              <FieldContent>
-                <TextArea
-                  id="alert-description"
-                  rows={2}
-                  className="resize-none"
-                  placeholder="What this alert is for"
-                  isError={Boolean(errors.description)}
-                  {...register("description")}
-                />
-                <FieldError errors={[errors.description]} />
-              </FieldContent>
-            </Field>
-          </section>
-
-          <section className="flex flex-col gap-4">
-            <SectionHeader title="Trigger" />
-
+          {!isResourceScope && (
             <Controller
               control={control}
               name="resourceType"
-              render={({ field: { value, onChange } }) =>
-                isResourceScope ? (
-                  <FixedField label="Resource type">
-                    <KeyRoundIcon className="size-5 text-muted" />
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-foreground">
-                        {ALERT_RESOURCE_TYPE_LABELS[value]}
-                      </span>
-                      <span className="font-mono text-xs text-muted">{value}</span>
-                    </div>
-                  </FixedField>
-                ) : (
-                  <Field>
-                    <FieldLabel>Resource type</FieldLabel>
-                    <FieldContent>
-                      <Select value={value} onValueChange={onChange}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent position="popper">
-                          {Object.values(AlertResourceType).map((resourceType) => (
-                            <SelectItem key={resourceType} value={resourceType}>
-                              <span className="flex items-center gap-2">
-                                <KeyRoundIcon className="size-4 text-muted" />
-                                <span className="font-medium">
-                                  {ALERT_RESOURCE_TYPE_LABELS[resourceType]}
-                                </span>
-                                <span className="font-mono text-xs text-muted">{resourceType}</span>
+              render={({ field: { value, onChange } }) => (
+                <Field>
+                  <FieldLabel>Resource type</FieldLabel>
+                  <FieldContent>
+                    <Select value={value} onValueChange={onChange}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {Object.values(AlertResourceType).map((resourceType) => (
+                          <SelectItem key={resourceType} value={resourceType}>
+                            <span className="flex items-center gap-2">
+                              <KeyRoundIcon className="size-4 text-muted" />
+                              <span className="font-medium">
+                                {ALERT_RESOURCE_TYPE_LABELS[resourceType]}
                               </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FieldContent>
-                  </Field>
-                )
-              }
-            />
-
-            <FixedField label="Scope">
-              <ScopeIcon className={`size-5 ${scopeColor}`} />
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-foreground">{scopeTitle}</span>
-                <span className="text-xs text-muted">{scopeDescription}</span>
-              </div>
-            </FixedField>
-
-            <Controller
-              control={control}
-              name="eventType"
-              render={({ field: { value } }) => (
-                <FixedField label="Event">
-                  <Badge variant="warning">{ALERT_EVENT_TYPE_LABELS[value]}</Badge>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm text-foreground">
-                      Alerts before a credential expires.
-                    </span>
-                    <span className="text-xs text-muted">
-                      Supports Universal Auth client secrets with a TTL. More credential types
-                      coming.
-                    </span>
-                  </div>
-                </FixedField>
+                              <span className="font-mono text-xs text-muted">{resourceType}</span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FieldContent>
+                </Field>
               )}
             />
+          )}
 
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel htmlFor="alert-alert-before">Condition</FieldLabel>
-              <div className="grid grid-cols-[auto_auto_1fr] items-center gap-x-3 gap-y-1 text-sm text-muted">
-                <span>Alert me</span>
-                <Input
-                  id="alert-alert-before"
-                  type="number"
-                  min={MIN_ALERT_BEFORE_DAYS}
-                  max={MAX_ALERT_BEFORE_DAYS}
-                  className="w-20 text-center"
-                  isError={Boolean(errors.alertBeforeDays)}
-                  {...register("alertBeforeDays", { valueAsNumber: true })}
-                />
-                <span>days before the credential expires. (1-90)</span>
-                {errors.alertBeforeDays && (
-                  <div className="col-start-2 flex w-0 justify-self-center">
-                    <FieldError
-                      errors={[errors.alertBeforeDays]}
-                      className="shrink-0 -translate-x-1/2 whitespace-nowrap"
-                    />
-                  </div>
-                )}
-              </div>
+          <div className="mb-1 flex flex-col gap-1.5">
+            <Label htmlFor="alert-alert-before">Condition</Label>
+            <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-foreground">
+              <span>Alert</span>
+              <Input
+                id="alert-alert-before"
+                type="number"
+                min={MIN_ALERT_BEFORE_DAYS}
+                max={MAX_ALERT_BEFORE_DAYS}
+                className="w-16 text-center"
+                isError={Boolean(errors.alertBeforeDays)}
+                {...register("alertBeforeDays", { valueAsNumber: true })}
+              />
+              <span>days before a client secret expires</span>
             </div>
-
+            <FieldError errors={[errors.alertBeforeDays]} />
             <Controller
               control={control}
               name="dailyReminder"
               render={({ field }) => (
-                <div className="flex items-center gap-2">
-                  <FieldLabel htmlFor="alert-repeat-daily" className="cursor-pointer">
-                    Daily Reminder
-                  </FieldLabel>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <CircleHelpIcon className="size-3.5 text-muted" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Send a reminder every day from the alert threshold until the event happens
-                    </TooltipContent>
-                  </Tooltip>
-                  <Switch
+                <Label htmlFor="alert-repeat-daily" className="cursor-pointer font-normal">
+                  <Checkbox
                     id="alert-repeat-daily"
                     variant={scopeVariant}
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
+                    isChecked={field.value}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
                   />
-                </div>
-              )}
-            />
-          </section>
-
-          <section className="flex flex-col gap-4">
-            <SectionHeader title="Delivery" />
-            <ChannelsField
-              projectId={projectId}
-              resourceType={resourceTypeValue}
-              resourceId={resourceId ?? alert?.resourceId ?? null}
-            />
-          </section>
-        </div>
-
-        <SheetFooter className="sticky bottom-0 border-t bg-popover">
-          <div className="flex w-full items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button
-                type="submit"
-                variant={scopeVariant}
-                isPending={isSubmitting}
-                isDisabled={isSubmitting}
-              >
-                {isEditing ? "Update Alert" : "Create Alert"}
-              </Button>
-              <Button type="button" variant="outline" onClick={onCancel} isDisabled={isSubmitting}>
-                Cancel
-              </Button>
-            </div>
-            <Controller
-              control={control}
-              name="enabled"
-              render={({ field }) => (
-                <Label
-                  htmlFor="alert-enabled"
-                  className="cursor-pointer text-sm font-normal text-muted"
-                >
-                  Enabled
-                  <Switch
-                    id="alert-enabled"
-                    variant={scopeVariant}
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
+                  Repeat daily until the secret is rotated
                 </Label>
               )}
             />
           </div>
+
+          <ChannelsField
+            projectId={projectId}
+            resourceType={resourceTypeValue}
+            resourceId={resourceId ?? alert?.resourceId ?? null}
+          />
+        </div>
+
+        <SheetFooter className="sticky bottom-0 border-t bg-popover">
+          <Button
+            type="submit"
+            variant={scopeVariant}
+            isPending={isSubmitting}
+            isDisabled={isSubmitting}
+          >
+            {isEditing ? "Update Alert" : "Create Alert"}
+          </Button>
+          <Button type="button" variant="outline" onClick={onCancel} isDisabled={isSubmitting}>
+            Cancel
+          </Button>
         </SheetFooter>
       </form>
     </FormProvider>
