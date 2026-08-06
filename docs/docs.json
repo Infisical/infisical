@@ -87,6 +87,7 @@
                 ]
               },
               "documentation/platform/oauth-applications",
+              "documentation/platform/oauth-token-exchange",
               {
                 "group": "Access Control",
                 "pages": [

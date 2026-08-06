@@ -7,6 +7,12 @@ import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLim
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { isAllowedRedirectUri, parseBasicAuthHeader } from "@app/services/oauth-client/oauth-client-fns";
+import {
+  ACCEPTED_SUBJECT_TOKEN_TYPES,
+  DEFAULT_OAUTH_GRANT_TYPES,
+  OauthGrantType,
+  OauthTokenType
+} from "@app/services/oauth-client/oauth-client-types";
 
 const SanitizedOauthClientSchema = OauthClientsSchema.omit({ clientSecretHash: true });
 
@@ -16,6 +22,28 @@ const redirectUriSchema = z
   .refine(
     isAllowedRedirectUri,
     "Redirect URI must use https:// (http:// is only allowed for loopback addresses such as localhost)"
+  );
+
+const grantTypesSchema = z
+  .nativeEnum(OauthGrantType)
+  .array()
+  .min(1)
+  .max(Object.keys(OauthGrantType).length)
+  .describe(
+    "The OAuth grant types this application may use. Redirect URIs apply only to authorization_code; the token exchange audience applies only to the token-exchange grant."
+  );
+
+const tokenExchangeAudienceSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(255)
+  .describe("The expected 'aud' claim of subject tokens presented to the token exchange grant.");
+
+const tokenExchangeIdpSatisfiesMfaSchema = z
+  .boolean()
+  .describe(
+    "Declares that authentication at the identity provider satisfies this organization's MFA requirement. Required for token exchange in an organization that enforces MFA."
   );
 
 export const registerOAuthRouter = async (server: FastifyZodProvider) => {
@@ -30,8 +58,11 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         name: z.string().trim().min(1).max(64),
         description: z.string().trim().max(256).optional(),
-        redirectUris: redirectUriSchema.array().min(1),
-        requirePkce: z.boolean().optional()
+        grantTypes: grantTypesSchema.default([...DEFAULT_OAUTH_GRANT_TYPES]),
+        redirectUris: redirectUriSchema.array().max(32).default([]),
+        requirePkce: z.boolean().optional(),
+        tokenExchangeAudience: tokenExchangeAudienceSchema.optional(),
+        tokenExchangeIdpSatisfiesMfa: tokenExchangeIdpSatisfiesMfaSchema.optional()
       }),
       response: {
         200: z.object({
@@ -52,7 +83,8 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
           metadata: {
             clientDbId: client.id,
             clientId: client.clientId,
-            name: client.name
+            name: client.name,
+            grantTypes: client.grantTypes
           }
         }
       });
@@ -69,6 +101,12 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       operationId: "listOauthClients",
+      querystring: z.object({
+        grantType: z
+          .nativeEnum(OauthGrantType)
+          .optional()
+          .describe("Return only applications registered for this grant type.")
+      }),
       response: {
         200: z.object({
           clients: SanitizedOauthClientSchema.array()
@@ -77,7 +115,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const clients = await server.services.oauthClient.listOauthClients(req.permission);
+      const clients = await server.services.oauthClient.listOauthClients(req.permission, req.query.grantType);
       return { clients };
     }
   });
@@ -120,8 +158,11 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         name: z.string().trim().min(1).max(64).optional(),
         description: z.string().trim().max(256).nullable().optional(),
-        redirectUris: redirectUriSchema.array().min(1).optional(),
-        requirePkce: z.boolean().optional()
+        grantTypes: grantTypesSchema.optional(),
+        redirectUris: redirectUriSchema.array().max(32).optional(),
+        requirePkce: z.boolean().optional(),
+        tokenExchangeAudience: tokenExchangeAudienceSchema.nullable().optional(),
+        tokenExchangeIdpSatisfiesMfa: tokenExchangeIdpSatisfiesMfaSchema.optional()
       }),
       response: {
         200: z.object({
@@ -144,7 +185,10 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
           metadata: {
             clientDbId: client.id,
             clientId: client.clientId,
-            name: client.name
+            name: client.name,
+            grantTypes: client.grantTypes,
+            tokenExchangeAudience: client.tokenExchangeAudience,
+            tokenExchangeIdpSatisfiesMfa: client.tokenExchangeIdpSatisfiesMfa
           }
         }
       });
@@ -371,21 +415,28 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        grant_type: z.enum(["authorization_code", "refresh_token"]),
-        code: z.string().optional(),
-        redirect_uri: z.string().optional(),
-        code_verifier: z.string().optional(),
-        refresh_token: z.string().optional(),
-        client_id: z.string().optional(),
-        client_secret: z.string().optional()
+        grant_type: z.nativeEnum(OauthGrantType),
+        code: z.string().max(256).optional(),
+        redirect_uri: z.string().max(2048).optional(),
+        code_verifier: z.string().max(256).optional(),
+        refresh_token: z.string().max(8192).optional(),
+        client_id: z.string().max(256).optional(),
+        client_secret: z.string().max(256).optional(),
+        subject_token: z.string().max(8192).optional(),
+        subject_token_type: z.nativeEnum(OauthTokenType).optional(),
+        requested_token_type: z.nativeEnum(OauthTokenType).optional(),
+        audience: z.string().max(255).optional(),
+        resource: z.string().max(2048).optional(),
+        scope: z.string().max(2048).optional()
       }),
       response: {
         200: z.object({
           access_token: z.string(),
           token_type: z.string(),
           expires_in: z.number(),
-          refresh_token: z.string(),
-          scope: z.string()
+          refresh_token: z.string().optional(),
+          scope: z.string().optional(),
+          issued_token_type: z.nativeEnum(OauthTokenType).optional()
         })
       }
     },
@@ -397,11 +448,11 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
       void res.header("Cache-Control", "no-store");
       void res.header("Pragma", "no-cache");
 
-      if (req.body.grant_type === "authorization_code") {
+      if (req.body.grant_type === OauthGrantType.AuthorizationCode) {
         if (!req.body.code) throw new BadRequestError({ message: "Missing authorization code" });
 
         return server.services.oauthClient.exchangeToken({
-          grantType: "authorization_code",
+          grantType: OauthGrantType.AuthorizationCode,
           code: req.body.code,
           redirectUri: req.body.redirect_uri,
           codeVerifier: req.body.code_verifier,
@@ -410,10 +461,56 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
         });
       }
 
+      if (req.body.grant_type === OauthGrantType.TokenExchange) {
+        if (!req.body.subject_token) {
+          throw new BadRequestError({ message: "Missing 'subject_token'" });
+        }
+
+        if (!req.body.subject_token_type) {
+          throw new BadRequestError({ message: "Missing 'subject_token_type'" });
+        }
+
+        if (!ACCEPTED_SUBJECT_TOKEN_TYPES.includes(req.body.subject_token_type)) {
+          throw new BadRequestError({
+            message: `Unsupported 'subject_token_type'. Supported values are: ${ACCEPTED_SUBJECT_TOKEN_TYPES.join(", ")}`
+          });
+        }
+
+        if (req.body.requested_token_type && req.body.requested_token_type !== OauthTokenType.AccessToken) {
+          throw new BadRequestError({
+            message: `Unsupported 'requested_token_type'. Only '${OauthTokenType.AccessToken}' can be issued.`
+          });
+        }
+
+        if (req.body.scope) {
+          throw new BadRequestError({
+            message:
+              "The 'scope' parameter is not supported on the token exchange grant. The issued token carries the user's own permissions."
+          });
+        }
+
+        if (req.body.audience || req.body.resource) {
+          throw new BadRequestError({
+            message:
+              "The 'audience' and 'resource' parameters are not supported. The expected subject token audience is configured on the application."
+          });
+        }
+
+        return server.services.oauthClient.exchangeToken({
+          grantType: OauthGrantType.TokenExchange,
+          subjectToken: req.body.subject_token,
+          subjectTokenType: req.body.subject_token_type,
+          clientId,
+          clientSecret,
+          ip: req.realIp,
+          userAgent: req.headers["user-agent"]
+        });
+      }
+
       if (!req.body.refresh_token) throw new BadRequestError({ message: "Missing refresh token" });
 
       return server.services.oauthClient.exchangeToken({
-        grantType: "refresh_token",
+        grantType: OauthGrantType.RefreshToken,
         refreshToken: req.body.refresh_token,
         clientId,
         clientSecret

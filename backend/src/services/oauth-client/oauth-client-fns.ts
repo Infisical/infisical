@@ -1,5 +1,9 @@
 import crypto from "node:crypto";
 
+import { BadRequestError } from "@app/lib/errors";
+
+import { OauthGrantType, REDIRECT_BASED_GRANT_TYPES } from "./oauth-client-types";
+
 export const parseBasicAuthHeader = (
   authorizationHeader?: string
 ): { clientId: string; clientSecret: string } | null => {
@@ -75,3 +79,76 @@ export const isRegisteredRedirectUri = (registeredUris: string[], redirectUri: s
       return false;
     }
   });
+
+export const dedupeGrantTypes = (grantTypes: OauthGrantType[]) => [...new Set(grantTypes)];
+
+export const hasRedirectBasedGrant = (grantTypes: OauthGrantType[]) =>
+  grantTypes.some((grantType) => REDIRECT_BASED_GRANT_TYPES.includes(grantType));
+
+export const hasTokenExchangeGrant = (grantTypes: OauthGrantType[]) =>
+  grantTypes.includes(OauthGrantType.TokenExchange);
+
+type TOauthClientGrantConfig = {
+  grantTypes: OauthGrantType[];
+  resolved: {
+    redirectUris: string[];
+    tokenExchangeAudience?: string | null;
+  };
+  supplied: {
+    redirectUris?: string[];
+    requirePkce?: boolean;
+    tokenExchangeAudience?: string | null;
+    tokenExchangeIdpSatisfiesMfa?: boolean;
+  };
+};
+
+export const assertValidOauthClientGrantConfig = ({ grantTypes, resolved, supplied }: TOauthClientGrantConfig) => {
+  if (!grantTypes.length) {
+    throw new BadRequestError({ message: "At least one grant type must be enabled for an application." });
+  }
+
+  const isRedirectBased = hasRedirectBasedGrant(grantTypes);
+  const isTokenExchange = hasTokenExchangeGrant(grantTypes);
+
+  if (grantTypes.includes(OauthGrantType.RefreshToken) && !grantTypes.includes(OauthGrantType.AuthorizationCode)) {
+    throw new BadRequestError({
+      message: `The '${OauthGrantType.RefreshToken}' grant requires the '${OauthGrantType.AuthorizationCode}' grant, because refresh tokens are only issued by the authorization code flow.`
+    });
+  }
+
+  if (isRedirectBased && !resolved.redirectUris.length) {
+    throw new BadRequestError({
+      message: `At least one redirect URI is required for the '${OauthGrantType.AuthorizationCode}' grant.`
+    });
+  }
+
+  if (!isRedirectBased && supplied.redirectUris?.length) {
+    throw new BadRequestError({
+      message: `Redirect URIs only apply to the '${OauthGrantType.AuthorizationCode}' grant. Enable that grant or remove the redirect URIs.`
+    });
+  }
+
+  if (!isRedirectBased && supplied.requirePkce) {
+    throw new BadRequestError({
+      message: `PKCE only applies to the '${OauthGrantType.AuthorizationCode}' grant. Enable that grant or turn off the PKCE requirement.`
+    });
+  }
+
+  if (isTokenExchange && !resolved.tokenExchangeAudience?.trim()) {
+    throw new BadRequestError({
+      message: `A token exchange audience is required for the '${OauthGrantType.TokenExchange}' grant. Set it to the audience your identity provider puts in tokens it issues for this application.`
+    });
+  }
+
+  if (!isTokenExchange && supplied.tokenExchangeAudience?.trim()) {
+    throw new BadRequestError({
+      message: `The token exchange audience only applies to the '${OauthGrantType.TokenExchange}' grant. Enable that grant or remove the audience.`
+    });
+  }
+
+  if (!isTokenExchange && supplied.tokenExchangeIdpSatisfiesMfa) {
+    throw new BadRequestError({
+      message: `The identity provider MFA declaration only applies to the '${OauthGrantType.TokenExchange}' grant. Enable that grant or turn the declaration off.`
+    });
+  }
+};

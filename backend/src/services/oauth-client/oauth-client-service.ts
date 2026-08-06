@@ -1,7 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrganizationActionScope, TOauthClients } from "@app/db/schemas";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { OrganizationActionScope, TOauthClients, TOrganizations } from "@app/db/schemas";
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
+import {
+  OrgPermissionActions,
+  OrgPermissionSsoActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -15,16 +21,25 @@ import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/services/a
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TOauthClientDALFactory } from "./oauth-client-dal";
 import {
+  assertValidOauthClientGrantConfig,
   computePkceChallenge,
+  dedupeGrantTypes,
   getOauthClientSessionUserAgent,
+  hasRedirectBasedGrant,
+  hasTokenExchangeGrant,
   isRegisteredRedirectUri,
   PKCE_CODE_VERIFIER_REGEX
 } from "./oauth-client-fns";
 import {
   OauthAuthorizationCodePayloadSchema,
+  OauthDelegationMode,
+  OauthGrantType,
+  OauthTokenType,
   TCreateOauthClientDTO,
   TOauthAuthorizeInfoDTO,
   TOauthConsentDTO,
@@ -33,6 +48,7 @@ import {
   TUpdateOauthClientDTO
 } from "./oauth-client-types";
 import { getOauthScopeDescriptions, parseOauthScopeString } from "./oauth-scope";
+import { verifySubjectToken } from "./oauth-token-exchange-fns";
 
 type TOauthClientServiceFactoryDep = {
   oauthClientDAL: TOauthClientDALFactory;
@@ -48,6 +64,9 @@ type TOauthClientServiceFactoryDep = {
   >;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export type TOauthClientServiceFactory = ReturnType<typeof oauthClientServiceFactory>;
@@ -67,8 +86,7 @@ type TOauthTokenClaims = {
   organizationId: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
-  scopes: string[];
-};
+} & ({ scopes: string[]; delegation?: never } | { delegation: OauthDelegationMode.Full; scopes?: never });
 
 const signOauthToken = (
   claims: TOauthTokenClaims & {
@@ -95,9 +113,10 @@ const signOauthToken = (
       // Marks this as a delegated OAuth token. extractAuth maps tokens carrying this claim to
       // AuthMode.OAUTH so they are rejected by the default first-party JWT middleware.
       oauthClientId: claims.oauthClientId,
-      // Granted delegation scopes. permission-service intersects the user's ability with these,
-      // so the token can never exceed what the user consented to.
-      scopes: claims.scopes
+      // Exactly one delegation marker per token. `scopes` narrows the ability to what the user
+      // consented to, `delegation` carries it unnarrowed. Absence of both means zero permissions, so
+      // dropping either claim by mistake fails closed. See OauthDelegationMode.
+      ...(claims.delegation ? { delegation: claims.delegation } : { scopes: claims.scopes })
     },
     appCfg.AUTH_SECRET,
     { expiresIn }
@@ -110,7 +129,10 @@ export const oauthClientServiceFactory = ({
   keyStore,
   tokenService,
   orgDAL,
-  userDAL
+  userDAL,
+  oidcConfigDAL,
+  userAliasDAL,
+  auditLogService
 }: TOauthClientServiceFactoryDep) => {
   const checkOauthClientPermission = async (actor: OrgServiceActor, action: OrgPermissionActions) => {
     const { permission } = await permissionService.getOrgPermission({
@@ -125,6 +147,22 @@ export const oauthClientServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.OauthClients);
   };
 
+  // Enabling this grant, or changing the audience it accepts, decides whose externally-issued tokens
+  // become Infisical user tokens. That is a change to the org's federation trust, so it needs the
+  // permission that already owns the SSO configuration.
+  const checkSsoConfigPermission = async (actor: OrgServiceActor) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
+  };
+
   // Loads a client scoped to the actor's org (so one org can never address another's client) and
   // throws a 404 when it is missing. Shared by every management method that operates on an existing
   // client by its database id.
@@ -134,8 +172,63 @@ export const oauthClientServiceFactory = ({
     return client;
   };
 
+  // MFA enforcement, the OIDC SSO configuration and OIDC user aliases all live on the root
+  // organization, matching the login flow.
+  const getClientRootOrg = async (orgId: string): Promise<TOrganizations> => {
+    const clientOrg = await orgDAL.findById(orgId);
+    if (!clientOrg) throw new NotFoundError({ message: "OAuth client organization not found" });
+
+    const isSubOrganization = Boolean(clientOrg.rootOrgId && clientOrg.id !== clientOrg.rootOrgId);
+    if (!isSubOrganization) return clientOrg;
+
+    const rootOrg = await orgDAL.findById(clientOrg.rootOrgId as string);
+    if (!rootOrg) throw new NotFoundError({ message: "OAuth client organization not found" });
+    return rootOrg;
+  };
+
+  // Token exchange has nothing to verify a subject token against until federation is live. Failing at
+  // configuration time puts the message in front of the admin setting the application up.
+  const getActiveOidcConfigOrThrow = async (orgId: string) => {
+    const rootOrg = await getClientRootOrg(orgId);
+    const oidcConfig = await oidcConfigDAL.findOne({ orgId: rootOrg.id });
+
+    if (!oidcConfig) {
+      throw new BadRequestError({
+        message:
+          "Token exchange verifies user tokens against your organization's OIDC SSO issuer, and your organization has no OIDC SSO configuration. Set one up under Settings > SSO & Provisioning first."
+      });
+    }
+
+    if (!oidcConfig.isActive) {
+      throw new BadRequestError({
+        message:
+          "Token exchange verifies user tokens against your organization's OIDC SSO issuer, and your organization's OIDC SSO is disabled. Enable it under Settings > SSO & Provisioning first."
+      });
+    }
+
+    return { oidcConfig, rootOrg };
+  };
+
   const createOauthClient = async (dto: TCreateOauthClientDTO, actor: OrgServiceActor) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Create);
+
+    const grantTypes = dedupeGrantTypes(dto.grantTypes);
+    const enablesTokenExchange = hasTokenExchangeGrant(grantTypes);
+
+    if (enablesTokenExchange) await checkSsoConfigPermission(actor);
+
+    assertValidOauthClientGrantConfig({
+      grantTypes,
+      resolved: { redirectUris: dto.redirectUris, tokenExchangeAudience: dto.tokenExchangeAudience },
+      supplied: {
+        redirectUris: dto.redirectUris,
+        requirePkce: dto.requirePkce,
+        tokenExchangeAudience: dto.tokenExchangeAudience,
+        tokenExchangeIdpSatisfiesMfa: dto.tokenExchangeIdpSatisfiesMfa
+      }
+    });
+
+    if (enablesTokenExchange) await getActiveOidcConfigOrThrow(actor.orgId);
 
     const appCfg = getConfig();
     const clientId = `oauth_client_${crypto.randomBytes(16).toString("hex")}`;
@@ -149,18 +242,27 @@ export const oauthClientServiceFactory = ({
       clientId,
       clientSecretHash,
       clientSecretPrefix: clientSecret.slice(0, 4),
+      grantTypes,
       redirectUris: dto.redirectUris,
-      requirePkce: dto.requirePkce ?? false
+      requirePkce: dto.requirePkce ?? false,
+      tokenExchangeAudience: enablesTokenExchange ? dto.tokenExchangeAudience : null,
+      tokenExchangeIdpSatisfiesMfa: enablesTokenExchange ? (dto.tokenExchangeIdpSatisfiesMfa ?? false) : false
     });
 
     return { client: sanitizeOauthClient(client), clientSecret };
   };
 
-  const listOauthClients = async (actor: OrgServiceActor) => {
+  // `grantType` narrows the list to one grant. The SSO page uses it to show which applications depend
+  // on the org's OIDC issuer.
+  const listOauthClients = async (actor: OrgServiceActor, grantType?: OauthGrantType) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Read);
 
     const clients = await oauthClientDAL.find({ orgId: actor.orgId });
-    return clients.map(sanitizeOauthClient);
+    const filtered = grantType
+      ? clients.filter((client) => (client.grantTypes as OauthGrantType[]).includes(grantType))
+      : clients;
+
+    return filtered.map(sanitizeOauthClient);
   };
 
   const getOauthClientById = async (clientDbId: string, actor: OrgServiceActor) => {
@@ -176,11 +278,43 @@ export const oauthClientServiceFactory = ({
 
     const client = await getOrgClientOrThrow(dto.clientDbId, actor.orgId);
 
+    const grantTypes = dedupeGrantTypes(dto.grantTypes ?? (client.grantTypes as OauthGrantType[]));
+    const isTokenExchangeEnabled = hasTokenExchangeGrant(grantTypes);
+    const isRedirectBased = hasRedirectBasedGrant(grantTypes);
+
+    const resolvedRedirectUris = dto.redirectUris ?? client.redirectUris;
+    const resolvedTokenExchangeAudience =
+      dto.tokenExchangeAudience !== undefined ? dto.tokenExchangeAudience : client.tokenExchangeAudience;
+    const resolvedIdpSatisfiesMfa = dto.tokenExchangeIdpSatisfiesMfa ?? client.tokenExchangeIdpSatisfiesMfa;
+
+    const touchesTokenExchangeConfig =
+      dto.grantTypes !== undefined ||
+      dto.tokenExchangeAudience !== undefined ||
+      dto.tokenExchangeIdpSatisfiesMfa !== undefined;
+
+    if (isTokenExchangeEnabled && touchesTokenExchangeConfig) await checkSsoConfigPermission(actor);
+
+    assertValidOauthClientGrantConfig({
+      grantTypes,
+      resolved: { redirectUris: resolvedRedirectUris, tokenExchangeAudience: resolvedTokenExchangeAudience },
+      supplied: {
+        redirectUris: dto.redirectUris,
+        requirePkce: dto.requirePkce,
+        tokenExchangeAudience: dto.tokenExchangeAudience,
+        tokenExchangeIdpSatisfiesMfa: dto.tokenExchangeIdpSatisfiesMfa
+      }
+    });
+
+    if (isTokenExchangeEnabled && touchesTokenExchangeConfig) await getActiveOidcConfigOrThrow(actor.orgId);
+
     const updatedClient = await oauthClientDAL.updateById(client.id, {
       name: dto.name,
       description: dto.description,
-      redirectUris: dto.redirectUris,
-      requirePkce: dto.requirePkce
+      grantTypes: dto.grantTypes ? grantTypes : undefined,
+      redirectUris: isRedirectBased ? dto.redirectUris : [],
+      requirePkce: isRedirectBased ? dto.requirePkce : false,
+      tokenExchangeAudience: isTokenExchangeEnabled ? resolvedTokenExchangeAudience : null,
+      tokenExchangeIdpSatisfiesMfa: isTokenExchangeEnabled ? resolvedIdpSatisfiesMfa : false
     });
 
     return sanitizeOauthClient(updatedClient);
@@ -218,9 +352,19 @@ export const oauthClientServiceFactory = ({
     return { client: sanitizeOauthClient(updatedClient), clientSecret };
   };
 
+  const assertGrantEnabled = (client: TOauthClients, grantType: OauthGrantType) => {
+    if (!(client.grantTypes as OauthGrantType[]).includes(grantType)) {
+      throw new UnauthorizedError({
+        message: `This application is not registered for the '${grantType}' grant type`
+      });
+    }
+  };
+
   const getAuthorizeInfo = async ({ clientId, redirectUri, scope }: TOauthAuthorizeInfoDTO) => {
     const client = await oauthClientDAL.findOne({ clientId });
     if (!client) throw new UnauthorizedError({ message: "OAuth client not found" });
+
+    assertGrantEnabled(client, OauthGrantType.AuthorizationCode);
 
     if (!isRegisteredRedirectUri(client.redirectUris, redirectUri)) {
       throw new BadRequestError({ message: "Redirect URI is not registered for this OAuth client" });
@@ -245,6 +389,8 @@ export const oauthClientServiceFactory = ({
   const authorizeConsent = async (dto: TOauthConsentDTO) => {
     const client = await oauthClientDAL.findOne({ clientId: dto.clientId });
     if (!client) throw new UnauthorizedError({ message: "OAuth client not found" });
+
+    assertGrantEnabled(client, OauthGrantType.AuthorizationCode);
 
     if (!isRegisteredRedirectUri(client.redirectUris, dto.redirectUri)) {
       throw new BadRequestError({ message: "Redirect URI is not registered for this OAuth client" });
@@ -279,14 +425,8 @@ export const oauthClientServiceFactory = ({
     // completed). Issuing a delegation code from such a session would let anyone holding only the
     // password mint OAuth tokens, bypassing MFA entirely. So we re-derive whether MFA is required
     // for this user in the client's organization and reject the request unless the session actually
-    // completed the matching MFA challenge. MFA enforcement lives on the root organization (matching
-    // the login flow), so resolve it when the client belongs to a sub-organization.
-    const clientOrg = await orgDAL.findById(client.orgId);
-    if (!clientOrg) throw new NotFoundError({ message: "OAuth client organization not found" });
-
-    const isSubOrganization = Boolean(clientOrg.rootOrgId && clientOrg.id !== clientOrg.rootOrgId);
-    const rootOrg = isSubOrganization ? await orgDAL.findById(clientOrg.rootOrgId as string) : clientOrg;
-    if (!rootOrg) throw new NotFoundError({ message: "OAuth client organization not found" });
+    // completed the matching MFA challenge.
+    const rootOrg = await getClientRootOrg(client.orgId);
 
     const user = await userDAL.findById(dto.userId);
     if (!user) throw new UnauthorizedError({ message: "User not found" });
@@ -359,10 +499,134 @@ export const oauthClientServiceFactory = ({
     return { accessTokenExpiresIn, refreshTokenExpiresIn };
   };
 
+  // RFC 8693 token exchange: the SSO login path with the token supplied directly instead of collected
+  // through a browser redirect, and an access token issued instead of a session cookie. With no redirect
+  // URI, no PKCE and no browser session to anchor trust on, the audience check below is what stops any
+  // token the issuer signs, for any application, being replayed here.
+  const exchangeSubjectToken = async (
+    client: TOauthClients,
+    dto: Extract<TOauthTokenExchangeDTO, { grantType: OauthGrantType.TokenExchange }>
+  ) => {
+    assertGrantEnabled(client, OauthGrantType.TokenExchange);
+
+    if (!client.tokenExchangeAudience) {
+      throw new BadRequestError({
+        message:
+          "This application has no token exchange audience configured, so subject tokens cannot be verified. Set one on the application under Organization Settings > OAuth Applications."
+      });
+    }
+
+    const { oidcConfig, rootOrg } = await getActiveOidcConfigOrThrow(client.orgId);
+
+    const { subject } = await verifySubjectToken({
+      subjectToken: dto.subjectToken,
+      oidcConfig,
+      expectedAudience: client.tokenExchangeAudience
+    });
+
+    const userAlias = await userAliasDAL.findOne({
+      externalId: subject,
+      orgId: rootOrg.id,
+      aliasType: UserAliasType.OIDC
+    });
+
+    if (!userAlias) {
+      throw new UnauthorizedError({
+        message:
+          "The user this token identifies has not signed in to Infisical through your organization's OIDC SSO yet. They need to complete a browser sign-in once before an application can act on their behalf."
+      });
+    }
+
+    const user = await userDAL.findById(userAlias.userId);
+    if (!user) {
+      throw new UnauthorizedError({ message: "The user this token identifies no longer has an Infisical account." });
+    }
+
+    await permissionService.getOrgPermission({
+      actor: ActorType.USER,
+      actorId: user.id,
+      orgId: client.orgId,
+      actorAuthMethod: AuthMethod.OIDC,
+      actorOrgId: client.orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+
+    const { isMfaRequired } = getRequiredMfaMethod(rootOrg, user);
+    if (isMfaRequired && !client.tokenExchangeIdpSatisfiesMfa) {
+      throw new UnauthorizedError({
+        message:
+          "Multi-factor authentication is required for this user, and this application has not been marked as relying on an identity provider that enforces it. An organization admin can enable that on the application under Organization Settings > OAuth Applications."
+      });
+    }
+
+    const tokenSession = await tokenService.getUserTokenSession({
+      userId: user.id,
+      ip: dto.ip,
+      userAgent: getOauthClientSessionUserAgent(client.clientId)
+    });
+    if (!tokenSession) throw new BadRequestError({ message: "Failed to create user token session" });
+
+    const { accessTokenExpiresIn } = await getTokenLifetimes(client.orgId);
+
+    const accessToken = signOauthToken(
+      {
+        authMethod: AuthMethod.OIDC,
+        userId: user.id,
+        tokenVersionId: tokenSession.id,
+        organizationId: client.orgId,
+        isMfaVerified: client.tokenExchangeIdpSatisfiesMfa || undefined,
+        delegation: OauthDelegationMode.Full,
+        tokenType: AuthTokenType.ACCESS_TOKEN,
+        version: tokenSession.accessVersion,
+        oauthClientId: client.clientId
+      },
+      accessTokenExpiresIn
+    );
+
+    await auditLogService.createAuditLog({
+      ipAddress: dto.ip,
+      userAgent: dto.userAgent,
+      orgId: client.orgId,
+      actor: {
+        type: ActorType.USER,
+        metadata: {
+          userId: user.id,
+          email: user.email,
+          username: user.username,
+          authMethod: AuthMethod.OIDC
+        }
+      },
+      event: {
+        type: EventType.OAUTH_CLIENT_TOKEN_EXCHANGE,
+        metadata: {
+          clientDbId: client.id,
+          clientId: client.clientId,
+          clientName: client.name,
+          subjectUserId: user.id,
+          subjectExternalId: subject,
+          tokenVersionId: tokenSession.id
+        }
+      }
+    });
+
+    return {
+      access_token: accessToken,
+      issued_token_type: OauthTokenType.AccessToken,
+      token_type: "Bearer" as const,
+      expires_in: expiresInToSeconds(accessTokenExpiresIn)
+    };
+  };
+
   const exchangeToken = async (dto: TOauthTokenExchangeDTO) => {
     const client = await authenticateClient(dto.clientId, dto.clientSecret);
 
-    if (dto.grantType === "authorization_code") {
+    if (dto.grantType === OauthGrantType.TokenExchange) {
+      return exchangeSubjectToken(client, dto);
+    }
+
+    if (dto.grantType === OauthGrantType.AuthorizationCode) {
+      assertGrantEnabled(client, OauthGrantType.AuthorizationCode);
+
       const codeKey = KeyStorePrefixes.OauthAuthorizationCode(dto.code);
       const codePayloadRaw = await keyStore.getItem(codeKey);
       if (!codePayloadRaw) {
@@ -441,6 +705,8 @@ export const oauthClientServiceFactory = ({
         scope: grantedScopes.join(" ")
       };
     }
+
+    assertGrantEnabled(client, OauthGrantType.RefreshToken);
 
     const { decodedToken, tokenVersion, isGraceHit } = await tokenService.validateRefreshToken(dto.refreshToken, {
       allowOauthClientToken: true

@@ -851,14 +851,6 @@ export const registerRoutes = async (
   });
 
   const oauthClientDAL = oauthClientDALFactory(db);
-  const oauthClientService = oauthClientServiceFactory({
-    oauthClientDAL,
-    permissionService,
-    keyStore,
-    tokenService,
-    orgDAL,
-    userDAL
-  });
 
   const alertChannelRecipientDAL = alertChannelRecipientDALFactory(db);
 
@@ -1104,6 +1096,19 @@ export const registerRoutes = async (
       pamAccountDAL
     })
   });
+
+  const oauthClientService = oauthClientServiceFactory({
+    oauthClientDAL,
+    permissionService,
+    keyStore,
+    tokenService,
+    orgDAL,
+    userDAL,
+    oidcConfigDAL,
+    userAliasDAL,
+    auditLogService
+  });
+
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
