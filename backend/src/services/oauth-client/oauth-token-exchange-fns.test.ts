@@ -51,6 +51,15 @@ const nextJwksUri = () => {
   return `https://adfs.example.com/adfs/discovery/keys?case=${jwksUriCounter}`;
 };
 
+// Same reason, for the discovery document cache: a case that wants its own mocked document needs its own
+// URL, or it reads the previous case's cached one.
+let discoveryCaseCounter = 0;
+const nextIssuerBase = () => {
+  discoveryCaseCounter += 1;
+  return `${ISSUER}/case-${discoveryCaseCounter}`;
+};
+const nextDiscoveryUrl = () => `${nextIssuerBase()}/.well-known/openid-configuration`;
+
 const buildOidcConfig = (overrides: Partial<TOidcConfigs> = {}): TOidcConfigs =>
   ({
     id: "11111111-1111-1111-1111-111111111111",
@@ -164,7 +173,7 @@ describe("resolveOidcTrustAnchor", () => {
 
     const oidcConfig = buildOidcConfig({
       configurationType: OIDCConfigurationType.DISCOVERY_URL,
-      discoveryURL: `${ISSUER}/.well-known/openid-configuration`,
+      discoveryURL: nextDiscoveryUrl(),
       issuer: null,
       jwksUri: null
     });
@@ -179,12 +188,13 @@ describe("resolveOidcTrustAnchor", () => {
 
   test("appends the well-known path when the discovery URL is an issuer base", async () => {
     safeGet.mockResolvedValue({ data: { jwks_uri: nextJwksUri(), issuer: ISSUER } });
+    const issuerBase = nextIssuerBase();
 
     await resolveOidcTrustAnchor(
-      buildOidcConfig({ configurationType: OIDCConfigurationType.DISCOVERY_URL, discoveryURL: `${ISSUER}/` })
+      buildOidcConfig({ configurationType: OIDCConfigurationType.DISCOVERY_URL, discoveryURL: `${issuerBase}/` })
     );
 
-    expect(safeGet).toHaveBeenCalledWith(`${ISSUER}/.well-known/openid-configuration`);
+    expect(safeGet).toHaveBeenCalledWith(`${issuerBase}/.well-known/openid-configuration`);
   });
 
   test("prefers the stored issuer over the discovered one", async () => {
@@ -193,7 +203,7 @@ describe("resolveOidcTrustAnchor", () => {
     const anchor = await resolveOidcTrustAnchor(
       buildOidcConfig({
         configurationType: OIDCConfigurationType.DISCOVERY_URL,
-        discoveryURL: `${ISSUER}/.well-known/openid-configuration`
+        discoveryURL: nextDiscoveryUrl()
       })
     );
 
@@ -207,7 +217,7 @@ describe("resolveOidcTrustAnchor", () => {
       resolveOidcTrustAnchor(
         buildOidcConfig({
           configurationType: OIDCConfigurationType.DISCOVERY_URL,
-          discoveryURL: `${ISSUER}/.well-known/openid-configuration`
+          discoveryURL: nextDiscoveryUrl()
         })
       )
     ).rejects.toThrow(/Could not reach your organization's identity provider/);
@@ -220,7 +230,7 @@ describe("resolveOidcTrustAnchor", () => {
       resolveOidcTrustAnchor(
         buildOidcConfig({
           configurationType: OIDCConfigurationType.DISCOVERY_URL,
-          discoveryURL: `${ISSUER}/.well-known/openid-configuration`
+          discoveryURL: nextDiscoveryUrl()
         })
       )
     ).rejects.toThrow(/did not publish a 'jwks_uri'/);
@@ -232,6 +242,66 @@ describe("resolveOidcTrustAnchor", () => {
         buildOidcConfig({ configurationType: OIDCConfigurationType.DISCOVERY_URL, discoveryURL: null })
       )
     ).rejects.toThrow(/no discovery URL/);
+  });
+
+  // Token exchange runs on every request the middleware makes, so the discovery document must not be a
+  // per-exchange round trip to the identity provider.
+  test("fetches the discovery document once across repeated resolutions", async () => {
+    safeGet.mockResolvedValue({ data: { jwks_uri: nextJwksUri(), issuer: ISSUER } });
+    const discoveryURL = nextDiscoveryUrl();
+    const build = () => buildOidcConfig({ configurationType: OIDCConfigurationType.DISCOVERY_URL, discoveryURL });
+
+    const [first, second, third] = await Promise.all([
+      resolveOidcTrustAnchor(build()),
+      resolveOidcTrustAnchor(build()),
+      resolveOidcTrustAnchor(build())
+    ]);
+    await resolveOidcTrustAnchor(build());
+
+    // Concurrent cold-entry callers coalesce onto one fetch rather than each opening their own.
+    expect(safeGet).toHaveBeenCalledTimes(1);
+    expect(second).toEqual(first);
+    expect(third).toEqual(first);
+  });
+
+  // Caching a failure would stretch a provider blip into a full TTL of failures.
+  test("retries after a failed discovery fetch instead of caching the failure", async () => {
+    const discoveryURL = nextDiscoveryUrl();
+    const build = () => buildOidcConfig({ configurationType: OIDCConfigurationType.DISCOVERY_URL, discoveryURL });
+
+    safeGet.mockRejectedValueOnce(new Error("ECONNREFUSED 10.0.0.5:443"));
+    await expect(resolveOidcTrustAnchor(build())).rejects.toThrow(/Could not reach/);
+
+    const discoveredJwksUri = nextJwksUri();
+    safeGet.mockResolvedValue({ data: { jwks_uri: discoveredJwksUri, issuer: ISSUER } });
+
+    await expect(resolveOidcTrustAnchor(build())).resolves.toMatchObject({ jwksUri: discoveredJwksUri });
+    expect(safeGet).toHaveBeenCalledTimes(2);
+  });
+
+  // The algorithm and the preferred issuer come from the org's own configuration, so only the fetch is
+  // cached: an admin editing either must not have to wait out the discovery TTL.
+  test("does not cache configuration read from the organization's own record", async () => {
+    safeGet.mockResolvedValue({ data: { jwks_uri: nextJwksUri(), issuer: ISSUER } });
+    const discoveryURL = nextDiscoveryUrl();
+
+    const before = await resolveOidcTrustAnchor(
+      buildOidcConfig({ configurationType: OIDCConfigurationType.DISCOVERY_URL, discoveryURL })
+    );
+    expect(before.algorithm).toEqual(OIDCJWTSignatureAlgorithm.RS256);
+
+    const after = await resolveOidcTrustAnchor(
+      buildOidcConfig({
+        configurationType: OIDCConfigurationType.DISCOVERY_URL,
+        discoveryURL,
+        jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm.RS512,
+        issuer: "https://adfs.example.com/updated"
+      })
+    );
+
+    expect(after.algorithm).toEqual(OIDCJWTSignatureAlgorithm.RS512);
+    expect(after.issuer).toEqual("https://adfs.example.com/updated");
+    expect(safeGet).toHaveBeenCalledTimes(1);
   });
 });
 
