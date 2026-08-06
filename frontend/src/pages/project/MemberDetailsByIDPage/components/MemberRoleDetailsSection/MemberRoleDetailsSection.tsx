@@ -6,7 +6,7 @@ import picomatch from "picomatch";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Lottie, Modal, ModalContent } from "@app/components/v2";
+import { DeleteActionModal, Lottie } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -16,6 +16,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -52,7 +57,8 @@ import { TProjectRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import { canModifyByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
 
-import { MemberRoleModify } from "./MemberRoleModify";
+import { MemberMultiRoleModify } from "./MemberMultiRoleModify";
+import { MemberSingleRoleModify } from "./MemberSingleRoleModify";
 
 type Props = {
   membershipDetails: TWorkspaceUser;
@@ -90,6 +96,7 @@ export const MemberRoleDetailsSection = ({
 
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deleteRole",
+    "modifyManyRoles",
     "modifyRole"
   ] as const);
   const { mutateAsync: updateUserWorkspaceRole } = useUpdateUserWorkspaceRole();
@@ -154,7 +161,7 @@ export const MemberRoleDetailsSection = ({
                       size="xs"
                       variant="outline"
                       onClick={() => {
-                        handlePopUpOpen("modifyRole");
+                        handlePopUpOpen("modifyManyRoles");
                       }}
                       isDisabled={isEditDisabled}
                     >
@@ -285,6 +292,22 @@ export const MemberRoleDetailsSection = ({
                                     <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
+                                        handlePopUpOpen("modifyRole", roleDetails);
+                                      }}
+                                      isDisabled={!isAllowed || !canModifyMemberRoles}
+                                    >
+                                      Modify Role
+                                    </DropdownMenuItem>
+                                  )}
+                                </ProjectPermissionCan>
+                                <ProjectPermissionCan
+                                  I={ProjectPermissionActions.Edit}
+                                  a={ProjectPermissionSub.Member}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
                                         handlePopUpOpen("deleteRole", {
                                           id: roleDetails?.id,
                                           slug: roleDetails?.customRoleName || roleDetails?.role
@@ -325,7 +348,7 @@ export const MemberRoleDetailsSection = ({
                           variant="project"
                           size="xs"
                           onClick={() => {
-                            handlePopUpOpen("modifyRole");
+                            handlePopUpOpen("modifyManyRoles");
                           }}
                           isDisabled={isEditDisabled}
                         >
@@ -361,20 +384,46 @@ export const MemberRoleDetailsSection = ({
         onChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
         onDeleteApproved={() => handleRoleDelete()}
       />
-      <Modal
-        isOpen={popUp.modifyRole.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("modifyRole", isOpen)}
+      <Dialog
+        open={popUp.modifyManyRoles.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("modifyManyRoles", isOpen)}
       >
-        <ModalContent
-          title="Roles"
-          subTitle="Select one or more of the pre-defined or custom roles to configure project permissions."
-        >
-          <MemberRoleModify
+        <DialogContent className="overflow-visible sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Roles</DialogTitle>
+            <DialogDescription>
+              Select one or more of the pre-defined or custom roles to configure project
+              permissions.
+            </DialogDescription>
+          </DialogHeader>
+          <MemberMultiRoleModify
             projectMember={membershipDetails}
             onOpenUpgradeModal={onOpenUpgradeModal}
+            onSuccess={() => handlePopUpClose("modifyManyRoles")}
           />
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={popUp.modifyRole.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("modifyRole", isOpen)}
+      >
+        <DialogContent className="overflow-visible sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Edit Role</DialogTitle>
+            <DialogDescription>
+              Update this role assignment and its access duration.
+            </DialogDescription>
+          </DialogHeader>
+          {popUp.modifyRole.data && (
+            <MemberSingleRoleModify
+              projectMember={membershipDetails}
+              role={popUp.modifyRole.data as TWorkspaceUser["roles"][number]}
+              onOpenUpgradeModal={onOpenUpgradeModal}
+              onSuccess={() => handlePopUpClose("modifyRole")}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

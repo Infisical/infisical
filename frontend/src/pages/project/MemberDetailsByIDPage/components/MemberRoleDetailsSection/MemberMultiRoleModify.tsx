@@ -1,10 +1,9 @@
 /* eslint-disable no-nested-ternary */
 import { useMemo } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faCaretDown, faClock, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, formatDistance } from "date-fns";
+import { ChevronDownIcon, ClockIcon, PlusIcon, TrashIcon } from "lucide-react";
 import ms from "ms";
 import picomatch from "picomatch";
 import { twMerge } from "tailwind-merge";
@@ -13,20 +12,27 @@ import { z } from "zod";
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { Lottie } from "@app/components/v2";
 import {
+  Badge,
   Button,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   IconButton,
   Input,
   Popover,
   PopoverContent,
   PopoverTrigger,
   Select,
+  SelectContent,
   SelectItem,
-  Spinner,
-  Tag,
-  Tooltip
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionMemberActions,
@@ -45,6 +51,14 @@ import {
   filterByGrantConditions,
   getMemberAssignRoleConditions
 } from "@app/lib/fn/permission";
+
+const TEMPORARY_RANGE_ERROR = "Only valid time values are accepted (1h, 20m, 2d).";
+
+const isValidTemporaryRange = (value?: string) => {
+  if (!value?.trim()) return false;
+  const parsedMs = ms(value);
+  return typeof parsedMs === "number" && Number.isFinite(parsedMs) && parsedMs > 0;
+};
 
 const roleFormSchema = z.object({
   roles: z
@@ -69,9 +83,14 @@ type TRoleForm = z.infer<typeof roleFormSchema>;
 type Props = {
   projectMember: TWorkspaceUser;
   onOpenUpgradeModal: () => void;
+  onSuccess?: () => void;
 };
 
-export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) => {
+export const MemberMultiRoleModify = ({
+  projectMember,
+  onOpenUpgradeModal,
+  onSuccess
+}: Props) => {
   const { subscription } = useSubscription();
   const { projectId, currentProject } = useProject();
   const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(
@@ -129,6 +148,8 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal }: Pro
     return [currentRole, ...assignable];
   };
 
+  const isEditDisabled = isMemberEditDisabled || !canModifyMemberRoles;
+
   const roleForm = useForm<TRoleForm>({
     resolver: zodResolver(roleFormSchema),
     values: {
@@ -153,7 +174,6 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal }: Pro
   });
 
   const formRoleField = roleForm.watch("roles");
-
   const updateMembershipRole = useUpdateUserWorkspaceRole();
 
   const handleRoleUpdate = async (data: TRoleForm) => {
@@ -190,18 +210,20 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal }: Pro
       roles: sanitizedRoles
     });
     createNotification({ text: "Successfully updated roles", type: "success" });
+    onSuccess?.();
   };
 
-  if (isRolesLoading)
+  if (isRolesLoading) {
     return (
-      <div className="flex w-full items-center justify-center p-8">
-        <Spinner />
+      <div className="flex h-40 w-full items-center justify-center">
+        <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
       </div>
     );
+  }
 
   return (
     <form onSubmit={roleForm.handleSubmit(handleRoleUpdate)}>
-      <div className="mt-2 flex flex-col space-y-2">
+      <div className="flex flex-col gap-3">
         {selectedRoleList.fields.map(({ id }, index) => {
           const { temporaryAccess } = formRoleField[index];
           const isTemporary = temporaryAccess?.isTemporary;
@@ -209,194 +231,238 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal }: Pro
             temporaryAccess.isTemporary &&
             new Date() > new Date(temporaryAccess.temporaryAccessEndTime || "");
 
+          let durationVariant: "outline" | "warning" | "danger" = "outline";
+          let text = "Permanent";
+          let toolTipText = "Non-Expiring Access";
+
+          if (isTemporary) {
+            if (isExpired) {
+              durationVariant = "danger";
+              text = "Access Expired";
+              toolTipText = "Timed Access Expired";
+            } else {
+              durationVariant = "warning";
+              text = formatDistance(
+                new Date(temporaryAccess.temporaryAccessEndTime || ""),
+                new Date()
+              );
+              toolTipText = `Until ${format(
+                new Date(temporaryAccess.temporaryAccessEndTime || ""),
+                "yyyy-MM-dd HH:mm:ss"
+              )}`;
+            }
+          }
+
           return (
-            <div key={id} className="flex items-center space-x-2">
+            <div key={id} className="flex items-end gap-2">
               <Controller
                 control={roleForm.control}
                 name={`roles.${index}.slug`}
-                render={({ field: { onChange, ...field } }) => {
+                render={({ field }) => {
                   const rolesForSelect = getRolesForSelect(field.value);
                   return (
-                    <Select
-                      defaultValue={field.value}
-                      {...field}
-                      isDisabled={isMemberEditDisabled || !canModifyMemberRoles}
-                      onValueChange={(e) => onChange(e)}
-                      className="w-full bg-mineshaft-600 duration-200 hover:bg-mineshaft-500"
-                      containerClassName="w-1/2"
-                    >
-                      {rolesForSelect.map(({ name, slug, id: projectRoleId }) => {
-                        const isAssignable = assignableRoleSlugs.has(slug);
-                        if (!isAssignable) {
-                          return (
-                            <Tooltip
-                              key={projectRoleId ?? slug}
-                              content="You don't have permission to assign this role"
-                            >
-                              <div>
-                                <SelectItem
-                                  value={slug}
-                                  isDisabled
-                                  className="cursor-not-allowed opacity-50"
-                                >
-                                  {name}
-                                </SelectItem>
-                              </div>
-                            </Tooltip>
-                          );
-                        }
-                        return (
-                          <SelectItem value={slug} key={projectRoleId}>
-                            {name}
-                          </SelectItem>
-                        );
-                      })}
-                    </Select>
+                    <Field className="min-w-0 flex-1">
+                      {index === 0 && <FieldLabel>Role</FieldLabel>}
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={isEditDisabled}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent position="popper" className="z-[70]">
+                          {rolesForSelect.map(({ name, slug, id: projectRoleId }) => {
+                            const isAssignable = assignableRoleSlugs.has(slug);
+                            return (
+                              <SelectItem
+                                value={slug}
+                                key={projectRoleId}
+                                disabled={!isAssignable}
+                                description={
+                                  isAssignable
+                                    ? undefined
+                                    : "You don't have permission to assign this role"
+                                }
+                              >
+                                {name}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </Field>
                   );
                 }}
               />
-              <Popover>
-                <PopoverTrigger disabled={isMemberEditDisabled || !canModifyMemberRoles} asChild>
-                  <div className="grow">
-                    <Tooltip
-                      content={
-                        temporaryAccess?.isTemporary
-                          ? isExpired
-                            ? "Timed Access Expired"
-                            : `Until ${format(
-                                new Date(temporaryAccess.temporaryAccessEndTime || ""),
-                                "yyyy-MM-dd HH:mm:ss"
-                              )}`
-                          : "Non-Expiring Access"
-                      }
-                    >
-                      <Button
-                        variant="outline_bg"
-                        leftIcon={isTemporary ? <FontAwesomeIcon icon={faClock} /> : undefined}
-                        rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
-                        isDisabled={isMemberEditDisabled || !canModifyMemberRoles}
-                        className={twMerge(
-                          "w-full border-none bg-mineshaft-600 py-2.5 text-xs capitalize hover:bg-mineshaft-500",
-                          isTemporary && "text-primary",
-                          isExpired && "text-red-600"
-                        )}
-                      >
-                        {temporaryAccess?.isTemporary
-                          ? isExpired
-                            ? "Access Expired"
-                            : formatDistance(
-                                new Date(temporaryAccess.temporaryAccessEndTime || ""),
-                                new Date()
-                              )
-                          : "Permanent"}
-                      </Button>
-                    </Tooltip>
-                  </div>
-                </PopoverTrigger>
-                <PopoverContent
-                  arrowClassName="fill-gray-600"
-                  side="right"
-                  sideOffset={12}
-                  hideCloseBtn
-                  className="border border-gray-600 pt-4"
-                >
-                  <div className="flex flex-col space-y-4">
-                    <div className="border-b border-b-gray-700 pb-2 text-sm text-mineshaft-300">
-                      Configure Timed Access
-                    </div>
-                    {isExpired && <Tag colorSchema="red">Expired</Tag>}
-                    <Controller
-                      control={roleForm.control}
-                      defaultValue="1h"
-                      name={`roles.${index}.temporaryAccess.temporaryRange`}
-                      render={({ field, fieldState: { error } }) => (
-                        <FormControl
-                          label={<TtlFormLabel label="Validity" />}
-                          isError={Boolean(error?.message)}
-                          errorText={error?.message}
+              <Field className="w-44 shrink-0">
+                {index === 0 && <FieldLabel>Duration</FieldLabel>}
+                <Popover>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant={durationVariant}
+                          isDisabled={isEditDisabled}
+                          className="w-full capitalize"
                         >
-                          <Input {...field} />
-                        </FormControl>
-                      )}
-                    />
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        size="xs"
-                        onClick={() => {
-                          const temporaryRange = roleForm.getValues(
-                            `roles.${index}.temporaryAccess.temporaryRange`
-                          );
-                          if (!temporaryRange) {
-                            roleForm.setError(
-                              `roles.${index}.temporaryAccess.temporaryRange`,
-                              { type: "required", message: "Required" },
-                              { shouldFocus: true }
-                            );
-                            return;
-                          }
-                          roleForm.clearErrors(`roles.${index}.temporaryAccess.temporaryRange`);
-                          roleForm.setValue(
-                            `roles.${index}.temporaryAccess`,
-                            {
-                              isTemporary: true,
-                              temporaryAccessStartTime: new Date().toISOString(),
-                              temporaryRange,
-                              temporaryAccessEndTime: new Date(
-                                new Date().getTime() + ms(temporaryRange)
-                              ).toISOString()
-                            },
-                            { shouldDirty: true }
+                          {isTemporary && <ClockIcon />}
+                          {text}
+                          <ChevronDownIcon />
+                        </Button>
+                      </PopoverTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>{toolTipText}</TooltipContent>
+                  </Tooltip>
+                  <PopoverContent
+                    side="right"
+                    className="z-[70]"
+                    onWheel={(e) => e.stopPropagation()}
+                    onOpenAutoFocus={(e) => e.preventDefault()}
+                  >
+                    <div className="flex flex-col space-y-4">
+                      <div className="border-b border-b-border pb-2 text-sm text-muted">
+                        Configure Timed Access
+                      </div>
+                      {isExpired && <Badge variant="danger">Expired</Badge>}
+                      <Controller
+                        control={roleForm.control}
+                        defaultValue="1h"
+                        name={`roles.${index}.temporaryAccess.temporaryRange`}
+                        render={({ field, fieldState: { error } }) => {
+                          const showInvalidError =
+                            Boolean(field.value) && !isValidTemporaryRange(field.value);
+                          const errorMessage = showInvalidError
+                            ? TEMPORARY_RANGE_ERROR
+                            : error?.message;
+                          const canGrant = isValidTemporaryRange(field.value);
+
+                          return (
+                            <>
+                              <Field>
+                                <FieldLabel>
+                                  <TtlFormLabel label="Validity" />
+                                </FieldLabel>
+                                <Input
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  isError={Boolean(errorMessage)}
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    const nextValue = e.target.value;
+                                    if (!nextValue) {
+                                      roleForm.setError(
+                                        `roles.${index}.temporaryAccess.temporaryRange`,
+                                        { type: "required", message: "Required" },
+                                        { shouldFocus: false }
+                                      );
+                                      return;
+                                    }
+                                    if (!isValidTemporaryRange(nextValue)) {
+                                      roleForm.setError(
+                                        `roles.${index}.temporaryAccess.temporaryRange`,
+                                        {
+                                          type: "validate",
+                                          message: TEMPORARY_RANGE_ERROR
+                                        },
+                                        { shouldFocus: false }
+                                      );
+                                      return;
+                                    }
+                                    roleForm.clearErrors(
+                                      `roles.${index}.temporaryAccess.temporaryRange`
+                                    );
+                                  }}
+                                />
+                                {errorMessage && <FieldError>{errorMessage}</FieldError>}
+                              </Field>
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  size="xs"
+                                  variant="outline"
+                                  isDisabled={!canGrant}
+                                  onClick={() => {
+                                    const temporaryRange = field.value;
+                                    if (!isValidTemporaryRange(temporaryRange)) {
+                                      roleForm.setError(
+                                        `roles.${index}.temporaryAccess.temporaryRange`,
+                                        {
+                                          type: "validate",
+                                          message: TEMPORARY_RANGE_ERROR
+                                        },
+                                        { shouldFocus: true }
+                                      );
+                                      return;
+                                    }
+                                    roleForm.clearErrors(
+                                      `roles.${index}.temporaryAccess.temporaryRange`
+                                    );
+                                    roleForm.setValue(
+                                      `roles.${index}.temporaryAccess`,
+                                      {
+                                        isTemporary: true,
+                                        temporaryAccessStartTime: new Date().toISOString(),
+                                        temporaryRange,
+                                        temporaryAccessEndTime: new Date(
+                                          new Date().getTime() + ms(temporaryRange)
+                                        ).toISOString()
+                                      },
+                                      { shouldDirty: true }
+                                    );
+                                  }}
+                                >
+                                  {isTemporary ? "Restart" : "Grant"}
+                                </Button>
+                                {isTemporary && (
+                                  <Button
+                                    size="xs"
+                                    variant="danger"
+                                    onClick={() => {
+                                      roleForm.setValue(
+                                        `roles.${index}.temporaryAccess`,
+                                        { isTemporary: false },
+                                        { shouldDirty: true }
+                                      );
+                                    }}
+                                  >
+                                    Revoke Access
+                                  </Button>
+                                )}
+                              </div>
+                            </>
                           );
                         }}
-                      >
-                        {temporaryAccess.isTemporary ? "Restart" : "Grant"}
-                      </Button>
-                      {temporaryAccess.isTemporary && (
-                        <Button
-                          size="xs"
-                          variant="outline_bg"
-                          colorSchema="danger"
-                          onClick={() => {
-                            roleForm.setValue(`roles.${index}.temporaryAccess`, {
-                              isTemporary: false
-                            });
-                          }}
-                        >
-                          Revoke Access
-                        </Button>
-                      )}
+                      />
                     </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                  </PopoverContent>
+                </Popover>
+              </Field>
               <IconButton
-                variant="outline_bg"
-                className="border border-mineshaft-500 bg-mineshaft-600 py-3 hover:border-red/70 hover:bg-red/20"
-                ariaLabel="delete-role"
-                isDisabled={
-                  isMemberEditDisabled ||
-                  !canModifyMemberRoles ||
-                  selectedRoleList.fields.length === 1
-                }
+                size="md"
+                variant="outline"
+                aria-label="Remove role"
+                className="shrink-0 hover:border-danger/40 hover:bg-danger/10 hover:text-danger"
+                isDisabled={isEditDisabled || selectedRoleList.fields.length === 1}
                 onClick={() => {
                   if (selectedRoleList.fields.length > 1) {
                     selectedRoleList.remove(index);
                   }
                 }}
               >
-                <FontAwesomeIcon icon={faTrash} />
+                <TrashIcon />
               </IconButton>
             </div>
           );
         })}
       </div>
-      <div className="mt-4 flex justify-between space-x-2">
+      <div className="mt-4 flex items-center justify-between gap-2">
         <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Member}>
           {(isAllowed) => (
             <Button
-              variant="outline_bg"
-              isDisabled={!isAllowed}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              type="button"
+              variant="outline"
+              isDisabled={!isAllowed || isEditDisabled}
               onClick={() =>
                 selectedRoleList.append({
                   slug: ProjectMembershipRole.Member,
@@ -404,19 +470,21 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal }: Pro
                 })
               }
             >
+              <PlusIcon />
               Add Role
             </Button>
           )}
         </ProjectPermissionCan>
         <Button
           type="submit"
+          variant="project"
           className={twMerge(
             "transition-all",
             "cursor-default opacity-0",
             roleForm.formState.isDirty && "cursor-pointer opacity-100"
           )}
-          isDisabled={!roleForm.formState.isDirty}
-          isLoading={roleForm.formState.isSubmitting}
+          isDisabled={!roleForm.formState.isDirty || isEditDisabled}
+          isPending={roleForm.formState.isSubmitting}
         >
           Save Roles
         </Button>
