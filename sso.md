@@ -97,6 +97,11 @@ A one-shot `keycloak-config` sidecar runs alongside it and sets the built-in `ma
 | JWT signature algorithm | `RS256` |
 | Redirect URI (registered) | `http://localhost:8080/api/v1/sso/oidc/callback` |
 | Seeded users | `john@oidc.com`, `alice@oidc.com`, `admin@oidc.com` (password `password123!`) |
+| Second client (token exchange only) | `infisical-mcp` / `infisical-mcp-client-secret` |
+
+The realm defines a second client, `infisical-mcp`, purely for
+[token exchange testing](#testing-oauth-token-exchange-rfc-8693). It stands in for trusted middleware:
+direct access grants only, no browser redirect, and it is never used for SSO login.
 
 ### Discovery URL (how the networking works)
 
@@ -154,6 +159,98 @@ Then test the login two ways:
    rejected. `make seed-dev-oidc` does this for you.
 4. Save, then enable OIDC.
 </details>
+
+### Testing OAuth token exchange (RFC 8693)
+
+Token exchange lets trusted middleware present a user's token from your IdP and receive that user's
+Infisical token. Its trust anchor is the org's OIDC SSO config, so everything above has to be working
+first. See [OAuth Token Exchange](docs/documentation/platform/oauth-token-exchange) for the product docs.
+
+No license is needed. `plan.oidcSSO` is only checked when creating or updating an OIDC config through
+the API, and `make seed-dev-oidc` writes the row directly.
+
+**1. Seed, then confirm the trust anchor resolves.** This is what decides whether the `iss` check
+passes, so check it rather than debugging a 401 later:
+
+```bash
+make seed-dev-oidc
+
+docker compose -f docker-compose.dev.yml exec -T backend \
+  sh -c 'curl -s http://keycloak:8080/realms/infisical/.well-known/openid-configuration' \
+  | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["issuer"]); print(d["jwks_uri"])'
+```
+
+Expect the issuer `http://localhost:8088/realms/infisical` (pinned by `KC_HOSTNAME`, and what tokens
+actually carry) and a `jwks_uri` on `keycloak:8080` that the backend can reach. The seeded config
+stores no issuer of its own, so the backend falls back to the discovered one.
+
+**2. Register the application.** Sign in at http://localhost:8080 as `admin@oidc.com` /
+`password123!`, then **Organization Settings > OAuth Applications > Add Application**. Choose flow
+**Token exchange**, set **Audience** to `infisical-mcp`, and leave the identity-provider MFA
+declaration off. Copy the client id and secret.
+
+**3. Get a subject token and exchange it.**
+
+```bash
+CLIENT_ID="<paste>"; CLIENT_SECRET="<paste>"
+
+SUBJECT_TOKEN=$(curl -s -X POST \
+  http://localhost:8088/realms/infisical/protocol/openid-connect/token \
+  -d grant_type=password -d scope=openid \
+  -d client_id=infisical-mcp -d client_secret=infisical-mcp-client-secret \
+  -d username=admin@oidc.com -d password='password123!' \
+  | python3 -c 'import sys,json; print(json.load(sys.stdin)["id_token"])')
+
+curl -s -X POST http://localhost:8080/api/v1/oauth/token \
+  -u "$CLIENT_ID:$CLIENT_SECRET" \
+  -d grant_type=urn:ietf:params:oauth:grant-type:token-exchange \
+  -d subject_token="$SUBJECT_TOKEN" \
+  -d subject_token_type=urn:ietf:params:oauth:token-type:id_token | python3 -m json.tool
+```
+
+Use the **`id_token`**, not the access token. An ID token's `aud` is the requesting client by
+specification, so it is already `infisical-mcp`. The realm defines no audience mapper, so Keycloak's
+access token carries no `aud` at all (only `azp`) and is rejected.
+
+The response has `access_token`, `issued_token_type`, `token_type`, `expires_in`, and deliberately no
+`refresh_token` and no `scope`. Decode it and you should see `delegation: "full"`, no `scopes` claim,
+and the seeded admin's `userId`.
+
+**4. Check what the token can do.**
+
+```bash
+TOKEN="<paste access_token>"
+
+# Introspection: 200 {"active":true} means it authenticated as AuthMode.OAUTH on a live session.
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/api/v1/oauth/validate \
+  -H "Authorization: Bearer $TOKEN"
+
+# Account routes stay unreachable for delegated tokens, so this must be 403.
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/api/v1/user/me/totp \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Create a project and a secret in the `oidc` org, then read it with `GET /api/v3/secrets/raw` using the
+token. A 200 proves full delegation carries the user's real permissions. The org's **Audit Logs** should
+show the exchange attributed to `admin@oidc.com` with the acting application in the metadata.
+
+**5. Prove the alias requirement.** `john@oidc.com` has no seeded alias, so repeating step 3 with
+`username=john@oidc.com` is rejected. Complete one SSO login as john via
+`http://localhost:8080/api/v1/sso/oidc/login?orgSlug=oidc`, then retry: it now succeeds, because
+Keycloak issues the same `sub` to both clients and the browser login wrote the alias the exchange
+looks up.
+
+**Cases worth checking:**
+
+| Case | How | Expect |
+| --- | --- | --- |
+| Cross-application replay | subject token from `infisical-dev` | 401, audience does not match |
+| Access token instead of ID token | send `access_token` | 401, audience does not match |
+| Tampered signature | change a character in the third JWT segment | 401, could not be verified |
+| `scope` supplied | add `-d scope=secrets:read` | 400, scope not supported |
+| SSO disabled | `update oidc_configs set "isActive"=false;` | 400, naming the SSO settings |
+| MFA required | enforce org MFA, leave the application flag off | 401, MFA required |
+| Unregistered grant | use an authorization-code application's credentials | 401, not registered for the grant |
 
 ---
 
@@ -382,3 +479,6 @@ curl -sI "http://localhost:8080/api/v1/sso/redirect/saml2/organizations/saml" | 
 | SAML login fails with `assertion audience mismatch` | Authentik's SAML provider audience must equal `SITE_URL` (`http://localhost:8080`); the seed sets this. If you changed `SITE_URL`, re-run `make seed-dev-saml` so Authentik's audience and the SAML config agree. |
 | Authentik unreachable or `Token invalid/expired` during the seed | Authentik takes ~40s after `make up-dev-saml` to finish bootstrapping (the worker applies blueprints and creates the API token). Wait for http://localhost:9100 to load, then re-run `make seed-dev-saml`. |
 | Locked out after enforcing SSO | Recover via http://localhost:8080/login/admin. |
+| Token exchange: `audience does not match` | You sent Keycloak's **access** token. The realm has no audience mapper, so its access tokens carry no `aud` claim. Use the `id_token` from the same response, whose `aud` is the client id. Also check the application's audience is `infisical-mcp` and not `infisical-dev`. |
+| Token exchange: `has not signed in to Infisical through your organization's OIDC SSO yet` | That user has no `user_aliases` row. `make seed-dev-oidc` only seeds one for `admin@oidc.com` (the realm pins its subject). For any other user, complete one browser SSO login first: `http://localhost:8080/api/v1/sso/oidc/login?orgSlug=oidc`. |
+| Token exchange: `has no OIDC SSO configuration` / `OIDC SSO is disabled` | The org has no active `oidc_configs` row. Run `make seed-dev-oidc`, and note it targets the `oidc` org unless you pass `ORG_ID=<uuid>`. |

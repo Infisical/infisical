@@ -920,6 +920,7 @@ interface UserActorMetadata {
   username: string;
   permission?: Record<string, unknown>;
   authMethod?: string;
+  oauthClientId?: string;
 }
 
 interface ServiceActorMetadata {
