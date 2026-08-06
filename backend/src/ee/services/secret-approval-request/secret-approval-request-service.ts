@@ -844,6 +844,22 @@ export const secretApprovalRequestServiceFactory = ({
           }
         }
 
+        // Back-fill secretId on approval commit rows so created secrets are traceable
+        if (newSecrets.length) {
+          const newSecretsByKey = new Map(newSecrets.map((s) => [s.key, s.id]));
+          await Promise.all(
+            secretCreationCommits
+              .filter((commit) => newSecretsByKey.has(commit.key))
+              .map((commit) =>
+                secretApprovalRequestSecretDAL.updateV2ById(
+                  commit.id,
+                  { secretId: newSecretsByKey.get(commit.key)! },
+                  tx
+                )
+              )
+          );
+        }
+
         const updationBlindIndexes = await Promise.all(
           secretUpdationCommits.map((el) => {
             const shouldComputeBlindIndex =
