@@ -18,8 +18,8 @@ import {
 } from "@app/helpers/pkiSyncs";
 import { PkiSync, PkiSyncExportFormat, PostSyncCommandVariable } from "@app/hooks/api/pkiSyncs";
 
-import { PostSyncCommandInput } from "./PostSyncCommandInput";
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
+import { PostSyncCommandInput } from "./PostSyncCommandInput";
 
 const COMMAND_PLACEHOLDERS: Partial<Record<PkiSync, string>> = {
   [PkiSync.LinuxServer]: "cp {{certificatePath}} /etc/nginx/ssl/live.pem && systemctl reload nginx",

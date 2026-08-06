@@ -8,6 +8,8 @@ import { PostSyncCommandVariable } from "@app/hooks/api/pkiSyncs";
 
 const OPEN_VARIABLE_PATTERN = /\{\{([a-zA-Z0-9_]*)$/;
 
+const TRAILING_VARIABLE_PATTERN = /^[a-zA-Z0-9_]*(\}\})?/;
+
 type Props = {
   id: string;
   value: string;
@@ -60,9 +62,9 @@ export const PostSyncCommandInput = ({
   const insertVariable = (variable: PostSyncCommandVariable) => {
     if (variableStart === -1) return;
 
-    const hasClosingBraces = value.slice(cursor, cursor + 2) === "}}";
     const before = value.slice(0, variableStart);
-    const after = value.slice(hasClosingBraces ? cursor + 2 : cursor);
+    const trailing = TRAILING_VARIABLE_PATTERN.exec(value.slice(cursor))?.[0] ?? "";
+    const after = value.slice(cursor + trailing.length);
     const caret = before.length + variable.length + 2;
 
     onChange(`${before}${variable}}}${after}`);
