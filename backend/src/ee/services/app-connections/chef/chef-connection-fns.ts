@@ -4,12 +4,13 @@ import https from "https";
 
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -23,6 +24,9 @@ import {
   TGetChefDataBagItem,
   TUpdateChefDataBagItem
 } from "./chef-connection-types";
+
+const CHEF_REQUEST_TIMEOUT_MS = 30_000;
+const CHEF_MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 
 export const getChefServerUrl = (serverUrl?: string) => {
   return serverUrl ? removeTrailingSlash(serverUrl) : IntegrationUrls.CHEF_API_URL;
@@ -169,6 +173,9 @@ export const requestWithChefGateway = async <T>(
             ...requestConfig.headers,
             Host: targetHost
           },
+          timeout: CHEF_REQUEST_TIMEOUT_MS,
+          maxContentLength: CHEF_MAX_RESPONSE_BYTES,
+          maxBodyLength: CHEF_MAX_RESPONSE_BYTES,
           ...(isHttps && {
             httpsAgent: new https.Agent({
               servername: targetHost
@@ -187,9 +194,16 @@ export const requestWithChefGateway = async <T>(
     );
   }
 
-  await blockLocalAndPrivateIpAddresses(url.toString(), false);
-
-  return request.request<T>(requestConfig);
+  // safeRequest validates the URL and pins the connection to the validated IPs,
+  // closing the DNS rebinding window between SSRF validation and connect
+  return safeRequest.request<T>({
+    ...requestConfig,
+    url: requestConfig.url as string,
+    allowPrivateIps: getConfig().ALLOW_INTERNAL_IP_CONNECTIONS,
+    timeout: CHEF_REQUEST_TIMEOUT_MS,
+    maxContentLength: CHEF_MAX_RESPONSE_BYTES,
+    maxBodyLength: CHEF_MAX_RESPONSE_BYTES
+  });
 };
 
 export const getChefConnectionListItem = () => {
@@ -221,13 +235,12 @@ export const validateChefConnectionCredentials = async (
       headers
     });
   } catch (error: unknown) {
-    if (error instanceof AxiosError) {
+    // withGatewayV2Proxy re-throws callback failures as BadRequestError, so wrap
+    // both error types to preserve the Chef operation context in the message
+    if (error instanceof AxiosError || error instanceof BadRequestError) {
       throw new BadRequestError({
         message: `Failed to validate Chef credentials: ${error.message || "Unknown error"}`
       });
-    }
-    if (error instanceof BadRequestError) {
-      throw error;
     }
     throw new BadRequestError({
       message: "Unable to validate Chef connection: verify credentials"
@@ -265,13 +278,10 @@ export const listChefDataBags = async (
       name
     }));
   } catch (error) {
-    if (error instanceof AxiosError) {
+    if (error instanceof AxiosError || error instanceof BadRequestError) {
       throw new BadRequestError({
         message: `Failed to list Chef data bags: ${error.message || "Unknown error"}`
       });
-    }
-    if (error instanceof BadRequestError) {
-      throw error;
     }
     throw new BadRequestError({
       message: "Unable to list Chef data bags"
@@ -308,13 +318,10 @@ export const listChefDataBagItems = async (
       name
     }));
   } catch (error) {
-    if (error instanceof AxiosError) {
+    if (error instanceof AxiosError || error instanceof BadRequestError) {
       throw new BadRequestError({
         message: `Failed to list Chef data bag items: ${error.message || "Unknown error"}`
       });
-    }
-    if (error instanceof BadRequestError) {
-      throw error;
     }
     throw new BadRequestError({
       message: "Unable to list Chef data bag items"
@@ -343,13 +350,10 @@ export const getChefDataBagItem = async (
 
     return res.data;
   } catch (error) {
-    if (error instanceof AxiosError) {
+    if (error instanceof AxiosError || error instanceof BadRequestError) {
       throw new BadRequestError({
         message: `Failed to get Chef data bag item: ${error.message || "Unknown error"}`
       });
-    }
-    if (error instanceof BadRequestError) {
-      throw error;
     }
     throw new BadRequestError({
       message: "Unable to get Chef data bag item"
@@ -385,13 +389,10 @@ export const createChefDataBagItem = async (
       headers
     });
   } catch (error) {
-    if (error instanceof AxiosError) {
+    if (error instanceof AxiosError || error instanceof BadRequestError) {
       throw new BadRequestError({
         message: `Failed to create Chef data bag item: ${error.message || "Unknown error"}`
       });
-    }
-    if (error instanceof BadRequestError) {
-      throw error;
     }
     throw new BadRequestError({
       message: "Unable to create Chef data bag item"
@@ -419,13 +420,10 @@ export const updateChefDataBagItem = async (
       headers
     });
   } catch (error) {
-    if (error instanceof AxiosError) {
+    if (error instanceof AxiosError || error instanceof BadRequestError) {
       throw new BadRequestError({
         message: `Failed to update Chef data bag item: ${error.message || "Unknown error"}`
       });
-    }
-    if (error instanceof BadRequestError) {
-      throw error;
     }
     throw new BadRequestError({
       message: "Unable to update Chef data bag item"
@@ -460,13 +458,10 @@ export const removeChefDataBagItem = async (
       headers
     });
   } catch (error) {
-    if (error instanceof AxiosError) {
+    if (error instanceof AxiosError || error instanceof BadRequestError) {
       throw new BadRequestError({
         message: `Failed to remove Chef data bag item: ${error.message || "Unknown error"}`
       });
-    }
-    if (error instanceof BadRequestError) {
-      throw error;
     }
     throw new BadRequestError({
       message: "Unable to remove Chef data bag item"
