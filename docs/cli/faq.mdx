@@ -58,3 +58,26 @@ Yes. This is simply a configuration file and contains no sensitive data.
   export INFISICAL_CUSTOM_HEADERS="Header1=value1 Header2=value2 Header3=value3"
   ```
 </Accordion>
+
+<Accordion title="Why do I keep getting logged out of the CLI?">
+  
+  By default, CLI login sessions expire after **30 days**. If you're experiencing more frequent logouts, this is controlled by the server-side `JWT_AUTH_LIFETIME` setting.
+  
+  This value is read by the Infisical server when issuing JWTs at login time. The CLI does not forward `JWT_AUTH_LIFETIME` to the server, so setting it only in the shell where you run `infisical` does not change existing tokens.
+  
+  For self-hosted deployments, configure `JWT_AUTH_LIFETIME` in your server's runtime or deployment environment and restart the server. Then log in again to receive a longer-lived token:
+  
+  ```bash
+  # Extend server-side timeout to 90 days
+  export JWT_AUTH_LIFETIME="90d"
+  ```
+  
+  **Available time formats:**
+  - Days: `"7d"`, `"14d"`, `"30d"`, `"90d"`, `"180d"`, `"365d"`
+  - Years: `"1y"`, `"2y"`
+  - Seconds: `"86400"` (24 hours)
+  
+  > **Note:** `m` means minutes in this syntax, not months. Use day-based values for longer durations, e.g. `"90d"` instead of `"3m"`.
+  
+  **Note:** The default is already set to 30 days, which should be sufficient for most use cases. If you need longer timeouts, consider your security requirements before extending this further.
+</Accordion>
