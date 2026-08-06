@@ -48,37 +48,25 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "createWebhook",
-      body: z
-        .object({
-          type: z.nativeEnum(WebhookType).default(WebhookType.GENERAL),
-          projectId: z.string().trim(),
-          environment: z.string().trim(),
-          webhookUrl: z.string().url().trim(),
-          webhookSecretKey: z.string().trim().optional(),
-          secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-          eventsFilter: z
-            .array(
-              z.object({
-                eventName: z.enum([...SUBSCRIBABLE_WEBHOOK_EVENTS] as [
-                  TSubscribableWebhookEvent,
-                  ...TSubscribableWebhookEvent[]
-                ])
-              })
-            )
-            .optional()
-        })
-        .superRefine((data, ctx) => {
-          if (data.type === WebhookType.SLACK) {
-            const parsed = new URL(data.webhookUrl);
-            if (parsed.hostname !== "hooks.slack.com") {
-              ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "Incoming Webhook URL is invalid.",
-                path: ["webhookUrl"]
-              });
-            }
-          }
-        }),
+      body: z.object({
+        type: z.nativeEnum(WebhookType).default(WebhookType.GENERAL),
+        projectId: z.string().trim(),
+        environment: z.string().trim(),
+        webhookUrl: z.string().url().trim(),
+        webhookSecretKey: z.string().trim().optional(),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        eventsFilter: z
+          .array(
+            z.object({
+              eventName: z.enum([...SUBSCRIBABLE_WEBHOOK_EVENTS] as [
+                TSubscribableWebhookEvent,
+                ...TSubscribableWebhookEvent[]
+              ])
+            })
+          )
+          .optional()
+      }),
+
       response: {
         200: z.object({
           message: z.string(),
