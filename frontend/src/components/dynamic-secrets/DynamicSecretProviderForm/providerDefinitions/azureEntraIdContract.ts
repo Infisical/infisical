@@ -56,7 +56,7 @@ export const azureEntraIdCreateFormSchema = createDynamicSecretProviderFormSchem
     .string()
     .min(1)
     .refine((value) => value.toLowerCase() === value, "Must be lowercase"),
-  selectedUsers: selectedUserSchema.array()
+  selectedUsers: selectedUserSchema.array().min(1, "Select at least one user")
 }) as z.ZodType<TAzureEntraIdCreateValues>;
 
 export const azureEntraIdEditFormSchema = editDynamicSecretProviderFormSchema(
