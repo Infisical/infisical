@@ -102,6 +102,9 @@ For each attribute, configure enforcement:
     rule as one from OpenSSL.
   - Wildcards apply within a single component. `*,example,com` matches any three-component sequence
     ending in `example`, `com`.
+  - Deny is the exception to position-by-position matching: a denied sequence is rejected wherever it
+    appears in the chain, so denying `example,com` also rejects `CN=host,DC=corp,DC=example,DC=com`.
+    Denying a domain therefore denies everything under it.
   - Add one rule per sequence you want to accept, deny, or require.
 </Note>
 

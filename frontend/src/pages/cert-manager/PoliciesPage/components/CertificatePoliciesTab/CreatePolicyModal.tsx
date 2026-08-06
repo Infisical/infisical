@@ -216,7 +216,7 @@ const STEPS = [
   }
 ] as const;
 
-const DomainComponentHelp = () => (
+const DomainComponentHelp = ({ isDenyRule }: { isDenyRule: boolean }) => (
   <Tooltip>
     <TooltipTrigger asChild>
       <IconButton variant="ghost" size="xs" aria-label="Domain component format">
@@ -231,11 +231,18 @@ const DomainComponentHelp = () => (
       <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
         <dt className="text-muted">Value</dt>
         <dd className="font-mono">corp,example,com</dd>
-        <dt className="text-muted">Matches</dt>
+        <dt className="text-muted">{isDenyRule ? "Rejects" : "Matches"}</dt>
         <dd className="font-mono">DC=corp,DC=example,DC=com</dd>
-        <dt className="text-muted">Rejects</dt>
-        <dd className="font-mono">DC=com,DC=example,DC=corp</dd>
+        <dt className="text-muted">{isDenyRule ? "Also rejects" : "Rejects"}</dt>
+        <dd className="font-mono">
+          {isDenyRule ? "DC=host,DC=corp,DC=example,DC=com" : "DC=com,DC=example,DC=corp"}
+        </dd>
       </dl>
+      <p className="mt-2">
+        {isDenyRule
+          ? "A denied chain is rejected wherever it appears, so denying a domain denies everything under it."
+          : "A request matches only when its components line up position by position."}
+      </p>
       <p className="mt-2">
         A <span className="font-mono">*</span> matches a single component:{" "}
         <span className="font-mono">*,internal,example,com</span>.
@@ -1232,7 +1239,9 @@ export const CreatePolicyModal = ({
                               </SelectContent>
                             </Select>
                             {attr.type === CertSubjectAttributeType.DOMAIN_COMPONENT && (
-                              <DomainComponentHelp />
+                              <DomainComponentHelp
+                                isDenyRule={attr.include === CertSubjectAttributeInclude.PROHIBIT}
+                              />
                             )}
                             <Button
                               type="button"

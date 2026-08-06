@@ -6,12 +6,9 @@ import { TDomainComponentSubjectRule, TSubjectRule } from "./certificate-policy-
 export const isWildcardPattern = (value: string): boolean => value.includes("*");
 
 const createWildcardRegex = (pattern: string): RE2 => {
-  const wildcardRegex = new RE2(/\*/g);
-  const withPlaceholder = pattern.replace(wildcardRegex, "__WILDCARD__");
   const escapeRegex = new RE2(/[.+?^${}()|[\]\\]/g);
-  const escaped = withPlaceholder.replace(escapeRegex, "\\$&");
-  const placeholderRegex = new RE2(/__WILDCARD__/g);
-  return new RE2(`^${escaped.replace(placeholderRegex, ".*")}$`);
+  const wildcardRegex = new RE2(/\*/g);
+  return new RE2(`^${pattern.replace(escapeRegex, "\\$&").replace(wildcardRegex, ".*")}$`);
 };
 
 // both sides must already be normalized by the caller (lower-cased, or URI-normalized for URI SANs)
@@ -45,6 +42,19 @@ const matchesDomainComponentSequence = (requestSequence: string[], policySequenc
 const matchesAnySequence = (requestSequence: string[], policySequences: string[][]): boolean =>
   policySequences.some((policySequence) => matchesDomainComponentSequence(requestSequence, policySequence));
 
+const containsSequence = (requestSequence: string[], policySequence: string[]): boolean => {
+  if (policySequence.length === 0 || policySequence.length > requestSequence.length) return false;
+
+  return requestSequence.some(
+    (_, offset) =>
+      offset + policySequence.length <= requestSequence.length &&
+      matchesDomainComponentSequence(requestSequence.slice(offset, offset + policySequence.length), policySequence)
+  );
+};
+
+const containsAnySequence = (requestSequence: string[], policySequences: string[][]): boolean =>
+  policySequences.some((policySequence) => containsSequence(requestSequence, policySequence));
+
 const isSequenceOfLabels = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((component) => typeof component === "string");
 
@@ -54,12 +64,17 @@ const normalizeDomainComponentSequences = (values: unknown): unknown => {
   return isSequenceOfLabels(values) ? [values] : values;
 };
 
+const normalizeDeniedDomainComponentSequences = (values: unknown): unknown => {
+  if (!Array.isArray(values) || values.length === 0) return values;
+  return isSequenceOfLabels(values) ? values.map((label) => [label]) : values;
+};
+
 const normalizeDomainComponentRule = (rule: TDomainComponentSubjectRule): TDomainComponentSubjectRule =>
   ({
     type: rule.type,
     allowed: normalizeDomainComponentSequences(rule.allowed),
     required: normalizeDomainComponentSequences(rule.required),
-    denied: normalizeDomainComponentSequences(rule.denied)
+    denied: normalizeDeniedDomainComponentSequences(rule.denied)
   }) as TDomainComponentSubjectRule;
 
 export const normalizeSubjectRules = (rules: unknown): unknown => {
@@ -109,9 +124,11 @@ export const validateDomainComponentsAgainstRule = ({
   const hasDomainComponents = requestDomainComponents.length > 0;
   const requestSequence = formatDomainComponentSequence(requestDomainComponents);
 
-  const isDenied = hasDomainComponents && matchesAnySequence(requestDomainComponents, denied);
+  const isDenied = hasDomainComponents && containsAnySequence(requestDomainComponents, denied);
   if (isDenied) {
-    errors.push(`Domain components '${requestSequence}' are denied by template policy`);
+    errors.push(
+      `Domain components '${requestSequence}' are denied by template policy. Denied sequences: ${formatDomainComponentSequences(denied)}`
+    );
   }
 
   const satisfiesRequired = required.length > 0 && matchesAnySequence(requestDomainComponents, required);

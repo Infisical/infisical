@@ -6,7 +6,10 @@ import { TableName } from "../schemas";
 import { rewriteJsonColumnInBatches } from "./utils/rewrite-json-column";
 
 const DOMAIN_COMPONENT_ATTRIBUTE_TYPE = "domain_component";
-const RULE_FIELDS = ["allowed", "required", "denied"] as const;
+const ORDERED_RULE_FIELDS = ["allowed", "required"] as const;
+const DENIED_RULE_FIELD = "denied";
+
+type TRewriteField = (values: unknown) => string[] | string[][] | undefined;
 
 type TStoredSubjectRule = {
   type?: string;
@@ -21,8 +24,13 @@ const isFlatLabelList = (values: unknown): values is string[] =>
 const isSingleSequence = (values: unknown): values is [string[]] =>
   Array.isArray(values) && values.length === 1 && isFlatLabelList(values[0]);
 
+const isSingleLabelSequenceList = (values: unknown): values is string[][] =>
+  Array.isArray(values) &&
+  values.length > 0 &&
+  values.every((value) => Array.isArray(value) && value.length === 1 && typeof value[0] === "string");
+
 const rewriteDomainComponentRule =
-  (rewriteField: (values: unknown) => string[] | string[][] | undefined) =>
+  (rewriteOrderedField: TRewriteField, rewriteDeniedField: TRewriteField) =>
   (subject: TStoredSubjectRule[]): TStoredSubjectRule[] | undefined => {
     if (!Array.isArray(subject)) return undefined;
 
@@ -31,7 +39,11 @@ const rewriteDomainComponentRule =
       if (rule?.type !== DOMAIN_COMPONENT_ATTRIBUTE_TYPE) return rule;
 
       const rewrittenRule = { ...rule };
-      for (const field of RULE_FIELDS) {
+      const fields = [
+        ...ORDERED_RULE_FIELDS.map((field) => [field, rewriteOrderedField] as const),
+        [DENIED_RULE_FIELD, rewriteDeniedField] as const
+      ];
+      for (const [field, rewriteField] of fields) {
         const rewritten = rewriteField(rewrittenRule[field]);
         if (rewritten !== undefined) {
           rewrittenRule[field] = rewritten;
@@ -58,7 +70,10 @@ export async function up(knex: Knex): Promise<void> {
     table: TableName.PkiCertificatePolicy,
     column: "subject",
     narrow: narrowToDomainComponentPolicies,
-    rewrite: rewriteDomainComponentRule((values) => (isFlatLabelList(values) ? [values] : undefined))
+    rewrite: rewriteDomainComponentRule(
+      (values) => (isFlatLabelList(values) ? [values] : undefined),
+      (values) => (isFlatLabelList(values) ? values.map((label) => [label]) : undefined)
+    )
   });
 
   if (migratedCount) {
@@ -74,6 +89,9 @@ export async function down(knex: Knex): Promise<void> {
     table: TableName.PkiCertificatePolicy,
     column: "subject",
     narrow: narrowToDomainComponentPolicies,
-    rewrite: rewriteDomainComponentRule((values) => (isSingleSequence(values) ? values[0] : undefined))
+    rewrite: rewriteDomainComponentRule(
+      (values) => (isSingleSequence(values) ? values[0] : undefined),
+      (values) => (isSingleLabelSequenceList(values) ? values.map(([label]) => label) : undefined)
+    )
   });
 }

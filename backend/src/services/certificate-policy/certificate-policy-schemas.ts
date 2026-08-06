@@ -33,7 +33,11 @@ const requestSubjectValueSchema = z
   .min(1, "Value cannot be empty")
   .max(PKI_TEXT_COLUMN_MAX_LENGTH, `Value cannot exceed ${PKI_TEXT_COLUMN_MAX_LENGTH} characters`);
 
-const buildDomainComponentSequenceListSchema = (componentSchema: z.ZodType<string>, isRequest: boolean) => {
+const buildDomainComponentSequenceListSchema = (
+  componentSchema: z.ZodType<string>,
+  isRequest: boolean,
+  liftFlatList: (labels: string[]) => string[][]
+) => {
   const sequenceSchema = isRequest
     ? z
         .array(componentSchema)
@@ -43,7 +47,7 @@ const buildDomainComponentSequenceListSchema = (componentSchema: z.ZodType<strin
 
   const listSchema = z.union([sequenceSchema, z.array(sequenceSchema)]).transform((value): string[][] => {
     const isFlatLabelList = value.length > 0 && value.every((entry) => typeof entry === "string");
-    return isFlatLabelList ? [value as string[]] : (value as string[][]);
+    return isFlatLabelList ? liftFlatList(value as string[]) : (value as string[][]);
   });
 
   if (!isRequest) return listSchema;
@@ -55,9 +59,12 @@ const buildDomainComponentSequenceListSchema = (componentSchema: z.ZodType<strin
 };
 
 const buildPolicySubjectSchema = (valueSchema: z.ZodType<string>, isRequest: boolean) => {
-  const domainComponentListSchema = buildDomainComponentSequenceListSchema(
-    isRequest ? domainComponentSchema : z.string(),
-    isRequest
+  const componentSchema = isRequest ? domainComponentSchema : z.string();
+  const domainComponentListSchema = buildDomainComponentSequenceListSchema(componentSchema, isRequest, (labels) => [
+    labels
+  ]);
+  const deniedDomainComponentListSchema = buildDomainComponentSequenceListSchema(componentSchema, isRequest, (labels) =>
+    labels.map((label) => [label])
   );
 
   const singleValuedSchema = z.object({
@@ -73,7 +80,9 @@ const buildPolicySubjectSchema = (valueSchema: z.ZodType<string>, isRequest: boo
     required: domainComponentListSchema
       .optional()
       .describe(CERTIFICATE_POLICIES.SUBJECT_DOMAIN_COMPONENT_RULE.required),
-    denied: domainComponentListSchema.optional().describe(CERTIFICATE_POLICIES.SUBJECT_DOMAIN_COMPONENT_RULE.denied)
+    denied: deniedDomainComponentListSchema
+      .optional()
+      .describe(CERTIFICATE_POLICIES.SUBJECT_DOMAIN_COMPONENT_RULE.denied)
   });
 
   const unionSchema = z.discriminatedUnion("type", [singleValuedSchema, domainComponentSubjectSchema]);

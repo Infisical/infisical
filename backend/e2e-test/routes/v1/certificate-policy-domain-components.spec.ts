@@ -116,6 +116,18 @@ describe("Certificate policy domain component rules", async () => {
     expect(domainComponentRule(subjectOf(read.payload))?.allowed).toEqual([["corp", "example", "com"]]);
   });
 
+  test("reads a flat deny list as one sequence per label", async () => {
+    const res = await createPolicy("dc-flat-deny", [{ type: "domain_component", denied: ["evil", "bad"] }]);
+
+    expect(res.statusCode).toBe(200);
+    const policyId = trackPolicy(res.payload);
+
+    expect(domainComponentRule(subjectOf(res.payload))?.denied).toEqual([["evil"], ["bad"]]);
+
+    const read = await getPolicy(policyId);
+    expect(domainComponentRule(subjectOf(read.payload))?.denied).toEqual([["evil"], ["bad"]]);
+  });
+
   test("leaves the rules of other subject attributes flat", async () => {
     const res = await createPolicy("dc-other-attributes", [
       { type: "common_name", allowed: ["*.example.com"], denied: ["admin.example.com"] },

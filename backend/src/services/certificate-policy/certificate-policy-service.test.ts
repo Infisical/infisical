@@ -868,7 +868,9 @@ describe("CertificatePolicyService", () => {
         domainComponents: ["app", "example", "auth"]
       });
       expect(denied.isValid).toBe(false);
-      expect(denied.errors).toContain("Domain components 'DC=app,DC=example,DC=auth' are denied by template policy");
+      expect(denied.errors).toContain(
+        "Domain components 'DC=app,DC=example,DC=auth' are denied by template policy. Denied sequences: 'DC=app,DC=example,DC=auth'"
+      );
 
       const reordered = await service.validateCertificateRequest("template-123", {
         commonName: "auth-AD-MANAGER02-CA",

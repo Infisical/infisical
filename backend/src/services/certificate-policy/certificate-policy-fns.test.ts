@@ -16,6 +16,12 @@ describe("normalizeSubjectRules", () => {
     ]);
   });
 
+  it("should lift a legacy flat deny list into one sequence per label", () => {
+    expect(normalizeSubjectRules([{ type: "domain_component", denied: ["evil", "bad"] }])).toEqual([
+      { type: "domain_component", allowed: undefined, required: undefined, denied: [["evil"], ["bad"]] }
+    ]);
+  });
+
   it("should leave sequences that are already nested alone", () => {
     const sequences = [
       ["corp", "example", "com"],
@@ -95,7 +101,50 @@ describe("validateDomainComponentsAgainstRule", () => {
 
   it("should reject a denied sequence and report it once", () => {
     const errors = validate(["evil", "example", "com"], domainComponentRule({ denied: [["evil", "example", "com"]] }));
-    expect(errors).toEqual(["Domain components 'DC=evil,DC=example,DC=com' are denied by template policy"]);
+    expect(errors).toEqual([
+      "Domain components 'DC=evil,DC=example,DC=com' are denied by template policy. Denied sequences: 'DC=evil,DC=example,DC=com'"
+    ]);
+  });
+
+  it("should deny everything under a denied sequence", () => {
+    const rule = domainComponentRule({ denied: [["corp", "example", "com"]] });
+    expect(validate(["dev", "corp", "example", "com"], rule)).toHaveLength(1);
+    expect(validate(["other", "example", "com"], rule)).toEqual([]);
+    expect(validate(["example", "com"], rule)).toEqual([]);
+  });
+
+  it("should deny a label wherever it appears in the chain", () => {
+    const rule = domainComponentRule({ denied: [["evil"]] });
+    expect(validate(["evil"], rule)).toHaveLength(1);
+    expect(validate(["evil", "example"], rule)).toHaveLength(1);
+    expect(validate(["a", "evil", "b"], rule)).toHaveLength(1);
+    expect(validate(["good", "example"], rule)).toEqual([]);
+  });
+
+  it("should keep each label of a legacy flat deny list denied on its own", () => {
+    const legacyRule = {
+      type: CertSubjectAttributeType.DOMAIN_COMPONENT,
+      denied: ["evil", "bad"]
+    } as unknown as TDomainComponentSubjectRule;
+
+    expect(validate(["evil"], legacyRule)).toHaveLength(1);
+    expect(validate(["bad", "example"], legacyRule)).toHaveLength(1);
+    expect(validate(["ok", "example"], legacyRule)).toEqual([]);
+  });
+
+  it("should deny one subtree while still allowing its siblings", () => {
+    const rule = domainComponentRule({
+      allowed: [["*", "example", "com"]],
+      denied: [["dev", "example", "com"]]
+    });
+    expect(validate(["prod", "example", "com"], rule)).toEqual([]);
+    expect(validate(["dev", "example", "com"], rule)).toHaveLength(1);
+  });
+
+  it("should honour a wildcard inside a denied sequence", () => {
+    const rule = domainComponentRule({ denied: [["*", "internal", "com"]] });
+    expect(validate(["a", "internal", "com"], rule)).toHaveLength(1);
+    expect(validate(["internal", "com"], rule)).toEqual([]);
   });
 
   it("should treat a rule with no populated list as no constraint", () => {
