@@ -7,8 +7,16 @@ import type { TDynamicSecretProviderFormMode } from "./types";
 
 export const DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE = "{{randomUsername}}";
 
-export const dynamicSecretTtlSchema = z.string().superRefine((value, context) => {
+const validateDynamicSecretTtl = (value: string, context: z.RefinementCtx) => {
   const valueInMilliseconds = ms(value);
+
+  if (valueInMilliseconds === undefined) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "TTL must be a valid duration"
+    });
+    return;
+  }
 
   if (valueInMilliseconds < 60 * 1000) {
     context.addIssue({
@@ -23,7 +31,15 @@ export const dynamicSecretTtlSchema = z.string().superRefine((value, context) =>
       message: "TTL must be less than 10 years"
     });
   }
-});
+};
+
+export const dynamicSecretTtlSchema = z
+  .string()
+  .min(1, "TTL is required")
+  .superRefine((value, context) => {
+    if (!value) return;
+    validateDynamicSecretTtl(value, context);
+  });
 
 export const optionalDynamicSecretTtlSchema = z
   .string()
@@ -31,21 +47,7 @@ export const optionalDynamicSecretTtlSchema = z
   .superRefine((value, context) => {
     if (!value) return;
 
-    const valueInMilliseconds = ms(value);
-
-    if (valueInMilliseconds < 60 * 1000) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "TTL must be a greater than 1min"
-      });
-    }
-
-    if (valueInMilliseconds > ms("10y")) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "TTL must be less than 10 years"
-      });
-    }
+    validateDynamicSecretTtl(value, context);
   });
 
 const environmentSchema = z.object({

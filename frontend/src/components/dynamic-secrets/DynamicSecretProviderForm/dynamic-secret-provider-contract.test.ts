@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
 
+import { submitDynamicSecretCreatePayloads } from "./createSubmission";
 import { testDynamicSecretProviderContract } from "./providerContractTestHarness";
 import { createDynamicSecretProviderRegistry, defineDynamicSecretProviderModule } from "./registry";
 import { parseDynamicSecretProviderNumberInput } from "./scalarValues";
@@ -371,11 +372,26 @@ describe("shared dynamic-secret scalar behavior", () => {
 
 describe("shared dynamic-secret normalization", () => {
   it("preserves TTL bounds and messages", () => {
+    const missingDefault = createFormSchema.safeParse({ ...createValues, defaultTTL: "" });
+    const malformedDefault = createFormSchema.safeParse({ ...createValues, defaultTTL: "abc" });
+    const malformedMaximum = createFormSchema.safeParse({ ...createValues, maxTTL: "abc" });
     const belowMinimum = createFormSchema.safeParse({ ...createValues, defaultTTL: "30s" });
     const aboveMaximum = createFormSchema.safeParse({ ...createValues, defaultTTL: "11y" });
 
+    assert.equal(missingDefault.success, false);
+    assert.equal(malformedDefault.success, false);
+    assert.equal(malformedMaximum.success, false);
     assert.equal(belowMinimum.success, false);
     assert.equal(aboveMaximum.success, false);
+    if (!missingDefault.success) {
+      assert.equal(missingDefault.error.issues[0]?.message, "TTL is required");
+    }
+    if (!malformedDefault.success) {
+      assert.equal(malformedDefault.error.issues[0]?.message, "TTL must be a valid duration");
+    }
+    if (!malformedMaximum.success) {
+      assert.equal(malformedMaximum.error.issues[0]?.message, "TTL must be a valid duration");
+    }
     if (!belowMinimum.success) {
       assert.equal(belowMinimum.error.issues[0]?.message, "TTL must be a greater than 1min");
     }
@@ -396,6 +412,23 @@ describe("shared dynamic-secret normalization", () => {
     assert.equal(normalizeDynamicSecretGatewayValueForMode("create", null), undefined);
     assert.equal(normalizeDynamicSecretGatewayValueForMode("edit", null), null);
     assert.equal(normalizeDynamicSecretGatewayValueForMode("edit", "gateway-id"), "gateway-id");
+  });
+});
+
+describe("shared dynamic-secret create submission", () => {
+  it("reports partial success without rejecting completed items", async () => {
+    const attemptedPayloads: number[] = [];
+    const result = await submitDynamicSecretCreatePayloads([1, 2, 3], async (payload) => {
+      attemptedPayloads.push(payload);
+      if (payload === 2) throw new Error("create failed");
+      return `created-${payload}`;
+    });
+
+    assert.deepEqual(attemptedPayloads, [1, 2, 3]);
+    assert.deepEqual(result, {
+      successfulResults: ["created-1", "created-3"],
+      failedCount: 1
+    });
   });
 });
 
