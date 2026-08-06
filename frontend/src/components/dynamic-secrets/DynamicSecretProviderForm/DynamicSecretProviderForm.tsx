@@ -23,6 +23,7 @@ import { cn } from "@app/components/v3/utils";
 import { useCreateDynamicSecret, useUpdateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
+import { submitDynamicSecretCreatePayloads } from "./createSubmission";
 import { DynamicSecretProviderFormItems } from "./DynamicSecretProviderFormItems";
 import {
   TCreateDynamicSecretProviderFormContext,
@@ -189,10 +190,21 @@ export const DynamicSecretProviderForm = <
         context as TCreateDynamicSecretProviderFormContext
       );
       const payloads = "provider" in payload ? [payload] : payload;
-      const results = await Promise.all(
-        payloads.map((item) => createDynamicSecret.mutateAsync(item))
+      const { successfulResults, failedCount } = await submitDynamicSecretCreatePayloads(
+        payloads,
+        (item) => createDynamicSecret.mutateAsync(item)
       );
-      onCompleted(results.length === 1 ? results[0] : results);
+
+      if (successfulResults.length === 0) return;
+
+      if (failedCount > 0) {
+        createNotification({
+          type: "warning",
+          text: `Created ${successfulResults.length} of ${payloads.length} dynamic secrets. Review the created secrets before retrying failed items.`
+        });
+      }
+
+      onCompleted(successfulResults.length === 1 ? successfulResults[0] : successfulResults);
       return;
     }
 

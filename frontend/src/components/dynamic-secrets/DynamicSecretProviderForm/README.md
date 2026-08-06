@@ -40,6 +40,7 @@ export const dynamicSecretProviderRegistry = createDynamicSecretProviderRegistry
 
 - Scalar number controls convert the browser string to a finite number before React Hook Form and `z.number()` validation see it. Clearing a numeric field emits `undefined` rather than accidental zero.
 - Secret controls preserve the supplied value and mask it with `type="password"`; edit defaults and adapters decide whether a masked value is sent unchanged.
+- Multi-create adapters may return several payloads. The shell settles the full batch, closes after any partial success to prevent accidental duplicate retries, and reports the exact success count.
 - Groups are sheet-agnostic. Panels use fieldset semantics, and collapsible groups use the shared V3 Accordion.
 - A custom renderer must declare at least one objective reason such as `repeatable-fields`, `remote-options`, `permission-aware-fields`, or `non-scalar-value`.
 - A custom renderer reads and writes the surrounding `FormProvider`; the shared shell still validates and submits the definition's adapter.
