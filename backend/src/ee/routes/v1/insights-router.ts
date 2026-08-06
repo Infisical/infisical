@@ -16,7 +16,8 @@ import {
   OrgAuthMethodDistributionSchema,
   OrgSecretsAccessVolumeSchema,
   SecretsProjectWarningsSchema,
-  SecretsUsageInsightsSchema
+  SecretsUsageInsightsSchema,
+  StaticSecretsUsageSchema
 } from "@app/ee/services/insights/insights-schemas";
 import { INSIGHTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -237,6 +238,48 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       });
 
       return { authMethodDistribution };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secrets/usage/static-secrets",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      operationId: "getStaticSecretsUsage",
+      description:
+        "Get how many static secrets the requesting organization stored at the end of each of the last twelve UTC calendar weeks.",
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: z.object({
+          staticSecretUsage: StaticSecretsUsageSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const staticSecretUsage = await server.services.insights.getStaticSecretsUsage({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_STATIC_SECRET_USAGE,
+          metadata: {
+            totalSecrets: staticSecretUsage.weeks.at(-1)?.totalSecrets ?? 0
+          }
+        }
+      });
+
+      return { staticSecretUsage };
     }
   });
 

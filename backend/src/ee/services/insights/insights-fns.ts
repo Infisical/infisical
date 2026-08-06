@@ -3,6 +3,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAccessVolumeActor, TAccessVolumeDay } from "./insights-types";
 
 const ACCESS_VOLUME_DAYS = 7;
+const STATIC_SECRET_USAGE_WEEKS = 12;
 
 export const buildAccessVolumeWindow = () => {
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -24,6 +25,33 @@ export const listAccessVolumeDates = (todayStr: string) => {
   }
 
   return dates;
+};
+
+const startOfUtcWeek = (date: Date) => {
+  const monday = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+
+  return monday;
+};
+
+export const buildStaticSecretUsageWindow = () => {
+  const currentWeekStart = startOfUtcWeek(new Date());
+
+  const windowStart = new Date(currentWeekStart);
+  windowStart.setUTCDate(windowStart.getUTCDate() - (STATIC_SECRET_USAGE_WEEKS - 1) * 7);
+
+  return { windowStart, currentWeekStart };
+};
+
+export const listStaticSecretUsageWeekStarts = (currentWeekStart: Date) => {
+  const weekStarts: string[] = [];
+  for (let i = STATIC_SECRET_USAGE_WEEKS - 1; i >= 0; i -= 1) {
+    const weekStart = new Date(currentWeekStart);
+    weekStart.setUTCDate(weekStart.getUTCDate() - i * 7);
+    weekStarts.push(weekStart.toISOString().slice(0, 10));
+  }
+
+  return weekStarts;
 };
 
 export const buildAccessVolumeDayBuckets = (todayStr: string) =>

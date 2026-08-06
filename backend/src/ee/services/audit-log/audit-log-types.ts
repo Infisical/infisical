@@ -679,6 +679,7 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME = "view-insights-secrets-management-access-volume",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_ACCESS_VOLUME = "view-insights-secrets-management-org-access-volume",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION = "view-insights-secrets-management-org-auth-method-distribution",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_STATIC_SECRET_USAGE = "view-insights-secrets-management-static-secret-usage",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
@@ -5505,6 +5506,13 @@ interface ViewSecretManagementInsightsOrgAuthMethodDistributionEvent {
   };
 }
 
+interface ViewSecretManagementInsightsStaticSecretUsageEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_STATIC_SECRET_USAGE;
+  metadata: {
+    totalSecrets: number;
+  };
+}
+
 interface ViewSecretManagementInsightsAccessLocationsEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS;
   metadata: {
@@ -7508,6 +7516,7 @@ export type Event =
   | ViewSecretManagementInsightsAccessVolumeEvent
   | ViewSecretManagementInsightsOrgAccessVolumeEvent
   | ViewSecretManagementInsightsOrgAuthMethodDistributionEvent
+  | ViewSecretManagementInsightsStaticSecretUsageEvent
   | ViewSecretManagementInsightsAccessLocationsEvent
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent

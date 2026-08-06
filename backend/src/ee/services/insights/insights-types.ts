@@ -123,3 +123,18 @@ export type TOrgAuthMethodDistribution = {
   // the aggregate is not computed and `methods` is empty.
   isSupported: boolean;
 };
+
+export type TGetStaticSecretsUsageDTO = TOrgInsightsDTO;
+
+export type TStaticSecretsUsageWeek = {
+  // The Monday the week starts on, in UTC, as YYYY-MM-DD
+  weekStart: string;
+  // the total amount of static secrets created in the week
+  totalSecrets: number;
+  // true for the trailing bucket only, which is measured as of now rather than at a week's end.
+  isPartial: boolean;
+};
+
+export type TStaticSecretsUsage = {
+  weeks: TStaticSecretsUsageWeek[];
+};

@@ -43,8 +43,10 @@ import {
   addAccessVolumeEntry,
   buildAccessVolumeDayBuckets,
   buildAccessVolumeWindow,
+  buildStaticSecretUsageWindow,
   collapseAccessVolumeDays,
   listAccessVolumeDates,
+  listStaticSecretUsageWeekStarts,
   resolveUserDisplayNames
 } from "./insights-fns";
 import {
@@ -58,11 +60,13 @@ import {
   TGetSecretsDuplicationDTO,
   TGetSecretsProjectWarningsDTO,
   TGetSecretsUsageInsightsDTO,
+  TGetStaticSecretsUsageDTO,
   TOrgAccessVolume,
   TOrgAuthMethodDistribution,
   TOrgInsightsDTO,
   TSecretsProjectWarnings,
-  TSecretsUsageInsights
+  TSecretsUsageInsights,
+  TStaticSecretsUsage
 } from "./insights-types";
 
 export type TInsightsServiceFactoryDep = {
@@ -92,7 +96,10 @@ export type TInsightsServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "countAllOrgMembers">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countAllOrgIdentities">;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "countLeasesForOrg">;
-  insightsDAL: Pick<TInsightsDALFactory, "findProjectWarningsForOrg">;
+  insightsDAL: Pick<
+    TInsightsDALFactory,
+    "findProjectWarningsForOrg" | "findSecretCreationsByWeekForOrg" | "countSecretCreationsForOrg"
+  >;
 };
 
 export type TInsightsServiceFactory = ReturnType<typeof insightsServiceFactory>;
@@ -751,6 +758,65 @@ export const insightsServiceFactory = ({
     });
   };
 
+  // How many static secrets the org held at the end of each of the last 12 weeks, as a running
+  // total rather than per-week additions.
+  const getStaticSecretsUsage = async (dto: TGetStaticSecretsUsageDTO): Promise<TStaticSecretsUsage> => {
+    await checkSecretsManagementInsightsPermission(
+      permissionService,
+      OrgPermissionSecretsManagementInsightsActions.Read,
+      dto
+    );
+
+    const plan = await licenseService.getPlan(dto.orgId);
+    if (!plan.secretAccessInsights) {
+      throw new BadRequestError({
+        message: "Secrets management insights are not available on your plan. Upgrade your plan to access insights."
+      });
+    }
+
+    const { windowStart, currentWeekStart } = buildStaticSecretUsageWindow();
+    const currentWeekStartStr = currentWeekStart.toISOString().slice(0, 10);
+    const weekStarts = listStaticSecretUsageWeekStarts(currentWeekStart);
+
+    // using two different cache keys because the current week is still in progress, so the count is not yet complete.
+    // The prior weeks can have a longer TTL
+    const [priorWeeks, createdThisWeek] = await Promise.all([
+      withCache({
+        keyStore,
+        key: KeyStorePrefixes.InsightsCache(dto.orgId, `static-secret-usage:history-weeks:${currentWeekStartStr}`),
+        ttlSeconds: KeyStoreTtls.InsightsWeeklyHistoryCacheInSeconds,
+        fetcher: () =>
+          insightsDAL.findSecretCreationsByWeekForOrg(dto.orgId, {
+            createdAtOrAfter: windowStart,
+            createdBefore: currentWeekStart
+          })
+      }),
+      withCache({
+        keyStore,
+        key: KeyStorePrefixes.InsightsCache(dto.orgId, `static-secret-usage:current-week:${currentWeekStartStr}`),
+        ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
+        fetcher: () => insightsDAL.countSecretCreationsForOrg(dto.orgId, { createdAtOrAfter: currentWeekStart })
+      })
+    ]);
+
+    const creationsByWeek = new Map(priorWeeks.map((row) => [row.weekStart, row.count]));
+    creationsByWeek.set(currentWeekStartStr, createdThisWeek);
+
+    let runningTotal = 0;
+
+    return {
+      weeks: weekStarts.map((weekStart) => {
+        runningTotal += creationsByWeek.get(weekStart) ?? 0;
+
+        return {
+          weekStart,
+          totalSecrets: runningTotal,
+          isPartial: weekStart === currentWeekStartStr
+        };
+      })
+    };
+  };
+
   return {
     getCalendar,
     getAccessVolume,
@@ -761,6 +827,7 @@ export const insightsServiceFactory = ({
     getSecretsDuplication,
     getCounts,
     getSecretsUsageInsights,
-    getSecretsProjectWarnings
+    getSecretsProjectWarnings,
+    getStaticSecretsUsage
   };
 };

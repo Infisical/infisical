@@ -939,6 +939,16 @@ export const INSIGHTS = {
       "The total number of times a secret value was accessed by a machine identity across every project in the organization in the last seven days. Accesses by users are not counted.",
     unknownCount:
       "The number of accesses whose authentication method could not be determined, which happens for accesses recorded before the method was captured in audit logs. These are included in the total but not in the methods list."
+  },
+  GET_STATIC_SECRETS_USAGE: {
+    weeks:
+      "One entry for each of the last twelve weeks, oldest first. Weeks in which no secret was created are included, repeating the previous week's total.",
+    weekStart:
+      "The Monday the week starts on, in UTC, as YYYY-MM-DD. Weeks are UTC calendar weeks, not a rolling window anchored on today.",
+    totalSecrets:
+      "The total number of static secrets stored across every secret management project in the organization at the end of this week. This is a cumulative total, not the number of secrets added during the week. Personal secret overrides are not counted, and neither are secrets in projects or environments that have been deleted. Because deleted secrets leave no record, past weeks count only the secrets that still exist today: totals for earlier weeks understate what was stored at the time, and the series never decreases even across a week in which more secrets were deleted than created. The last entry is exact.",
+    isPartial:
+      "Whether the week is still in progress. True for the last entry only, which is the total as of now rather than at the end of a completed week."
   }
 } as const;
 

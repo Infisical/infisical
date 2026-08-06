@@ -234,5 +234,68 @@ export const insightsDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { findProjectWarningsForOrg };
+  const orgStaticSecretsQuery = (conn: Knex, orgId: string) =>
+    conn(TableName.SecretV2)
+      .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.Project}.orgId`, orgId)
+      .where(`${TableName.Project}.type`, ProjectType.SecretManager)
+      .where(`${TableName.Project}.version`, ProjectVersion.V3)
+      .whereNull(`${TableName.Project}.deleteAfter`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
+      .whereNull(`${TableName.SecretV2}.userId`);
+
+  // Static secrets created per week, for the weeks starting at `createdAtOrAfter` and ending before
+  // `createdBefore`. Anything created outside that range is ignored, so the result is one row per
+  // week in the range that saw at least one secret created.
+  const findSecretCreationsByWeekForOrg = async (
+    orgId: string,
+    { createdAtOrAfter, createdBefore }: { createdAtOrAfter: Date; createdBefore: Date },
+    tx?: Knex
+  ): Promise<{ weekStart: string; count: number }[]> => {
+    try {
+      const conn = tx || db.replicaNode();
+
+      const rows = (await orgStaticSecretsQuery(conn, orgId)
+        .where(`${TableName.SecretV2}.createdAt`, ">=", createdAtOrAfter)
+        .where(`${TableName.SecretV2}.createdAt`, "<", createdBefore)
+        .groupBy("weekStart")
+        .select(
+          db.raw(`to_char(date_trunc('week', ??.?? AT TIME ZONE 'UTC'), 'YYYY-MM-DD') as "weekStart"`, [
+            TableName.SecretV2,
+            "createdAt"
+          ])
+        )
+        .select(db.raw(`count(*)::int as count`))) as { weekStart: string; count: string | number }[];
+
+      return rows.map((row) => ({ weekStart: row.weekStart, count: Number(row.count) }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSecretCreationsByWeekForOrg" });
+    }
+  };
+
+  // How many static secrets the org has created since `createdAtOrAfter`. Half-open against
+  // findSecretCreationsByWeekForOrg's `createdBefore`, so passing the same instant to both counts
+  // every secret exactly once.
+  const countSecretCreationsForOrg = async (
+    orgId: string,
+    { createdAtOrAfter }: { createdAtOrAfter: Date },
+    tx?: Knex
+  ): Promise<number> => {
+    try {
+      const conn = tx || db.replicaNode();
+
+      const result = await orgStaticSecretsQuery(conn, orgId)
+        .where(`${TableName.SecretV2}.createdAt`, ">=", createdAtOrAfter)
+        .count("* as count")
+        .first();
+
+      return Number((result as { count?: string | number } | undefined)?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountSecretCreationsForOrg" });
+    }
+  };
+
+  return { findProjectWarningsForOrg, findSecretCreationsByWeekForOrg, countSecretCreationsForOrg };
 };
