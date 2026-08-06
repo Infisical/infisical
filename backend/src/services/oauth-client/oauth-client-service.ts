@@ -12,7 +12,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { getMinExpiresIn } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
@@ -147,10 +147,14 @@ export const oauthClientServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.OauthClients);
   };
 
-  // Enabling this grant, or changing the audience it accepts, decides whose externally-issued tokens
-  // become Infisical user tokens. That is a change to the org's federation trust, so it needs the
-  // permission that already owns the SSO configuration.
-  const checkSsoConfigPermission = async (actor: OrgServiceActor) => {
+  // The token exchange grant converts externally-issued tokens into Infisical user tokens, so anything
+  // that establishes that trust or hands out a working credential for it is a change to the org's
+  // federation posture, not just an application edit. Those operations need the permission that already
+  // owns the SSO configuration on top of the usual OauthClients check.
+  //
+  // `action` names the operation in the error, because the reason an OAuth application change needs SSO
+  // permission is not self-evident to the admin who hits it.
+  const checkSsoConfigPermission = async (actor: OrgServiceActor, action: string) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -160,7 +164,11 @@ export const oauthClientServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
+    if (permission.cannot(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso)) {
+      throw new ForbiddenRequestError({
+        message: `You do not have permission to ${action}. Applications using the '${OauthGrantType.TokenExchange}' grant turn tokens from your organization's identity provider into Infisical user tokens, so managing them also requires permission to edit the organization's SSO configuration.`
+      });
+    }
   };
 
   // Loads a client scoped to the actor's org (so one org can never address another's client) and
@@ -215,7 +223,9 @@ export const oauthClientServiceFactory = ({
     const grantTypes = dedupeGrantTypes(dto.grantTypes);
     const enablesTokenExchange = hasTokenExchangeGrant(grantTypes);
 
-    if (enablesTokenExchange) await checkSsoConfigPermission(actor);
+    if (enablesTokenExchange) {
+      await checkSsoConfigPermission(actor, "register an OAuth application that uses token exchange");
+    }
 
     assertValidOauthClientGrantConfig({
       grantTypes,
@@ -292,7 +302,9 @@ export const oauthClientServiceFactory = ({
       dto.tokenExchangeAudience !== undefined ||
       dto.tokenExchangeIdpSatisfiesMfa !== undefined;
 
-    if (isTokenExchangeEnabled && touchesTokenExchangeConfig) await checkSsoConfigPermission(actor);
+    if (isTokenExchangeEnabled && touchesTokenExchangeConfig) {
+      await checkSsoConfigPermission(actor, "change the token exchange configuration of an OAuth application");
+    }
 
     assertValidOauthClientGrantConfig({
       grantTypes,
@@ -339,6 +351,10 @@ export const oauthClientServiceFactory = ({
     await checkOauthClientPermission(actor, OrgPermissionActions.Edit);
 
     const client = await getOrgClientOrThrow(clientDbId, actor.orgId);
+
+    if (hasTokenExchangeGrant(client.grantTypes as OauthGrantType[])) {
+      await checkSsoConfigPermission(actor, "rotate the secret of an OAuth application that uses token exchange");
+    }
 
     const appCfg = getConfig();
     const clientSecret = crypto.randomBytes(32).toString("hex");
