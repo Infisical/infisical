@@ -8,6 +8,7 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   Field,
@@ -100,7 +101,7 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate, projectType }: FormP
         />
         {errors.description?.message && <FieldError>{errors.description.message}</FieldError>}
       </Field>
-      <div className="mt-4 flex items-center justify-end gap-4">
+      <DialogFooter className="mt-4">
         <DialogClose asChild>
           <Button variant="ghost">Cancel</Button>
         </DialogClose>
@@ -113,7 +114,7 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate, projectType }: FormP
         >
           {projectTemplate ? "Update" : "Add"} Template
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   );
 };
