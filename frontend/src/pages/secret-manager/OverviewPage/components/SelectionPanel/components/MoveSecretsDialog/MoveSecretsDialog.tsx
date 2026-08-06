@@ -303,10 +303,12 @@ const formatBlockedDestination = (
 ) => {
   const envName =
     envNameBySlug.get(blocked.destinationEnvironment) ?? blocked.destinationEnvironment;
+  // a policy name is only present when the destination is actually governed by a secret approval policy.
+  // when it is absent the destination is blocked because the actor lacks permission to create folders there.
   if (blocked.policyName && blocked.blockingPath) {
     return `At environment ${envName} the path "${blocked.blockingPath}" is governed by the secret approval policy "${blocked.policyName}", so "${blocked.folderName}" cannot be moved there.`;
   }
-  return `At environment ${envName} the destination is governed by a secret approval policy, so "${blocked.folderName}" cannot be moved there.`;
+  return `At environment ${envName} you don't have permission to create folders at the destination, so "${blocked.folderName}" cannot be moved there.`;
 };
 
 // surfaces the two destination-side reasons a move is blocked: a cyclic/self move (client-side) and a destination
@@ -350,10 +352,22 @@ const MoveBlockAlerts = ({
     );
   }
 
+  // a blocked destination carries a policy name only when it is genuinely governed by a secret approval
+  // policy; otherwise the block is a permission issue (the actor cannot create folders at the destination).
+  // title the alert by what actually blocks the set so a permission block is not mislabeled as a policy.
+  const hasPolicyBlock = blockedDestinations.some((blocked) => Boolean(blocked.policyName));
+  const hasPermissionBlock = blockedDestinations.some((blocked) => !blocked.policyName);
+  let title = "This move is blocked";
+  if (hasPolicyBlock && !hasPermissionBlock) {
+    title = "The destination is protected by a secret approval policy";
+  } else if (hasPermissionBlock && !hasPolicyBlock) {
+    title = "You don't have permission to move to the destination";
+  }
+
   return (
     <Alert variant="danger" className="mt-4">
       <CircleAlertIcon />
-      <AlertTitle>The destination is protected by a secret approval policy</AlertTitle>
+      <AlertTitle>{title}</AlertTitle>
       <AlertDescription>
         <ul className="list-disc pl-4">
           {blockedDestinations.map((blocked) => (

@@ -102,21 +102,26 @@ export const resolveClosestFolder = (
 
 // read permission used to decide whether an actor is allowed to learn that a given blocking resource
 // exists at a folder path. used to avoid disclosing subtree contents (e.g. honey tokens) to actors
-// without access while still scanning the full subtree to enforce move correctness.
-const FOLDER_MOVE_BLOCK_PERMISSION: Record<TFolderMoveBlockingType, { action: string; subject: ProjectPermissionSub }> =
-  {
-    secret_import: { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretImports },
-    dynamic_secret: {
-      action: ProjectPermissionDynamicSecretActions.ReadRootCredential,
-      subject: ProjectPermissionSub.DynamicSecrets
-    },
-    honey_token: { action: ProjectPermissionHoneyTokenActions.Read, subject: ProjectPermissionSub.HoneyTokens },
-    secret_rotation: {
-      action: ProjectPermissionSecretRotationActions.Read,
-      subject: ProjectPermissionSub.SecretRotation
-    },
-    secret_approval_policy: { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretFolders }
-  };
+// without access while still scanning the full subtree to enforce move correctness. a `null` entry means
+// the block is not gated by any permission (the folder path is universally readable).
+const FOLDER_MOVE_BLOCK_PERMISSION: Record<
+  TFolderMoveBlockingType,
+  { action: string; subject: ProjectPermissionSub } | null
+> = {
+  secret_import: { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretImports },
+  dynamic_secret: {
+    action: ProjectPermissionDynamicSecretActions.ReadRootCredential,
+    subject: ProjectPermissionSub.DynamicSecrets
+  },
+  honey_token: { action: ProjectPermissionHoneyTokenActions.Read, subject: ProjectPermissionSub.HoneyTokens },
+  secret_rotation: {
+    action: ProjectPermissionSecretRotationActions.Read,
+    subject: ProjectPermissionSub.SecretRotation
+  },
+  // an approval policy blocks at a folder path, and folder read is implied-for-all (folder list/get is not
+  // gated by a Read permission), so its existence is not disclosure-gated on a Read-on-SecretFolders proxy.
+  secret_approval_policy: null
+};
 
 // when set, the move-block scan only reports blocks at paths the actor is allowed to read, so it cannot
 // disclose the existence of blocking resources in a subtree the actor cannot see (used by the read-only
@@ -143,7 +148,10 @@ export const canActorReadBlock = (
   blockingType: TFolderMoveBlockingType,
   secretPath: string
 ) => {
-  const { action, subject: sub } = FOLDER_MOVE_BLOCK_PERMISSION[blockingType];
+  const blockPermission = FOLDER_MOVE_BLOCK_PERMISSION[blockingType];
+  // no gating permission (e.g. approval policy at a universally-readable folder path): always readable.
+  if (!blockPermission) return true;
+  const { action, subject: sub } = blockPermission;
   return (permission as MongoAbility).can(action, subject(sub, { environment, secretPath }));
 };
 

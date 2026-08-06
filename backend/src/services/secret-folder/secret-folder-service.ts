@@ -1594,17 +1594,12 @@ export const secretFolderServiceFactory = ({
     };
 
     const destinationParentPath = destinationPath ?? "/";
+    // a move only requires Create at the destination (the enforced move permission below). folder read is
+    // implied-for-all (folder list/get is not gated by a Read permission), so it is not required here.
     const canActorAccessDestination =
       !!destinationEnvironment &&
       permission.can(
         ProjectPermissionActions.Create,
-        subject(ProjectPermissionSub.SecretFolders, {
-          environment: destinationEnvironment,
-          secretPath: destinationParentPath
-        })
-      ) &&
-      permission.can(
-        ProjectPermissionActions.Read,
         subject(ProjectPermissionSub.SecretFolders, {
           environment: destinationEnvironment,
           secretPath: destinationParentPath
@@ -1843,12 +1838,10 @@ export const secretFolderServiceFactory = ({
         const sourceParent = path.dirname(entry.sourceAbsPath);
         if (!checkedSourceParents.has(sourceParent)) {
           checkedSourceParents.add(sourceParent);
+          // a move only requires Delete at each source parent path. folder read is implied-for-all (folder
+          // list/get is not gated by a Read permission), so it is not required here.
           ForbiddenError.from(permission).throwUnlessCan(
             ProjectPermissionActions.Delete,
-            subject(ProjectPermissionSub.SecretFolders, { environment: sourceEnvironment, secretPath: sourceParent })
-          );
-          ForbiddenError.from(permission).throwUnlessCan(
-            ProjectPermissionActions.Read,
             subject(ProjectPermissionSub.SecretFolders, { environment: sourceEnvironment, secretPath: sourceParent })
           );
         }
