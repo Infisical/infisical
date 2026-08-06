@@ -23,6 +23,20 @@ module.exports = {
   root: true,
   overrides: [
     {
+      files: ["./src/**/*"],
+      excludedFiles: ["./src/lib/telemetry/*"],
+      rules: {
+        "no-restricted-syntax": [
+          "error",
+          {
+            selector: "MemberExpression[property.name='getMeter']",
+            message:
+              "Do not acquire an OpenTelemetry meter directly. Use highCardinalityMeter (per-actor labels) or resolveCoreMeter (observable gauges) from @app/lib/telemetry/metrics."
+          }
+        ]
+      }
+    },
+    {
       files: ["./e2e-test/**/*", "./src/db/migrations/**/*"],
       rules: {
         "@typescript-eslint/no-unsafe-member-access": "off",

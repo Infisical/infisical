@@ -1,11 +1,10 @@
-import opentelemetry from "@opentelemetry/api";
-
 import { AccessScope } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
+import { resolveCoreMeter } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { ActorType } from "../auth/auth-type";
@@ -80,7 +79,7 @@ export const projectCleanupQueueFactory = ({
   }
 
   // ── observability ─────────────────────────────────────────────────────────────
-  const meter = opentelemetry.metrics.getMeter("InfisicalCore");
+  const meter = resolveCoreMeter();
   // Per-pod, last-tick value: only the pod that won the cron redlock updates this; other pods report 0.
   // Alarms must aggregate with max() across pods, else a "stuck at cap" backlog gets diluted to ~0.
   let lastDiscoveryCount = 0;
