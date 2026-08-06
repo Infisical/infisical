@@ -13,6 +13,7 @@ import {
   AuditReportType
 } from "@app/ee/services/audit-report/audit-report-types";
 import {
+  OrgAuthMethodDistributionSchema,
   OrgSecretsAccessVolumeSchema,
   SecretsProjectWarningsSchema,
   SecretsUsageInsightsSchema
@@ -193,6 +194,49 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       });
 
       return { accessVolume };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secrets/auth-method-distribution",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      operationId: "getSecretsAuthMethodDistribution",
+      description:
+        "Get the number of times each machine identity authentication method was used to access a secret value in the requesting organization over the past week.",
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: z.object({
+          authMethodDistribution: OrgAuthMethodDistributionSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const authMethodDistribution = await server.services.insights.getOrgAuthMethodDistribution({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION,
+          metadata: {
+            isSupported: authMethodDistribution.isSupported,
+            totalFetches: authMethodDistribution.totalFetches
+          }
+        }
+      });
+
+      return { authMethodDistribution };
     }
   });
 

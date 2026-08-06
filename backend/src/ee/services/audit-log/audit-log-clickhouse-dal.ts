@@ -45,6 +45,13 @@ type TClickHouseDateVolumeRow = {
 // count() is a UInt64, which ClickHouse quotes as a string in JSON output
 type TClickHouseDateVolumeRawRow = Omit<TClickHouseDateVolumeRow, "count"> & { count: string };
 
+type TClickHouseAuthMethodRow = {
+  authMethod: string;
+  count: number;
+};
+
+type TClickHouseAuthMethodRawRow = Omit<TClickHouseAuthMethodRow, "count"> & { count: string };
+
 // Shape of a row returned from ClickHouse's JSONEachRow format
 // actorMetadata and eventMetadata are String columns — they come back as raw JSON strings
 type TClickHouseAuditLogRow = {
@@ -245,10 +252,6 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
     }
   };
 
-  // Org-wide access volume aggregate. Only orgId is filtered, so the scan rides the
-  // (orgId, projectId, createdAt, id) primary key prefix and spans every project in the org.
-  // Grouping by day alone keeps this to at most one row per day in the window and avoids
-  // touching actorMetadata, which would otherwise have to be JSON-parsed for every matched row.
   const countByDateForOrg = async ({
     orgId,
     eventTypes,
@@ -277,8 +280,6 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
           endDate: endDate.replace("Z", ""),
           eventTypes
         },
-        // The client-level request_timeout is 30s; this bounds the aggregate server-side so a
-        // runaway query doesn't keep burning ClickHouse resources after the client has given up.
         clickhouse_settings: {
           max_execution_time: 10
         },
@@ -294,5 +295,50 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
     }
   };
 
-  return { find, countByDateForOrg };
+  const countByIdentityAuthMethodForOrg = async ({
+    orgId,
+    eventTypes,
+    startDate,
+    endDate
+  }: TClickHouseCountByDateArg): Promise<TClickHouseAuthMethodRow[]> => {
+    const query = `
+      SELECT
+        JSONExtractString(actorMetadata, 'authMethod') AS authMethod,
+        count() AS count
+      FROM ${tableName}
+      WHERE orgId = {orgId:UUID}
+        AND createdAt >= {startDate:DateTime64(6)}
+        AND createdAt < {endDate:DateTime64(6)}
+        AND eventType IN ({eventTypes:Array(String)})
+        AND actor = {actorType:String}
+      GROUP BY authMethod
+    `;
+
+    try {
+      const result = await clickhouseClient.query({
+        query,
+        query_params: {
+          orgId,
+          // ClickHouse's DateTime64 parser rejects the trailing 'Z'
+          startDate: startDate.replace("Z", ""),
+          endDate: endDate.replace("Z", ""),
+          eventTypes,
+          actorType: ActorType.IDENTITY
+        },
+        clickhouse_settings: {
+          max_execution_time: 10
+        },
+        format: "JSONEachRow"
+      });
+
+      const rows = await result.json<TClickHouseAuthMethodRawRow>();
+
+      return rows.map((row) => ({ ...row, count: Number(row.count) }));
+    } catch (error) {
+      logger.error(error, `Failed to aggregate audit logs by identity auth method from ClickHouse [orgId=${orgId}]`);
+      throw new DatabaseError({ error });
+    }
+  };
+
+  return { find, countByDateForOrg, countByIdentityAuthMethodForOrg };
 };

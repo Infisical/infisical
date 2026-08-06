@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { IdentityAuthMethod } from "@app/db/schemas";
 import { INSIGHTS } from "@app/lib/api-docs";
 
 export const SecretsUsageInsightsSchema = z.object({
@@ -34,6 +35,19 @@ export const OrgSecretsAccessVolumeSchema = z.object({
     })
     .array()
     .describe(INSIGHTS.GET_SECRETS_ACCESS_VOLUME.days)
+});
+
+export const OrgAuthMethodDistributionSchema = z.object({
+  isSupported: z.boolean().describe(INSIGHTS.GET_SECRETS_AUTH_METHOD_DISTRIBUTION.isSupported),
+  totalFetches: z.number().int().describe(INSIGHTS.GET_SECRETS_AUTH_METHOD_DISTRIBUTION.totalFetches),
+  unknownCount: z.number().int().describe(INSIGHTS.GET_SECRETS_AUTH_METHOD_DISTRIBUTION.unknownCount),
+  methods: z
+    .object({
+      authMethod: z.nativeEnum(IdentityAuthMethod).describe(INSIGHTS.GET_SECRETS_AUTH_METHOD_DISTRIBUTION.authMethod),
+      count: z.number().int().describe(INSIGHTS.GET_SECRETS_AUTH_METHOD_DISTRIBUTION.count)
+    })
+    .array()
+    .describe(INSIGHTS.GET_SECRETS_AUTH_METHOD_DISTRIBUTION.methods)
 });
 
 export const SecretsProjectWarningsSchema = z.object({

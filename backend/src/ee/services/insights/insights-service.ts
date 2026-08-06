@@ -54,10 +54,12 @@ import {
   TGetInsightsCountsDTO,
   TGetInsightsSummaryDTO,
   TGetOrgAccessVolumeDTO,
+  TGetOrgAuthMethodDistributionDTO,
   TGetSecretsDuplicationDTO,
   TGetSecretsProjectWarningsDTO,
   TGetSecretsUsageInsightsDTO,
   TOrgAccessVolume,
+  TOrgAuthMethodDistribution,
   TOrgInsightsDTO,
   TSecretsProjectWarnings,
   TSecretsUsageInsights
@@ -67,9 +69,9 @@ export type TInsightsServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByIpAddress" | "countByAuthMethod">;
-  // Undefined when the instance has no ClickHouse configured. Org-wide access volume is the only
-  // consumer and degrades to a no-op response in that case.
-  clickhouseAuditLogDAL?: Pick<TClickHouseAuditLogDALFactory, "countByDateForOrg">;
+  // Undefined when the instance has no ClickHouse configured. Only the org-wide aggregates use it,
+  // and each degrades to an unsupported no-op response in that case.
+  clickhouseAuditLogDAL?: Pick<TClickHouseAuditLogDALFactory, "countByDateForOrg" | "countByIdentityAuthMethodForOrg">;
   secretRotationV2DAL: Pick<
     TSecretRotationV2DALFactory,
     "findByProjectAndDateRange" | "findByProject" | "countByProject"
@@ -685,10 +687,75 @@ export const insightsServiceFactory = ({
     });
   };
 
+  const getOrgAuthMethodDistribution = async (
+    dto: TGetOrgAuthMethodDistributionDTO
+  ): Promise<TOrgAuthMethodDistribution> => {
+    await checkSecretsManagementInsightsPermission(
+      permissionService,
+      OrgPermissionSecretsManagementInsightsActions.Read,
+      dto
+    );
+
+    const plan = await licenseService.getPlan(dto.orgId);
+    if (!plan.secretAccessInsights) {
+      throw new BadRequestError({
+        message: "Secrets management insights are not available on your plan. Upgrade your plan to access insights."
+      });
+    }
+
+    const appCfg = getConfig();
+    if (!appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED || !clickhouseAuditLogDAL) {
+      return { methods: [], totalFetches: 0, unknownCount: 0, isSupported: false };
+    }
+
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, "org-auth-method-distribution");
+    return withCache({
+      keyStore,
+      key: cacheKey,
+      ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
+      fetcher: async () => {
+        const { startDate, endDate } = buildAccessVolumeWindow();
+
+        const rows = await clickhouseAuditLogDAL.countByIdentityAuthMethodForOrg({
+          orgId: dto.orgId,
+          eventTypes: VALUE_EVENT_TYPES,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        });
+
+        const knownAuthMethods = new Set<string>(Object.values(IdentityAuthMethod));
+        const countsByAuthMethod = new Map<IdentityAuthMethod, number>();
+        let unknownCount = 0;
+        let totalFetches = 0;
+
+        rows.forEach((row) => {
+          totalFetches += row.count;
+
+          // Logs written before the auth method was captured have no authMethod, and an instance
+          // reading logs written by a newer version can see a method it does not know yet.
+          if (!knownAuthMethods.has(row.authMethod)) {
+            unknownCount += row.count;
+            return;
+          }
+
+          const authMethod = row.authMethod as IdentityAuthMethod;
+          countsByAuthMethod.set(authMethod, (countsByAuthMethod.get(authMethod) ?? 0) + row.count);
+        });
+
+        const methods = Array.from(countsByAuthMethod.entries())
+          .map(([authMethod, count]) => ({ authMethod, count }))
+          .sort((a, b) => b.count - a.count);
+
+        return { methods, totalFetches, unknownCount, isSupported: true };
+      }
+    });
+  };
+
   return {
     getCalendar,
     getAccessVolume,
     getOrgAccessVolume,
+    getOrgAuthMethodDistribution,
     getAuthMethodDistribution,
     getSummary,
     getSecretsDuplication,

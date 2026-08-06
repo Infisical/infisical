@@ -1,3 +1,4 @@
+import { IdentityAuthMethod } from "@app/db/schemas";
 import { TOrgPermission } from "@app/lib/types";
 
 // Project-scoped insights: the dashboard for a single secret management project.
@@ -102,5 +103,23 @@ export type TOrgAccessVolume = {
   days: TOrgAccessVolumeDay[];
   // false when audit logs are served from Postgres rather than ClickHouse, in which case
   // the aggregate is not computed and `days` is empty.
+  isSupported: boolean;
+};
+
+export type TGetOrgAuthMethodDistributionDTO = TOrgInsightsDTO;
+
+export type TOrgAuthMethodCount = {
+  authMethod: IdentityAuthMethod;
+  count: number;
+};
+
+export type TOrgAuthMethodDistribution = {
+  methods: TOrgAuthMethodCount[];
+  totalFetches: number;
+  // Fetches by a machine identity whose auth method the audit log did not record, or that this
+  // version does not recognise.
+  unknownCount: number;
+  // false when audit logs are served from Postgres rather than ClickHouse, in which case
+  // the aggregate is not computed and `methods` is empty.
   isSupported: boolean;
 };
