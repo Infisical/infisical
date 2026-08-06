@@ -205,6 +205,21 @@ alone would otherwise be enough to rotate an existing exchange application's sec
 the check on create/update a speed bump. Any future operation that establishes this trust or hands out a
 credential for it goes through `checkSsoConfigPermission` (`oauth-client-service.ts`) as well.
 
+**Everything the exchange fetches from the identity provider is cached for 10 minutes, and nothing read
+from our own database is.** Token exchange sits on the caller's hot path (a middleware typically exchanges
+per request it serves), so the discovery document and the `JwksClient` are both cached per URL in
+`oauth-token-exchange-fns.ts`; without that, the provider is a synchronous dependency of every Infisical
+API call the middleware makes. Consequences to keep in mind when extending it:
+- **Don't widen the cache to the resolved trust anchor.** The signature algorithm and the preferred issuer
+  come from `oidc_configs`, and an admin editing either has to take effect on the next request.
+- **Failed discovery fetches are evicted, not cached**, so a provider blip lasts as long as the blip
+  rather than the TTL. Keep that property in anything similar; caching the failure turns a 5-second
+  outage into 10 minutes of them.
+- **Cache entries hold the in-flight promise**, so concurrent requests on a cold entry coalesce onto one
+  fetch instead of stampeding the provider.
+- Entries expiring also rebuilds the SSRF-pinned agent, which is what lets a legitimate DNS change at the
+  provider be picked up at all.
+
 **Deprecated auth modes (do not use in new code):**
 - **API_KEY** — user API keys (from `x-api-key` header). Deprecated — use identity access tokens instead.
 - **SERVICE_TOKEN** — service tokens (Bearer tokens starting with `st.` prefix). Deprecated — use identity access tokens instead.
