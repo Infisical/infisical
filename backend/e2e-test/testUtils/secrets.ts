@@ -4,6 +4,7 @@ type TRawSecret = {
   secretKey: string;
   secretValue: string;
   secretComment?: string;
+  type?: SecretType;
   version: number;
 };
 
@@ -46,6 +47,7 @@ export const deleteSecretV2 = async (dto: {
   secretPath: string;
   key: string;
   authToken: string;
+  type?: SecretType;
 }) => {
   const deleteSecRes = await testServer.inject({
     method: "DELETE",
@@ -56,7 +58,8 @@ export const deleteSecretV2 = async (dto: {
     body: {
       workspaceId: dto.workspaceId,
       environment: dto.environmentSlug,
-      secretPath: dto.secretPath
+      secretPath: dto.secretPath,
+      ...(dto.type ? { type: dto.type } : {})
     }
   });
   expect(deleteSecRes.statusCode).toBe(200);
@@ -98,6 +101,7 @@ export const getSecretsV2 = async (dto: {
   secretPath: string;
   authToken: string;
   recursive?: boolean;
+  expandSecretReferences?: boolean;
 }) => {
   const getSecretsResponse = await testServer.inject({
     method: "GET",
@@ -109,7 +113,7 @@ export const getSecretsV2 = async (dto: {
       workspaceId: dto.workspaceId,
       environment: dto.environmentSlug,
       secretPath: dto.secretPath,
-      expandSecretReferences: "true",
+      expandSecretReferences: String(dto.expandSecretReferences ?? true),
       include_imports: "true",
       recursive: String(dto.recursive || false)
     }
