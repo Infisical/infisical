@@ -845,6 +845,8 @@ export const secretApprovalRequestServiceFactory = ({
         }
 
         // Back-fill secretId on approval commit rows so created secrets are traceable
+        // This is useful for clients that require polling when a approval request is created
+        // for example our terraform provider.
         if (newSecrets.length) {
           const newSecretsByKey = new Map(newSecrets.map((s) => [s.key, s.id]));
           await Promise.all(
