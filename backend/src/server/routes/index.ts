@@ -139,6 +139,7 @@ import { pkiInstallationServiceFactory } from "@app/ee/services/pki-discovery/pk
 import { scepDynamicChallengeDALFactory } from "@app/ee/services/pki-scep/pki-scep-dynamic-challenge-dal";
 import { pkiScepServiceFactory } from "@app/ee/services/pki-scep/pki-scep-service";
 import { scepTransactionDALFactory } from "@app/ee/services/pki-scep/pki-scep-transaction-dal";
+import { productInsightsDALFactory } from "@app/ee/services/product-insights/product-insights-dal";
 import { productInsightsServiceFactory } from "@app/ee/services/product-insights/product-insights-service";
 import { projectEventsServiceFactory } from "@app/ee/services/project-events/project-events-service";
 import { projectEventsSSEServiceFactory } from "@app/ee/services/project-events/project-events-sse-service";
@@ -618,6 +619,7 @@ export const registerRoutes = async (
   const integrationDAL = integrationDALFactory(db);
   const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
   const orgProductStatsDAL = orgProductStatsDALFactory(db);
+  const productInsightsDAL = productInsightsDALFactory(db);
   const integrationAuthDAL = integrationAuthDALFactory(db);
   const webhookDAL = webhookDALFactory(db);
   const serviceTokenDAL = serviceTokenDALFactory(db);
@@ -2753,7 +2755,9 @@ export const registerRoutes = async (
     licenseService,
     orgDAL,
     identityOrgMembershipDAL,
-    dynamicSecretLeaseDAL
+    dynamicSecretLeaseDAL,
+    productInsightsDAL,
+    keyStore
   });
 
   // DAILY

@@ -898,6 +898,26 @@ export const PRODUCT_INSIGHTS = {
       "The number of dynamic secret leases currently active across the organization's secret management projects. Revoked and expired leases are not counted.",
     users: "The number of users who have accepted an active membership in the organization.",
     identities: "The number of machine identities that belong to the organization."
+  },
+  GET_SECRETS_PROJECT_WARNINGS: {
+    offset: "The number of projects to skip before returning results.",
+    limit: "The maximum number of projects to return per page.",
+    projectId: "The ID of the project.",
+    projectName: "The name of the project.",
+    projectSlug: "The slug of the project.",
+    duplicatedSecrets:
+      "The number of secrets in the project whose value is shared with at least one other secret in the same project. Secrets whose value is a reference to another secret are counted as duplicates. Null when the project does not have secret blind indexing enabled.",
+    staleSecrets: "The number of secrets in the project that have not been updated in the last 90 days.",
+    failedRotations: "The number of secret rotations in the project whose last rotation attempt failed.",
+    failedSyncs: "The number of secret syncs in the project whose last sync attempt failed.",
+    orphanedLeases:
+      "The number of dynamic secret leases in the project that failed to be revoked and require manual cleanup.",
+    totalSecrets: "The total number of shared secrets in the project.",
+    warnings: "The counts of outstanding issues detected in the project.",
+    severityScore:
+      "A relative score used to rank projects by the severity of their outstanding issues. The scoring heuristic may change over time.",
+    totalProjects: "The total number of secret management projects in the organization.",
+    projectsWithIssues: "The number of secret management projects in the organization with at least one issue."
   }
 } as const;
 

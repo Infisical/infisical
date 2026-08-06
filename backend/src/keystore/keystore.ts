@@ -143,6 +143,7 @@ export const KeyStorePrefixes = {
   EmailSignupOtpLock: (hash: string) => `email-signup-otp:${hash}:lock` as const,
   EmailSignupResendCooldown: (hash: string) => `email-signup-otp:${hash}:cd` as const,
   InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const,
+  ProductInsightsCache: (orgId: string, endpoint: string) => `product-insights-cache:${orgId}:${endpoint}` as const,
 
   AdminConfig: "infisical-admin-cfg",
   UpdateCheckLatestVersion: "update-check-latest-version",

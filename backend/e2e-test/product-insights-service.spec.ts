@@ -27,6 +27,7 @@ import {
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { productInsightsDALFactory } from "@app/ee/services/product-insights/product-insights-dal";
 import { productInsightsServiceFactory } from "@app/ee/services/product-insights/product-insights-service";
 import { TProductInsightsDTO } from "@app/ee/services/product-insights/product-insights-types";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
@@ -110,7 +111,10 @@ const productInsightsService = productInsightsServiceFactory({
   licenseService,
   orgDAL: orgDALFactory(testDb),
   identityOrgMembershipDAL: identityOrgDALFactory(testDb),
-  dynamicSecretLeaseDAL: dynamicSecretLeaseDALFactory(testDb)
+  dynamicSecretLeaseDAL: dynamicSecretLeaseDALFactory(testDb),
+  productInsightsDAL: productInsightsDALFactory(testDb),
+  // Pass-through stub: every read misses so each call hits the database directly.
+  keyStore: { getItem: async () => null, setItemWithExpiry: async () => "OK" }
 });
 
 const actor = (orgId: string): TProductInsightsDTO => ({

@@ -16,6 +16,7 @@ import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -1639,6 +1640,7 @@ export const secretFolderServiceFactory = ({
       canActorReadBlock(permission, destinationEnvironment, "secret_approval_policy", destinationBlock.blockingAbsPath)
         ? destinationBlock
         : undefined;
+    logger.info({ readableDestinationBlock }, "readableDestinationBlock");
 
     return {
       canMove: !sourceBlock,
