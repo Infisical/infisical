@@ -16,7 +16,7 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
 ## Prerequisites
 
 - A [Windows (WinRM) Connection](/integrations/app-connections/winrm) with access to the target server
-- An [Infisical Gateway](/documentation/platform/gateways/overview) that can reach the server. Windows delivery always runs through the Gateway. A [post-sync command](#post-sync-commands) additionally needs the Gateway to be running Infisical CLI v0.43.117 or later.
+- An [Infisical Gateway](/documentation/platform/gateways/overview) that can reach the server. Windows delivery always runs through the Gateway. A [post-sync command](#post-sync-commands) additionally needs the Gateway to be running Infisical CLI v0.43.120 or later.
 - The connection user must be able to write to the destination directory
 
 <Note>
@@ -130,7 +130,7 @@ The field accepts a whole script, so several steps can run in one go: put each o
 Your Gateway runs the command, never Infisical. A WinRM Connection already requires a gateway, so nothing extra is needed here.
 
 <Note>
-  The Gateway must be running Infisical CLI **v0.43.117 or later**, the release that shipped Gateway-side support for post-sync commands. An older Gateway has no PowerShell run-command endpoint and rejects the request. Run `infisical --version` on the Gateway host to check, and see [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for how to upgrade.
+  The Gateway must be running Infisical CLI **v0.43.120 or later**. An earlier Gateway has no PowerShell run-command endpoint and rejects the request. Run `infisical --version` on the Gateway host to check, and see [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for how to upgrade.
 </Note>
 
 <PostSyncCommandFlow />
