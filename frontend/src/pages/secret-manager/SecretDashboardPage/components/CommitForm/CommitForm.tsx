@@ -623,7 +623,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
               </Badge>
             </SheetTitle>
             <SheetDescription>
-              Write a commit message and review the changes you&apos;re about to save.
+              Write a commit message and review the changes you&#39;re about to save.
             </SheetDescription>
           </SheetHeader>
 
