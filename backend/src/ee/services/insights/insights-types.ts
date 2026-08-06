@@ -78,3 +78,29 @@ export type TSecretsProjectWarnings = {
   offset: number;
   limit: number;
 };
+
+export type TGetOrgAccessVolumeDTO = TOrgInsightsDTO;
+
+export type TAccessVolumeActor = {
+  name: string;
+  type: string;
+  count: number;
+};
+
+export type TAccessVolumeDay = {
+  date: string;
+  total: number;
+  actors: TAccessVolumeActor[];
+};
+
+export type TOrgAccessVolumeDay = {
+  date: string;
+  total: number;
+};
+
+export type TOrgAccessVolume = {
+  days: TOrgAccessVolumeDay[];
+  // false when audit logs are served from Postgres rather than ClickHouse, in which case
+  // the aggregate is not computed and `days` is empty.
+  isSupported: boolean;
+};

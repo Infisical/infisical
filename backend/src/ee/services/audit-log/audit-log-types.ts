@@ -677,6 +677,7 @@ export enum EventType {
   VIEW_INSIGHTS_AUTH_METHODS = "view-insights-auth-methods",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR = "view-insights-secrets-management-calendar",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME = "view-insights-secrets-management-access-volume",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_ACCESS_VOLUME = "view-insights-secrets-management-org-access-volume",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
@@ -5485,6 +5486,15 @@ interface ViewSecretManagementInsightsAccessVolumeEvent {
   };
 }
 
+interface ViewSecretManagementInsightsOrgAccessVolumeEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_ACCESS_VOLUME;
+  metadata: {
+    // false when the instance stores audit logs in Postgres, in which case no volume was calculated
+    isSupported: boolean;
+    totalEvents: number;
+  };
+}
+
 interface ViewSecretManagementInsightsAccessLocationsEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS;
   metadata: {
@@ -7486,6 +7496,7 @@ export type Event =
   | DashboardGetSecretVersionValueEvent
   | ViewSecretManagementInsightsCalendarEvent
   | ViewSecretManagementInsightsAccessVolumeEvent
+  | ViewSecretManagementInsightsOrgAccessVolumeEvent
   | ViewSecretManagementInsightsAccessLocationsEvent
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent

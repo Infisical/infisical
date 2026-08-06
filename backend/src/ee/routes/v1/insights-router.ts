@@ -12,7 +12,11 @@ import {
   AuditReportStatus,
   AuditReportType
 } from "@app/ee/services/audit-report/audit-report-types";
-import { SecretsProjectWarningsSchema, SecretsUsageInsightsSchema } from "@app/ee/services/insights/insights-schemas";
+import {
+  OrgSecretsAccessVolumeSchema,
+  SecretsProjectWarningsSchema,
+  SecretsUsageInsightsSchema
+} from "@app/ee/services/insights/insights-schemas";
 import { INSIGHTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -146,6 +150,49 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       });
 
       return { projectWarnings };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secrets/access-volume",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      operationId: "getSecretsAccessVolume",
+      description:
+        "Get secret access volume for the requesting organization, aggregated by day and actor for the past week.",
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: z.object({
+          accessVolume: OrgSecretsAccessVolumeSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const accessVolume = await server.services.insights.getOrgAccessVolume({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_ACCESS_VOLUME,
+          metadata: {
+            isSupported: accessVolume.isSupported,
+            totalEvents: accessVolume.days.reduce((sum, day) => sum + day.total, 0)
+          }
+        }
+      });
+
+      return { accessVolume };
     }
   });
 

@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 // import geoip from "geoip-lite";
 import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope, TableName } from "@app/db/schemas";
+import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
@@ -21,6 +22,7 @@ import {
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -38,15 +40,24 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TInsightsDALFactory } from "./insights-dal";
 import {
-  // TGetAccessLocationsDTO,
+  addAccessVolumeEntry,
+  buildAccessVolumeDayBuckets,
+  buildAccessVolumeWindow,
+  collapseAccessVolumeDays,
+  listAccessVolumeDates,
+  resolveUserDisplayNames
+} from "./insights-fns";
+import {
   TGetAccessVolumeDTO,
   TGetAuthMethodDistributionDTO,
   TGetInsightsCalendarDTO,
   TGetInsightsCountsDTO,
   TGetInsightsSummaryDTO,
+  TGetOrgAccessVolumeDTO,
   TGetSecretsDuplicationDTO,
   TGetSecretsProjectWarningsDTO,
   TGetSecretsUsageInsightsDTO,
+  TOrgAccessVolume,
   TOrgInsightsDTO,
   TSecretsProjectWarnings,
   TSecretsUsageInsights
@@ -56,6 +67,9 @@ export type TInsightsServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByIpAddress" | "countByAuthMethod">;
+  // Undefined when the instance has no ClickHouse configured. Org-wide access volume is the only
+  // consumer and degrades to a no-op response in that case.
+  clickhouseAuditLogDAL?: Pick<TClickHouseAuditLogDALFactory, "countByDateForOrg">;
   secretRotationV2DAL: Pick<
     TSecretRotationV2DALFactory,
     "findByProjectAndDateRange" | "findByProject" | "countByProject"
@@ -146,6 +160,7 @@ export const insightsServiceFactory = ({
   permissionService,
   licenseService,
   auditLogDAL,
+  clickhouseAuditLogDAL,
   secretRotationV2DAL,
   reminderDAL,
   folderDAL,
@@ -235,11 +250,7 @@ export const insightsServiceFactory = ({
       key: cacheKey,
       ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
       fetcher: async () => {
-        const now = new Date();
-        const todayStr = now.toISOString().slice(0, 10);
-        const endDate = new Date(`${todayStr}T23:59:59.999Z`);
-        const startDate = new Date(`${todayStr}T00:00:00.000Z`);
-        startDate.setUTCDate(startDate.getUTCDate() - 6);
+        const { todayStr, startDate, endDate } = buildAccessVolumeWindow();
 
         const rows = await auditLogDAL.countByDateAndActor({
           orgId: actorDto.orgId,
@@ -249,37 +260,18 @@ export const insightsServiceFactory = ({
           endDate: endDate.toISOString()
         });
 
-        // Resolve user display names from userIds in audit log metadata
-        const userIds = [
+        const userNameMap = await resolveUserDisplayNames(userDAL, [
           ...new Set(
             rows
               .filter((r) => r.actor === ActorType.USER)
               .map((r) => (r.actorMetadata as Record<string, string> | null)?.userId)
               .filter(Boolean) as string[]
           )
-        ];
-        const userNameMap = new Map<string, string>();
-        if (userIds.length > 0) {
-          const users = await userDAL.find({ $in: { id: userIds } });
-          users.forEach((u) => {
-            const displayName = [u.firstName, u.lastName].filter(Boolean).join(" ");
-            if (displayName) userNameMap.set(u.id, displayName);
-          });
-        }
+        ]);
 
-        // Pre-populate the last 7 days
-        const dayMap = new Map<string, Map<string, { name: string; type: string; count: number }>>();
-        for (let i = 6; i >= 0; i -= 1) {
-          const d = new Date(`${todayStr}T00:00:00.000Z`);
-          d.setUTCDate(d.getUTCDate() - i);
-          dayMap.set(d.toISOString().slice(0, 10), new Map());
-        }
+        const dayMap = buildAccessVolumeDayBuckets(todayStr);
 
         rows.forEach((row) => {
-          const dateKey = typeof row.date === "string" ? row.date : new Date(row.date).toISOString().slice(0, 10);
-          const actorMap = dayMap.get(dateKey);
-          if (!actorMap) return;
-
           const actorMeta = row.actorMetadata as Record<string, string> | null;
           let actorName: string;
           if (row.actor === ActorType.USER && actorMeta?.userId) {
@@ -289,105 +281,19 @@ export const insightsServiceFactory = ({
           } else {
             actorName = actorMeta?.name || actorMeta?.identityId || "Unknown";
           }
-          const actorKey = `${row.actor}:${actorName}`;
 
-          const existing = actorMap.get(actorKey);
-          if (existing) {
-            existing.count += row.count;
-          } else {
-            actorMap.set(actorKey, { name: actorName, type: row.actor, count: row.count });
-          }
+          addAccessVolumeEntry(dayMap, {
+            date: typeof row.date === "string" ? row.date : new Date(row.date).toISOString().slice(0, 10),
+            type: row.actor,
+            name: actorName,
+            count: row.count
+          });
         });
 
-        const days = Array.from(dayMap.entries()).map(([date, actorMap]) => {
-          const actors = Array.from(actorMap.values()).sort((a, b) => b.count - a.count);
-          const total = actors.reduce((sum, a) => sum + a.count, 0);
-          return { date, total, actors };
-        });
-
-        return { days };
+        return { days: collapseAccessVolumeDays(dayMap) };
       }
     });
   };
-
-  // const getAccessLocations = async (dto: TGetAccessLocationsDTO, actorDto: OrgServiceActor) => {
-  //   await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
-
-  //   const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `access-locations:${dto.days}`);
-  //   return withCache(cacheKey, async () => {
-  //     const endDate = new Date();
-  //     const startDate = new Date();
-  //     startDate.setUTCDate(startDate.getUTCDate() - dto.days);
-
-  //     const ipRows = await auditLogDAL.countByIpAddress({
-  //       orgId: actorDto.orgId,
-  //       projectId: dto.projectId,
-  //       eventTypes: VALUE_EVENT_TYPES,
-  //       startDate: startDate.toISOString(),
-  //       endDate: endDate.toISOString()
-  //     });
-
-  //     const locationMap = new Map<string, { lat: number; lng: number; city: string; country: string; count: number }>();
-
-  //     const isPrivateIp = (ip: string) =>
-  //       ip === "127.0.0.1" ||
-  //       ip === "::1" ||
-  //       ip === "::ffff:127.0.0.1" ||
-  //       ip.startsWith("10.") ||
-  //       ip.startsWith("172.16.") ||
-  //       ip.startsWith("172.17.") ||
-  //       ip.startsWith("172.18.") ||
-  //       ip.startsWith("172.19.") ||
-  //       ip.startsWith("172.20.") ||
-  //       ip.startsWith("172.21.") ||
-  //       ip.startsWith("172.22.") ||
-  //       ip.startsWith("172.23.") ||
-  //       ip.startsWith("172.24.") ||
-  //       ip.startsWith("172.25.") ||
-  //       ip.startsWith("172.26.") ||
-  //       ip.startsWith("172.27.") ||
-  //       ip.startsWith("172.28.") ||
-  //       ip.startsWith("172.29.") ||
-  //       ip.startsWith("172.30.") ||
-  //       ip.startsWith("172.31.") ||
-  //       ip.startsWith("192.168.");
-
-  //     ipRows.forEach(({ ipAddress: ip, count }) => {
-  //       if (isPrivateIp(ip)) {
-  //         const key = "Local Network:LOCAL";
-  //         const existing = locationMap.get(key);
-  //         if (existing) {
-  //           existing.count += count;
-  //         } else {
-  //           locationMap.set(key, { lat: 0, lng: 0, city: "Local Network", country: "LOCAL", count });
-  //         }
-  //         return;
-  //       }
-
-  //       const geo = geoip.lookup(ip);
-  //       if (!geo || !geo.ll) return;
-
-  //       const city = geo.city || geo.region || "";
-  //       const key = `${city}:${geo.country}`;
-  //       const existing = locationMap.get(key);
-  //       if (existing) {
-  //         existing.count += count;
-  //       } else {
-  //         locationMap.set(key, {
-  //           lat: geo.ll[0],
-  //           lng: geo.ll[1],
-  //           city,
-  //           country: geo.country,
-  //           count
-  //         });
-  //       }
-  //     });
-
-  //     return {
-  //       locations: Array.from(locationMap.values()).sort((a, b) => b.count - a.count)
-  //     };
-  //   });
-  // };
 
   const getAuthMethodDistribution = async (dto: TGetAuthMethodDistributionDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
@@ -735,10 +641,54 @@ export const insightsServiceFactory = ({
     });
   };
 
+  const getOrgAccessVolume = async (dto: TGetOrgAccessVolumeDTO): Promise<TOrgAccessVolume> => {
+    await checkSecretsManagementInsightsPermission(
+      permissionService,
+      OrgPermissionSecretsManagementInsightsActions.Read,
+      dto
+    );
+
+    const plan = await licenseService.getPlan(dto.orgId);
+    if (!plan.secretAccessInsights) {
+      throw new BadRequestError({
+        message: "Secrets management insights are not available on your plan. Upgrade your plan to access insights."
+      });
+    }
+
+    const appCfg = getConfig();
+    if (!appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED || !clickhouseAuditLogDAL) {
+      return { days: [], isSupported: false };
+    }
+
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, "org-access-volume");
+    return withCache({
+      keyStore,
+      key: cacheKey,
+      ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
+      fetcher: async () => {
+        const { todayStr, startDate, endDate } = buildAccessVolumeWindow();
+
+        const rows = await clickhouseAuditLogDAL.countByDateForOrg({
+          orgId: dto.orgId,
+          eventTypes: VALUE_EVENT_TYPES,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        });
+
+        const countsByDate = new Map(rows.map((row) => [row.date, row.count]));
+
+        return {
+          days: listAccessVolumeDates(todayStr).map((date) => ({ date, total: countsByDate.get(date) ?? 0 })),
+          isSupported: true
+        };
+      }
+    });
+  };
+
   return {
     getCalendar,
     getAccessVolume,
-    // getAccessLocations,
+    getOrgAccessVolume,
     getAuthMethodDistribution,
     getSummary,
     getSecretsDuplication,

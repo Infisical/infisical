@@ -3076,6 +3076,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     auditLogDAL,
+    clickhouseAuditLogDAL,
     secretRotationV2DAL,
     reminderDAL,
     folderDAL,

@@ -918,6 +918,14 @@ export const INSIGHTS = {
       "A relative score used to rank projects by the severity of their outstanding issues. The scoring heuristic may change over time.",
     totalProjects: "The total number of secret management projects in the organization.",
     projectsWithIssues: "The number of secret management projects in the organization with at least one issue."
+  },
+  GET_SECRETS_ACCESS_VOLUME: {
+    isSupported:
+      "Whether access volume could be calculated. This endpoint requires the instance to store audit logs in ClickHouse. When audit logs are stored in PostgreSQL this is false and no days are returned.",
+    days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",
+    date: "The day the accesses happened on, in UTC, as YYYY-MM-DD.",
+    total:
+      "The number of times a secret value was accessed across every project in the organization on this day, by any user or machine identity."
   }
 } as const;
 

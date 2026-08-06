@@ -25,6 +25,17 @@ export const SecretsProjectWarningSchema = z.object({
     .describe(INSIGHTS.GET_SECRETS_PROJECT_WARNINGS.warnings)
 });
 
+export const OrgSecretsAccessVolumeSchema = z.object({
+  isSupported: z.boolean().describe(INSIGHTS.GET_SECRETS_ACCESS_VOLUME.isSupported),
+  days: z
+    .object({
+      date: z.string().describe(INSIGHTS.GET_SECRETS_ACCESS_VOLUME.date),
+      total: z.number().int().describe(INSIGHTS.GET_SECRETS_ACCESS_VOLUME.total)
+    })
+    .array()
+    .describe(INSIGHTS.GET_SECRETS_ACCESS_VOLUME.days)
+});
+
 export const SecretsProjectWarningsSchema = z.object({
   projects: SecretsProjectWarningSchema.array(),
   totalProjects: z.number().int().describe(INSIGHTS.GET_SECRETS_PROJECT_WARNINGS.totalProjects),
