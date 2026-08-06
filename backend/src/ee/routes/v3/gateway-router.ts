@@ -5,7 +5,8 @@ import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-t
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
 import {
   validateAllowedNames,
-  validateAllowedNamespaces
+  validateAllowedNamespaces,
+  validateKubernetesHost
 } from "@app/ee/services/resource-auth-method/kubernetes-auth-validators";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
@@ -60,21 +61,7 @@ const AwsAuthMethodInputSchema = z
 const KubernetesAuthMethodInputSchema = z
   .object({
     method: z.literal(ResourceAuthMethodType.Kubernetes),
-    kubernetesHost: z
-      .string()
-      .trim()
-      .min(1)
-      .max(255)
-      .describe(GATEWAYS.AUTH_METHOD.kubernetesHost)
-      .refine((host) => !host.startsWith("http://"), "Kubernetes host must use https")
-      .refine(
-        (host) =>
-          z
-            .string()
-            .url()
-            .safeParse(host.startsWith("https://") ? host : `https://${host}`).success,
-        "Kubernetes host must be a valid URL"
-      ),
+    kubernetesHost: validateKubernetesHost.describe(GATEWAYS.AUTH_METHOD.kubernetesHost),
     caCertificate: z.string().trim().max(10240).optional().describe(GATEWAYS.AUTH_METHOD.caCertificate),
     tokenReviewerJwt: z.string().trim().max(8192).optional().describe(GATEWAYS.AUTH_METHOD.tokenReviewerJwt),
     allowedNamespaces: validateAllowedNamespaces.describe(GATEWAYS.AUTH_METHOD.allowedNamespaces),
@@ -522,7 +509,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
                 metadata: {
                   resourceType: "gateway",
                   resourceId: result.resourceId,
-                  method: "kubernetes",
+                  method: ResourceAuthMethodType.Kubernetes,
                   methodConfigId: result.configId,
                   kubernetesNamespace: result.namespace,
                   kubernetesServiceAccountName: result.serviceAccountName
@@ -543,7 +530,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
                 resourceType: "gateway",
                 resourceId: result.resourceId,
                 orgId: result.orgId,
-                method: "kubernetes"
+                method: ResourceAuthMethodType.Kubernetes
               }
             })
             .catch((err) => {
@@ -566,7 +553,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
                   metadata: {
                     resourceType: "gateway",
                     resourceId: error.detail.resourceId as string,
-                    method: "kubernetes",
+                    method: ResourceAuthMethodType.Kubernetes,
                     reasonCode: error.detail.reasonCode as string,
                     message: error.message,
                     kubernetesNamespace: error.detail.namespace as string | undefined,

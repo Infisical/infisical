@@ -35,3 +35,47 @@ export const validateAllowedNames = csvOf(
   1024,
   "lowercase Kubernetes service account names"
 );
+
+// Normalises the host to a canonical `https://host[:port]` and rejects anything that is not a bare
+// API server address. The scheme is matched case-insensitively: "HTTPS://x" used to be accepted and
+// then mangled into "https://HTTPS://x", and "HTTP://x" slipped past an https-only check.
+export const validateKubernetesHost = z
+  .string()
+  .trim()
+  .min(1)
+  .max(255)
+  .transform((raw, ctx) => {
+    const reject = (message: string) => {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+      return z.NEVER;
+    };
+
+    const lowered = raw.toLowerCase();
+    // Any scheme other than https is reported as such, rather than falling through and being
+    // reported as a path problem once https:// is prepended to it.
+    if (lowered.includes("://") && !lowered.startsWith("https://")) {
+      return reject("Kubernetes host must use https");
+    }
+    const hasScheme = lowered.startsWith("https://");
+
+    let url: URL;
+    try {
+      url = new URL(hasScheme ? raw : `https://${raw}`);
+    } catch {
+      return reject("Kubernetes host must be a valid URL, for example https://my-cluster.example.com:6443");
+    }
+
+    if (url.protocol.toLowerCase() !== "https:") {
+      return reject("Kubernetes host must use https");
+    }
+    if (url.username || url.password) {
+      return reject("Kubernetes host must not include credentials");
+    }
+    if (url.pathname !== "/" || url.search || url.hash) {
+      return reject(
+        "Kubernetes host must be the API server address only, with no path, for example https://my-cluster.example.com:6443"
+      );
+    }
+
+    return `https://${url.host}`;
+  });

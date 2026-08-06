@@ -4,6 +4,11 @@
   {{- if not .Values.serviceAccount.automount }}
     {{- fail "serviceAccount.automount must be true when gateway.enrollment.method is 'kubernetes'. The gateway authenticates with the projected service account token of its own pod." }}
   {{- end }}
+  {{- if not .Values.gateway.enrollment.kubernetes.externalTokenReview }}
+    {{- if not (and .Values.serviceAccount.create .Values.serviceAccount.createAsAuthDelegator) }}
+      {{- fail "The gateway's service account needs the system:auth-delegator ClusterRole to have its own token reviewed. Keep serviceAccount.create and serviceAccount.createAsAuthDelegator enabled, or set gateway.enrollment.kubernetes.externalTokenReview=true if a token reviewer JWT is configured in Infisical or you manage the binding yourself." }}
+    {{- end }}
+  {{- end }}
 {{- end }}
 {{- if eq .Values.gateway.enrollment.method "token" }}
   {{- if not .Values.persistence.enabled }}

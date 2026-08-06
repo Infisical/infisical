@@ -39,7 +39,10 @@ const schema = z
     allowedNamespaces: z.string(),
     allowedNames: z.string(),
     allowedAudience: z.string(),
-    verifyTlsCertificate: z.boolean()
+    verifyTlsCertificate: z.boolean(),
+    // The reviewer token is never returned, so a blank field cannot mean "delete". This is the
+    // only way to remove one, and clearing it is required to change the host.
+    removeTokenReviewerJwt: z.boolean()
   })
   .superRefine((data, ctx) => {
     if (
@@ -104,8 +107,13 @@ export const toNetworkingAuthMethodInput = (form: FormData) => {
       method: "kubernetes" as const,
       kubernetesHost: form.kubernetesHost,
       caCertificate: form.caCertificate,
-      // Write-only, so a blank field means "leave the stored value alone".
-      tokenReviewerJwt: form.tokenReviewerJwt.trim() ? form.tokenReviewerJwt : undefined,
+      // Write-only: blank means "leave the stored value alone", empty string means "remove it".
+      // eslint-disable-next-line no-nested-ternary
+      tokenReviewerJwt: form.removeTokenReviewerJwt
+        ? ""
+        : form.tokenReviewerJwt.trim()
+          ? form.tokenReviewerJwt
+          : undefined,
       allowedNamespaces: form.allowedNamespaces,
       allowedNames: form.allowedNames,
       allowedAudience: form.allowedAudience,
@@ -177,7 +185,8 @@ export const NetworkingAuthMethodForm = ({
     allowedNamespaces: initialKubernetes?.allowedNamespaces ?? "",
     allowedNames: initialKubernetes?.allowedNames ?? "",
     allowedAudience: initialKubernetes?.allowedAudience ?? "",
-    verifyTlsCertificate: initialKubernetes?.verifyTlsCertificate ?? true
+    verifyTlsCertificate: initialKubernetes?.verifyTlsCertificate ?? true,
+    removeTokenReviewerJwt: false
   };
 
   const {
@@ -555,6 +564,41 @@ export const NetworkingAuthMethodForm = ({
               </Field>
             )}
           />
+          {initialKubernetes?.hasTokenReviewerJwt && (
+            <Controller
+              control={control}
+              name="removeTokenReviewerJwt"
+              render={({ field }) => (
+                <Field>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="gateway-k8s-remove-reviewer"
+                      variant="org"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={isDisabled || isSaving}
+                    />
+                    <FieldLabel
+                      htmlFor="gateway-k8s-remove-reviewer"
+                      className="mb-0 inline-flex items-center gap-1.5"
+                    >
+                      Remove the stored token reviewer JWT
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircleIcon className="size-3.5 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">
+                          The stored token is never shown, so this is the only way to remove it. It
+                          is also required to change the Kubernetes host, since a stored reviewer
+                          token is never sent to a different host.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                  </div>
+                </Field>
+              )}
+            />
+          )}
           <Controller
             control={control}
             name="verifyTlsCertificate"
@@ -584,10 +628,9 @@ export const NetworkingAuthMethodForm = ({
                             certificate against the CA certificate provided above.
                           </p>
                           <p>
-                            This only takes effect while a CA certificate is configured. Without one
-                            there is nothing to verify against, so the API server&apos;s identity is
-                            not checked even when this is enabled. The connection is still over
-                            HTTPS.
+                            With a CA certificate above, the server is verified against it. Without
+                            one the system trust store is used, which a cluster CA will not be in,
+                            so verification fails. Turn this off only for testing.
                           </p>
                         </div>
                       </TooltipContent>

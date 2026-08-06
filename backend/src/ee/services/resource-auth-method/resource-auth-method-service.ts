@@ -38,6 +38,7 @@ import {
   RESOURCE_TYPE_GATEWAY,
   RESOURCE_TYPE_KMIP,
   RESOURCE_TYPE_RELAY,
+  ResourceAuthLoginFailureReason,
   ResourceAuthMethodType,
   type ResourceRef
 } from "./resource-auth-method-fns";
@@ -690,7 +691,11 @@ export const resourceAuthMethodServiceFactory = ({
     if (!registry || registry.method !== ResourceAuthMethodType.Aws) {
       throw new UnauthorizedError({
         message: `${resourceLabel} is not configured for AWS authentication`,
-        detail: { reasonCode: "method_mismatch", resourceId: resource.id, orgId: resourceOrgId }
+        detail: {
+          reasonCode: ResourceAuthLoginFailureReason.MethodMismatch,
+          resourceId: resource.id,
+          orgId: resourceOrgId
+        }
       });
     }
 
@@ -698,7 +703,11 @@ export const resourceAuthMethodServiceFactory = ({
     if (!config) {
       throw new UnauthorizedError({
         message: `${resourceLabel} is not configured for AWS authentication`,
-        detail: { reasonCode: "config_missing", resourceId: resource.id, orgId: resourceOrgId }
+        detail: {
+          reasonCode: ResourceAuthLoginFailureReason.ConfigMissing,
+          resourceId: resource.id,
+          orgId: resourceOrgId
+        }
       });
     }
 
@@ -748,7 +757,11 @@ export const resourceAuthMethodServiceFactory = ({
     if (!registry || registry.method !== ResourceAuthMethodType.Kubernetes) {
       throw new UnauthorizedError({
         message: `${resourceLabel} is not configured for Kubernetes authentication`,
-        detail: { reasonCode: "method_mismatch", resourceId: resource.id, orgId: resourceOrgId }
+        detail: {
+          reasonCode: ResourceAuthLoginFailureReason.MethodMismatch,
+          resourceId: resource.id,
+          orgId: resourceOrgId
+        }
       });
     }
 
@@ -756,7 +769,11 @@ export const resourceAuthMethodServiceFactory = ({
     if (!config) {
       throw new UnauthorizedError({
         message: `${resourceLabel} is not configured for Kubernetes authentication`,
-        detail: { reasonCode: "config_missing", resourceId: resource.id, orgId: resourceOrgId }
+        detail: {
+          reasonCode: ResourceAuthLoginFailureReason.ConfigMissing,
+          resourceId: resource.id,
+          orgId: resourceOrgId
+        }
       });
     }
 

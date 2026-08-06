@@ -2,6 +2,7 @@
 * Added Kubernetes auth enrollment (`gateway.enrollment.method: kubernetes`). The gateway authenticates with the projected service account token of its own pod, so no enrollment token or cloud credential needs to be distributed to the cluster.
 * Added `gateway.enrollment.kubernetes.gatewayId` and `gateway.enrollment.kubernetes.serviceAccountTokenPath`.
 * Bumped the default CLI image from `0.43.84` to `0.43.118`, the first release containing `--enroll-method=kubernetes`.
+* Added `gateway.enrollment.kubernetes.externalTokenReview`. Installing with `serviceAccount.createAsAuthDelegator` disabled now fails unless this is set, since the gateway would otherwise start but never be able to have its token reviewed.
 
 ## 1.2.0 (July 17, 2026)
 * Added `extraEnv` for injecting additional environment variables into the gateway container.

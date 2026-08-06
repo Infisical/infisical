@@ -15,7 +15,13 @@ import {
 import { extractK8sUsername } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-fns";
 import { TCreateTokenReviewResponse } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
+import { ResourceAuthLoginFailureReason } from "./resource-auth-method-fns";
+
 const TOKEN_REVIEW_TIMEOUT_MS = 10_000;
+const TOKEN_REVIEW_API_VERSION = "authentication.k8s.io/v1";
+const TOKEN_REVIEW_KIND = "TokenReview";
+const TOKEN_REVIEW_PATH = "/apis/authentication.k8s.io/v1/tokenreviews";
+const TOKEN_REVIEW_PROBE_TOKEN = "test-token-for-permission-validation";
 // A TokenReview response is a few KB; the largest part is the echoed token, itself capped at 8KB
 // by the route schema. Bounded so an operator-supplied host cannot make us buffer an arbitrary body.
 const TOKEN_REVIEW_MAX_RESPONSE_BYTES = 64 * 1024;
@@ -88,6 +94,13 @@ export const validateKubernetesConfigReachable = async ({
   } catch (err) {
     throw classify(err, KubernetesAuthErrorContext.KubernetesHost);
   }
+  // 401/403 are fine: /version can require authentication. A 404 means the address does not serve
+  // the Kubernetes API at all, which is the common typo and used to save happily.
+  if (versionStatus === 404) {
+    throw new BadRequestError({
+      message: `${host} does not look like a Kubernetes API server: /version returned 404. Verify the host and port.`
+    });
+  }
   if (versionStatus >= 500) {
     throw new BadRequestError({
       message: `Kubernetes API server at ${host} returned ${versionStatus}. Verify the host is correct and healthy.`
@@ -99,11 +112,11 @@ export const validateKubernetesConfigReachable = async ({
   let review: { status: number; data: unknown };
   try {
     review = await safeRequest.post(
-      `${host}/apis/authentication.k8s.io/v1/tokenreviews`,
+      `${host}${TOKEN_REVIEW_PATH}`,
       {
-        apiVersion: "authentication.k8s.io/v1",
-        kind: "TokenReview",
-        spec: { token: "test-token-for-permission-validation" }
+        apiVersion: TOKEN_REVIEW_API_VERSION,
+        kind: TOKEN_REVIEW_KIND,
+        spec: { token: TOKEN_REVIEW_PROBE_TOKEN }
       },
       {
         ...requestConfig(),
@@ -158,10 +171,10 @@ export const reviewServiceAccountToken = async ({
   let review: TCreateTokenReviewResponse;
   try {
     const res = await safeRequest.post<TCreateTokenReviewResponse>(
-      `${baseUrl}/apis/authentication.k8s.io/v1/tokenreviews`,
+      `${baseUrl}${TOKEN_REVIEW_PATH}`,
       {
-        apiVersion: "authentication.k8s.io/v1",
-        kind: "TokenReview",
+        apiVersion: TOKEN_REVIEW_API_VERSION,
+        kind: TOKEN_REVIEW_KIND,
         spec: {
           token: jwt,
           ...(allowedAudience ? { audiences: [allowedAudience] } : {})
@@ -197,7 +210,10 @@ export const reviewServiceAccountToken = async ({
 
     // Borrow the identity Kubernetes auth wording, but keep our own error type and reason code
     // so the audit log still records why the login failed.
-    const reasonCode = status === 401 || status === 403 ? "token_review_forbidden" : "token_review_request_failed";
+    const reasonCode =
+      status === 401 || status === 403
+        ? ResourceAuthLoginFailureReason.TokenReviewForbidden
+        : ResourceAuthLoginFailureReason.TokenReviewRequestFailed;
     const message = isAxiosError
       ? handleAxiosError(err, { kubernetesHost }, KubernetesAuthErrorContext.KubernetesApiServer).message
       : `Could not reach the Kubernetes API server at ${kubernetesHost} to review the service account token.`;
@@ -208,14 +224,14 @@ export const reviewServiceAccountToken = async ({
   if (!review?.status) {
     throw new UnauthorizedError({
       message: "The Kubernetes API server returned an unexpected token review response.",
-      detail: { reasonCode: "token_review_malformed_response", ...errorContext }
+      detail: { reasonCode: ResourceAuthLoginFailureReason.TokenReviewMalformedResponse, ...errorContext }
     });
   }
 
   if ("error" in review.status) {
     throw new UnauthorizedError({
       message: `Kubernetes token review failed: ${review.status.error}`,
-      detail: { reasonCode: "token_review_error", ...errorContext }
+      detail: { reasonCode: ResourceAuthLoginFailureReason.TokenReviewError, ...errorContext }
     });
   }
 
@@ -233,7 +249,7 @@ export const reviewServiceAccountToken = async ({
   } catch {
     throw new UnauthorizedError({
       message: `Access denied: '${username}' is not a Kubernetes service account. The gateway must authenticate with a service account token.`,
-      detail: { reasonCode: "not_a_service_account", ...errorContext }
+      detail: { reasonCode: ResourceAuthLoginFailureReason.NotAServiceAccount, ...errorContext }
     });
   }
 
@@ -275,28 +291,43 @@ export const validateKubernetesAllowlists = ({
   if (!allowedNamespaces.trim() && !allowedNames.trim()) {
     throw new UnauthorizedError({
       message: "Access denied: Kubernetes auth method has no allowlist configured.",
-      detail: { reasonCode: "no_allowlist_configured", ...errorContext }
+      detail: { reasonCode: ResourceAuthLoginFailureReason.NoAllowlistConfigured, ...errorContext }
     });
   }
 
   if (allowedNamespaces.trim() && !matchesAnyPattern(namespace, allowedNamespaces)) {
     throw new UnauthorizedError({
       message: `Access denied: Kubernetes namespace '${namespace}' is not allowed.`,
-      detail: { reasonCode: "namespace_not_allowed", namespace, serviceAccountName, ...errorContext }
+      detail: {
+        reasonCode: ResourceAuthLoginFailureReason.NamespaceNotAllowed,
+        namespace,
+        serviceAccountName,
+        ...errorContext
+      }
     });
   }
 
   if (allowedNames.trim() && !matchesAnyPattern(serviceAccountName, allowedNames)) {
     throw new UnauthorizedError({
       message: `Access denied: Kubernetes service account '${serviceAccountName}' is not allowed.`,
-      detail: { reasonCode: "name_not_allowed", namespace, serviceAccountName, ...errorContext }
+      detail: {
+        reasonCode: ResourceAuthLoginFailureReason.NameNotAllowed,
+        namespace,
+        serviceAccountName,
+        ...errorContext
+      }
     });
   }
 
   if (allowedAudience.trim() && !audiences.includes(allowedAudience)) {
     throw new UnauthorizedError({
       message: `Access denied: the service account token does not carry the required audience '${allowedAudience}'.`,
-      detail: { reasonCode: "audience_not_allowed", namespace, serviceAccountName, ...errorContext }
+      detail: {
+        reasonCode: ResourceAuthLoginFailureReason.AudienceNotAllowed,
+        namespace,
+        serviceAccountName,
+        ...errorContext
+      }
     });
   }
 };

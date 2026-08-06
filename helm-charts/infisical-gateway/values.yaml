@@ -40,6 +40,10 @@ gateway:
       gatewayId: ""
       # Path to the projected service account token. Only override for a non-default mount.
       serviceAccountTokenPath: ""
+      # Set true only if TokenReview permission comes from somewhere other than this chart: a token
+      # reviewer JWT configured on the gateway in Infisical, or a binding you manage yourself.
+      # Required to install with serviceAccount.createAsAuthDelegator disabled.
+      externalTokenReview: false
 
     # Name of a K8s Secret whose key-value pairs are injected as env vars.
     # Use this to provide credentials for the enrollment method (e.g. AWS keys, GCP credentials).
