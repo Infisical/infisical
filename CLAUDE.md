@@ -64,6 +64,20 @@ It is a floor, not an exhaustive standard: user-understandable error messages an
 
 That list describes what the guide currently covers; it is **not** a test for whether the guide applies. Do not skip it because a change does not look like one of those topics. Read it, then decide which items are relevant.
 
+### Code Comments
+
+**Default to writing no comments.** This is house style across `backend/`, `backend-go/`, `frontend/`, and `wasm/`. Well-named identifiers already say what the code does, so a comment earns its place only by explaining *why*: a non-obvious constraint, a workaround for a specific bug, an ordering dependency the code cannot express, or logic that looks wrong until you know the reason.
+
+Do not write:
+- Narration that restates the next line (`// loop over the users`, `// set the flag`)
+- Section headers inside a function (`// --- validation ---`)
+- Change history or status (`// Added retry logic`, `// NEW`, `// now uses the alert registry`)
+- Process references. Plans, phases, Linear tickets, PR numbers, and reviewer names rot fast and mean nothing to the next reader. 
+- Docstrings or JSDoc that restate the signature
+- Commented-out code. Delete it; git remembers.
+
+Before calling the work done, re-read every comment you added and delete the ones that only describe what the code already says. When in doubt, match the density of the surrounding file: most of this codebase has none.
+
 ### Design System & Voice
 
 The v3 visual system (colors, typography, components, layout) and product voice/content tone are documented in [`DESIGN.md`](DESIGN.md). Read it before producing new UI or user-visible copy.
