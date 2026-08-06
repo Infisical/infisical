@@ -144,10 +144,10 @@ const checkInsightsPermission = async (
   return { permission };
 };
 
-// Org-wide insights are gated on a separate org-level subject, so they get their own check rather than
-// reusing the project one above.
-const checkSecretsManagementInsightsPermission = async (
+// used for the secret product insights
+const checkSecretsProductInsightsPermission = async (
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">,
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
   action: OrgPermissionSecretsManagementInsightsActions,
   { actor, actorId, orgId, actorAuthMethod, actorOrgId }: TOrgInsightsDTO
 ) => {
@@ -161,6 +161,13 @@ const checkSecretsManagementInsightsPermission = async (
   });
 
   ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.SecretsManagementInsights);
+
+  const plan = await licenseService.getPlan(orgId);
+  if (!plan.secretAccessInsights) {
+    throw new BadRequestError({
+      message: "Secrets management insights are not available on your plan. Upgrade your plan to access insights."
+    });
+  }
 
   return { permission };
 };
@@ -590,18 +597,12 @@ export const insightsServiceFactory = ({
   };
 
   const getSecretsUsageInsights = async (dto: TGetSecretsUsageInsightsDTO): Promise<TSecretsUsageInsights> => {
-    await checkSecretsManagementInsightsPermission(
+    await checkSecretsProductInsightsPermission(
       permissionService,
+      licenseService,
       OrgPermissionSecretsManagementInsightsActions.Read,
       dto
     );
-
-    const plan = await licenseService.getPlan(dto.orgId);
-    if (!plan.secretAccessInsights) {
-      throw new BadRequestError({
-        message: "Secrets management insights are not available on your plan. Upgrade your plan to access insights."
-      });
-    }
 
     const [activeLeases, users, identities] = await Promise.all([
       dynamicSecretLeaseDAL.countLeasesForOrg(dto.orgId),
@@ -615,21 +616,12 @@ export const insightsServiceFactory = ({
   };
 
   const getSecretsProjectWarnings = async (dto: TGetSecretsProjectWarningsDTO): Promise<TSecretsProjectWarnings> => {
-    // Permission and plan checks run before the cache lookup so cached data is
-    // never served to an unauthorized actor.
-    await checkSecretsManagementInsightsPermission(
+    await checkSecretsProductInsightsPermission(
       permissionService,
+      licenseService,
       OrgPermissionSecretsManagementInsightsActions.Read,
       dto
     );
-
-    const plan = await licenseService.getPlan(dto.orgId);
-    if (!plan.secretAccessInsights) {
-      throw new BadRequestError({
-        message: "Secrets management insights are not available on your plan. Upgrade your plan to access insights."
-      });
-    }
-
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, `project-warnings:${dto.offset}:${dto.limit}`);
     return withCache({
       keyStore,
@@ -651,18 +643,12 @@ export const insightsServiceFactory = ({
   };
 
   const getOrgAccessVolume = async (dto: TGetOrgAccessVolumeDTO): Promise<TOrgAccessVolume> => {
-    await checkSecretsManagementInsightsPermission(
+    await checkSecretsProductInsightsPermission(
       permissionService,
+      licenseService,
       OrgPermissionSecretsManagementInsightsActions.Read,
       dto
     );
-
-    const plan = await licenseService.getPlan(dto.orgId);
-    if (!plan.secretAccessInsights) {
-      throw new BadRequestError({
-        message: "Secrets management insights are not available on your plan. Upgrade your plan to access insights."
-      });
-    }
 
     const appCfg = getConfig();
     if (!appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED || !clickhouseAuditLogDAL) {
@@ -697,18 +683,12 @@ export const insightsServiceFactory = ({
   const getOrgAuthMethodDistribution = async (
     dto: TGetOrgAuthMethodDistributionDTO
   ): Promise<TOrgAuthMethodDistribution> => {
-    await checkSecretsManagementInsightsPermission(
+    await checkSecretsProductInsightsPermission(
       permissionService,
+      licenseService,
       OrgPermissionSecretsManagementInsightsActions.Read,
       dto
     );
-
-    const plan = await licenseService.getPlan(dto.orgId);
-    if (!plan.secretAccessInsights) {
-      throw new BadRequestError({
-        message: "Secrets management insights are not available on your plan. Upgrade your plan to access insights."
-      });
-    }
 
     const appCfg = getConfig();
     if (!appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED || !clickhouseAuditLogDAL) {
@@ -761,18 +741,12 @@ export const insightsServiceFactory = ({
   // How many static secrets the org held at the end of each of the last 12 weeks, as a running
   // total rather than per-week additions.
   const getStaticSecretsUsage = async (dto: TGetStaticSecretsUsageDTO): Promise<TStaticSecretsUsage> => {
-    await checkSecretsManagementInsightsPermission(
+    await checkSecretsProductInsightsPermission(
       permissionService,
+      licenseService,
       OrgPermissionSecretsManagementInsightsActions.Read,
       dto
     );
-
-    const plan = await licenseService.getPlan(dto.orgId);
-    if (!plan.secretAccessInsights) {
-      throw new BadRequestError({
-        message: "Secrets management insights are not available on your plan. Upgrade your plan to access insights."
-      });
-    }
 
     const { windowStart, currentWeekStart } = buildStaticSecretUsageWindow();
     const currentWeekStartStr = currentWeekStart.toISOString().slice(0, 10);
