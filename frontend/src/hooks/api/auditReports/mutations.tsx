@@ -22,7 +22,7 @@ export const useRequestAuditReport = () => {
 export const useDeleteAuditReport = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (auditReportId: string) => {
+    mutationFn: async ({ projectId, auditReportId }: TDeleteAuditReportDTO) => {
       const { data } = await apiRequest.delete<TAuditReport>(
         `/api/v1/insights/${projectId}/secrets/reports/${auditReportId}`
       );

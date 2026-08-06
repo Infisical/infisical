@@ -893,13 +893,13 @@ export const ORGANIZATIONS = {
 } as const;
 
 export const INSIGHTS = {
-  GET_SECRETS_USAGE_INSIGHTS: {
+  GET_SECRETS_SUMMARY: {
     activeLeases:
       "The number of dynamic secret leases currently active across the organization's secret management projects. Revoked and expired leases are not counted.",
     users: "The number of users who have accepted an active membership in the organization.",
     identities: "The number of machine identities that belong to the organization."
   },
-  GET_SECRETS_PROJECT_WARNINGS: {
+  GET_SECRETS_PROJECTS: {
     offset: "The number of projects to skip before returning results.",
     limit: "The maximum number of projects to return per page.",
     projectId: "The ID of the project.",
@@ -942,13 +942,13 @@ export const INSIGHTS = {
   },
   GET_STATIC_SECRETS_USAGE: {
     weeks:
-      "One entry for each of the last twelve weeks, oldest first. Weeks in which no secret was created are included, repeating the previous week's total.",
+      "One entry for each of the last twelve weeks, oldest first. Weeks in which no secret was created are included with a count of zero.",
     weekStart:
       "The Monday the week starts on, in UTC, as YYYY-MM-DD. Weeks are UTC calendar weeks, not a rolling window anchored on today.",
     totalSecrets:
-      "The total number of static secrets stored across every secret management project in the organization at the end of this week. This is a cumulative total, not the number of secrets added during the week. Personal secret overrides are not counted, and neither are secrets in projects or environments that have been deleted. Because deleted secrets leave no record, past weeks count only the secrets that still exist today: totals for earlier weeks understate what was stored at the time, and the series never decreases even across a week in which more secrets were deleted than created. The last entry is exact.",
+      "The number of static secrets created across every secret management project in the organization during this week. Each week is counted on its own, so this is not a running total. Personal secret overrides are not counted, and neither are secrets in projects or environments that have been deleted. Because deleted secrets leave no record, a week counts only the secrets created then that still exist today, so earlier weeks understate what was created at the time and drift lower as those secrets are deleted.",
     isPartial:
-      "Whether the week is still in progress. True for the last entry only, which is the total as of now rather than at the end of a completed week."
+      "Whether the week is still in progress. True for the last entry only, which covers Monday through now rather than a full week, so its count is not comparable to the weeks before it."
   }
 } as const;
 

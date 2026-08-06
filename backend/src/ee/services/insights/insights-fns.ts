@@ -5,33 +5,38 @@ import { TAccessVolumeActor, TAccessVolumeDay } from "./insights-types";
 const ACCESS_VOLUME_DAYS = 7;
 const STATIC_SECRET_USAGE_WEEKS = 12;
 
-export const buildAccessVolumeWindow = () => {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const endDate = new Date(`${todayStr}T23:59:59.999Z`);
-  const startDate = new Date(`${todayStr}T00:00:00.000Z`);
-  startDate.setUTCDate(startDate.getUTCDate() - (ACCESS_VOLUME_DAYS - 1));
+export const toUtcDateString = (date: Date) => date.toISOString().slice(0, 10);
 
-  return { todayStr, startDate, endDate };
-};
-
-// Every date in the window, oldest first, so days with no access still appear in the response
-// rather than being skipped.
-export const listAccessVolumeDates = (todayStr: string) => {
-  const dates: string[] = [];
-  for (let i = ACCESS_VOLUME_DAYS - 1; i >= 0; i -= 1) {
-    const d = new Date(`${todayStr}T00:00:00.000Z`);
-    d.setUTCDate(d.getUTCDate() - i);
-    dates.push(d.toISOString().slice(0, 10));
-  }
-
-  return dates;
-};
+const startOfUtcDay = (date: Date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 
 const startOfUtcWeek = (date: Date) => {
-  const monday = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const monday = startOfUtcDay(date);
   monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
 
   return monday;
+};
+
+const listBucketStarts = (lastBucketStart: Date, count: number, stepDays: number) => {
+  const bucketStarts: string[] = [];
+  for (let i = count - 1; i >= 0; i -= 1) {
+    const bucketStart = new Date(lastBucketStart);
+    bucketStart.setUTCDate(bucketStart.getUTCDate() - i * stepDays);
+    bucketStarts.push(toUtcDateString(bucketStart));
+  }
+
+  return bucketStarts;
+};
+
+export const buildAccessVolumeWindow = () => {
+  const startOfToday = startOfUtcDay(new Date());
+
+  const startDate = new Date(startOfToday);
+  startDate.setUTCDate(startDate.getUTCDate() - (ACCESS_VOLUME_DAYS - 1));
+
+  const endDate = new Date(startOfToday);
+  endDate.setUTCHours(23, 59, 59, 999);
+
+  return { dates: listBucketStarts(startOfToday, ACCESS_VOLUME_DAYS, 1), startDate, endDate };
 };
 
 export const buildStaticSecretUsageWindow = () => {
@@ -40,22 +45,15 @@ export const buildStaticSecretUsageWindow = () => {
   const windowStart = new Date(currentWeekStart);
   windowStart.setUTCDate(windowStart.getUTCDate() - (STATIC_SECRET_USAGE_WEEKS - 1) * 7);
 
-  return { windowStart, currentWeekStart };
+  return {
+    windowStart,
+    currentWeekStart,
+    weekStarts: listBucketStarts(currentWeekStart, STATIC_SECRET_USAGE_WEEKS, 7)
+  };
 };
 
-export const listStaticSecretUsageWeekStarts = (currentWeekStart: Date) => {
-  const weekStarts: string[] = [];
-  for (let i = STATIC_SECRET_USAGE_WEEKS - 1; i >= 0; i -= 1) {
-    const weekStart = new Date(currentWeekStart);
-    weekStart.setUTCDate(weekStart.getUTCDate() - i * 7);
-    weekStarts.push(weekStart.toISOString().slice(0, 10));
-  }
-
-  return weekStarts;
-};
-
-export const buildAccessVolumeDayBuckets = (todayStr: string) =>
-  new Map(listAccessVolumeDates(todayStr).map((date) => [date, new Map<string, TAccessVolumeActor>()]));
+export const buildAccessVolumeDayBuckets = (dates: string[]) =>
+  new Map(dates.map((date) => [date, new Map<string, TAccessVolumeActor>()]));
 
 // Rows outside the window are dropped. The same actor can arrive as several rows when the
 // underlying aggregate groups on fields we do not surface, so counts are summed per actor.

@@ -15,8 +15,8 @@ import {
 import {
   OrgAuthMethodDistributionSchema,
   OrgSecretsAccessVolumeSchema,
-  SecretsProjectWarningsSchema,
-  SecretsUsageInsightsSchema,
+  SecretsProjectsSchema,
+  SecretsSummarySchema,
   StaticSecretsUsageSchema
 } from "@app/ee/services/insights/insights-schemas";
 import { INSIGHTS } from "@app/lib/api-docs";
@@ -57,22 +57,23 @@ const AuditReportSchema = z.object({
 export const registerInsightsRouter = async (server: FastifyZodProvider) => {
   // Org-scoped insights. These aggregate across every secret management project in the organization,
   // so they carry no :projectId and are gated on the org-level Secrets Management Insights subject.
-  // Everything below this block is project-scoped and lives under /:projectId.
+  // Everything below this block is project-scoped, lives under /:projectId, and is gated on the
+  // project-level Insights subject instead.
 
   server.route({
     method: "GET",
-    url: "/secrets/usage-insights",
+    url: "/secrets/summary",
     config: {
       rateLimit: readLimit
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
-      operationId: "getSecretsUsageInsights",
+      operationId: "getSecretsSummary",
       description: "Get secrets management usage counts for the requesting organization.",
       security: [{ bearerAuth: [] }],
       response: {
         200: z.object({
-          usageInsights: SecretsUsageInsightsSchema
+          usageInsights: SecretsSummarySchema
         })
       }
     },
@@ -100,29 +101,22 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/secrets/project-warnings",
+    url: "/secrets/projects",
     config: {
       rateLimit: readLimit
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
-      operationId: "getSecretsProjectWarnings",
-      description:
-        "List the organization's secret management projects with outstanding issue counts, ordered by severity.",
+      operationId: "getSecretsProjects",
+      description: "List the organization's secret management projects, ordered by severity.",
       security: [{ bearerAuth: [] }],
       querystring: z.object({
-        offset: z.coerce
-          .number()
-          .int()
-          .min(0)
-          .max(10000)
-          .default(0)
-          .describe(INSIGHTS.GET_SECRETS_PROJECT_WARNINGS.offset),
-        limit: z.coerce.number().int().min(1).max(100).default(20).describe(INSIGHTS.GET_SECRETS_PROJECT_WARNINGS.limit)
+        offset: z.coerce.number().int().min(0).max(10000).default(0).describe(INSIGHTS.GET_SECRETS_PROJECTS.offset),
+        limit: z.coerce.number().int().min(1).max(100).default(20).describe(INSIGHTS.GET_SECRETS_PROJECTS.limit)
       }),
       response: {
         200: z.object({
-          projectWarnings: SecretsProjectWarningsSchema
+          projectWarnings: SecretsProjectsSchema
         })
       }
     },
@@ -200,13 +194,13 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/secrets/auth-method-distribution",
+    url: "/secrets/usage/auth-methods",
     config: {
       rateLimit: readLimit
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
-      operationId: "getSecretsAuthMethodDistribution",
+      operationId: "getSecretsUsageAuthMethods",
       description:
         "Get the number of times each machine identity authentication method was used to access a secret value in the requesting organization over the past week.",
       security: [{ bearerAuth: [] }],
@@ -251,7 +245,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "getStaticSecretsUsage",
       description:
-        "Get how many static secrets the requesting organization stored at the end of each of the last twelve UTC calendar weeks.",
+        "Get how many static secrets the requesting organization created in each of the last twelve UTC calendar weeks.",
       security: [{ bearerAuth: [] }],
       response: {
         200: z.object({
@@ -274,7 +268,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_STATIC_SECRET_USAGE,
           metadata: {
-            totalSecrets: staticSecretUsage.weeks.at(-1)?.totalSecrets ?? 0
+            totalSecretsCreated: staticSecretUsage.weeks.reduce((sum, week) => sum + week.totalSecrets, 0)
           }
         }
       });
@@ -379,45 +373,9 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // server.route({
-  //   method: "GET",
-  //   url: "/:projectId/secrets/access-locations",
-  //   config: { rateLimit: readLimit },
-  //   schema: {
-  //     operationId: "getInsightsAccessLocations",
-  //     description: "Get geographic locations of secret access based on audit log IP addresses",
-  //     security: [{ bearerAuth: [] }],
-  //     params: z.object({
-  //       projectId: z.string().trim()
-  //     }),
-  //     querystring: z.object({
-  //       days: z.coerce.number().min(1).max(90).default(30)
-  //     }),
-  //     response: {
-  //       200: z.object({
-  //         locations: z.array(
-  //           z.object({ lat: z.number(), lng: z.number(), city: z.string(), country: z.string(), count: z.number() })
-  //         )
-  //       })
-  //     }
-  //   },
-  //   onRequest: verifyAuth([AuthMode.JWT]),
-  //   handler: async (req) => {
-  //     const { projectId } = req.params;
-  //     const { days } = req.query;
-  //     const result = await server.services.insights.getAccessLocations({ projectId, days }, req.permission);
-  //     await server.services.auditLog.createAuditLog({
-  //       projectId,
-  //       event: { type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS, metadata: { projectId, days } },
-  //       ...req.auditLogInfo
-  //     });
-  //     return result;
-  //   }
-  // });
-
   server.route({
     method: "GET",
-    url: "/:projectId/auth/method-distribution",
+    url: "/:projectId/usage/auth-methods",
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getInsightsAuthMethodDistribution",

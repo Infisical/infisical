@@ -10,20 +10,20 @@ export const SecretsSummarySchema = z.object({
 });
 
 export const SecretsProjectWarningSchema = z.object({
-  projectId: z.string().uuid().describe(INSIGHTS.GET_SECRETS_PROJECT.projectId),
-  projectName: z.string().describe(INSIGHTS.GET_SECRETS_PROJECT.projectName),
-  projectSlug: z.string().describe(INSIGHTS.GET_SECRETS_PROJECT.projectSlug),
-  totalSecrets: z.number().int().describe(INSIGHTS.GET_SECRETS_PROJECT.totalSecrets),
-  severityScore: z.number().int().describe(INSIGHTS.GET_SECRETS_PROJECT.severityScore),
+  projectId: z.string().uuid().describe(INSIGHTS.GET_SECRETS_PROJECTS.projectId),
+  projectName: z.string().describe(INSIGHTS.GET_SECRETS_PROJECTS.projectName),
+  projectSlug: z.string().describe(INSIGHTS.GET_SECRETS_PROJECTS.projectSlug),
+  totalSecrets: z.number().int().describe(INSIGHTS.GET_SECRETS_PROJECTS.totalSecrets),
+  severityScore: z.number().int().describe(INSIGHTS.GET_SECRETS_PROJECTS.severityScore),
   warnings: z
     .object({
-      duplicatedSecrets: z.number().int().nullable().describe(INSIGHTS.GET_SECRETS_PROJECT.duplicatedSecrets),
-      staleSecrets: z.number().int().describe(INSIGHTS.GET_SECRETS_PROJECT.staleSecrets),
-      failedRotations: z.number().int().describe(INSIGHTS.GET_SECRETS_PROJECT.failedRotations),
-      failedSyncs: z.number().int().describe(INSIGHTS.GET_SECRETS_PROJECT.failedSyncs),
-      orphanedLeases: z.number().int().describe(INSIGHTS.GET_SECRETS_PROJECT.orphanedLeases)
+      duplicatedSecrets: z.number().int().nullable().describe(INSIGHTS.GET_SECRETS_PROJECTS.duplicatedSecrets),
+      staleSecrets: z.number().int().describe(INSIGHTS.GET_SECRETS_PROJECTS.staleSecrets),
+      failedRotations: z.number().int().describe(INSIGHTS.GET_SECRETS_PROJECTS.failedRotations),
+      failedSyncs: z.number().int().describe(INSIGHTS.GET_SECRETS_PROJECTS.failedSyncs),
+      orphanedLeases: z.number().int().describe(INSIGHTS.GET_SECRETS_PROJECTS.orphanedLeases)
     })
-    .describe(INSIGHTS.GET_SECRETS_PROJECT.warnings)
+    .describe(INSIGHTS.GET_SECRETS_PROJECTS.warnings)
 });
 
 export const OrgSecretsAccessVolumeSchema = z.object({

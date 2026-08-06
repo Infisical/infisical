@@ -45,9 +45,8 @@ import {
   buildAccessVolumeWindow,
   buildStaticSecretUsageWindow,
   collapseAccessVolumeDays,
-  listAccessVolumeDates,
-  listStaticSecretUsageWeekStarts,
-  resolveUserDisplayNames
+  resolveUserDisplayNames,
+  toUtcDateString
 } from "./insights-fns";
 import {
   TGetAccessVolumeDTO,
@@ -55,12 +54,8 @@ import {
   TGetInsightsCalendarDTO,
   TGetInsightsCountsDTO,
   TGetInsightsSummaryDTO,
-  TGetOrgAccessVolumeDTO,
-  TGetOrgAuthMethodDistributionDTO,
   TGetSecretsDuplicationDTO,
   TGetSecretsProjectWarningsDTO,
-  TGetSecretsUsageInsightsDTO,
-  TGetStaticSecretsUsageDTO,
   TOrgAccessVolume,
   TOrgAuthMethodDistribution,
   TOrgInsightsDTO,
@@ -72,7 +67,7 @@ import {
 export type TInsightsServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByIpAddress" | "countByAuthMethod">;
+  auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByAuthMethod">;
   // Undefined when the instance has no ClickHouse configured. Only the org-wide aggregates use it,
   // and each degrades to an unsupported no-op response in that case.
   clickhouseAuditLogDAL?: Pick<TClickHouseAuditLogDALFactory, "countByDateForOrg" | "countByIdentityAuthMethodForOrg">;
@@ -104,8 +99,6 @@ export type TInsightsServiceFactoryDep = {
 
 export type TInsightsServiceFactory = ReturnType<typeof insightsServiceFactory>;
 
-// Secrets untouched for longer than this count as stale in the org-wide project warnings.
-// getSummary derives the same 90 days inline, where it doubles as the rotation/reminder lookback window.
 const STALE_SECRET_THRESHOLD_DAYS = 90;
 
 const VALUE_EVENT_TYPES = [
@@ -117,18 +110,27 @@ const VALUE_EVENT_TYPES = [
   EventType.CREATE_DYNAMIC_SECRET_LEASE
 ];
 
+// Both halves of the product (the per-project dashboard and the org-wide aggregates) are gated on the
+// same entitlement, so the check and its message live in one place.
+const assertInsightsPlanEnabled = async (
+  licenseService: TInsightsServiceFactoryDep["licenseService"],
+  orgId: string
+) => {
+  const plan = await licenseService.getPlan(orgId);
+  if (!plan.secretAccessInsights) {
+    throw new BadRequestError({
+      message: "Failed to access insights due to plan restriction. Upgrade your plan to access insights."
+    });
+  }
+};
+
 const checkInsightsPermission = async (
   permissionService: TInsightsServiceFactoryDep["permissionService"],
   licenseService: TInsightsServiceFactoryDep["licenseService"],
   projectId: string,
   actor: OrgServiceActor
 ) => {
-  const plan = await licenseService.getPlan(actor.orgId);
-  if (!plan.secretAccessInsights) {
-    throw new BadRequestError({
-      message: "Failed to access insights due to plan restriction. Upgrade your plan to access insights."
-    });
-  }
+  await assertInsightsPlanEnabled(licenseService, actor.orgId);
 
   const { permission } = await permissionService.getProjectPermission({
     actor: actor.type,
@@ -140,34 +142,6 @@ const checkInsightsPermission = async (
   });
 
   ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionInsightsActions.Read, ProjectPermissionSub.Insights);
-
-  return { permission };
-};
-
-// used for the secret product insights
-const checkSecretsProductInsightsPermission = async (
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">,
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
-  action: OrgPermissionSecretsManagementInsightsActions,
-  { actor, actorId, orgId, actorAuthMethod, actorOrgId }: TOrgInsightsDTO
-) => {
-  const { permission } = await permissionService.getOrgPermission({
-    scope: OrganizationActionScope.Any,
-    actor,
-    actorId,
-    orgId,
-    actorAuthMethod,
-    actorOrgId
-  });
-
-  ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.SecretsManagementInsights);
-
-  const plan = await licenseService.getPlan(orgId);
-  if (!plan.secretAccessInsights) {
-    throw new BadRequestError({
-      message: "Secrets management insights are not available on your plan. Upgrade your plan to access insights."
-    });
-  }
 
   return { permission };
 };
@@ -193,6 +167,25 @@ export const insightsServiceFactory = ({
   dynamicSecretLeaseDAL,
   insightsDAL
 }: TInsightsServiceFactoryDep) => {
+  // Gate for every org-wide aggregate: the org-level read permission plus the insights entitlement.
+  const assertOrgInsightsRead = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TOrgInsightsDTO) => {
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionSecretsManagementInsightsActions.Read,
+      OrgPermissionSubjects.SecretsManagementInsights
+    );
+
+    await assertInsightsPlanEnabled(licenseService, orgId);
+  };
+
   const fetchReminders = async (projectId: string, startDate: Date, endDate: Date) => {
     const rawReminders = await reminderDAL.findByProjectAndDateRange({ projectId, startDate, endDate });
     if (!rawReminders.length) return [];
@@ -266,7 +259,7 @@ export const insightsServiceFactory = ({
       key: cacheKey,
       ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
       fetcher: async () => {
-        const { todayStr, startDate, endDate } = buildAccessVolumeWindow();
+        const { dates, startDate, endDate } = buildAccessVolumeWindow();
 
         const rows = await auditLogDAL.countByDateAndActor({
           orgId: actorDto.orgId,
@@ -285,7 +278,7 @@ export const insightsServiceFactory = ({
           )
         ]);
 
-        const dayMap = buildAccessVolumeDayBuckets(todayStr);
+        const dayMap = buildAccessVolumeDayBuckets(dates);
 
         rows.forEach((row) => {
           const actorMeta = row.actorMetadata as Record<string, string> | null;
@@ -411,7 +404,7 @@ export const insightsServiceFactory = ({
         const in7Days = new Date(now);
         in7Days.setDate(now.getDate() + 7);
         const lookback90Days = new Date(now);
-        lookback90Days.setDate(now.getDate() - 90);
+        lookback90Days.setDate(now.getDate() - STALE_SECRET_THRESHOLD_DAYS);
         const staleThreshold = lookback90Days;
 
         // Fetch upcoming rotations (by date range) and all failed rotations (no date filter) in parallel
@@ -596,13 +589,8 @@ export const insightsServiceFactory = ({
     };
   };
 
-  const getSecretsUsageInsights = async (dto: TGetSecretsUsageInsightsDTO): Promise<TSecretsUsageInsights> => {
-    await checkSecretsProductInsightsPermission(
-      permissionService,
-      licenseService,
-      OrgPermissionSecretsManagementInsightsActions.Read,
-      dto
-    );
+  const getSecretsUsageInsights = async (dto: TOrgInsightsDTO): Promise<TSecretsUsageInsights> => {
+    await assertOrgInsightsRead(dto);
 
     const [activeLeases, users, identities] = await Promise.all([
       dynamicSecretLeaseDAL.countLeasesForOrg(dto.orgId),
@@ -616,12 +604,8 @@ export const insightsServiceFactory = ({
   };
 
   const getSecretsProjectWarnings = async (dto: TGetSecretsProjectWarningsDTO): Promise<TSecretsProjectWarnings> => {
-    await checkSecretsProductInsightsPermission(
-      permissionService,
-      licenseService,
-      OrgPermissionSecretsManagementInsightsActions.Read,
-      dto
-    );
+    await assertOrgInsightsRead(dto);
+
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, `project-warnings:${dto.offset}:${dto.limit}`);
     return withCache({
       keyStore,
@@ -642,13 +626,8 @@ export const insightsServiceFactory = ({
     });
   };
 
-  const getOrgAccessVolume = async (dto: TGetOrgAccessVolumeDTO): Promise<TOrgAccessVolume> => {
-    await checkSecretsProductInsightsPermission(
-      permissionService,
-      licenseService,
-      OrgPermissionSecretsManagementInsightsActions.Read,
-      dto
-    );
+  const getOrgAccessVolume = async (dto: TOrgInsightsDTO): Promise<TOrgAccessVolume> => {
+    await assertOrgInsightsRead(dto);
 
     const appCfg = getConfig();
     if (!appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED || !clickhouseAuditLogDAL) {
@@ -661,7 +640,7 @@ export const insightsServiceFactory = ({
       key: cacheKey,
       ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
       fetcher: async () => {
-        const { todayStr, startDate, endDate } = buildAccessVolumeWindow();
+        const { dates, startDate, endDate } = buildAccessVolumeWindow();
 
         const rows = await clickhouseAuditLogDAL.countByDateForOrg({
           orgId: dto.orgId,
@@ -673,22 +652,15 @@ export const insightsServiceFactory = ({
         const countsByDate = new Map(rows.map((row) => [row.date, row.count]));
 
         return {
-          days: listAccessVolumeDates(todayStr).map((date) => ({ date, total: countsByDate.get(date) ?? 0 })),
+          days: dates.map((date) => ({ date, total: countsByDate.get(date) ?? 0 })),
           isSupported: true
         };
       }
     });
   };
 
-  const getOrgAuthMethodDistribution = async (
-    dto: TGetOrgAuthMethodDistributionDTO
-  ): Promise<TOrgAuthMethodDistribution> => {
-    await checkSecretsProductInsightsPermission(
-      permissionService,
-      licenseService,
-      OrgPermissionSecretsManagementInsightsActions.Read,
-      dto
-    );
+  const getOrgAuthMethodDistribution = async (dto: TOrgInsightsDTO): Promise<TOrgAuthMethodDistribution> => {
+    await assertOrgInsightsRead(dto);
 
     const appCfg = getConfig();
     if (!appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED || !clickhouseAuditLogDAL) {
@@ -743,17 +715,11 @@ export const insightsServiceFactory = ({
   // Deleting a secret is a hard delete with no tombstone, so a week can only be counted from the
   // createdAt of secrets that still exist. Past weeks therefore understate what was created then
   // and drift lower as those secrets are deleted.
-  const getStaticSecretsUsage = async (dto: TGetStaticSecretsUsageDTO): Promise<TStaticSecretsUsage> => {
-    await checkSecretsProductInsightsPermission(
-      permissionService,
-      licenseService,
-      OrgPermissionSecretsManagementInsightsActions.Read,
-      dto
-    );
+  const getStaticSecretsUsage = async (dto: TOrgInsightsDTO): Promise<TStaticSecretsUsage> => {
+    await assertOrgInsightsRead(dto);
 
-    const { windowStart, currentWeekStart } = buildStaticSecretUsageWindow();
-    const currentWeekStartStr = currentWeekStart.toISOString().slice(0, 10);
-    const weekStarts = listStaticSecretUsageWeekStarts(currentWeekStart);
+    const { windowStart, currentWeekStart, weekStarts } = buildStaticSecretUsageWindow();
+    const currentWeekStartStr = toUtcDateString(currentWeekStart);
 
     // using two different cache keys because the current week is still in progress, so the count is not yet complete.
     // The prior weeks can have a longer TTL

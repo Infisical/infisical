@@ -1,4 +1,12 @@
+import { createMongoAbility, MongoAbility } from "@casl/ability";
+
 import { TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
+import { TFeatureSet } from "@app/ee/services/license/license-types";
+import {
+  OrgPermissionSecretsManagementInsightsActions,
+  OrgPermissionSet,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 
 // The insights service covers both the per-project dashboard and the org-wide aggregates, so its factory
 // takes every dependency both halves need. Specs that only exercise the org-wide methods supply these
@@ -6,14 +14,12 @@ import { TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-s
 //
 // They throw rather than return empty values on purpose: a spec that accidentally reaches a project-scoped
 // code path should fail loudly instead of quietly asserting against a zero the stub invented.
-const unreachable =
-  (method: string) =>
-  (): never => {
-    throw new Error(
-      `insights test stub: ${method} was called, but this spec only exercises org-scoped insights. ` +
-        `Provide a real dependency if the assertion under test needs it.`
-    );
-  };
+const unreachable = (method: string) => (): never => {
+  throw new Error(
+    `insights test stub: ${method} was called, but this spec only exercises org-scoped insights. ` +
+      `Provide a real dependency if the assertion under test needs it.`
+  );
+};
 
 // Specs supply their own getOrgPermission; this fills the other half of the permissionService contract.
 export const unreachableGetProjectPermission: Pick<
@@ -39,7 +45,6 @@ export const projectScopedInsightsDepStubs: Pick<
 > = {
   auditLogDAL: {
     countByDateAndActor: unreachable("auditLogDAL.countByDateAndActor"),
-    countByIpAddress: unreachable("auditLogDAL.countByIpAddress"),
     countByAuthMethod: unreachable("auditLogDAL.countByAuthMethod")
   },
   secretRotationV2DAL: {
@@ -78,6 +83,45 @@ export const projectScopedInsightsDepStubs: Pick<
   kmsService: {
     createCipherPairWithDataKey: unreachable("kmsService.createCipherPairWithDataKey")
   }
+};
+
+// Every org-wide insight is gated on the same org read permission plus the same plan entitlement, so specs
+// share one set of stubs for that gate and flip the two toggles to exercise the two rejection paths.
+export const buildOrgInsightsGateStubs = () => {
+  let canReadInsights = true;
+  let planHasInsights = true;
+
+  const buildPermission = (canRead: boolean): MongoAbility<OrgPermissionSet> =>
+    createMongoAbility<OrgPermissionSet>(
+      canRead
+        ? [
+            {
+              action: OrgPermissionSecretsManagementInsightsActions.Read,
+              subject: OrgPermissionSubjects.SecretsManagementInsights
+            }
+          ]
+        : []
+    );
+
+  return {
+    permissionService: {
+      ...unreachableGetProjectPermission,
+      getOrgPermission: async () => ({
+        permission: buildPermission(canReadInsights),
+        memberships: [],
+        hasRole: () => false
+      })
+    } as TInsightsServiceFactoryDep["permissionService"],
+    licenseService: {
+      getPlan: async () => ({ secretAccessInsights: planHasInsights }) as unknown as TFeatureSet
+    } as TInsightsServiceFactoryDep["licenseService"],
+    setCanReadInsights: (canRead: boolean) => {
+      canReadInsights = canRead;
+    },
+    setPlanHasInsights: (hasPlan: boolean) => {
+      planHasInsights = hasPlan;
+    }
+  };
 };
 
 // getSecretsUsageInsights does not cache; getSecretsProjectWarnings does. A pass-through keyStore makes every

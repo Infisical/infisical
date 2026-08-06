@@ -139,7 +139,7 @@ export const useGetAuthMethodDistribution = (
     queryFn: async () => {
       const { projectId, ...query } = params;
       const { data } = await apiRequest.get<TGetAuthMethodDistributionResponse>(
-        `/api/v1/insights/${projectId}/auth/method-distribution`,
+        `/api/v1/insights/${projectId}/usage/auth-methods`,
         { params: query }
       );
       return data;

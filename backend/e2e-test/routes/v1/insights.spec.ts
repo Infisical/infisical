@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
 
-const URL = "/api/v1/insights/secrets/usage-insights";
+const URL = "/api/v1/insights/secrets/summary";
 
 // The counting itself is covered against a real database in e2e-test/insights-usage.spec.ts.
 // This file only asserts the route wiring, because the e2e instance runs unlicensed and the plan gate
 // therefore rejects every request before any count is taken.
 describe("Insights V1 Router (org-scoped)", async () => {
-  test("GET usage insights is registered and refuses on plan restriction", async () => {
+  test("GET secrets summary is registered and refuses on plan restriction", async () => {
     const res = await testServer.inject({
       method: "GET",
       url: URL,
@@ -19,12 +19,12 @@ describe("Insights V1 Router (org-scoped)", async () => {
     expect(res.json().message).toContain("Upgrade your plan");
   });
 
-  const WARNINGS_URL = "/api/v1/insights/secrets/project-warnings";
+  const PROJECTS_URL = "/api/v1/insights/secrets/projects";
 
-  test("GET project warnings is registered and refuses on plan restriction", async () => {
+  test("GET secrets projects is registered and refuses on plan restriction", async () => {
     const res = await testServer.inject({
       method: "GET",
-      url: WARNINGS_URL,
+      url: PROJECTS_URL,
       headers: { authorization: `Bearer ${jwtAuthToken}` }
     });
 
@@ -32,10 +32,10 @@ describe("Insights V1 Router (org-scoped)", async () => {
     expect(res.json().message).toContain("Upgrade your plan");
   });
 
-  test("GET project warnings rejects an out-of-bounds limit", async () => {
+  test("GET secrets projects rejects an out-of-bounds limit", async () => {
     const res = await testServer.inject({
       method: "GET",
-      url: `${WARNINGS_URL}?limit=500`,
+      url: `${PROJECTS_URL}?limit=500`,
       headers: { authorization: `Bearer ${jwtAuthToken}` }
     });
 

@@ -1,5 +1,15 @@
-import { IdentityAuthMethod } from "@app/db/schemas";
+import { z } from "zod";
+
 import { TOrgPermission } from "@app/lib/types";
+
+import {
+  OrgAuthMethodDistributionSchema,
+  OrgSecretsAccessVolumeSchema,
+  SecretsProjectsSchema,
+  SecretsProjectWarningSchema,
+  SecretsSummarySchema,
+  StaticSecretsUsageSchema
+} from "./insights-schemas";
 
 // Project-scoped insights: the dashboard for a single secret management project.
 
@@ -11,11 +21,6 @@ export type TGetInsightsCalendarDTO = {
 
 export type TGetAccessVolumeDTO = {
   projectId: string;
-};
-
-export type TGetAccessLocationsDTO = {
-  projectId: string;
-  days: number;
 };
 
 export type TGetAuthMethodDistributionDTO = {
@@ -41,46 +46,19 @@ export type TGetInsightsCountsDTO = {
 
 export type TOrgInsightsDTO = TOrgPermission;
 
-export type TGetSecretsUsageInsightsDTO = TOrgInsightsDTO;
-
-export type TSecretsUsageInsights = {
-  activeLeases: number;
-  users: number;
-  identities: number;
-};
-
 export type TGetSecretsProjectWarningsDTO = TOrgInsightsDTO & {
   offset: number;
   limit: number;
 };
 
-export type TProjectWarningCounts = {
-  // null when the project does not have secret blind indexing enabled (the metric is unknowable, not zero)
-  duplicatedSecrets: number | null;
-  staleSecrets: number;
-  failedRotations: number;
-  failedSyncs: number;
-  orphanedLeases: number;
-};
-
-export type TSecretsProjectWarning = {
-  projectId: string;
-  projectName: string;
-  projectSlug: string;
-  totalSecrets: number;
-  severityScore: number;
-  warnings: TProjectWarningCounts;
-};
-
-export type TSecretsProjectWarnings = {
-  projects: TSecretsProjectWarning[];
-  totalProjects: number;
-  projectsWithIssues: number;
-  offset: number;
-  limit: number;
-};
-
-export type TGetOrgAccessVolumeDTO = TOrgInsightsDTO;
+// The org-wide responses are derived from the route schemas rather than restated, so the shape and its
+// field documentation live in one place. Every field is documented there via .describe().
+export type TSecretsUsageInsights = z.infer<typeof SecretsSummarySchema>;
+export type TSecretsProjectWarning = z.infer<typeof SecretsProjectWarningSchema>;
+export type TSecretsProjectWarnings = z.infer<typeof SecretsProjectsSchema>;
+export type TOrgAccessVolume = z.infer<typeof OrgSecretsAccessVolumeSchema>;
+export type TOrgAuthMethodDistribution = z.infer<typeof OrgAuthMethodDistributionSchema>;
+export type TStaticSecretsUsage = z.infer<typeof StaticSecretsUsageSchema>;
 
 export type TAccessVolumeActor = {
   name: string;
@@ -92,49 +70,4 @@ export type TAccessVolumeDay = {
   date: string;
   total: number;
   actors: TAccessVolumeActor[];
-};
-
-export type TOrgAccessVolumeDay = {
-  date: string;
-  total: number;
-};
-
-export type TOrgAccessVolume = {
-  days: TOrgAccessVolumeDay[];
-  // false when audit logs are served from Postgres rather than ClickHouse, in which case
-  // the aggregate is not computed and `days` is empty.
-  isSupported: boolean;
-};
-
-export type TGetOrgAuthMethodDistributionDTO = TOrgInsightsDTO;
-
-export type TOrgAuthMethodCount = {
-  authMethod: IdentityAuthMethod;
-  count: number;
-};
-
-export type TOrgAuthMethodDistribution = {
-  methods: TOrgAuthMethodCount[];
-  totalFetches: number;
-  // Fetches by a machine identity whose auth method the audit log did not record, or that this
-  // version does not recognise.
-  unknownCount: number;
-  // false when audit logs are served from Postgres rather than ClickHouse, in which case
-  // the aggregate is not computed and `methods` is empty.
-  isSupported: boolean;
-};
-
-export type TGetStaticSecretsUsageDTO = TOrgInsightsDTO;
-
-export type TStaticSecretsUsageWeek = {
-  // The Monday the week starts on, in UTC, as YYYY-MM-DD
-  weekStart: string;
-  // the total amount of static secrets created in the week
-  totalSecrets: number;
-  // true for the trailing bucket only, which is measured as of now rather than at a week's end.
-  isPartial: boolean;
-};
-
-export type TStaticSecretsUsage = {
-  weeks: TStaticSecretsUsageWeek[];
 };

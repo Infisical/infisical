@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { createMongoAbility, ForbiddenError, MongoAbility } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
@@ -20,13 +20,6 @@ import {
   TUsersInsert
 } from "@app/db/schemas";
 import { dynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
-import { TFeatureSet } from "@app/ee/services/license/license-types";
-import {
-  OrgPermissionSecretsManagementInsightsActions,
-  OrgPermissionSet,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { insightsDALFactory } from "@app/ee/services/insights/insights-dal";
 import { insightsServiceFactory } from "@app/ee/services/insights/insights-service";
 import { TOrgInsightsDTO } from "@app/ee/services/insights/insights-types";
@@ -34,11 +27,7 @@ import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
 
-import {
-  passThroughKeyStore,
-  projectScopedInsightsDepStubs,
-  unreachableGetProjectPermission
-} from "./testUtils/insights";
+import { buildOrgInsightsGateStubs, passThroughKeyStore, projectScopedInsightsDepStubs } from "./testUtils/insights";
 
 declare const testDb: Knex;
 
@@ -85,33 +74,7 @@ const scopes = {
 
 const scopeList = Object.values(scopes);
 
-const buildPermission = (canRead: boolean): MongoAbility<OrgPermissionSet> =>
-  createMongoAbility<OrgPermissionSet>(
-    canRead
-      ? [
-          {
-            action: OrgPermissionSecretsManagementInsightsActions.Read,
-            subject: OrgPermissionSubjects.SecretsManagementInsights
-          }
-        ]
-      : []
-  );
-
-let canReadInsights = true;
-let planHasInsights = true;
-
-const permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission"> = {
-  ...unreachableGetProjectPermission,
-  getOrgPermission: async () => ({
-    permission: buildPermission(canReadInsights),
-    memberships: [],
-    hasRole: () => false
-  })
-};
-
-const licenseService = {
-  getPlan: async () => ({ secretAccessInsights: planHasInsights }) as unknown as TFeatureSet
-};
+const { permissionService, licenseService, setCanReadInsights, setPlanHasInsights } = buildOrgInsightsGateStubs();
 
 const insightsService = insightsServiceFactory({
   ...projectScopedInsightsDepStubs,
@@ -363,22 +326,20 @@ describe("insights secrets usage insights", () => {
   });
 
   test("throws when the actor cannot read secrets management insights", async () => {
-    canReadInsights = false;
+    setCanReadInsights(false);
     try {
-      await expect(insightsService.getSecretsUsageInsights(actor(ORG_ID))).rejects.toBeInstanceOf(
-        ForbiddenError
-      );
+      await expect(insightsService.getSecretsUsageInsights(actor(ORG_ID))).rejects.toBeInstanceOf(ForbiddenError);
     } finally {
-      canReadInsights = true;
+      setCanReadInsights(true);
     }
   });
 
   test("throws when the plan does not include secret access insights", async () => {
-    planHasInsights = false;
+    setPlanHasInsights(false);
     try {
       await expect(insightsService.getSecretsUsageInsights(actor(ORG_ID))).rejects.toThrow(/Upgrade your plan/);
     } finally {
-      planHasInsights = true;
+      setPlanHasInsights(true);
     }
   });
 });
