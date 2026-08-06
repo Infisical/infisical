@@ -36,10 +36,7 @@ export const identityCredentialAlertDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<TExpiringUaClientSecret[]> => {
     try {
-      // The clamp has to live in the expression, not in a `clientSecretTTL > 0` style guard. Under a
-      // hash-join plan this predicate is a scan-level filter on the whole table, evaluated before the
-      // identity/org joins narrow it, so a single out-of-range TTL belonging to any other tenant
-      // aborts the scan and silently kills every identity credential alert.
+      // The clamp has to live in the expression, not in a `clientSecretTTL > 0` style guard to avoid overflow
       const expiresAtSql = `${TableName.IdentityUaClientSecret}."createdAt" + make_interval(secs => LEAST(GREATEST(${TableName.IdentityUaClientSecret}."clientSecretTTL", 0), ${MAX_UA_CLIENT_SECRET_TTL_SECONDS}))`;
 
       const query = (tx || db.replicaNode())(TableName.IdentityUaClientSecret)
