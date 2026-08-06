@@ -83,7 +83,14 @@ The following operators are available for conditions:
 | `$eq`    | Equal                              | `{ environment: { $eq: "production" } }`              |
 | `$ne`    | Not equal                          | `{ environment: { $ne: "development" } }`             |
 | `$in`    | Matches any value in array         | `{ environment: { $in: ["staging", "production"] } }` |
-| `$glob`  | [Glob pattern](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns/) matching (supports `*`, `**`, `?`, and `{a,b}` wildcards) | `{ secretPath: { $glob: "/app/\*" } }`                |
+| `$glob`  | [Glob pattern](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns/) matching (supports `*`, `**`, `?`, and `{a,b}` wildcards) | `{ secretPath: { $glob: "/app/**" } }`                |
+
+<Note>
+  A trailing `/*` matches only a folder's direct children: `/app/*` matches `/app/api` but not
+  `/app` itself, and not `/app/api/db`. To match a folder and everything under it, use a trailing
+  `/**`. See [condition operators](/internals/permissions/project-permissions#condition-operators)
+  for details.
+</Note>
 
 These details are especially useful if you're using the API to [create new project roles](/api-reference/endpoints/project-roles/create).
 The rules outlined on this page, also apply when using our Terraform Provider to manage your Infisical project roles, or any other of our clients that manage project roles.
