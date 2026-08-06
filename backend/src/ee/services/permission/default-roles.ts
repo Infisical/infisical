@@ -57,7 +57,6 @@ const buildAdminPermissionRules = () => {
 
   // Admins get full access to everything
   [
-    ProjectPermissionSub.SecretFolders,
     ProjectPermissionSub.SecretImports,
     ProjectPermissionSub.Role,
     ProjectPermissionSub.Integrations,
@@ -81,6 +80,12 @@ const buildAdminPermissionRules = () => {
       el
     );
   });
+
+  // Folder read is implied for all, so admins only need write actions on folders
+  can(
+    [ProjectPermissionActions.Edit, ProjectPermissionActions.Create, ProjectPermissionActions.Delete],
+    ProjectPermissionSub.SecretFolders
+  );
 
   can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
 
@@ -471,12 +476,7 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.Secrets
   );
   can(
-    [
-      ProjectPermissionActions.Read,
-      ProjectPermissionActions.Edit,
-      ProjectPermissionActions.Create,
-      ProjectPermissionActions.Delete
-    ],
+    [ProjectPermissionActions.Edit, ProjectPermissionActions.Create, ProjectPermissionActions.Delete],
     ProjectPermissionSub.SecretFolders
   );
   can(
@@ -680,7 +680,6 @@ const buildViewerPermissionRules = () => {
     [ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSecretActions.ReadValue],
     ProjectPermissionSub.Secrets
   );
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders);
   can(ProjectPermissionDynamicSecretActions.ReadRootCredential, ProjectPermissionSub.DynamicSecrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
