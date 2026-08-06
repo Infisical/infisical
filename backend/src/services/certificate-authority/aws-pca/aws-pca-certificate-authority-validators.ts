@@ -36,7 +36,7 @@ export const resolveAwsPcaTemplateArn = ({
   usageMode
 }: {
   basicConstraints?: { isCA: boolean; pathLength?: number | null } | null;
-  usageMode?: string;
+  usageMode?: CertificateAuthorityUsageMode;
 }) => {
   if (!basicConstraints?.isCA) return API_CSR_PASSTHROUGH_TEMPLATE_ARN;
 
