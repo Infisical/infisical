@@ -96,7 +96,7 @@ import { TypeSelect } from "@app/layouts/ProjectLayout/components/TypeSelect";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
-import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
+import { NewSubOrganizationModal } from "./NewSubOrganizationModal";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { VersionBadge } from "./VersionBadge";
 
@@ -847,21 +847,11 @@ export const Navbar = () => {
           </div>
         </ModalContent>
       </Modal>
-      <Modal isOpen={showSubOrgForm} onOpenChange={setShowSubOrgForm}>
-        <ModalContent
-          title="Create Sub-Organizations"
-          subTitle="Define a new sub-organization under your current organization."
-        >
-          <div className="mb-2">
-            <NewSubOrganizationForm
-              onClose={() => {
-                setShowSubOrgForm(false);
-              }}
-              handleOrgSelection={handleOrgSelection}
-            />
-          </div>
-        </ModalContent>
-      </Modal>
+      <NewSubOrganizationModal
+        isOpen={showSubOrgForm}
+        onOpenChange={setShowSubOrgForm}
+        handleOrgSelection={handleOrgSelection}
+      />
       <Modal isOpen={showAdminsModal} onOpenChange={setShowAdminsModal}>
         <ModalContent title="Server Administrators" subTitle="View all server administrators">
           <div className="mb-2">

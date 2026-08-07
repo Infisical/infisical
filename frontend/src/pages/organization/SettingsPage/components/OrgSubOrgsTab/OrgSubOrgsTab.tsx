@@ -71,7 +71,7 @@ import {
   useUpdateSubOrganization
 } from "@app/hooks/api/subOrganizations";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { NewSubOrganizationForm } from "@app/layouts/OrganizationLayout/components/NavBar/NewSubOrganizationForm";
+import { NewSubOrganizationModal } from "@app/layouts/OrganizationLayout/components/NavBar/NewSubOrganizationModal";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 const editSubOrgSchema = z.object({
@@ -428,20 +428,11 @@ export const OrgSubOrgsTab = () => {
         </CardContent>
       </Card>
 
-      <Modal
+      <NewSubOrganizationModal
         isOpen={popUp.addSubOrg.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSubOrg", isOpen)}
-      >
-        <ModalContent
-          title="Add Sub Org"
-          subTitle="Create a new sub-organization under this organization."
-        >
-          <NewSubOrganizationForm
-            onClose={() => handlePopUpClose("addSubOrg")}
-            handleOrgSelection={() => handlePopUpClose("addSubOrg")}
-          />
-        </ModalContent>
-      </Modal>
+        handleOrgSelection={() => handlePopUpClose("addSubOrg")}
+      />
 
       <Modal
         isOpen={popUp.editSubOrg.isOpen}
