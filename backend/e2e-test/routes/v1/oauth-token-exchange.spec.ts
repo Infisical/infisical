@@ -116,6 +116,24 @@ describe("OAuth client grant type registration", async () => {
     expect(res.payload).toContain("audience only applies");
   });
 
+  // Duplicates used to be silently accepted below the array bound and reported as "too many items" above
+  // it, so the same mistake failed differently depending on how many times it was repeated.
+  test("reports duplicate grant types as duplicates, however many there are", async () => {
+    const res = await createClient({
+      name: "e2e-duplicate-grants",
+      grantTypes: [
+        OauthGrantType.AuthorizationCode,
+        OauthGrantType.AuthorizationCode,
+        OauthGrantType.AuthorizationCode,
+        OauthGrantType.RefreshToken
+      ],
+      redirectUris: ["https://app.example.com/callback"]
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.payload).toContain("duplicate");
+  });
+
   // Rotation on a token exchange application needs SSO edit permission on top of OauthClients edit, but
   // it must stay a plain OauthClients operation for every other application. The seed actor holds both
   // permissions, so this pins the non-exchange path rather than the denial.
