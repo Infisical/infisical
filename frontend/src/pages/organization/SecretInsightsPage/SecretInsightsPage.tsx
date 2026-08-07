@@ -54,7 +54,7 @@ export const SecretInsightsPage = withPermission(
       hasNextPage: hasMoreProjects,
       fetchNextPage: fetchMoreProjects,
       isFetchingNextPage: isFetchingMoreProjects
-    } = useGetOrgSecretsProjects(currentOrg.id, { limit: 1 });
+    } = useGetOrgSecretsProjects(currentOrg.id, { limit: 100 });
 
     const projectsInsights = useMemo(() => {
       if (!projectsPages) return undefined;
