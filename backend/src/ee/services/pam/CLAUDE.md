@@ -39,6 +39,20 @@ membership. There is **no org-admin fallback**: permission needs project-scoped 
 
 Gotchas:
 
+- **Product membership is plain project membership, so PAM roles inherit the generic project role rules.**
+  `PamProductRole.Admin`/`Member` are stored as the `admin`/`member` project membership roles, which means a
+  product member would otherwise pick up the generic project Member ability — including identity CRUD.
+  In a PAM project those slugs resolve to their own rule sets — `pamProjectAdminPermissions` /
+  `pamProjectMemberPermissions` in `permission/default-roles.ts`, dispatched by project type in
+  `buildProjectPermissionRules` — rather than the generic project Admin/Member abilities. A product
+  member gets read-only visibility of members, groups and identities and nothing else, because
+  everything they are entitled to comes from their folder/account memberships. Managing identities,
+  users and groups is a product admin responsibility; without the split, a product member inherited
+  identity create/edit and could attach an auth method to a product admin identity and log in with its
+  PAM access. Anything that is not `admin` (including `custom`, which is also how additional privileges
+  arrive) resolves to the member set, so a custom role cannot reintroduce project-level power in PAM.
+  `getProjectPermissionByRoles` resolves the project type too, so the privilege-boundary comparison
+  measures a product admin against the PAM rule sets and not the generic ones.
 - **Audit logs** are served through the shared org audit-log endpoint but scoped by the PAM model
   (`pam/pam-audit-log-fns.ts`), not the generic project `AuditLogs` permission. Any new account- or
   folder-scoped event **must** put `accountId`/`folderId` in its `eventMetadata`, or it lands in the
