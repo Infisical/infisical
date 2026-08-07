@@ -140,6 +140,8 @@ The response contains:
 
 Access token lifetime follows your organization's user token expiration setting (falling back to the platform default). Refresh tokens rotate on use, and a refresh never broadens the scopes originally granted.
 
+`refresh_token` is present only when the application is registered for the `refresh_token` grant, which applications created in the UI always are. If you registered one through the API with `grant_type` limited to `authorization_code`, the field is omitted and the client should exchange a new authorization code when the access token expires.
+
 ### Validation endpoint
 
 ```

@@ -28,6 +28,14 @@ const rotateClientSecret = async (clientDbId: string) =>
     headers: { authorization: `Bearer ${jwtAuthToken}` }
   });
 
+const consent = async (body: Record<string, string>) =>
+  testServer.inject({
+    method: "POST",
+    url: "/api/v1/oauth/authorize/consent",
+    headers: { authorization: `Bearer ${jwtAuthToken}` },
+    body
+  });
+
 const postToken = async (body: Record<string, string>) =>
   testServer.inject({
     method: "POST",
@@ -303,5 +311,63 @@ describe("Full delegation marker on a delegated OAuth token", async () => {
     });
 
     expect(res.statusCode).toBe(403);
+  });
+});
+
+// A refresh token is only usable if the application holds the refresh_token grant, so issuing one to an
+// application without it hands back a credential the token endpoint rejects on use.
+describe("Refresh token issuance follows the registered grants", async () => {
+  const REDIRECT_URI = "https://app.example.com/callback";
+
+  const runCodeFlow = async (grantTypes: OauthGrantType[]) => {
+    const created = await createClient({
+      name: `e2e-refresh-issuance-${grantTypes.length}`,
+      grantTypes,
+      redirectUris: [REDIRECT_URI]
+    });
+
+    const { client, clientSecret } = JSON.parse(created.payload) as {
+      client: { id: string; clientId: string };
+      clientSecret: string;
+    };
+
+    const consented = await consent({ client_id: client.clientId, redirect_uri: REDIRECT_URI });
+    expect(consented.statusCode).toBe(200);
+
+    const { callbackUrl } = JSON.parse(consented.payload) as { callbackUrl: string };
+    const code = new URL(callbackUrl).searchParams.get("code") as string;
+
+    const token = await postToken({
+      grant_type: OauthGrantType.AuthorizationCode,
+      code,
+      redirect_uri: REDIRECT_URI,
+      client_id: client.clientId,
+      client_secret: clientSecret
+    });
+
+    return { clientDbId: client.id, token };
+  };
+
+  test("issues a refresh token when the application holds the refresh_token grant", async () => {
+    const { clientDbId, token } = await runCodeFlow([
+      OauthGrantType.AuthorizationCode,
+      OauthGrantType.RefreshToken
+    ]);
+
+    expect(token.statusCode).toBe(200);
+    expect(JSON.parse(token.payload)).toHaveProperty("refresh_token");
+
+    await deleteClient(clientDbId);
+  });
+
+  test("omits the refresh token when the application does not", async () => {
+    const { clientDbId, token } = await runCodeFlow([OauthGrantType.AuthorizationCode]);
+
+    expect(token.statusCode).toBe(200);
+    const body = JSON.parse(token.payload) as Record<string, unknown>;
+    expect(body).not.toHaveProperty("refresh_token");
+    expect(body).toHaveProperty("access_token");
+
+    await deleteClient(clientDbId);
   });
 });
