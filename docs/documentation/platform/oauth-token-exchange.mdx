@@ -86,6 +86,7 @@ Two things it deliberately cannot do:
 
 - **OIDC SSO must be configured and enabled** for your organization.
 - **Your identity provider must sign tokens with an asymmetric algorithm** (RS256, RS512, or EdDSA) and publish a key ID (`kid`) in the token header.
+- **The tokens it issues must carry an expiry (`exp`).** Standard OIDC providers always set one; a token without it would be replayable indefinitely, so Infisical rejects it.
 - **Each user must have signed in to Infisical through OIDC SSO at least once.** Infisical matches the token's subject to the account created on that first sign-in, so a user who has only ever used your middleware cannot be resolved yet. Treat one browser sign-in as an onboarding step.
 - **You need a dedicated registration for your middleware in your identity provider**, so its tokens carry an audience distinct from Infisical's own.
 
@@ -181,7 +182,7 @@ Every exchange checks all of the following, and fails the request with a message
 - The **signature** validates against your identity provider's published keys.
 - The **issuer** matches your organization's configured OIDC SSO issuer.
 - The **audience** matches the audience configured on the application.
-- The token is **not expired** and not used before its `nbf` time.
+- The token **carries an `exp` claim and has not passed it**, and is not used before its `nbf` time. A token with no expiry is rejected rather than treated as valid forever.
 - The **signing algorithm** matches your OIDC SSO configuration.
 - The token's **subject** resolves to a user who has signed in through your organization's OIDC SSO and is an active member of the organization.
 - **MFA** requirements are satisfied, either because none apply or because the application declares that the identity provider enforces them.

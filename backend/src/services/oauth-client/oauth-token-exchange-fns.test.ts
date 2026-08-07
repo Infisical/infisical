@@ -83,7 +83,7 @@ type TSignOptions = {
   audience?: string | string[];
   issuer?: string;
   algorithm?: jwt.Algorithm;
-  expiresIn?: string | number;
+  expiresIn?: string | number | null;
   notBefore?: string | number;
   subject?: string | null;
   keyId?: string | null;
@@ -103,7 +103,7 @@ const signSubjectToken = ({
     algorithm,
     audience,
     issuer,
-    expiresIn,
+    ...(expiresIn !== null ? { expiresIn } : {}),
     ...(notBefore !== undefined ? { notBefore } : {}),
     ...(keyId ? { keyid: keyId } : {})
   });
@@ -336,6 +336,13 @@ describe("verifySubjectToken", () => {
     const token = signSubjectToken({ expiresIn: -60 });
 
     await expect(verify(token)).rejects.toThrow(/has expired/);
+  });
+
+  // 'exp' is optional in RFC 7519, so a token that omits it would otherwise stay exchangeable forever.
+  test("rejects a token with no exp claim", async () => {
+    const token = signSubjectToken({ expiresIn: null });
+
+    await expect(verify(token)).rejects.toThrow(/no 'exp' claim/);
   });
 
   test("rejects a token that is not yet valid", async () => {

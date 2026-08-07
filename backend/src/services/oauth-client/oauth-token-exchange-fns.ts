@@ -172,6 +172,13 @@ const toSubjectTokenError = (error: unknown, anchor: TOidcTrustAnchor, expectedA
   }
 
   if (error instanceof joseErrors.JWTClaimValidationFailed) {
+    if (error.claim === "exp") {
+      return new UnauthorizedError({
+        message:
+          "The subject token has no 'exp' claim, so it never expires and cannot be accepted. Configure your identity provider to set an expiry on tokens it issues for this application."
+      });
+    }
+
     if (error.claim === "aud") {
       return new UnauthorizedError({
         message: `The subject token's audience does not match this application's configured token exchange audience ('${expectedAudience}').`
@@ -272,7 +279,10 @@ export const verifySubjectToken = async ({ subjectToken, oidcConfig, expectedAud
     ({ payload: claims } = await jwtVerify(subjectToken, publicKey, {
       issuer: anchor.issuer,
       audience: expectedAudience,
-      algorithms: [anchor.algorithm]
+      algorithms: [anchor.algorithm],
+      // 'exp' is optional in RFC 7519 and only checked when present, so without this a token that omits
+      // it is exchangeable forever.
+      requiredClaims: ["exp"]
     }));
   } catch (error) {
     logger.error(
