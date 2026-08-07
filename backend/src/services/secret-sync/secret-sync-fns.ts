@@ -424,7 +424,7 @@ export const SecretSyncFns = {
       case SecretSync.LaravelForge:
         return LaravelForgeSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Chef:
-        return ChefSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return ChefSyncFns.syncSecrets(secretSync, schemaSecretMap, gatewayV2Service, gatewayPoolService);
       case SecretSync.OctopusDeploy:
         return OctopusDeploySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.CircleCI:
@@ -589,7 +589,7 @@ export const SecretSyncFns = {
         secretMap = await LaravelForgeSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.Chef:
-        secretMap = await ChefSyncFns.getSecrets(secretSync);
+        secretMap = await ChefSyncFns.getSecrets(secretSync, gatewayV2Service, gatewayPoolService);
         break;
       case SecretSync.OctopusDeploy:
         secretMap = await OctopusDeploySyncFns.getSecrets(secretSync);
@@ -754,7 +754,7 @@ export const SecretSyncFns = {
       case SecretSync.LaravelForge:
         return LaravelForgeSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Chef:
-        return ChefSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return ChefSyncFns.removeSecrets(secretSync, schemaSecretMap, gatewayV2Service, gatewayPoolService);
       case SecretSync.OctopusDeploy:
         return OctopusDeploySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.CircleCI:

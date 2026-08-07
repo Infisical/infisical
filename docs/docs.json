@@ -702,15 +702,7 @@
                   {
                     "group": "Infrastructure",
                     "pages": [
-                      {
-                        "group": "Docker",
-                        "pages": [
-                          "integrations/platforms/docker-intro",
-                          "integrations/platforms/docker",
-                          "integrations/platforms/docker-pass-envs",
-                          "integrations/platforms/docker-compose"
-                        ]
-                      },
+                      "integrations/platforms/docker",
                       "integrations/platforms/ansible",
                       "integrations/platforms/apache-airflow",
                       {
@@ -4395,7 +4387,7 @@
           },
           {
             "label": "Docker",
-            "href": "https://infisical.com/docs/integrations/platforms/docker-intro"
+            "href": "https://infisical.com/docs/integrations/platforms/docker"
           },
           {
             "label": "AWS ECS",
@@ -4504,6 +4496,18 @@
     }
   },
   "redirects": [
+    {
+      "source": "/integrations/platforms/docker-intro",
+      "destination": "/integrations/platforms/docker"
+    },
+    {
+      "source": "/integrations/platforms/docker-pass-envs",
+      "destination": "/integrations/platforms/docker"
+    },
+    {
+      "source": "/integrations/platforms/docker-compose",
+      "destination": "/integrations/platforms/docker"
+    },
     {
       "source": "/documentation/platform/agent-proxy/quickstart",
       "destination": "/documentation/platform/agent-proxy/quickstart/credentials"
