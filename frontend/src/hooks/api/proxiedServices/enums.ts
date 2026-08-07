@@ -12,5 +12,6 @@ export enum ProxiedServiceSubstitutionSurface {
   Header = "header",
   Path = "path",
   Query = "query",
-  Body = "body"
+  Body = "body",
+  WebSocket = "websocket"
 }

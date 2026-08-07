@@ -96,12 +96,36 @@ The placeholder is also delivered for you: both [`agent-proxy connect`](/documen
 </ParamField>
 
 <ParamField path="Replace In" type="string[]" required>
-  The request surfaces the agent proxy scans for the placeholder: `path`, `query`, `header`, and/or `body`. Scoping is the security boundary: the proxy only substitutes in the surfaces you list.
+  The request surfaces the agent proxy scans for the placeholder: `path`, `query`, `header`, `body`, and/or `websocket`. Scoping is the security boundary: the proxy only substitutes in the surfaces you list.
+
+  `websocket` is the one surface that is not part of the request. It scans the messages an agent sends after a [WebSocket upgrade](#websockets), rather than the upgrade request itself.
 </ParamField>
 
 <ParamField path="Secret" type="string" required>
   The secret (from the same folder) whose real value replaces the placeholder.
 </ParamField>
+
+## WebSockets
+
+Real-time APIs are brokered too. The upgrade request is an ordinary HTTP request, so [header rewrites](#header-rewrites) and `path`, `query` and `header` substitution apply to it exactly as they do to any other request. That covers most services, because a credential in a WebSocket URL or an `Authorization` header on the handshake is the common pattern.
+
+Some services instead expect the credential in the first message after the connection opens. The `websocket` substitution surface covers that case: the proxy parses frames on their way out and replaces the placeholder in the messages the agent sends.
+
+A few limits are worth knowing, because a message the proxy cannot rewrite is forwarded unchanged rather than blocked:
+
+- Only text messages are substituted. Binary messages pass through untouched.
+- Only complete messages are substituted. A message split across continuation frames passes through, since rewriting one fragment in isolation would corrupt it.
+- Messages above 1 MB pass through, so a large payload cannot be used to exhaust proxy memory.
+
+Substitution runs only on messages travelling from the agent to the service, so the proxy never rewrites a message on its way back to the agent.
+
+<Note>
+  **Compression is declined on these connections.** A compressed message is unreadable to the proxy, so where this surface is in use the Agent Proxy removes `permessage-deflate` from the upgrade request and the connection runs uncompressed. That costs bandwidth on high-volume connections, and it applies only to services with a `websocket` substitution; everything else negotiates compression as normal.
+</Note>
+
+<Note>
+  Substitution needs the message to contain the placeholder as plain text. A client that encodes its credential into a binary payload will not match, so put the credential in the handshake instead.
+</Note>
 
 ## Using secrets from other folders and environments
 
