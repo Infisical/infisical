@@ -11,7 +11,9 @@ import {
   CardHeader,
   CardTitle
 } from "@app/components/v3";
+import { DocumentationLinkBadge } from "@app/components/v3/platform";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
+import { getProjectTitle } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectTemplate } from "@app/hooks/api/projectTemplates";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -26,6 +28,7 @@ type Props = {
 
 export const ProjectTemplatesSection = ({ projectType, onTemplateSelect }: Props) => {
   const { subscription } = useSubscription();
+  const projectTitle = getProjectTitle(projectType);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "upgradePlan",
@@ -39,10 +42,10 @@ export const ProjectTemplatesSection = ({ projectType, onTemplateSelect }: Props
           <CardTitle>
             <LayoutTemplate className="size-4 text-accent" />
             Project Templates
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/project-templates" />
           </CardTitle>
           <CardDescription>
-            Create and configure templates with predefined roles and environments to streamline
-            project setup.
+            Create and configure templates with predefined access for new {projectTitle} projects.
           </CardDescription>
           <CardAction>
             <OrgPermissionCan

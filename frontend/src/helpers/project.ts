@@ -88,7 +88,8 @@ const VALID_PROJECT_SLUGS = new Set<string>([
   ProjectType.CertificateManager,
   ProjectType.KMS,
   ProjectType.SecretScanning,
-  ProjectType.PAM
+  ProjectType.PAM,
+  ProjectType.AI
 ]);
 
 export const urlSlugToProjectType = (slug: string): ProjectType | null => {
@@ -114,6 +115,16 @@ const PROJECT_TYPES_WITH_INTERMEDIATE_VIEW = new Set<ProjectType>([
 
 export const hasIntermediateProjectsView = (type: ProjectType) =>
   PROJECT_TYPES_WITH_INTERMEDIATE_VIEW.has(type);
+
+const PROJECT_TYPES_WITH_PROJECT_TEMPLATES = new Set<ProjectType>([
+  ProjectType.SecretManager,
+  ProjectType.KMS,
+  ProjectType.SecretScanning,
+  ProjectType.PAM
+]);
+
+export const hasProjectTemplates = (type: ProjectType) =>
+  PROJECT_TYPES_WITH_PROJECT_TEMPLATES.has(type);
 
 export const getProjectBaseURL = (type: ProjectType) => {
   switch (type) {

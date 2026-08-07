@@ -4,6 +4,7 @@ import { InfoIcon, Search, Trash2 } from "lucide-react";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Empty,
+  EmptyDescription,
   EmptyHeader,
   EmptyTitle,
   IconButton,
@@ -22,6 +23,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
+import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectTemplate, useListProjectTemplates } from "@app/hooks/api/projectTemplates";
@@ -45,6 +47,7 @@ const tableColumnKeys = ["name", "roles", "users", "groups", "identities", "acti
 
 export const ProjectTemplatesTable = ({ projectType, onEdit }: Props) => {
   const { subscription } = useSubscription();
+  const projectTitle = getProjectTitle(projectType);
 
   const { isPending, data: projectTemplates = [] } = useListProjectTemplates({
     enabled: subscription?.projectTemplates
@@ -74,6 +77,7 @@ export const ProjectTemplatesTable = ({ projectType, onEdit }: Props) => {
           <Search className="size-4" />
         </InputGroupAddon>
         <InputGroupInput
+          aria-label={`Search ${projectTitle} project templates`}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search templates..."
@@ -83,8 +87,13 @@ export const ProjectTemplatesTable = ({ projectType, onEdit }: Props) => {
         <Empty className="border border-dashed">
           <EmptyHeader>
             <EmptyTitle>
-              {search.trim() ? "No project templates match search" : "No project templates found"}
+              {search.trim() ? "No matching project templates" : "No project templates yet"}
             </EmptyTitle>
+            <EmptyDescription>
+              {search.trim()
+                ? "Try a different keyword or clear the search."
+                : `Add a template to standardize access for new ${projectTitle} projects.`}
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
@@ -178,7 +187,7 @@ export const ProjectTemplatesTable = ({ projectType, onEdit }: Props) => {
                     {groups && Boolean(groups.length) && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <InfoIcon className="inline-blocktext-muted ml-2" />
+                          <InfoIcon className="ml-2 inline-block text-muted" />
                         </TooltipTrigger>
                         <TooltipContent>
                           <ul className="ml-2 list-disc">
