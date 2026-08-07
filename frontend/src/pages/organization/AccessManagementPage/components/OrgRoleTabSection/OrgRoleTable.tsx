@@ -72,7 +72,7 @@ import {
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useDeleteOrgRole, useGetOrgRoles, useUpdateOrg } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { TOrgRole } from "@app/hooks/api/roles/types";
+import { TOrgRoleSummary } from "@app/hooks/api/roles/types";
 import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { DuplicateOrgRoleModal } from "@app/pages/organization/RoleByIDPage/components/DuplicateOrgRoleModal";
 import { RoleModal } from "@app/pages/organization/RoleByIDPage/components/RoleModal";
@@ -101,7 +101,7 @@ export const OrgRoleTable = () => {
   const { subscription } = useSubscription();
 
   const handleRoleDelete = async () => {
-    const { id } = popUp?.deleteRole?.data as TOrgRole;
+    const { id } = popUp?.deleteRole?.data as TOrgRoleSummary;
     await deleteRole({
       orgId,
       id
@@ -542,10 +542,10 @@ export const OrgRoleTable = () => {
       <DeleteActionModal
         isOpen={popUp.deleteRole.isOpen}
         title={`Are you sure you want to delete ${
-          (popUp?.deleteRole?.data as TOrgRole)?.name || " "
+          (popUp?.deleteRole?.data as TOrgRoleSummary)?.name || " "
         } role?`}
         onChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
-        deleteKey={(popUp?.deleteRole?.data as TOrgRole)?.slug || ""}
+        deleteKey={(popUp?.deleteRole?.data as TOrgRoleSummary)?.slug || ""}
         onClose={() => handlePopUpClose("deleteRole")}
         onDeleteApproved={handleRoleDelete}
       />
@@ -558,7 +558,7 @@ export const OrgRoleTable = () => {
       <DuplicateOrgRoleModal
         isOpen={popUp.duplicateRole.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("duplicateRole", isOpen)}
-        role={popUp?.duplicateRole?.data as TOrgRole | undefined}
+        role={popUp?.duplicateRole?.data as TOrgRoleSummary | undefined}
       />
     </>
   );

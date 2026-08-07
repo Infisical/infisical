@@ -33,6 +33,8 @@ export type TOrgRole = {
   permissions: TPermission[];
 };
 
+export type TOrgRoleSummary = Omit<TOrgRole, "permissions">;
+
 export type TPermission = {
   conditions?: Record<string, any>;
   action: string | string[];

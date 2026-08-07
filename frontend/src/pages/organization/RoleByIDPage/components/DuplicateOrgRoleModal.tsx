@@ -21,15 +21,15 @@ import {
   Input
 } from "@app/components/v3";
 import { useSubscription } from "@app/context";
-import { useCreateOrgRole } from "@app/hooks/api";
-import { TOrgRole } from "@app/hooks/api/roles/types";
+import { useCreateOrgRole, useGetOrgRole } from "@app/hooks/api";
+import { TOrgRole, TOrgRoleSummary, TPermission } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
 
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  role?: TOrgRole;
+  role?: TOrgRoleSummary;
 };
 
 const schema = z
@@ -43,11 +43,14 @@ const schema = z
 export type FormData = z.infer<typeof schema>;
 
 type ContentProps = {
-  role: TOrgRole;
+  role: TOrgRoleSummary;
+  permissions?: TPermission[];
+  isRolePending: boolean;
+  isRoleError: boolean;
   onClose: () => void;
 };
 
-const Content = ({ role, onClose }: ContentProps) => {
+const Content = ({ role, permissions, isRolePending, isRoleError, onClose }: ContentProps) => {
   const {
     control,
     handleSubmit,
@@ -70,6 +73,8 @@ const Content = ({ role, onClose }: ContentProps) => {
   const navigate = useNavigate();
 
   const handleDuplicateRole = async (form: FormData) => {
+    if (!permissions) return;
+
     if (subscription && !subscription?.rbac) {
       handleUpgradePlanPopUpOpen("upgradePlan");
       return;
@@ -77,7 +82,7 @@ const Content = ({ role, onClose }: ContentProps) => {
 
     const newRole = await createRole.mutateAsync({
       orgId: role.orgId,
-      permissions: role.permissions,
+      permissions,
       ...form
     });
 
@@ -143,13 +148,23 @@ const Content = ({ role, onClose }: ContentProps) => {
             )}
           />
         </FieldGroup>
+        {isRoleError && (
+          <p className="mt-4 text-sm text-danger">
+            Could not load the role permissions. Close the dialog and try again.
+          </p>
+        )}
         <DialogFooter className="mt-6">
           <DialogClose asChild>
             <Button type="button" variant="ghost">
               Cancel
             </Button>
           </DialogClose>
-          <Button type="submit" variant="org" isPending={isSubmitting} isDisabled={isSubmitting}>
+          <Button
+            type="submit"
+            variant="org"
+            isPending={isSubmitting || isRolePending}
+            isDisabled={isSubmitting || isRolePending || !permissions}
+          >
             Duplicate Role
           </Button>
         </DialogFooter>
@@ -164,8 +179,16 @@ const Content = ({ role, onClose }: ContentProps) => {
   );
 };
 
+const hasPermissions = (role: TOrgRoleSummary): role is TOrgRole =>
+  "permissions" in role && Array.isArray(role.permissions);
+
 export const DuplicateOrgRoleModal = ({ isOpen, onOpenChange, role }: Props) => {
+  const needsRoleFetch = Boolean(role && !hasPermissions(role));
+  const roleQuery = useGetOrgRole(role?.orgId ?? "", needsRoleFetch && role ? role.id : "");
+
   if (!role) return null;
+
+  const permissions = hasPermissions(role) ? role.permissions : roleQuery.data?.permissions;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -176,7 +199,13 @@ export const DuplicateOrgRoleModal = ({ isOpen, onOpenChange, role }: Props) => 
             Duplicate this role to create a new role with the same permissions.
           </DialogDescription>
         </DialogHeader>
-        <Content role={role} onClose={() => onOpenChange(false)} />
+        <Content
+          role={role}
+          permissions={permissions}
+          isRolePending={needsRoleFetch && roleQuery.isPending}
+          isRoleError={needsRoleFetch && roleQuery.isError}
+          onClose={() => onOpenChange(false)}
+        />
       </DialogContent>
     </Dialog>
   );
