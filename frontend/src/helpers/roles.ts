@@ -1,4 +1,4 @@
-import { ProjectMembershipRole, TOrgRole } from "@app/hooks/api/roles/types";
+import { ProjectMembershipRole, TOrgRoleSummary } from "@app/hooks/api/roles/types";
 
 export enum OrgMembershipRole {
   Admin = "admin",
@@ -12,7 +12,7 @@ export const isCustomOrgRole = (slug: string) =>
 export const isCustomProjectRole = (slug: string) =>
   !Object.values(ProjectMembershipRole).includes(slug as ProjectMembershipRole);
 
-export const findOrgMembershipRole = (roles: TOrgRole[], roleIdOrSlug: string) =>
+export const findOrgMembershipRole = (roles: TOrgRoleSummary[], roleIdOrSlug: string) =>
   isCustomOrgRole(roleIdOrSlug)
     ? roles.find((r) => r.id === roleIdOrSlug)
     : roles.find((r) => r.slug === roleIdOrSlug);
