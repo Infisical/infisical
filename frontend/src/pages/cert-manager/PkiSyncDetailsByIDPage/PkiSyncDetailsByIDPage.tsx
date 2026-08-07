@@ -1,6 +1,7 @@
 import { Helmet } from "react-helmet";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { BanIcon, ChevronLeftIcon } from "lucide-react";
+import { format } from "date-fns";
+import { BanIcon, ChevronLeftIcon, TriangleAlertIcon } from "lucide-react";
 
 import {
   EditPkiSyncModal,
@@ -8,8 +9,10 @@ import {
   PkiSyncRemoveStatusBadge
 } from "@app/components/pki-syncs";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Card,
-  CardAction,
   CardContent,
   CardHeader,
   CardTitle,
@@ -23,7 +26,7 @@ import {
 import { ROUTE_PATHS } from "@app/const/routes";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { usePopUp } from "@app/hooks";
-import { useGetPkiSync } from "@app/hooks/api/pkiSyncs";
+import { PkiSyncStatus, useGetPkiSync } from "@app/hooks/api/pkiSyncs";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import {
@@ -36,6 +39,16 @@ import {
   PkiSyncOptionsSection,
   PkiSyncPostSyncCommandSection
 } from "./components";
+
+const formatSyncErrorMessage = (message?: string | null) => {
+  if (!message) return "An unknown error occurred.";
+
+  try {
+    return JSON.stringify(JSON.parse(message), null, 2);
+  } catch {
+    return message;
+  }
+};
 
 const PageContent = () => {
   const navigate = useNavigate();
@@ -61,7 +74,7 @@ const PageContent = () => {
 
   if (!pkiSync) {
     return (
-      <div className="flex h-full w-full items-center justify-center px-20">
+      <div className="flex h-full w-full items-center justify-center px-4 sm:px-20">
         <Empty className="max-w-2xl">
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -96,7 +109,7 @@ const PageContent = () => {
 
   return (
     <>
-      <div className="container mx-auto flex flex-col justify-between bg-bunker-800 font-inter text-white">
+      <div className="container mx-auto flex min-w-0 flex-col justify-between bg-bunker-800 px-4 font-inter text-white sm:px-6">
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <button
             type="button"
@@ -106,31 +119,47 @@ const PageContent = () => {
             <ChevronLeftIcon className="size-4" />
             {applicationName ? "Back to Application" : "Certificate Syncs"}
           </button>
-          <div className="mb-6 flex w-full items-center gap-3">
-            <img
-              alt={`${destinationDetails.name} sync`}
-              src={`/images/integrations/${destinationDetails.image}`}
-              className="mt-1.5 ml-1 w-12"
-            />
-            <div className="min-w-0">
-              <p className="truncate text-2xl font-medium text-white">{pkiSync.name}</p>
-              <p className="mt-1 leading-3 text-accent">
-                {pkiSync.description || `${destinationDetails.name} PKI Sync`}
-              </p>
+          <div className="mb-6 flex w-full min-w-0 flex-col gap-4 lg:flex-row lg:items-center">
+            <div className="flex min-w-0 items-center gap-3">
+              <img
+                alt={`${destinationDetails.name} sync`}
+                src={`/images/integrations/${destinationDetails.image}`}
+                className="size-12 shrink-0 object-contain sm:size-14"
+              />
+              <div className="min-w-0">
+                <h1 className="text-2xl leading-tight font-medium break-words text-white sm:text-3xl">
+                  {pkiSync.name}
+                </h1>
+                <p className="mt-1 text-sm leading-snug text-muted sm:text-base">
+                  {pkiSync.description || `${destinationDetails.name} PKI Sync`}
+                </p>
+              </div>
             </div>
-            <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:ml-auto lg:w-auto lg:shrink-0 lg:justify-end">
               <PkiSyncImportStatusBadge pkiSync={pkiSync} />
               <PkiSyncRemoveStatusBadge pkiSync={pkiSync} />
+              <PkiSyncActionTriggers pkiSync={pkiSync} onEdit={handleEdit} />
             </div>
           </div>
-          <div className="flex justify-center">
-            <div className="mr-4 w-80">
+          {pkiSync.syncStatus === PkiSyncStatus.Failed && (
+            <Alert variant="danger" className="mb-6">
+              <TriangleAlertIcon />
+              <AlertTitle>Latest sync failed</AlertTitle>
+              <AlertDescription>
+                {pkiSync.lastSyncedAt && (
+                  <p>{format(new Date(pkiSync.lastSyncedAt), "MMM d, yyyy 'at' h:mm aaa")}</p>
+                )}
+                <p className="break-words whitespace-pre-wrap">
+                  {formatSyncErrorMessage(pkiSync.lastSyncMessage)}
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
+          <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
+            <div className="min-w-0">
               <Card>
-                <CardHeader className="grid-cols-[1fr_auto] border-b">
+                <CardHeader className="border-b">
                   <CardTitle>Details</CardTitle>
-                  <CardAction className="col-start-2 row-start-1 self-start justify-self-end">
-                    <PkiSyncActionTriggers pkiSync={pkiSync} onEdit={handleEdit} />
-                  </CardAction>
                 </CardHeader>
                 <CardContent>
                   <DetailGroup>
@@ -143,7 +172,7 @@ const PageContent = () => {
                 </CardContent>
               </Card>
             </div>
-            <div className="flex flex-1 flex-col gap-4">
+            <div className="flex min-w-0 flex-col gap-4">
               <PkiSyncCertificatesSection pkiSync={pkiSync} />
               <PkiSyncAuditLogsSection pkiSync={pkiSync} />
             </div>

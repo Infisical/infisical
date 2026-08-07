@@ -30,18 +30,25 @@ export const PkiSyncRemoveCertificatesModal = ({ isOpen, onOpenChange, pkiSync }
   const destinationName = PKI_SYNC_MAP[destination].name;
 
   const handleTriggerRemoveCertificates = async () => {
-    await triggerRemoveCertificates.mutateAsync({
-      syncId,
-      destination,
-      projectId
-    });
+    try {
+      await triggerRemoveCertificates.mutateAsync({
+        syncId,
+        destination,
+        projectId
+      });
 
-    createNotification({
-      text: `Successfully triggered certificate removal for ${destinationName} Certificate Sync`,
-      type: "success"
-    });
+      createNotification({
+        text: `Successfully triggered certificate removal for ${destinationName} Certificate Sync`,
+        type: "success"
+      });
 
-    onOpenChange(false);
+      onOpenChange(false);
+    } catch {
+      createNotification({
+        text: `Failed to remove certificates from ${destinationName}`,
+        type: "error"
+      });
+    }
   };
 
   return (
@@ -61,7 +68,10 @@ export const PkiSyncRemoveCertificatesModal = ({ isOpen, onOpenChange, pkiSync }
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="danger"
-            onClick={handleTriggerRemoveCertificates}
+            onClick={async (event) => {
+              event.preventDefault();
+              await handleTriggerRemoveCertificates();
+            }}
             isPending={triggerRemoveCertificates.isPending}
           >
             Remove Certificates

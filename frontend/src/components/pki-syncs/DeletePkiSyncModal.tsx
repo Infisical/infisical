@@ -44,19 +44,26 @@ export const DeletePkiSyncModal = ({ isOpen, onOpenChange, pkiSync, onComplete }
   const handleDeletePkiSync = async () => {
     if (!isConfirmed) return;
 
-    await deleteSync.mutateAsync({
-      syncId,
-      projectId,
-      destination
-    });
+    try {
+      await deleteSync.mutateAsync({
+        syncId,
+        projectId,
+        destination
+      });
 
-    createNotification({
-      text: `Successfully deleted ${destinationName} Certificate Sync`,
-      type: "success"
-    });
+      createNotification({
+        text: `Successfully deleted ${destinationName} Certificate Sync`,
+        type: "success"
+      });
 
-    onComplete?.();
-    onOpenChange(false);
+      onComplete?.();
+      onOpenChange(false);
+    } catch {
+      createNotification({
+        text: `Failed to delete ${destinationName} Certificate Sync`,
+        type: "error"
+      });
+    }
   };
 
   return (
@@ -70,9 +77,9 @@ export const DeletePkiSyncModal = ({ isOpen, onOpenChange, pkiSync, onComplete }
           <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
         </AlertDialogHeader>
         <form
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            handleDeletePkiSync();
+            await handleDeletePkiSync();
           }}
         >
           <Field>
@@ -93,8 +100,11 @@ export const DeletePkiSyncModal = ({ isOpen, onOpenChange, pkiSync, onComplete }
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="danger"
-            onClick={handleDeletePkiSync}
-            disabled={!isConfirmed}
+            onClick={async (event) => {
+              event.preventDefault();
+              await handleDeletePkiSync();
+            }}
+            isDisabled={!isConfirmed}
             isPending={deleteSync.isPending}
           >
             Delete

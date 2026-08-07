@@ -9,8 +9,6 @@ import {
   InfoIcon,
   PencilIcon,
   RefreshCwIcon,
-  ToggleLeftIcon,
-  ToggleRightIcon,
   Trash2Icon
 } from "lucide-react";
 
@@ -21,12 +19,16 @@ import {
   PkiSyncRemoveCertificatesModal
 } from "@app/components/pki-syncs";
 import {
+  Button,
+  ButtonGroup,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
+  Label,
+  Switch,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -101,100 +103,130 @@ export const PkiSyncActionTriggers = ({ pkiSync, onEdit }: Props) => {
     });
   }, [triggerSyncMutation, id, destination, projectId]);
 
-  const handleToggleAutoSync = useCallback(async () => {
-    await updatePkiSyncMutation.mutateAsync({
-      syncId: id,
-      projectId,
-      destination,
-      isAutoSyncEnabled: !pkiSync.isAutoSyncEnabled
-    });
-    createNotification({
-      text: `Auto-sync ${pkiSync.isAutoSyncEnabled ? "disabled" : "enabled"} successfully`,
-      type: "success"
-    });
-  }, [updatePkiSyncMutation, id, projectId, destination, pkiSync.isAutoSyncEnabled]);
+  const handleAutoSyncChange = useCallback(
+    async (isAutoSyncEnabled: boolean) => {
+      if (isAutoSyncEnabled === pkiSync.isAutoSyncEnabled) return;
+
+      try {
+        await updatePkiSyncMutation.mutateAsync({
+          syncId: id,
+          projectId,
+          destination,
+          isAutoSyncEnabled
+        });
+        createNotification({
+          text: `Auto-sync ${isAutoSyncEnabled ? "enabled" : "disabled"} successfully`,
+          type: "success"
+        });
+      } catch {
+        createNotification({
+          text: "Failed to update auto-sync setting",
+          type: "error"
+        });
+      }
+    },
+    [updatePkiSyncMutation, id, projectId, destination, pkiSync.isAutoSyncEnabled]
+  );
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <IconButton variant="ghost" size="xs" aria-label="Sync options">
-            <EllipsisIcon />
-          </IconButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onEdit} isDisabled={!canEditSync}>
-            <PencilIcon />
-            Edit Sync
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleTriggerSync} isDisabled={!canTriggerSync}>
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto">
+        <div className="flex items-center gap-2 sm:mr-2">
+          <Switch
+            id="pki-auto-sync"
+            variant="success"
+            checked={pkiSync.isAutoSyncEnabled}
+            onCheckedChange={handleAutoSyncChange}
+            disabled={!canEditSync || updatePkiSyncMutation.isPending}
+          />
+          <Label htmlFor="pki-auto-sync" className="whitespace-nowrap">
+            Auto-Sync
+          </Label>
+        </div>
+        <ButtonGroup className="w-full sm:w-fit">
+          <Button
+            variant="outline"
+            className="min-w-0 flex-1 sm:flex-none"
+            isDisabled={!canTriggerSync || triggerSyncMutation.isPending}
+            isPending={triggerSyncMutation.isPending}
+            onClick={handleTriggerSync}
+          >
             <RefreshCwIcon />
-            Trigger Sync
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCopyId();
-            }}
-          >
-            {isIdCopied ? <CheckIcon /> : <CopyIcon />}
-            Copy Sync ID
-          </DropdownMenuItem>
-          {syncOption?.canImportCertificates && (
-            <DropdownMenuItem
-              onClick={() => handlePopUpOpen("importCertificates")}
-              isDisabled={!canImportCertificates}
-            >
-              <DownloadIcon />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex h-full w-full items-center justify-between gap-1">
-                    <span>Import Certificates</span>
-                    <InfoIcon className="size-3.5 text-muted" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={14}>
-                  Import certificates from this {destinationName} destination into Infisical.
-                </TooltipContent>
-              </Tooltip>
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuItem
-            onClick={() => handlePopUpOpen("removeCertificates")}
-            isDisabled={!canRemoveCertificates}
-          >
-            <EraserIcon />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex h-full w-full items-center justify-between gap-1">
-                  <span>Remove Certificates</span>
-                  <InfoIcon className="ml-0.5 size-3.5 text-muted" />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={14}>
-                Remove certificates synced by Infisical from this {destinationName} destination.
-              </TooltipContent>
-            </Tooltip>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            isDisabled={!canEditSync || updatePkiSyncMutation.isPending}
-            onClick={handleToggleAutoSync}
-          >
-            {pkiSync.isAutoSyncEnabled ? <ToggleLeftIcon /> : <ToggleRightIcon />}
-            {pkiSync.isAutoSyncEnabled ? "Disable" : "Enable"} Auto-Sync
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            isDisabled={!canDeleteSync}
-            onClick={() => handlePopUpOpen("deleteSync")}
-            variant="danger"
-          >
-            <Trash2Icon />
-            Delete Sync
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            Sync now
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton aria-label="PKI sync options" variant="outline" className="shrink-0">
+                <EllipsisIcon />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onEdit} isDisabled={!canEditSync}>
+                <PencilIcon />
+                Edit Sync
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCopyId();
+                }}
+              >
+                {isIdCopied ? <CheckIcon /> : <CopyIcon />}
+                Copy Sync ID
+              </DropdownMenuItem>
+              {syncOption?.canImportCertificates && (
+                <DropdownMenuItem
+                  onClick={() => handlePopUpOpen("importCertificates")}
+                  isDisabled={!canImportCertificates}
+                >
+                  <DownloadIcon />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex h-full w-full items-center justify-between gap-2">
+                        <span>Import Certificates</span>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" sideOffset={14}>
+                      Import certificates from this {destinationName} destination into Infisical.
+                    </TooltipContent>
+                  </Tooltip>
+                </DropdownMenuItem>
+              )}
+              {syncOption?.canRemoveCertificates && (
+                <DropdownMenuItem
+                  onClick={() => handlePopUpOpen("removeCertificates")}
+                  isDisabled={!canRemoveCertificates}
+                >
+                  <EraserIcon />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex h-full w-full items-center justify-between gap-2">
+                        <span>Remove Certificates</span>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" sideOffset={14}>
+                      Remove certificates synced by Infisical from this {destinationName}{" "}
+                      destination.
+                    </TooltipContent>
+                  </Tooltip>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                isDisabled={!canDeleteSync}
+                onClick={() => handlePopUpOpen("deleteSync")}
+                variant="danger"
+              >
+                <Trash2Icon />
+                Delete Sync
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </ButtonGroup>
+      </div>
 
       {syncOption?.canImportCertificates && (
         <PkiSyncImportCertificatesModal

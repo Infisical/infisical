@@ -436,6 +436,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
         title="Remove Certificate from Sync"
         description={`Are you sure you want to remove "${certificateToDelete?.displayName}" from this certificate sync?`}
         confirmKey="confirm"
+        isPending={removeCertificatesFromSync.isPending}
         onConfirm={async () => {
           if (certificateToDelete) {
             await handleRemoveCertificate(certificateToDelete.id);
