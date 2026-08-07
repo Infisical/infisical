@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import {
   assertValidOauthClientGrantConfig,
   computePkceChallenge,
+  hasClientAuthorityChanged,
   isAllowedRedirectUri,
   isRegisteredRedirectUri,
   parseBasicAuthHeader
@@ -117,6 +118,51 @@ describe("isRegisteredRedirectUri", () => {
       isRegisteredRedirectUri(
         ["https://coder.example.com/external-auth"],
         "https://coder.example.com/external-auth/other"
+      )
+    ).toBe(false);
+  });
+});
+
+describe("hasClientAuthorityChanged", () => {
+  const authenticated = {
+    clientSecretHash: "$2b$10$oldhasholdhasholdhashol",
+    grantTypes: [OauthGrantType.TokenExchange]
+  };
+
+  test("reports no change when the client is untouched", () => {
+    expect(hasClientAuthorityChanged(authenticated, { ...authenticated }, OauthGrantType.TokenExchange)).toBe(false);
+  });
+
+  test("reports a change when the client secret was rotated", () => {
+    expect(
+      hasClientAuthorityChanged(
+        authenticated,
+        { ...authenticated, clientSecretHash: "$2b$10$newhashnewhashnewhashne" },
+        OauthGrantType.TokenExchange
+      )
+    ).toBe(true);
+  });
+
+  test("reports a change when the grant was withdrawn", () => {
+    expect(
+      hasClientAuthorityChanged(
+        authenticated,
+        { ...authenticated, grantTypes: [OauthGrantType.AuthorizationCode] },
+        OauthGrantType.TokenExchange
+      )
+    ).toBe(true);
+  });
+
+  test("reports a change when the client was deleted", () => {
+    expect(hasClientAuthorityChanged(authenticated, undefined, OauthGrantType.TokenExchange)).toBe(true);
+  });
+
+  test("reports no change when an unrelated grant was added", () => {
+    expect(
+      hasClientAuthorityChanged(
+        authenticated,
+        { ...authenticated, grantTypes: [OauthGrantType.TokenExchange, OauthGrantType.AuthorizationCode] },
+        OauthGrantType.TokenExchange
       )
     ).toBe(false);
   });

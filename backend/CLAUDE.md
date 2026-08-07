@@ -224,6 +224,20 @@ authorization code or refresh token and blanket revocation would just sign every
 per client, not per grant, so a client holding both grants loses its redirect-flow tokens too — the safe
 direction, and only reachable via the API.
 
+**That sweep only reaps sessions that already exist, so the exchange rechecks the client after creating
+its own.** `exchangeSubjectToken` authenticates the client, then spends provider discovery, JWKS
+verification and several DB reads before inserting a session — long enough for a revocation to land in
+between and delete nothing. So after the session exists it re-reads the client via
+`oauthClientDAL.findByIdOnPrimary` and rejects (re-running the sweep) if the secret hash changed, the
+grant is gone, or the row is. Two things make that sufficient and are load-bearing: each withdrawal path
+commits its write to the client *before* deleting the sessions, so a session that survived the delete
+belongs to a request whose client row is already stale; and the re-read is on the **primary**, because the
+replica that `authenticateClient` reads can still be serving the pre-revocation row. Only the exchange
+grant needs this — the authorization code and refresh branches read an existing session instead of
+creating one, so a racing revoke either fails them closed or kills the session behind the token they just
+signed. Any future non-interactive path that mints a user token after authenticating a client needs the
+same recheck.
+
 **Everything the exchange fetches from the identity provider is cached for 10 minutes, and nothing read
 from our own database is.** Token exchange sits on the caller's hot path (a middleware typically exchanges
 per request it serves), so the discovery document and the `JwksClient` are both cached per URL in

@@ -29,6 +29,7 @@ import {
   assertValidOauthClientGrantConfig,
   computePkceChallenge,
   getOauthClientSessionUserAgent,
+  hasClientAuthorityChanged,
   isRegisteredRedirectUri,
   PKCE_CODE_VERIFIER_REGEX
 } from "./oauth-client-fns";
@@ -686,6 +687,15 @@ export const oauthClientServiceFactory = ({
       userAgent: getOauthClientSessionUserAgent(client.clientId)
     });
     if (!tokenSession) throw new BadRequestError({ message: "Failed to create user token session" });
+
+    const currentClient = await oauthClientDAL.findByIdOnPrimary(client.id);
+    if (hasClientAuthorityChanged(client, currentClient, OauthGrantType.TokenExchange)) {
+      await tokenService.revokeSessionsByUserAgent(getOauthClientSessionUserAgent(client.clientId));
+      throw new UnauthorizedError({
+        message:
+          "This application's credentials or configuration changed while the token was being issued. Retry with the application's current client secret."
+      });
+    }
 
     const { accessTokenExpiresIn } = resolveTokenLifetimes(org);
 
