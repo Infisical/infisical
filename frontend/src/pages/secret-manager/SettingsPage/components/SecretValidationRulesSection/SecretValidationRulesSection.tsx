@@ -208,6 +208,27 @@ const RuleFormContent = ({
     );
     return Boolean(hasRegex && hasLength);
   })();
+
+  const watchedProviders = form.watch("enforcement.inputs.providers" as "enforcement.inputs") as
+    | string[]
+    | undefined;
+  // Oracle 12c and older limits passwords to 30 characters. Show a heads-up
+  // when OracleDB is selected and a constraint actually exceeds that limit:
+  // min/max length > 30, or any regex (whose output length can't be checked
+  // statically).
+  const ORACLE_12C_MAX_PASSWORD_LENGTH = 30;
+  const showOracleLengthWarning = (() => {
+    if (watchedRuleType !== RuleType.SecretRotations) return false;
+    const hasOracle = watchedProviders?.includes(SecretRotationRuleProvider.OracleDBCredentials);
+    if (!hasOracle) return false;
+    return watchedConstraints?.some((c) => {
+      if (c.type === ConstraintType.RegexPattern) return true;
+      if (c.type === ConstraintType.MinLength || c.type === ConstraintType.MaxLength) {
+        return Number(c.value) > ORACLE_12C_MAX_PASSWORD_LENGTH;
+      }
+      return false;
+    });
+  })();
   const availableConstraintOptions = CONSTRAINT_OPTIONS.filter((opt) => {
     if (disallowedConstraintTypes.includes(opt.type)) return false;
     const targets = isGeneratedCredentialRule
@@ -395,6 +416,18 @@ const RuleFormContent = ({
                   <code className="rounded-md bg-mineshaft-700 px-1 py-0.5">{"[A-Z]{12,20}"}</code>
                   ).
                 </p>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {showOracleLengthWarning && (
+            <Alert variant="warning">
+              <TriangleAlertIcon />
+              <AlertTitle>Oracle 12c password length limitation</AlertTitle>
+              <AlertDescription>
+                If you are using Oracle 12c or older, passwords are limited to 30 characters. Make
+                sure your length and pattern constraints stay within this limit to avoid rotation
+                failures.
               </AlertDescription>
             </Alert>
           )}
