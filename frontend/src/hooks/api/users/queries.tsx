@@ -152,7 +152,11 @@ export const useUpdateUserAuthMethods = () => {
 
 export const useGetUserAction = (action: string) =>
   useQuery({
-    queryKey: userKeys.userAction,
+    // scope the cache per-action so multiple user-action flags (e.g. several
+    // dismissable banners) don't clobber one another under a single key.
+    // useRegisterUserAction invalidates the `userKeys.userAction` prefix, which
+    // still matches every `[...userKeys.userAction, action]` entry.
+    queryKey: [...userKeys.userAction, action],
     queryFn: () => fetchUserAction(action)
   });
 
