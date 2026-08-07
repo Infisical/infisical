@@ -102,6 +102,8 @@ func (h *Handler) listSecrets(ctx context.Context, opts *listSecretsInternalOpts
 		}
 
 		expander := secretsvc.NewSecretExpander(filteredPool, secretsvc.ExpandOpts{
+			BoardEnv:  opts.Environment,
+			BoardPath: opts.SecretPath,
 			CanAccessAbsolute: func(ref secretsvc.AbsoluteSecretRef, tags []string) bool {
 				return checker.CanReadSecretValue(ref.Env, ref.Path, ref.Key, tags)
 			},
