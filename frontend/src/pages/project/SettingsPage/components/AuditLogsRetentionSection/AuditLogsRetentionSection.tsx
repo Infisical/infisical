@@ -4,7 +4,8 @@ import { z } from "zod";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
+import { FormControl, Input } from "@app/components/v2";
+import { Button } from "@app/components/v3";
 import { useProject, useProjectPermission, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/projects/queries";
@@ -102,10 +103,10 @@ export const AuditLogsRetentionSection = () => {
             />
           </div>
           <Button
-            colorSchema="secondary"
+            variant="project"
             type="submit"
-            isLoading={isSubmitting}
-            disabled={!isAdmin || !isDirty}
+            isPending={isSubmitting}
+            isDisabled={!isAdmin || !isDirty}
           >
             Save
           </Button>
