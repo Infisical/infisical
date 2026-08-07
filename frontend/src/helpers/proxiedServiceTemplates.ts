@@ -49,6 +49,12 @@ const UPPERALNUM = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const randomToken = (length: number, alphabet: string = ALPHANUM) =>
   Array.from({ length }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
 
+// A random RFC 4122 v4 UUID (36 chars) for services whose tokens are plain UUIDs (e.g. Postmark).
+const randomUuid = () =>
+  `${randomToken(8, HEX)}-${randomToken(4, HEX)}-4${randomToken(3, HEX)}-${
+    "89ab"[Math.floor(Math.random() * 4)]
+  }${randomToken(3, HEX)}-${randomToken(12, HEX)}`;
+
 // Slack accepts its tokens only in the Authorization header or a POST body param — never in
 // the query string or path — so scope substitution to those two surfaces.
 const HEADER_AND_BODY = [
@@ -316,8 +322,10 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     category: ProxiedServiceTemplateCategory.Communication,
     description: "Build and run Discord bots.",
     hostPattern: "discord.com/api/*",
+    // Discord bot tokens are sent as `Authorization: Bot <token>`; substitution swaps the raw
+    // token by value, so the "Bot" prefix stays intact on the wire.
     seed: {
-      headers: bearer("Authorization", "Bot")
+      substitutions: bearerSubstitution("DISCORD_TOKEN", () => randomToken(59, BASE64URL))
     }
   },
 
@@ -341,7 +349,7 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     description: "Repos and pipelines on GitLab.",
     hostPattern: "gitlab.com/api/*",
     seed: {
-      headers: [{ headerName: "PRIVATE-TOKEN" }]
+      substitutions: bearerSubstitution("GITLAB_TOKEN", () => `glpat-${randomToken(20, BASE64URL)}`)
     }
   },
   {
@@ -351,7 +359,9 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     category: ProxiedServiceTemplateCategory.DeveloperTools,
     description: "Deploys and the Vercel API.",
     hostPattern: "api.vercel.com",
-    seed: { headers: bearer() }
+    seed: {
+      substitutions: bearerSubstitution("VERCEL_TOKEN", () => `vcp_${randomToken(28)}`)
+    }
   },
   {
     key: "cloudflare",
@@ -360,7 +370,9 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     category: ProxiedServiceTemplateCategory.DeveloperTools,
     description: "DNS, CDN, and the Cloudflare API.",
     hostPattern: "api.cloudflare.com",
-    seed: { headers: bearer() }
+    seed: {
+      substitutions: bearerSubstitution("CLOUDFLARE_API_TOKEN", () => `cfat_${randomToken(40)}`)
+    }
   },
   {
     key: "supabase",
@@ -369,7 +381,12 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     category: ProxiedServiceTemplateCategory.DeveloperTools,
     description: "Postgres, auth, and storage.",
     hostPattern: "*.supabase.co",
-    seed: { headers: [{ headerName: "apikey" }] }
+    seed: {
+      substitutions: bearerSubstitution(
+        "SUPABASE_SERVICE_ROLE_KEY",
+        () => `sb_secret_${randomToken(40)}`
+      )
+    }
   },
   {
     key: "npm",
@@ -378,7 +395,9 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     category: ProxiedServiceTemplateCategory.DeveloperTools,
     description: "The npm package registry.",
     hostPattern: "registry.npmjs.org",
-    seed: { headers: bearer() }
+    seed: {
+      substitutions: bearerSubstitution("NPM_TOKEN", () => `npm_${randomToken(36, UPPERALNUM)}`)
+    }
   },
   {
     key: "github-npm",
@@ -388,7 +407,9 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     description: "GitHub's npm package registry.",
     hostPattern: "npm.pkg.github.com",
     aliases: ["npm", "packages"],
-    seed: { headers: bearer() }
+    seed: {
+      substitutions: bearerSubstitution("NODE_AUTH_TOKEN", () => `ghp_${randomToken(36)}`)
+    }
   },
 
   // ---- Monitoring ----
@@ -399,7 +420,9 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     category: ProxiedServiceTemplateCategory.Monitoring,
     description: "Monitoring and analytics.",
     hostPattern: "api.datadoghq.com",
-    seed: { headers: [{ headerName: "DD-API-KEY" }] }
+    seed: {
+      substitutions: bearerSubstitution("DD_API_KEY", () => randomToken(32, HEX))
+    }
   },
   {
     key: "sentry",
@@ -408,7 +431,9 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     category: ProxiedServiceTemplateCategory.Monitoring,
     description: "Error and performance monitoring.",
     hostPattern: "sentry.io",
-    seed: { headers: bearer() }
+    seed: {
+      substitutions: bearerSubstitution("SENTRY_AUTH_TOKEN", () => `sntryu_${randomToken(64, HEX)}`)
+    }
   },
   {
     key: "pagerduty",
@@ -430,8 +455,9 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     category: ProxiedServiceTemplateCategory.Productivity,
     description: "Issue tracking and project management.",
     hostPattern: "api.linear.app",
-    // Linear personal API keys go in the Authorization header with no "Bearer" prefix.
-    seed: { headers: [{ headerName: "Authorization" }] }
+    seed: {
+      substitutions: bearerSubstitution("LINEAR_API_KEY", () => `lin_api_${randomToken(40)}`)
+    }
   },
   {
     key: "notion",
@@ -477,7 +503,9 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     category: ProxiedServiceTemplateCategory.Communication,
     description: "Transactional email.",
     hostPattern: "api.postmarkapp.com",
-    seed: { headers: [{ headerName: "X-Postmark-Server-Token" }] }
+    seed: {
+      substitutions: bearerSubstitution("POSTMARK_SERVER_TOKEN", () => randomUuid())
+    }
   },
 
   // ---- Commerce ----
@@ -488,7 +516,12 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     category: ProxiedServiceTemplateCategory.Commerce,
     description: "Shopify e-commerce API.",
     hostPattern: "*.myshopify.com",
-    seed: { headers: [{ headerName: "X-Shopify-Access-Token" }] }
+    seed: {
+      substitutions: bearerSubstitution(
+        "SHOPIFY_ACCESS_TOKEN",
+        () => `shpat_${randomToken(32, HEX)}`
+      )
+    }
   }
 ];
 
