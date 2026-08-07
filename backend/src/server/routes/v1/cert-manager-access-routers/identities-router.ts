@@ -213,7 +213,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
           orgId: req.permission.orgId,
           projectId,
           memberType: "identity",
-          role
+          role: (roles || [{ role }]).map((r) => r.role).join(",")
         }
       });
 
@@ -259,7 +259,8 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
         properties: {
           orgId: req.permission.orgId,
           projectId,
-          memberType: "identity"
+          memberType: "identity",
+          role: req.body.roles.map((r) => r.role).join(",")
         }
       });
       return { identityMembership: { ...membership, identityId: req.params.identityId } };

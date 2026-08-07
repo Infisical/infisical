@@ -216,18 +216,20 @@ export const telemetryDALFactory = (db: TDbClient) => {
 
       // PKI enrollment method breakdown
       const pkiEnrollmentEntries = Object.entries(PKI_ENROLLMENT_TABLE_MAP);
-      const pkiEnrollmentResult = await db.raw<{ rows: { count: string }[] }>(
-        pkiEnrollmentEntries.map(([, table]) => `SELECT COUNT(*)::text AS count FROM ${table}`).join(" UNION ALL ")
+      const pkiEnrollmentResult = await db.raw<{ rows: { method: string; count: string }[] }>(
+        pkiEnrollmentEntries
+          .map(([method, table]) => `SELECT '${method}' AS method, COUNT(*)::text AS count FROM ${table}`)
+          .join(" UNION ALL ")
       );
       const pkiEnrollmentMethodBreakdown: Record<string, number> = {};
       let pkiEnrollmentMethods = 0;
-      pkiEnrollmentResult.rows.forEach((row: { count: string }, idx: number) => {
+      for (const row of pkiEnrollmentResult.rows) {
         const count = parseInt(row.count || "0", 10);
         pkiEnrollmentMethods += count;
         if (count > 0) {
-          pkiEnrollmentMethodBreakdown[pkiEnrollmentEntries[idx][0]] = count;
+          pkiEnrollmentMethodBreakdown[row.method] = count;
         }
-      });
+      }
 
       // PKI sync destination breakdown
       const pkiSyncDestinationRows = (await db(TableName.PkiSync)

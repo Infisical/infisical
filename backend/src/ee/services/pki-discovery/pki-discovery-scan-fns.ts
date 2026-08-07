@@ -481,21 +481,26 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
     const durationSec = (durationMs / 1000).toFixed(1);
 
     if (telemetryService) {
-      const project = await projectDAL.findOne({ id: discoveryConfig.projectId });
-      if (project) {
-        await telemetryService.sendPostHogEvents({
-          event: PostHogEventTypes.PkiDiscoveryScanCompleted,
-          distinctId: `platform/${discoveryConfig.projectId}`,
-          organizationId: project.orgId,
-          properties: {
-            orgId: project.orgId,
-            projectId: discoveryConfig.projectId,
-            status: finalStatus,
-            certificatesFound: uniqueCertificateIds.size,
-            installationsFound: uniqueInstallationIds.size,
-            durationMs
-          }
-        });
+      // the scan already committed as completed, so reporting must not be able to mark it failed
+      try {
+        const project = await projectDAL.findOne({ id: discoveryConfig.projectId });
+        if (project) {
+          await telemetryService.sendPostHogEvents({
+            event: PostHogEventTypes.PkiDiscoveryScanCompleted,
+            distinctId: `platform/${discoveryConfig.projectId}`,
+            organizationId: project.orgId,
+            properties: {
+              orgId: project.orgId,
+              projectId: discoveryConfig.projectId,
+              status: finalStatus,
+              certificatesFound: uniqueCertificateIds.size,
+              installationsFound: uniqueInstallationIds.size,
+              durationMs
+            }
+          });
+        }
+      } catch (telemetryError) {
+        logger.error(telemetryError, `Failed to send PKI discovery scan telemetry for discovery ${discoveryId}`);
       }
     }
 
