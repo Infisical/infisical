@@ -39,11 +39,21 @@ type TIntegrationDeprecationQueueFactoryDep = {
 
 export type TIntegrationDeprecationQueueFactory = ReturnType<typeof integrationDeprecationQueueFactory>;
 
-const EMAIL_SUBJECT = "Action required: move your native integrations to Secret Syncs";
+const EMAIL_SUBJECT = `Action required: Migrate Native Integrations by ${NATIVE_INTEGRATION_DEPRECATION_DATE}`;
 // the notification dropdown renders the title on a single ellipsised line next to a timestamp, so this
 // stays shorter than the subject line and front-loads the part that matters
 const NOTIFICATION_TITLE = `Native integrations stop working ${NATIVE_INTEGRATION_DEPRECATION_DATE}`;
 const NOTIFICATION_BODY = `Recreate your native integrations as Secret Syncs before ${NATIVE_INTEGRATION_DEPRECATION_DATE} to keep your secrets syncing.`;
+
+// slug -> display name, built from static config; identical for every job, so computed once
+let integrationNameBySlugCache: Map<string, string> | undefined;
+const getIntegrationNameBySlug = async () => {
+  if (!integrationNameBySlugCache) {
+    const integrationOptions = await getIntegrationOptions();
+    integrationNameBySlugCache = new Map(integrationOptions.map((option) => [option.slug, option.name]));
+  }
+  return integrationNameBySlugCache;
+};
 
 /**
  * Monthly nudge toward Secret Syncs for every org still holding native integrations.
@@ -77,47 +87,47 @@ export const integrationDeprecationQueueFactory = ({
     /** site-relative — see buildNativeIntegrationsPath */
     link?: string;
   }) => {
-    if (!recipients.length || !projects.length) return;
+    if (!recipients.length) return;
 
-    // the worker can run long after the tick enqueued this job, and the caller sends several notices in
-    // sequence — re-check per notice so an org that migrated in the meantime stops hearing about it
-    if (!(await integrationDAL.hasIntegrationsByOrgId(orgId))) {
-      logger.info(`integrationDeprecationNotice: org no longer has native integrations, skipping [orgId=${orgId}]`);
-      return;
-    }
+    const sendEmail = async () => {
+      try {
+        await smtpService.sendMail({
+          template: SmtpTemplates.NativeIntegrationDeprecation,
+          subjectLine: EMAIL_SUBJECT,
+          recipients: recipients.map((recipient) => recipient.email),
+          substitutions: {
+            orgName,
+            projects: projects.map((project) => ({
+              name: project.projectName,
+              integrations: project.integrations,
+              url: buildNativeIntegrationsUrl(siteUrl, orgId, project.projectId)
+            }))
+          }
+        });
+      } catch (error) {
+        logger.error(error, `integrationDeprecationNotice: failed to send email [orgId=${orgId}]`);
+      }
+    };
 
-    try {
-      await smtpService.sendMail({
-        template: SmtpTemplates.NativeIntegrationDeprecation,
-        subjectLine: EMAIL_SUBJECT,
-        recipients: recipients.map((recipient) => recipient.email),
-        substitutions: {
-          orgName,
-          projects: projects.map((project) => ({
-            name: project.projectName,
-            integrations: project.integrations,
-            url: buildNativeIntegrationsUrl(siteUrl, orgId, project.projectId)
+    const createNotifications = async () => {
+      try {
+        await notificationService.createUserNotifications(
+          recipients.map((recipient) => ({
+            userId: recipient.userId,
+            orgId,
+            type: NotificationType.NATIVE_INTEGRATION_DEPRECATED,
+            title: NOTIFICATION_TITLE,
+            body: NOTIFICATION_BODY,
+            link
           }))
-        }
-      });
-    } catch (error) {
-      logger.error(error, `integrationDeprecationNotice: failed to send email [orgId=${orgId}]`);
-    }
+        );
+      } catch (error) {
+        logger.error(error, `integrationDeprecationNotice: failed to create notifications [orgId=${orgId}]`);
+      }
+    };
 
-    try {
-      await notificationService.createUserNotifications(
-        recipients.map((recipient) => ({
-          userId: recipient.userId,
-          orgId,
-          type: NotificationType.NATIVE_INTEGRATION_DEPRECATED,
-          title: NOTIFICATION_TITLE,
-          body: NOTIFICATION_BODY,
-          link
-        }))
-      );
-    } catch (error) {
-      logger.error(error, `integrationDeprecationNotice: failed to create notifications [orgId=${orgId}]`);
-    }
+    // independent channels, each with its own error handling — one failing must not block the other
+    await Promise.all([sendEmail(), createNotifications()]);
   };
 
   const sendOrgNotices = async ({ orgId, period }: { orgId: string; period: string }) => {
@@ -135,24 +145,26 @@ export const integrationDeprecationQueueFactory = ({
       return;
     }
 
-    const rows = await integrationDAL.findProjectIntegrationsByOrgId(orgId);
-    if (!rows.length) return;
-
-    const integrationOptions = await getIntegrationOptions();
-    const integrationNameBySlug = new Map(integrationOptions.map((option) => [option.slug, option.name]));
-    const projects = groupIntegrationsByProject(rows, integrationNameBySlug);
-
-    const org = await orgDAL.findById(orgId);
-    if (!org) return;
-
-    const [orgAdmins, projectAdmins] = await Promise.all([
+    const [hasIntegrations, rows, org, orgAdmins] = await Promise.all([
+      integrationDAL.hasIntegrationsByOrgId(orgId),
+      integrationDAL.findProjectIntegrationsByOrgId(orgId),
+      orgDAL.findById(orgId),
       // findOrgMembersByRole includes members who were invited but never accepted
-      orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin),
-      projectMembershipDAL.findProjectMembersByProjectIds(
-        projects.map((project) => project.projectId),
-        { roles: [ProjectMembershipRole.Admin], orgId }
-      )
+      orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin)
     ]);
+
+    if (!hasIntegrations) {
+      logger.info(`integrationDeprecationNotice: org no longer has native integrations, skipping [orgId=${orgId}]`);
+      return;
+    }
+    if (!rows.length || !org) return;
+
+    const projects = groupIntegrationsByProject(rows, await getIntegrationNameBySlug());
+
+    const projectAdmins = await projectMembershipDAL.findProjectMembersByProjectIds(
+      projects.map((project) => project.projectId),
+      { roles: [ProjectMembershipRole.Admin], orgId }
+    );
 
     const orgAdminRecipients = toRecipients(
       orgAdmins
@@ -177,7 +189,8 @@ export const integrationDeprecationQueueFactory = ({
     );
 
     // then each project's admins get a notice scoped to their own project, minus anyone already reached above
-    for await (const project of projects) {
+    for (const project of projects) {
+      // eslint-disable-next-line no-await-in-loop
       await notify(
         toRecipients(projectAdminsByProjectId[project.projectId] ?? [], orgAdminUserIds),
         [project],
@@ -195,7 +208,7 @@ export const integrationDeprecationQueueFactory = ({
 
     cronJob.register({
       name: CronJobName.MonthlyNativeIntegrationDeprecationNotice,
-      pattern: "0 0 1 */3 *",
+      pattern: "0 0 1 */3 *", // DO NOT FORGET TO UPDATE BEFORE MERGE
       runHashTtlS: 7 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
@@ -212,18 +225,21 @@ export const integrationDeprecationQueueFactory = ({
           `cron[monthly-native-integration-deprecation-notice]: enqueuing [orgCount=${orgIds.length}] [period=${period}]`
         );
 
-        for await (const orgId of orgIds) {
-          await queueService.queue(
-            QueueName.IntegrationDeprecationNotice,
-            QueueJobs.SendIntegrationDeprecationNotice,
-            { orgId, period },
-            {
-              jobId: `integration-deprecation-notice-${orgId}-${period}`,
-              removeOnComplete: true,
-              removeOnFail: true
-            }
-          );
-        }
+        // ioredis pipelines concurrent commands on one connection, so this is safe at any org count
+        await Promise.all(
+          orgIds.map((orgId) =>
+            queueService.queue(
+              QueueName.IntegrationDeprecationNotice,
+              QueueJobs.SendIntegrationDeprecationNotice,
+              { orgId, period },
+              {
+                jobId: `integration-deprecation-notice-${orgId}-${period}`,
+                removeOnComplete: true,
+                removeOnFail: true
+              }
+            )
+          )
+        );
       }
     });
 

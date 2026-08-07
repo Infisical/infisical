@@ -18,17 +18,16 @@ export const NativeIntegrationDeprecationTemplate = ({
   orgName,
   projects
 }: NativeIntegrationDeprecationTemplateProps) => {
-  const deprecationDate = NATIVE_INTEGRATION_DEPRECATION_DATE;
   const isSingleProject = projects.length === 1;
 
   return (
     <BaseEmailWrapper
       title="Native Integrations are being retired"
-      preview={`Native Integrations are being retired on ${deprecationDate}. Your existing integrations keep working until then.`}
+      preview={`Native Integrations are being retired on ${NATIVE_INTEGRATION_DEPRECATION_DATE}. Your existing integrations keep working until then.`}
       siteUrl={siteUrl}
     >
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        <strong>Native Integrations Are Being Retired on {deprecationDate}</strong>
+        <strong>Native Integrations must be migrated to Secret Syncs</strong>
       </Heading>
       <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-black text-[14px] leading-[24px]">
@@ -42,7 +41,8 @@ export const NativeIntegrationDeprecationTemplate = ({
               <strong>{projects.length}</strong> projects in <strong>{orgName}</strong> still use native integrations.
             </>
           )}{" "}
-          Native Integrations are being retired on <strong>{deprecationDate}</strong> and you can learn more about it on{" "}
+          Native Integrations are being retired on <strong>{NATIVE_INTEGRATION_DEPRECATION_DATE}</strong> and you can
+          learn more about it on{" "}
           <BaseLink href="https://infisical.com/docs/integrations/secret-syncs/native-integrations-migration">
             Migrating Native Integrations
           </BaseLink>

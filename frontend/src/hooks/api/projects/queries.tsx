@@ -8,7 +8,6 @@ import { TCertificateAuthority } from "../ca/types";
 import { TCertificate } from "../certificates/types";
 import { TCertificateTemplate } from "../certificateTemplates/types";
 import { TGroupMembership } from "../groups/types";
-import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
 import { TPkiAlert } from "../pkiAlerts/types";
 import { pkiApplicationKeys } from "../pkiApplications/queries";
@@ -188,25 +187,6 @@ export const useGetUserWorkspaceMemberships = (orgId: string) =>
     queryKey: projectKeys.getProjectMemberships(orgId),
     queryFn: () => fetchUserWorkspaceMemberships(orgId),
     enabled: Boolean(orgId)
-  });
-
-const fetchWorkspaceAuthorization = async (projectId: string) => {
-  const { data } = await apiRequest.get<{ authorizations: IntegrationAuth[] }>(
-    `/api/v1/projects/${projectId}/authorizations`
-  );
-
-  return data.authorizations;
-};
-
-export const useGetWorkspaceAuthorizations = <TData = IntegrationAuth[],>(
-  projectId: string,
-  select?: (data: IntegrationAuth[]) => TData
-) =>
-  useQuery({
-    queryKey: projectKeys.getProjectAuthorization(projectId),
-    queryFn: () => fetchWorkspaceAuthorization(projectId),
-    enabled: Boolean(projectId),
-    select
   });
 
 export const fetchWorkspaceIntegrations = async (projectId: string) => {

@@ -34,12 +34,11 @@ export const NativeIntegrationsCreationBlockedModal = ({ isOpen, onOpenChange }:
   const { currentProject } = useProject();
   const scopeVariant = useScopeVariant();
 
-  const telemetry = new Telemetry().getInstance();
-
   // Fires on each open. Unlike a one-time nudge, this modal can be reopened many times per session,
   // and each attempt is a signal worth counting.
   useEffect(() => {
     if (isOpen) {
+      const telemetry = new Telemetry().getInstance();
       telemetry.capture(CREATION_BLOCKED_MODAL_VIEWED_EVENT, {
         orgId: currentOrg.id,
         projectId: currentProject.id,

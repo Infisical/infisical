@@ -33,12 +33,8 @@ export const NotificationDropdown = () => {
   // straight to `to` would resolve them against the current path and swallow the search params, so normalize to a
   // path + search + hash and let the router parse it via `href`.
   const openNotificationLink = (link: string) => {
-    try {
-      const { pathname, search, hash } = new URL(link, window.location.origin);
-      router.navigate({ href: `${pathname}${search}${hash}` });
-    } catch {
-      router.navigate({ to: link });
-    }
+    const { pathname, search, hash } = new URL(link, window.location.origin);
+    router.navigate({ href: `${pathname}${search}${hash}` });
   };
 
   const handleNotificationOpen = (notification: TUserNotification) => {

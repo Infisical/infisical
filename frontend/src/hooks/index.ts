@@ -1,4 +1,3 @@
-export { useBannerDismissal } from "./useBannerDismissal";
 export {
   useCanUseOrgAppConnectionImport,
   useCanUseProjectAppConnectionImport
