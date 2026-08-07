@@ -47,6 +47,7 @@ export const SecretInsightsPage = withPermission(
 
     const { data: summary, isPending: isSummaryPending } = useGetOrgSecretsSummary(currentOrg.id);
     // limit 100 is the endpoint maximum; orgs with more projects need real pagination later
+    // TODO: add pagination
     const { data: projectsInsights, isPending: isProjectsPending } = useGetOrgSecretsProjects(
       currentOrg.id,
       { limit: 100 }

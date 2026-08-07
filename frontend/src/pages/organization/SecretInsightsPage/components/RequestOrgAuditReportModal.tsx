@@ -83,10 +83,17 @@ export const RequestOrgAuditReportModal = ({
 
   const onSubmit = async (data: TFormSchema) => {
     const recipients = parseEmails(data.emailRecipients);
-    await requestOrgAuditReport.mutateAsync({
-      reports: data.reportTypes.map((type) => ({ type })),
-      emailRecipients: recipients.length ? recipients : undefined
-    });
+    try {
+      await requestOrgAuditReport.mutateAsync({
+        reports: data.reportTypes.map((type) => ({ type })),
+        emailRecipients: recipients.length ? recipients : undefined
+      });
+    } catch {
+      // The global MutationCache.onError already surfaces the server message (a report is
+      // already generating, the plan does not include it, audit logs are not enabled). Keep the
+      // modal open with the selection intact so the user can retry, and do not toast twice.
+      return;
+    }
     createNotification({
       type: "success",
       text: "Report requested. Recipients will receive an email once it's ready."

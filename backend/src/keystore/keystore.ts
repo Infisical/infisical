@@ -198,9 +198,10 @@ export const KeyStoreTtls = {
   RefreshTokenGraceInSeconds: 10,
   EmailSignupOtpInSeconds: 300, // 5 minutes
   EmailSignupResendCooldownInSeconds: 60, // 1 minute
-  InsightsCacheInSeconds: 60, // 5 minutes
-  InsightsDuplicationCacheInSeconds: 60, // 1 hour
-  InsightsWeeklyHistoryCacheInSeconds: 60, // 24 hours
+  InsightsCacheInSeconds: 300, // 5 minutes
+  InsightsDuplicationCacheInSeconds: 3600, // 1 hour
+  InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
+  InsightsOrgCacheInSeconds: 900, // 15 minutes
   AdminConfigInSeconds: 60,
   UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job

@@ -39,8 +39,9 @@ type WeekPoint = {
 };
 
 const getCreationTrend = (weeks: TOrgStaticSecretUsage["weeks"]): TrendBadge | null => {
-  if (weeks.length < 3) return null;
-  const [a, b, c] = weeks.slice(-3).map((week) => week.totalSecrets);
+  const completeWeeks = weeks.filter((week) => !week.isPartial);
+  if (completeWeeks.length < 3) return null;
+  const [a, b, c] = completeWeeks.slice(-3).map((week) => week.totalSecrets);
   if (a < b && b < c) return { label: "Increasing", variant: "warning" };
   if (a > b && b > c) return { label: "Decreasing", variant: "success" };
   return { label: "Steady", variant: "neutral" };

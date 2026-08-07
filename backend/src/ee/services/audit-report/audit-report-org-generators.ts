@@ -84,17 +84,22 @@ const needsAttentionReport: TOrgReportDefinition = {
 
     const projectsWithIssues: TSecretsProjectWarning[] = [];
     // One page beyond the row cap so a full-capacity result can still be detected as truncated.
-    const maxPages = Math.ceil(MAX_AUDIT_REPORT_ROWS / NEEDS_ATTENTION_PAGE_SIZE) + 1;
+    const rowCapPages = Math.ceil(MAX_AUDIT_REPORT_ROWS / NEEDS_ATTENTION_PAGE_SIZE) + 1;
+    let maxPages = rowCapPages;
 
     // The DAL orders by severityScore desc, so the first zero-severity project marks the end of the
     // projects with outstanding issues — everything after it is clean and stays out of the report.
     for (let page = 0; page < maxPages; page += 1) {
       // eslint-disable-next-line no-await-in-loop
-      const { projects } = await dal.insightsDAL.findProjectWarningsForOrg(orgId, {
+      const { projects, projectsWithIssues: issueCount } = await dal.insightsDAL.findProjectWarningsForOrg(orgId, {
         offset: page * NEEDS_ATTENTION_PAGE_SIZE,
         limit: NEEDS_ATTENTION_PAGE_SIZE,
         staleBefore
       });
+
+      if (page === 0) {
+        maxPages = Math.min(rowCapPages, Math.max(1, Math.ceil(issueCount / NEEDS_ATTENTION_PAGE_SIZE)));
+      }
 
       const firstCleanIndex = projects.findIndex((project) => project.severityScore === 0);
       projectsWithIssues.push(...(firstCleanIndex === -1 ? projects : projects.slice(0, firstCleanIndex)));

@@ -604,7 +604,7 @@ export const insightsServiceFactory = ({
     return withCache({
       keyStore,
       key: cacheKey,
-      ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
+      ttlSeconds: KeyStoreTtls.InsightsOrgCacheInSeconds,
       fetcher: async () => {
         const staleBefore = new Date();
         staleBefore.setDate(staleBefore.getDate() - STALE_SECRET_THRESHOLD_DAYS);
@@ -632,7 +632,7 @@ export const insightsServiceFactory = ({
     return withCache({
       keyStore,
       key: cacheKey,
-      ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
+      ttlSeconds: KeyStoreTtls.InsightsOrgCacheInSeconds,
       fetcher: async () => {
         const { dates, startDate, endDate } = buildAccessVolumeWindow();
 
@@ -665,7 +665,7 @@ export const insightsServiceFactory = ({
     return withCache({
       keyStore,
       key: cacheKey,
-      ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
+      ttlSeconds: KeyStoreTtls.InsightsOrgCacheInSeconds,
       fetcher: async () => {
         const { startDate, endDate } = buildAccessVolumeWindow();
 
@@ -711,7 +711,7 @@ export const insightsServiceFactory = ({
     return withCache({
       keyStore,
       key: cacheKey,
-      ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
+      ttlSeconds: KeyStoreTtls.InsightsOrgCacheInSeconds,
       fetcher: () => insightsDAL.countOrgSecretsResources(dto.orgId)
     });
   };
@@ -743,7 +743,7 @@ export const insightsServiceFactory = ({
       withCache({
         keyStore,
         key: KeyStorePrefixes.InsightsCache(dto.orgId, `static-secret-usage:current-week:${currentWeekStartStr}`),
-        ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
+        ttlSeconds: KeyStoreTtls.InsightsOrgCacheInSeconds,
         fetcher: () => insightsDAL.countSecretCreationsForOrg(dto.orgId, { createdAtOrAfter: currentWeekStart })
       })
     ]);
