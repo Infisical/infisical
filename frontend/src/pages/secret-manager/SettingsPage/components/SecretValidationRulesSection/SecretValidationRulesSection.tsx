@@ -263,70 +263,70 @@ const RuleFormContent = ({
             </div>
           </div>
 
-          {/* Enforcement Type + Providers */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-muted">Rule Type</label>
-              <Controller
-                control={control}
-                name="enforcement.type"
-                render={({ field: { value, onChange } }) => (
-                  <Select
-                    value={value}
-                    onValueChange={(next) => {
-                      onChange(next);
-                      replace([]);
-                      if (next !== RuleType.StaticSecrets) {
-                        form.setValue("enforcement.inputs.providers" as never, [] as never, {
-                          shouldDirty: true,
-                          shouldValidate: false
-                        });
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      {(Object.values(RuleType) as RuleType[]).map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {RULE_TYPE_LABELS[t]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-            {watchedRuleType === RuleType.DynamicSecrets && (
-              <ProviderMultiSelect<DynamicSecretRuleProvider>
-                label="Dynamic Secret Providers"
-                options={DYNAMIC_SECRET_PROVIDER_OPTIONS}
-                control={control}
-                error={
-                  // discriminated form types: providers only exists on this arm
-                  (errors.enforcement?.inputs as { providers?: { message?: string } } | undefined)
-                    ?.providers?.message
-                }
-              />
-            )}
-            {watchedRuleType === RuleType.SecretRotations && (
-              <ProviderMultiSelect<SecretRotationRuleProvider>
-                label="Rotation Providers"
-                options={SECRET_ROTATION_PROVIDER_OPTIONS}
-                control={control}
-                error={
-                  (errors.enforcement?.inputs as { providers?: { message?: string } } | undefined)
-                    ?.providers?.message
-                }
-              />
-            )}
+          {/* Rule Type */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted">Rule Type</label>
+            <Controller
+              control={control}
+              name="enforcement.type"
+              render={({ field: { value, onChange } }) => (
+                <Select
+                  value={value}
+                  onValueChange={(next) => {
+                    onChange(next);
+                    replace([]);
+                    if (next !== RuleType.StaticSecrets) {
+                      form.setValue("enforcement.inputs.providers" as never, [] as never, {
+                        shouldDirty: true,
+                        shouldValidate: false
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {(Object.values(RuleType) as RuleType[]).map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {RULE_TYPE_LABELS[t]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
+
+          {/* Providers */}
+          {watchedRuleType === RuleType.DynamicSecrets && (
+            <ProviderMultiSelect<DynamicSecretRuleProvider>
+              label="Dynamic Secret Providers"
+              options={DYNAMIC_SECRET_PROVIDER_OPTIONS}
+              control={control}
+              error={
+                // discriminated form types: providers only exists on this arm
+                (errors.enforcement?.inputs as { providers?: { message?: string } } | undefined)
+                  ?.providers?.message
+              }
+            />
+          )}
+          {watchedRuleType === RuleType.SecretRotations && (
+            <ProviderMultiSelect<SecretRotationRuleProvider>
+              label="Rotation Providers"
+              options={SECRET_ROTATION_PROVIDER_OPTIONS}
+              control={control}
+              error={
+                (errors.enforcement?.inputs as { providers?: { message?: string } } | undefined)
+                  ?.providers?.message
+              }
+            />
+          )}
 
           {/* Scope */}
           <div>
             <h4 className="mb-3 text-sm font-medium text-foreground">Scope</h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-muted">Environment</label>
                 <Controller
