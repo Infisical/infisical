@@ -45,7 +45,7 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.CircleCI]: "CircleCI",
   [SecretSync.AzureEntraIdScim]: "Azure Entra ID SCIM",
   [SecretSync.ExternalInfisical]: "Infisical",
-  [SecretSync.OVH]: "OVH",
+  [SecretSync.OVH]: "OVHcloud",
   [SecretSync.Devin]: "Devin",
   [SecretSync.Ona]: "Ona",
   [SecretSync.TravisCI]: "Travis CI",
