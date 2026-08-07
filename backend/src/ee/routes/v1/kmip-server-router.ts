@@ -29,9 +29,16 @@ const SanitizedKmipServerSchema = KmipServersSchema.pick({
   canRevoke: z.boolean()
 });
 
-// Cert config lives on the server entity (set in the UI). The daemon's /connect call reads it,
-// rather than passing it on every launch. ttl/keyAlgorithm get sensible defaults.
-const ttlField = z.string().refine((val) => ms(val) > 0, "TTL must be a positive number");
+// Cert config lives on the server entity. The daemon's /connect call reads it, rather than
+// passing it on every launch. TTL is API-only (no UI field) and defaults to 1y.
+// ms() throws on unparseable input (including ""), so guard it to return a clean 400.
+const ttlField = z.string().refine((val) => {
+  try {
+    return ms(val) > 0;
+  } catch {
+    return false;
+  }
+}, "TTL must be a positive number");
 
 // hostnamesOrIps is stored in a varchar(4096) column (matching the issued cert's altNames), so cap
 // the resolved SAN list there to surface a clean 400 instead of a DB "value too long" error.

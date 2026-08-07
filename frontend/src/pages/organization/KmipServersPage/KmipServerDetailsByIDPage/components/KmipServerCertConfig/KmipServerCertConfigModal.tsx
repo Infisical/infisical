@@ -39,7 +39,6 @@ const schema = z.object({
     .trim()
     .min(1, "At least one hostname or IP is required")
     .max(4096, "Hostnames or IPs must be at most 4096 characters"),
-  ttl: z.string().trim().max(64, "TTL is too long").optional(),
   keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
 });
 
@@ -57,7 +56,6 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
 
   const defaults: FormData = {
     hostnamesOrIps: kmipServer.hostnamesOrIps ?? "",
-    ttl: kmipServer.ttl ?? "",
     keyAlgorithm: (kmipServer.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048
   };
 
@@ -81,7 +79,6 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
       await updateKmipServer({
         kmipServerId: kmipServer.id,
         hostnamesOrIps: form.hostnamesOrIps,
-        ttl: form.ttl || null,
         keyAlgorithm: form.keyAlgorithm
       });
       createNotification({
@@ -117,19 +114,6 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
                     isError={Boolean(error)}
                     placeholder="kmip.example.com, 10.0.0.5"
                   />
-                  <FieldError errors={[error]} />
-                </FieldContent>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="ttl"
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>Certificate TTL</FieldLabel>
-                <FieldContent>
-                  <Input {...field} isError={Boolean(error)} placeholder="1y" />
                   <FieldError errors={[error]} />
                 </FieldContent>
               </Field>
