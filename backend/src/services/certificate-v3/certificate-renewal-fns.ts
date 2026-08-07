@@ -6,6 +6,7 @@ import { derivePublicKeyFromSecret, getPqcCrypto, isPqcCryptoKey } from "@app/li
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc/pqc-utils";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { ms } from "@app/lib/ms";
 import { CertKeyAlgorithm, CertStatus, mapSanTypeToX509Type } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityWithAssociatedCa } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -25,7 +26,8 @@ import { TCertificateRequest } from "../certificate-policy/certificate-policy-ty
 import { CertificateRenewalKeySource, TRenewalAttributes } from "./certificate-v3-types";
 
 export enum CertificateRenewalMode {
-  Signed = "signed",
+  SelfSigned = "self-signed",
+  InternalCa = "internal-ca",
   KeyPreserving = "key-preserving",
   ExternalCa = "external-ca"
 }
@@ -277,7 +279,8 @@ export const validateRenewalEligibility = (
     caId?: string | null;
     pkiSubscriberId?: string | null;
   },
-  ca: TCertificateAuthorityWithAssociatedCa
+  ca: TCertificateAuthorityWithAssociatedCa,
+  requestedTtl?: string
 ) => {
   const errors: string[] = [];
 
@@ -313,9 +316,9 @@ export const validateRenewalEligibility = (
     errors.push("Certificate has already been renewed");
   }
 
-  const certificateTtlInDays = Math.ceil(
-    (certificate.notAfter.getTime() - certificate.notBefore.getTime()) / (24 * 60 * 60 * 1000)
-  );
+  const certificateTtlInDays = requestedTtl
+    ? Math.ceil(ms(requestedTtl) / (24 * 60 * 60 * 1000))
+    : Math.ceil((certificate.notAfter.getTime() - certificate.notBefore.getTime()) / (24 * 60 * 60 * 1000));
 
   if (ca.internalCa?.notAfter) {
     const caExpiryDate = new Date(ca.internalCa.notAfter);

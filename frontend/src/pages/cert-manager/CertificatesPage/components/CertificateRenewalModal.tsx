@@ -94,14 +94,14 @@ type RenewalStepKey = "setup" | "csr" | "subject" | "options";
 
 const STEP_META: Record<RenewalStepKey, WizardStep> = {
   setup: {
-    name: "Renewal setup",
+    name: "Renewal Setup",
     shortDescription: "Key pair",
     subtitle: "Choose how this renewal handles the key pair.",
     rightDescription:
       "Decide whether the renewed certificate reuses the existing key pair or generates a new one. The key algorithm is fixed whenever the key is reused."
   },
   csr: {
-    name: "Signing request",
+    name: "Signing Request",
     shortDescription: "CSR and validity",
     subtitle: "Provide the CSR and set the validity for this renewal.",
     rightDescription:
@@ -117,7 +117,7 @@ const STEP_META: Record<RenewalStepKey, WizardStep> = {
   options: {
     name: "Options",
     shortDescription: "Validity and key usage",
-    title: "Certificate options",
+    title: "Certificate Options",
     subtitle: "Set validity, algorithms, and key usages within the profile's policy.",
     rightDescription:
       "Profile defaults are not applied on renewal. Every value here starts as a copy of the current certificate and is validated against the profile's policy at issuance."

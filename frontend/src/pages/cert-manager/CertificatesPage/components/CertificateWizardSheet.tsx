@@ -138,9 +138,7 @@ export const CertificateWizardSheet = ({
           <form onSubmit={(e) => e.preventDefault()} className="flex min-h-0 flex-1 flex-col">
             <div className="flex min-h-0 flex-1 overflow-hidden">
               <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
-                <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
-                  Setup steps
-                </p>
+                <p className="mb-5 text-xs font-medium text-muted">Setup Steps</p>
                 <Stepper
                   activeStep={activeStep}
                   orientation="vertical"
@@ -166,7 +164,7 @@ export const CertificateWizardSheet = ({
               <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
                 <div className="mb-auto">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
+                    <p className="text-xs font-medium text-muted">
                       Step {activeStep + 1} · {step.rightLabel ?? step.name}
                     </p>
                     {docsHref && <DocumentationLinkBadge href={docsHref} />}

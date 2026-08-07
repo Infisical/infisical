@@ -2006,16 +2006,19 @@ describe("CertificateV3Service", () => {
         errors: [],
         warnings: []
       });
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
-        certificate: "renewed-cert",
-        certificateChain: "renewed-chain",
-        issuingCaCertificate: "issuing-ca",
-        privateKey: "private-key",
-        serialNumber: "789012",
-        certificateId: "cert-456",
-        commonName: "test.example.com",
-        ca: mockCA
-      });
+      vi.mocked(mockInternalCaService.issueCertFromCa).mockImplementation((async (dto: any) => {
+        await dto.onPersisted?.({ ...mockOriginalCert, id: "cert-456", serialNumber: "789012" }, {});
+        return {
+          certificate: "renewed-cert",
+          certificateChain: "renewed-chain",
+          issuingCaCertificate: "issuing-ca",
+          privateKey: "private-key",
+          serialNumber: "789012",
+          certificateId: "cert-456",
+          commonName: "test.example.com",
+          ca: mockCA
+        };
+      }) as any);
 
       const newCert = { ...mockOriginalCert, id: "cert-456", serialNumber: "789012" };
       vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(newCert);
@@ -2071,16 +2074,19 @@ describe("CertificateV3Service", () => {
         errors: [],
         warnings: []
       } as any);
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
-        certificate: "renewed-cert",
-        certificateChain: "renewed-chain",
-        issuingCaCertificate: "issuing-ca",
-        privateKey: "private-key",
-        serialNumber: "789012",
-        certificateId: "cert-456",
-        commonName: "test.example.com",
-        ca: mockCA
-      } as any);
+      vi.mocked(mockInternalCaService.issueCertFromCa).mockImplementation((async (dto: any) => {
+        await dto.onPersisted?.({ ...caCert, id: "cert-456", serialNumber: "789012" }, {});
+        return {
+          certificate: "renewed-cert",
+          certificateChain: "renewed-chain",
+          issuingCaCertificate: "issuing-ca",
+          privateKey: "private-key",
+          serialNumber: "789012",
+          certificateId: "cert-456",
+          commonName: "test.example.com",
+          ca: mockCA
+        };
+      }) as any);
 
       const newCert = { ...caCert, id: "cert-456", serialNumber: "789012" };
       vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(newCert);
@@ -2422,16 +2428,19 @@ describe("CertificateV3Service", () => {
         errors: [],
         warnings: []
       });
-      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
-        certificate: "renewed-cert",
-        certificateChain: "renewed-chain",
-        issuingCaCertificate: "issuing-ca",
-        privateKey: "private-key",
-        serialNumber: "789012",
-        certificateId: "cert-456",
-        commonName: "test.example.com",
-        ca: mockCA
-      });
+      vi.mocked(mockInternalCaService.issueCertFromCa).mockImplementation((async (dto: any) => {
+        await dto.onPersisted?.({ ...mockOriginalCert, id: "cert-456", serialNumber: "789012" }, {});
+        return {
+          certificate: "renewed-cert",
+          certificateChain: "renewed-chain",
+          issuingCaCertificate: "issuing-ca",
+          privateKey: "private-key",
+          serialNumber: "789012",
+          certificateId: "cert-456",
+          commonName: "test.example.com",
+          ca: mockCA
+        };
+      }) as any);
 
       const newCert = { ...mockOriginalCert, id: "cert-456", serialNumber: "789012" };
       vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(newCert);

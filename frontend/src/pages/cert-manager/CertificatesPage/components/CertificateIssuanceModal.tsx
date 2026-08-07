@@ -190,7 +190,7 @@ const STEP_META: Record<IssuanceStepKey, WizardStep> = {
     shortDescription: "Method and profile",
     title: "Profile",
     subtitle: "Choose how to request the certificate and which profile to use.",
-    rightLabel: "PROFILE",
+    rightLabel: "Profile",
     rightDescription:
       "The certificate profile determines the issuing CA and the policy that constrains what this certificate may contain. Choose Managed to have Infisical generate the key pair for you, or CSR to supply your own certificate signing request."
   },
@@ -199,7 +199,7 @@ const STEP_META: Record<IssuanceStepKey, WizardStep> = {
     shortDescription: "Provide your CSR",
     title: "Certificate Signing Request",
     subtitle: "Paste the certificate signing request to submit for signing.",
-    rightLabel: "SIGNING REQUEST",
+    rightLabel: "Signing Request",
     rightDescription:
       "The subject, key, and extensions are taken from your CSR. The profile's policy still validates the request at issuance."
   },
@@ -208,7 +208,7 @@ const STEP_META: Record<IssuanceStepKey, WizardStep> = {
     shortDescription: "Names and SANs",
     title: "Subject",
     subtitle: "Set the subject attributes and alternative names for this certificate.",
-    rightLabel: "SUBJECT",
+    rightLabel: "Subject",
     rightDescription:
       "Subject attributes and alternative names identify the certificate. The available fields are constrained by the profile's policy."
   },
@@ -217,7 +217,7 @@ const STEP_META: Record<IssuanceStepKey, WizardStep> = {
     shortDescription: "Validity and key usage",
     title: "Certificate Options",
     subtitle: "Set validity, algorithms, and key usages within the profile's policy.",
-    rightLabel: "OPTIONS",
+    rightLabel: "Options",
     rightDescription:
       "These values are validated against the profile's policy at issuance. Fields that the profile or an external CA fully controls are hidden or read-only."
   },
@@ -226,7 +226,7 @@ const STEP_META: Record<IssuanceStepKey, WizardStep> = {
     shortDescription: "Optional key-values",
     title: "Metadata",
     subtitle: "Attach optional metadata key-value pairs to this certificate.",
-    rightLabel: "METADATA",
+    rightLabel: "Metadata",
     rightDescription:
       "Metadata is stored alongside the certificate for your own tracking and automation. It does not affect the issued certificate."
   }

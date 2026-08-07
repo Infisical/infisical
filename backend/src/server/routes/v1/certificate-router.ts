@@ -1138,10 +1138,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }),
       body: z
         .object({
-          removeRootsFromChain: booleanSchema
-            .default(false)
-            .optional()
-            .describe(CERTIFICATES.RENEW.removeRootsFromChain),
+          removeRootsFromChain: booleanSchema.default(false).describe(CERTIFICATES.RENEW.removeRootsFromChain),
           renewalKeySource: z
             .nativeEnum(CertificateRenewalKeySource)
             .optional()
