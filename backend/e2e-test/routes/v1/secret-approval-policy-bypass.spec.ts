@@ -199,7 +199,12 @@ describe("Secret approval policy bypass for machine identities", () => {
     miToken = await getMachineIdentityToken();
   });
 
-  afterEach(async () => {
+  // Safety net: delete any policies that were tracked but not cleaned up by
+  // a nested describe's afterAll (e.g. when a test block fails before its
+  // own cleanup runs). Runs after the entire top-level describe, not after
+  // each individual test, so it won't interfere with nested blocks that
+  // share a policy across multiple tests.
+  afterAll(async () => {
     const ids = createdPolicyIds.splice(0);
     await Promise.all(ids.map(deletePolicy));
   });
