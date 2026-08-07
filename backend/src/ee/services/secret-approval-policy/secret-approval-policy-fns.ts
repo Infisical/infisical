@@ -1,6 +1,15 @@
 import { ActorType } from "@app/services/auth/auth-type";
 
 /**
+ * Returns the committer ID fields for a secret approval request,
+ * setting the appropriate field based on the actor type.
+ */
+export const getCommitterIds = (actor: ActorType, actorId: string) => ({
+  committerUserId: actor === ActorType.USER ? actorId : undefined,
+  committerIdentityId: actor === ActorType.IDENTITY ? actorId : undefined
+});
+
+/**
  * Determines whether a secret approval policy should be enforced for the current actor.
  *
  * Returns `false` (skip enforcement) when:
@@ -11,15 +20,6 @@ import { ActorType } from "@app/services/auth/auth-type";
  * Acts as a TypeScript type guard: when it returns `true`, downstream code
  * can safely access `policy.id`, `policy.name`, etc.
  */
-/**
- * Returns the committer ID fields for a secret approval request,
- * setting the appropriate field based on the actor type.
- */
-export const getCommitterIds = (actor: ActorType, actorId: string) => ({
-  committerUserId: actor === ActorType.USER ? actorId : undefined,
-  committerIdentityId: actor === ActorType.IDENTITY ? actorId : undefined
-});
-
 export const shouldApplyPolicy = <T extends { bypassForMachineIdentities: boolean }>(
   policy: T | undefined,
   actorType: ActorType
