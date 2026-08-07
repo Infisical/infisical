@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrganizationActionScope, TOauthClients, TOrganizations } from "@app/db/schemas";
+import { OrganizationActionScope, OrgMembershipStatus, TOauthClients, TOrganizations } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import {
@@ -62,7 +62,7 @@ type TOauthClientServiceFactoryDep = {
     | "rotateRefreshToken"
     | "revokeSessionsByUserAgent"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   userDAL: Pick<TUserDALFactory, "findById">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
@@ -577,6 +577,33 @@ export const oauthClientServiceFactory = ({
       throw new UnauthorizedError({
         message:
           "The Infisical account for the user this token identifies is locked, so an application cannot act on their behalf. They can unlock it by resetting their password."
+      });
+    }
+
+    const orgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.USER,
+      actorId: user.id,
+      orgId: client.orgId,
+      acceptAnyStatus: true
+    });
+
+    if (!orgMembership) {
+      throw new UnauthorizedError({
+        message: "The user this token identifies is not a member of this application's organization."
+      });
+    }
+
+    if (orgMembership.status === OrgMembershipStatus.Invited) {
+      throw new UnauthorizedError({
+        message:
+          "The user this token identifies has been invited to this application's organization but has not joined it yet."
+      });
+    }
+
+    if (!orgMembership.isActive) {
+      throw new UnauthorizedError({
+        message:
+          "The membership of the user this token identifies has been deactivated in this organization, so an application cannot act on their behalf."
       });
     }
 

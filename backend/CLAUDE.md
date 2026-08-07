@@ -198,6 +198,15 @@ without it, any token that issuer signed for any application in the customer's e
 Enabling the grant or changing the audience therefore requires `OrgPermissionSsoActions.Edit` on top of
 the usual `OauthClients` check.
 
+**`getOrgPermission` is not a membership check, and token exchange is the one user-token path that
+cannot borrow login's.** It builds a CASL ability out of the actor's roles; the org-scope query in
+`permission-dal.ts` filters on org, actor and scope and never reads `Membership.isActive` or
+`Membership.status`. Every other route holding a user token got it from a browser login, and
+`selectOrganization` (`auth-login-service.ts`) rejects an inactive membership there. Token exchange
+mints a user token with no login in front of it, so it checks membership state itself
+(`exchangeSubjectToken` in `oauth-client-service.ts`) — without that, deactivating a member stops
+revoking their access. Any future non-interactive way of minting a user token needs the same check.
+
 **That gate covers secret rotation too, and leaving it off any one path defeats it.** Rotation returns
 the new secret in its response, so on an exchange application it hands the caller a working credential
 for acting as any of the org's users — the same authority as enabling the grant. `OauthClients` Edit
