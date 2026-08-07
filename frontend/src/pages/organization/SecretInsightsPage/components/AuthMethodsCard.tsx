@@ -16,9 +16,8 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api";
+import { IdentityAuthMethod, identityAuthToNameMap, TOrgAuthMethodUsage } from "@app/hooks/api";
 
-import { TAuthMethodUsage } from "../types";
 import { CHART_COLORS, UNKNOWN_SERIES_COLOR } from "./chartColors";
 
 type Segment = {
@@ -37,7 +36,7 @@ const humanizeAuthMethod = (authMethod: string) =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 
-export const AuthMethodsCard = ({ data }: { data: TAuthMethodUsage }) => {
+export const AuthMethodsCard = ({ data }: { data: TOrgAuthMethodUsage }) => {
   const segments = useMemo<Segment[]>(() => {
     if (data.totalFetches === 0) return [];
 

@@ -1,3 +1,5 @@
+import { IdentityAuthMethod } from "../identities/enums";
+
 export type TCalendarRotation = {
   id: string;
   name: string;
@@ -163,4 +165,69 @@ export type TGetInsightsCountsResponse = {
   dynamicSecretCount: number;
   secretRotationCount: number;
   honeyTokenCount: number | null;
+};
+
+// Org-scoped insights (endpoints without :projectId — the org comes from the auth token).
+// Shapes mirror backend/src/ee/services/insights/insights-schemas.ts.
+
+export type TOrgSecretsSummary = {
+  activeLeases: number;
+  users: number;
+  identities: number;
+};
+
+export type TOrgProjectInsightWarnings = {
+  // null means unknown (e.g. secret blind index disabled), which is different from zero
+  duplicatedSecrets: number | null;
+  staleSecrets: number;
+  failedRotations: number;
+  failedSyncs: number;
+  orphanedLeases: number;
+};
+
+export type TOrgProjectInsight = {
+  projectId: string;
+  projectName: string;
+  projectSlug: string;
+  totalSecrets: number;
+  severityScore: number;
+  warnings: TOrgProjectInsightWarnings;
+};
+
+export type TOrgProjectsInsights = {
+  projects: TOrgProjectInsight[];
+  totalProjects: number;
+  projectsWithIssues: number;
+  offset: number;
+  limit: number;
+};
+
+export type TGetOrgSecretsProjectsDTO = {
+  offset?: number;
+  limit?: number;
+};
+
+export type TOrgAuthMethodUsage = {
+  isSupported: boolean;
+  totalFetches: number;
+  unknownCount: number;
+  methods: { authMethod: IdentityAuthMethod; count: number }[];
+};
+
+export type TOrgStaticSecretUsage = {
+  // Secrets created during each of the last twelve UTC calendar weeks, oldest first.
+  // totalSecrets is a per-week count, not a running total.
+  weeks: { weekStart: string; totalSecrets: number; isPartial: boolean }[];
+};
+
+export type TOrgSecretAccessVolume = {
+  isSupported: boolean;
+  days: { date: string; total: number }[];
+};
+
+export type TOrgSecretsCounts = {
+  projects: number;
+  secrets: number;
+  environments: number;
+  rotations: number;
 };

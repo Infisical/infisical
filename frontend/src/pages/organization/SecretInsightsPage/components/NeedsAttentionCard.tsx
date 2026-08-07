@@ -33,8 +33,7 @@ import {
   TBadgeProps
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-
-import { TProjectInsightWarnings, TProjectsInsights } from "../types";
+import { TOrgProjectInsightWarnings, TOrgProjectsInsights } from "@app/hooks/api";
 
 const COLLAPSED_ROW_COUNT = 4;
 
@@ -45,7 +44,7 @@ const pluralize = (count: number, noun: string, plural = `${noun}s`) =>
   `${count.toLocaleString()} ${count === 1 ? noun : plural}`;
 
 const WARNING_CHIPS: {
-  key: keyof TProjectInsightWarnings;
+  key: keyof TOrgProjectInsightWarnings;
   variant: TBadgeProps["variant"];
   label: (count: number) => string;
 }[] = [
@@ -56,7 +55,7 @@ const WARNING_CHIPS: {
   { key: "duplicatedSecrets", variant: "neutral", label: (c) => `${c.toLocaleString()} duplicated` }
 ];
 
-const WarningBadges = ({ warnings }: { warnings: TProjectInsightWarnings }) => (
+const WarningBadges = ({ warnings }: { warnings: TOrgProjectInsightWarnings }) => (
   <div className="flex flex-wrap gap-1">
     {WARNING_CHIPS.map(({ key, variant, label }) => {
       const count = warnings[key];
@@ -71,10 +70,10 @@ const WarningBadges = ({ warnings }: { warnings: TProjectInsightWarnings }) => (
   </div>
 );
 
-const hasIssues = (warnings: TProjectInsightWarnings) =>
+const hasIssues = (warnings: TOrgProjectInsightWarnings) =>
   WARNING_CHIPS.some(({ key }) => (warnings[key] ?? 0) > 0);
 
-export const NeedsAttentionCard = ({ data }: { data: TProjectsInsights }) => {
+export const NeedsAttentionCard = ({ data }: { data: TOrgProjectsInsights }) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const [search, setSearch] = useState("");

@@ -2,8 +2,7 @@ import { BotIcon, ClockIcon, UsersIcon } from "lucide-react";
 
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-
-import { TSecretsSummary } from "../types";
+import { TOrgSecretsSummary } from "@app/hooks/api";
 
 type StatCardProps = {
   title: string;
@@ -41,7 +40,7 @@ const StatCard = ({ title, icon, iconVariant, value, suffix, caption }: StatCard
   </Card>
 );
 
-export const SummaryCard = ({ summary }: { summary: TSecretsSummary }) => (
+export const SummaryCard = ({ summary }: { summary: TOrgSecretsSummary }) => (
   <div className="grid gap-4 md:grid-cols-3">
     <StatCard
       title="Dynamic Secrets in Use"

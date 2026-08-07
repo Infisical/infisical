@@ -11,6 +11,7 @@ import {
   TGetInsightsCountsResponse,
   TGetInsightsSummaryDTO,
   TGetInsightsSummaryResponse,
+  TGetOrgSecretsProjectsDTO,
   // TGetSecretAccessLocationsDTO,
   // TGetSecretAccessLocationsResponse,
   TGetSecretAccessVolumeDTO,
@@ -18,7 +19,13 @@ import {
   TGetSecretBlindIndexStatusDTO,
   TGetSecretBlindIndexStatusResponse,
   TGetSecretsDuplicationDTO,
-  TGetSecretsDuplicationResponse
+  TGetSecretsDuplicationResponse,
+  TOrgAuthMethodUsage,
+  TOrgProjectsInsights,
+  TOrgSecretAccessVolume,
+  TOrgSecretsCounts,
+  TOrgSecretsSummary,
+  TOrgStaticSecretUsage
 } from "./types";
 
 export const secretInsightsKeys = {
@@ -38,7 +45,21 @@ export const secretInsightsKeys = {
   secretsDuplication: (params: TGetSecretsDuplicationDTO) =>
     [...secretInsightsKeys.all(), "secrets-duplication", params] as const,
   blindIndexStatus: (params: TGetSecretBlindIndexStatusDTO) =>
-    [...secretInsightsKeys.all(), "blind-index-status", params] as const
+    [...secretInsightsKeys.all(), "blind-index-status", params] as const,
+  // Org-scoped keys. The endpoints derive the org from the auth token, so orgId is only
+  // here to isolate the cache when the user switches organizations.
+  orgSecretsSummary: (orgId: string) =>
+    [...secretInsightsKeys.all(), "org-secrets-summary", { orgId }] as const,
+  orgSecretsProjects: (orgId: string, params: TGetOrgSecretsProjectsDTO) =>
+    [...secretInsightsKeys.all(), "org-secrets-projects", { orgId, ...params }] as const,
+  orgAuthMethodDistribution: (orgId: string) =>
+    [...secretInsightsKeys.all(), "org-auth-method-distribution", { orgId }] as const,
+  orgStaticSecretsUsage: (orgId: string) =>
+    [...secretInsightsKeys.all(), "org-static-secrets-usage", { orgId }] as const,
+  orgAccessVolume: (orgId: string) =>
+    [...secretInsightsKeys.all(), "org-access-volume", { orgId }] as const,
+  orgSecretsCounts: (orgId: string) =>
+    [...secretInsightsKeys.all(), "org-secrets-counts", { orgId }] as const
 };
 
 const INSIGHTS_STALE_TIME = 5 * 60 * 1000; // 5 minutes
@@ -94,33 +115,6 @@ export const useGetSecretAccessVolume = (
     ...options
   });
 };
-
-// export const useGetSecretAccessLocations = (
-//   params: TGetSecretAccessLocationsDTO,
-//   options?: Omit<
-//     UseQueryOptions<
-//       TGetSecretAccessLocationsResponse,
-//       unknown,
-//       TGetSecretAccessLocationsResponse,
-//       ReturnType<typeof secretInsightsKeys.accessLocations>
-//     >,
-//     "queryKey" | "queryFn"
-//   >
-// ) => {
-//   return useQuery({
-//     queryKey: secretInsightsKeys.accessLocations(params),
-//     queryFn: async () => {
-//       const { projectId, ...query } = params;
-//       const { data } = await apiRequest.get<TGetSecretAccessLocationsResponse>(
-//         `/api/v1/insights/${projectId}/secrets/access-locations`,
-//         { params: query }
-//       );
-//       return data;
-//     },
-//     staleTime: INSIGHTS_STALE_TIME,
-//     ...options
-//   });
-// };
 
 export const useGetAuthMethodDistribution = (
   params: TGetAuthMethodDistributionDTO,
@@ -249,5 +243,94 @@ export const useGetSecretBlindIndexStatus = (
     },
     staleTime: 0,
     ...options
+  });
+};
+
+// Org-scoped insights hooks. The endpoints have no :projectId — the backend resolves the
+// org from the auth token, so the hooks only take orgId to key the cache.
+
+export const useGetOrgSecretsSummary = (orgId: string) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.orgSecretsSummary(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ usageInsights: TOrgSecretsSummary }>(
+        "/api/v1/insights/secrets/summary"
+      );
+      return data.usageInsights;
+    },
+    enabled: Boolean(orgId),
+    staleTime: INSIGHTS_STALE_TIME
+  });
+};
+
+export const useGetOrgSecretsProjects = (orgId: string, params: TGetOrgSecretsProjectsDTO = {}) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.orgSecretsProjects(orgId, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ projectWarnings: TOrgProjectsInsights }>(
+        "/api/v1/insights/secrets/projects",
+        { params }
+      );
+      return data.projectWarnings;
+    },
+    enabled: Boolean(orgId),
+    staleTime: INSIGHTS_STALE_TIME,
+    placeholderData: (prev) => prev
+  });
+};
+
+export const useGetOrgAuthMethodDistribution = (orgId: string) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.orgAuthMethodDistribution(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ authMethodDistribution: TOrgAuthMethodUsage }>(
+        "/api/v1/insights/secrets/usage/auth-methods"
+      );
+      return data.authMethodDistribution;
+    },
+    enabled: Boolean(orgId),
+    staleTime: INSIGHTS_STALE_TIME
+  });
+};
+
+export const useGetOrgStaticSecretsUsage = (orgId: string) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.orgStaticSecretsUsage(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ staticSecretUsage: TOrgStaticSecretUsage }>(
+        "/api/v1/insights/secrets/usage/static-secrets"
+      );
+      return data.staticSecretUsage;
+    },
+    enabled: Boolean(orgId),
+    staleTime: INSIGHTS_STALE_TIME
+  });
+};
+
+export const useGetOrgSecretsAccessVolume = (orgId: string) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.orgAccessVolume(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ accessVolume: TOrgSecretAccessVolume }>(
+        "/api/v1/insights/secrets/access-volume"
+      );
+      return data.accessVolume;
+    },
+    enabled: Boolean(orgId),
+    staleTime: INSIGHTS_STALE_TIME
+  });
+};
+
+export const useGetOrgSecretsCounts = (orgId: string) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.orgSecretsCounts(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ counts: TOrgSecretsCounts }>(
+        "/api/v1/insights/secrets/counts"
+      );
+      return data.counts;
+    },
+    enabled: Boolean(orgId),
+    staleTime: INSIGHTS_STALE_TIME
   });
 };

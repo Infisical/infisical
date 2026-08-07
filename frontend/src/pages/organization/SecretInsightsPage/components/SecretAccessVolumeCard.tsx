@@ -11,11 +11,10 @@ import {
   EmptyHeader,
   EmptyTitle
 } from "@app/components/v3";
+import { TOrgSecretAccessVolume } from "@app/hooks/api";
 import { LineChart } from "@app/pages/secret-manager/InsightsPage/components/LineChart";
 
-import { TSecretAccessVolume } from "../types";
-
-export const SecretAccessVolumeCard = ({ data }: { data: TSecretAccessVolume }) => {
+export const SecretAccessVolumeCard = ({ data }: { data: TOrgSecretAccessVolume }) => {
   const chartData = useMemo(
     () =>
       data.days.map((day) => ({

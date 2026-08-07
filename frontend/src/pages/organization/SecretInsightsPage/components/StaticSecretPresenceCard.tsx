@@ -25,8 +25,7 @@ import {
   EmptyTitle,
   TBadgeProps
 } from "@app/components/v3";
-
-import { TStaticSecretUsage } from "../types";
+import { TOrgStaticSecretUsage } from "@app/hooks/api";
 
 const BAR_GRADIENT_ID = "org-static-secrets-bar";
 
@@ -39,7 +38,7 @@ type WeekPoint = {
   isPartial: boolean;
 };
 
-const getCreationTrend = (weeks: TStaticSecretUsage["weeks"]): TrendBadge | null => {
+const getCreationTrend = (weeks: TOrgStaticSecretUsage["weeks"]): TrendBadge | null => {
   if (weeks.length < 3) return null;
   const [a, b, c] = weeks.slice(-3).map((week) => week.totalSecrets);
   if (a < b && b < c) return { label: "Increasing", variant: "warning" };
@@ -67,7 +66,7 @@ const ChartTooltip = ({
   );
 };
 
-export const StaticSecretPresenceCard = ({ data }: { data: TStaticSecretUsage }) => {
+export const StaticSecretPresenceCard = ({ data }: { data: TOrgStaticSecretUsage }) => {
   const weeks = useMemo<WeekPoint[]>(
     () =>
       data.weeks.map((week) => ({
