@@ -295,6 +295,7 @@ export const ProjectAssignmentFields = () => {
                 isError={Boolean(error)}
                 selectedProjects={selectedProjects}
                 fixedRoles={selectedProduct?.roles}
+                productType={selectedProduct?.type}
               />
               <FieldError>{error?.message}</FieldError>
             </Field>

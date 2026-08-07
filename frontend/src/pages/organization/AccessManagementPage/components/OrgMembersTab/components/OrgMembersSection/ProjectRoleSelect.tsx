@@ -1,6 +1,7 @@
 import { RoleOption } from "@app/components/roles";
 import { FilterableSelect } from "@app/components/v3";
 import { useGetProjectRoles } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 export type TProjectRoleOption = {
   slug: string;
@@ -10,12 +11,23 @@ export type TProjectRoleOption = {
 
 export const DEFAULT_PROJECT_ROLE: TProjectRoleOption = { slug: "member", name: "Member" };
 
-export const BUILT_IN_PROJECT_ROLES = [
+// Mirrors the backend's getPredefinedRoles: type-tagged roles are only valid for
+// projects of that type.
+const PREDEFINED_PROJECT_ROLES: (TProjectRoleOption & { type?: ProjectType })[] = [
   { slug: "admin", name: "Admin", description: "Full administrative access over a project" },
   { slug: "member", name: "Member", description: "Limited read/write role in a project" },
+  {
+    slug: "cryptographic-operator",
+    name: "Cryptographic Operator",
+    description: "Perform cryptographic operations, such as encryption and signing, in a project",
+    type: ProjectType.KMS
+  },
   { slug: "viewer", name: "Viewer", description: "Only read role in a project" },
   { slug: "no-access", name: "No Access", description: "No access to any resources in the project" }
 ];
+
+const getBuiltInProjectRoles = (productType?: ProjectType) =>
+  PREDEFINED_PROJECT_ROLES.filter((role) => !role.type || role.type === productType);
 
 export const CERT_MANAGER_ROLES = [
   {
@@ -53,19 +65,21 @@ type Props = {
   isError?: boolean;
   selectedProjects: { id: string }[];
   fixedRoles?: TProjectRoleOption[];
+  productType?: ProjectType;
 };
 
 // Shared by AddOrgMemberModal and AddSubOrgMemberModal: with fixed roles (singleton
 // products) use those; with exactly one project selected offer that project's real
-// roles (custom + type-filtered predefined); otherwise only the built-in roles valid
-// for every project type.
+// roles (custom + type-filtered predefined); otherwise the built-in roles valid for
+// the selected product type.
 export const ProjectRoleSelect = ({
   inputId,
   value,
   onChange,
   isError,
   selectedProjects,
-  fixedRoles
+  fixedRoles,
+  productType
 }: Props) => {
   const singleSelectedProjectId = getSingleSelectedProjectId(selectedProjects);
   const { data: fetchedProjectRoles, isPending: isProjectRolesLoading } = useGetProjectRoles(
@@ -80,7 +94,7 @@ export const ProjectRoleSelect = ({
           name: role.name,
           description: role.description ?? undefined
         }))
-      : BUILT_IN_PROJECT_ROLES);
+      : getBuiltInProjectRoles(productType));
 
   return (
     <FilterableSelect
