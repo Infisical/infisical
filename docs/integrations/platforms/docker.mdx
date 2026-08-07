@@ -255,16 +255,30 @@ Next, choose how Docker should receive your application secrets:
 
     ### Authenticate with the CLI
 
-    Exchange the machine identity credentials for a short-lived access token:
+    Exchange the machine identity credentials for a short-lived access token using the commands for your Infisical deployment:
 
-    ```bash
-    export INFISICAL_TOKEN=$(infisical login \
-      --method=universal-auth \
-      --client-id=<client-id> \
-      --client-secret=<client-secret> \
-      --plain \
-      --silent)
-    ```
+    <CodeGroup>
+      ```bash Infisical Cloud US
+      export INFISICAL_TOKEN=$(infisical login \
+        --method=universal-auth \
+        --client-id=<client-id> \
+        --client-secret=<client-secret> \
+        --plain \
+        --silent)
+      ```
+
+      ```bash EU Cloud or self-hosted
+      # Use https://eu.infisical.com for EU Cloud or your self-hosted instance URL
+      export INFISICAL_DOMAIN=<your-infisical-domain>
+
+      export INFISICAL_TOKEN=$(infisical login \
+        --method=universal-auth \
+        --client-id=<client-id> \
+        --client-secret=<client-secret> \
+        --plain \
+        --silent)
+      ```
+    </CodeGroup>
 
     ### Run your container
 
@@ -277,10 +291,6 @@ Next, choose how Docker should receive your application secrets:
     ```
 
     Replace `<project-id>` with your project ID and `orders-service` with the image you want to run.
-
-    <Note>
-      If you use Infisical EU Cloud or a self-hosted instance, set `INFISICAL_DOMAIN` before running these commands.
-    </Note>
 
     <Warning>
       Docker's `--env-file` option doesn't support multiline secret values. Use the startup method if your application requires multiline secrets.
@@ -296,15 +306,26 @@ Next, choose how Docker should receive your application secrets:
 
 If you [fetch secrets at startup](#fetch-at-startup), you can use [Docker Compose](https://docs.docker.com/compose/) to build and run one or more configured service images.
 
-[Configure each image](/integrations/platforms/docker#update-your-dockerfile) to start through `infisical run`, then pass its machine identity access token through your Compose file:
+[Configure each image](/integrations/platforms/docker#update-your-dockerfile) to start through `infisical run`, then configure your Compose file for your Infisical deployment:
 
-```yaml docker-compose.yml
-services:
-  orders-service:
-    build: .
-    environment:
-      INFISICAL_TOKEN: ${INFISICAL_TOKEN}
-```
+<CodeGroup>
+  ```yaml Infisical Cloud US
+  services:
+    orders-service:
+      build: .
+      environment:
+        INFISICAL_TOKEN: ${INFISICAL_TOKEN}
+  ```
+
+  ```yaml EU Cloud or self-hosted
+  services:
+    orders-service:
+      build: .
+      environment:
+        INFISICAL_TOKEN: ${INFISICAL_TOKEN}
+        INFISICAL_DOMAIN: ${INFISICAL_DOMAIN}
+  ```
+</CodeGroup>
 
 Authenticate the machine identity in the same shell, then start the services using the commands for your Infisical deployment:
 
@@ -336,7 +357,9 @@ Authenticate the machine identity in the same shell, then start the services usi
 </CodeGroup>
 
 <Note>
-  If your self-hosted Infisical instance is running locally on the Docker host, don't set `INFISICAL_DOMAIN` to a `localhost` domain, since this will point to the container itself. Instead, set it to `host.docker.internal`, which points to the container's host domain.
+  If your self-hosted Infisical instance is running locally on the Docker host, don't set `INFISICAL_DOMAIN` to a `localhost` URL, since this will point to the container itself.
+
+  Instead, set it to a `host.docker.internal` URL, [which points to the container's host domain](https://docs.docker.com/desktop/features/networking/networking-how-tos/#connect-a-container-to-a-service-on-the-host).
 </Note>
 
 ### Use different permissions for each service
@@ -345,38 +368,78 @@ If multiple services need different access permissions, create a [machine identi
 
   Map each service to the access token for its machine identity:
 
-```yaml docker-compose.yml
-services:
-  web:
-    build: ./web
-    environment:
-      INFISICAL_TOKEN: ${INFISICAL_TOKEN_WEB}
+<CodeGroup>
+  ```yaml Infisical Cloud US
+  services:
+    web:
+      build: ./web
+      environment:
+        INFISICAL_TOKEN: ${INFISICAL_TOKEN_WEB}
 
-  api:
-    build: ./api
-    environment:
-      INFISICAL_TOKEN: ${INFISICAL_TOKEN_API}
-```
+    api:
+      build: ./api
+      environment:
+        INFISICAL_TOKEN: ${INFISICAL_TOKEN_API}
+  ```
+
+  ```yaml EU Cloud or self-hosted
+  services:
+    web:
+      build: ./web
+      environment:
+        INFISICAL_TOKEN: ${INFISICAL_TOKEN_WEB}
+        INFISICAL_DOMAIN: ${INFISICAL_DOMAIN}
+
+    api:
+      build: ./api
+      environment:
+        INFISICAL_TOKEN: ${INFISICAL_TOKEN_API}
+        INFISICAL_DOMAIN: ${INFISICAL_DOMAIN}
+  ```
+</CodeGroup>
 
 Authenticate each identity before starting the services:
 
-```bash
-export INFISICAL_TOKEN_WEB=$(infisical login \
-  --method=universal-auth \
-  --client-id=<web-client-id> \
-  --client-secret=<web-client-secret> \
-  --plain \
-  --silent)
+<CodeGroup>
+  ```bash Infisical Cloud US
+  export INFISICAL_TOKEN_WEB=$(infisical login \
+    --method=universal-auth \
+    --client-id=<web-client-id> \
+    --client-secret=<web-client-secret> \
+    --plain \
+    --silent)
 
-export INFISICAL_TOKEN_API=$(infisical login \
-  --method=universal-auth \
-  --client-id=<api-client-id> \
-  --client-secret=<api-client-secret> \
-  --plain \
-  --silent)
+  export INFISICAL_TOKEN_API=$(infisical login \
+    --method=universal-auth \
+    --client-id=<api-client-id> \
+    --client-secret=<api-client-secret> \
+    --plain \
+    --silent)
 
-docker compose up --build
-```
+  docker compose up --build
+  ```
+
+  ```bash EU Cloud or self-hosted
+  # Use https://eu.infisical.com for EU Cloud or your self-hosted instance URL
+  export INFISICAL_DOMAIN=<your-infisical-domain>
+
+  export INFISICAL_TOKEN_WEB=$(infisical login \
+    --method=universal-auth \
+    --client-id=<web-client-id> \
+    --client-secret=<web-client-secret> \
+    --plain \
+    --silent)
+
+  export INFISICAL_TOKEN_API=$(infisical login \
+    --method=universal-auth \
+    --client-id=<api-client-id> \
+    --client-secret=<api-client-secret> \
+    --plain \
+    --silent)
+
+  docker compose up --build
+  ```
+</CodeGroup>
 
 ## Next steps
 
