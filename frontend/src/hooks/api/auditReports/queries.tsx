@@ -2,13 +2,22 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { AuditReportStatus, TAuditReport, TGetAuditReportsDTO } from "./types";
+import {
+  AuditReportStatus,
+  TAuditReport,
+  TGetAuditReportsDTO,
+  TGetOrgAuditReportsDTO,
+  TOrgAuditReport
+} from "./types";
 
 type TGetAuditReportsResponse = { reports: TAuditReport[]; totalCount: number };
+type TGetOrgAuditReportsResponse = { reports: TOrgAuditReport[]; totalCount: number };
 
 export const auditReportKeys = {
   all: () => ["audit-reports"] as const,
-  list: (params: TGetAuditReportsDTO) => [...auditReportKeys.all(), "list", params] as const
+  list: (params: TGetAuditReportsDTO) => [...auditReportKeys.all(), "list", params] as const,
+  orgList: (params: TGetOrgAuditReportsDTO) =>
+    [...auditReportKeys.all(), "org-list", params] as const
 };
 
 // While any report is still generating, poll so the dashboard reflects status transitions in near real time.
@@ -35,6 +44,39 @@ export const useGetAuditReports = (
         `/api/v1/insights/${projectId}/secrets/reports`,
         {
           params: query
+        }
+      );
+      return data;
+    },
+    refetchInterval: (query) => {
+      const hasInFlight = query.state.data?.reports.some((report) =>
+        IN_FLIGHT_STATUSES.includes(report.status)
+      );
+      return hasInFlight ? POLL_INTERVAL_MS : false;
+    },
+    ...options
+  });
+};
+
+export const useGetOrgAuditReports = (
+  params: TGetOrgAuditReportsDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TGetOrgAuditReportsResponse,
+      unknown,
+      TGetOrgAuditReportsResponse,
+      ReturnType<typeof auditReportKeys.orgList>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: auditReportKeys.orgList(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetOrgAuditReportsResponse>(
+        "/api/v1/insights/secrets/reports",
+        {
+          params
         }
       );
       return data;

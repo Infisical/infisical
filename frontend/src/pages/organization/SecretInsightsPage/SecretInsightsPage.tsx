@@ -1,13 +1,25 @@
 import { Fragment, ReactNode } from "react";
 import { Helmet } from "react-helmet";
-import { BoxIcon, KeyIcon, LayersIcon, RefreshCwIcon } from "lucide-react";
+import { format } from "date-fns";
+import { BoxIcon, FileTextIcon, KeyIcon, LayersIcon, PlusIcon, RefreshCwIcon } from "lucide-react";
 
+import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
-import { Skeleton } from "@app/components/v3";
+import {
+  Button,
+  Skeleton,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from "@app/components/v3";
 import { OrgPermissionSubjects, useOrganization } from "@app/context";
 import { OrgPermissionSecretsManagementInsightsActions } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
+import { usePopUp } from "@app/hooks";
 import {
+  AuditReportStatus,
+  useGetOrgAuditReports,
   useGetOrgAuthMethodDistribution,
   useGetOrgSecretsAccessVolume,
   useGetOrgSecretsCounts,
@@ -20,10 +32,14 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   AuthMethodsCard,
   NeedsAttentionCard,
+  RequestOrgAuditReportModal,
   SecretAccessVolumeCard,
   StaticSecretPresenceCard,
   SummaryCard
 } from "./components";
+
+const SENT_REPORT_STATUSES = [AuditReportStatus.Completed, AuditReportStatus.Partial];
+const IN_FLIGHT_REPORT_STATUSES = [AuditReportStatus.Pending, AuditReportStatus.Processing];
 
 export const SecretInsightsPage = withPermission(
   () => {
@@ -44,6 +60,17 @@ export const SecretInsightsPage = withPermission(
     );
 
     const { data: counts } = useGetOrgSecretsCounts(currentOrg.id);
+
+    const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["requestOrgReport"] as const);
+    // Reports are generated asynchronously and delivered by email; the list is newest-first
+    // and polls while a report is in flight (the backend allows one in-flight report per org).
+    const { data: orgReports } = useGetOrgAuditReports({ offset: 0, limit: 10 });
+    const lastSentReport = orgReports?.reports.find((report) =>
+      SENT_REPORT_STATUSES.includes(report.status)
+    );
+    const hasInFlightReport = Boolean(
+      orgReports?.reports.some((report) => IN_FLIGHT_REPORT_STATUSES.includes(report.status))
+    );
 
     // isSupported decides whether the audit-log-backed cards render at all
     // (e.g. self-hosted instances without ClickHouse). While the auth methods query is
@@ -107,6 +134,45 @@ export const SecretInsightsPage = withPermission(
               description="Organization-wide visibility into secret health, access patterns, and authentication hygiene."
             >
               {renderStatStrip("hidden justify-end dashboard:flex")}
+              <div className="flex items-center gap-3">
+                {lastSentReport && (
+                  <span className="flex items-center gap-1.5 text-xs whitespace-nowrap text-mineshaft-300">
+                    <FileTextIcon className="size-3.5" />
+                    Last report sent {format(new Date(lastSentReport.createdAt), "MMM d, yyyy")}
+                  </span>
+                )}
+                <OrgPermissionCan
+                  I={OrgPermissionSecretsManagementInsightsActions.GenerateReport}
+                  a={OrgPermissionSubjects.SecretsManagementInsights}
+                >
+                  {(isAllowed) => {
+                    const generateButton = (
+                      <Button
+                        variant="neutral"
+                        size="xs"
+                        isDisabled={!isAllowed || hasInFlightReport}
+                        onClick={() => handlePopUpOpen("requestOrgReport")}
+                      >
+                        <PlusIcon />
+                        Generate Report
+                      </Button>
+                    );
+                    if (!hasInFlightReport) return generateButton;
+                    return (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex">{generateButton}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            A report is already being generated. Please wait for it to finish.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  }}
+                </OrgPermissionCan>
+              </div>
             </PageHeader>
             {renderStatStrip("mb-6 flex justify-start dashboard:hidden")}
             <div className="flex flex-col gap-4 pb-8">
@@ -143,6 +209,11 @@ export const SecretInsightsPage = withPermission(
             </div>
           </div>
         </div>
+        <RequestOrgAuditReportModal
+          isOpen={popUp.requestOrgReport.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("requestOrgReport", isOpen)}
+          isAuditLogSupported={Boolean(accessVolume?.isSupported)}
+        />
       </>
     );
   },
