@@ -6,6 +6,8 @@ description: "Require approval before a member can use a sensitive account."
 
 Some [accounts](/documentation/platform/pam/accounts/overview) are sensitive enough that simply having access to them should not be enough to use them. A production database or a domain admin account should be reachable only by people who are already trusted, but even for them, each individual use should clear an extra checkpoint. Access requests add that checkpoint: before a member can [launch a session](/documentation/platform/pam/sessions/overview) on a gated account, their access has to be approved.
 
+The same checkpoint applies to [AI agents](/documentation/platform/pam/ai-agents/overview). An agent requests access as whoever started it, a person or a [machine identity](/documentation/platform/identities/machine-identities), and waits for an approver either way.
+
 ## How it works
 
 Approval sits on top of the access a member already holds. Two layers apply to a gated account:
@@ -53,6 +55,8 @@ graph TD
     Open the folder and go to its **Approvals** tab. Add the users or groups who can approve requests for the folder's gated accounts.
 
     Approvers must be members of the folder, so the picker only offers people who already belong to it. An approver does not need use access to the account: approving is a governance action, not an access action.
+
+    Only users and groups can be seated. Approving is a human sign-off, so a machine identity is never an approver, even one with Admin on the folder.
   </Step>
 </Steps>
 
@@ -97,6 +101,16 @@ graph LR
 ```
 
 Rejected, expired, and revoked requests stay in the list so the audit trail stays complete.
+
+## Requests from AI agents
+
+An agent requests access on the same terms as a person, but from the [CLI](/cli/commands/pam-agentic) instead of the dashboard. A request from an agent running as a machine identity shows the identity's name in place of a requester's email; one from an agent you started yourself is filed under your own name.
+
+When an agent reaches for a gated account, the request is filed for it automatically, and the account starts working on the agent's next attempt after you approve.
+
+<Warning>
+  Approving a request from an agent's identity means approving whatever that agent does with the access for the duration you grant. Keep those identities scoped to the accounts they need, and review the [session recordings](/documentation/platform/pam/sessions/session-recording).
+</Warning>
 
 ## Frequently asked questions
 

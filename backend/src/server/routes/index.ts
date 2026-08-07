@@ -1889,6 +1889,7 @@ export const registerRoutes = async (
     groupDAL,
     userGroupMembershipDAL,
     userDAL,
+    identityDAL,
     pamFolderNotificationConfigDAL,
     workflowIntegrationDAL,
     slackIntegrationDAL,

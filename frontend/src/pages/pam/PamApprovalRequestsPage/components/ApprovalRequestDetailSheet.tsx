@@ -28,6 +28,7 @@ import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
 import { formatDuration } from "../../components/formatDuration";
 import { PamDetailSheet } from "../../components/PamDetailSheet";
+import { isMachineIdentityRequest } from "../../components/requesterDisplay";
 
 type Props = {
   request: TPamAccessRequest | null;
@@ -117,7 +118,9 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
         typeBadge={status.label}
         metadata={[
           { label: "Requester", value: request?.requesterName ?? "-" },
-          { label: "Email", value: request?.requesterEmail ?? "-" },
+          request && isMachineIdentityRequest(request)
+            ? { label: "Actor", value: "Machine Identity" }
+            : { label: "Email", value: request?.requesterEmail ?? "-" },
           { label: "Folder", value: request?.folderName ?? "-" },
           ...(request?.host ? [{ label: "Host", value: request.host }] : []),
           {
