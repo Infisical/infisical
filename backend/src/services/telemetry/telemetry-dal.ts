@@ -23,6 +23,13 @@ const IDENTITY_AUTH_TABLE_MAP: Record<string, string> = {
   "spiffe-auth": TableName.IdentitySpiffeAuth
 };
 
+const PKI_ENROLLMENT_TABLE_MAP: Record<string, string> = {
+  est: TableName.PkiEstEnrollmentConfig,
+  api: TableName.PkiApiEnrollmentConfig,
+  acme: TableName.PkiAcmeEnrollmentConfig,
+  scep: TableName.PkiScepEnrollmentConfig
+};
+
 const countTable = async (db: TDbClient, table: TableName) => {
   const result = (await db(table).count().first())?.count as string;
   return parseInt(result || "0", 10);
@@ -43,6 +50,13 @@ export const telemetryDALFactory = (db: TDbClient) => {
         integrations,
         certificateAuthorities,
         certificates,
+        certificatePolicies,
+        certificateProfiles,
+        pkiApplications,
+        pkiSyncs,
+        pkiSigners,
+        pkiDiscoveryConfigs,
+        pkiAlerts,
         dynamicSecrets,
         groups,
         secretApprovalPolicies,
@@ -81,6 +95,13 @@ export const telemetryDALFactory = (db: TDbClient) => {
         countTable(db, TableName.Integration),
         countTable(db, TableName.CertificateAuthority),
         countTable(db, TableName.Certificate),
+        countTable(db, TableName.PkiCertificatePolicy),
+        countTable(db, TableName.PkiCertificateProfile),
+        countTable(db, TableName.PkiApplication),
+        countTable(db, TableName.PkiSync),
+        countTable(db, TableName.PkiSigners),
+        countTable(db, TableName.PkiDiscoveryConfig),
+        countTable(db, TableName.PkiAlertsV2),
         countTable(db, TableName.DynamicSecret),
         countTable(db, TableName.Groups),
         countTable(db, TableName.SecretApprovalPolicy),
@@ -193,6 +214,31 @@ export const telemetryDALFactory = (db: TDbClient) => {
         secretSyncBreakdown[row.destination] = parseInt(String(row.count), 10);
       }
 
+      // PKI enrollment method breakdown
+      const pkiEnrollmentEntries = Object.entries(PKI_ENROLLMENT_TABLE_MAP);
+      const pkiEnrollmentResult = await db.raw<{ rows: { count: string }[] }>(
+        pkiEnrollmentEntries.map(([, table]) => `SELECT COUNT(*)::text AS count FROM ${table}`).join(" UNION ALL ")
+      );
+      const pkiEnrollmentMethodBreakdown: Record<string, number> = {};
+      let pkiEnrollmentMethods = 0;
+      pkiEnrollmentResult.rows.forEach((row: { count: string }, idx: number) => {
+        const count = parseInt(row.count || "0", 10);
+        pkiEnrollmentMethods += count;
+        if (count > 0) {
+          pkiEnrollmentMethodBreakdown[pkiEnrollmentEntries[idx][0]] = count;
+        }
+      });
+
+      // PKI sync destination breakdown
+      const pkiSyncDestinationRows = (await db(TableName.PkiSync)
+        .select("destination")
+        .count("* as count")
+        .groupBy("destination")) as unknown as { destination: string; count: string }[];
+      const pkiSyncBreakdown: Record<string, number> = {};
+      for (const row of pkiSyncDestinationRows) {
+        pkiSyncBreakdown[row.destination] = parseInt(String(row.count), 10);
+      }
+
       // Per-org breakdown: orgId, name, user count, project count
       const organizationRows = await db(TableName.Organization).select("id", "name");
       const organizations = organizationRows.length;
@@ -231,6 +277,16 @@ export const telemetryDALFactory = (db: TDbClient) => {
         integrations,
         certificateAuthorities,
         certificates,
+        certificatePolicies,
+        certificateProfiles,
+        pkiApplications,
+        pkiSyncs,
+        pkiSigners,
+        pkiDiscoveryConfigs,
+        pkiAlerts,
+        pkiEnrollmentMethods,
+        pkiEnrollmentMethodBreakdown,
+        pkiSyncBreakdown,
         dynamicSecrets,
         identityAuthMethods,
         identityAuthMethodBreakdown,

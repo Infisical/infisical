@@ -206,11 +206,14 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
         }
       });
       await server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.CertManagerIdentityAdded,
+        event: PostHogEventTypes.CertManagerMemberAdded,
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId,
+          memberType: "identity",
+          role
         }
       });
 
@@ -249,6 +252,16 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
           }
         }
       });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerMemberUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId,
+          memberType: "identity"
+        }
+      });
       return { identityMembership: { ...membership, identityId: req.params.identityId } };
     }
   });
@@ -276,6 +289,16 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
         event: {
           type: EventType.REMOVE_CERT_MANAGER_IDENTITY,
           metadata: { identityId: req.params.identityId, membershipId: membership.id }
+        }
+      });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerMemberRemoved,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId,
+          memberType: "identity"
         }
       });
       return { identityMembership: { ...membership, identityId: req.params.identityId } };

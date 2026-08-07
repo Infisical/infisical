@@ -281,7 +281,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
           properties: {
-            orgId: req.permission.orgId
+            orgId: req.permission.orgId,
+            projectId: data.projectId,
+            applicationId: requestBody.applicationId,
+            profileId: requestBody.profileId
           }
         });
 
@@ -332,7 +335,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
           properties: {
-            orgId: req.permission.orgId
+            orgId: req.permission.orgId,
+            projectId: data.projectId,
+            applicationId: requestBody.applicationId,
+            profileId: requestBody.profileId
           }
         });
 
@@ -410,7 +416,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: data.projectId,
+          applicationId: requestBody.applicationId,
+          profileId: requestBody.profileId
         }
       });
 
@@ -1222,7 +1231,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: data.projectId
         }
       });
 
@@ -1289,6 +1299,17 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           }
         });
 
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.CertificateUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            orgId: req.permission.orgId,
+            projectId: data.projectId,
+            updatedField: "renewal-config"
+          }
+        });
+
         return {
           message: "Auto-renewal disabled successfully"
         };
@@ -1314,6 +1335,17 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               renewBeforeDays: req.body.renewBeforeDays.toString(),
               commonName: data.commonName
             }
+          }
+        });
+
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.CertificateUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            orgId: req.permission.orgId,
+            projectId: data.projectId,
+            updatedField: "renewal-config"
           }
         });
 
@@ -1454,6 +1486,17 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             }
           }
         });
+
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.CertificateUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            orgId: req.permission.orgId,
+            projectId: result.projectId,
+            updatedField: "certificate"
+          }
+        });
       }
 
       return { metadata: result.metadata };
@@ -1498,6 +1541,16 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             cn: cert.commonName,
             serialNumber: cert.serialNumber
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertificatePrivateKeyDownloaded,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: cert.projectId
         }
       });
 
@@ -1560,7 +1613,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           format: "pem-bundle",
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: cert.projectId
         }
       });
 
@@ -1629,6 +1683,17 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertificateImported,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: cert.projectId,
+          applicationId: req.body.applicationId
+        }
+      });
+
       return {
         certificate,
         certificateChain,
@@ -1693,7 +1758,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: ca.projectId,
+          revocationReason: req.body.revocationReason
         }
       });
 
@@ -1753,7 +1820,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: deletedCert.projectId
         }
       });
 
@@ -1924,7 +1992,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           format: "pkcs12",
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: cert.projectId
         }
       });
 

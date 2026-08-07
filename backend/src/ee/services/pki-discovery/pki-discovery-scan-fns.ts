@@ -15,6 +15,8 @@ import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TPkiCertificateInstallationCertDALFactory } from "./pki-certificate-installation-cert-dal";
 import { TPkiCertificateInstallationDALFactory } from "./pki-certificate-installation-dal";
@@ -64,6 +66,7 @@ type TExecuteScanDeps = {
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayV2DAL?: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  telemetryService?: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): Promise<void> => {
@@ -73,7 +76,8 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
     projectDAL,
     kmsService,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    telemetryService
   } = deps;
 
   const startedAt = new Date();
@@ -475,6 +479,25 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
 
     const durationMs = completedAt.getTime() - startedAt.getTime();
     const durationSec = (durationMs / 1000).toFixed(1);
+
+    if (telemetryService) {
+      const project = await projectDAL.findOne({ id: discoveryConfig.projectId });
+      if (project) {
+        await telemetryService.sendPostHogEvents({
+          event: PostHogEventTypes.PkiDiscoveryScanCompleted,
+          distinctId: `platform/${discoveryConfig.projectId}`,
+          organizationId: project.orgId,
+          properties: {
+            orgId: project.orgId,
+            projectId: discoveryConfig.projectId,
+            status: finalStatus,
+            certificatesFound: uniqueCertificateIds.size,
+            installationsFound: uniqueInstallationIds.size,
+            durationMs
+          }
+        });
+      }
+    }
 
     logger.info(
       {

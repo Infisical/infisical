@@ -10,8 +10,10 @@ import {
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../../sanitizedSchemas";
 import { MembershipRoleSchema, RolesUpdateBodySchema } from "./schemas";
@@ -151,6 +153,18 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerMemberAdded,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId,
+          memberType: "user",
+          role: (req.body.roleSlugs || [ProjectMembershipRole.Member]).join(",")
+        }
+      });
+
       return {
         memberships: memberships.map((el) => ({ ...el, userId: el.actorUserId as string }))
       };
@@ -186,6 +200,16 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
             userId,
             roles: req.body.roles.map((r) => r.role)
           }
+        }
+      });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerMemberUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId,
+          memberType: "user"
         }
       });
       return {
@@ -240,6 +264,16 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
           }
         }
       });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerMemberRemoved,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId,
+          memberType: "user"
+        }
+      });
       return {
         memberships: memberships.map((el) => ({ ...el, userId: el.actorUserId as string }))
       };
@@ -270,6 +304,16 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
         event: {
           type: EventType.REMOVE_CERT_MANAGER_USER,
           metadata: { userId: membership.actorUserId as string, membershipId: membership.id }
+        }
+      });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerMemberRemoved,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId,
+          memberType: "user"
         }
       });
       return { membership: { ...membership, userId } };
