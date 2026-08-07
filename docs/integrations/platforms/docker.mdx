@@ -145,28 +145,36 @@ Next, choose how Docker should receive your application secrets:
     docker build -t orders-service .
     ```
 
-    On the machine where Docker runs, authenticate the machine identity and start the container:
+    On the machine where Docker runs, authenticate the machine identity and start the container using the commands for your Infisical deployment:
 
-    ```bash
-    export INFISICAL_TOKEN=$(infisical login \
-      --method=universal-auth \
-      --client-id=<client-id> \
-      --client-secret=<client-secret> \
-      --plain \
-      --silent)
+    <CodeGroup>
+      ```bash Infisical Cloud US
+      export INFISICAL_TOKEN=$(infisical login \
+        --method=universal-auth \
+        --client-id=<client-id> \
+        --client-secret=<client-secret> \
+        --plain \
+        --silent)
 
-    docker run --rm --env INFISICAL_TOKEN orders-service
-    ```
+      docker run --rm --env INFISICAL_TOKEN orders-service
+      ```
 
-    Replace `<client-id>` and `<client-secret>` with the machine identity credentials you created earlier. The access token is passed to the container at runtime and isn't stored in the image.
+      ```bash EU Cloud or self-hosted
+      # Use https://eu.infisical.com for EU Cloud or your self-hosted instance URL
+      export INFISICAL_DOMAIN=<your-infisical-domain>
 
-    <Note>
-      If you use Infisical EU Cloud or a self-hosted instance, set `INFISICAL_DOMAIN` before authenticating and pass it to the container with `--env INFISICAL_DOMAIN`:
+      export INFISICAL_TOKEN=$(infisical login \
+        --method=universal-auth \
+        --client-id=<client-id> \
+        --client-secret=<client-secret> \
+        --plain \
+        --silent)
 
-      ```bash
       docker run --rm --env INFISICAL_TOKEN --env INFISICAL_DOMAIN orders-service
       ```
-    </Note>
+    </CodeGroup>
+
+    Replace `<client-id>` and `<client-secret>` with the machine identity credentials you created earlier. The access token is passed to the container at runtime and isn't stored in the image.
 
     <Check>
       Your application can now read secrets as environment variables when the container starts.
