@@ -29,6 +29,7 @@ import { twMerge } from "tailwind-merge";
 import { AnnouncementNavButton } from "@app/components/announcements/AnnouncementNavButton";
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
+import { NewSubOrganizationModal } from "@app/components/organization/NewSubOrganizationModal";
 import { OrgPermissionCan } from "@app/components/permissions";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button as V2Button, Modal, ModalContent } from "@app/components/v2";
@@ -96,7 +97,6 @@ import { TypeSelect } from "@app/layouts/ProjectLayout/components/TypeSelect";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
-import { NewSubOrganizationModal } from "./NewSubOrganizationModal";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { VersionBadge } from "./VersionBadge";
 
@@ -850,7 +850,7 @@ export const Navbar = () => {
       <NewSubOrganizationModal
         isOpen={showSubOrgForm}
         onOpenChange={setShowSubOrgForm}
-        handleOrgSelection={handleOrgSelection}
+        onCreated={({ id }) => handleOrgSelection({ organizationId: id })}
       />
       <Modal isOpen={showAdminsModal} onOpenChange={setShowAdminsModal}>
         <ModalContent title="Server Administrators" subTitle="View all server administrators">

@@ -22,14 +22,14 @@ import {
   Input
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { useCreateSubOrganization } from "@app/hooks/api";
+import { TSubOrganization, useCreateSubOrganization } from "@app/hooks/api";
 import { selectOrganization } from "@app/hooks/api/auth/queries";
 import { GenericResourceNameSchema, slugSchema } from "@app/lib/schemas";
 
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  handleOrgSelection: (params: { organizationId: string }) => void;
+  onCreated?: (organization: TSubOrganization) => void | Promise<void>;
 };
 
 const AddOrgSchema = z.object({
@@ -40,7 +40,7 @@ const AddOrgSchema = z.object({
 
 type FormData = z.infer<typeof AddOrgSchema>;
 
-export const NewSubOrganizationModal = ({ isOpen, onOpenChange, handleOrgSelection }: Props) => {
+export const NewSubOrganizationModal = ({ isOpen, onOpenChange, onCreated }: Props) => {
   const { currentOrg, isSubOrganization } = useOrganization();
   const createSubOrg = useCreateSubOrganization();
 
@@ -83,7 +83,7 @@ export const NewSubOrganizationModal = ({ isOpen, onOpenChange, handleOrgSelecti
     });
     handleOpenChange(false);
 
-    await handleOrgSelection({ organizationId: organization.id });
+    await onCreated?.(organization);
   };
 
   return (

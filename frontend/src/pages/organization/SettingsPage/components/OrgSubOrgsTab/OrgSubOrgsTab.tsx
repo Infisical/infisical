@@ -18,6 +18,7 @@ import { z } from "zod";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
+import { NewSubOrganizationModal } from "@app/components/organization/NewSubOrganizationModal";
 import { OrgPermissionCan } from "@app/components/permissions";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { DeleteActionModal, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
@@ -71,7 +72,6 @@ import {
   useUpdateSubOrganization
 } from "@app/hooks/api/subOrganizations";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { NewSubOrganizationModal } from "@app/layouts/OrganizationLayout/components/NavBar/NewSubOrganizationModal";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 const editSubOrgSchema = z.object({
@@ -431,7 +431,6 @@ export const OrgSubOrgsTab = () => {
       <NewSubOrganizationModal
         isOpen={popUp.addSubOrg.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSubOrg", isOpen)}
-        handleOrgSelection={() => handlePopUpClose("addSubOrg")}
       />
 
       <Modal
