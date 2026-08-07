@@ -31,6 +31,11 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
   Table,
   TableBody,
   TableCell,
@@ -384,25 +389,27 @@ export const MemberRoleDetailsSection = ({
         onChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
         onDeleteApproved={() => handleRoleDelete()}
       />
-      <Dialog
+      <Sheet
         open={popUp.modifyManyRoles.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("modifyManyRoles", isOpen)}
       >
-        <DialogContent className="overflow-visible sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Roles</DialogTitle>
-            <DialogDescription>
+        <SheetContent className="sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>Roles</SheetTitle>
+            <SheetDescription>
               Select one or more of the pre-defined or custom roles to configure project
               permissions.
-            </DialogDescription>
-          </DialogHeader>
-          <MemberMultiRoleModify
-            projectMember={membershipDetails}
-            onOpenUpgradeModal={onOpenUpgradeModal}
-            onSuccess={() => handlePopUpClose("modifyManyRoles")}
-          />
-        </DialogContent>
-      </Dialog>
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto p-4">
+            <MemberMultiRoleModify
+              projectMember={membershipDetails}
+              onOpenUpgradeModal={onOpenUpgradeModal}
+              onSuccess={() => handlePopUpClose("modifyManyRoles")}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
       <Dialog
         open={popUp.modifyRole.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("modifyRole", isOpen)}
