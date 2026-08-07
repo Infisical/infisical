@@ -62,11 +62,6 @@ const HEADER_AND_BODY = [
   ProxiedServiceSubstitutionSurface.Body
 ];
 
-const bearer = (
-  headerName = "Authorization",
-  headerPrefix = "Bearer"
-): ProxiedServiceTemplateHeaderSeed[] => [{ headerName, headerPrefix }];
-
 // A substitution on the Authorization header: the agent's SDK sees a real-looking key and
 // makes the request; the proxy swaps the placeholder for the real secret on the wire.
 const bearerSubstitution = (
@@ -466,7 +461,9 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     category: ProxiedServiceTemplateCategory.Productivity,
     description: "Notion workspace and docs.",
     hostPattern: "api.notion.com",
-    seed: { headers: bearer() }
+    seed: {
+      substitutions: bearerSubstitution("NOTION_TOKEN", () => `ntn_${randomToken(46)}`)
+    }
   },
   {
     key: "jira",
