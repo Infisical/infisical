@@ -84,11 +84,11 @@ const schema = z
           message: "Kubernetes host is required"
         });
       }
-      if (isGatewayReviewer && !data.gatewayV2Id && !data.gatewayPoolId) {
+      if (isGatewayReviewer && !data.gatewayV2Id) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["gatewayV2Id"],
-          message: "Select the gateway or pool that will perform the review"
+          message: "Select a specific gateway to perform the review; a pool cannot"
         });
       }
       if (!data.allowedNamespaces.trim() && !data.allowedNames.trim()) {

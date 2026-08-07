@@ -86,13 +86,18 @@ const KubernetesAuthMethodInputSchema = z
     message: "Select either a gateway or a gateway pool to review tokens, not both",
     path: ["gatewayPoolId"]
   })
-  .refine(
-    (data) => data.tokenReviewMode !== KubernetesTokenReviewMode.Gateway || data.gatewayV2Id || data.gatewayPoolId,
-    {
-      message: "Gateway review mode requires a gateway or gateway pool to perform the review",
-      path: ["gatewayV2Id"]
-    }
-  )
+  .refine((data) => data.tokenReviewMode !== KubernetesTokenReviewMode.Gateway || Boolean(data.gatewayV2Id), {
+    message: "Gateway review mode requires a specific gateway to perform the review",
+    path: ["gatewayV2Id"]
+  })
+  // In this mode the selected gateway supplies the TokenReview verdict, so it is the attestor for
+  // every login. Pool membership can change afterwards under a different permission, which would
+  // let a pool editor add a gateway they control and have it authenticate as this one.
+  .refine((data) => data.tokenReviewMode !== KubernetesTokenReviewMode.Gateway || !data.gatewayPoolId, {
+    message:
+      "A gateway pool cannot perform the review, because its membership can change after this is saved. Select a specific gateway.",
+    path: ["gatewayPoolId"]
+  })
   // Only gateway review mode can go without a host, because there the gateway calls its own
   // API server rather than an address we supply.
   .refine((data) => data.tokenReviewMode === KubernetesTokenReviewMode.Gateway || Boolean(data.kubernetesHost), {

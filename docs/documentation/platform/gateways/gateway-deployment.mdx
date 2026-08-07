@@ -182,7 +182,7 @@ This guide covers everything you need to deploy and configure Infisical Gateways
         | **Gateway as Reviewer** | The selected gateway, using its own service account | That gateway runs as a pod in the same cluster. No host or reviewer token needed. |
         | **Manual Token Reviewer JWT (API)** | Infisical, tunnelling through the gateway | A Kubernetes host and a reviewer token. Works from any gateway that can reach the API server, including one on a VM in the same network. |
 
-        Prefer a gateway pool over a single gateway. Any healthy member performs the check, so one gateway going offline does not stop the others from authenticating.
+        A gateway pool can only be used with **Manual Token Reviewer JWT (API)**, where any healthy member performs the check and one gateway going offline does not stop the others from authenticating. **Gateway as Reviewer** requires a specific gateway, because in that mode the selected gateway decides the outcome and pool membership can change after the config is saved.
 
         <Warning>
           A gateway cannot review its own token. The proxy runs over the gateway's own tunnel, which only exists once it has already authenticated, so the reviewer must be a different gateway that is already enrolled and connected.
