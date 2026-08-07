@@ -15,6 +15,7 @@ import { TKmipServerDALFactory } from "../kmip-server/kmip-server-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import {
   OrgPermissionGatewayActions,
+  OrgPermissionGatewayPoolActions,
   OrgPermissionKmipServerActions,
   OrgPermissionRelayActions,
   OrgPermissionSubjects
@@ -232,12 +233,20 @@ export const resourceAuthMethodServiceFactory = ({
       actorAuthMethod: actor.authMethod,
       actorOrgId: actor.orgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.AttachGateways,
-      OrgPermissionSubjects.Gateway
-    );
+    if (proxy.gatewayV2Id) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    }
 
+    // Pools carry their own attach permission, so holding it for gateways is not sufficient.
     if (proxy.gatewayPoolId) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
+
       const plan = await licenseService.getPlan(actor.orgId);
       if (!plan.gatewayPool) {
         throw new BadRequestError({
