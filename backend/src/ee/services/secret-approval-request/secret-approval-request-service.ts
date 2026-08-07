@@ -1715,7 +1715,7 @@ export const secretApprovalRequestServiceFactory = ({
           type: TriggerFeature.SECRET_APPROVAL,
           payload: {
             userEmail: user?.email ?? undefined,
-            machineIdentityId: actorId,
+            machineIdentityId: actor === ActorType.IDENTITY ? actorId : undefined,
             environment: env.name,
             secretPath,
             projectId,
