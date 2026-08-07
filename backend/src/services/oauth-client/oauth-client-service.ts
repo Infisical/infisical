@@ -88,6 +88,14 @@ type TOauthTokenClaims = {
   mfaMethod?: MfaMethod;
 } & ({ scopes: string[]; delegation?: never } | { delegation: OauthDelegationMode.Full; scopes?: never });
 
+type TGrantConfigInput = {
+  grantTypes?: OauthGrantType[];
+  redirectUris?: string[];
+  requirePkce?: boolean;
+  tokenExchangeAudience?: string | null;
+  tokenExchangeIdpSatisfiesMfa?: boolean;
+};
+
 const signOauthToken = (
   claims: TOauthTokenClaims & {
     oauthClientId: string;
@@ -225,19 +233,49 @@ export const oauthClientServiceFactory = ({
     return { oidcConfig, org };
   };
 
-  const createOauthClient = async (dto: TCreateOauthClientDTO, actor: OrgServiceActor) => {
-    await checkOauthClientPermission(actor, OrgPermissionActions.Create);
+  // Registering and editing an application ask the same questions of a grant configuration: which grants
+  // the client ends up holding, whether the per-grant fields are coherent with them, and whether the
+  // actor may establish the federation trust that token exchange implies. An edit answers them against
+  // the stored client and a registration against nothing, so `client` is the only difference between the
+  // two callers.
+  //
+  // The two token exchange gates run only when the request actually touches that configuration, so an
+  // admin holding OauthClients Edit alone can still rename an application that happens to use the grant.
+  const resolveGrantConfig = async ({
+    dto,
+    actor,
+    client,
+    ssoPermissionAction
+  }: {
+    dto: TGrantConfigInput;
+    actor: OrgServiceActor;
+    client?: TOauthClients;
+    ssoPermissionAction: string;
+  }) => {
+    const storedGrantTypes = client ? (client.grantTypes as OauthGrantType[]) : [];
 
-    const grantTypes = dedupeGrantTypes(dto.grantTypes);
-    const enablesTokenExchange = hasTokenExchangeGrant(grantTypes);
+    const grantTypes = dedupeGrantTypes(dto.grantTypes ?? storedGrantTypes);
+    const wasTokenExchangeEnabled = hasTokenExchangeGrant(storedGrantTypes);
+    const isTokenExchangeEnabled = hasTokenExchangeGrant(grantTypes);
+    const isRedirectBased = hasRedirectBasedGrant(grantTypes);
 
-    if (enablesTokenExchange) {
-      await checkSsoConfigPermission(actor, "register an OAuth application that uses token exchange");
-    }
+    const redirectUris = dto.redirectUris ?? client?.redirectUris ?? [];
+    const tokenExchangeAudience =
+      dto.tokenExchangeAudience !== undefined ? dto.tokenExchangeAudience : (client?.tokenExchangeAudience ?? null);
+    const tokenExchangeIdpSatisfiesMfa =
+      dto.tokenExchangeIdpSatisfiesMfa ?? client?.tokenExchangeIdpSatisfiesMfa ?? false;
+
+    const establishesTokenExchangeTrust =
+      isTokenExchangeEnabled &&
+      (dto.grantTypes !== undefined ||
+        dto.tokenExchangeAudience !== undefined ||
+        dto.tokenExchangeIdpSatisfiesMfa !== undefined);
+
+    if (establishesTokenExchangeTrust) await checkSsoConfigPermission(actor, ssoPermissionAction);
 
     assertValidOauthClientGrantConfig({
       grantTypes,
-      resolved: { redirectUris: dto.redirectUris, tokenExchangeAudience: dto.tokenExchangeAudience },
+      resolved: { redirectUris, tokenExchangeAudience },
       supplied: {
         redirectUris: dto.redirectUris,
         requirePkce: dto.requirePkce,
@@ -246,7 +284,28 @@ export const oauthClientServiceFactory = ({
       }
     });
 
-    if (enablesTokenExchange) await getActiveOidcConfigOrThrow(actor.orgId);
+    if (establishesTokenExchangeTrust) await getActiveOidcConfigOrThrow(actor.orgId);
+
+    return {
+      grantTypes,
+      isRedirectBased,
+      isTokenExchangeEnabled,
+      wasTokenExchangeEnabled,
+      redirectUris,
+      tokenExchangeAudience,
+      tokenExchangeIdpSatisfiesMfa
+    };
+  };
+
+  const createOauthClient = async (dto: TCreateOauthClientDTO, actor: OrgServiceActor) => {
+    await checkOauthClientPermission(actor, OrgPermissionActions.Create);
+
+    const { grantTypes, isTokenExchangeEnabled, redirectUris, tokenExchangeAudience, tokenExchangeIdpSatisfiesMfa } =
+      await resolveGrantConfig({
+        dto,
+        actor,
+        ssoPermissionAction: "register an OAuth application that uses token exchange"
+      });
 
     const appCfg = getConfig();
     const clientId = `oauth_client_${crypto.randomBytes(16).toString("hex")}`;
@@ -261,10 +320,10 @@ export const oauthClientServiceFactory = ({
       clientSecretHash,
       clientSecretPrefix: clientSecret.slice(0, 4),
       grantTypes,
-      redirectUris: dto.redirectUris,
+      redirectUris,
       requirePkce: dto.requirePkce ?? false,
-      tokenExchangeAudience: enablesTokenExchange ? dto.tokenExchangeAudience : null,
-      tokenExchangeIdpSatisfiesMfa: enablesTokenExchange ? (dto.tokenExchangeIdpSatisfiesMfa ?? false) : false
+      tokenExchangeAudience: isTokenExchangeEnabled ? tokenExchangeAudience : null,
+      tokenExchangeIdpSatisfiesMfa: isTokenExchangeEnabled ? tokenExchangeIdpSatisfiesMfa : false
     });
 
     return { client: sanitizeOauthClient(client), clientSecret };
@@ -296,37 +355,19 @@ export const oauthClientServiceFactory = ({
 
     const client = await getOrgClientOrThrow(dto.clientDbId, actor.orgId);
 
-    const grantTypes = dedupeGrantTypes(dto.grantTypes ?? (client.grantTypes as OauthGrantType[]));
-    const wasTokenExchangeEnabled = hasTokenExchangeGrant(client.grantTypes as OauthGrantType[]);
-    const isTokenExchangeEnabled = hasTokenExchangeGrant(grantTypes);
-    const isRedirectBased = hasRedirectBasedGrant(grantTypes);
-
-    const resolvedRedirectUris = dto.redirectUris ?? client.redirectUris;
-    const resolvedTokenExchangeAudience =
-      dto.tokenExchangeAudience !== undefined ? dto.tokenExchangeAudience : client.tokenExchangeAudience;
-    const resolvedIdpSatisfiesMfa = dto.tokenExchangeIdpSatisfiesMfa ?? client.tokenExchangeIdpSatisfiesMfa;
-
-    const touchesTokenExchangeConfig =
-      dto.grantTypes !== undefined ||
-      dto.tokenExchangeAudience !== undefined ||
-      dto.tokenExchangeIdpSatisfiesMfa !== undefined;
-
-    if (isTokenExchangeEnabled && touchesTokenExchangeConfig) {
-      await checkSsoConfigPermission(actor, "change the token exchange configuration of an OAuth application");
-    }
-
-    assertValidOauthClientGrantConfig({
+    const {
       grantTypes,
-      resolved: { redirectUris: resolvedRedirectUris, tokenExchangeAudience: resolvedTokenExchangeAudience },
-      supplied: {
-        redirectUris: dto.redirectUris,
-        requirePkce: dto.requirePkce,
-        tokenExchangeAudience: dto.tokenExchangeAudience,
-        tokenExchangeIdpSatisfiesMfa: dto.tokenExchangeIdpSatisfiesMfa
-      }
+      isRedirectBased,
+      isTokenExchangeEnabled,
+      wasTokenExchangeEnabled,
+      tokenExchangeAudience,
+      tokenExchangeIdpSatisfiesMfa
+    } = await resolveGrantConfig({
+      dto,
+      actor,
+      client,
+      ssoPermissionAction: "change the token exchange configuration of an OAuth application"
     });
-
-    if (isTokenExchangeEnabled && touchesTokenExchangeConfig) await getActiveOidcConfigOrThrow(actor.orgId);
 
     const updatedClient = await oauthClientDAL.updateById(client.id, {
       name: dto.name,
@@ -334,8 +375,8 @@ export const oauthClientServiceFactory = ({
       grantTypes: dto.grantTypes ? grantTypes : undefined,
       redirectUris: isRedirectBased ? dto.redirectUris : [],
       requirePkce: isRedirectBased ? dto.requirePkce : false,
-      tokenExchangeAudience: isTokenExchangeEnabled ? resolvedTokenExchangeAudience : null,
-      tokenExchangeIdpSatisfiesMfa: isTokenExchangeEnabled ? resolvedIdpSatisfiesMfa : false
+      tokenExchangeAudience: isTokenExchangeEnabled ? tokenExchangeAudience : null,
+      tokenExchangeIdpSatisfiesMfa: isTokenExchangeEnabled ? tokenExchangeIdpSatisfiesMfa : false
     });
 
     if (wasTokenExchangeEnabled && !isTokenExchangeEnabled) {
