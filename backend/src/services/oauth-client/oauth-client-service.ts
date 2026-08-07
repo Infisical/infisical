@@ -182,22 +182,27 @@ export const oauthClientServiceFactory = ({
 
   // MFA enforcement, the OIDC SSO configuration and OIDC user aliases all live on the root
   // organization, matching the login flow.
-  const getClientRootOrg = async (orgId: string): Promise<TOrganizations> => {
+  // Both orgs are returned because callers on the exchange path need each of them: the root org for
+  // federation state, the client's own org for its token lifetime setting. They are the same row
+  // whenever the client does not belong to a sub-organization.
+  const getClientOrgs = async (orgId: string): Promise<{ clientOrg: TOrganizations; rootOrg: TOrganizations }> => {
     const clientOrg = await orgDAL.findById(orgId);
     if (!clientOrg) throw new NotFoundError({ message: "OAuth client organization not found" });
 
     const isSubOrganization = Boolean(clientOrg.rootOrgId && clientOrg.id !== clientOrg.rootOrgId);
-    if (!isSubOrganization) return clientOrg;
+    if (!isSubOrganization) return { clientOrg, rootOrg: clientOrg };
 
     const rootOrg = await orgDAL.findById(clientOrg.rootOrgId as string);
     if (!rootOrg) throw new NotFoundError({ message: "OAuth client organization not found" });
-    return rootOrg;
+    return { clientOrg, rootOrg };
   };
+
+  const getClientRootOrg = async (orgId: string) => (await getClientOrgs(orgId)).rootOrg;
 
   // Token exchange has nothing to verify a subject token against until federation is live. Failing at
   // configuration time puts the message in front of the admin setting the application up.
   const getActiveOidcConfigOrThrow = async (orgId: string) => {
-    const rootOrg = await getClientRootOrg(orgId);
+    const { clientOrg, rootOrg } = await getClientOrgs(orgId);
     const oidcConfig = await oidcConfigDAL.findOne({ orgId: rootOrg.id });
 
     if (!oidcConfig) {
@@ -214,7 +219,7 @@ export const oauthClientServiceFactory = ({
       });
     }
 
-    return { oidcConfig, rootOrg };
+    return { oidcConfig, rootOrg, clientOrg };
   };
 
   const createOauthClient = async (dto: TCreateOauthClientDTO, actor: OrgServiceActor) => {
@@ -504,12 +509,11 @@ export const oauthClientServiceFactory = ({
     return client;
   };
 
-  const getTokenLifetimes = async (orgId: string) => {
+  const resolveTokenLifetimes = (org?: TOrganizations) => {
     const appCfg = getConfig();
     let accessTokenExpiresIn: string | number = appCfg.JWT_AUTH_LIFETIME;
     let refreshTokenExpiresIn: string | number = appCfg.JWT_REFRESH_LIFETIME;
 
-    const org = await orgDAL.findById(orgId);
     if (org?.userTokenExpiration) {
       accessTokenExpiresIn = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);
       refreshTokenExpiresIn = org.userTokenExpiration;
@@ -517,6 +521,8 @@ export const oauthClientServiceFactory = ({
 
     return { accessTokenExpiresIn, refreshTokenExpiresIn };
   };
+
+  const getTokenLifetimes = async (orgId: string) => resolveTokenLifetimes(await orgDAL.findById(orgId));
 
   // RFC 8693 token exchange: the SSO login path with the token supplied directly instead of collected
   // through a browser redirect, and an access token issued instead of a session cookie. With no redirect
@@ -535,7 +541,7 @@ export const oauthClientServiceFactory = ({
       });
     }
 
-    const { oidcConfig, rootOrg } = await getActiveOidcConfigOrThrow(client.orgId);
+    const { oidcConfig, rootOrg, clientOrg } = await getActiveOidcConfigOrThrow(client.orgId);
 
     const { subject } = await verifySubjectToken({
       subjectToken: dto.subjectToken,
@@ -598,7 +604,7 @@ export const oauthClientServiceFactory = ({
     });
     if (!tokenSession) throw new BadRequestError({ message: "Failed to create user token session" });
 
-    const { accessTokenExpiresIn } = await getTokenLifetimes(client.orgId);
+    const { accessTokenExpiresIn } = resolveTokenLifetimes(clientOrg);
 
     const accessToken = signOauthToken(
       {
