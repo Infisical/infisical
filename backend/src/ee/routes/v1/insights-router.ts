@@ -55,10 +55,7 @@ const AuditReportSchema = z.object({
 });
 
 export const registerInsightsRouter = async (server: FastifyZodProvider) => {
-  // Org-scoped insights. These aggregate across every secret management project in the organization,
-  // so they carry no :projectId and are gated on the org-level Secrets Management Insights subject.
-  // Everything below this block is project-scoped, lives under /:projectId, and is gated on the
-  // project-level Insights subject instead.
+  // Org scoped insights don't have a :projectId, so they are gated on the org-level Secrets Management Insights subject.
 
   server.route({
     method: "GET",
@@ -121,7 +118,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const projectWarnings = await server.services.insights.getSecretsProjectWarnings({
+      const projectWarnings = await server.services.insights.getSecretsProjects({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

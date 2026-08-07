@@ -603,7 +603,7 @@ export const insightsServiceFactory = ({
     return { activeLeases, users, identities };
   };
 
-  const getSecretsProjectWarnings = async (dto: TGetSecretsProjectWarningsDTO): Promise<TSecretsProjectWarnings> => {
+  const getSecretsProjects = async (dto: TGetSecretsProjectWarningsDTO): Promise<TSecretsProjectWarnings> => {
     await assertOrgInsightsRead(dto);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, `project-warnings:${dto.offset}:${dto.limit}`);
@@ -766,7 +766,7 @@ export const insightsServiceFactory = ({
     getSecretsDuplication,
     getCounts,
     getSecretsUsageInsights,
-    getSecretsProjectWarnings,
+    getSecretsProjects,
     getStaticSecretsUsage
   };
 };

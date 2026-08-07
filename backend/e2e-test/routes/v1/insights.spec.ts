@@ -1,15 +1,24 @@
 import { describe, expect, test } from "vitest";
 
-const URL = "/api/v1/insights/secrets/summary";
+const PROJECTS_URL = "/api/v1/insights/secrets/projects";
 
-// The counting itself is covered against a real database in e2e-test/insights-usage.spec.ts.
-// This file only asserts the route wiring, because the e2e instance runs unlicensed and the plan gate
-// therefore rejects every request before any count is taken.
+// Every org-scoped insight, by the URL the router registers it at. The aggregation behind each one is
+// covered against a real database (or a faked ClickHouse) in the e2e-test/insights-*.spec.ts files.
+// This file only asserts the wiring, because the e2e instance runs unlicensed and the plan gate
+// therefore rejects every request before any aggregate is computed.
+const ORG_SCOPED_URLS = {
+  summary: "/api/v1/insights/secrets/summary",
+  projects: PROJECTS_URL,
+  accessVolume: "/api/v1/insights/secrets/access-volume",
+  authMethods: "/api/v1/insights/secrets/usage/auth-methods",
+  staticSecrets: "/api/v1/insights/secrets/usage/static-secrets"
+};
+
 describe("Insights V1 Router (org-scoped)", async () => {
-  test("GET secrets summary is registered and refuses on plan restriction", async () => {
+  test.each(Object.entries(ORG_SCOPED_URLS))("GET %s is registered and refuses on plan restriction", async (_, url) => {
     const res = await testServer.inject({
       method: "GET",
-      url: URL,
+      url,
       headers: { authorization: `Bearer ${jwtAuthToken}` }
     });
 
@@ -19,17 +28,10 @@ describe("Insights V1 Router (org-scoped)", async () => {
     expect(res.json().message).toContain("Upgrade your plan");
   });
 
-  const PROJECTS_URL = "/api/v1/insights/secrets/projects";
+  test.each(Object.entries(ORG_SCOPED_URLS))("GET %s requires authentication", async (_, url) => {
+    const res = await testServer.inject({ method: "GET", url });
 
-  test("GET secrets projects is registered and refuses on plan restriction", async () => {
-    const res = await testServer.inject({
-      method: "GET",
-      url: PROJECTS_URL,
-      headers: { authorization: `Bearer ${jwtAuthToken}` }
-    });
-
-    expect(res.statusCode).toBe(400);
-    expect(res.json().message).toContain("Upgrade your plan");
+    expect(res.statusCode).toBe(401);
   });
 
   test("GET secrets projects rejects an out-of-bounds limit", async () => {
@@ -40,6 +42,16 @@ describe("Insights V1 Router (org-scoped)", async () => {
     });
 
     // Schema validation failures map to 422 (ValidationError in error-handler.ts)
+    expect(res.statusCode).toBe(422);
+  });
+
+  test("GET secrets projects rejects a negative offset", async () => {
+    const res = await testServer.inject({
+      method: "GET",
+      url: `${PROJECTS_URL}?offset=-1`,
+      headers: { authorization: `Bearer ${jwtAuthToken}` }
+    });
+
     expect(res.statusCode).toBe(422);
   });
 });
