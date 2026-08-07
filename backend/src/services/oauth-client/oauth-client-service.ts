@@ -561,6 +561,19 @@ export const oauthClientServiceFactory = ({
       throw new UnauthorizedError({ message: "The user this token identifies no longer has an Infisical account." });
     }
 
+    if (!user.isAccepted) {
+      throw new UnauthorizedError({
+        message: "The user this token identifies has not completed Infisical account setup."
+      });
+    }
+
+    if (user.isLocked || (user.temporaryLockDateEnd && new Date() < user.temporaryLockDateEnd)) {
+      throw new UnauthorizedError({
+        message:
+          "The Infisical account for the user this token identifies is locked, so an application cannot act on their behalf. They can unlock it by resetting their password."
+      });
+    }
+
     await permissionService.getOrgPermission({
       actor: ActorType.USER,
       actorId: user.id,
