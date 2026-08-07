@@ -33,6 +33,9 @@ export type TCreateSshCertDTO = {
   principals: string[];
   requestedTtl?: string;
   certType: SshCertType;
+  // backdates the certificate's valid-from so a verifying host running behind us does not reject it
+  // as not-yet-valid; the expiry stays at issuance + ttl either way
+  clockSkewSeconds?: number;
 };
 
 /* eslint-disable no-bitwise */
@@ -188,7 +191,8 @@ export const createSshCert = async ({
   keyId,
   principals,
   requestedTtl, // in ms lib format
-  certType
+  certType,
+  clockSkewSeconds
 }: TCreateSshCertDTO) => {
   let ttl: number | undefined;
 
@@ -225,7 +229,7 @@ export const createSshCert = async ({
     "-n",
     principals.join(","), // principals
     "-V",
-    `+${ttl}s`, // validity (TTL in seconds)
+    clockSkewSeconds ? `-${clockSkewSeconds}s:+${ttl}s` : `+${ttl}s`, // validity (TTL in seconds)
     "-z",
     serialNumber, // serial number
     publicKeyFile // public key file to sign
