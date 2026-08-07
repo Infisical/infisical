@@ -52,8 +52,8 @@ import {
 import { TPamIdentityMember } from "@app/hooks/api/pam/types";
 import { useDeleteProjectIdentity } from "@app/hooks/api/projectIdentity";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { CreateProjectIdentitySheet } from "@app/pages/project/AccessControlPage/components/IdentityTab/components/CreateProjectIdentity/CreateProjectIdentitySheet";
 
-import { AddIdentityModal } from "./AddIdentityModal";
 import { IdentityRoleModal } from "./IdentityRoleModal";
 
 export const IdentitiesTab = () => {
@@ -291,7 +291,7 @@ export const IdentitiesTab = () => {
         )}
       </Card>
 
-      <AddIdentityModal isOpen={isAddIdentityOpen} onOpenChange={setIsAddIdentityOpen} />
+      <CreateProjectIdentitySheet isOpen={isAddIdentityOpen} onOpenChange={setIsAddIdentityOpen} />
 
       <IdentityRoleModal
         identity={selectedIdentity}
