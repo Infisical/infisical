@@ -3,7 +3,7 @@ import { z } from "zod";
 import { OauthClientsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
-import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { authRateLimit, oauthTokenLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { isAllowedRedirectUri, parseBasicAuthHeader } from "@app/services/oauth-client/oauth-client-fns";
@@ -414,7 +414,15 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/token",
     config: {
-      rateLimit: authRateLimit
+      rateLimit: oauthTokenLimit({
+        keyGenerator: (req) => {
+          const suppliedClientId = (req.body as { client_id?: unknown } | undefined)?.client_id;
+          const clientId =
+            parseBasicAuthHeader(req.headers.authorization)?.clientId ??
+            (typeof suppliedClientId === "string" ? suppliedClientId : undefined);
+          return clientId ? `${req.realIp}:${clientId.slice(0, 256)}` : req.realIp;
+        }
+      })
     },
     schema: {
       body: z.object({

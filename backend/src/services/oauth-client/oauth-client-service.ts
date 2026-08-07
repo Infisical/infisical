@@ -180,30 +180,33 @@ export const oauthClientServiceFactory = ({
     return client;
   };
 
-  // MFA enforcement, the OIDC SSO configuration and OIDC user aliases all live on the root
-  // organization, matching the login flow.
-  // Both orgs are returned because callers on the exchange path need each of them: the root org for
-  // federation state, the client's own org for its token lifetime setting. They are the same row
-  // whenever the client does not belong to a sub-organization.
-  const getClientOrgs = async (orgId: string): Promise<{ clientOrg: TOrganizations; rootOrg: TOrganizations }> => {
-    const clientOrg = await orgDAL.findById(orgId);
-    if (!clientOrg) throw new NotFoundError({ message: "OAuth client organization not found" });
+  // An OAuth client always belongs to a root organization: every management method goes through
+  // checkOauthClientPermission, which is scoped to ParentOrganization, and an organization's rootOrgId
+  // is fixed when it is created. So the org that owns the client is also the one carrying everything
+  // these flows read off it — MFA enforcement, the OIDC SSO configuration and OIDC user aliases all
+  // live on the root organization, matching the login flow.
+  //
+  // Asserted rather than assumed. If sub-organizations are ever allowed to own clients, resolving the
+  // root organization has to become explicit here, or the exchange would silently verify subject tokens
+  // against a sub-organization's own OIDC configuration and look up aliases in the wrong org.
+  const getClientOrg = async (orgId: string): Promise<TOrganizations> => {
+    const org = await orgDAL.findById(orgId);
+    if (!org) throw new NotFoundError({ message: "OAuth client organization not found" });
 
-    const isSubOrganization = Boolean(clientOrg.rootOrgId && clientOrg.id !== clientOrg.rootOrgId);
-    if (!isSubOrganization) return { clientOrg, rootOrg: clientOrg };
+    if (org.rootOrgId && org.rootOrgId !== org.id) {
+      throw new BadRequestError({
+        message: "OAuth applications are managed on the parent organization, not on a sub-organization."
+      });
+    }
 
-    const rootOrg = await orgDAL.findById(clientOrg.rootOrgId as string);
-    if (!rootOrg) throw new NotFoundError({ message: "OAuth client organization not found" });
-    return { clientOrg, rootOrg };
+    return org;
   };
-
-  const getClientRootOrg = async (orgId: string) => (await getClientOrgs(orgId)).rootOrg;
 
   // Token exchange has nothing to verify a subject token against until federation is live. Failing at
   // configuration time puts the message in front of the admin setting the application up.
   const getActiveOidcConfigOrThrow = async (orgId: string) => {
-    const { clientOrg, rootOrg } = await getClientOrgs(orgId);
-    const oidcConfig = await oidcConfigDAL.findOne({ orgId: rootOrg.id });
+    const org = await getClientOrg(orgId);
+    const oidcConfig = await oidcConfigDAL.findOne({ orgId: org.id });
 
     if (!oidcConfig) {
       throw new BadRequestError({
@@ -219,7 +222,7 @@ export const oauthClientServiceFactory = ({
       });
     }
 
-    return { oidcConfig, rootOrg, clientOrg };
+    return { oidcConfig, org };
   };
 
   const createOauthClient = async (dto: TCreateOauthClientDTO, actor: OrgServiceActor) => {
@@ -450,12 +453,12 @@ export const oauthClientServiceFactory = ({
     // password mint OAuth tokens, bypassing MFA entirely. So we re-derive whether MFA is required
     // for this user in the client's organization and reject the request unless the session actually
     // completed the matching MFA challenge.
-    const rootOrg = await getClientRootOrg(client.orgId);
+    const org = await getClientOrg(client.orgId);
 
     const user = await userDAL.findById(dto.userId);
     if (!user) throw new UnauthorizedError({ message: "User not found" });
 
-    const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(rootOrg, user);
+    const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(org, user);
     if (isMfaRequired && (!dto.isMfaVerified || dto.mfaMethod !== requiredMfaMethod)) {
       throw new UnauthorizedError({
         message: "Multi-factor authentication is required before authorizing this application"
@@ -541,7 +544,7 @@ export const oauthClientServiceFactory = ({
       });
     }
 
-    const { oidcConfig, rootOrg, clientOrg } = await getActiveOidcConfigOrThrow(client.orgId);
+    const { oidcConfig, org } = await getActiveOidcConfigOrThrow(client.orgId);
 
     const { subject } = await verifySubjectToken({
       subjectToken: dto.subjectToken,
@@ -551,7 +554,7 @@ export const oauthClientServiceFactory = ({
 
     const userAlias = await userAliasDAL.findOne({
       externalId: subject,
-      orgId: rootOrg.id,
+      orgId: org.id,
       aliasType: UserAliasType.OIDC
     });
 
@@ -616,7 +619,7 @@ export const oauthClientServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    const { isMfaRequired } = getRequiredMfaMethod(rootOrg, user);
+    const { isMfaRequired } = getRequiredMfaMethod(org, user);
     if (isMfaRequired && !client.tokenExchangeIdpSatisfiesMfa) {
       throw new UnauthorizedError({
         message:
@@ -631,7 +634,7 @@ export const oauthClientServiceFactory = ({
     });
     if (!tokenSession) throw new BadRequestError({ message: "Failed to create user token session" });
 
-    const { accessTokenExpiresIn } = resolveTokenLifetimes(clientOrg);
+    const { accessTokenExpiresIn } = resolveTokenLifetimes(org);
 
     const accessToken = signOauthToken(
       {
