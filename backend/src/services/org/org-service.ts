@@ -820,9 +820,10 @@ export const orgServiceFactory = ({
       };
     });
 
-    // After commit: the org is gone, so stop it billing. Never throws, so a License Server outage can't
-    // fail a deletion that already succeeded, and it stays out of the transaction.
-    await licenseService.cancelOrgSubscription(orgId);
+    // if root org null = this is a root org then cancel the subscription.
+    if (!response.organization.rootOrgId) {
+      await licenseService.cancelOrgSubscription(orgId);
+    }
 
     return response;
   };
