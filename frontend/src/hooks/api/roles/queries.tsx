@@ -16,7 +16,6 @@ import {
   TGetUserOrgPermissionsDTO,
   TGetUserProjectPermissionDTO,
   TOrgRole,
-  TOrgRoleSummary,
   TPermission,
   TProjectRole
 } from "./types";
@@ -65,7 +64,7 @@ export const useGetProjectRoleBySlug = (
 
 const getOrgRoles = async () => {
   const { data } = await apiRequest.get<{
-    roles: TOrgRoleSummary[];
+    roles: Array<Omit<TOrgRole, "permissions"> & { permissions: TPermission[] }>;
   }>("/api/v1/organization/roles");
   return data.roles;
 };

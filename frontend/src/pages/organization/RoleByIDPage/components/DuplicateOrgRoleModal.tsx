@@ -18,18 +18,19 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-  Input
+  Input,
+  PageLoader
 } from "@app/components/v3";
-import { useSubscription } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
 import { useCreateOrgRole, useGetOrgRole } from "@app/hooks/api";
-import { TOrgRole, TOrgRoleSummary, TPermission } from "@app/hooks/api/roles/types";
+import { TOrgRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
 
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  role?: TOrgRoleSummary;
+  roleId?: string;
 };
 
 const schema = z
@@ -43,14 +44,11 @@ const schema = z
 export type FormData = z.infer<typeof schema>;
 
 type ContentProps = {
-  role: TOrgRoleSummary;
-  permissions?: TPermission[];
-  isRolePending: boolean;
-  isRoleError: boolean;
+  role: TOrgRole;
   onClose: () => void;
 };
 
-const Content = ({ role, permissions, isRolePending, isRoleError, onClose }: ContentProps) => {
+const Content = ({ role, onClose }: ContentProps) => {
   const {
     control,
     handleSubmit,
@@ -73,8 +71,6 @@ const Content = ({ role, permissions, isRolePending, isRoleError, onClose }: Con
   const navigate = useNavigate();
 
   const handleDuplicateRole = async (form: FormData) => {
-    if (!permissions) return;
-
     if (subscription && !subscription?.rbac) {
       handleUpgradePlanPopUpOpen("upgradePlan");
       return;
@@ -82,7 +78,7 @@ const Content = ({ role, permissions, isRolePending, isRoleError, onClose }: Con
 
     const newRole = await createRole.mutateAsync({
       orgId: role.orgId,
-      permissions,
+      permissions: role.permissions,
       ...form
     });
 
@@ -148,23 +144,13 @@ const Content = ({ role, permissions, isRolePending, isRoleError, onClose }: Con
             )}
           />
         </FieldGroup>
-        {isRoleError && (
-          <p className="mt-4 text-sm text-danger">
-            Could not load the role permissions. Close the dialog and try again.
-          </p>
-        )}
         <DialogFooter className="mt-6">
           <DialogClose asChild>
             <Button type="button" variant="ghost">
               Cancel
             </Button>
           </DialogClose>
-          <Button
-            type="submit"
-            variant="org"
-            isPending={isSubmitting || isRolePending}
-            isDisabled={isSubmitting || isRolePending || !permissions}
-          >
+          <Button type="submit" variant="org" isPending={isSubmitting} isDisabled={isSubmitting}>
             Duplicate Role
           </Button>
         </DialogFooter>
@@ -179,16 +165,12 @@ const Content = ({ role, permissions, isRolePending, isRoleError, onClose }: Con
   );
 };
 
-const hasPermissions = (role: TOrgRoleSummary): role is TOrgRole =>
-  "permissions" in role && Array.isArray(role.permissions);
+export const DuplicateOrgRoleModal = ({ isOpen, onOpenChange, roleId }: Props) => {
+  const { currentOrg } = useOrganization();
 
-export const DuplicateOrgRoleModal = ({ isOpen, onOpenChange, role }: Props) => {
-  const needsRoleFetch = Boolean(role && !hasPermissions(role));
-  const roleQuery = useGetOrgRole(role?.orgId ?? "", needsRoleFetch && role ? role.id : "");
+  const { data: role, isPending } = useGetOrgRole(currentOrg.id, roleId ?? "");
 
-  if (!role) return null;
-
-  const permissions = hasPermissions(role) ? role.permissions : roleQuery.data?.permissions;
+  if (!roleId) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -199,13 +181,18 @@ export const DuplicateOrgRoleModal = ({ isOpen, onOpenChange, role }: Props) => 
             Duplicate this role to create a new role with the same permissions.
           </DialogDescription>
         </DialogHeader>
-        <Content
-          role={role}
-          permissions={permissions}
-          isRolePending={needsRoleFetch && roleQuery.isPending}
-          isRoleError={needsRoleFetch && roleQuery.isError}
-          onClose={() => onOpenChange(false)}
-        />
+        {/* eslint-disable-next-line no-nested-ternary */}
+        {isPending ? (
+          <div className="h-32">
+            <PageLoader lottieClassName="w-16" />
+          </div>
+        ) : role ? (
+          <Content role={role!} onClose={() => onOpenChange(false)} />
+        ) : (
+          <p className="w-full text-center text-danger">
+            Error: could not find role with slug &#34;{roleId}&#34;
+          </p>
+        )}
       </DialogContent>
     </Dialog>
   );
