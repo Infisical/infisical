@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
-import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
@@ -80,6 +80,7 @@ export const SettingsPage = () => {
     visibleTabs[0];
   const baseTitle = t("settings.project.title");
   const pageTitle = activeTab ? `${activeTab.name} - ${baseTitle}` : baseTitle;
+  const ActiveTabComponent = activeTab?.Component;
 
   return (
     <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
@@ -103,13 +104,9 @@ export const SettingsPage = () => {
             settings?
           </Link>
         </PageHeader>
-        <Tabs orientation="vertical" value={activeTab?.key}>
-          {visibleTabs.map(({ key, Component }) => (
-            <TabPanel value={key} key={key}>
-              <Component />
-            </TabPanel>
-          ))}
-        </Tabs>
+        <div className="grow rounded-br-md rounded-bl-md py-5 outline-hidden xl:overflow-x-hidden xl:py-0">
+          {ActiveTabComponent ? <ActiveTabComponent /> : null}
+        </div>
       </div>
     </div>
   );
