@@ -39,6 +39,7 @@ export const PgSqlLock = {
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
   LastAdminGuard: (scope: "org", scopeId: string) => pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
   AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
+  OrgAuditReportRequest: (orgId: string) => pgAdvisoryLockHashText(`audit-report-request:org:${orgId}`),
   OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`)
 } as const;
 
@@ -197,9 +198,9 @@ export const KeyStoreTtls = {
   RefreshTokenGraceInSeconds: 10,
   EmailSignupOtpInSeconds: 300, // 5 minutes
   EmailSignupResendCooldownInSeconds: 60, // 1 minute
-  InsightsCacheInSeconds: 300, // 5 minutes
-  InsightsDuplicationCacheInSeconds: 3600, // 1 hour
-  InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
+  InsightsCacheInSeconds: 60, // 5 minutes
+  InsightsDuplicationCacheInSeconds: 60, // 1 hour
+  InsightsWeeklyHistoryCacheInSeconds: 60, // 24 hours
   AdminConfigInSeconds: 60,
   UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job

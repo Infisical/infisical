@@ -4,7 +4,6 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope, TableName } from "@app/db/schemas";
 import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
@@ -46,7 +45,9 @@ import {
   buildStaticSecretUsageWindow,
   collapseAccessVolumeDays,
   resolveUserDisplayNames,
-  toUtcDateString
+  STALE_SECRET_THRESHOLD_DAYS,
+  toUtcDateString,
+  VALUE_EVENT_TYPES
 } from "./insights-fns";
 import {
   TGetAccessVolumeDTO,
@@ -102,17 +103,6 @@ export type TInsightsServiceFactoryDep = {
 };
 
 export type TInsightsServiceFactory = ReturnType<typeof insightsServiceFactory>;
-
-const STALE_SECRET_THRESHOLD_DAYS = 90;
-
-const VALUE_EVENT_TYPES = [
-  EventType.GET_SECRETS,
-  EventType.GET_SECRET,
-  EventType.DASHBOARD_GET_SECRET_VALUE,
-  EventType.DASHBOARD_GET_SECRET_VERSION_VALUE,
-  EventType.GET_SECRET_ROTATION_GENERATED_CREDENTIALS,
-  EventType.CREATE_DYNAMIC_SECRET_LEASE
-];
 
 // Both halves of the product (the per-project dashboard and the org-wide aggregates) are gated on the
 // same entitlement, so the check and its message live in one place.

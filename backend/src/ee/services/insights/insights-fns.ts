@@ -1,9 +1,21 @@
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAccessVolumeActor, TAccessVolumeDay } from "./insights-types";
 
 const ACCESS_VOLUME_DAYS = 7;
 const STATIC_SECRET_USAGE_WEEKS = 12;
+
+export const STALE_SECRET_THRESHOLD_DAYS = 90;
+
+export const VALUE_EVENT_TYPES = [
+  EventType.GET_SECRETS,
+  EventType.GET_SECRET,
+  EventType.DASHBOARD_GET_SECRET_VALUE,
+  EventType.DASHBOARD_GET_SECRET_VERSION_VALUE,
+  EventType.GET_SECRET_ROTATION_GENERATED_CREDENTIALS,
+  EventType.CREATE_DYNAMIC_SECRET_LEASE
+];
 
 export const toUtcDateString = (date: Date) => date.toISOString().slice(0, 10);
 

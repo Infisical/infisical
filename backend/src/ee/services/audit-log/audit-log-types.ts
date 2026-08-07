@@ -693,6 +693,10 @@ export enum EventType {
   GET_AUDIT_REPORT = "get-audit-report",
   DELETE_AUDIT_REPORT = "delete-audit-report",
 
+  CREATE_ORG_AUDIT_REPORT = "create-org-audit-report",
+  GET_ORG_AUDIT_REPORTS = "get-org-audit-reports",
+  DELETE_ORG_AUDIT_REPORT = "delete-org-audit-report",
+
   VIEW_INSIGHTS_PAM_SUMMARY = "view-insights-pam-summary",
   VIEW_INSIGHTS_PAM_SESSION_ACTIVITY = "view-insights-pam-session-activity",
   VIEW_INSIGHTS_PAM_TOP_ACTORS = "view-insights-pam-top-actors",
@@ -5613,6 +5617,31 @@ interface DeleteAuditReportEvent {
   };
 }
 
+// Org-scoped report events carry no org id in metadata: the audit log row itself is org-scoped.
+interface CreateOrgAuditReportEvent {
+  type: EventType.CREATE_ORG_AUDIT_REPORT;
+  metadata: {
+    auditReportId: string;
+    reportTypes: string[];
+    recipientCount: number;
+  };
+}
+
+interface GetOrgAuditReportsEvent {
+  type: EventType.GET_ORG_AUDIT_REPORTS;
+  metadata: {
+    offset: number;
+    limit: number;
+  };
+}
+
+interface DeleteOrgAuditReportEvent {
+  type: EventType.DELETE_ORG_AUDIT_REPORT;
+  metadata: {
+    auditReportId: string;
+  };
+}
+
 interface ViewAuditLogsEvent {
   type: EventType.VIEW_AUDIT_LOGS;
   metadata?: Record<string, unknown>;
@@ -7540,6 +7569,9 @@ export type Event =
   | GetAuditReportsEvent
   | GetAuditReportEvent
   | DeleteAuditReportEvent
+  | CreateOrgAuditReportEvent
+  | GetOrgAuditReportsEvent
+  | DeleteOrgAuditReportEvent
   | ViewAuditLogsEvent
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent

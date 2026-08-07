@@ -12,6 +12,16 @@ export enum AuditReportType {
   SecretAccessLog = "SECRET_ACCESS_LOG"
 }
 
+// Org-scoped report types. Kept in a separate enum (with non-overlapping value strings) so the org
+// and project request schemas stay disjoint and stored configs are unambiguous about their scope.
+export enum OrgAuditReportType {
+  OrgUsageSummary = "ORG_USAGE_SUMMARY",
+  OrgNeedsAttention = "ORG_NEEDS_ATTENTION",
+  OrgAuthMethods = "ORG_AUTH_METHODS",
+  OrgStaticSecretUsage = "ORG_STATIC_SECRET_USAGE",
+  OrgSecretAccessVolume = "ORG_SECRET_ACCESS_VOLUME"
+}
+
 export enum AuditReportStatus {
   Pending = "pending",
   Processing = "processing",
@@ -31,6 +41,11 @@ export type TAuditReportConfig = {
   inputs: Record<string, unknown>;
 };
 
+export type TOrgAuditReportConfig = {
+  type: OrgAuditReportType;
+  inputs: Record<string, unknown>;
+};
+
 export const AuditReportResultEntrySchema = z.object({
   type: z.nativeEnum(AuditReportType),
   rowCount: z.number(),
@@ -38,6 +53,14 @@ export const AuditReportResultEntrySchema = z.object({
 });
 
 export type TAuditReportResultEntry = z.infer<typeof AuditReportResultEntrySchema>;
+
+export const OrgAuditReportResultEntrySchema = z.object({
+  type: z.nativeEnum(OrgAuditReportType),
+  rowCount: z.number(),
+  truncated: z.boolean()
+});
+
+export type TOrgAuditReportResultEntry = z.infer<typeof OrgAuditReportResultEntrySchema>;
 
 export type TReportRow = Record<string, string | number | null>;
 
@@ -55,6 +78,17 @@ export type TRequestAuditReportDTO = {
 
 export type TListAuditReportsDTO = {
   projectId: string;
+  offset?: number;
+  limit?: number;
+};
+
+// Org-scoped report DTOs carry no scope id: the org is always the requesting actor's org.
+export type TRequestOrgAuditReportDTO = {
+  reports: { type: OrgAuditReportType; inputs?: Record<string, unknown> }[];
+  emailRecipients?: string[];
+};
+
+export type TListOrgAuditReportsDTO = {
   offset?: number;
   limit?: number;
 };

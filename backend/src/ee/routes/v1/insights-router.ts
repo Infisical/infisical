@@ -10,7 +10,9 @@ import {
 import {
   AuditReportResultEntrySchema,
   AuditReportStatus,
-  AuditReportType
+  AuditReportType,
+  OrgAuditReportResultEntrySchema,
+  OrgAuditReportType
 } from "@app/ee/services/audit-report/audit-report-types";
 import {
   OrgAuthMethodDistributionSchema,
@@ -50,6 +52,34 @@ const AuditReportSchema = z.object({
   reportConfigs: z.array(AuditReportConfigSchema),
   emailRecipients: z.string().array(),
   resultSummary: z.array(AuditReportResultEntrySchema).nullable(),
+  errorMessage: z.string().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
+// Org-scoped counterparts. None of the org report types take inputs today; the discriminated union
+// mirrors the project one so a type can grow inputs later without reshaping the request.
+const OrgAuditReportRequestConfigSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal(OrgAuditReportType.OrgUsageSummary), inputs: NoInputsSchema.optional() }),
+  z.object({ type: z.literal(OrgAuditReportType.OrgNeedsAttention), inputs: NoInputsSchema.optional() }),
+  z.object({ type: z.literal(OrgAuditReportType.OrgAuthMethods), inputs: NoInputsSchema.optional() }),
+  z.object({ type: z.literal(OrgAuditReportType.OrgStaticSecretUsage), inputs: NoInputsSchema.optional() }),
+  z.object({ type: z.literal(OrgAuditReportType.OrgSecretAccessVolume), inputs: NoInputsSchema.optional() })
+]);
+
+const OrgAuditReportSchema = z.object({
+  id: z.string().uuid(),
+  orgId: z.string().uuid(),
+  requestedByUserId: z.string().uuid().nullable(),
+  status: z.nativeEnum(AuditReportStatus),
+  reportConfigs: z.array(
+    z.object({
+      type: z.nativeEnum(OrgAuditReportType),
+      inputs: z.record(z.unknown())
+    })
+  ),
+  emailRecipients: z.string().array(),
+  resultSummary: z.array(OrgAuditReportResultEntrySchema).nullable(),
   errorMessage: z.string().nullable(),
   createdAt: z.date(),
   updatedAt: z.date()
@@ -312,6 +342,98 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       });
 
       return { counts };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/secrets/reports",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: true,
+      body: z.object({
+        reports: OrgAuditReportRequestConfigSchema.array().min(1).max(5),
+        emailRecipients: z.array(z.string().trim().email().max(255)).max(20).optional()
+      }),
+      response: {
+        200: OrgAuditReportSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const report = await server.services.auditReport.generateOrgReport(req.body, req.permission);
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.CREATE_ORG_AUDIT_REPORT,
+          metadata: {
+            auditReportId: report.id,
+            reportTypes: report.reportConfigs.map((config) => config.type),
+            recipientCount: report.emailRecipients.length
+          }
+        }
+      });
+      return report;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secrets/reports",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
+      querystring: z.object({
+        offset: z.coerce.number().int().min(0).max(10000).default(0),
+        limit: z.coerce.number().int().min(1).max(100).default(10)
+      }),
+      response: {
+        200: z.object({ reports: z.array(OrgAuditReportSchema), totalCount: z.number() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { offset, limit } = req.query;
+      const { reports, totalCount } = await server.services.auditReport.listOrgReports(
+        { offset, limit },
+        req.permission
+      );
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GET_ORG_AUDIT_REPORTS,
+          metadata: { offset, limit }
+        }
+      });
+      return { reports, totalCount };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/secrets/reports/:reportId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: true,
+      params: z.object({ reportId: z.string().uuid() }),
+      response: {
+        200: OrgAuditReportSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const report = await server.services.auditReport.deleteOrgReport(req.params.reportId, req.permission);
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.DELETE_ORG_AUDIT_REPORT,
+          metadata: { auditReportId: report.id }
+        }
+      });
+      return report;
     }
   });
 

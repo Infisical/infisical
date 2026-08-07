@@ -3109,6 +3109,7 @@ export const registerRoutes = async (
     queueService,
     auditReportDAL,
     projectDAL,
+    orgDAL,
     smtpService,
     secretV2BridgeDAL,
     folderDAL,
@@ -3117,7 +3118,10 @@ export const registerRoutes = async (
     auditLogDAL,
     clickhouseAuditLogDAL,
     secretValidationRuleDAL,
-    kmsService
+    kmsService,
+    insightsDAL,
+    dynamicSecretLeaseDAL,
+    identityOrgMembershipDAL
   });
 
   const pkiSyncQueue = pkiSyncQueueFactory({

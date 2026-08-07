@@ -4,11 +4,12 @@ import React from "react";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 
 interface AuditReportTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
-  projectName: string;
+  targetName: string;
+  targetType: "project" | "organization";
   reports: { label: string; rowCount: number; truncated: boolean }[];
 }
 
-export const AuditReportTemplate = ({ siteUrl, projectName, reports }: AuditReportTemplateProps) => {
+export const AuditReportTemplate = ({ siteUrl, targetName, targetType, reports }: AuditReportTemplateProps) => {
   return (
     <BaseEmailWrapper title="Report" preview="Your requested report is ready." siteUrl={siteUrl}>
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
@@ -16,7 +17,7 @@ export const AuditReportTemplate = ({ siteUrl, projectName, reports }: AuditRepo
       </Heading>
       <Section className="px-[24px] mt-[36px] pt-[8px] pb-[8px] text-[14px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-[14px]">
-          The report you requested for the project <strong>{projectName}</strong> has been generated. The
+          The report you requested for the {targetType} <strong>{targetName}</strong> has been generated. The
           following {reports.length === 1 ? "report is" : "reports are"} attached to this email
           {reports.length === 1 ? " as a CSV file" : ", each as its own CSV file"}:
         </Text>
@@ -35,7 +36,8 @@ export const AuditReportTemplate = ({ siteUrl, projectName, reports }: AuditRepo
 export default AuditReportTemplate;
 
 AuditReportTemplate.PreviewProps = {
-  projectName: "Example Project",
+  targetName: "Example Project",
+  targetType: "project",
   reports: [
     { label: "Stale Secrets", rowCount: 42, truncated: false },
     { label: "Secret Access Log", rowCount: 100000, truncated: true }
