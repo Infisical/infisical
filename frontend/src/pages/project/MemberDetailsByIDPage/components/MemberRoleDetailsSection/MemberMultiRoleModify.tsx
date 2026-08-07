@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, IconButton, PageLoader } from "@app/components/v3";
+import { Button, IconButton, PageLoader, SheetFooter } from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -27,10 +27,10 @@ type TRoleForm = z.infer<typeof roleFormSchema>;
 type Props = {
   projectMember: TWorkspaceUser;
   onOpenUpgradeModal: () => void;
-  onSuccess?: () => void;
+  onClose: () => void;
 };
 
-export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onSuccess }: Props) => {
+export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onClose }: Props) => {
   const { subscription } = useSubscription();
   const { projectId, currentProject } = useProject();
   const { isRolesLoading, assignableRoleSlugs, getRolesForSelect, isEditDisabled } =
@@ -64,7 +64,7 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onSuc
       roles: sanitizedRoles
     });
     createNotification({ text: "Successfully updated roles", type: "success" });
-    onSuccess?.();
+    onClose();
   };
 
   if (isRolesLoading) {
@@ -76,8 +76,11 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onSuc
   }
 
   return (
-    <form onSubmit={roleForm.handleSubmit(handleRoleUpdate)}>
-      <div className="flex flex-col gap-3">
+    <form
+      onSubmit={roleForm.handleSubmit(handleRoleUpdate)}
+      className="flex flex-1 flex-col overflow-hidden"
+    >
+      <div className="flex thin-scrollbar flex-1 flex-col gap-3 overflow-y-auto p-4">
         {selectedRoleList.fields.map(({ id }, index) => (
           <RoleAssignmentRow
             key={id}
@@ -106,13 +109,12 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onSuc
             }
           />
         ))}
-      </div>
-      <div className="mt-4 flex items-center justify-between gap-2">
         <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Member}>
           {(isAllowed) => (
             <Button
               type="button"
               variant="outline"
+              className="self-start"
               isDisabled={!isAllowed || isEditDisabled}
               onClick={() =>
                 selectedRoleList.append({
@@ -126,6 +128,8 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onSuc
             </Button>
           )}
         </ProjectPermissionCan>
+      </div>
+      <SheetFooter className="border-t">
         <Button
           type="submit"
           variant="project"
@@ -134,7 +138,10 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onSuc
         >
           Save Roles
         </Button>
-      </div>
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+      </SheetFooter>
     </form>
   );
 };

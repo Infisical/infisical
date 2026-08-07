@@ -393,21 +393,19 @@ export const MemberRoleDetailsSection = ({
         open={popUp.modifyManyRoles.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("modifyManyRoles", isOpen)}
       >
-        <SheetContent className="sm:max-w-xl">
-          <SheetHeader>
+        <SheetContent className="flex flex-col gap-0 sm:max-w-xl">
+          <SheetHeader className="border-b">
             <SheetTitle>Roles</SheetTitle>
             <SheetDescription>
               Select one or more of the pre-defined or custom roles to configure project
               permissions.
             </SheetDescription>
           </SheetHeader>
-          <div className="flex-1 overflow-y-auto p-4">
-            <MemberMultiRoleModify
-              projectMember={membershipDetails}
-              onOpenUpgradeModal={onOpenUpgradeModal}
-              onSuccess={() => handlePopUpClose("modifyManyRoles")}
-            />
-          </div>
+          <MemberMultiRoleModify
+            projectMember={membershipDetails}
+            onOpenUpgradeModal={onOpenUpgradeModal}
+            onClose={() => handlePopUpClose("modifyManyRoles")}
+          />
         </SheetContent>
       </Sheet>
       <Dialog
