@@ -297,6 +297,7 @@ export const oauthClientServiceFactory = ({
     const client = await getOrgClientOrThrow(dto.clientDbId, actor.orgId);
 
     const grantTypes = dedupeGrantTypes(dto.grantTypes ?? (client.grantTypes as OauthGrantType[]));
+    const wasTokenExchangeEnabled = hasTokenExchangeGrant(client.grantTypes as OauthGrantType[]);
     const isTokenExchangeEnabled = hasTokenExchangeGrant(grantTypes);
     const isRedirectBased = hasRedirectBasedGrant(grantTypes);
 
@@ -337,6 +338,10 @@ export const oauthClientServiceFactory = ({
       tokenExchangeIdpSatisfiesMfa: isTokenExchangeEnabled ? resolvedIdpSatisfiesMfa : false
     });
 
+    if (wasTokenExchangeEnabled && !isTokenExchangeEnabled) {
+      await tokenService.revokeSessionsByUserAgent(getOauthClientSessionUserAgent(client.clientId));
+    }
+
     return sanitizeOauthClient(updatedClient);
   };
 
@@ -360,7 +365,9 @@ export const oauthClientServiceFactory = ({
 
     const client = await getOrgClientOrThrow(clientDbId, actor.orgId);
 
-    if (hasTokenExchangeGrant(client.grantTypes as OauthGrantType[])) {
+    const usesTokenExchange = hasTokenExchangeGrant(client.grantTypes as OauthGrantType[]);
+
+    if (usesTokenExchange) {
       await checkSsoConfigPermission(actor, "rotate the secret of an OAuth application that uses token exchange");
     }
 
@@ -372,6 +379,10 @@ export const oauthClientServiceFactory = ({
       clientSecretHash,
       clientSecretPrefix: clientSecret.slice(0, 4)
     });
+
+    if (usesTokenExchange) {
+      await tokenService.revokeSessionsByUserAgent(getOauthClientSessionUserAgent(client.clientId));
+    }
 
     return { client: sanitizeOauthClient(updatedClient), clientSecret };
   };

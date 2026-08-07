@@ -222,6 +222,10 @@ The **SSO** page lists the applications that depend on the issuer, so you can se
 
 ## Revoking access
 
-Deleting the application from the **OAuth Applications** page immediately revokes every token it issued, so they stop working on the next request rather than living until expiry. Rotating the client secret stops the middleware obtaining new tokens until it is updated.
+Three actions revoke every token the application has issued, so they stop working on the next request rather than living until expiry:
 
-Because no refresh tokens are issued, the exposure from a compromised middleware is bounded by the remaining lifetime of the access tokens it currently holds.
+- **Deleting the application** from the **OAuth Applications** page.
+- **Rotating the client secret.** On a token exchange application the secret is the whole authority, so rotating it in response to a leak also cuts off whatever was minted with the old one. Plan for the middleware to be signed out of every user until it picks up the new secret.
+- **Turning off the token exchange grant** on the application.
+
+Because no refresh tokens are issued, the exposure from a compromised middleware is otherwise bounded by the remaining lifetime of the access tokens it currently holds.

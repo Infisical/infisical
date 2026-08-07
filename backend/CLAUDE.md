@@ -214,6 +214,16 @@ alone would otherwise be enough to rotate an existing exchange application's sec
 the check on create/update a speed bump. Any future operation that establishes this trust or hands out a
 credential for it goes through `checkSsoConfigPermission` (`oauth-client-service.ts`) as well.
 
+**Withdrawing an exchange application's authority has to revoke the tokens it already issued, not just
+stop it getting new ones.** Deleting the client, rotating its secret, and removing the token-exchange
+grant all call `revokeSessionsByUserAgent` (`oauth-client-service.ts`) — the sessions are tagged with
+`getOauthClientSessionUserAgent(clientId)`, which is the only handle we have on them. Rotation revokes
+**only** on exchange applications: there the secret alone mints tokens for any user, so rotating after a
+leak would contain nothing otherwise, whereas in the redirect flow the secret has to be paired with an
+authorization code or refresh token and blanket revocation would just sign every user out. The tag is
+per client, not per grant, so a client holding both grants loses its redirect-flow tokens too — the safe
+direction, and only reachable via the API.
+
 **Everything the exchange fetches from the identity provider is cached for 10 minutes, and nothing read
 from our own database is.** Token exchange sits on the caller's hot path (a middleware typically exchanges
 per request it serves), so the discovery document and the `JwksClient` are both cached per URL in
