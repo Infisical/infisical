@@ -1,4 +1,4 @@
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -264,18 +264,25 @@ export const useGetOrgSecretsSummary = (orgId: string) => {
 };
 
 export const useGetOrgSecretsProjects = (orgId: string, params: TGetOrgSecretsProjectsDTO = {}) => {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: secretInsightsKeys.orgSecretsProjects(orgId, params),
-    queryFn: async () => {
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
       const { data } = await apiRequest.get<{ projectWarnings: TOrgProjectsInsights }>(
         "/api/v1/insights/secrets/projects",
-        { params }
+        { params: { ...params, offset: pageParam } }
       );
       return data.projectWarnings;
     },
+    // Rows are ordered severityScore desc, so the first `projectsWithIssues` rows are
+    // exactly the problem projects; there is nothing worth fetching past that boundary.
+    getNextPageParam: (lastPage) => {
+      if (lastPage.projects.length === 0) return undefined;
+      const nextOffset = lastPage.offset + lastPage.projects.length;
+      return nextOffset < lastPage.projectsWithIssues ? nextOffset : undefined;
+    },
     enabled: Boolean(orgId),
-    staleTime: INSIGHTS_STALE_TIME,
-    placeholderData: (prev) => prev
+    staleTime: INSIGHTS_STALE_TIME
   });
 };
 

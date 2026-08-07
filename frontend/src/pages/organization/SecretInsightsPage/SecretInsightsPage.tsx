@@ -1,4 +1,4 @@
-import { Fragment, ReactNode } from "react";
+import { Fragment, ReactNode, useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { format } from "date-fns";
 import { BoxIcon, FileTextIcon, KeyIcon, LayersIcon, PlusIcon, RefreshCwIcon } from "lucide-react";
@@ -46,12 +46,36 @@ export const SecretInsightsPage = withPermission(
     const { currentOrg } = useOrganization();
 
     const { data: summary, isPending: isSummaryPending } = useGetOrgSecretsSummary(currentOrg.id);
-    // limit 100 is the endpoint maximum; orgs with more projects need real pagination later
-    // TODO: add pagination
-    const { data: projectsInsights, isPending: isProjectsPending } = useGetOrgSecretsProjects(
-      currentOrg.id,
-      { limit: 100 }
-    );
+    // Paginated: pages of 100 (the endpoint maximum); NeedsAttentionCard fetches further
+    // pages on demand while more problem projects remain on the server.
+    const {
+      data: projectsPages,
+      isPending: isProjectsPending,
+      hasNextPage: hasMoreProjects,
+      fetchNextPage: fetchMoreProjects,
+      isFetchingNextPage: isFetchingMoreProjects
+    } = useGetOrgSecretsProjects(currentOrg.id, { limit: 1 });
+
+    const projectsInsights = useMemo(() => {
+      if (!projectsPages) return undefined;
+      const lastPage = projectsPages.pages[projectsPages.pages.length - 1];
+      // Dedupe across pages: rows can shift between fetches while the server cache refreshes
+      const seen = new Set<string>();
+      const projects = projectsPages.pages
+        .flatMap((page) => page.projects)
+        .filter((project) => {
+          if (seen.has(project.projectId)) return false;
+          seen.add(project.projectId);
+          return true;
+        });
+      return {
+        projects,
+        totalProjects: lastPage.totalProjects,
+        projectsWithIssues: lastPage.projectsWithIssues,
+        offset: lastPage.offset,
+        limit: lastPage.limit
+      };
+    }, [projectsPages]);
     const { data: authMethodUsage, isPending: isAuthMethodsPending } =
       useGetOrgAuthMethodDistribution(currentOrg.id);
     const { data: staticSecretUsage, isPending: isStaticSecretsPending } =
@@ -187,7 +211,12 @@ export const SecretInsightsPage = withPermission(
               {!isSummaryPending && summary && <SummaryCard summary={summary} />}
               {isProjectsPending && <Skeleton className="h-[320px]" />}
               {!isProjectsPending && projectsInsights && (
-                <NeedsAttentionCard data={projectsInsights} />
+                <NeedsAttentionCard
+                  data={projectsInsights}
+                  hasMore={hasMoreProjects}
+                  onLoadMore={fetchMoreProjects}
+                  isLoadingMore={isFetchingMoreProjects}
+                />
               )}
               <div
                 className={

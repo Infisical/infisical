@@ -203,7 +203,6 @@ export type TOrgProjectsInsights = {
 };
 
 export type TGetOrgSecretsProjectsDTO = {
-  offset?: number;
   limit?: number;
 };
 

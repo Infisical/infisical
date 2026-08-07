@@ -73,7 +73,17 @@ const WarningBadges = ({ warnings }: { warnings: TOrgProjectInsightWarnings }) =
 const hasIssues = (warnings: TOrgProjectInsightWarnings) =>
   WARNING_CHIPS.some(({ key }) => (warnings[key] ?? 0) > 0);
 
-export const NeedsAttentionCard = ({ data }: { data: TOrgProjectsInsights }) => {
+export const NeedsAttentionCard = ({
+  data,
+  hasMore,
+  onLoadMore,
+  isLoadingMore
+}: {
+  data: TOrgProjectsInsights;
+  hasMore: boolean;
+  onLoadMore: () => void;
+  isLoadingMore: boolean;
+}) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const [search, setSearch] = useState("");
@@ -188,7 +198,21 @@ export const NeedsAttentionCard = ({ data }: { data: TOrgProjectsInsights }) => 
           {cleanCount.toLocaleString()} {cleanCount === 1 ? "project has" : "projects have"} no
           outstanding issues
         </span>
-        {!isSearching && filtered.length > COLLAPSED_ROW_COUNT && (
+        {!isSearching && hasMore && (
+          <Button
+            variant="ghost"
+            size="xs"
+            isPending={isLoadingMore}
+            onClick={() => {
+              setShowAll(true);
+              onLoadMore();
+            }}
+          >
+            Show More Projects
+            <ChevronDownIcon />
+          </Button>
+        )}
+        {!isSearching && !hasMore && filtered.length > COLLAPSED_ROW_COUNT && (
           <Button variant="ghost" size="xs" onClick={() => setShowAll((prev) => !prev)}>
             {showAll ? "Show Fewer Projects" : "Show All Projects"}
             {showAll ? <ChevronUpIcon /> : <ChevronDownIcon />}
