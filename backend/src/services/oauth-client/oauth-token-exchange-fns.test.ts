@@ -446,4 +446,27 @@ describe("verifySubjectToken", () => {
 
     await expect(verify(signSubjectToken())).rejects.toThrow(/Could not load signing keys/);
   });
+
+  // Same reasoning as the discovery document: token exchange runs on every request the middleware makes,
+  // so building the pinned agent must not be per-exchange work.
+  test("builds the JWKS client once across repeated verifications", async () => {
+    const oidcConfig = buildOidcConfig();
+    const token = signSubjectToken();
+
+    await Promise.all([verify(token, oidcConfig), verify(token, oidcConfig), verify(token, oidcConfig)]);
+    await verify(token, oidcConfig);
+
+    expect(buildSsrfSafeAgent).toHaveBeenCalledTimes(1);
+  });
+
+  test("retries after a failed JWKS client build instead of caching the failure", async () => {
+    const oidcConfig = buildOidcConfig();
+    const token = signSubjectToken();
+
+    buildSsrfSafeAgent.mockRejectedValueOnce(new Error("Local IPs not allowed as URL"));
+    await expect(verify(token, oidcConfig)).rejects.toThrow(/Could not load signing keys/);
+
+    await expect(verify(token, oidcConfig)).resolves.toMatchObject({ subject: SUBJECT });
+    expect(buildSsrfSafeAgent).toHaveBeenCalledTimes(2);
+  });
 });
