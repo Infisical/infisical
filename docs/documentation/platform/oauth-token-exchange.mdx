@@ -175,6 +175,25 @@ curl https://app.infisical.com/api/v4/secrets \
   Delegated tokens are currently accepted on the read-only secret-fetch endpoints. Endpoint coverage is expanding; if your integration needs an endpoint that rejects a delegated token, let us know which one.
 </Note>
 
+## Cache the access token
+
+<Warning>
+  Exchange once per user and reuse the access token until it expires. Do not exchange on every request your middleware serves.
+</Warning>
+
+The access token is valid for `expires_in` seconds, usually an hour. Exchanging per request instead of per token throws away that whole window and makes your identity provider a hard dependency of every call you make to Infisical: a momentary blip there becomes a failure of your own request path, and both Infisical and your provider see traffic proportional to your request volume rather than to your user count.
+
+Cache it keyed by user, and treat the exchange as the slow path:
+
+- Keep the token in memory keyed by the subject token's `sub` claim, alongside its expiry.
+- Reuse it while it is valid, refreshing slightly early (say 60 seconds before `expires_in` elapses) so an in-flight request never carries a token that expires mid-call.
+- Exchange again when it is gone. No refresh token is issued, so re-exchange against the user's still-valid identity provider token.
+- Drop the entry when the user's session at your identity provider ends, so their Infisical access does not outlive it.
+
+<Note>
+  The token endpoint is rate limited per source IP. A middleware that caches correctly makes roughly one exchange per user per token lifetime and stays well inside it; one that exchanges per request will be throttled under load. If you have sized your caching and still expect to approach the limit, contact us before rolling out.
+</Note>
+
 ## What Infisical verifies
 
 Every exchange checks all of the following, and fails the request with a message naming the problem if any of them does not hold:
