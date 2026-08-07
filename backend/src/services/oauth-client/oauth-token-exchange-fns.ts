@@ -32,9 +32,9 @@ const buildDiscoveryDocumentUrl = (discoveryUrl: string) => {
 
 type TOidcDiscoveryMetadata = { jwks_uri?: string; issuer?: string };
 
-// Fetching the discovery document is a network round trip, and token exchange runs on every request the
-// middleware makes, so resolving it per exchange would put the identity provider in the path of every
-// Infisical API call that middleware makes, and make a blip at the provider fail all of them.
+// Fetching the discovery document is a network round trip. Integrators are told to exchange once per
+// user and cache the token, but we cannot enforce that, and a middleware that exchanges per request
+// would otherwise make the identity provider a synchronous dependency of every Infisical call it serves.
 //
 // Only the fetch is cached, never the resolved trust anchor. The algorithm and the preferred issuer come
 // from the org's own SSO configuration, so an admin changing either still takes effect on the next
