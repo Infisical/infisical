@@ -87,6 +87,7 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
     control,
     handleSubmit,
     reset,
+    setValue,
     setError,
     clearErrors,
     formState: { isDirty }
@@ -290,7 +291,7 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
           <CardDescription>How Infisical reaches this account.</CardDescription>
         </CardHeader>
         <CardContent>
-          <ConnectionDetailsForm control={control} />
+          <ConnectionDetailsForm control={control} setValue={setValue} clearErrors={clearErrors} />
         </CardContent>
       </Card>
 

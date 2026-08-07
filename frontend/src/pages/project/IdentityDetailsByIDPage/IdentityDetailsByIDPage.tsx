@@ -56,6 +56,7 @@ import { ProjectAccessControlTabs } from "@app/types/project";
 import { IdentityPermissionAuditSheet } from "./components/IdentityPermissionAuditSheet";
 import { IdentityProjectAdditionalPrivilegeSection } from "./components/IdentityProjectAdditionalPrivilegeSection";
 import { IdentityRoleDetailsSection } from "./components/IdentityRoleDetailsSection";
+import { ProjectIdentityAlertAction } from "./components/ProjectIdentityAlertAction";
 
 const Page = () => {
   const navigate = useNavigate();
@@ -178,6 +179,20 @@ const Page = () => {
             title={identityMembershipDetails.identity.name}
           >
             <div className="flex items-center gap-2">
+              {isProjectIdentity ? (
+                <ProjectIdentityAlertAction
+                  identityId={identityMembershipDetails.identity.id}
+                  identityName={identityMembershipDetails.identity.name}
+                  projectId={currentProject.id}
+                  projectName={currentProject.name}
+                />
+              ) : (
+                <ProjectIdentityAlertAction
+                  identityId={identityMembershipDetails.identity.id}
+                  identityName={identityMembershipDetails.identity.name}
+                  readOnly
+                />
+              )}
               {!isCertManager && (
                 <Button variant="outline" onClick={() => setIsPermissionAuditOpen(true)}>
                   <ShieldIcon />

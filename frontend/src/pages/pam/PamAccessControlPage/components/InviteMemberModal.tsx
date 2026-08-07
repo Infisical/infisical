@@ -137,7 +137,7 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
         onOpenChange(open);
       }}
     >
-      <DialogContent className="overflow-visible sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Add Member</DialogTitle>
           <DialogDescription>Add existing organization members.</DialogDescription>

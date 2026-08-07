@@ -8,7 +8,10 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { extractDnParts } from "../certificate-authority/certificate-authority-fns";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import {
+  CertExtendedKeyUsage,
+  CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
+  CertKeyUsage,
   CrlReason,
   TCertificateFingerprints,
   TCertificateSubject,
@@ -270,7 +273,24 @@ export const parseCertificateBody = (decryptedCertificate: Buffer): TParsedCerti
       };
     }
 
-    return { subject, fingerprints, basicConstraints };
+    let keyUsages: CertKeyUsage[] | undefined;
+    const keyUsagesExt = certObj.getExtension(x509.KeyUsagesExtension);
+    if (keyUsagesExt) {
+      keyUsages = Object.values(CertKeyUsage).filter(
+        // eslint-disable-next-line no-bitwise
+        (keyUsage) => (x509.KeyUsageFlags[keyUsage] & keyUsagesExt.usages) !== 0
+      );
+    }
+
+    let extendedKeyUsages: CertExtendedKeyUsage[] | undefined;
+    const extendedKeyUsagesExt = certObj.getExtension(x509.ExtendedKeyUsageExtension);
+    if (extendedKeyUsagesExt) {
+      extendedKeyUsages = extendedKeyUsagesExt.usages
+        .map((oid) => CertExtendedKeyUsageOIDToName[oid as string])
+        .filter(Boolean);
+    }
+
+    return { subject, fingerprints, basicConstraints, keyUsages, extendedKeyUsages };
   } catch {
     // If we can't parse the certificate, return empty object (graceful degradation)
     return {};
@@ -302,6 +322,11 @@ export const extractCertificateFields = (decryptedCertificate: Buffer) => {
 
     // Basic constraints
     isCA: parsed.basicConstraints?.isCA ?? null,
-    pathLength: parsed.basicConstraints?.pathLength ?? null
+    pathLength: parsed.basicConstraints?.pathLength ?? null,
+
+    // Callers spread these last so the issued usages win over the requested ones. Absent when the
+    // certificate carries no such extension, leaving the requested values in place.
+    ...(parsed.keyUsages && { keyUsages: parsed.keyUsages }),
+    ...(parsed.extendedKeyUsages && { extendedKeyUsages: parsed.extendedKeyUsages })
   };
 };

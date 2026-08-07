@@ -234,7 +234,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
         handlePopUpToggle("addMember", isOpen);
       }}
     >
-      <DialogContent className="overflow-visible sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
             {isCertManager

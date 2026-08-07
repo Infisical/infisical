@@ -12,6 +12,8 @@ export const FilterableSelect = <T,>({
   options = [],
   isError,
   components,
+  menuPortalTarget = typeof document === "undefined" ? undefined : document.body,
+  menuPosition = "fixed",
   ...props
 }: Props<T, boolean, GroupBase<T>> & {
   groupBy?: string | null;
@@ -50,6 +52,8 @@ export const FilterableSelect = <T,>({
       unstyled
       options={processedOptions}
       tabSelectsValue={tabSelectsValue}
+      menuPortalTarget={menuPortalTarget}
+      menuPosition={menuPosition}
       styles={selectStyles as any}
       components={{
         DropdownIndicator,

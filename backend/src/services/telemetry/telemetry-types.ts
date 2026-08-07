@@ -22,6 +22,7 @@ import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/se
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { AuthMethod } from "@app/services/auth/auth-type";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { WebhookType } from "@app/services/webhook/webhook-types";
 
 export type HubSpotSignupMethod = AuthMethod | "invite";
@@ -152,6 +153,7 @@ export enum PostHogEventTypes {
   CertificateProfileCreated = "Certificate Profile Created",
   CertificateProfileDeleted = "Certificate Profile Deleted",
   PkiApplicationCreated = "PKI Application Created",
+  PkiApplicationUpdated = "PKI Application Updated",
   PkiApplicationDeleted = "PKI Application Deleted",
   PkiApplicationMemberAdded = "PKI Application Member Added",
   PkiApplicationProfileAttached = "PKI Application Profile Attached",
@@ -622,8 +624,14 @@ export type TIssueCertificateEvent = {
     caId?: string;
     certificateTemplateId?: string;
     subscriberId?: string;
-    commonName: string;
+    commonName?: string;
     userAgent?: string;
+    orgId?: string;
+    projectId?: string;
+    profileId?: string;
+    applicationId?: string;
+    enrollmentType?: string;
+    operation?: CertificateIssuanceOperation;
   };
 };
 
@@ -1284,6 +1292,15 @@ export type TPkiApplicationCreatedEvent = {
   event: PostHogEventTypes.PkiApplicationCreated;
   properties: {
     orgId: string;
+    applicationId?: string;
+  };
+};
+
+export type TPkiApplicationUpdatedEvent = {
+  event: PostHogEventTypes.PkiApplicationUpdated;
+  properties: {
+    orgId: string;
+    applicationId?: string;
   };
 };
 
@@ -1291,6 +1308,7 @@ export type TPkiApplicationDeletedEvent = {
   event: PostHogEventTypes.PkiApplicationDeleted;
   properties: {
     orgId: string;
+    applicationId?: string;
   };
 };
 
@@ -2167,6 +2185,7 @@ export type TPostHogEvent = {
   | TCertificateProfileCreatedEvent
   | TCertificateProfileDeletedEvent
   | TPkiApplicationCreatedEvent
+  | TPkiApplicationUpdatedEvent
   | TPkiApplicationDeletedEvent
   | TPkiApplicationMemberAddedEvent
   | TPkiApplicationProfileAttachedEvent

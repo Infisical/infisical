@@ -125,5 +125,9 @@ extraEnvFrom: []
 #  - configMapRef:
 #      name: my-configmap
 
+# -- Extra arguments appended to the gateway container command
+extraArgs: []
+#  - --log-level=debug
+
 # -- Extra Kubernetes manifests to deploy with this chart
 extraObjects: []

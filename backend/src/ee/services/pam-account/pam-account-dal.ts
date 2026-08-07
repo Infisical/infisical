@@ -38,6 +38,13 @@ const gatewayExemptAccountTypes = (Object.entries(ACCOUNT_TYPE_CONFIGS) as [stri
   .map(([type]) => `'${type}'`)
   .join(", ");
 
+export const staleAccountExistsSql = (accountTable: string): string =>
+  `exists (
+    select 1 from "${TableName.PamDiscoveredAccount}"
+    where "${TableName.PamDiscoveredAccount}"."importedAccountId" = "${accountTable}"."id"
+      and "${TableName.PamDiscoveredAccount}"."isStale" = true
+  )`;
+
 export const accountAccessibilitySql = (accountTable: string, templateTable: string): string =>
   `(
     ("${templateTable}"."type" in (${gatewayExemptAccountTypes})
@@ -84,6 +91,7 @@ export type TPamAccountListItem = Pick<
     accountType: string;
     templateName: string;
     folderName: string | null;
+    isStale: boolean;
   };
 
 export type TPamAccountDetail = TPamAccounts &
@@ -93,6 +101,7 @@ export type TPamAccountDetail = TPamAccounts &
     templatePolicies: unknown;
     templateSettings: unknown;
     folderName: string | null;
+    isStale: boolean;
   };
 
 export type TPamAccountDALFactory = ReturnType<typeof pamAccountDALFactory>;
@@ -174,7 +183,8 @@ export const pamAccountDALFactory = (db: TDbClient) => {
         `${TableName.PamAccountTemplate}.gatewayId as templateGatewayId`,
         `${TableName.PamAccountTemplate}.gatewayPoolId as templateGatewayPoolId`,
         `${TableName.PamAccountTemplate}.recordingConnectionId as templateRecordingConnectionId`,
-        `${TableName.PamFolder}.name as folderName`
+        `${TableName.PamFolder}.name as folderName`,
+        db.raw(`${staleAccountExistsSql(TableName.PamAccount)} as "isStale"`)
       )
       .orderBy(`${TableName.PamFolder}.name`, "asc")
       .orderBy(`${TableName.PamAccount}.name`, "asc");
@@ -199,7 +209,8 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     `${TableName.PamAccountTemplate}.gatewayId as templateGatewayId`,
     `${TableName.PamAccountTemplate}.gatewayPoolId as templateGatewayPoolId`,
     `${TableName.PamAccountTemplate}.recordingConnectionId as templateRecordingConnectionId`,
-    `${TableName.PamFolder}.name as folderName`
+    `${TableName.PamFolder}.name as folderName`,
+    db.raw(`${staleAccountExistsSql(TableName.PamAccount)} as "isStale"`)
   ];
 
   const findByIdWithDetails = async (accountId: string, tx?: Knex): Promise<TPamAccountDetail | null> => {

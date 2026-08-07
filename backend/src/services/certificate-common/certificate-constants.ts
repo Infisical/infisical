@@ -53,6 +53,13 @@ export enum CertificateRequestStatus {
   REJECTED = "rejected"
 }
 
+export enum CertificateIssuanceOperation {
+  ISSUE = "issue",
+  SIGN = "sign",
+  ORDER = "order",
+  RENEW = "renew"
+}
+
 export enum CertSubjectAlternativeNameType {
   DNS_NAME = "dns_name",
   IP_ADDRESS = "ip_address",

@@ -2,7 +2,7 @@ import { subject } from "@casl/ability";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/context";
-import { AlertDetail } from "@app/views/Alerts";
+import { AlertAction } from "@app/views/Alerts";
 
 type Props = {
   identityId: string;
@@ -12,14 +12,14 @@ type Props = {
   readOnly?: boolean;
 };
 
-export const ProjectIdentityAlertDetail = ({
+export const ProjectIdentityAlertAction = ({
   identityId,
   identityName,
   projectId,
   projectName,
   readOnly = false
 }: Props) => (
-  <AlertDetail
+  <AlertAction
     identityId={identityId}
     identityName={identityName}
     projectId={projectId}

@@ -470,6 +470,7 @@ export type TQueueJobTypes = {
       country?: string;
       state?: string;
       locality?: string;
+      basicConstraints?: { isCA: boolean; pathLength?: number | null } | null;
     };
   };
   [QueueName.PkiSubscriber]: {

@@ -894,22 +894,6 @@ export const registerRoutes = async (
     keyStore
   });
 
-  const membershipIdentityService = membershipIdentityServiceFactory({
-    identityDAL,
-    membershipIdentityDAL,
-    membershipRoleDAL,
-    orgDAL,
-    permissionService,
-    roleDAL,
-    additionalPrivilegeDAL,
-    licenseService,
-    applicationMembershipCleanupService,
-    projectDAL,
-    keyStore,
-    usageMeteringService,
-    identityAccessTokenService
-  });
-
   const membershipGroupService = membershipGroupServiceFactory({
     membershipGroupDAL,
     membershipRoleDAL,
@@ -1044,6 +1028,23 @@ export const registerRoutes = async (
     kmsService,
     smtpService,
     keyStore
+  });
+
+  const membershipIdentityService = membershipIdentityServiceFactory({
+    identityDAL,
+    membershipIdentityDAL,
+    membershipRoleDAL,
+    orgDAL,
+    permissionService,
+    roleDAL,
+    additionalPrivilegeDAL,
+    licenseService,
+    applicationMembershipCleanupService,
+    projectDAL,
+    keyStore,
+    usageMeteringService,
+    alertService,
+    identityAccessTokenService
   });
 
   const auditLogStreamService = auditLogStreamServiceFactory({
@@ -2471,7 +2472,8 @@ export const registerRoutes = async (
     projectDAL,
     orgDAL,
     roleDAL,
-    usageMeteringService
+    usageMeteringService,
+    alertService
   });
 
   const identityProjectService = identityProjectServiceFactory({
@@ -3259,7 +3261,8 @@ export const registerRoutes = async (
     usageMeteringService,
     hsmConnectorService,
     certificateAuthoritySecretDAL,
-    licenseService
+    licenseService,
+    telemetryService
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -3383,7 +3386,8 @@ export const registerRoutes = async (
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    telemetryService
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({
@@ -3456,7 +3460,8 @@ export const registerRoutes = async (
     pkiAlertV2Queue,
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
-    licenseService
+    licenseService,
+    telemetryService
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({
@@ -3474,7 +3479,9 @@ export const registerRoutes = async (
     appConnectionDAL,
     kmsService,
     resourceMetadataDAL,
-    digicertFns: digicertCaFns
+    digicertFns: digicertCaFns,
+    projectDAL,
+    telemetryService
   });
 
   const digicertRevocationSyncQueue = digicertRevocationSyncQueueFactory({
@@ -3495,7 +3502,9 @@ export const registerRoutes = async (
     appConnectionDAL,
     kmsService,
     resourceMetadataDAL,
-    godaddyFns: godaddyCaFns
+    godaddyFns: godaddyCaFns,
+    projectDAL,
+    telemetryService
   });
 
   const certificateEstV3Service = certificateEstV3ServiceFactory({

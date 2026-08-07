@@ -152,14 +152,17 @@ export default function UserInfoStep({
           <CardTitle
             role="heading"
             aria-level={1}
-            className="ml-0.5 font-alliance text-2xl font-normal break-words"
+            className="ml-0.5 min-w-0 flex-nowrap font-alliance text-2xl font-normal break-words"
           >
             {isInvite ? (
               <>
-                <span className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent opacity-70">
+                <span className="shrink-0 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent opacity-70">
                   Join
                 </span>
-                <span className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent">
+                <span
+                  className="min-w-0 truncate bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent"
+                  title={inviteOrganizationLabel}
+                >
                   {inviteOrganizationLabel}
                 </span>
               </>
@@ -210,6 +213,14 @@ export default function UserInfoStep({
               ) : null}
             </Field>
           </div>
+          {isInvite && (
+            <Field>
+              <FieldLabel className="sr-only" htmlFor="signup-email">
+                Email
+              </FieldLabel>
+              <Input variant="outlined" id="signup-email" type="email" value={email} disabled />
+            </Field>
+          )}
           {!isInvite && (
             <Field data-invalid={showOrganizationNameError}>
               <FieldLabel className="sr-only" htmlFor="signup-organization-name">

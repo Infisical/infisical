@@ -340,6 +340,12 @@ Infisical supports two methods for connecting to AWS.
 
                                     Using a specific CA ARN in `Resource` is recommended over `"*"` to follow the principle of least privilege.
                                 </Note>
+                                <Note>
+                                    If you further restrict `IssueCertificate` with an `acm-pca:TemplateArn` condition, include every template Infisical uses, or issuance fails with a permission error:
+
+                                    - `arn:aws:acm-pca:::template/BlankEndEntityCertificate_APICSRPassthrough/V1` for end-entity certificates
+                                    - `arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen{0,1,2,3}_APICSRPassthrough/V1` for [CA certificates](/documentation/platform/pki/ca/aws-pca#issuing-ca-certificates)
+                                </Note>
                             </Accordion>
                             <Accordion title="AWS ACM Public CA">
                                 Use the following custom policy to grant the minimum permissions required by Infisical to issue publicly-trusted certificates via AWS Certificate Manager and perform DNS validation through Route 53.
@@ -821,6 +827,12 @@ Infisical supports two methods for connecting to AWS.
                                     - **RevokeCertificate**: Revokes previously issued certificates
 
                                     Using a specific CA ARN in `Resource` is recommended over `"*"` to follow the principle of least privilege.
+                                </Note>
+                                <Note>
+                                    If you further restrict `IssueCertificate` with an `acm-pca:TemplateArn` condition, include every template Infisical uses, or issuance fails with a permission error:
+
+                                    - `arn:aws:acm-pca:::template/BlankEndEntityCertificate_APICSRPassthrough/V1` for end-entity certificates
+                                    - `arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen{0,1,2,3}_APICSRPassthrough/V1` for [CA certificates](/documentation/platform/pki/ca/aws-pca#issuing-ca-certificates)
                                 </Note>
                             </Accordion>
                             <Accordion title="AWS ACM Public CA">
