@@ -10,7 +10,6 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
-import { Lottie } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -18,6 +17,7 @@ import {
   FieldError,
   FieldLabel,
   Input,
+  PageLoader,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -48,8 +48,7 @@ import {
   getMemberAssignRoleConditions
 } from "@app/lib/fn/permission";
 
-const TEMPORARY_RANGE_ERROR =
-  "Only valid time values are accepted (1h, 20m, 2d).";
+const TEMPORARY_RANGE_ERROR = "Only valid time values are accepted (1h, 20m, 2d).";
 
 const isValidTemporaryRange = (value?: string) => {
   if (!value?.trim()) return false;
@@ -62,7 +61,10 @@ const roleFormSchema = z.object({
   temporaryAccess: z.discriminatedUnion("isTemporary", [
     z.object({
       isTemporary: z.literal(true),
-      temporaryRange: z.string().min(1),
+      temporaryRange: z
+        .string()
+        .min(1, "Required")
+        .refine(isValidTemporaryRange, TEMPORARY_RANGE_ERROR),
       temporaryAccessStartTime: z.string().datetime(),
       temporaryAccessEndTime: z.string().datetime().nullable().optional()
     }),
@@ -244,8 +246,8 @@ export const MemberSingleRoleModify = ({
 
   if (isRolesLoading) {
     return (
-      <div className="flex h-40 w-full items-center justify-center">
-        <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+      <div className="h-40">
+        <PageLoader lottieClassName="w-16" />
       </div>
     );
   }
@@ -331,9 +333,7 @@ export const MemberSingleRoleModify = ({
                   render={({ field, fieldState: { error } }) => {
                     const showInvalidError =
                       Boolean(field.value) && !isValidTemporaryRange(field.value);
-                    const errorMessage = showInvalidError
-                      ? TEMPORARY_RANGE_ERROR
-                      : error?.message;
+                    const errorMessage = showInvalidError ? TEMPORARY_RANGE_ERROR : error?.message;
 
                     return (
                       <>

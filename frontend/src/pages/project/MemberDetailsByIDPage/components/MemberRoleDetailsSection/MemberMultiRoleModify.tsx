@@ -12,7 +12,6 @@ import { z } from "zod";
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Lottie } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -21,6 +20,7 @@ import {
   FieldLabel,
   IconButton,
   Input,
+  PageLoader,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -67,7 +67,10 @@ const roleFormSchema = z.object({
       temporaryAccess: z.discriminatedUnion("isTemporary", [
         z.object({
           isTemporary: z.literal(true),
-          temporaryRange: z.string().min(1),
+          temporaryRange: z
+            .string()
+            .min(1, "Required")
+            .refine(isValidTemporaryRange, TEMPORARY_RANGE_ERROR),
           temporaryAccessStartTime: z.string().datetime(),
           temporaryAccessEndTime: z.string().datetime().nullable().optional()
         }),
@@ -86,11 +89,7 @@ type Props = {
   onSuccess?: () => void;
 };
 
-export const MemberMultiRoleModify = ({
-  projectMember,
-  onOpenUpgradeModal,
-  onSuccess
-}: Props) => {
+export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onSuccess }: Props) => {
   const { subscription } = useSubscription();
   const { projectId, currentProject } = useProject();
   const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(
@@ -215,8 +214,8 @@ export const MemberMultiRoleModify = ({
 
   if (isRolesLoading) {
     return (
-      <div className="flex h-40 w-full items-center justify-center">
-        <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+      <div className="h-40">
+        <PageLoader lottieClassName="w-16" />
       </div>
     );
   }
