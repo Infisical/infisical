@@ -193,13 +193,13 @@ From the KMIP server's detail page (under **Infisical KMS > KMIP Servers**):
 - **Options → Revoke Access** — Invalidates the server's outstanding access tokens and enrollment tokens. The server must re-enroll to reconnect.
 - **Options → Delete** — Permanently removes the KMIP server entity.
 
-### Certificate Auto-Renewal
+### Renewal Failures
 
-A running KMIP server renews its TLS certificate automatically once two-thirds of the certificate's validity period has elapsed. Renewal happens in the background: no restart is needed, existing client connections are not interrupted, and new connections use the renewed certificate right away. Each renewal is recorded in the organization audit log as a `register-kmip-server` event with `isRenewal: true`.
+The server's TLS certificate renews automatically in the background; no action is needed and existing client connections are never interrupted. You only need to step in if renewal fails, which the server reports with `Certificate renewal failed` warnings and errors in its logs.
 
-If a renewal attempt fails (for example, the Infisical platform is temporarily unreachable), the server keeps serving its current certificate and retries with increasing frequency as expiry approaches, logging warnings and errors so you can intervene. Once the platform is reachable again, the next retry succeeds and normal operation resumes.
+If the failure is transient (for example, the Infisical platform is temporarily unreachable), the server keeps serving its current certificate and retries with increasing frequency as expiry approaches. Once the platform is reachable again, the next retry succeeds and normal operation resumes on its own.
 
-If you revoke the server's access, renewal fails with an authentication error. AWS-enrolled servers recover automatically by re-authenticating via STS. Token-enrolled servers cannot, since enrollment tokens are single-use; the server logs an error asking you to re-enroll. Generate a new enrollment token via **Show deploy command** and restart the server with it to recover.
+If the failure is an authentication error (for example, after revoking the server's access), recovery depends on the auth method. AWS-enrolled servers recover automatically by re-authenticating via STS. Token-enrolled servers cannot, since enrollment tokens are single-use; the server logs an error asking you to re-enroll. Generate a new enrollment token via **Show deploy command** and restart the server with it to recover.
 
 ## Register a KMIP Client
 

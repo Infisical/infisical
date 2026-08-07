@@ -10,7 +10,6 @@ import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { booleanSchema } from "@app/server/routes/sanitizedSchemas";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { validateAltNamesField } from "@app/services/certificate-authority/certificate-authority-validators";
@@ -560,13 +559,6 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     url: "/connect",
     config: { rateLimit: writeLimit },
     schema: {
-      querystring: z.object({
-        isRenewal: booleanSchema
-          .default(false)
-          .describe(
-            "Set by the KMIP server daemon when fetching a replacement certificate for one it is already serving, so renewals are distinguishable from first-time connects in the audit log."
-          )
-      }),
       response: {
         200: z.object({
           clientCertificateChain: z.string(),
@@ -610,14 +602,13 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
         event: {
-          type: EventType.REGISTER_KMIP_SERVER,
+          type: EventType.KMIP_SERVER_CONNECT,
           metadata: {
             serverCertificateSerialNumber: configs.serverCertificateSerialNumber,
             hostnamesOrIps: kmipServer.hostnamesOrIps,
             commonName: resolvedCommonName,
             keyAlgorithm: resolvedKeyAlgorithm ?? CertKeyAlgorithm.RSA_2048,
-            ttl: resolvedTtl,
-            isRenewal: req.query.isRenewal
+            ttl: resolvedTtl
           }
         }
       });

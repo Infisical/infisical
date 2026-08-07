@@ -593,6 +593,7 @@ export enum EventType {
   SETUP_KMIP = "setup-kmip",
   GET_KMIP = "get-kmip",
   REGISTER_KMIP_SERVER = "register-kmip-server",
+  KMIP_SERVER_CONNECT = "kmip-server-connect",
 
   KMIP_OPERATION_CREATE = "kmip-operation-create",
   KMIP_OPERATION_GET = "kmip-operation-get",
@@ -5016,7 +5017,17 @@ interface RegisterKmipServerEvent {
     commonName: string;
     keyAlgorithm: CertKeyAlgorithm;
     ttl: string;
-    isRenewal?: boolean;
+  };
+}
+
+interface KmipServerConnectEvent {
+  type: EventType.KMIP_SERVER_CONNECT;
+  metadata: {
+    serverCertificateSerialNumber: string;
+    hostnamesOrIps: string;
+    commonName: string;
+    keyAlgorithm: CertKeyAlgorithm;
+    ttl: string;
   };
 }
 
@@ -7402,6 +7413,7 @@ export type Event =
   | SetupKmipEvent
   | GetKmipEvent
   | RegisterKmipServerEvent
+  | KmipServerConnectEvent
   | KmipOperationGetEvent
   | KmipOperationDestroyEvent
   | KmipOperationCreateEvent
