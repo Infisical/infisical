@@ -18,7 +18,8 @@ export type TNotification =
   | {
       type: TriggerFeature.SECRET_APPROVAL;
       payload: {
-        userEmail: string;
+        userEmail?: string;
+        machineIdentityId?: string;
         environment: string;
         secretPath: string;
         requestId: string;
