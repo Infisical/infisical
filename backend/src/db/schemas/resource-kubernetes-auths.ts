@@ -12,7 +12,7 @@ import { TImmutableDBKeys } from "./models";
 export const ResourceKubernetesAuthsSchema = z.object({
   id: z.string().uuid(),
   authMethodId: z.string().uuid(),
-  kubernetesHost: z.string(),
+  kubernetesHost: z.string().nullable().optional(),
   encryptedKubernetesCaCertificate: zodBuffer.nullable().optional(),
   encryptedKubernetesTokenReviewerJwt: zodBuffer.nullable().optional(),
   allowedNamespaces: z.string().default(""),
@@ -20,7 +20,10 @@ export const ResourceKubernetesAuthsSchema = z.object({
   allowedAudience: z.string().default(""),
   verifyTlsCertificate: z.boolean().default(true),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  tokenReviewMode: z.string().default("api"),
+  gatewayV2Id: z.string().uuid().nullable().optional(),
+  gatewayPoolId: z.string().uuid().nullable().optional()
 });
 
 export type TResourceKubernetesAuths = z.infer<typeof ResourceKubernetesAuthsSchema>;

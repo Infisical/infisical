@@ -3805,7 +3805,13 @@ export const GATEWAYS = {
     allowedAccountIds:
       "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical.",
     kubernetesHost:
-      "The URL of the Kubernetes API server that Infisical reviews the gateway's service account token against (e.g. https://my-cluster.example.com:6443).",
+      "The URL of the Kubernetes API server that Infisical reviews the gateway's service account token against (e.g. https://my-cluster.example.com:6443). Omit only when tokenReviewMode is 'gateway', where the reviewing gateway calls its own API server.",
+    tokenReviewMode:
+      "Who performs the TokenReview. 'api' means Infisical does, using the configured token reviewer JWT. 'gateway' means the selected gateway does, using its own in-cluster service account, which requires no Kubernetes host or reviewer token but requires that gateway to run as a pod in the cluster.",
+    gatewayV2Id:
+      "The gateway to route TokenReview traffic through, for clusters whose API server Infisical cannot reach. Must be a different gateway that is already enrolled and connected. Mutually exclusive with gatewayPoolId.",
+    gatewayPoolId:
+      "The gateway pool to route TokenReview traffic through. Any healthy member performs the request, so this survives a single gateway going offline. Mutually exclusive with gatewayV2Id.",
     caCertificate:
       "The PEM-encoded CA certificate that issued the Kubernetes API server's TLS certificate. Required when the API server uses a certificate the system trust store does not recognise, which is the usual case for a cluster CA.",
     tokenReviewerJwt:

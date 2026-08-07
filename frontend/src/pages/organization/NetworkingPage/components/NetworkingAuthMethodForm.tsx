@@ -18,6 +18,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker/GatewayPicker";
 import { useOrganization } from "@app/context";
 
 import {
@@ -26,6 +27,11 @@ import {
   NetworkingAuthMethodOption,
   NetworkingAuthMethodSingleValue
 } from "./NetworkingAuthMethodLabel";
+
+const REVIEW_MODE_OPTIONS = [
+  { value: "gateway" as const, label: "Gateway as Reviewer" },
+  { value: "api" as const, label: "Manual Token Reviewer JWT (API)" }
+];
 
 const schema = z
   .object({
@@ -40,6 +46,12 @@ const schema = z
     allowedNames: z.string(),
     allowedAudience: z.string(),
     verifyTlsCertificate: z.boolean(),
+    // "gateway" hands the review to the proxying gateway's own service account, which needs no
+    // host and no reviewer token but requires that gateway to run as a pod in the cluster.
+    tokenReviewMode: z.enum(["api", "gateway"]),
+    // Empty string means "no proxy": review straight from Infisical. Only one may be set.
+    gatewayV2Id: z.string(),
+    gatewayPoolId: z.string(),
     // True once Reset is clicked, which swaps the stored token for an editable field. Saving with
     // that field empty is what removes the token, since a never-returned value cannot be blanked.
     resetTokenReviewerJwt: z.boolean()
@@ -64,11 +76,19 @@ const schema = z
     }
 
     if (data.method === "kubernetes") {
-      if (!data.kubernetesHost.trim()) {
+      const isGatewayReviewer = data.tokenReviewMode === "gateway";
+      if (!isGatewayReviewer && !data.kubernetesHost.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["kubernetesHost"],
           message: "Kubernetes host is required"
+        });
+      }
+      if (isGatewayReviewer && !data.gatewayV2Id && !data.gatewayPoolId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["gatewayV2Id"],
+          message: "Select the gateway or pool that will perform the review"
         });
       }
       if (!data.allowedNamespaces.trim() && !data.allowedNames.trim()) {
@@ -108,9 +128,14 @@ export const toNetworkingAuthMethodInput = (form: FormData) => {
   }
 
   if (form.method === "kubernetes") {
+    const isGatewayReviewer = form.tokenReviewMode === "gateway";
     return {
       method: "kubernetes" as const,
-      kubernetesHost: form.kubernetesHost,
+      // The gateway resolves its own API server, so sending a host would be meaningless.
+      kubernetesHost: isGatewayReviewer ? undefined : form.kubernetesHost,
+      tokenReviewMode: form.tokenReviewMode,
+      gatewayV2Id: form.gatewayV2Id || null,
+      gatewayPoolId: form.gatewayPoolId || null,
       caCertificate: form.caCertificate,
       // Write-only: undefined keeps the stored value, empty string removes it.
       tokenReviewerJwt: toTokenReviewerJwtInput(form),
@@ -143,6 +168,9 @@ type AuthMethod =
         verifyTlsCertificate: boolean;
         caCertificate: string;
         hasTokenReviewerJwt: boolean;
+        tokenReviewMode: string;
+        gatewayV2Id: string | null;
+        gatewayPoolId: string | null;
       };
     }
   | {
@@ -156,6 +184,8 @@ type Props = {
   isPending: boolean;
   // Kubernetes auth is gateway-only, since only gateways run inside the cluster.
   availableMethods?: NetworkingAuthMethod[];
+  // Excluded from the proxy picker: a gateway cannot review its own token.
+  currentGatewayId?: string;
   onUpdate: (authMethod: FormData) => Promise<boolean>;
 };
 
@@ -164,6 +194,7 @@ export const NetworkingAuthMethodForm = ({
   isDisabled = false,
   isPending,
   availableMethods = ["token", "aws"],
+  currentGatewayId,
   onUpdate
 }: Props) => {
   const { isSubOrganization } = useOrganization();
@@ -186,6 +217,9 @@ export const NetworkingAuthMethodForm = ({
     allowedNames: initialKubernetes?.allowedNames ?? "",
     allowedAudience: initialKubernetes?.allowedAudience ?? "",
     verifyTlsCertificate: initialKubernetes?.verifyTlsCertificate ?? true,
+    tokenReviewMode: initialKubernetes?.tokenReviewMode === "gateway" ? "gateway" : "api",
+    gatewayV2Id: initialKubernetes?.gatewayV2Id ?? "",
+    gatewayPoolId: initialKubernetes?.gatewayPoolId ?? "",
     resetTokenReviewerJwt: false
   };
 
@@ -216,11 +250,20 @@ export const NetworkingAuthMethodForm = ({
     initialKubernetes?.allowedAudience,
     initialKubernetes?.verifyTlsCertificate,
     initialKubernetes?.caCertificate,
+    initialKubernetes?.tokenReviewMode,
+    initialKubernetes?.gatewayV2Id,
+    initialKubernetes?.gatewayPoolId,
     reset
   ]);
 
   const method = watch("method");
   const isSaving = isSubmitting || isPending;
+  const verifyTlsCertificate = watch("verifyTlsCertificate");
+  const tokenReviewMode = watch("tokenReviewMode");
+  const gatewayV2Id = watch("gatewayV2Id");
+  const gatewayPoolId = watch("gatewayPoolId");
+  const isProxied = Boolean(gatewayV2Id || gatewayPoolId);
+  const isGatewayReviewer = tokenReviewMode === "gateway";
   const isTokenReviewerJwtConfigured =
     Boolean(initialKubernetes?.hasTokenReviewerJwt) && !watch("resetTokenReviewerJwt");
 
@@ -326,43 +369,123 @@ export const NetworkingAuthMethodForm = ({
         <>
           <Controller
             control={control}
-            name="kubernetesHost"
+            name="gatewayV2Id"
             render={({ field, fieldState: { error } }) => (
               <Field>
-                <FieldLabel htmlFor="k8s-host" className="inline-flex items-center gap-1.5">
-                  Kubernetes Host / Base Kubernetes API URL
+                <FieldLabel className="inline-flex items-center gap-1.5">
+                  Gateway (optional)
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <InfoIcon className="size-3.5 text-muted" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-md">
-                      <div className="flex flex-col gap-1">
-                        <p>
-                          The host string, host:port pair, or URL to the base of the Kubernetes API
-                          server. This can usually be obtained by running &apos;kubectl
-                          cluster-info&apos;
-                        </p>
-                        <p>
-                          Must be reachable from Infisical, which reviews the token on each login.
-                        </p>
-                      </div>
+                      Routes the TokenReview through an existing gateway, for clusters whose API
+                      server Infisical cannot reach. It must be a different gateway that is already
+                      enrolled and connected, since a gateway cannot vouch for itself.
                     </TooltipContent>
                   </Tooltip>
                 </FieldLabel>
                 <FieldContent>
-                  <Input
-                    {...field}
-                    id="k8s-host"
-                    autoComplete="off"
-                    disabled={isDisabled || isSaving}
+                  <GatewayPicker
+                    value={{ gatewayId: field.value || null, gatewayPoolId: gatewayPoolId || null }}
+                    onChange={(next) => {
+                      setValue("gatewayV2Id", next.gatewayId ?? "", { shouldDirty: true });
+                      setValue("gatewayPoolId", next.gatewayPoolId ?? "", { shouldDirty: true });
+                      // Without a proxy there is nobody to hand the review to.
+                      if (!next.gatewayId && !next.gatewayPoolId) {
+                        setValue("tokenReviewMode", "api", { shouldDirty: true });
+                      }
+                    }}
+                    isDisabled={isDisabled || isSaving}
                     isError={Boolean(error)}
-                    placeholder="https://my-example-k8s-api-host.com"
+                    excludeGatewayId={currentGatewayId}
                   />
                   <FieldError errors={[error]} />
                 </FieldContent>
               </Field>
             )}
           />
+          {isProxied && (
+            <Controller
+              control={control}
+              name="tokenReviewMode"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel className="inline-flex items-center gap-1.5">
+                    Review Mode
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-md">
+                        Who performs the TokenReview. Gateway as Reviewer has the gateway do it with
+                        its own service account, which needs no host or reviewer token but requires
+                        that gateway to run as a pod in the cluster. Manual Token Reviewer JWT has
+                        Infisical do it, tunnelling through the gateway to the host below.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <FieldContent>
+                    <FilterableSelect
+                      value={REVIEW_MODE_OPTIONS.find((option) => option.value === field.value)}
+                      onChange={(option) => {
+                        const next = option as { value: "api" | "gateway" } | null;
+                        if (next) field.onChange(next.value);
+                      }}
+                      options={REVIEW_MODE_OPTIONS}
+                      isDisabled={isDisabled || isSaving}
+                      isSearchable={false}
+                      isClearable={false}
+                      getOptionLabel={(option) => option.label}
+                      getOptionValue={(option) => option.value}
+                    />
+                    <FieldError errors={[error]} />
+                  </FieldContent>
+                </Field>
+              )}
+            />
+          )}
+          {!isGatewayReviewer && (
+            <Controller
+              control={control}
+              name="kubernetesHost"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="k8s-host" className="inline-flex items-center gap-1.5">
+                    Kubernetes Host / Base Kubernetes API URL
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-md">
+                        <div className="flex flex-col gap-1">
+                          <p>
+                            The host string, host:port pair, or URL to the base of the Kubernetes
+                            API server. This can usually be obtained by running &apos;kubectl
+                            cluster-info&apos;
+                          </p>
+                          <p>
+                            Must be reachable from Infisical, which reviews the token on each login.
+                          </p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <FieldContent>
+                    <Input
+                      {...field}
+                      id="k8s-host"
+                      autoComplete="off"
+                      disabled={isDisabled || isSaving}
+                      isError={Boolean(error)}
+                      placeholder="https://my-example-k8s-api-host.com"
+                    />
+                    <FieldError errors={[error]} />
+                  </FieldContent>
+                </Field>
+              )}
+            />
+          )}
           <Controller
             control={control}
             name="allowedNamespaces"
@@ -494,138 +617,149 @@ export const NetworkingAuthMethodForm = ({
               </Field>
             )}
           />
-          <Controller
-            control={control}
-            name="caCertificate"
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel htmlFor="k8s-ca-cert" className="inline-flex items-center gap-1.5">
-                  CA Certificate (optional)
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <InfoIcon className="size-3.5 text-muted" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-md">
-                      The PEM-encoded CA certificate that issued the Kubernetes API server&apos;s
-                      TLS certificate. Needed whenever the server uses a certificate the system
-                      trust store does not recognise, which is the usual case for a cluster CA.
-                    </TooltipContent>
-                  </Tooltip>
-                </FieldLabel>
-                <FieldContent>
-                  <TextArea
-                    {...field}
-                    id="k8s-ca-cert"
-                    disabled={isDisabled || isSaving}
-                    isError={Boolean(error)}
-                    rows={3}
-                    className="font-mono text-xs"
-                    placeholder="-----BEGIN CERTIFICATE----- ..."
-                  />
-                  <FieldError errors={[error]} />
-                </FieldContent>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="tokenReviewerJwt"
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel
-                  htmlFor="k8s-token-reviewer"
-                  className="inline-flex items-center gap-1.5"
-                >
-                  Token Reviewer JWT (optional)
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <InfoIcon className="size-3.5 text-muted" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-md">
-                      Optional JWT token for accessing Kubernetes TokenReview API. If provided, this
-                      long-lived token will be used to validate service account tokens during
-                      authentication. If omitted, the gateway&apos;s own JWT will be used instead,
-                      which requires the gateway to have the system:auth-delegator ClusterRole
-                      binding. A stored token is never shown again, so Reset is the only way to
-                      replace or remove one. Resetting is also required to change the Kubernetes
-                      host, since a stored token is never sent to a different host.
-                    </TooltipContent>
-                  </Tooltip>
-                </FieldLabel>
-                <FieldContent>
-                  {isTokenReviewerJwtConfigured ? (
+          {!isGatewayReviewer && (
+            <>
+              <Controller
+                control={control}
+                name="verifyTlsCertificate"
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
                     <div className="flex items-center gap-2">
-                      <Input id="k8s-token-reviewer" value="Configured" disabled />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        isDisabled={isDisabled || isSaving}
-                        onClick={() =>
-                          setValue("resetTokenReviewerJwt", true, { shouldDirty: true })
-                        }
+                      <Switch
+                        id="gateway-k8s-verify-tls"
+                        variant="org"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={isDisabled || isSaving}
+                      />
+                      <FieldLabel
+                        htmlFor="gateway-k8s-verify-tls"
+                        className="mb-0 inline-flex items-center gap-1.5"
                       >
-                        Reset
-                      </Button>
+                        Verify TLS Certificate
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <HelpCircleIcon className="size-3.5 text-muted" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-md">
+                            <div className="flex flex-col gap-2">
+                              <p>
+                                When enabled, Infisical validates the Kubernetes API server&apos;s
+                                TLS certificate against the CA certificate below.
+                              </p>
+                              <p>
+                                With a CA certificate below, the server is verified against it.
+                                Without one the system trust store is used, which a cluster CA will
+                                not be in, so verification fails. Turn this off only for testing.
+                              </p>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </FieldLabel>
                     </div>
-                  ) : (
-                    <TextArea
-                      {...field}
-                      id="k8s-token-reviewer"
-                      disabled={isDisabled || isSaving}
-                      isError={Boolean(error)}
-                      rows={2}
-                      className="font-mono text-xs"
-                      placeholder="eyJhbGciOiJSUzI1NiIs..."
-                    />
+                    <FieldError errors={[error]} />
+                  </Field>
+                )}
+              />
+              {verifyTlsCertificate && (
+                <Controller
+                  control={control}
+                  name="caCertificate"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel
+                        htmlFor="k8s-ca-cert"
+                        className="inline-flex items-center gap-1.5"
+                      >
+                        CA Certificate (optional)
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <InfoIcon className="size-3.5 text-muted" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-md">
+                            The PEM-encoded CA certificate that issued the Kubernetes API
+                            server&apos;s TLS certificate. Needed whenever the server uses a
+                            certificate the system trust store does not recognise, which is the
+                            usual case for a cluster CA.
+                          </TooltipContent>
+                        </Tooltip>
+                      </FieldLabel>
+                      <FieldContent>
+                        <TextArea
+                          {...field}
+                          id="k8s-ca-cert"
+                          disabled={isDisabled || isSaving}
+                          isError={Boolean(error)}
+                          rows={3}
+                          className="font-mono text-xs"
+                          placeholder="-----BEGIN CERTIFICATE----- ..."
+                        />
+                        <FieldError errors={[error]} />
+                      </FieldContent>
+                    </Field>
                   )}
-                  <FieldError errors={[error]} />
-                </FieldContent>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="verifyTlsCertificate"
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="gateway-k8s-verify-tls"
-                    variant="org"
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    disabled={isDisabled || isSaving}
-                  />
-                  <FieldLabel
-                    htmlFor="gateway-k8s-verify-tls"
-                    className="mb-0 inline-flex items-center gap-1.5"
-                  >
-                    Verify TLS Certificate
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircleIcon className="size-3.5 text-muted" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-md">
-                        <div className="flex flex-col gap-2">
-                          <p>
-                            When enabled, Infisical validates the Kubernetes API server&apos;s TLS
-                            certificate against the CA certificate provided above.
-                          </p>
-                          <p>
-                            With a CA certificate above, the server is verified against it. Without
-                            one the system trust store is used, which a cluster CA will not be in,
-                            so verification fails. Turn this off only for testing.
-                          </p>
+                />
+              )}
+              <Controller
+                control={control}
+                name="tokenReviewerJwt"
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel
+                      htmlFor="k8s-token-reviewer"
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      Token Reviewer JWT (optional)
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="size-3.5 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">
+                          Optional JWT token for accessing Kubernetes TokenReview API. If provided,
+                          this long-lived token will be used to validate service account tokens
+                          during authentication. If omitted, the gateway&apos;s own JWT will be used
+                          instead, which requires the gateway to have the system:auth-delegator
+                          ClusterRole binding. A stored token is never shown again, so Reset is the
+                          only way to replace or remove one. Resetting is also required to change
+                          the Kubernetes host, since a stored token is never sent to a different
+                          host.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <FieldContent>
+                      {isTokenReviewerJwtConfigured ? (
+                        <div className="flex items-center gap-2">
+                          <Input id="k8s-token-reviewer" value="Configured" disabled />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            isDisabled={isDisabled || isSaving}
+                            onClick={() =>
+                              setValue("resetTokenReviewerJwt", true, { shouldDirty: true })
+                            }
+                          >
+                            Reset
+                          </Button>
                         </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
-                </div>
-                <FieldError errors={[error]} />
-              </Field>
-            )}
-          />
+                      ) : (
+                        <TextArea
+                          {...field}
+                          id="k8s-token-reviewer"
+                          disabled={isDisabled || isSaving}
+                          isError={Boolean(error)}
+                          rows={2}
+                          className="font-mono text-xs"
+                          placeholder="eyJhbGciOiJSUzI1NiIs..."
+                        />
+                      )}
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+            </>
+          )}
         </>
       )}
 

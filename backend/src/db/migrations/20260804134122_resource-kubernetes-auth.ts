@@ -9,15 +9,31 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("authMethodId").notNullable().unique();
       t.foreign("authMethodId").references("id").inTable(TableName.ResourceAuthMethod).onDelete("CASCADE");
-      t.string("kubernetesHost", 255).notNullable();
+      // Null when the review runs through a gateway using its own service account, which needs no address.
+      t.string("kubernetesHost", 255).nullable();
       t.binary("encryptedKubernetesCaCertificate").nullable();
       t.binary("encryptedKubernetesTokenReviewerJwt").nullable();
       t.string("allowedNamespaces", 1024).notNullable().defaultTo("");
       t.string("allowedNames", 1024).notNullable().defaultTo("");
       t.string("allowedAudience", 255).notNullable().defaultTo("");
       t.boolean("verifyTlsCertificate").notNullable().defaultTo(true);
+      t.string("tokenReviewMode", 32).notNullable().defaultTo("api");
+      // RESTRICT rather than SET NULL: nulling the proxy would leave a config that cannot
+      // authenticate, failing at the next login instead of at the delete the user chose.
+      t.uuid("gatewayV2Id").nullable();
+      t.foreign("gatewayV2Id").references("id").inTable(TableName.GatewayV2).onDelete("RESTRICT");
+      t.uuid("gatewayPoolId").nullable();
+      t.foreign("gatewayPoolId").references("id").inTable(TableName.GatewayPool).onDelete("RESTRICT");
       t.timestamps(true, true, true);
     });
+
+    // Partial: both are null except when the review is proxied, and the RESTRICT checks need them.
+    await knex.raw(
+      `CREATE INDEX IF NOT EXISTS "resource_kubernetes_auths_gateway_v2_id_index" ON ${TableName.ResourceKubernetesAuth} ("gatewayV2Id") WHERE "gatewayV2Id" IS NOT NULL`
+    );
+    await knex.raw(
+      `CREATE INDEX IF NOT EXISTS "resource_kubernetes_auths_gateway_pool_id_index" ON ${TableName.ResourceKubernetesAuth} ("gatewayPoolId") WHERE "gatewayPoolId" IS NOT NULL`
+    );
 
     await createOnUpdateTrigger(knex, TableName.ResourceKubernetesAuth);
   }

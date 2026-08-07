@@ -39,6 +39,64 @@ const toServerName = (kubernetesHost: string) => {
   return isIP(servername) ? undefined : servername;
 };
 
+// One shape for both routes to the API server: straight out from Infisical, or tunnelled through a
+// gateway. Callers below only deal in paths, so nothing downstream has to know which is in play.
+export type TKubernetesRequestExecutor = <T = unknown>(
+  method: "get" | "post",
+  path: string,
+  body?: object,
+  headers?: Record<string, string>
+) => Promise<{ status: number; data: T }>;
+
+const withScheme = (kubernetesHost: string) =>
+  new RE2("^https?://").test(kubernetesHost) ? kubernetesHost : `https://${kubernetesHost}`;
+
+export const buildDirectKubernetesExecutor = ({
+  kubernetesHost,
+  caCertificate,
+  verifyTlsCertificate
+}: {
+  kubernetesHost: string;
+  caCertificate?: string;
+  verifyTlsCertificate: boolean;
+}): TKubernetesRequestExecutor => {
+  const baseUrl = withScheme(kubernetesHost);
+
+  return async <T>(method: "get" | "post", path: string, body?: object, headers?: Record<string, string>) => {
+    // Fresh per call: an abort signal must not be shared between requests.
+    const config = {
+      headers,
+      ca: caCertificate || undefined,
+      rejectUnauthorized: verifyTlsCertificate,
+      servername: toServerName(kubernetesHost),
+      timeout: TOKEN_REVIEW_TIMEOUT_MS,
+      signal: AbortSignal.timeout(TOKEN_REVIEW_TIMEOUT_MS),
+      maxContentLength: TOKEN_REVIEW_MAX_RESPONSE_BYTES,
+      validateStatus: () => true
+    };
+
+    // safeRequest pins the connection to the addresses it validated, so a hostname that
+    // re-resolves to a private address between config time and login cannot be reached.
+    const res =
+      method === "get"
+        ? await safeRequest.get<T>(`${baseUrl}${path}`, config)
+        : await safeRequest.post<T>(`${baseUrl}${path}`, body, config);
+
+    return { status: res.status, data: res.data };
+  };
+};
+
+// A gateway cannot vouch for itself: the proxy runs over the gateway's own tunnel, which only
+// exists once it has already authenticated. Left unchecked, this config would never log in.
+export const assertKubernetesProxyNotSelf = (resource: { type: string; id: string }, gatewayV2Id?: string | null) => {
+  if (gatewayV2Id && resource.type === "gateway" && gatewayV2Id === resource.id) {
+    throw new BadRequestError({
+      message:
+        "A gateway cannot review its own Kubernetes token. Select a different gateway, one that is already enrolled and connected."
+    });
+  }
+};
+
 export const assertKubernetesHostAllowed = async (kubernetesHost: string) => {
   const url = kubernetesHost.startsWith("https://") ? kubernetesHost : `https://${kubernetesHost}`;
   try {
@@ -56,40 +114,36 @@ export const assertKubernetesHostAllowed = async (kubernetesHost: string) => {
 // Surfaces a bad host or reviewer when the config is saved rather than when a gateway later
 // fails to start. Makes network calls, so call it outside a transaction.
 export const validateKubernetesConfigReachable = async ({
-  kubernetesHost,
-  caCertificate,
+  executor,
+  target,
   tokenReviewerJwt,
-  verifyTlsCertificate
+  isGatewayReviewer = false
 }: {
-  kubernetesHost: string;
-  caCertificate?: string;
+  executor: TKubernetesRequestExecutor;
+  // Where the request went, for error messages: a host, or a gateway's name.
+  target: string;
   tokenReviewerJwt?: string;
-  verifyTlsCertificate: boolean;
+  isGatewayReviewer?: boolean;
 }) => {
-  const host = kubernetesHost.startsWith("https://") ? kubernetesHost : `https://${kubernetesHost}`;
-
-  // Fresh per call: the abort signal must not be shared between the two requests.
-  const requestConfig = () => ({
-    ca: caCertificate || undefined,
-    rejectUnauthorized: verifyTlsCertificate,
-    servername: toServerName(kubernetesHost),
-    timeout: TOKEN_REVIEW_TIMEOUT_MS,
-    signal: AbortSignal.timeout(TOKEN_REVIEW_TIMEOUT_MS),
-    maxContentLength: TOKEN_REVIEW_MAX_RESPONSE_BYTES,
-    validateStatus: () => true
-  });
-
   const classify = (err: unknown, context: KubernetesAuthErrorContext) => {
-    if (err instanceof BadRequestError) return err;
-    if (err instanceof AxiosError) return handleAxiosError(err, { kubernetesHost: host }, context);
+    // Checked before the BadRequestError passthrough: the proxy layer wraps an aborted tunnel as a
+    // BadRequestError whose message is just "canceled". A gateway that is not a pod in the cluster
+    // has no service account to review with, so the request never completes.
+    if (isGatewayReviewer) {
+      return new BadRequestError({
+        message:
+          "The selected gateway could not review the token with its own service account. Gateway as Reviewer requires that gateway to run as a pod inside the cluster with the system:auth-delegator ClusterRole. Use the token reviewer JWT mode for a gateway outside the cluster."
+      });
+    }
+    if (err instanceof AxiosError) return handleAxiosError(err, { kubernetesHost: target }, context);
     return new BadRequestError({
-      message: `Failed to reach the Kubernetes API server at ${host}: ${(err as Error).message}`
+      message: `Failed to reach the Kubernetes API server at ${target}: ${(err as Error).message}`
     });
   };
 
   let versionStatus: number;
   try {
-    const res = await safeRequest.get(`${host}/version`, requestConfig());
+    const res = await executor("get", "/version");
     versionStatus = res.status;
   } catch (err) {
     throw classify(err, KubernetesAuthErrorContext.KubernetesHost);
@@ -98,44 +152,50 @@ export const validateKubernetesConfigReachable = async ({
   // the Kubernetes API at all, which is the common typo and used to save happily.
   if (versionStatus === 404) {
     throw new BadRequestError({
-      message: `${host} does not look like a Kubernetes API server: /version returned 404. Verify the host and port.`
+      message: `${target} does not look like a Kubernetes API server: /version returned 404. Verify the host and port.`
     });
   }
   if (versionStatus >= 500) {
     throw new BadRequestError({
-      message: `Kubernetes API server at ${host} returned ${versionStatus}. Verify the host is correct and healthy.`
+      message: `Kubernetes API server at ${target} returned ${versionStatus}. Verify the host is correct and healthy.`
     });
   }
 
-  if (!tokenReviewerJwt) return;
+  // Nothing to probe when Infisical will fall back to letting the incoming token review itself:
+  // that token does not exist until a gateway actually logs in.
+  if (!tokenReviewerJwt && !isGatewayReviewer) return;
 
   let review: { status: number; data: unknown };
   try {
-    review = await safeRequest.post(
-      `${host}${TOKEN_REVIEW_PATH}`,
+    review = await executor(
+      "post",
+      TOKEN_REVIEW_PATH,
       {
         apiVersion: TOKEN_REVIEW_API_VERSION,
         kind: TOKEN_REVIEW_KIND,
         spec: { token: TOKEN_REVIEW_PROBE_TOKEN }
       },
       {
-        ...requestConfig(),
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tokenReviewerJwt}` }
+        "Content-Type": "application/json",
+        ...(tokenReviewerJwt ? { Authorization: `Bearer ${tokenReviewerJwt}` } : {})
       }
     );
   } catch (err) {
     throw classify(err, KubernetesAuthErrorContext.KubernetesApiServer);
   }
 
+  const reviewer = isGatewayReviewer ? "The gateway's own service account" : "The token reviewer JWT";
+
   if (review.status === 401) {
     throw new BadRequestError({
-      message: "The token reviewer JWT is invalid or expired. Provide a valid service account token."
+      message: isGatewayReviewer
+        ? `${reviewer} is not authorized against the Kubernetes API server. Verify the gateway is deployed correctly.`
+        : `${reviewer} is invalid or expired. Provide a valid service account token.`
     });
   }
   if (review.status === 403) {
     throw new BadRequestError({
-      message:
-        "The token reviewer JWT cannot perform TokenReviews. Ensure its service account has the 'system:auth-delegator' ClusterRole binding."
+      message: `${reviewer} cannot perform TokenReviews. Ensure its service account has the 'system:auth-delegator' ClusterRole binding.`
     });
   }
   if (review.status >= 400) {
@@ -146,32 +206,31 @@ export const validateKubernetesConfigReachable = async ({
 
 type TReviewServiceAccountTokenInput = {
   jwt: string;
-  kubernetesHost: string;
-  caCertificate: string;
+  executor: TKubernetesRequestExecutor;
+  // Where the request went, for error messages and logs: a host, or a gateway's name.
+  target: string;
   tokenReviewerJwt: string;
-  verifyTlsCertificate: boolean;
+  isGatewayReviewer?: boolean;
   allowedAudience: string;
   errorContext: Record<string, unknown>;
 };
 
 export const reviewServiceAccountToken = async ({
   jwt,
-  kubernetesHost,
-  caCertificate,
+  executor,
+  target,
   tokenReviewerJwt,
-  verifyTlsCertificate,
+  isGatewayReviewer = false,
   allowedAudience,
   errorContext
 }: TReviewServiceAccountTokenInput) => {
-  const baseUrl =
-    kubernetesHost.startsWith("http://") || kubernetesHost.startsWith("https://")
-      ? kubernetesHost
-      : `https://${kubernetesHost}`;
+  const kubernetesHost = target;
 
   let review: TCreateTokenReviewResponse;
   try {
-    const res = await safeRequest.post<TCreateTokenReviewResponse>(
-      `${baseUrl}${TOKEN_REVIEW_PATH}`,
+    const res = await executor<TCreateTokenReviewResponse>(
+      "post",
+      TOKEN_REVIEW_PATH,
       {
         apiVersion: TOKEN_REVIEW_API_VERSION,
         kind: TOKEN_REVIEW_KIND,
@@ -181,20 +240,12 @@ export const reviewServiceAccountToken = async ({
         }
       },
       {
-        headers: {
-          "Content-Type": "application/json",
-          // With no reviewer configured the incoming token reviews itself, which works because the
-          // Helm chart grants the gateway's service account system:auth-delegator.
-          Authorization: `Bearer ${tokenReviewerJwt || jwt}`
-        },
-        signal: AbortSignal.timeout(TOKEN_REVIEW_TIMEOUT_MS),
-        timeout: TOKEN_REVIEW_TIMEOUT_MS,
-        maxContentLength: TOKEN_REVIEW_MAX_RESPONSE_BYTES,
-        // safeRequest pins the connection to the addresses it validated, so a hostname that
-        // re-resolves to a private address between config time and login cannot be reached.
-        ca: caCertificate || undefined,
-        rejectUnauthorized: verifyTlsCertificate,
-        servername: toServerName(kubernetesHost)
+        "Content-Type": "application/json",
+        // The gateway reviewer supplies its own credential at the far end, so sending one here
+        // would override it. Otherwise, with no reviewer configured the incoming token reviews
+        // itself, which works because the Helm chart grants the gateway's service account
+        // system:auth-delegator.
+        ...(isGatewayReviewer ? {} : { Authorization: `Bearer ${tokenReviewerJwt || jwt}` })
       }
     );
     review = res.data;

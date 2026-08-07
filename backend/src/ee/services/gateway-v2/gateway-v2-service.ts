@@ -72,8 +72,8 @@ type TGatewayV2ServiceFactoryDep = {
     | "mintToken"
     | "loginWithToken"
     | "encryptKubernetesSecrets"
-    | "assertKubernetesHostAllowed"
-    | "validateKubernetesConfigReachable"
+    | "preflightKubernetesConfig"
+    | "findKubernetesProxyDependents"
   >;
 };
 
@@ -1006,6 +1006,13 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
+    const proxyDependents = await resourceAuthMethodService.findKubernetesProxyDependents(gateway.id);
+    if (proxyDependents.length) {
+      throw new BadRequestError({
+        message: `Gateway '${gateway.name}' reviews Kubernetes tokens for ${proxyDependents.map((name) => `'${name}'`).join(", ")}. Point those gateways at a different reviewer before deleting this one.`
+      });
+    }
+
     try {
       return await gatewayV2DAL.deleteById(gateway.id);
     } catch (err) {
@@ -1215,13 +1222,7 @@ export const gatewayV2ServiceFactory = ({
     // the network, so they run before the transaction is opened rather than inside it.
     let authMethodArg = authMethod;
     if (authMethod.method === "kubernetes") {
-      await resourceAuthMethodService.assertKubernetesHostAllowed(authMethod.config.kubernetesHost);
-      await resourceAuthMethodService.validateKubernetesConfigReachable({
-        kubernetesHost: authMethod.config.kubernetesHost,
-        caCertificate: authMethod.config.caCertificate,
-        tokenReviewerJwt: authMethod.config.tokenReviewerJwt,
-        verifyTlsCertificate: authMethod.config.verifyTlsCertificate
-      });
+      await resourceAuthMethodService.preflightKubernetesConfig(authMethod.config);
       authMethodArg = {
         method: authMethod.method,
         config: {

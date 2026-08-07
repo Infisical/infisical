@@ -1,6 +1,6 @@
 import { OrgServiceActor } from "@app/lib/types";
 
-import { ResourceAuthMethodType, ResourceRef } from "./resource-auth-method-fns";
+import { ResourceAuthMethodType, ResourceRef, TKubernetesTokenReviewMode } from "./resource-auth-method-fns";
 
 export type TAwsAuthMethodConfig = {
   stsEndpoint: string;
@@ -9,13 +9,17 @@ export type TAwsAuthMethodConfig = {
 };
 
 export type TKubernetesAuthMethodConfig = {
-  kubernetesHost: string;
+  // Omitted only in gateway review mode, where the gateway calls its own API server.
+  kubernetesHost?: string | null;
   allowedNamespaces: string;
   allowedNames: string;
   allowedAudience: string;
   verifyTlsCertificate: boolean;
   caCertificate?: string;
   tokenReviewerJwt?: string;
+  tokenReviewMode?: TKubernetesTokenReviewMode;
+  gatewayV2Id?: string | null;
+  gatewayPoolId?: string | null;
 };
 
 // A missing key means "keep the stored value"; null means "clear it".
@@ -28,9 +32,14 @@ export type TEncryptedKubernetesSecrets = {
 // cluster credential, so only its presence is reported.
 export type TKubernetesAuthMethodConfigView = Omit<
   TKubernetesAuthMethodConfig,
-  "caCertificate" | "tokenReviewerJwt"
+  "caCertificate" | "tokenReviewerJwt" | "kubernetesHost" | "tokenReviewMode" | "gatewayV2Id" | "gatewayPoolId"
 > & {
   id: string;
+  // Always present on read, empty when the review runs through a gateway's own service account.
+  kubernetesHost: string;
+  tokenReviewMode: string;
+  gatewayV2Id: string | null;
+  gatewayPoolId: string | null;
   caCertificate: string;
   hasTokenReviewerJwt: boolean;
   createdAt: Date;

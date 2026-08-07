@@ -135,8 +135,19 @@ export const ResourceAuthLoginFailureReason = {
   NoAllowlistConfigured: "no_allowlist_configured",
   NamespaceNotAllowed: "namespace_not_allowed",
   NameNotAllowed: "name_not_allowed",
-  AudienceNotAllowed: "audience_not_allowed"
+  AudienceNotAllowed: "audience_not_allowed",
+  GatewayProxyUnavailable: "gateway_proxy_unavailable"
 } as const;
+
+// Who performs the TokenReview. Api means Infisical does, using the configured reviewer token.
+// Gateway means the proxying gateway does, using its own in-cluster service account, which needs
+// no Kubernetes host or reviewer token but requires that gateway to be a pod in the cluster.
+export const KubernetesTokenReviewMode = {
+  Api: "api",
+  Gateway: "gateway"
+} as const;
+
+export type TKubernetesTokenReviewMode = (typeof KubernetesTokenReviewMode)[keyof typeof KubernetesTokenReviewMode];
 
 export const ResourceAuthMethodType = {
   Aws: "aws",

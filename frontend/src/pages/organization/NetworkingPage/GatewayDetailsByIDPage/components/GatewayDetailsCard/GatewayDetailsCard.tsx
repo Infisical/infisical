@@ -151,6 +151,7 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
                   isDisabled={!isAllowed}
                   isPending={isUpdatingAuthMethod}
                   availableMethods={["token", "aws", "kubernetes"]}
+                  currentGatewayId={gateway.id}
                   onUpdate={async (form) => {
                     try {
                       await updateGateway({

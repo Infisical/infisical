@@ -33,6 +33,9 @@ export type GatewayKubernetesAuthConfig = {
   verifyTlsCertificate: boolean;
   caCertificate: string;
   hasTokenReviewerJwt: boolean;
+  tokenReviewMode: string;
+  gatewayV2Id: string | null;
+  gatewayPoolId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -63,10 +66,14 @@ export type SettableAuthMethodInput =
     }
   | {
       method: "kubernetes";
-      kubernetesHost: string;
+      // Omitted only in gateway review mode, where the gateway calls its own API server.
+      kubernetesHost?: string;
       caCertificate?: string;
       // Write-only. Omitted means "keep the stored value"; an empty string clears it.
       tokenReviewerJwt?: string;
+      tokenReviewMode?: string;
+      gatewayV2Id?: string | null;
+      gatewayPoolId?: string | null;
       allowedNamespaces: string;
       allowedNames: string;
       allowedAudience?: string;

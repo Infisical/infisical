@@ -8,7 +8,10 @@ import {
   validateAllowedNamespaces,
   validateKubernetesHost
 } from "@app/ee/services/resource-auth-method/kubernetes-auth-validators";
-import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
+import {
+  KubernetesTokenReviewMode,
+  ResourceAuthMethodType
+} from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
 import { ApiDocsTags, GATEWAYS } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
@@ -61,9 +64,15 @@ const AwsAuthMethodInputSchema = z
 const KubernetesAuthMethodInputSchema = z
   .object({
     method: z.literal(ResourceAuthMethodType.Kubernetes),
-    kubernetesHost: validateKubernetesHost.describe(GATEWAYS.AUTH_METHOD.kubernetesHost),
+    kubernetesHost: validateKubernetesHost.optional().describe(GATEWAYS.AUTH_METHOD.kubernetesHost),
     caCertificate: z.string().trim().max(10240).optional().describe(GATEWAYS.AUTH_METHOD.caCertificate),
     tokenReviewerJwt: z.string().trim().max(8192).optional().describe(GATEWAYS.AUTH_METHOD.tokenReviewerJwt),
+    tokenReviewMode: z
+      .nativeEnum(KubernetesTokenReviewMode)
+      .default(KubernetesTokenReviewMode.Api)
+      .describe(GATEWAYS.AUTH_METHOD.tokenReviewMode),
+    gatewayV2Id: z.string().uuid().nullable().optional().describe(GATEWAYS.AUTH_METHOD.gatewayV2Id),
+    gatewayPoolId: z.string().uuid().nullable().optional().describe(GATEWAYS.AUTH_METHOD.gatewayPoolId),
     allowedNamespaces: validateAllowedNamespaces.describe(GATEWAYS.AUTH_METHOD.allowedNamespaces),
     allowedNames: validateAllowedNames.describe(GATEWAYS.AUTH_METHOD.allowedNames),
     allowedAudience: z.string().trim().max(255).default("").describe(GATEWAYS.AUTH_METHOD.allowedAudience),
@@ -72,6 +81,23 @@ const KubernetesAuthMethodInputSchema = z
   .refine((data) => data.allowedNamespaces.trim().length > 0 || data.allowedNames.trim().length > 0, {
     message: "At least one of allowedNamespaces or allowedNames must be set",
     path: ["allowedNamespaces"]
+  })
+  .refine((data) => !(data.gatewayV2Id && data.gatewayPoolId), {
+    message: "Select either a gateway or a gateway pool to review tokens, not both",
+    path: ["gatewayPoolId"]
+  })
+  .refine(
+    (data) => data.tokenReviewMode !== KubernetesTokenReviewMode.Gateway || data.gatewayV2Id || data.gatewayPoolId,
+    {
+      message: "Gateway review mode requires a gateway or gateway pool to perform the review",
+      path: ["gatewayV2Id"]
+    }
+  )
+  // Only gateway review mode can go without a host, because there the gateway calls its own
+  // API server rather than an address we supply.
+  .refine((data) => data.tokenReviewMode === KubernetesTokenReviewMode.Gateway || Boolean(data.kubernetesHost), {
+    message: "A Kubernetes host is required unless the review mode is Gateway as Reviewer",
+    path: ["kubernetesHost"]
   });
 
 const TokenAuthMethodInputSchema = z.object({
@@ -106,6 +132,9 @@ const toCreateAuthMethodArg = (input: TSettableAuthMethodInput) => {
         kubernetesHost: input.kubernetesHost,
         caCertificate: input.caCertificate,
         tokenReviewerJwt: input.tokenReviewerJwt,
+        tokenReviewMode: input.tokenReviewMode,
+        gatewayV2Id: input.gatewayV2Id,
+        gatewayPoolId: input.gatewayPoolId,
         allowedNamespaces: input.allowedNamespaces,
         allowedNames: input.allowedNames,
         allowedAudience: input.allowedAudience,
@@ -131,6 +160,9 @@ const toSetAuthMethodArg = (input: TSettableAuthMethodInput) => {
       kubernetesHost: input.kubernetesHost,
       caCertificate: input.caCertificate,
       tokenReviewerJwt: input.tokenReviewerJwt,
+      tokenReviewMode: input.tokenReviewMode,
+      gatewayV2Id: input.gatewayV2Id,
+      gatewayPoolId: input.gatewayPoolId,
       allowedNamespaces: input.allowedNamespaces,
       allowedNames: input.allowedNames,
       allowedAudience: input.allowedAudience,
