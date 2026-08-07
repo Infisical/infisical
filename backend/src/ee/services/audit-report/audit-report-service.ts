@@ -1,10 +1,15 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  OrgPermissionSecretsManagementInsightsActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -13,20 +18,22 @@ import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAuditReportDALFactory } from "./audit-report-dal";
-import { presentAuditReport } from "./audit-report-fns";
+import { presentAuditReport, presentOrgAuditReport } from "./audit-report-fns";
+import { ORG_AUDIT_REPORT_DEFINITIONS } from "./audit-report-org-generators";
 import {
   AuditReportStatus,
   MAX_CONCURRENT_AUDIT_REPORTS,
-  TAuditReportConfig,
   TAuditReportServiceActor,
   TListAuditReportsDTO,
-  TRequestAuditReportDTO
+  TListOrgAuditReportsDTO,
+  TRequestAuditReportDTO,
+  TRequestOrgAuditReportDTO
 } from "./audit-report-types";
 
 const MAX_EMAIL_RECIPIENTS = 20;
 
 type TAuditReportServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   auditReportDAL: TAuditReportDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -48,8 +55,11 @@ export const auditReportServiceFactory = ({
 }: TAuditReportServiceFactoryDep) => {
   // Report types and their inputs are validated at the request boundary by the router's discriminated
   // union, so here we only enforce that each report type appears at most once per batch (the array schema
-  // can't express that) and normalize the stored shape.
-  const $buildReportConfigs = (reports: TRequestAuditReportDTO["reports"]): TAuditReportConfig[] => {
+  // can't express that) and normalize the stored shape. Generic over the type enum so the project and
+  // org report DTOs share it.
+  const $buildReportConfigs = <TType extends string>(
+    reports: { type: TType; inputs?: Record<string, unknown> }[]
+  ): { type: TType; inputs: Record<string, unknown> }[] => {
     const seenTypes = new Set<string>();
     return reports.map(({ type, inputs }) => {
       if (seenTypes.has(type)) {
@@ -199,7 +209,8 @@ export const auditReportServiceFactory = ({
 
     const report = await auditReportDAL.findById(auditReportId);
 
-    if (!report) {
+    // An org-scoped report id presents as not found on the project endpoints (and vice versa).
+    if (!report?.projectId) {
       throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
     }
 
@@ -223,7 +234,8 @@ export const auditReportServiceFactory = ({
   const deleteReport = async (auditReportId: string, actor: TAuditReportServiceActor) => {
     const report = await auditReportDAL.findById(auditReportId);
 
-    if (!report) {
+    // An org-scoped report id presents as not found on the project endpoints (and vice versa).
+    if (!report?.projectId) {
       throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
     }
 
@@ -244,10 +256,142 @@ export const auditReportServiceFactory = ({
     return presentAuditReport(report);
   };
 
+  // Resolves the requesting actor's org-level permission; org reports are always scoped to the
+  // actor's own org, so no caller-supplied org id is involved.
+  const $getOrgInsightsPermission = async (actor: TAuditReportServiceActor) => {
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+    return permission;
+  };
+
+  const generateOrgReport = async (dto: TRequestOrgAuditReportDTO, actor: TAuditReportServiceActor) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+    if (!plan.secretAccessInsights) {
+      throw new BadRequestError({
+        message: "Audit reports are not available on your plan. Please upgrade to access audit reports."
+      });
+    }
+
+    const permission = await $getOrgInsightsPermission(actor);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionSecretsManagementInsightsActions.GenerateReport,
+      OrgPermissionSubjects.SecretsManagementInsights
+    );
+
+    const reportConfigs = $buildReportConfigs(dto.reports);
+
+    // Reports the instance cannot produce are rejected before anything is persisted, instead of
+    // failing at generation time and wasting the org's concurrent-report slot.
+    const appCfg = getConfig();
+    const unsupported = reportConfigs.filter(
+      (config) => ORG_AUDIT_REPORT_DEFINITIONS[config.type].requiresClickhouse && !appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED
+    );
+    if (unsupported.length) {
+      const labels = unsupported.map((config) => `'${ORG_AUDIT_REPORT_DEFINITIONS[config.type].label}'`).join(", ");
+      throw new BadRequestError({
+        message: `The following reports require audit logs to be stored in ClickHouse, which is not enabled on this instance: ${labels}`
+      });
+    }
+
+    const emailRecipients = await $resolveRecipients(dto.emailRecipients, actor);
+
+    const report = await auditReportDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgAuditReportRequest(actor.orgId)]);
+
+      const inFlightCount = await auditReportDAL.countInFlightByOrg(actor.orgId, tx);
+      if (inFlightCount >= MAX_CONCURRENT_AUDIT_REPORTS) {
+        throw new BadRequestError({
+          message: `This organization already has ${MAX_CONCURRENT_AUDIT_REPORTS} reports in progress. Please wait for them to finish.`
+        });
+      }
+
+      return auditReportDAL.create(
+        {
+          orgId: actor.orgId,
+          requestedByUserId: actor.id,
+          status: AuditReportStatus.Pending,
+          // jsonb columns must be serialized before insert — pg otherwise treats a top-level JS array as a
+          // Postgres array literal rather than a JSON value.
+          reportConfigs: JSON.stringify(reportConfigs),
+          emailRecipients
+        },
+        tx
+      );
+    });
+
+    await queueService.queue(
+      QueueName.AuditReportGeneration,
+      QueueJobs.GenerateAuditReport,
+      { auditReportId: report.id },
+      {
+        jobId: `audit-report-${report.id}`,
+        attempts: 3,
+        backoff: { type: "exponential", delay: 5000 },
+        removeOnComplete: true,
+        removeOnFail: true
+      }
+    );
+
+    logger.info(`Org audit report requested [auditReportId=${report.id}] [orgId=${actor.orgId}]`);
+
+    return presentOrgAuditReport(report);
+  };
+
+  const listOrgReports = async (dto: TListOrgAuditReportsDTO, actor: TAuditReportServiceActor) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+    if (!plan.secretAccessInsights) {
+      throw new BadRequestError({
+        message: "Audit reports are not available on your plan. Please upgrade to access audit reports."
+      });
+    }
+
+    const permission = await $getOrgInsightsPermission(actor);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionSecretsManagementInsightsActions.Read,
+      OrgPermissionSubjects.SecretsManagementInsights
+    );
+
+    const reports = await auditReportDAL.findByOrg(actor.orgId, { offset: dto.offset, limit: dto.limit });
+    const totalCount = await auditReportDAL.countByOrg(actor.orgId);
+    return { reports: reports.map(presentOrgAuditReport), totalCount };
+  };
+
+  const deleteOrgReport = async (auditReportId: string, actor: TAuditReportServiceActor) => {
+    const report = await auditReportDAL.findById(auditReportId);
+
+    // A missing report, a project-scoped report, and another org's report all present as not found,
+    // so report ids cannot be probed across scopes or tenants.
+    if (!report || !report.orgId || report.orgId !== actor.orgId) {
+      throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
+    }
+
+    const permission = await $getOrgInsightsPermission(actor);
+    if (
+      !permission.can(
+        OrgPermissionSecretsManagementInsightsActions.DeleteReport,
+        OrgPermissionSubjects.SecretsManagementInsights
+      )
+    ) {
+      throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
+    }
+
+    await auditReportDAL.deleteById(report.id);
+    return presentOrgAuditReport(report);
+  };
+
   return {
     generateReport,
     listReports,
     getReportById,
-    deleteReport
+    deleteReport,
+    generateOrgReport,
+    listOrgReports,
+    deleteOrgReport
   };
 };

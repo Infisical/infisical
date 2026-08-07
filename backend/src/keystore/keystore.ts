@@ -39,6 +39,7 @@ export const PgSqlLock = {
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
   LastAdminGuard: (scope: "org", scopeId: string) => pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
   AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
+  OrgAuditReportRequest: (orgId: string) => pgAdvisoryLockHashText(`audit-report-request:org:${orgId}`),
   OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`)
 } as const;
 
@@ -142,7 +143,9 @@ export const KeyStorePrefixes = {
   EmailSignupOtpHash: (hash: string) => `email-signup-otp:${hash}:hash` as const,
   EmailSignupOtpLock: (hash: string) => `email-signup-otp:${hash}:lock` as const,
   EmailSignupResendCooldown: (hash: string) => `email-signup-otp:${hash}:cd` as const,
-  InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const,
+  // scopeId is a projectId for the per-project dashboard and an orgId for the org-wide aggregates. Both are
+  // UUIDs and the endpoint segments do not overlap, so one prefix serves both without collision.
+  InsightsCache: (scopeId: string, endpoint: string) => `insights-cache:${scopeId}:${endpoint}` as const,
 
   AdminConfig: "infisical-admin-cfg",
   UpdateCheckLatestVersion: "update-check-latest-version",
@@ -197,6 +200,8 @@ export const KeyStoreTtls = {
   EmailSignupResendCooldownInSeconds: 60, // 1 minute
   InsightsCacheInSeconds: 300, // 5 minutes
   InsightsDuplicationCacheInSeconds: 3600, // 1 hour
+  InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
+  InsightsOrgCacheInSeconds: 900, // 15 minutes
   AdminConfigInSeconds: 60,
   UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
