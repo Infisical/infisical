@@ -153,17 +153,19 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
         }
       });
 
-      await server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.CertManagerMemberAdded,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: {
-          orgId: req.permission.orgId,
-          projectId,
-          memberType: "user",
-          role: (req.body.roleSlugs || [ProjectMembershipRole.Member]).join(",")
-        }
-      });
+      if (memberships.length) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.CertManagerMemberAdded,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            orgId: req.permission.orgId,
+            projectId,
+            memberType: "user",
+            role: (req.body.roleSlugs || [ProjectMembershipRole.Member]).join(",")
+          }
+        });
+      }
 
       return {
         memberships: memberships.map((el) => ({ ...el, userId: el.actorUserId as string }))
@@ -264,16 +266,18 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
           }
         }
       });
-      await server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.CertManagerMemberRemoved,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: {
-          orgId: req.permission.orgId,
-          projectId,
-          memberType: "user"
-        }
-      });
+      if (memberships.length) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.CertManagerMemberRemoved,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            orgId: req.permission.orgId,
+            projectId,
+            memberType: "user"
+          }
+        });
+      }
       return {
         memberships: memberships.map((el) => ({ ...el, userId: el.actorUserId as string }))
       };
