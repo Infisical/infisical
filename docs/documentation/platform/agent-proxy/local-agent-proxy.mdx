@@ -185,6 +185,8 @@ On Linux, `run` checks the sandbox before starting your agent. If the private ne
 
 Under both enforced modes the agent has exactly one route to the outside, the proxy. Direct connections fail, including connections straight to an IP with no hostname involved. Only HTTP and HTTPS are brokered, so SSH cannot be: use HTTPS with a brokered token, which is how `git` and `gh` work.
 
+WebSockets go through the proxy like anything else, so an agent that opens a real-time connection is brokered rather than blocked. See [WebSockets](/documentation/platform/agent-proxy/proxied-services#websockets) for which parts of a connection can carry a credential.
+
 **DNS is deliberately unavailable inside the sandbox.** The agent does not need a resolver: it hands the hostname to the proxy in a `CONNECT` or an absolute-URI request, and the proxy resolves it on the host, outside the sandbox. Blocking it buys two things. A tool that ignores the proxy variables fails loudly instead of quietly going direct, and DNS lookups cannot be used to smuggle data out. So `Could not resolve host` inside a sandboxed agent is expected, and it means the failing tool is not using the proxy.
 
 Both letter cases of every proxy variable are set (`HTTP_PROXY` and `http_proxy`, and so on), because some tools read only one, and `NO_PROXY` always covers `localhost` and `127.0.0.1`.
