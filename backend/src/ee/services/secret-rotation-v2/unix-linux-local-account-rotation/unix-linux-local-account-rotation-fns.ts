@@ -16,8 +16,8 @@ import {
   SshConnectionMethod,
   TSshConnectionConfig
 } from "@app/services/app-connection/ssh";
-
 import { generatePasswordWithConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-password-generator";
+
 import { generatePassword } from "../shared/utils";
 import { UnixLinuxLocalAccountRotationMethod } from "./unix-linux-local-account-rotation-schemas";
 import {
@@ -308,7 +308,15 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   TUnixLinuxLocalAccountRotationWithConnection,
   TUnixLinuxLocalAccountRotationGeneratedCredentials,
   TUnixLinuxLocalAccountRotationInput["temporaryParameters"]
-> = (secretRotation, appConnectionDAL, kmsService, _gatewayService, gatewayV2Service, gatewayPoolService, passwordValidationContext) => {
+> = (
+  secretRotation,
+  appConnectionDAL,
+  kmsService,
+  _gatewayService,
+  gatewayV2Service,
+  gatewayPoolService,
+  passwordValidationContext
+) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const {
     username,

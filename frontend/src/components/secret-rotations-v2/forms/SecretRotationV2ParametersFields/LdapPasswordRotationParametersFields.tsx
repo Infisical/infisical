@@ -5,11 +5,11 @@ import { DEFAULT_PASSWORD_REQUIREMENTS } from "@app/components/secret-rotations-
 import { ValidationRuleOverrideNotice } from "@app/components/secret-validation/ValidationRuleOverrideNotice";
 import { FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ldap-password-rotation";
 import {
   SecretRotationRuleProvider,
   SecretValidationRuleType
 } from "@app/hooks/api/secretValidationRules";
-import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ldap-password-rotation";
 
 export const LdapPasswordRotationParametersFields = () => {
   const { control, watch, setValue } = useFormContext<

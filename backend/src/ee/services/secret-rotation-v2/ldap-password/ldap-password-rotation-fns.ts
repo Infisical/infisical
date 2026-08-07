@@ -23,7 +23,6 @@ import {
   normalizeLdapUrl,
   TLdapConnection
 } from "@app/services/app-connection/ldap";
-
 import { generatePasswordWithConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-password-generator";
 
 import { generatePassword } from "../shared/utils";
@@ -112,7 +111,15 @@ export const ldapPasswordRotationFactory: TRotationFactory<
   TLdapPasswordRotationWithConnection,
   TLdapPasswordRotationGeneratedCredentials,
   TLdapPasswordRotationInput["temporaryParameters"]
-> = (secretRotation, appConnectionDAL, kmsService, gatewayService, gatewayV2Service, gatewayPoolService, passwordValidationContext) => {
+> = (
+  secretRotation,
+  appConnectionDAL,
+  kmsService,
+  gatewayService,
+  gatewayV2Service,
+  gatewayPoolService,
+  passwordValidationContext
+) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
 
   const { dn, passwordRequirements } = parameters;

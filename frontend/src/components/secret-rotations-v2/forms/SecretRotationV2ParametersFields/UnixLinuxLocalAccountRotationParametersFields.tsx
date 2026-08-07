@@ -5,11 +5,11 @@ import { DEFAULT_PASSWORD_REQUIREMENTS } from "@app/components/secret-rotations-
 import { ValidationRuleOverrideNotice } from "@app/components/secret-validation/ValidationRuleOverrideNotice";
 import { Checkbox, FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 import {
   SecretRotationRuleProvider,
   SecretValidationRuleType
 } from "@app/hooks/api/secretValidationRules";
-import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/unix-linux-local-account-rotation";
 
 export const UnixLinuxLocalAccountRotationParametersFields = () => {
   const { control, watch, setValue } = useFormContext<
