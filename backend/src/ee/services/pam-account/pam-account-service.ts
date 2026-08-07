@@ -872,7 +872,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     return {
       accounts: accounts.map((a) => {
-        const { requiresApproval, requireReason } = resolveAccessControls(a.templatePolicies);
+        const { requiresApproval, requireReason, requireMfa } = resolveAccessControls(a.templatePolicies);
         const statusEntry = accessStatusMap.get(a.id);
         const hasPolicyConfigured = a.folderId ? foldersWithApprovalPolicy.has(a.folderId) : false;
         let disabledReason: string | null = null;
@@ -893,6 +893,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           canLaunch: launchAccountIds.has(a.id) || (!!a.folderId && launchFolderIds.has(a.folderId)),
           requiresApproval,
           requireReason,
+          // Machine identities cannot satisfy MFA, so launch rejects them outright (see
+          // pam-session-service). Callers acting as an identity should treat this as unusable.
+          requireMfa,
           accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
           grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
           disabledReason,
