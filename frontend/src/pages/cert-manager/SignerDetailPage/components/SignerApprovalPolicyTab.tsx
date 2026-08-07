@@ -213,7 +213,8 @@ export const SignerApprovalPolicyTab = ({ signerId }: Props) => {
                       <p className="w-fit cursor-help text-[11px] text-muted">Max window</p>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
-                      After approval is granted, how long signing is allowed before it expires.
+                      The longest signing window a request can ask for. The window runs from the
+                      time the request is opened.
                     </TooltipContent>
                   </Tooltip>
                   <p className="mt-0.5 text-xs text-foreground">

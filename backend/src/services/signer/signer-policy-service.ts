@@ -29,6 +29,12 @@ import {
   TApprovalRequestStepsDALFactory
 } from "../approval-policy/approval-request-dal";
 import { createApprovalRequestWithSteps, notifyStepApprovers } from "../approval-policy/approval-request-fns";
+import { CodeSigningScopeField } from "../approval-policy/code-signing/code-signing-policy-enums";
+import {
+  isSameRequestedSigningWindow,
+  normalizeCodeSigningScope
+} from "../approval-policy/code-signing/code-signing-policy-fns";
+import { TCodeSigningRequestData, TCodeSigningScope } from "../approval-policy/code-signing/code-signing-policy-types";
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
@@ -226,6 +232,53 @@ export const signerPolicyServiceFactory = ({
     }
 
     return { effectiveSignings, effectiveWindowStart, effectiveWindowEnd };
+  };
+
+  const $findDuplicatePendingRequest = async ({
+    policyId,
+    signerId,
+    actor,
+    actorId,
+    scope,
+    effectiveSignings,
+    effectiveWindowStart,
+    effectiveWindowEnd
+  }: {
+    policyId: string;
+    signerId: string;
+    actor: TRequestToSignDTO["actor"];
+    actorId: string;
+    scope: TCodeSigningScope;
+    effectiveSignings?: number;
+    effectiveWindowStart?: string;
+    effectiveWindowEnd?: string;
+  }) => {
+    const isHumanRequester = actor === ActorType.USER;
+    const pendingRequests = await approvalRequestDAL.find({
+      policyId,
+      status: ApprovalRequestStatus.Pending,
+      scopeType: ApprovalPolicyScope.Signer,
+      scopeId: signerId,
+      ...(isHumanRequester ? { requesterId: actorId } : { machineIdentityId: actorId })
+    });
+
+    return pendingRequests.find((request) => {
+      const requestData = (request.requestData as { requestData?: TCodeSigningRequestData } | null)?.requestData;
+      const pendingScope = requestData?.scope;
+      if (!pendingScope) return false;
+
+      if ((requestData?.requestedSignings ?? null) !== (effectiveSignings ?? null)) return false;
+      const sameWindow = isSameRequestedSigningWindow(
+        isHumanRequester,
+        { start: requestData?.requestedWindowStart, end: requestData?.requestedWindowEnd },
+        { start: effectiveWindowStart, end: effectiveWindowEnd }
+      );
+      if (!sameWindow) return false;
+
+      return Object.values(CodeSigningScopeField).every(
+        (field) => (pendingScope[field] ?? null) === (scope[field] ?? null)
+      );
+    });
   };
 
   const $resolveGranteeEffectiveRoles = async ({
@@ -569,6 +622,21 @@ export const signerPolicyServiceFactory = ({
         requestedWindowEnd: dto.requestedWindowEnd
       }
     );
+    const scope = normalizeCodeSigningScope(dto.scope);
+
+    if (scope) {
+      const duplicate = await $findDuplicatePendingRequest({
+        policyId: policy.id,
+        signerId: signer.id,
+        actor: dto.actor,
+        actorId: dto.actorId,
+        scope,
+        effectiveSignings,
+        effectiveWindowStart,
+        effectiveWindowEnd
+      });
+      if (duplicate) return duplicate;
+    }
 
     const requester = await $resolveActorDisplay({
       userId: dto.actor === ActorType.USER ? dto.actorId : null,
@@ -591,7 +659,8 @@ export const signerPolicyServiceFactory = ({
           justification: dto.justification,
           requestedSignings: effectiveSignings,
           requestedWindowStart: effectiveWindowStart,
-          requestedWindowEnd: effectiveWindowEnd
+          requestedWindowEnd: effectiveWindowEnd,
+          scope
         },
         justification: dto.justification,
         requesterUserId: dto.actor === ActorType.USER ? dto.actorId : null,
@@ -656,6 +725,7 @@ export const signerPolicyServiceFactory = ({
         requestedWindowEnd: dto.requestedWindowEnd
       }
     );
+    const scope = normalizeCodeSigningScope(dto.scope);
 
     const granteeRoles = await $resolveGranteeEffectiveRoles({
       projectId: signer.projectId,
@@ -702,7 +772,8 @@ export const signerPolicyServiceFactory = ({
               justification: dto.justification,
               requestedSignings: effectiveSignings,
               requestedWindowStart: effectiveWindowStart,
-              requestedWindowEnd: effectiveWindowEnd
+              requestedWindowEnd: effectiveWindowEnd,
+              scope
             }
           }
         },
@@ -721,7 +792,8 @@ export const signerPolicyServiceFactory = ({
             signerId: signer.id,
             signerName: signer.name,
             maxSignings: effectiveSignings,
-            windowStart: effectiveWindowStart
+            windowStart: effectiveWindowStart,
+            scope
           },
           expiresAt: effectiveWindowEnd ? new Date(effectiveWindowEnd) : null
         },
