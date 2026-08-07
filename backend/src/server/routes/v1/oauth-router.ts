@@ -87,7 +87,9 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
             clientDbId: client.id,
             clientId: client.clientId,
             name: client.name,
-            grantTypes: client.grantTypes
+            grantTypes: client.grantTypes,
+            tokenExchangeAudience: client.tokenExchangeAudience,
+            tokenExchangeIdpSatisfiesMfa: client.tokenExchangeIdpSatisfiesMfa
           }
         }
       });
@@ -414,15 +416,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/token",
     config: {
-      rateLimit: oauthTokenLimit({
-        keyGenerator: (req) => {
-          const suppliedClientId = (req.body as { client_id?: unknown } | undefined)?.client_id;
-          const clientId =
-            parseBasicAuthHeader(req.headers.authorization)?.clientId ??
-            (typeof suppliedClientId === "string" ? suppliedClientId : undefined);
-          return clientId ? `${req.realIp}:${clientId.slice(0, 256)}` : req.realIp;
-        }
-      })
+      rateLimit: oauthTokenLimit
     },
     schema: {
       body: z.object({
