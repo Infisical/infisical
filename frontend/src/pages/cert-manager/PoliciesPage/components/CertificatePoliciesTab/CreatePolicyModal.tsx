@@ -16,8 +16,14 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-  IconButton,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
   Select,
   SelectContent,
   SelectItem,
@@ -31,10 +37,7 @@ import {
   StepperList,
   StepperStep,
   Switch,
-  TextArea,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TextArea
 } from "@app/components/v3";
 import { useProject, useSubscription } from "@app/context";
 import {
@@ -67,20 +70,12 @@ import {
   SUBJECT_ATTRIBUTE_TYPE_OPTIONS
 } from "./shared/certificate-constants";
 import { CERTIFICATE_POLICY_PRESETS } from "./shared/policy-presets";
-import {
-  formatDomainComponentSequence,
-  isValidDomainComponentSequence,
-  parseDomainComponentSequence,
-  PolicyFormData,
-  policySchema
-} from "./shared";
+import { isValidDomainComponentSequence, PolicyFormData, policySchema } from "./shared";
 
 export type FormData = PolicyFormData;
 
 type AttributeRow = NonNullable<FormData["attributes"]>[number];
 type AttributeTransform = NonNullable<TCertificatePolicyRule["subject"]>[0];
-type DomainComponentTransform = Extract<AttributeTransform, { type: "domain_component" }>;
-type SingleValuedAttributeTransform = Exclude<AttributeTransform, DomainComponentTransform>;
 type SanTransform = NonNullable<TCertificatePolicyRule["sans"]>[0];
 type KeyUsagesTransform = TCertificatePolicyRule["keyUsages"];
 type ExtendedKeyUsagesTransform = TCertificatePolicyRule["extendedKeyUsages"];
@@ -103,6 +98,38 @@ const ATTRIBUTE_TYPE_LABELS: Record<(typeof SUBJECT_ATTRIBUTE_TYPE_OPTIONS)[numb
   state: "State/Province (ST)",
   locality: "Locality (L)",
   domain_component: "Domain Component (DC)"
+};
+
+const ATTRIBUTE_TYPE_ABBREVIATIONS: Record<
+  (typeof SUBJECT_ATTRIBUTE_TYPE_OPTIONS)[number],
+  string
+> = {
+  common_name: "CN",
+  organization: "O",
+  organizational_unit: "OU",
+  country: "C",
+  state: "ST",
+  locality: "L",
+  domain_component: "DC"
+};
+
+const ATTRIBUTE_TYPE_PLACEHOLDERS: Record<(typeof SUBJECT_ATTRIBUTE_TYPE_OPTIONS)[number], string> =
+  {
+    common_name: "*.example.com",
+    organization: "Acme Inc.",
+    organizational_unit: "Engineering",
+    country: "US",
+    state: "California",
+    locality: "San Francisco",
+    domain_component: "corp,example,com"
+  };
+
+const SAN_TYPE_PLACEHOLDERS: Record<(typeof SAN_TYPE_OPTIONS)[number], string> = {
+  dns_name: "*.example.com",
+  ip_address: "10.0.0.1",
+  email: "admin@example.com",
+  uri: "spiffe://example.com/service",
+  upn: "user@example.com"
 };
 
 const SAN_TYPE_LABELS: Record<(typeof SAN_TYPE_OPTIONS)[number], string> = {
@@ -216,39 +243,84 @@ const STEPS = [
   }
 ] as const;
 
+const SUBJECT_INCLUDE_VERBS: Record<CertSubjectAttributeInclude, string> = {
+  [CertSubjectAttributeInclude.REQUIRED]: "Requires",
+  [CertSubjectAttributeInclude.OPTIONAL]: "Allows",
+  [CertSubjectAttributeInclude.PROHIBIT]: "Denies"
+};
+
+const AttributeRulePreview = ({
+  type,
+  include,
+  value
+}: {
+  type: CertSubjectAttributeType;
+  include: CertSubjectAttributeInclude;
+  value: string;
+}) => {
+  const trimmed = value.trim();
+  const verb = SUBJECT_INCLUDE_VERBS[include];
+  const isDenyRule = include === CertSubjectAttributeInclude.PROHIBIT;
+
+  if (type !== CertSubjectAttributeType.DOMAIN_COMPONENT || !trimmed) return null;
+
+  if (!isValidDomainComponentSequence(trimmed)) {
+    return (
+      <p className="mt-2 pl-1 text-2xs text-danger">
+        Every component must be non-empty, for example corp,example,com.
+      </p>
+    );
+  }
+
+  const chain = trimmed.split(",").map((component) => component.trim());
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-1 text-2xs text-muted">
+      <span>{verb}</span>
+      <span className="font-mono text-label">
+        {chain.map((component) => `DC=${component}`).join(",")}
+      </span>
+      <span>
+        {isDenyRule ? "wherever they appear in the chain" : chain.length > 1 ? "in this order" : ""}
+      </span>
+    </div>
+  );
+};
+
 const DomainComponentHelp = ({ isDenyRule }: { isDenyRule: boolean }) => (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <IconButton variant="ghost" size="xs" aria-label="Domain component format">
-        <Info className="size-4" />
-      </IconButton>
-    </TooltipTrigger>
-    <TooltipContent side="top" align="start" className="max-w-80 py-2">
+  <HoverCard openDelay={150} closeDelay={150}>
+    <HoverCardTrigger asChild>
+      <InputGroupButton aria-label="Domain component format">
+        <Info />
+      </InputGroupButton>
+    </HoverCardTrigger>
+    <HoverCardContent side="bottom" align="end" className="w-96">
       <p>
         Domain components form an ordered chain. Enter the components most specific first, separated
         by commas.
       </p>
-      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-        <dt className="text-muted">Value</dt>
+      <dl className="mt-2.5 grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-1">
+        <dt className="whitespace-nowrap text-muted">Value</dt>
         <dd className="font-mono">corp,example,com</dd>
-        <dt className="text-muted">{isDenyRule ? "Rejects" : "Matches"}</dt>
+        <dt className={`whitespace-nowrap ${isDenyRule ? "text-danger" : "text-success"}`}>
+          {isDenyRule ? "Rejects" : "Matches"}
+        </dt>
         <dd className="font-mono">DC=corp,DC=example,DC=com</dd>
-        <dt className="text-muted">{isDenyRule ? "Also rejects" : "Rejects"}</dt>
+        <dt className="whitespace-nowrap text-danger">{isDenyRule ? "Also rejects" : "Rejects"}</dt>
         <dd className="font-mono">
           {isDenyRule ? "DC=host,DC=corp,DC=example,DC=com" : "DC=com,DC=example,DC=corp"}
         </dd>
       </dl>
-      <p className="mt-2">
+      <p className="mt-2.5">
         {isDenyRule
           ? "A denied chain is rejected wherever it appears, so denying a domain denies everything under it."
           : "A request matches only when its components line up position by position."}
       </p>
       <p className="mt-2">
-        A <span className="font-mono">*</span> matches a single component:{" "}
+        A <span className="font-mono text-accent">*</span> matches a single component:{" "}
         <span className="font-mono">*,internal,example,com</span>.
       </p>
-    </TooltipContent>
-  </Tooltip>
+    </HoverCardContent>
+  </HoverCard>
 );
 
 const DurationInput = ({
@@ -385,16 +457,10 @@ export const CreatePolicyModal = ({
 
   const toAttributeRows = (
     type: CertSubjectAttributeType,
-    values: Array<string | string[]> | undefined,
+    values: string[] | undefined,
     include: CertSubjectAttributeInclude
   ): AttributeRow[] =>
-    Array.isArray(values)
-      ? values.map((value) => ({
-          type,
-          include,
-          value: [Array.isArray(value) ? formatDomainComponentSequence(value) : value]
-        }))
-      : [];
+    Array.isArray(values) ? values.map((value) => ({ type, include, value: [value] })) : [];
 
   const convertApiToUiFormat = (policyData: TCertificatePolicy): FormData => {
     const attributes: FormData["attributes"] = Array.isArray(policyData.subject)
@@ -634,23 +700,17 @@ export const CreatePolicyModal = ({
     }
   };
 
-  const mergeRuleValues = <TValue extends string | string[]>(
-    existing: TValue[] | undefined,
-    incoming: TValue[] | undefined
-  ): TValue[] => {
-    const merged = new Map<string, TValue>();
-    [...(existing || []), ...(incoming || [])].forEach((value) => {
-      merged.set(Array.isArray(value) ? formatDomainComponentSequence(value) : value, value);
-    });
-    return Array.from(merged.values());
-  };
+  const mergeRuleValues = (
+    existing: string[] | undefined,
+    incoming: string[] | undefined
+  ): string[] => Array.from(new Set([...(existing || []), ...(incoming || [])]));
 
   const consolidateByType = <
     T extends {
       type: string;
-      allowed?: Array<string | string[]>;
-      required?: Array<string | string[]>;
-      denied?: Array<string | string[]>;
+      allowed?: string[];
+      required?: string[];
+      denied?: string[];
     }
   >(
     items: T[]
@@ -685,22 +745,11 @@ export const CreatePolicyModal = ({
       data.attributes?.map((attr): AttributeTransform => {
         const ruleKey = SUBJECT_INCLUDE_RULE_KEYS[attr.include];
 
-        if (attr.type === CertSubjectAttributeType.DOMAIN_COMPONENT) {
-          const sequences = (attr.value || [])
-            .map(parseDomainComponentSequence)
-            .filter((sequence) => sequence.length > 0);
-
-          return {
-            type: attr.type,
-            ...(sequences.length > 0 ? { [ruleKey]: sequences } : {})
-          } as DomainComponentTransform;
-        }
-
         const values = attr.value || [];
         return {
           type: attr.type,
           ...(values.length > 0 ? { [ruleKey]: values } : {})
-        } as SingleValuedAttributeTransform;
+        } as AttributeTransform;
       }) || [];
 
     const sansRaw =
@@ -850,7 +899,7 @@ export const CreatePolicyModal = ({
       {
         type: SUBJECT_ATTRIBUTE_TYPE_OPTIONS[0],
         include: SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS[1],
-        value: ["*"]
+        value: []
       }
     ]);
     clearError("subject");
@@ -868,7 +917,7 @@ export const CreatePolicyModal = ({
   const addSan = () => {
     setValue("subjectAlternativeNames", [
       ...watchedSans,
-      { type: SAN_TYPE_OPTIONS[0], include: SAN_INCLUDE_OPTIONS[1], value: ["*"] }
+      { type: SAN_TYPE_OPTIONS[0], include: SAN_INCLUDE_OPTIONS[1], value: [] }
     ]);
     clearError("sans");
     markCustomPreset();
@@ -1042,7 +1091,7 @@ export const CreatePolicyModal = ({
         onClose();
       }}
     >
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-[1100px]">
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-[1260px]">
         <SheetHeader className="border-b border-border">
           <SheetTitle>
             <div className="flex w-full items-start gap-2">
@@ -1182,7 +1231,7 @@ export const CreatePolicyModal = ({
                       markCustomPreset();
                     }}
                   >
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {watchedAttributes.length === 0 && (
                         <p className="text-xs text-muted">
                           No attributes configured. Certificates issued under this policy cannot
@@ -1192,7 +1241,7 @@ export const CreatePolicyModal = ({
                       )}
                       {watchedAttributes.map((attr, index) => (
                         // eslint-disable-next-line react/no-array-index-key
-                        <div key={`attr-${index}`} className="space-y-2">
+                        <div key={`attr-${index}`}>
                           <div className="flex items-center gap-2">
                             <Select
                               value={attr.type}
@@ -1203,8 +1252,8 @@ export const CreatePolicyModal = ({
                                 markCustomPreset();
                               }}
                             >
-                              <SelectTrigger className="min-w-0 flex-1">
-                                <SelectValue />
+                              <SelectTrigger className="w-18 shrink-0" aria-label="Attribute type">
+                                {ATTRIBUTE_TYPE_ABBREVIATIONS[attr.type]}
                               </SelectTrigger>
                               <SelectContent position="popper">
                                 {SUBJECT_ATTRIBUTE_TYPE_OPTIONS.map((type) => (
@@ -1227,7 +1276,7 @@ export const CreatePolicyModal = ({
                                 markCustomPreset();
                               }}
                             >
-                              <SelectTrigger className="w-32 shrink-0">
+                              <SelectTrigger className="w-24 shrink-0">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent position="popper">
@@ -1238,11 +1287,30 @@ export const CreatePolicyModal = ({
                                 ))}
                               </SelectContent>
                             </Select>
-                            {attr.type === CertSubjectAttributeType.DOMAIN_COMPONENT && (
-                              <DomainComponentHelp
-                                isDenyRule={attr.include === CertSubjectAttributeInclude.PROHIBIT}
+                            <InputGroup className="min-w-0 flex-1">
+                              <InputGroupInput
+                                placeholder={ATTRIBUTE_TYPE_PLACEHOLDERS[attr.type]}
+                                value={attr.value?.[0] || ""}
+                                onChange={(e) => {
+                                  const next = [...watchedAttributes];
+                                  next[index] = {
+                                    ...attr,
+                                    value: e.target.value.trim() ? [e.target.value.trim()] : []
+                                  };
+                                  setValue("attributes", next);
+                                  markCustomPreset();
+                                }}
                               />
-                            )}
+                              {attr.type === CertSubjectAttributeType.DOMAIN_COMPONENT && (
+                                <InputGroupAddon align="inline-end">
+                                  <DomainComponentHelp
+                                    isDenyRule={
+                                      attr.include === CertSubjectAttributeInclude.PROHIBIT
+                                    }
+                                  />
+                                </InputGroupAddon>
+                              )}
+                            </InputGroup>
                             <Button
                               type="button"
                               variant="ghost"
@@ -1253,23 +1321,10 @@ export const CreatePolicyModal = ({
                               <Trash2 className="size-4" />
                             </Button>
                           </div>
-                          <Input
-                            placeholder={
-                              attr.type === CertSubjectAttributeType.DOMAIN_COMPONENT
-                                ? "corp,example,com"
-                                : "Pattern/Value (use * for wildcards)"
-                            }
+                          <AttributeRulePreview
+                            type={attr.type}
+                            include={attr.include}
                             value={attr.value?.[0] || ""}
-                            onChange={(e) => {
-                              const next = [...watchedAttributes];
-                              next[index] = {
-                                ...attr,
-                                value: e.target.value.trim() ? [e.target.value.trim()] : []
-                              };
-                              setValue("attributes", next);
-                              markCustomPreset();
-                            }}
-                            className="w-full"
                           />
                         </div>
                       ))}
@@ -1348,7 +1403,7 @@ export const CreatePolicyModal = ({
                             </SelectContent>
                           </Select>
                           <Input
-                            placeholder="Pattern/Value (use * for wildcards)"
+                            placeholder={SAN_TYPE_PLACEHOLDERS[san.type]}
                             value={san.value?.[0] || ""}
                             onChange={(e) => {
                               const next = [...watchedSans];

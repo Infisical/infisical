@@ -19,22 +19,16 @@ export type TSingleValuedSubjectAttributeType = Exclude<
   CertSubjectAttributeType.DOMAIN_COMPONENT
 >;
 
-export interface TSingleValuedSubjectRule {
-  type: TSingleValuedSubjectAttributeType;
+/**
+ * A domain component rule's values are comma-joined ordered sequences ("corp,example,com"), one per
+ * entry, matched position by position. Every other attribute type takes plain patterns.
+ */
+export interface TSubjectRule {
+  type: CertSubjectAttributeType;
   allowed?: string[];
   required?: string[];
   denied?: string[];
 }
-
-/** Each entry is one ordered sequence of per-component patterns, matched position by position. */
-export interface TDomainComponentSubjectRule {
-  type: CertSubjectAttributeType.DOMAIN_COMPONENT;
-  allowed?: string[][];
-  required?: string[][];
-  denied?: string[][];
-}
-
-export type TSubjectRule = TSingleValuedSubjectRule | TDomainComponentSubjectRule;
 
 export interface TTemplateV2Policy {
   subject?: TSubjectRule[];

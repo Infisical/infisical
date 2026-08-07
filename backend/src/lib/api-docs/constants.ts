@@ -2125,9 +2125,9 @@ export const CERTIFICATES = {
 };
 
 const domainComponentRule = (rule: string) =>
-  `Domain component sequences that are ${rule}, each ordered as the distinguished name reads it, most specific component first: [["*", "example", "com"]] matches DC=host,DC=example,DC=com. A request matches a sequence only when its components line up position by position, so the same labels in another order do not match. A flat list of labels is read as the single sequence it describes.`;
+  `Domain component sequences that are ${rule}. Each entry is one sequence, its components comma-joined most specific first: "corp,example,com" matches DC=corp,DC=example,DC=com. A request matches a sequence only when its components line up position by position, so the same labels in another order do not match.`;
 
-const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each ordered as the distinguished name reads it, most specific component first. A sequence is rejected wherever it appears in the chain, so [["example", "com"]] rejects DC=example,DC=com and DC=host,DC=example,DC=com alike. A flat list of labels rejects each label on its own, wherever it appears.`;
+const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.`;
 
 export const CERTIFICATE_POLICIES = {
   SUBJECT_DOMAIN_COMPONENT_RULE: {

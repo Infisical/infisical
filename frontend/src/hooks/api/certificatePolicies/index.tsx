@@ -13,7 +13,6 @@ export type {
   TCertificatePolicyRule,
   TCreateCertificatePolicyDTO,
   TDeleteCertificatePolicyDTO,
-  TDomainComponentSubjectRule,
   TGetCertificatePolicyByIdDTO,
   TListCertificatePoliciesDTO,
   TSubjectRule,

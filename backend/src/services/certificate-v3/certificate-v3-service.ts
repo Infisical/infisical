@@ -1140,13 +1140,13 @@ export const certificateV3ServiceFactory = ({
 
     if (policy.algorithms?.keyAlgorithm && !effectiveKeyAlgorithm) {
       throw new BadRequestError({
-        message: "Key algorithm is required by template policy but not provided in request"
+        message: "Key algorithm is required by this policy but not provided in request"
       });
     }
 
     if (policy.algorithms?.signature && !effectiveSignatureAlgorithm) {
       throw new BadRequestError({
-        message: "Signature algorithm is required by template policy but not provided in request"
+        message: "Signature algorithm is required by this policy but not provided in request"
       });
     }
 

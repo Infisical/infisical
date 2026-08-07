@@ -1,21 +1,22 @@
 import { CertPolicyState } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
-export type TSingleValuedSubjectRule = {
-  type: "common_name" | "organization" | "country" | "state" | "locality" | "organizational_unit";
+/**
+ * A domain_component rule's values are comma-joined ordered sequences ("corp,example,com"), one per
+ * entry. Every other attribute type takes plain patterns.
+ */
+export type TSubjectRule = {
+  type:
+    | "common_name"
+    | "organization"
+    | "country"
+    | "state"
+    | "locality"
+    | "organizational_unit"
+    | "domain_component";
   allowed?: string[];
   required?: string[];
   denied?: string[];
 };
-
-/** Each entry is one ordered sequence of patterns, matched position by position. */
-export type TDomainComponentSubjectRule = {
-  type: "domain_component";
-  allowed?: string[][];
-  required?: string[][];
-  denied?: string[][];
-};
-
-export type TSubjectRule = TSingleValuedSubjectRule | TDomainComponentSubjectRule;
 
 export type TCertificatePolicyRule = {
   subject?: TSubjectRule[];

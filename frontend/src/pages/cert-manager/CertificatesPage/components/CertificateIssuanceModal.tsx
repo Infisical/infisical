@@ -281,6 +281,7 @@ export const CertificateIssuanceModal = ({
     reset,
     watch,
     setValue,
+    trigger,
     formState,
     formState: { isSubmitting }
   } = useForm<FormData>({
@@ -539,10 +540,24 @@ export const CertificateIssuanceModal = ({
   const selectedProfileReady = Boolean(profileId || actualSelectedProfileId);
 
   const goBack = () => setStep((s) => Math.max(0, s - 1));
-  const goNext = () => {
+  const goNext = async () => {
     if (currentStepKey === "profile" && !selectedProfileReady) return;
+
+    const isStepValid = await trigger(STEP_FIELDS[currentStepKey] as (keyof FormData)[]);
+    if (!isStepValid) {
+      createNotification({ text: "Fix the errors on this step to continue.", type: "error" });
+      return;
+    }
+
     setStep((s) => Math.min(stepKeys.length - 1, s + 1));
   };
+
+  const rowErrorsOf = (fieldErrors: unknown): (string | undefined)[] | undefined =>
+    Array.isArray(fieldErrors)
+      ? (fieldErrors as ({ value?: { message?: string } } | undefined)[]).map(
+          (rowError) => rowError?.value?.message
+        )
+      : undefined;
 
   const onFormInvalid = (errors: Record<string, unknown>) => {
     const errorKeys = Object.keys(errors);
@@ -750,6 +765,9 @@ export const CertificateIssuanceModal = ({
                           (formState.errors as { subjectAttributes?: { message?: string } })
                             .subjectAttributes?.message
                         }
+                        rowErrors={rowErrorsOf(
+                          (formState.errors as { subjectAttributes?: unknown }).subjectAttributes
+                        )}
                       />
                     )}
 

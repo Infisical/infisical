@@ -1,7 +1,7 @@
 import RE2 from "re2";
 
 import { CertSubjectAttributeType } from "../certificate-common/certificate-constants";
-import { TDomainComponentSubjectRule, TSubjectRule } from "./certificate-policy-types";
+import { TSubjectRule } from "./certificate-policy-types";
 
 export const isWildcardPattern = (value: string): boolean => value.includes("*");
 
@@ -24,11 +24,17 @@ export const matchesNormalizedPattern = (value: string, pattern: string): boolea
   }
 };
 
-export const isDomainComponentRule = (rule: TSubjectRule): rule is TDomainComponentSubjectRule =>
+export const isDomainComponentRule = (rule: TSubjectRule): boolean =>
   rule.type === CertSubjectAttributeType.DOMAIN_COMPONENT;
 
-export const formatDomainComponentSequence = (sequence: string[]): string =>
+const formatDomainComponentSequence = (sequence: string[]): string =>
   sequence.map((component) => `DC=${component}`).join(",");
+
+const parseDomainComponentSequence = (value: string): string[] =>
+  value
+    .split(",")
+    .map((component) => component.trim())
+    .filter((component) => component.length > 0);
 
 const formatDomainComponentSequences = (sequences: string[][]): string =>
   sequences.map((sequence) => `'${formatDomainComponentSequence(sequence)}'`).join(", ");
@@ -55,36 +61,6 @@ const containsSequence = (requestSequence: string[], policySequence: string[]): 
 const containsAnySequence = (requestSequence: string[], policySequences: string[][]): boolean =>
   policySequences.some((policySequence) => containsSequence(requestSequence, policySequence));
 
-const isSequenceOfLabels = (value: unknown): value is string[] =>
-  Array.isArray(value) && value.every((component) => typeof component === "string");
-
-// a flat list of labels is read as the single sequence it describes
-const normalizeDomainComponentSequences = (values: unknown): unknown => {
-  if (!Array.isArray(values) || values.length === 0) return values;
-  return isSequenceOfLabels(values) ? [values] : values;
-};
-
-const normalizeDeniedDomainComponentSequences = (values: unknown): unknown => {
-  if (!Array.isArray(values) || values.length === 0) return values;
-  return isSequenceOfLabels(values) ? values.map((label) => [label]) : values;
-};
-
-const normalizeDomainComponentRule = (rule: TDomainComponentSubjectRule): TDomainComponentSubjectRule =>
-  ({
-    type: rule.type,
-    allowed: normalizeDomainComponentSequences(rule.allowed),
-    required: normalizeDomainComponentSequences(rule.required),
-    denied: normalizeDeniedDomainComponentSequences(rule.denied)
-  }) as TDomainComponentSubjectRule;
-
-export const normalizeSubjectRules = (rules: unknown): unknown => {
-  if (!Array.isArray(rules)) return rules;
-
-  return (rules as TSubjectRule[]).map((rule) =>
-    rule && isDomainComponentRule(rule) ? normalizeDomainComponentRule(rule) : rule
-  );
-};
-
 const ORDER_NOTE =
   "Domain components are order-sensitive, so they must appear in the same order as the policy sequence.";
 
@@ -98,28 +74,35 @@ const reversalHint = (requestSequence: string[], policySequences: string[][]): s
 
 const RULE_FIELDS = ["allowed", "required", "denied"] as const;
 
+const isReadableValueList = (values: unknown): values is string[] =>
+  values === undefined ||
+  (Array.isArray(values) &&
+    values.every(
+      (value) => typeof value === "string" && value.split(",").every((component) => component.trim().length > 0)
+    ));
+
 export const validateDomainComponentsAgainstRule = ({
   requestDomainComponents,
   rule,
   skipRequired = false
 }: {
   requestDomainComponents: string[];
-  rule: TDomainComponentSubjectRule;
+  rule: TSubjectRule;
   skipRequired?: boolean;
 }): string[] => {
-  const normalizedRule = normalizeDomainComponentRule(rule);
-
   // an unreadable rule is refused rather than treated as no constraint
-  const isRuleReadable = RULE_FIELDS.every(
-    (field) => normalizedRule[field] === undefined || Array.isArray(normalizedRule[field])
-  );
-  if (!isRuleReadable) {
+  if (!RULE_FIELDS.every((field) => isReadableValueList(rule[field]))) {
     return [
       `The ${CertSubjectAttributeType.DOMAIN_COMPONENT} rule on this policy is malformed and cannot be evaluated. Edit the policy's domain component rule before issuing against it.`
     ];
   }
 
-  const { allowed = [], required = [], denied = [] } = normalizedRule;
+  const sequencesOf = (values: string[] = []) => values.map(parseDomainComponentSequence);
+
+  const allowed = sequencesOf(rule.allowed);
+  const required = sequencesOf(rule.required);
+  const denied = sequencesOf(rule.denied);
+
   const errors: string[] = [];
   const hasDomainComponents = requestDomainComponents.length > 0;
   const requestSequence = formatDomainComponentSequence(requestDomainComponents);
@@ -127,7 +110,7 @@ export const validateDomainComponentsAgainstRule = ({
   const isDenied = hasDomainComponents && containsAnySequence(requestDomainComponents, denied);
   if (isDenied) {
     errors.push(
-      `Domain components '${requestSequence}' are denied by template policy. Denied sequences: ${formatDomainComponentSequences(denied)}`
+      `Domain components '${requestSequence}' are denied by this policy. Denied sequences: ${formatDomainComponentSequences(denied)}`
     );
   }
 
@@ -143,7 +126,7 @@ export const validateDomainComponentsAgainstRule = ({
   const needsAllowedCheck = !isDenied && !satisfiesRequired && hasDomainComponents && allowed.length > 0;
   if (needsAllowedCheck && !matchesAnySequence(requestDomainComponents, allowed)) {
     errors.push(
-      `Domain components '${requestSequence}' are not allowed by template policy. Allowed sequences: ${formatDomainComponentSequences(allowed)}. ${ORDER_NOTE}${reversalHint(requestDomainComponents, allowed)}`
+      `Domain components '${requestSequence}' are not allowed by this policy. Allowed sequences: ${formatDomainComponentSequences(allowed)}. ${ORDER_NOTE}${reversalHint(requestDomainComponents, allowed)}`
     );
   }
 

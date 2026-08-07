@@ -33,39 +33,23 @@ const requestSubjectValueSchema = z
   .min(1, "Value cannot be empty")
   .max(PKI_TEXT_COLUMN_MAX_LENGTH, `Value cannot exceed ${PKI_TEXT_COLUMN_MAX_LENGTH} characters`);
 
-const buildDomainComponentSequenceListSchema = (
-  componentSchema: z.ZodType<string>,
-  isRequest: boolean,
-  liftFlatList: (labels: string[]) => string[][]
+const requestDomainComponentSequenceSchema = requestSubjectValueSchema
+  .refine(
+    (value) => value.split(",").every((component) => domainComponentSchema.safeParse(component).success),
+    "A domain component sequence must be comma-separated components, most specific first"
+  )
+  .refine(
+    (value) => value.split(",").length <= MAX_DOMAIN_COMPONENTS,
+    `A domain component sequence cannot exceed ${MAX_DOMAIN_COMPONENTS} components`
+  );
+
+const buildPolicySubjectSchema = (
+  valueSchema: z.ZodType<string>,
+  domainComponentValueSchema: z.ZodType<string>,
+  maxSequences?: number
 ) => {
-  const sequenceSchema = isRequest
-    ? z
-        .array(componentSchema)
-        .min(1, "A domain component sequence must contain at least one component")
-        .max(MAX_DOMAIN_COMPONENTS, `A domain component sequence cannot exceed ${MAX_DOMAIN_COMPONENTS} components`)
-    : z.array(componentSchema);
-
-  const listSchema = z.union([sequenceSchema, z.array(sequenceSchema)]).transform((value): string[][] => {
-    const isFlatLabelList = value.length > 0 && value.every((entry) => typeof entry === "string");
-    return isFlatLabelList ? liftFlatList(value as string[]) : (value as string[][]);
-  });
-
-  if (!isRequest) return listSchema;
-
-  return listSchema.refine(
-    (sequences) => sequences.length <= MAX_DOMAIN_COMPONENT_SEQUENCES,
-    `A domain component rule cannot hold more than ${MAX_DOMAIN_COMPONENT_SEQUENCES} sequences`
-  );
-};
-
-const buildPolicySubjectSchema = (valueSchema: z.ZodType<string>, isRequest: boolean) => {
-  const componentSchema = isRequest ? domainComponentSchema : z.string();
-  const domainComponentListSchema = buildDomainComponentSequenceListSchema(componentSchema, isRequest, (labels) => [
-    labels
-  ]);
-  const deniedDomainComponentListSchema = buildDomainComponentSequenceListSchema(componentSchema, isRequest, (labels) =>
-    labels.map((label) => [label])
-  );
+  const sequenceList = z.array(domainComponentValueSchema);
+  const domainComponentListSchema = maxSequences ? sequenceList.max(maxSequences) : sequenceList;
 
   const singleValuedSchema = z.object({
     type: singleValuedAttributeTypeSchema,
@@ -74,27 +58,27 @@ const buildPolicySubjectSchema = (valueSchema: z.ZodType<string>, isRequest: boo
     denied: z.array(valueSchema).optional()
   });
 
-  const domainComponentSubjectSchema = z.object({
+  const domainComponentSchemaShape = z.object({
     type: z.literal(CertSubjectAttributeType.DOMAIN_COMPONENT),
     allowed: domainComponentListSchema.optional().describe(CERTIFICATE_POLICIES.SUBJECT_DOMAIN_COMPONENT_RULE.allowed),
     required: domainComponentListSchema
       .optional()
       .describe(CERTIFICATE_POLICIES.SUBJECT_DOMAIN_COMPONENT_RULE.required),
-    denied: deniedDomainComponentListSchema
-      .optional()
-      .describe(CERTIFICATE_POLICIES.SUBJECT_DOMAIN_COMPONENT_RULE.denied)
+    denied: domainComponentListSchema.optional().describe(CERTIFICATE_POLICIES.SUBJECT_DOMAIN_COMPONENT_RULE.denied)
   });
 
-  const unionSchema = z.discriminatedUnion("type", [singleValuedSchema, domainComponentSubjectSchema]);
-  if (!isRequest) return unionSchema;
-
-  return unionSchema.refine((data) => Boolean(data.allowed || data.required || data.denied), {
-    message: "Subject attribute must have at least one allowed, required, or denied value"
-  });
+  return z.discriminatedUnion("type", [singleValuedSchema, domainComponentSchemaShape]);
 };
 
-export const policySubjectSchema = buildPolicySubjectSchema(requestSubjectValueSchema, true);
-const storedPolicySubjectSchema = buildPolicySubjectSchema(z.string(), false);
+export const policySubjectSchema = buildPolicySubjectSchema(
+  requestSubjectValueSchema,
+  requestDomainComponentSequenceSchema,
+  MAX_DOMAIN_COMPONENT_SEQUENCES
+).refine((data) => Boolean(data.allowed || data.required || data.denied), {
+  message: "Subject attribute must have at least one allowed, required, or denied value"
+});
+
+const storedPolicySubjectSchema = buildPolicySubjectSchema(z.string(), z.string());
 
 const policyKeyUsagesSchema = z
   .object({

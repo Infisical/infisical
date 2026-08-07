@@ -81,11 +81,8 @@ describe("Certificate policy domain component rules", async () => {
     const res = await createPolicy("dc-sequences", [
       {
         type: "domain_component",
-        allowed: [
-          ["corp", "example", "com"],
-          ["*", "internal", "example", "com"]
-        ],
-        denied: [["evil", "example", "com"]]
+        allowed: ["corp,example,com", "*,internal,example,com"],
+        denied: ["evil,example,com"]
       }
     ]);
 
@@ -96,42 +93,35 @@ describe("Certificate policy domain component rules", async () => {
     expect(read.statusCode).toBe(200);
     expect(domainComponentRule(subjectOf(read.payload))).toEqual({
       type: "domain_component",
-      allowed: [
-        ["corp", "example", "com"],
-        ["*", "internal", "example", "com"]
-      ],
-      denied: [["evil", "example", "com"]]
+      allowed: ["corp,example,com", "*,internal,example,com"],
+      denied: ["evil,example,com"]
     });
   });
 
-  test("reads a flat label list as the single sequence it describes", async () => {
-    const res = await createPolicy("dc-flat-list", [{ type: "domain_component", allowed: ["corp", "example", "com"] }]);
+  test("stores a deny list of single labels as the single-component sequences they are", async () => {
+    const res = await createPolicy("dc-single-label-deny", [{ type: "domain_component", denied: ["evil", "bad"] }]);
 
     expect(res.statusCode).toBe(200);
     const policyId = trackPolicy(res.payload);
 
-    expect(domainComponentRule(subjectOf(res.payload))?.allowed).toEqual([["corp", "example", "com"]]);
+    expect(domainComponentRule(subjectOf(res.payload))?.denied).toEqual(["evil", "bad"]);
 
     const read = await getPolicy(policyId);
-    expect(domainComponentRule(subjectOf(read.payload))?.allowed).toEqual([["corp", "example", "com"]]);
+    expect(domainComponentRule(subjectOf(read.payload))?.denied).toEqual(["evil", "bad"]);
   });
 
-  test("reads a flat deny list as one sequence per label", async () => {
-    const res = await createPolicy("dc-flat-deny", [{ type: "domain_component", denied: ["evil", "bad"] }]);
+  test("rejects a sequence with an empty component", async () => {
+    const res = await createPolicy("dc-empty-component", [
+      { type: "domain_component", allowed: ["corp,,com"] }
+    ]);
 
-    expect(res.statusCode).toBe(200);
-    const policyId = trackPolicy(res.payload);
-
-    expect(domainComponentRule(subjectOf(res.payload))?.denied).toEqual([["evil"], ["bad"]]);
-
-    const read = await getPolicy(policyId);
-    expect(domainComponentRule(subjectOf(read.payload))?.denied).toEqual([["evil"], ["bad"]]);
+    expect(res.statusCode).toBe(422);
   });
 
   test("leaves the rules of other subject attributes flat", async () => {
     const res = await createPolicy("dc-other-attributes", [
       { type: "common_name", allowed: ["*.example.com"], denied: ["admin.example.com"] },
-      { type: "domain_component", required: [["corp", "example", "com"]] }
+      { type: "domain_component", required: ["corp,example,com"] }
     ]);
 
     expect(res.statusCode).toBe(200);
@@ -143,12 +133,12 @@ describe("Certificate policy domain component rules", async () => {
       allowed: ["*.example.com"],
       denied: ["admin.example.com"]
     });
-    expect(domainComponentRule(subject)?.required).toEqual([["corp", "example", "com"]]);
+    expect(domainComponentRule(subject)?.required).toEqual(["corp,example,com"]);
   });
 
   test("updates a rule from one sequence to several", async () => {
     const created = await createPolicy("dc-update", [
-      { type: "domain_component", allowed: ["corp", "example", "com"] }
+      { type: "domain_component", allowed: ["corp,example,com"] }
     ]);
     expect(created.statusCode).toBe(200);
     const policyId = trackPolicy(created.payload);
@@ -161,28 +151,22 @@ describe("Certificate policy domain component rules", async () => {
         subject: [
           {
             type: "domain_component",
-            allowed: [
-              ["corp", "example", "com"],
-              ["example", "com"]
-            ]
+            allowed: ["corp,example,com", "example,com"]
           }
         ]
       }
     });
 
     expect(updated.statusCode).toBe(200);
-    expect(domainComponentRule(subjectOf(updated.payload))?.allowed).toEqual([
-      ["corp", "example", "com"],
-      ["example", "com"]
-    ]);
+    expect(domainComponentRule(subjectOf(updated.payload))?.allowed).toEqual(["corp,example,com", "example,com"]);
   });
 
   test.each([
-    ["a value list mixing labels and sequences", ["corp", ["example", "com"]]],
-    ["an empty component", [["corp", ""]]],
-    ["a component holding the separator", [["corp,example", "com"]]]
-  ])("rejects %s", async (_label, allowed) => {
-    const res = await createPolicy(`dc-invalid-${_label.replace(/[^a-z]/g, "")}`, [
+    ["a nested value list", [["corp", "example", "com"]]],
+    ["a trailing separator", ["corp,example,com,"]],
+    ["a blank sequence", ["   "]]
+  ])("rejects %s", async (label, allowed) => {
+    const res = await createPolicy(`dc-invalid-${label.replace(/[^a-z]/g, "")}`, [
       { type: "domain_component", allowed }
     ]);
 

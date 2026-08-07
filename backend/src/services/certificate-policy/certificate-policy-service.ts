@@ -24,7 +24,6 @@ import {
 } from "../certificate-common/certificate-constants";
 import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
 import {
-  formatDomainComponentSequence,
   isDomainComponentRule,
   isWildcardPattern,
   matchesNormalizedPattern,
@@ -36,7 +35,6 @@ import {
   TCertificatePolicyUpdate,
   TCertificateRequest,
   TPolicyValidationResult,
-  TSingleValuedSubjectRule,
   TSubjectRule
 } from "./certificate-policy-types";
 
@@ -102,17 +100,11 @@ export const certificatePolicyServiceFactory = ({
         });
       }
 
-      const arrays = isDomainComponentRule(attr)
-        ? [
-            { name: "allowed", values: attr.allowed?.map(formatDomainComponentSequence) },
-            { name: "required", values: attr.required?.map(formatDomainComponentSequence) },
-            { name: "denied", values: attr.denied?.map(formatDomainComponentSequence) }
-          ]
-        : [
-            { name: "allowed", values: attr.allowed },
-            { name: "required", values: attr.required },
-            { name: "denied", values: attr.denied }
-          ];
+      const arrays = [
+        { name: "allowed", values: attr.allowed },
+        { name: "required", values: attr.required },
+        { name: "denied", values: attr.denied }
+      ];
 
       for (const { name, values } of arrays) {
         if (values && values.length > 0) {
@@ -325,9 +317,7 @@ export const certificatePolicyServiceFactory = ({
     if (request.locality) requestAttributes.set(CertSubjectAttributeType.LOCALITY, request.locality);
 
     if (subjectPolicies) {
-      const singleValuedPolicies = subjectPolicies.filter(
-        (attrPolicy): attrPolicy is TSingleValuedSubjectRule => !isDomainComponentRule(attrPolicy)
-      );
+      const singleValuedPolicies = subjectPolicies.filter((attrPolicy) => !isDomainComponentRule(attrPolicy));
       for (const attrPolicy of singleValuedPolicies) {
         const requestValue = requestAttributes.get(attrPolicy.type);
 
@@ -352,7 +342,7 @@ export const certificatePolicyServiceFactory = ({
           if (attrPolicy.denied && attrPolicy.denied.length > 0) {
             const validation = validateValueAgainstConstraints(requestValue, attrPolicy.denied, attrPolicy.type);
             if (validation.isValid) {
-              errors.push(`${attrPolicy.type} value '${requestValue}' is denied by template policy`);
+              errors.push(`${attrPolicy.type} value '${requestValue}' is denied by this policy`);
               isValueDenied = true;
             }
           }
@@ -384,7 +374,7 @@ export const certificatePolicyServiceFactory = ({
       for (const [attrType] of requestAttributes) {
         const hasPolicy = subjectPolicies.some((policy) => policy.type === attrType);
         if (!hasPolicy) {
-          errors.push(`${attrType} is not allowed by template policy (not defined in template)`);
+          errors.push(`${attrType} is not allowed by this policy`);
         }
       }
     }
@@ -402,9 +392,7 @@ export const certificatePolicyServiceFactory = ({
     } else if (subjectPolicies && requestDomainComponents.length > 0) {
       // A subject policy is defined but has no domain_component rule, so DCs aren't
       // permitted. When no subject policy is defined at all, every subject attribute is allowed.
-      errors.push(
-        `${CertSubjectAttributeType.DOMAIN_COMPONENT} is not allowed by template policy (not defined in template)`
-      );
+      errors.push(`${CertSubjectAttributeType.DOMAIN_COMPONENT} is not allowed by this policy`);
     }
 
     // Validate Subject Alternative Names. An undefined SAN policy means no constraint (allow all);
@@ -498,7 +486,7 @@ export const certificatePolicyServiceFactory = ({
       for (const [requestSanType] of requestSansByType) {
         const hasPolicy = sansPolicies.some((policy) => policy.type === requestSanType);
         if (!hasPolicy) {
-          errors.push(`${requestSanType} SAN is not allowed by template policy (not defined in template)`);
+          errors.push(`${requestSanType} SAN is not allowed by this policy`);
         }
       }
     }
@@ -576,14 +564,14 @@ export const certificatePolicyServiceFactory = ({
     if (request.signatureAlgorithm && template.algorithms?.signature && template.algorithms.signature.length > 0) {
       const mappedTemplateAlgorithms = template.algorithms.signature.map(mapTemplateSignatureAlgorithmToApi);
       if (!mappedTemplateAlgorithms.includes(request.signatureAlgorithm)) {
-        errors.push(`Signature algorithm '${request.signatureAlgorithm}' is not allowed by template policy`);
+        errors.push(`Signature algorithm '${request.signatureAlgorithm}' is not allowed by this policy`);
       }
     }
 
     if (request.keyAlgorithm && template.algorithms?.keyAlgorithm && template.algorithms.keyAlgorithm.length > 0) {
       const mappedTemplateKeyTypes = template.algorithms.keyAlgorithm.map(mapTemplateKeyAlgorithmToApi);
       if (!mappedTemplateKeyTypes.includes(request.keyAlgorithm)) {
-        errors.push(`Key algorithm '${request.keyAlgorithm}' is not allowed by template policy`);
+        errors.push(`Key algorithm '${request.keyAlgorithm}' is not allowed by this policy`);
       }
     }
 

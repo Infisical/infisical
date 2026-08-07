@@ -440,7 +440,7 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("organization value 'Forbidden Corp' is denied by template policy");
+      expect(result.errors).toContain("organization value 'Forbidden Corp' is denied by this policy");
     });
 
     it("should treat an empty subject policy as nothing allowed (reject request subject attributes)", async () => {
@@ -449,7 +449,7 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", validRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("common_name is not allowed by template policy (not defined in template)");
+      expect(result.errors).toContain("common_name is not allowed by this policy");
     });
 
     it("should treat an undefined subject policy as allow all (no subject constraint)", async () => {
@@ -466,7 +466,7 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", validRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("dns_name SAN is not allowed by template policy (not defined in template)");
+      expect(result.errors).toContain("dns_name SAN is not allowed by this policy");
     });
 
     it("should treat an undefined SAN policy as allow all (no SAN constraint)", async () => {
@@ -486,7 +486,7 @@ describe("CertificatePolicyService", () => {
       });
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("domain_component is not allowed by template policy (not defined in template)");
+      expect(result.errors).toContain("domain_component is not allowed by this policy");
     });
 
     it("should detect missing required key usages", async () => {
@@ -594,7 +594,7 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Signature algorithm 'MD5-RSA' is not allowed by template policy");
+      expect(result.errors).toContain("Signature algorithm 'MD5-RSA' is not allowed by this policy");
     });
 
     it("should detect invalid key algorithm", async () => {
@@ -603,7 +603,7 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Key algorithm 'RSA-1024' is not allowed by template policy");
+      expect(result.errors).toContain("Key algorithm 'RSA-1024' is not allowed by this policy");
     });
 
     it("should detect TTL exceeding maximum duration", async () => {
@@ -778,7 +778,7 @@ describe("CertificatePolicyService", () => {
           { type: CertSubjectAttributeType.COMMON_NAME, allowed: ["*-CA"] },
           {
             type: CertSubjectAttributeType.DOMAIN_COMPONENT,
-            allowed: [["app", "example", "auth"]]
+            allowed: ["app,example,auth"]
           }
         ])
       );
@@ -798,7 +798,7 @@ describe("CertificatePolicyService", () => {
           { type: CertSubjectAttributeType.COMMON_NAME, allowed: ["*-CA"] },
           {
             type: CertSubjectAttributeType.DOMAIN_COMPONENT,
-            allowed: [["app", "example", "auth"]]
+            allowed: ["app,example,auth"]
           }
         ])
       );
@@ -811,7 +811,7 @@ describe("CertificatePolicyService", () => {
       const result = await service.validateCertificateRequest("template-123", request);
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain(
-        "Domain components 'DC=auth,DC=example,DC=app' are not allowed by template policy. Allowed sequences: 'DC=app,DC=example,DC=auth'. Domain components are order-sensitive, so they must appear in the same order as the policy sequence. The same components in the opposite order would match, so check which end the client encoded first."
+        "Domain components 'DC=auth,DC=example,DC=app' are not allowed by this policy. Allowed sequences: 'DC=app,DC=example,DC=auth'. Domain components are order-sensitive, so they must appear in the same order as the policy sequence. The same components in the opposite order would match, so check which end the client encoded first."
       );
     });
 
@@ -820,7 +820,7 @@ describe("CertificatePolicyService", () => {
         buildSubjectPolicy([
           {
             type: CertSubjectAttributeType.DOMAIN_COMPONENT,
-            allowed: [["*", "example", "com"]]
+            allowed: ["*,example,com"]
           }
         ])
       );
@@ -841,7 +841,7 @@ describe("CertificatePolicyService", () => {
         buildSubjectPolicy([
           {
             type: CertSubjectAttributeType.DOMAIN_COMPONENT,
-            allowed: [["example", "com"]]
+            allowed: ["example,com"]
           }
         ])
       );
@@ -858,7 +858,7 @@ describe("CertificatePolicyService", () => {
           { type: CertSubjectAttributeType.COMMON_NAME, allowed: ["*-CA"] },
           {
             type: CertSubjectAttributeType.DOMAIN_COMPONENT,
-            denied: [["app", "example", "auth"]]
+            denied: ["app,example,auth"]
           }
         ])
       );
@@ -869,7 +869,7 @@ describe("CertificatePolicyService", () => {
       });
       expect(denied.isValid).toBe(false);
       expect(denied.errors).toContain(
-        "Domain components 'DC=app,DC=example,DC=auth' are denied by template policy. Denied sequences: 'DC=app,DC=example,DC=auth'"
+        "Domain components 'DC=app,DC=example,DC=auth' are denied by this policy. Denied sequences: 'DC=app,DC=example,DC=auth'"
       );
 
       const reordered = await service.validateCertificateRequest("template-123", {
@@ -885,7 +885,7 @@ describe("CertificatePolicyService", () => {
           { type: CertSubjectAttributeType.COMMON_NAME, allowed: ["*-CA"] },
           {
             type: CertSubjectAttributeType.DOMAIN_COMPONENT,
-            required: [["app", "example", "auth"]]
+            required: ["app,example,auth"]
           }
         ])
       );
@@ -919,10 +919,7 @@ describe("CertificatePolicyService", () => {
         buildSubjectPolicy([
           {
             type: CertSubjectAttributeType.DOMAIN_COMPONENT,
-            allowed: [
-              ["corp", "example", "com"],
-              ["example", "com"]
-            ]
+            allowed: ["corp,example,com", "example,com"]
           }
         ])
       );
@@ -938,27 +935,6 @@ describe("CertificatePolicyService", () => {
       expect(secondSequence.isValid).toBe(true);
     });
 
-    it("should read a legacy flat domain component list as one ordered sequence", async () => {
-      mockCertificatePolicyDAL.findById.mockResolvedValue(
-        buildSubjectPolicy([
-          {
-            type: CertSubjectAttributeType.DOMAIN_COMPONENT,
-            allowed: ["app", "example", "auth"]
-          } as unknown as NonNullable<TTemplateV2Policy["subject"]>[number]
-        ])
-      );
-
-      const inOrder = await service.validateCertificateRequest("template-123", {
-        domainComponents: ["app", "example", "auth"]
-      });
-      expect(inOrder.isValid).toBe(true);
-
-      const outOfOrder = await service.validateCertificateRequest("template-123", {
-        domainComponents: ["auth", "example", "app"]
-      });
-      expect(outOfOrder.isValid).toBe(false);
-    });
-
     it("should reject domain components when the policy defines subject rules but no domain_component rule", async () => {
       mockCertificatePolicyDAL.findById.mockResolvedValue(
         buildSubjectPolicy([{ type: CertSubjectAttributeType.COMMON_NAME, allowed: ["*-CA"] }])
@@ -971,7 +947,7 @@ describe("CertificatePolicyService", () => {
 
       const result = await service.validateCertificateRequest("template-123", request);
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("domain_component is not allowed by template policy (not defined in template)");
+      expect(result.errors).toContain("domain_component is not allowed by this policy");
     });
 
     it("should prevent certificates from including denied SANs", async () => {
@@ -1308,9 +1284,7 @@ describe("CertificatePolicyService", () => {
 
         const invalidSigResult = await service.validateCertificateRequest("template-123", invalidSigRequest);
         expect(invalidSigResult.isValid).toBe(false);
-        expect(invalidSigResult.errors).toContain(
-          "Signature algorithm 'ECDSA-SHA256' is not allowed by template policy"
-        );
+        expect(invalidSigResult.errors).toContain("Signature algorithm 'ECDSA-SHA256' is not allowed by this policy");
 
         const invalidKeyRequest = {
           commonName: "example.com",
@@ -1323,7 +1297,7 @@ describe("CertificatePolicyService", () => {
 
         const invalidKeyResult = await service.validateCertificateRequest("template-123", invalidKeyRequest);
         expect(invalidKeyResult.isValid).toBe(false);
-        expect(invalidKeyResult.errors).toContain("Key algorithm 'EC_prime256v1' is not allowed by template policy");
+        expect(invalidKeyResult.errors).toContain("Key algorithm 'EC_prime256v1' is not allowed by this policy");
       });
 
       it("should validate validity period edge cases", async () => {
@@ -1421,7 +1395,7 @@ describe("CertificatePolicyService", () => {
 
         const result = await service.validateCertificateRequest("template-123", requestWithUnlistedSan);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain("email SAN is not allowed by template policy (not defined in template)");
+        expect(result.errors).toContain("email SAN is not allowed by this policy");
       });
 
       it("should allow any key usages when template does not define key-usage rules", async () => {
@@ -1438,7 +1412,7 @@ describe("CertificatePolicyService", () => {
         };
 
         const result = await service.validateCertificateRequest("template-123", requestWithKeyUsages);
-        expect(result.errors).not.toContain("Key usages are not allowed by template policy (not defined in template)");
+        expect(result.errors).not.toContain("Key usages are not allowed by this policy (not defined in template)");
       });
 
       it("should allow any algorithms when template does not define algorithm rules", async () => {
@@ -1458,12 +1432,8 @@ describe("CertificatePolicyService", () => {
         };
 
         const result = await service.validateCertificateRequest("template-123", requestWithAlgorithms);
-        expect(result.errors).not.toContain(
-          "Signature algorithm 'RSA-SHA256' is not allowed by template policy (not defined in template)"
-        );
-        expect(result.errors).not.toContain(
-          "Key algorithm 'RSA-2048' is not allowed by template policy (not defined in template)"
-        );
+        expect(result.errors).not.toContain("Signature algorithm 'RSA-SHA256' is not allowed by this policy");
+        expect(result.errors).not.toContain("Key algorithm 'RSA-2048' is not allowed by this policy");
       });
     });
 
@@ -1711,12 +1681,8 @@ describe("CertificatePolicyService", () => {
         };
 
         const result = await service.validateCertificateRequest("template-123", requestWithAlgorithms);
-        expect(result.errors).not.toContain(
-          "Signature algorithm 'RSA-SHA256' is not allowed by template policy (not defined in template)"
-        );
-        expect(result.errors).not.toContain(
-          "Key algorithm 'RSA_2048' is not allowed by template policy (not defined in template)"
-        );
+        expect(result.errors).not.toContain("Signature algorithm 'RSA-SHA256' is not allowed by this policy");
+        expect(result.errors).not.toContain("Key algorithm 'RSA_2048' is not allowed by this policy");
       });
 
       it("should allow requests that match any of multiple attribute policies of same type", async () => {
@@ -1822,7 +1788,7 @@ describe("CertificatePolicyService", () => {
         const invalidCountryRequest = { ...validComplexRequest, country: "XX" };
         const result2 = await service.validateCertificateRequest("template-123", invalidCountryRequest);
         expect(result2.isValid).toBe(false);
-        expect(result2.errors).toContain("country value 'XX' is denied by template policy");
+        expect(result2.errors).toContain("country value 'XX' is denied by this policy");
         const invalidOrgRequest = { ...validComplexRequest, organization: "Different Corp" };
         const result3 = await service.validateCertificateRequest("template-123", invalidOrgRequest);
         expect(result3.isValid).toBe(false);
