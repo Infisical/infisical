@@ -14,6 +14,8 @@ export type OIDCConfigData = {
   allowedEmailDomains?: string;
   manageGroupMemberships: boolean;
   jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm;
+  claimEmailPath?: string | null;
+  claimNamePath?: string | null;
 };
 
 export enum OIDCJWTSignatureAlgorithm {
