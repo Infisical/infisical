@@ -37,8 +37,7 @@ import {
   useOrgPermission,
   useSubscription
 } from "@app/context";
-import { useGetOauthClients, useGetOIDCConfig } from "@app/hooks/api";
-import { OauthGrantType } from "@app/hooks/api/oauthClients/types";
+import { OauthGrantType, useGetOauthClients, useGetOIDCConfig } from "@app/hooks/api";
 import { useUpdateOIDCConfig } from "@app/hooks/api/oidcConfig/mutations";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -64,6 +63,7 @@ export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
     canReadApplications ? (currentOrg?.id ?? "") : "",
     OauthGrantType.TokenExchange
   );
+  const dependentClients = tokenExchangeClients ?? [];
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "addOIDC",
@@ -245,13 +245,13 @@ export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
                 )}
               </OrgPermissionCan>
             </Field>
-            {Boolean(tokenExchangeClients?.length) && (
+            {dependentClients.length > 0 && (
               <Alert variant="info">
                 <Info />
                 <AlertTitle>
-                  {tokenExchangeClients?.length === 1
+                  {dependentClients.length === 1
                     ? "1 application depends on this issuer"
-                    : `${tokenExchangeClients?.length} applications depend on this issuer`}
+                    : `${dependentClients.length} applications depend on this issuer`}
                 </AlertTitle>
                 <AlertDescription>
                   <p>
@@ -260,7 +260,7 @@ export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
                     changing the issuer stops them working.
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1">
-                    {tokenExchangeClients?.map((client) => (
+                    {dependentClients.map((client) => (
                       <Badge key={client.id} variant="neutral">
                         {client.name}
                       </Badge>
