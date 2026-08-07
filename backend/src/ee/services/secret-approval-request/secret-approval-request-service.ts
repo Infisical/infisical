@@ -86,6 +86,7 @@ import {
 } from "../permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
+import { getCommitterIds } from "../secret-approval-policy/secret-approval-policy-fns";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
 import { hasSecretUpdateCommitConflict, sendApprovalEmailsFn } from "./secret-approval-request-fns";
@@ -328,6 +329,7 @@ export const secretApprovalRequestServiceFactory = ({
       !canReadApprovalRequests &&
       !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerUserId !== actorId &&
+      secretApprovalRequest.committerIdentityId !== actorId &&
       !policy.approvers.find(({ userId }) => userId === actorId)
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
@@ -1616,7 +1618,7 @@ export const secretApprovalRequestServiceFactory = ({
           policyId: policy.id,
           status: "open",
           hasMerged: false,
-          ...(actor === ActorType.IDENTITY ? { committerIdentityId: actorId } : { committerUserId: actorId })
+          ...getCommitterIds(actor, actorId)
         },
         tx
       );
@@ -1712,7 +1714,8 @@ export const secretApprovalRequestServiceFactory = ({
         notification: {
           type: TriggerFeature.SECRET_APPROVAL,
           payload: {
-            userEmail: user?.email ?? "machine-identity",
+            userEmail: user?.email ?? undefined,
+            machineIdentityId: actorId,
             environment: env.name,
             secretPath,
             projectId,
@@ -1752,7 +1755,8 @@ export const secretApprovalRequestServiceFactory = ({
           projectId,
           environment,
           secretPath,
-          numberOfCommits: commits.length
+          numberOfCommits: commits.length,
+          actorType: actor as string
         }
       })
       .catch(() => {});
@@ -2133,7 +2137,7 @@ export const secretApprovalRequestServiceFactory = ({
           policyId: policy.id,
           status: "open",
           hasMerged: false,
-          ...(actor === ActorType.IDENTITY ? { committerIdentityId: actorId } : { committerUserId: actorId }),
+          ...getCommitterIds(actor, actorId),
           commitMessage
         },
         tx
@@ -2251,7 +2255,8 @@ export const secretApprovalRequestServiceFactory = ({
           projectId,
           environment,
           secretPath,
-          numberOfCommits: commits.length
+          numberOfCommits: commits.length,
+          actorType: actor as string
         }
       })
       .catch(() => {});

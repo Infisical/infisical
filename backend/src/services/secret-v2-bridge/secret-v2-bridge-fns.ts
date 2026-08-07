@@ -15,7 +15,7 @@ import {
 } from "@app/db/schemas";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
+import { getCommitterIds, shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import {
   InternalMetadataType,
   TInternalMetadata
@@ -1718,7 +1718,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
         policyId: destinationFolderPolicy.id,
         status: "open",
         hasMerged: false,
-        committerUserId: actorId
+        ...getCommitterIds(actor, actorId)
       },
       tx
     );
@@ -1920,7 +1920,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
         policyId: sourceFolderPolicy.id,
         status: "open",
         hasMerged: false,
-        committerUserId: actorId
+        ...getCommitterIds(actor, actorId)
       },
       tx
     );

@@ -24,7 +24,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-events/project-events-types";
-import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
+import { getCommitterIds, shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
@@ -3183,7 +3183,7 @@ export const secretServiceFactory = ({
             policyId: destinationFolderPolicy.id,
             status: "open",
             hasMerged: false,
-            committerUserId: actorId
+            ...getCommitterIds(actor, actorId)
           },
           tx
         );
@@ -3308,7 +3308,7 @@ export const secretServiceFactory = ({
             policyId: sourceFolderPolicy.id,
             status: "open",
             hasMerged: false,
-            committerUserId: actorId
+            ...getCommitterIds(actor, actorId)
           },
           tx
         );

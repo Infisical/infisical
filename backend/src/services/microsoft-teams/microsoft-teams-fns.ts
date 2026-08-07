@@ -364,6 +364,7 @@ export const buildTeamsPayload = (orgId: string, notification: TNotification) =>
   switch (notification.type) {
     case TriggerFeature.SECRET_APPROVAL: {
       const { payload } = notification;
+      const author = payload.machineIdentityId ? `machine identity ${payload.machineIdentityId}` : (payload.userEmail ?? "unknown");
 
       const adaptiveCard = {
         type: "AdaptiveCard",
@@ -378,7 +379,7 @@ export const buildTeamsPayload = (orgId: string, notification: TNotification) =>
           },
           {
             type: "TextBlock",
-            text: `A secret approval request has been opened by ${payload.userEmail}.`,
+            text: `A secret approval request has been opened by ${author}.`,
             wrap: true
           },
           {

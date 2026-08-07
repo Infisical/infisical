@@ -1,6 +1,6 @@
 import { SecretType, TSecrets, TSecretsV2 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
+import { getCommitterIds, shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
@@ -466,7 +466,7 @@ export const secretReplicationServiceFactory = ({
                     policyId: policy.id,
                     status: "open",
                     hasMerged: false,
-                    committerUserId: actorId,
+                    ...getCommitterIds(actor, actorId),
                     isReplicated: true
                   },
                   tx
@@ -729,7 +729,7 @@ export const secretReplicationServiceFactory = ({
             destinationFolder.path
           );
           // this means it should be a approval request rather than direct replication
-          if (policy && actor === ActorType.USER) {
+          if (shouldApplyPolicy(policy, actor)) {
             const localSecretsLatestVersions = destinationLocalSecrets.map(({ id }) => id);
             const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
               destinationReplicationFolderId,
@@ -743,7 +743,7 @@ export const secretReplicationServiceFactory = ({
                   policyId: policy.id,
                   status: "open",
                   hasMerged: false,
-                  committerUserId: actorId,
+                  ...getCommitterIds(actor, actorId),
                   isReplicated: true
                 },
                 tx
