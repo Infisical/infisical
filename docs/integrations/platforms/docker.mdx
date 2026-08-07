@@ -306,21 +306,37 @@ services:
       INFISICAL_TOKEN: ${INFISICAL_TOKEN}
 ```
 
-Authenticate the machine identity in the same shell, then start the services:
+Authenticate the machine identity in the same shell, then start the services using the commands for your Infisical deployment:
 
-```bash
-export INFISICAL_TOKEN=$(infisical login \
-  --method=universal-auth \
-  --client-id=<client-id> \
-  --client-secret=<client-secret> \
-  --plain \
-  --silent)
+<CodeGroup>
+  ```bash Infisical Cloud US
+  export INFISICAL_TOKEN=$(infisical login \
+    --method=universal-auth \
+    --client-id=<client-id> \
+    --client-secret=<client-secret> \
+    --plain \
+    --silent)
 
-docker compose up --build
-```
+  docker compose up --build
+  ```
+
+  ```bash EU Cloud or self-hosted
+  # Use https://eu.infisical.com for EU Cloud or your self-hosted instance URL
+  export INFISICAL_DOMAIN=<your-infisical-domain>
+
+  export INFISICAL_TOKEN=$(infisical login \
+    --method=universal-auth \
+    --client-id=<client-id> \
+    --client-secret=<client-secret> \
+    --plain \
+    --silent)
+
+  docker compose up --build
+  ```
+</CodeGroup>
 
 <Note>
-  If you use Infisical EU Cloud or a self-hosted instance, add `INFISICAL_DOMAIN: ${INFISICAL_DOMAIN}` to the service environment and set `INFISICAL_DOMAIN` in the shell before running Docker Compose.
+  If your self-hosted Infisical instance is running locally on the Docker host, don't set `INFISICAL_DOMAIN` to a `localhost` domain, since this will point to the container itself. Instead, set it to `host.docker.internal`, which points to the container's host domain.
 </Note>
 
 ### Use different permissions for each service
