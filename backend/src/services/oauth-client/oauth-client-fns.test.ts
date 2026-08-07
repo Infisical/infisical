@@ -3,7 +3,6 @@ import crypto from "node:crypto";
 import {
   assertValidOauthClientGrantConfig,
   computePkceChallenge,
-  dedupeGrantTypes,
   isAllowedRedirectUri,
   isRegisteredRedirectUri,
   parseBasicAuthHeader
@@ -120,18 +119,6 @@ describe("isRegisteredRedirectUri", () => {
         "https://coder.example.com/external-auth/other"
       )
     ).toBe(false);
-  });
-});
-
-describe("dedupeGrantTypes", () => {
-  test("removes duplicates while preserving order", () => {
-    expect(
-      dedupeGrantTypes([
-        OauthGrantType.AuthorizationCode,
-        OauthGrantType.RefreshToken,
-        OauthGrantType.AuthorizationCode
-      ])
-    ).toEqual([OauthGrantType.AuthorizationCode, OauthGrantType.RefreshToken]);
   });
 });
 
