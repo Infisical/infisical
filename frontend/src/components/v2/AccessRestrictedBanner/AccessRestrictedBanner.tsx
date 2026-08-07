@@ -1,4 +1,7 @@
 import { ReactNode } from "react";
+import { LockIcon } from "lucide-react";
+
+import { Badge, Card } from "@app/components/v3";
 
 type Props = {
   title?: string;
@@ -7,20 +10,16 @@ type Props = {
 
 export const AccessRestrictedBanner = ({
   title = "Access Restricted",
-
-  body = (
-    <>
-      Your current role doesn&#39;t provide access to this feature.
-      <br /> Contact your administrator to request access.
-    </>
-  )
+  body = "Your current role doesn't provide access to this feature. Contact your administrator to request access."
 }: Props) => {
   return (
-    <div className="flex items-center rounded-md border border-mineshaft-500 bg-linear-to-br from-mineshaft-900 to-mineshaft-600 px-16 py-12 text-center text-bunker-300">
-      <div>
-        <div className="text-4xl font-medium text-bunker-100">{title}</div>
-        <div className="-mt-1 text-sm">{body}</div>
-      </div>
-    </div>
+    <Card className="w-full max-w-lg items-start gap-4 p-8">
+      <Badge variant="warning" className="h-6 px-2">
+        <LockIcon />
+        {title}
+      </Badge>
+      <div className="text-2xl font-semibold">This section is locked.</div>
+      <div className="text-sm leading-relaxed text-accent">{body}</div>
+    </Card>
   );
 };

@@ -98,6 +98,22 @@ describe("identity credential alert dal", () => {
     });
   });
 
+  test("the expiry expression clamps clientSecretTTL into a range interval arithmetic can hold", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findExpiringUaClientSecrets(scanArgs);
+
+    // Under a hash-join plan this predicate is a scan-level filter on the whole table, evaluated
+    // before the identity/org joins narrow it. An unclamped `clientSecretTTL * interval '1 second'`
+    // therefore overflows on any other tenant's out-of-range row and aborts the entire scan.
+    const expirySql = calls.whereRaw.map(([sql]) => sql as string).filter((sql) => sql.includes("clientSecretTTL"));
+    expect(expirySql.length).toBeGreaterThan(0);
+    expirySql.forEach((sql) => {
+      expect(sql).toContain(`LEAST(GREATEST(${TableName.IdentityUaClientSecret}."clientSecretTTL", 0), 315360000)`);
+      expect(sql).not.toContain("* interval '1 second'");
+    });
+  });
+
   test("a project-scoped scan keeps org-level identities but only its own project's identities", async () => {
     const { dal, calls } = buildDAL();
 

@@ -420,7 +420,7 @@ export const CreateSecretImportForm = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleToggle}>
-      <DialogContent className="max-w-lg overflow-visible">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Add Secret Import</DialogTitle>
           <DialogDescription>

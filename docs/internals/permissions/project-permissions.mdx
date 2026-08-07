@@ -478,10 +478,12 @@ When defining conditions for permissions, you can use the following operators to
 <Note>
 When using `$glob`, note that `*` does **not** match across `/` boundaries. Use `**` to match across multiple path segments.
 
+A trailing `/*` also does **not** match the folder itself: `/app/*` matches secrets in `/app/config` but not secrets directly in `/app`. To grant access to a folder and everything under it, use a trailing `/**`.
+
 | Pattern | Matches | Does not match |
 |---------|---------|----------------|
-| `/app/*` | `/app/config`, `/app/secrets` | `/app/config/db` |
-| `/app/**` | `/app/config`, `/app/config/db`, `/app/config/db/primary` | `/other/config` |
+| `/app/*` | `/app/config`, `/app/secrets` | `/app` (the folder itself), `/app/config/db` |
+| `/app/**` | `/app`, `/app/config`, `/app/config/db/primary` | `/other/config` |
 | `/{dev,staging}/*` | `/dev/secrets`, `/staging/config` | `/prod/secrets` |
 </Note>
 

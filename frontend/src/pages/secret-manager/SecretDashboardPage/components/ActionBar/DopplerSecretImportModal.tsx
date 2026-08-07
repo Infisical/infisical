@@ -154,7 +154,7 @@ export const DopplerSecretImportModal = ({
         onOpenChange(open);
       }}
     >
-      <DialogContent className="max-w-lg overflow-visible" showCloseButton>
+      <DialogContent className="max-w-lg" showCloseButton>
         <DialogHeader>
           <DialogTitle>Import from Doppler</DialogTitle>
           <DialogDescription>

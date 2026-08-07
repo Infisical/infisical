@@ -383,7 +383,7 @@ export const AssignAccessModal = ({
         onOpenChange(open);
       }}
     >
-      <DialogContent className="overflow-visible sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Access" : "Assign Access"}</DialogTitle>
         </DialogHeader>

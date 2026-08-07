@@ -60,7 +60,9 @@ export const ValidateChefConnectionCredentialsSchema = z.discriminatedUnion("met
 ]);
 
 export const CreateChefConnectionSchema = ValidateChefConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.Chef)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.Chef, {
+    supportsGateways: true
+  })
 );
 
 export const UpdateChefConnectionSchema = z
@@ -69,7 +71,11 @@ export const UpdateChefConnectionSchema = z
       AppConnections.UPDATE(AppConnection.Chef).credentials
     )
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Chef));
+  .and(
+    GenericUpdateAppConnectionFieldsSchema(AppConnection.Chef, {
+      supportsGateways: true
+    })
+  );
 
 export const ChefConnectionListItemSchema = z
   .object({
