@@ -50,6 +50,12 @@ export enum CertExtendedKeyUsage {
   ANY_PURPOSE = "any_purpose"
 }
 
+export enum CertificateRenewalKeySource {
+  New = "new",
+  Reuse = "reuse",
+  Csr = "csr"
+}
+
 export enum CertSource {
   Issued = "issued",
   Discovered = "discovered",
@@ -63,4 +69,9 @@ export enum CertificateRequestStatus {
   ISSUED = "issued",
   FAILED = "failed",
   REJECTED = "rejected"
+}
+
+export enum CertificateIssuerKind {
+  Internal = "internal",
+  External = "external"
 }

@@ -112,10 +112,10 @@ export const useImportCertificate = () => {
 export const useRenewCertificate = () => {
   const queryClient = useQueryClient();
   return useMutation<TRenewCertificateResponse, object, TRenewCertificateDTO>({
-    mutationFn: async ({ certificateId }) => {
+    mutationFn: async ({ certificateId, ...body }) => {
       const { data } = await apiRequest.post<TRenewCertificateResponse>(
         `/api/v1/cert-manager/certificates/${certificateId}/renew`,
-        {}
+        body
       );
       return data;
     },

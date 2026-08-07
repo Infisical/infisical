@@ -947,6 +947,7 @@
                     "pages": [
                       "documentation/platform/pki/applications/overview",
                       "documentation/platform/pki/applications/certificates",
+                      "documentation/platform/pki/applications/certificate-renewal",
                       {
                         "group": "Enrollment Methods",
                         "pages": [

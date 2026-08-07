@@ -1207,7 +1207,6 @@ export const CertificatesTable = ({
                                 const canRenew =
                                   !isInventoryView &&
                                   (certificate.profileId || certificate.caId) &&
-                                  certificate.hasPrivateKey !== false &&
                                   !certificate.renewedByCertificateId &&
                                   !isRevoked &&
                                   !isExpired;

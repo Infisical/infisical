@@ -19,16 +19,19 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
   CertExtendedKeyUsageType,
+  certificateAttributesSchema,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
-  domainComponentsSchema,
   subjectAttributeSchema
 } from "@app/services/certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { TCertificateIssuanceResponse } from "@app/services/certificate-v3/certificate-v3-types";
+import {
+  CertificateRenewalKeySource,
+  TCertificateIssuanceResponse
+} from "@app/services/certificate-v3/certificate-v3-types";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -41,6 +44,8 @@ type CertificateServiceResponse = TCertificateIssuanceResponse | Omit<TCertifica
 // their format here (wildcards like *.example.com are valid); only bound the length, which
 // subjectAttributeSchema does against the varchar(255) columns they are persisted in.
 const subjectAttributeField = subjectAttributeSchema;
+
+const csrSchema = z.string().trim().min(1, "CSR cannot be empty").max(4096, "CSR cannot exceed 4096 characters");
 
 const extractCertificateData = (
   data: CertificateServiceResponse
@@ -136,46 +141,11 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         .object({
           profileId: z.string().uuid(),
           applicationId: z.string().uuid().optional(),
-          csr: z
-            .string()
-            .trim()
-            .min(1, "CSR cannot be empty")
-            .max(4096, "CSR cannot exceed 4096 characters")
-            .optional(),
-          attributes: z
-            .object({
-              commonName: subjectAttributeField.nullish(),
-              organization: subjectAttributeField.nullish(),
-              organizationalUnit: subjectAttributeField.nullish(),
-              country: subjectAttributeField.nullish(),
-              state: subjectAttributeField.nullish(),
-              locality: subjectAttributeField.nullish(),
-              domainComponents: domainComponentsSchema.nullish(),
-              keyUsages: z.nativeEnum(CertKeyUsageType).array().optional(),
-              extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
-              altNames: z
-                .array(
-                  z.object({
-                    type: z.nativeEnum(CertSubjectAlternativeNameType),
-                    value: z.string().min(1, "SAN value cannot be empty")
-                  })
-                )
-                .optional(),
-              signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
-              keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
-              ttl: z
-                .string()
-                .trim()
-                .refine((val) => !val || ms(val) > 0, "TTL must be a positive number")
-                .optional(),
+          csr: csrSchema.optional(),
+          attributes: certificateAttributesSchema
+            .extend({
               notBefore: validateCaDateField.optional(),
-              notAfter: validateCaDateField.optional(),
-              basicConstraints: z
-                .object({
-                  isCA: z.boolean(),
-                  pathLength: z.number().int().min(0).optional()
-                })
-                .optional()
+              notAfter: validateCaDateField.optional()
             })
             .optional(),
           removeRootsFromChain: booleanSchema.default(false).optional(),
@@ -1161,14 +1131,22 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       hide: false,
       operationId: "renewCertificate",
       tags: [ApiDocsTags.PkiCertificates],
+      description:
+        "Renew a certificate. The renewed certificate copies the one being renewed, then applies only the changes supplied here. Profile defaults are not applied.",
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().uuid().describe(CERTIFICATES.RENEW.id)
       }),
       body: z
         .object({
-          removeRootsFromChain: booleanSchema.default(false).optional()
+          removeRootsFromChain: booleanSchema.default(false).describe(CERTIFICATES.RENEW.removeRootsFromChain),
+          renewalKeySource: z
+            .nativeEnum(CertificateRenewalKeySource)
+            .optional()
+            .describe(CERTIFICATES.RENEW.renewalKeySource),
+          csr: csrSchema.optional().describe(CERTIFICATES.RENEW.csr),
+          attributes: certificateAttributesSchema.optional().describe(CERTIFICATES.RENEW.attributes)
         })
-        .optional(),
+        .nullish(),
       response: {
         200: z.object({
           certificate: z.string().trim(),
@@ -1200,7 +1178,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         certificateId: req.params.id,
-        removeRootsFromChain: req.body?.removeRootsFromChain
+        removeRootsFromChain: req.body?.removeRootsFromChain,
+        renewalKeySource: req.body?.renewalKeySource,
+        csr: req.body?.csr,
+        attributes: req.body?.attributes
       });
 
       await server.services.auditLog.createAuditLog({
@@ -1374,6 +1355,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             caType: z.enum(["internal", "external"]).nullable().optional(),
             profileName: z.string().nullable().optional(),
             applicationName: z.string().nullable().optional(),
+            hasPrivateKey: z.boolean().describe(CERTIFICATES.GET.hasPrivateKey),
             metadata: z.array(z.object({ key: z.string(), value: z.string() })).optional()
           })
         })
