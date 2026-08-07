@@ -3,7 +3,6 @@ import type { RateLimitOptions, RateLimitPluginOptions } from "@fastify/rate-lim
 import { getConfig } from "@app/lib/config/env";
 import { buildRedisFromConfig } from "@app/lib/config/redis";
 import { RateLimitError } from "@app/lib/errors";
-import { parseBasicAuthHeader } from "@app/services/oauth-client/oauth-client-fns";
 
 export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
   const appCfg = getConfig();
@@ -55,19 +54,11 @@ export const authRateLimit: RateLimitOptions = {
   keyGenerator: (req) => req.realIp
 };
 
-// Keyed per IP *and* client, so one noisy integration cannot exhaust the budget of every other client
-// behind the same egress IP. The hook runs before validation, so the body is still unparsed.
 export const oauthTokenLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",
   max: (req) => req.rateLimits.writeLimit,
-  keyGenerator: (req) => {
-    const suppliedClientId = (req.body as { client_id?: unknown } | undefined)?.client_id;
-    const clientId =
-      parseBasicAuthHeader(req.headers.authorization)?.clientId ??
-      (typeof suppliedClientId === "string" ? suppliedClientId : undefined);
-    return clientId ? `${req.realIp}:${clientId.slice(0, 256)}` : req.realIp;
-  }
+  keyGenerator: (req) => req.realIp
 };
 
 export const inviteUserRateLimit: RateLimitOptions = {
