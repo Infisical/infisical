@@ -43,6 +43,7 @@ const ALPHANUM = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789
 const BASE64URL = `${ALPHANUM}-_`;
 const HEX = "0123456789abcdef";
 const DIGITS = "0123456789";
+const BASE36 = "0123456789abcdefghijklmnopqrstuvwxyz";
 
 const UPPERALNUM = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
@@ -318,9 +319,18 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     description: "Build and run Discord bots.",
     hostPattern: "discord.com/api/*",
     // Discord bot tokens are sent as `Authorization: Bot <token>`; substitution swaps the raw
-    // token by value, so the "Bot" prefix stays intact on the wire.
+    // token by value, so the "Bot" prefix stays intact on the wire. Real tokens are three
+    // dot-separated base64url segments: b64url(bot snowflake) — whose first char is always
+    // M/N/O — then a 6-char timestamp and an HMAC signature.
     seed: {
-      substitutions: bearerSubstitution("DISCORD_TOKEN", () => randomToken(59, BASE64URL))
+      substitutions: bearerSubstitution(
+        "DISCORD_TOKEN",
+        () =>
+          `${"MNO"[Math.floor(Math.random() * 3)]}${randomToken(25, BASE64URL)}.${randomToken(
+            6,
+            BASE64URL
+          )}.${randomToken(38, BASE64URL)}`
+      )
     }
   },
 
@@ -344,7 +354,12 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     description: "Repos and pipelines on GitLab.",
     hostPattern: "gitlab.com/api/*",
     seed: {
-      substitutions: bearerSubstitution("GITLAB_TOKEN", () => `glpat-${randomToken(20, BASE64URL)}`)
+      // GitLab 17.2+ "routable" token: 27-char base64url body, then a dot-delimited
+      // 2-char version indicator + 7-char base36 CRC32 checksum.
+      substitutions: bearerSubstitution(
+        "GITLAB_TOKEN",
+        () => `glpat-${randomToken(27, BASE64URL)}.${randomToken(9, BASE36)}`
+      )
     }
   },
   {
@@ -355,7 +370,7 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     description: "Deploys and the Vercel API.",
     hostPattern: "api.vercel.com",
     seed: {
-      substitutions: bearerSubstitution("VERCEL_TOKEN", () => `vcp_${randomToken(28)}`)
+      substitutions: bearerSubstitution("VERCEL_TOKEN", () => `vcp_${randomToken(24)}`)
     }
   },
   {
@@ -377,9 +392,10 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     description: "Postgres, auth, and storage.",
     hostPattern: "*.supabase.co",
     seed: {
+      // Current-generation secret keys are sb_secret_<22-char base64url>_<checksum>.
       substitutions: bearerSubstitution(
         "SUPABASE_SERVICE_ROLE_KEY",
-        () => `sb_secret_${randomToken(40)}`
+        () => `sb_secret_${randomToken(22, BASE64URL)}_${randomToken(8)}`
       )
     }
   },
@@ -391,7 +407,7 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     description: "The npm package registry.",
     hostPattern: "registry.npmjs.org",
     seed: {
-      substitutions: bearerSubstitution("NPM_TOKEN", () => `npm_${randomToken(36, UPPERALNUM)}`)
+      substitutions: bearerSubstitution("NPM_TOKEN", () => `npm_${randomToken(36)}`)
     }
   },
   {
@@ -514,10 +530,7 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     description: "Shopify e-commerce API.",
     hostPattern: "*.myshopify.com",
     seed: {
-      substitutions: bearerSubstitution(
-        "SHOPIFY_ACCESS_TOKEN",
-        () => `shpat_${randomToken(32, HEX)}`
-      )
+      substitutions: bearerSubstitution("SHOPIFY_ACCESS_TOKEN", () => `shpat_${randomToken(32)}`)
     }
   }
 ];
