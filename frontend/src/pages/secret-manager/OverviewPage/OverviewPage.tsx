@@ -229,6 +229,7 @@ import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone"
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
+import { TableColumnResizeHandle } from "./components/TableColumnResizeHandle";
 import {
   DownloadEnvButton,
   DynamicSecretTableRow,
@@ -289,6 +290,12 @@ const DEFAULT_FILTER_STATE = {
 // const DEFAULT_COLLAPSED_HEADER_HEIGHT = 120;
 
 const OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
+
+const DEFAULT_ENVIRONMENT_COLUMN_WIDTH = 160;
+const NAME_COLUMN_ID = "name";
+const VALUE_COLUMN_ID = "value";
+
+const getColumnWidthStyle = (width?: number) => (width ? { width, minWidth: width } : undefined);
 
 const OverviewPageContent = () => {
   const { t } = useTranslation();
@@ -2504,6 +2511,11 @@ const OverviewPageContent = () => {
   // }, [debouncedHeaderHeight]);
 
   const [tableWidth, setTableWidth] = useState(0);
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+
+  const handleColumnResize = useCallback((widths: Record<string, number>) => {
+    setColumnWidths((currentWidths) => ({ ...currentWidths, ...widths }));
+  }, []);
 
   const hasPendingCreates =
     mergedSecKeys.length > secKeys.length ||
@@ -2573,14 +2585,14 @@ const OverviewPageContent = () => {
     | undefined;
 
   return (
-    <div className="">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <Helmet>
         <title>{t("common.head-title", { title: t("dashboard.title") })}</title>
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
-      <div className="relative mx-auto mb-18 max-w-8xl text-mineshaft-50 dark:scheme-dark">
-        <div className="flex w-full items-baseline justify-between">
+      <div className="relative mx-auto flex min-h-0 w-full max-w-8xl flex-1 flex-col text-mineshaft-50 dark:scheme-dark">
+        <div className="flex w-full shrink-0 items-baseline justify-between">
           <PageHeader
             scope={ProjectType.SecretManager}
             title="Project Overview"
@@ -2638,8 +2650,8 @@ const OverviewPageContent = () => {
           visibleEnvs={visibleEnvs}
         />
 
-        <Card>
-          <CardHeader>
+        <Card className="h-auto min-h-0 flex-1 overflow-hidden">
+          <CardHeader className="shrink-0">
             <div className="flex flex-col gap-3 overflow-hidden dashboard:flex-row dashboard:items-center">
               <div className="flex flex-1 items-center gap-x-3 overflow-hidden whitespace-nowrap dashboard:mr-auto">
                 <EnvironmentSelect
@@ -2762,9 +2774,9 @@ const OverviewPageContent = () => {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {relevantPendingApprovalsCount > 0 && (
-              <Alert variant="info" className="-mt-2 mb-3 py-1.5">
+              <Alert variant="info" className="-mt-2 mb-3 shrink-0 py-1.5">
                 <AlertTitle className="flex items-center gap-3">
                   <InfoIcon className="size-4 shrink-0 text-info" />
                   <span>
@@ -2791,7 +2803,7 @@ const OverviewPageContent = () => {
               hasPathPolicies &&
               // eslint-disable-next-line no-nested-ternary
               (!canReadSecrets ? (
-                <Alert variant="info" className="mb-6 py-1.5">
+                <Alert variant="info" className="mb-6 shrink-0 py-1.5">
                   <InfoIcon className="mt-1" />
                   <AlertTitle className="flex items-center">
                     <span>You do not have permission to read secrets in this folder</span>
@@ -2808,7 +2820,7 @@ const OverviewPageContent = () => {
                   </AlertTitle>
                 </Alert>
               ) : !canCreateSecrets || !canEditSecrets || !canDeleteSecrets ? (
-                <Alert variant="info" className="mb-6 py-1.5">
+                <Alert variant="info" className="mb-6 shrink-0 py-1.5">
                   <InfoIcon className="mt-1" />
                   <AlertTitle className="flex items-center">
                     <span>
@@ -2929,10 +2941,15 @@ const OverviewPageContent = () => {
               </div>
             )}
             {tableView === "table" && (
-              <>
+              <div className="flex min-h-0 flex-1 flex-col">
                 <DragDropProvider onDragEnd={handleSecretImportReorder}>
-                  <Table ref={tableRef} className="border-separate border-spacing-0">
-                    <TableHeader>
+                  <Table
+                    ref={tableRef}
+                    isScrollable
+                    containerClassName="min-h-0 flex-1"
+                    className="border-separate border-spacing-0"
+                  >
+                    <TableHeader isSticky>
                       <TableRow className="h-10">
                         <TableHead
                           className={twMerge(
@@ -2954,6 +2971,7 @@ const OverviewPageContent = () => {
                             !isSingleEnvView && "sticky",
                             "left-10 z-10 max-w-60 min-w-60 border-r bg-container lg:max-w-none lg:min-w-96"
                           )}
+                          style={getColumnWidthStyle(columnWidths[NAME_COLUMN_ID])}
                           onClick={() =>
                             setOrderDirection((prev) =>
                               prev === OrderByDirection.ASC
@@ -2972,17 +2990,22 @@ const OverviewPageContent = () => {
                         </TableHead>
                         {visibleEnvs.length > 1 ? (
                           visibleEnvs?.map(({ name, slug, id }, index) => {
+                            const previousEnvironment = visibleEnvs[index - 1];
+                            const leftColumnId = previousEnvironment?.slug ?? NAME_COLUMN_ID;
+
                             return (
                               <TableHead
-                                className="w-40 max-w-40 border-r p-0 text-center last:border-r-0"
-                                isTruncatable
-                                key={`secret-overview-${name}-${index + 1}`}
+                                className="relative border-r p-0 text-center last:border-r-0"
+                                key={`secret-overview-${slug}`}
+                                style={getColumnWidthStyle(
+                                  columnWidths[slug] ?? DEFAULT_ENVIRONMENT_COLUMN_WIDTH
+                                )}
                               >
                                 <DropdownMenu>
                                   <Tooltip>
-                                    <TooltipTrigger className="h-full">
+                                    <TooltipTrigger className="h-full w-full">
                                       <DropdownMenuTrigger asChild>
-                                        <div className="flex h-full w-40 cursor-pointer items-center justify-center gap-x-2 px-3 hover:bg-foreground/5">
+                                        <div className="flex h-full w-full cursor-pointer items-center justify-center gap-x-2 px-3 hover:bg-foreground/5">
                                           <span className="truncate">{name}</span>
                                           <SettingsIcon className="size-3.5 shrink-0" />
                                         </div>
@@ -3075,11 +3098,19 @@ const OverviewPageContent = () => {
                                     </ProjectPermissionCan>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
+                                <TableColumnResizeHandle
+                                  leftColumnId={leftColumnId}
+                                  onResizeEnd={handleColumnResize}
+                                  rightColumnId={slug}
+                                />
                               </TableHead>
                             );
                           })
                         ) : (
-                          <TableHead className="w-full">
+                          <TableHead
+                            className="relative w-full p-0 text-left"
+                            style={getColumnWidthStyle(columnWidths[VALUE_COLUMN_ID])}
+                          >
                             <div className="flex w-full items-center justify-between">
                               Value
                               <div className="flex items-center gap-2">
@@ -3165,6 +3196,11 @@ const OverviewPageContent = () => {
                                 />
                               </div>
                             </div>
+                            <TableColumnResizeHandle
+                              leftColumnId={NAME_COLUMN_ID}
+                              onResizeEnd={handleColumnResize}
+                              rightColumnId={VALUE_COLUMN_ID}
+                            />
                           </TableHead>
                         )}
                       </TableRow>
@@ -3451,6 +3487,7 @@ const OverviewPageContent = () => {
                   </DragOverlay>
                 </DragDropProvider>
                 <Pagination
+                  className="shrink-0"
                   startAdornment={
                     <ResourceCount
                       dynamicSecretCount={totalDynamicSecretCount}
@@ -3467,7 +3504,7 @@ const OverviewPageContent = () => {
                   onChangePage={(newPage) => setPage(newPage)}
                   onChangePerPage={handlePerPageChange}
                 />
-              </>
+              </div>
             )}
           </CardContent>
         </Card>

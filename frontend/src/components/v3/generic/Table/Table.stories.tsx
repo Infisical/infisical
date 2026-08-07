@@ -88,6 +88,9 @@ const identities: Identity[] = [
  * Useful per-cell flags:
  * - **`isTruncatable`** on `TableHead` / `TableCell` clips long content with
  *   ellipsis instead of letting the column blow out the row width.
+ * - **`isScrollable`** on `Table` enables vertical scrolling when its container
+ *   is height-constrained. Pair it with **`isSticky`** on `TableHeader` to keep
+ *   column labels visible while rows scroll.
  * - **`data-state="selected"`** on a `TableRow` paints the selected highlight
  *   for row-checkbox patterns.
  * - A `TableHead` with a child icon flips to a sortable look — clickable
@@ -346,6 +349,40 @@ export const TruncatedCells: Story = {
               {id.description}
             </TableCell>
             <TableCell>{id.role}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+};
+
+export const ScrollableRows: Story = {
+  name: "Example: Scrollable Rows",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Constrain the table container, pass `isScrollable` to `Table`, and pass `isSticky` to `TableHeader` when rows should scroll without moving the column labels. Keep pagination outside the table container so it remains visible."
+      }
+    }
+  },
+  render: () => (
+    <Table isScrollable containerClassName="max-h-48">
+      <TableHeader isSticky>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead>Status</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {identities.map((id) => (
+          <TableRow key={id.name}>
+            <TableCell className="font-medium">{id.name}</TableCell>
+            <TableCell>{id.role}</TableCell>
+            <TableCell>
+              <Badge variant="success">Active</Badge>
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
