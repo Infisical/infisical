@@ -78,10 +78,7 @@ export const hasClientAuthorityChanged = (
   authenticated: Pick<TOauthClients, "clientSecretHash" | "grantTypes">,
   current: Pick<TOauthClients, "clientSecretHash" | "grantTypes"> | undefined,
   grantType: OauthGrantType
-) =>
-  !current ||
-  current.clientSecretHash !== authenticated.clientSecretHash ||
-  !current.grantTypes.includes(grantType);
+) => !current || current.clientSecretHash !== authenticated.clientSecretHash || !current.grantTypes.includes(grantType);
 
 export const isRegisteredRedirectUri = (registeredUris: string[], redirectUri: string) =>
   registeredUris.some((uri) => {
