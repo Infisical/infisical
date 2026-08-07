@@ -1222,7 +1222,12 @@ export const gatewayV2ServiceFactory = ({
     // the network, so they run before the transaction is opened rather than inside it.
     let authMethodArg = authMethod;
     if (authMethod.method === "kubernetes") {
-      await resourceAuthMethodService.preflightKubernetesConfig(authMethod.config, orgId);
+      await resourceAuthMethodService.preflightKubernetesConfig(authMethod.config, orgId, undefined, {
+        type: actorType,
+        id: actorId,
+        orgId,
+        authMethod: actorAuthMethod
+      });
       authMethodArg = {
         method: authMethod.method,
         config: {

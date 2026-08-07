@@ -1803,6 +1803,7 @@ export const registerRoutes = async (
     kmipServerDAL,
     identityDAL,
     permissionService,
+    licenseService,
     gatewayProxyRegistry
   });
 

@@ -4,6 +4,7 @@ import { Knex } from "knex";
 import { OrganizationActionScope } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { OrgServiceActor } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -11,6 +12,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TGatewayPoolDALFactory } from "../gateway-pool/gateway-pool-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TKmipServerDALFactory } from "../kmip-server/kmip-server-dal";
+import { TLicenseServiceFactory } from "../license/license-service";
 import {
   OrgPermissionGatewayActions,
   OrgPermissionKmipServerActions,
@@ -85,6 +87,7 @@ type TResourceAuthMethodServiceFactoryDep = {
   kmipServerDAL: Pick<TKmipServerDALFactory, "findById" | "updateById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayProxyRegistry: TGatewayProxyRegistry;
 };
 
@@ -129,6 +132,7 @@ export const resourceAuthMethodServiceFactory = ({
   kmipServerDAL,
   identityDAL,
   permissionService,
+  licenseService,
   gatewayProxyRegistry
 }: TResourceAuthMethodServiceFactoryDep) => {
   // Registry rows carry the resource FK in a per-type column (gatewayId/relayId/kmipServerId).
@@ -209,6 +213,37 @@ export const resourceAuthMethodServiceFactory = ({
         KMIP_SERVER_PERMISSION_MAP[intent],
         OrgPermissionSubjects.KmipServer
       );
+    }
+  };
+
+  // Attaching a gateway to something is its own permission, and pools are a licensed feature.
+  // Machine identity Kubernetes auth gates its gateway selection the same way.
+  const $assertCanAttachProxy = async (
+    actor: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">,
+    proxy: { gatewayV2Id?: string | null; gatewayPoolId?: string | null }
+  ) => {
+    if (!proxy.gatewayV2Id && !proxy.gatewayPoolId) return;
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.AttachGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    if (proxy.gatewayPoolId) {
+      const plan = await licenseService.getPlan(actor.orgId);
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
     }
   };
 
@@ -456,9 +491,12 @@ export const resourceAuthMethodServiceFactory = ({
     >,
     orgId: string,
     // Absent when the resource does not exist yet, where it cannot be its own proxy.
-    resource?: ResourceRef
+    resource?: ResourceRef,
+    // Absent on paths where the caller was already authorized to attach, e.g. an unauthenticated login.
+    actor?: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">
   ) => {
     if (resource) assertKubernetesProxyNotSelf(resource, config.gatewayV2Id);
+    if (actor) await $assertCanAttachProxy(actor, config);
 
     const isProxied = Boolean(config.gatewayV2Id ?? config.gatewayPoolId);
     if (!isProxied && config.kubernetesHost) {
@@ -621,35 +659,46 @@ export const resourceAuthMethodServiceFactory = ({
         // Gateway review mode is exempt: the gateway reviews with its own service account, so the
         // stored token is not sent anywhere and there is no endpoint for it to leak to.
         const isGatewayReviewer = authMethod.tokenReviewMode === KubernetesTokenReviewMode.Gateway;
+
+        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.Organization,
+          orgId: actor.orgId
+        });
+        const storedCa = stored?.encryptedKubernetesCaCertificate
+          ? decryptor({ cipherTextBlob: stored.encryptedKubernetesCaCertificate }).toString()
+          : undefined;
+
+        // Everything that decides where the token ends up, and who could read it in transit. The
+        // host alone is not enough: routing it through a different gateway, trusting a different
+        // CA, or turning verification off all redirect it somewhere it was never validated against.
+        const destinationChanged =
+          stored?.kubernetesHost !== authMethod.kubernetesHost ||
+          (stored?.gatewayV2Id ?? null) !== (authMethod.gatewayV2Id ?? null) ||
+          (stored?.gatewayPoolId ?? null) !== (authMethod.gatewayPoolId ?? null) ||
+          stored?.verifyTlsCertificate !== authMethod.verifyTlsCertificate ||
+          (authMethod.caCertificate !== undefined && authMethod.caCertificate !== (storedCa ?? ""));
         if (
           !isGatewayReviewer &&
           stored?.encryptedKubernetesTokenReviewerJwt &&
           effectiveReviewer === undefined &&
-          stored.kubernetesHost !== authMethod.kubernetesHost
+          destinationChanged
         ) {
           throw new BadRequestError({
             message:
-              "Re-enter the token reviewer JWT when changing the Kubernetes host, or reset it to remove it. The stored token is never sent to a different host."
+              "Re-enter the token reviewer JWT when changing the Kubernetes host, the reviewing gateway, the CA certificate, or TLS verification. Reset it instead to remove it. The stored token is never sent to a destination it was not validated against."
           });
         }
 
-        const needsCa = effectiveCa === undefined && stored?.encryptedKubernetesCaCertificate;
-        const needsReviewer = effectiveReviewer === undefined && stored?.encryptedKubernetesTokenReviewerJwt;
-        if (stored && (needsCa || needsReviewer)) {
-          const { decryptor } = await kmsService.createCipherPairWithDataKey({
-            type: KmsDataKey.Organization,
-            orgId: actor.orgId
-          });
-          if (needsCa && stored.encryptedKubernetesCaCertificate) {
-            effectiveCa = decryptor({ cipherTextBlob: stored.encryptedKubernetesCaCertificate }).toString();
-          }
-          if (needsReviewer && stored.encryptedKubernetesTokenReviewerJwt) {
-            effectiveReviewer = decryptor({ cipherTextBlob: stored.encryptedKubernetesTokenReviewerJwt }).toString();
-          }
+        if (effectiveCa === undefined && storedCa !== undefined) {
+          effectiveCa = storedCa;
+        }
+        if (effectiveReviewer === undefined && stored?.encryptedKubernetesTokenReviewerJwt) {
+          effectiveReviewer = decryptor({ cipherTextBlob: stored.encryptedKubernetesTokenReviewerJwt }).toString();
         }
       }
 
       assertKubernetesProxyNotSelf(resource, authMethod.gatewayV2Id);
+      await $assertCanAttachProxy(actor, authMethod);
 
       const validation = await $buildKubernetesExecutor(
         {
