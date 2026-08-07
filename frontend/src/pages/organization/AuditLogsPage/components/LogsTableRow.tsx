@@ -67,10 +67,12 @@ export const LogsTableRow = ({ auditLog, rowNumber, timezone, onClick }: Props) 
           <Tag label="event" value={auditLog.event.type} />
           <Tag label="actor" value={auditLog.actor.type} />
           {auditLog.actor.type === ActorType.USER && (
-            <Tag label="user_email" value={auditLog.actor.metadata.email} />
-          )}
-          {auditLog.actor.type === ActorType.USER && auditLog.actor.metadata.oauthClientId && (
-            <Tag label="oauth_application" value={auditLog.actor.metadata.oauthClientId} />
+            <>
+              <Tag label="user_email" value={auditLog.actor.metadata.email} />
+              {auditLog.actor.metadata.oauthClientId && (
+                <Tag label="oauth_application" value={auditLog.actor.metadata.oauthClientId} />
+              )}
+            </>
           )}
           {auditLog.actor.type === ActorType.IDENTITY && (
             <Tag label="identity_name" value={auditLog.actor.metadata.name} />
