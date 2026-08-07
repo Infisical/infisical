@@ -185,6 +185,7 @@ Every exchange checks all of the following, and fails the request with a message
 - The token **carries an `exp` claim and has not passed it**, and is not used before its `nbf` time. A token with no expiry is rejected rather than treated as valid forever.
 - The **signing algorithm** matches your OIDC SSO configuration.
 - The token's **subject** resolves to a user who has signed in through your organization's OIDC SSO and is an active member of the organization.
+- That user's **Infisical account is usable**: setup is complete and the account is not locked. A locked account fails the exchange outright rather than returning a token that stops working on first use.
 - **MFA** requirements are satisfied, either because none apply or because the application declares that the identity provider enforces them.
 
 ## Audit trail
