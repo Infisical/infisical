@@ -388,7 +388,7 @@ export const OauthClientModal = ({
                         </FieldLabel>
                         <Input
                           id="oauth-client-token-exchange-audience"
-                          placeholder="e.g. api://paychex-mcp"
+                          placeholder="e.g. api://internal-mcp"
                           isError={Boolean(error)}
                           {...field}
                         />

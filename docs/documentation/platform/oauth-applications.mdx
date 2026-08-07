@@ -140,7 +140,7 @@ The response contains:
 
 Access token lifetime follows your organization's user token expiration setting (falling back to the platform default). Refresh tokens rotate on use, and a refresh never broadens the scopes originally granted.
 
-`refresh_token` is present only when the application is registered for the `refresh_token` grant, which applications created in the UI always are. If you registered one through the API with `grant_type` limited to `authorization_code`, the field is omitted and the client should exchange a new authorization code when the access token expires.
+`refresh_token` is present only when the application holds the `refresh_token` grant, which applications created in the UI always do. If you registered one through the API with `grantTypes` limited to `authorization_code`, the field is omitted and the client should exchange a new authorization code when the access token expires.
 
 ### Validation endpoint
 
@@ -177,4 +177,4 @@ The effective permissions are the **intersection** of the user's permissions and
 
 Deleting an OAuth application from the **OAuth Applications** tab immediately revokes every access and refresh token that application issued, so they stop working on the next request rather than living until expiry.
 
-Rotating the client secret invalidates the old secret for future token requests but leaves already-issued tokens working until they expire, so users of the integration are not signed out. The secret alone cannot mint a token in this flow: it has to be paired with an authorization code from a user's browser or with a refresh token. If you need to cut existing access off immediately, delete the application. (Rotation on a [token exchange](/documentation/platform/oauth-token-exchange) application behaves differently, because there the secret is sufficient on its own.)
+Rotating the client secret invalidates the old secret for future token requests but leaves already-issued tokens working until they expire, so users of the integration are not signed out. The secret alone cannot mint a token in this flow: it has to be paired with an authorization code from a user's browser or with a refresh token. To cut existing access off immediately, delete the application. Rotation on a [token exchange](/documentation/platform/oauth-token-exchange) application behaves differently, because there the secret is sufficient on its own.

@@ -40,7 +40,7 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 const ISSUER = "https://adfs.example.com/adfs";
-const AUDIENCE = "api://paychex-mcp";
+const AUDIENCE = "api://internal-mcp";
 const SUBJECT = "8f7d1c22-0000-4a7b-9b1e-aaaabbbbcccc";
 
 // A unique JWKS URI per test keeps the module-level JwksClient cache from carrying a client between

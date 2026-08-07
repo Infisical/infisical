@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { AlertTriangle, ArrowLeftRight, Info, MoreHorizontal, Pencil } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -8,7 +7,6 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-  Badge,
   Card,
   CardAction,
   CardContent,
@@ -34,10 +32,9 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
-  useOrgPermission,
   useSubscription
 } from "@app/context";
-import { OauthGrantType, useGetOauthClients, useGetOIDCConfig } from "@app/hooks/api";
+import { useGetOIDCConfig } from "@app/hooks/api";
 import { useUpdateOIDCConfig } from "@app/hooks/api/oidcConfig/mutations";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -50,20 +47,9 @@ type Props = {
 export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
-  const { permission } = useOrgPermission();
 
   const { data, isPending } = useGetOIDCConfig(currentOrg?.id ?? "");
   const { mutateAsync } = useUpdateOIDCConfig();
-
-  const canReadApplications = permission.can(
-    OrgPermissionActions.Read,
-    OrgPermissionSubjects.OauthClients
-  );
-  const { data: tokenExchangeClients } = useGetOauthClients(
-    canReadApplications ? (currentOrg?.id ?? "") : "",
-    OauthGrantType.TokenExchange
-  );
-  const dependentClients = tokenExchangeClients ?? [];
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "addOIDC",
@@ -245,37 +231,6 @@ export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
                 )}
               </OrgPermissionCan>
             </Field>
-            {dependentClients.length > 0 && (
-              <Alert variant="info">
-                <Info />
-                <AlertTitle>
-                  {dependentClients.length === 1
-                    ? "1 application depends on this issuer"
-                    : `${dependentClients.length} applications depend on this issuer`}
-                </AlertTitle>
-                <AlertDescription>
-                  <p>
-                    These applications use OAuth token exchange to act on behalf of your users, and
-                    verify the tokens they present against this issuer. Disabling OIDC SSO or
-                    changing the issuer stops them working.
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {dependentClients.map((client) => (
-                      <Badge key={client.id} variant="neutral">
-                        {client.name}
-                      </Badge>
-                    ))}
-                  </div>
-                  <Link
-                    to="/organizations/$orgId/oauth-applications"
-                    params={{ orgId: currentOrg?.id ?? "" }}
-                    className="mt-2 inline-block underline underline-offset-2 hover:text-foreground"
-                  >
-                    Manage OAuth applications
-                  </Link>
-                </AlertDescription>
-              </Alert>
-            )}
           </FieldGroup>
         </CardContent>
       </Card>
