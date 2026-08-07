@@ -32,6 +32,44 @@ const buildDiscoveryDocumentUrl = (discoveryUrl: string) => {
 
 type TOidcDiscoveryMetadata = { jwks_uri?: string; issuer?: string };
 
+// Everything token exchange fetches from an identity provider is cached the same way, so the mechanics
+// live here once:
+//
+// - Entries hold the in-flight promise, so concurrent callers on a cold entry coalesce onto one fetch
+//   instead of stampeding the provider.
+// - A rejected entry is dropped rather than kept for its TTL, so a provider blip lasts as long as the
+//   blip. Caching the failure would turn a 5-second outage into 10 minutes of them.
+// - A full cache is cleared wholesale rather than evicted by age. A flush only costs a refetch, and the
+//   bound exists to cap memory against an org churning through provider URLs, not to be a working LRU.
+const createTtlCache = <T>({ ttlMs, maxEntries }: { ttlMs: number; maxEntries: number }) => {
+  const entries = new Map<string, { value: Promise<T>; expiresAt: number }>();
+
+  const getOrCreate = (key: string, create: () => Promise<T>) => {
+    const now = Date.now();
+    const cached = entries.get(key);
+    if (cached && cached.expiresAt > now) return cached.value;
+
+    if (entries.size >= maxEntries) entries.clear();
+
+    const value = create();
+    entries.set(key, { value, expiresAt: now + ttlMs });
+
+    value.catch(() => {
+      if (entries.get(key)?.value === value) entries.delete(key);
+    });
+
+    return value;
+  };
+
+  return { getOrCreate };
+};
+
+// Both caches are keyed on the URL rather than the org, so orgs on a shared provider share one entry,
+// and an admin correcting a URL moves to a different key instead of waiting out the TTL.
+const MAX_CACHED_PROVIDER_URLS = 512;
+const DISCOVERY_METADATA_TTL_MS = 10 * 60 * 1000;
+const JWKS_CLIENT_TTL_MS = 10 * 60 * 1000;
+
 // Fetching the discovery document is a network round trip. Integrators are told to exchange once per
 // user and cache the token, but we cannot enforce that, and a middleware that exchanges per request
 // would otherwise make the identity provider a synchronous dependency of every Infisical call it serves.
@@ -39,65 +77,41 @@ type TOidcDiscoveryMetadata = { jwks_uri?: string; issuer?: string };
 // Only the fetch is cached, never the resolved trust anchor. The algorithm and the preferred issuer come
 // from the org's own SSO configuration, so an admin changing either still takes effect on the next
 // request.
-//
-// Keyed on the document URL rather than the org, so orgs on a shared provider share one entry, and an
-// admin correcting the discovery URL moves to a different key instead of waiting out the TTL.
-const DISCOVERY_METADATA_TTL_MS = 10 * 60 * 1000;
-const MAX_CACHED_DISCOVERY_DOCUMENTS = 512;
-const discoveryMetadataCache = new Map<string, { metadata: Promise<TOidcDiscoveryMetadata>; expiresAt: number }>();
+const discoveryMetadataCache = createTtlCache<TOidcDiscoveryMetadata>({
+  ttlMs: DISCOVERY_METADATA_TTL_MS,
+  maxEntries: MAX_CACHED_PROVIDER_URLS
+});
 
-const getDiscoveryMetadata = (documentUrl: string) => {
-  const now = Date.now();
-  const cached = discoveryMetadataCache.get(documentUrl);
-  if (cached && cached.expiresAt > now) return cached.metadata;
-
-  if (discoveryMetadataCache.size >= MAX_CACHED_DISCOVERY_DOCUMENTS) discoveryMetadataCache.clear();
-
-  const metadata = safeRequest.get<TOidcDiscoveryMetadata>(documentUrl, { timeout: 10_000 }).then(({ data }) => data);
-
-  discoveryMetadataCache.set(documentUrl, { metadata, expiresAt: now + DISCOVERY_METADATA_TTL_MS });
-
-  metadata.catch(() => {
-    if (discoveryMetadataCache.get(documentUrl)?.metadata === metadata) {
-      discoveryMetadataCache.delete(documentUrl);
-    }
-  });
-
-  return metadata;
-};
+const getDiscoveryMetadata = (documentUrl: string) =>
+  discoveryMetadataCache.getOrCreate(documentUrl, () =>
+    safeRequest.get<TOidcDiscoveryMetadata>(documentUrl, { timeout: 10_000 }).then(({ data }) => data)
+  );
 
 // jwks-rsa caches signing keys per instance, so reusing one per JWKS URI keeps a network fetch off the
 // hot path. Token exchange runs on every request the middleware makes.
 //
 // Entries expire so the agent's pinned IPs are rebuilt periodically. Without that, a legitimate DNS
 // change at the identity provider would not be picked up for the lifetime of the process.
-const JWKS_CLIENT_TTL_MS = 10 * 60 * 1000;
-const MAX_CACHED_JWKS_CLIENTS = 512;
-const jwksClientCache = new Map<string, { client: JwksClient; expiresAt: number }>();
+const jwksClientCache = createTtlCache<JwksClient>({
+  ttlMs: JWKS_CLIENT_TTL_MS,
+  maxEntries: MAX_CACHED_PROVIDER_URLS
+});
 
-const getJwksClient = async (jwksUri: string) => {
-  const now = Date.now();
-  const cached = jwksClientCache.get(jwksUri);
-  if (cached && cached.expiresAt > now) return cached.client;
+const getJwksClient = (jwksUri: string) =>
+  jwksClientCache.getOrCreate(jwksUri, async () => {
+    const requestAgent = await buildSsrfSafeAgent(jwksUri, { keepAlive: true });
 
-  if (jwksClientCache.size >= MAX_CACHED_JWKS_CLIENTS) jwksClientCache.clear();
-
-  const requestAgent = await buildSsrfSafeAgent(jwksUri, { keepAlive: true });
-
-  const client = new JwksClient({
-    jwksUri,
-    requestAgent,
-    cache: true,
-    cacheMaxEntries: 5,
-    cacheMaxAge: JWKS_CLIENT_TTL_MS,
-    rateLimit: true,
-    jwksRequestsPerMinute: 30,
-    timeout: 10_000
+    return new JwksClient({
+      jwksUri,
+      requestAgent,
+      cache: true,
+      cacheMaxEntries: 5,
+      cacheMaxAge: JWKS_CLIENT_TTL_MS,
+      rateLimit: true,
+      jwksRequestsPerMinute: 30,
+      timeout: 10_000
+    });
   });
-
-  jwksClientCache.set(jwksUri, { client, expiresAt: now + JWKS_CLIENT_TTL_MS });
-  return client;
-};
 
 export type TOidcTrustAnchor = {
   issuer: string;
