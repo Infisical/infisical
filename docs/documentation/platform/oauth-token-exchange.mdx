@@ -191,7 +191,7 @@ Cache it keyed by user, and treat the exchange as the slow path:
 - Drop the entry when the user's session at your identity provider ends, so their Infisical access does not outlive it.
 
 <Note>
-  The token endpoint is rate limited per source IP. A middleware that caches correctly makes roughly one exchange per user per token lifetime and stays well inside it; one that exchanges per request will be throttled under load. If you have sized your caching and still expect to approach the limit, contact us before rolling out.
+  The token endpoint is rate limited per application per source IP. A middleware that caches correctly makes roughly one exchange per user per token lifetime and stays well inside it; one that exchanges per request will be throttled under load. If you have sized your caching and still expect to approach the limit, contact us before rolling out.
 </Note>
 
 ## What Infisical verifies

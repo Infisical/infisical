@@ -54,6 +54,13 @@ export const authRateLimit: RateLimitOptions = {
   keyGenerator: (req) => req.realIp
 };
 
+export const oauthTokenLimit = ({ keyGenerator }: Pick<RateLimitOptions, "keyGenerator">): RateLimitOptions => ({
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.writeLimit,
+  keyGenerator
+});
+
 export const inviteUserRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",
