@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 import { BadRequestError } from "@app/lib/errors";
 
-import { OauthGrantType, REDIRECT_BASED_GRANT_TYPES } from "./oauth-client-types";
+import { OauthGrantType } from "./oauth-client-types";
 
 export const parseBasicAuthHeader = (
   authorizationHeader?: string
@@ -80,14 +80,6 @@ export const isRegisteredRedirectUri = (registeredUris: string[], redirectUri: s
     }
   });
 
-export const dedupeGrantTypes = (grantTypes: OauthGrantType[]) => [...new Set(grantTypes)];
-
-export const hasRedirectBasedGrant = (grantTypes: OauthGrantType[]) =>
-  grantTypes.some((grantType) => REDIRECT_BASED_GRANT_TYPES.includes(grantType));
-
-export const hasTokenExchangeGrant = (grantTypes: OauthGrantType[]) =>
-  grantTypes.includes(OauthGrantType.TokenExchange);
-
 type TOauthClientGrantConfig = {
   grantTypes: OauthGrantType[];
   resolved: {
@@ -107,8 +99,8 @@ export const assertValidOauthClientGrantConfig = ({ grantTypes, resolved, suppli
     throw new BadRequestError({ message: "At least one grant type must be enabled for an application." });
   }
 
-  const isRedirectBased = hasRedirectBasedGrant(grantTypes);
-  const isTokenExchange = hasTokenExchangeGrant(grantTypes);
+  const isRedirectBased = grantTypes.includes(OauthGrantType.AuthorizationCode);
+  const isTokenExchange = grantTypes.includes(OauthGrantType.TokenExchange);
 
   if (grantTypes.includes(OauthGrantType.RefreshToken) && !grantTypes.includes(OauthGrantType.AuthorizationCode)) {
     throw new BadRequestError({

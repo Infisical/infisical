@@ -10,9 +10,6 @@ export enum OauthGrantType {
   TokenExchange = "urn:ietf:params:oauth:grant-type:token-exchange"
 }
 
-// Grants that mint tokens through a browser redirect, so they need registered redirect URIs.
-export const REDIRECT_BASED_GRANT_TYPES: readonly OauthGrantType[] = [OauthGrantType.AuthorizationCode];
-
 // Applied as the create default so an API caller written before this feature, which sends no
 // `grantTypes`, keeps registering redirect-flow applications.
 export const DEFAULT_OAUTH_GRANT_TYPES: readonly OauthGrantType[] = [

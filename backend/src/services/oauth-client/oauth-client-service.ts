@@ -28,10 +28,7 @@ import { TOauthClientDALFactory } from "./oauth-client-dal";
 import {
   assertValidOauthClientGrantConfig,
   computePkceChallenge,
-  dedupeGrantTypes,
   getOauthClientSessionUserAgent,
-  hasRedirectBasedGrant,
-  hasTokenExchangeGrant,
   isRegisteredRedirectUri,
   PKCE_CODE_VERIFIER_REGEX
 } from "./oauth-client-fns";
@@ -75,6 +72,10 @@ const sanitizeOauthClient = (client: TOauthClients) => {
   const { clientSecretHash, ...rest } = client;
   return rest;
 };
+
+// The generated schema types the column as `string[]`, since it is a plain text[] in Postgres. Every
+// value written to it goes through the router's `grantTypesSchema`, so the narrowing holds.
+const getGrantTypes = (client: TOauthClients) => client.grantTypes as OauthGrantType[];
 
 const expiresInToSeconds = (expiresIn: string | number) =>
   typeof expiresIn === "number" ? expiresIn : Math.floor(ms(expiresIn) / 1000);
@@ -252,12 +253,12 @@ export const oauthClientServiceFactory = ({
     client?: TOauthClients;
     ssoPermissionAction: string;
   }) => {
-    const storedGrantTypes = client ? (client.grantTypes as OauthGrantType[]) : [];
+    const storedGrantTypes = client ? getGrantTypes(client) : [];
 
-    const grantTypes = dedupeGrantTypes(dto.grantTypes ?? storedGrantTypes);
-    const wasTokenExchangeEnabled = hasTokenExchangeGrant(storedGrantTypes);
-    const isTokenExchangeEnabled = hasTokenExchangeGrant(grantTypes);
-    const isRedirectBased = hasRedirectBasedGrant(grantTypes);
+    const grantTypes = dto.grantTypes ?? storedGrantTypes;
+    const wasTokenExchangeEnabled = storedGrantTypes.includes(OauthGrantType.TokenExchange);
+    const isTokenExchangeEnabled = grantTypes.includes(OauthGrantType.TokenExchange);
+    const isRedirectBased = grantTypes.includes(OauthGrantType.AuthorizationCode);
 
     const redirectUris = dto.redirectUris ?? client?.redirectUris ?? [];
     const tokenExchangeAudience =
@@ -335,9 +336,7 @@ export const oauthClientServiceFactory = ({
     await checkOauthClientPermission(actor, OrgPermissionActions.Read);
 
     const clients = await oauthClientDAL.find({ orgId: actor.orgId });
-    const filtered = grantType
-      ? clients.filter((client) => (client.grantTypes as OauthGrantType[]).includes(grantType))
-      : clients;
+    const filtered = grantType ? clients.filter((client) => getGrantTypes(client).includes(grantType)) : clients;
 
     return filtered.map(sanitizeOauthClient);
   };
@@ -406,7 +405,7 @@ export const oauthClientServiceFactory = ({
 
     const client = await getOrgClientOrThrow(clientDbId, actor.orgId);
 
-    const usesTokenExchange = hasTokenExchangeGrant(client.grantTypes as OauthGrantType[]);
+    const usesTokenExchange = getGrantTypes(client).includes(OauthGrantType.TokenExchange);
 
     if (usesTokenExchange) {
       await checkSsoConfigPermission(actor, "rotate the secret of an OAuth application that uses token exchange");
@@ -428,11 +427,8 @@ export const oauthClientServiceFactory = ({
     return { client: sanitizeOauthClient(updatedClient), clientSecret };
   };
 
-  const isGrantEnabled = (client: TOauthClients, grantType: OauthGrantType) =>
-    (client.grantTypes as OauthGrantType[]).includes(grantType);
-
   const assertGrantEnabled = (client: TOauthClients, grantType: OauthGrantType) => {
-    if (!isGrantEnabled(client, grantType)) {
+    if (!getGrantTypes(client).includes(grantType)) {
       throw new UnauthorizedError({
         message: `This application is not registered for the '${grantType}' grant type`
       });
@@ -587,8 +583,6 @@ export const oauthClientServiceFactory = ({
     client: TOauthClients,
     dto: Extract<TOauthTokenExchangeDTO, { grantType: OauthGrantType.TokenExchange }>
   ) => {
-    assertGrantEnabled(client, OauthGrantType.TokenExchange);
-
     if (!client.tokenExchangeAudience) {
       throw new BadRequestError({
         message:
@@ -739,14 +733,13 @@ export const oauthClientServiceFactory = ({
 
   const exchangeToken = async (dto: TOauthTokenExchangeDTO) => {
     const client = await authenticateClient(dto.clientId, dto.clientSecret);
+    assertGrantEnabled(client, dto.grantType);
 
     if (dto.grantType === OauthGrantType.TokenExchange) {
       return exchangeSubjectToken(client, dto);
     }
 
     if (dto.grantType === OauthGrantType.AuthorizationCode) {
-      assertGrantEnabled(client, OauthGrantType.AuthorizationCode);
-
       const codeKey = KeyStorePrefixes.OauthAuthorizationCode(dto.code);
       const codePayloadRaw = await keyStore.getItem(codeKey);
       if (!codePayloadRaw) {
@@ -807,7 +800,7 @@ export const oauthClientServiceFactory = ({
         accessTokenExpiresIn
       );
 
-      const refreshToken = isGrantEnabled(client, OauthGrantType.RefreshToken)
+      const refreshToken = getGrantTypes(client).includes(OauthGrantType.RefreshToken)
         ? signOauthToken(
             {
               ...sharedClaims,
@@ -827,8 +820,6 @@ export const oauthClientServiceFactory = ({
         scope: grantedScopes.join(" ")
       };
     }
-
-    assertGrantEnabled(client, OauthGrantType.RefreshToken);
 
     const { decodedToken, tokenVersion, isGraceHit } = await tokenService.validateRefreshToken(dto.refreshToken, {
       allowOauthClientToken: true
