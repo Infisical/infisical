@@ -388,7 +388,6 @@ const Page = () => {
                 )}
               {!isInventoryView &&
                 (certificate.profileId || certificate.caId) &&
-                certificate.hasPrivateKey !== false &&
                 !certificate.renewedByCertificateId &&
                 !isRevoked &&
                 !isExpired && (

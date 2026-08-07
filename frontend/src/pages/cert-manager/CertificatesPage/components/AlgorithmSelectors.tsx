@@ -4,6 +4,7 @@ import { Control, Controller } from "react-hook-form";
 import {
   Badge,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Select,
@@ -33,6 +34,7 @@ type AlgorithmSelectProps = {
   nonePlaceholder?: string;
   selectPlaceholder: string;
   renderOptions: (options: AlgorithmOption[]) => ReactNode;
+  disabledReason?: string;
 };
 
 const AlgorithmSelect = ({
@@ -45,7 +47,8 @@ const AlgorithmSelect = ({
   isRequired,
   nonePlaceholder,
   selectPlaceholder,
-  renderOptions
+  renderOptions,
+  disabledReason
 }: AlgorithmSelectProps) => (
   <Controller
     control={control}
@@ -59,6 +62,7 @@ const AlgorithmSelect = ({
         <Select
           value={value ?? (nonePlaceholder ? NONE_VALUE : "")}
           onValueChange={(e) => onChange(e === NONE_VALUE ? null : e)}
+          disabled={Boolean(disabledReason)}
         >
           <SelectTrigger className="w-full" isError={Boolean(error)}>
             <SelectValue
@@ -67,6 +71,7 @@ const AlgorithmSelect = ({
           </SelectTrigger>
           <SelectContent position="popper">{renderOptions(options)}</SelectContent>
         </Select>
+        {disabledReason && <FieldDescription>{disabledReason}</FieldDescription>}
         <FieldError>{error}</FieldError>
       </Field>
     )}
@@ -85,6 +90,7 @@ type AlgorithmSelectorsProps = {
   isRequired?: boolean;
   nonePlaceholder?: string;
   hideSignatureAlgorithm?: boolean;
+  keyAlgorithmDisabledReason?: string;
 };
 
 export const AlgorithmSelectors = ({
@@ -98,7 +104,8 @@ export const AlgorithmSelectors = ({
   keyFieldName = "keyAlgorithm",
   isRequired = true,
   nonePlaceholder,
-  hideSignatureAlgorithm = false
+  hideSignatureAlgorithm = false,
+  keyAlgorithmDisabledReason
 }: AlgorithmSelectorsProps) => {
   const { subscription } = useSubscription();
 
@@ -147,6 +154,7 @@ export const AlgorithmSelectors = ({
         nonePlaceholder={nonePlaceholder}
         selectPlaceholder="Select key algorithm"
         renderOptions={renderOptions}
+        disabledReason={keyAlgorithmDisabledReason}
       />
     </div>
   );

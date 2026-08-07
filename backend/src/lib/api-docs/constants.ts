@@ -2085,7 +2085,17 @@ export const CERTIFICATE_AUTHORITIES = {
 export const CERTIFICATES = {
   GET: {
     id: "The ID of the certificate to get.",
-    serialNumber: "The serial number of the certificate to get."
+    serialNumber: "The serial number of the certificate to get.",
+    hasPrivateKey: "Whether Infisical holds the private key for this certificate."
+  },
+  RENEW: {
+    id: "The ID of the certificate to renew.",
+    renewalKeySource:
+      "How the renewed certificate's key pair is handled. 'new' generates a fresh pair, 'reuse' keeps the current one so the renewed certificate carries the same public key, and 'csr' takes the key from a supplied signing request. Omitting this generates a new key pair, and additionally declines to renew a certificate that was issued from a signing request, since that would change which key the certificate certifies without the caller saying so.",
+    csr: "A PEM-encoded certificate signing request to renew from. Its subject, key and extensions take precedence, so only TTL and basic constraints may be set alongside it.",
+    attributes:
+      "Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied.",
+    removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain."
   },
   REVOKE: {
     id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
