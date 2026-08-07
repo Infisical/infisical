@@ -611,6 +611,13 @@ export const oauthClientServiceFactory = ({
       });
     }
 
+    if (!userAlias.isEmailVerified) {
+      throw new UnauthorizedError({
+        message:
+          "The user this token identifies has not verified their identity with your organization's OIDC SSO. They need to complete a browser sign-in once before an application can act on their behalf."
+      });
+    }
+
     const user = await userDAL.findById(userAlias.userId);
     if (!user) {
       throw new UnauthorizedError({ message: "The user this token identifies no longer has an Infisical account." });
