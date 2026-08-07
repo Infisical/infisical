@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 
+import { TOauthClients } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 
 import { OauthGrantType } from "./oauth-client-types";
@@ -69,6 +70,18 @@ export const isAllowedRedirectUri = (uri: string) => {
 // browser sessions and from other clients. Deleting a client revokes its sessions by this exact value,
 // so the format must stay in sync between session creation and revocation.
 export const getOauthClientSessionUserAgent = (clientId: string) => `Infisical OAuth - ${clientId}`;
+
+// Whether the client an exchange authenticated against has since lost the authority it was granted:
+// deleted, secret rotated, or the grant withdrawn. Comparing the stored hashes is enough, because a
+// rotation writes a fresh bcrypt hash with a new salt, so no second compareHash is needed.
+export const hasClientAuthorityChanged = (
+  authenticated: Pick<TOauthClients, "clientSecretHash" | "grantTypes">,
+  current: Pick<TOauthClients, "clientSecretHash" | "grantTypes"> | undefined,
+  grantType: OauthGrantType
+) =>
+  !current ||
+  current.clientSecretHash !== authenticated.clientSecretHash ||
+  !current.grantTypes.includes(grantType);
 
 export const isRegisteredRedirectUri = (registeredUris: string[], redirectUri: string) =>
   registeredUris.some((uri) => {
