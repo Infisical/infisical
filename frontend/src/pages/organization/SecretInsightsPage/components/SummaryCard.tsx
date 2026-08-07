@@ -55,14 +55,14 @@ export const SummaryCard = ({ summary }: { summary: TOrgSecretsSummary }) => (
       icon={<UsersIcon />}
       iconVariant="info"
       value={summary.users}
-      caption="Members of this organization"
+      caption="Members in total on the secrets management projects "
     />
     <StatCard
       title="Machine Identities"
       icon={<BotIcon />}
       iconVariant="info"
       value={summary.identities}
-      caption="Identities with access to this organization"
+      caption="Identities in total on the secrets management projects"
     />
   </div>
 );

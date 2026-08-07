@@ -124,7 +124,7 @@ export const SecretInsightsPage = withPermission(
               )}
               <div
                 className={
-                  showAuthMethodsSlot ? "grid gap-4 xl:grid-cols-[1.35fr_1fr]" : "grid gap-4"
+                  showAuthMethodsSlot ? "grid gap-4 xl:grid-cols-[1fr_1.35fr]" : "grid gap-4"
                 }
               >
                 {isAuthMethodsPending && <Skeleton className="h-[320px]" />}
