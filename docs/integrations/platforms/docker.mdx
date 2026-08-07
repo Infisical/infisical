@@ -101,7 +101,7 @@ Next, choose how Docker should receive your application secrets:
 
       ```dockerfile Debian or Ubuntu
       RUN apt-get update \
-          && apt-get install -y --no-install-recommends bash curl \
+          && apt-get install -y --no-install-recommends bash curl ca-certificates \
           && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
           && apt-get update \
           && apt-get install -y --no-install-recommends infisical \
