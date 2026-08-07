@@ -1,0 +1,44 @@
+version: v0.162.17
+releasedAt: 2026-08-07T12:52:34+05:30
+sourceTag: v0.162.17
+previousTag: v0.162.16
+impactLevel: low
+summary: "Startup runs two alert cleanup migrations: one adds an index, and one
+  deletes orphaned identity alerts and unused alert channels."
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Alert lookup index
+    description: Adds a concurrent index on alerts.resourceType and
+      alerts.resourceId to speed identity alert cleanup during startup.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260801120000_add-alert-resource-lookup-index.ts
+        path: backend/src/db/migrations/20260801120000_add-alert-resource-lookup-index.ts
+        description: Creates concurrent alerts lookup index
+  - title: Identity alerts cleanup
+    description: Startup deletes orphaned identity alerts, out-of-scope identity
+      alerts, and alert channels with no memberships. Existing stale alert
+      records may disappear after upgrade.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260804120000_reap-orphaned-identity-alerts.ts
+        path: backend/src/db/migrations/20260804120000_reap-orphaned-identity-alerts.ts
+        description: Deletes orphaned and out-of-scope identity alerts
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-08-07T11:03:57.374Z
+  sourceRange:
+    from: v0.162.16
+    to: v0.162.17
