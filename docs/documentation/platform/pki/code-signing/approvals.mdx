@@ -89,7 +89,7 @@ Open the Signer's **Approvals** tab and click the pencil icon on the **Approval 
 Press **Save policy**. The new policy applies to **new** requests; existing active access keeps its original terms until it expires or is revoked.
 
 <Warning>
-  **The signing window starts when the request is opened, not when it is approved.** A request that asks for 8 hours and waits 3 hours for an approver leaves 5 usable hours, and one approved after 8 hours is already expired. Set the window wide enough to cover how long approvals usually take.
+  **The signing window runs from when the request is opened, not from when it is approved**, because the requester picks the start and end times and approval activates that window. Time spent waiting for an approver comes out of it, so set the window wide enough to cover how long approvals usually take.
 </Warning>
 
 ## Scoping an approval
@@ -114,68 +114,26 @@ By default an approval means "this member may sign N times before it expires". E
   A command scope is compared exactly. Only whitespace is forgiven: a run of spaces or a tab where the approval has a single space still matches. Everything else counts as a different command and needs its own approval, including reordering the options, invoking the tool by a different path, changing an argument, and writing `--flag value` as `--flag=value`. Infisical cannot know which flags take values in an arbitrary tool, so it does not try to guess whether a rearranged command is equivalent.
 </Note>
 
-### How much each parameter can be trusted
-
-Two of these parameters are decided by Infisical rather than by the caller, which makes them the ones worth relying on when the goal is to genuinely limit what a credential can do:
-
-- **IP Address** is read from the connection on every sign call. You choose the address the approval is limited to, but whether a sign call is coming from it is decided by Infisical, not reported by the client, so a caller cannot claim to be somewhere they are not.
-
-  <Warning>
-    On a self-hosted instance this holds only once [`TRUSTED_PROXY_CIDRS`](/self-hosting/configuration/envars) names the reverse proxies in front of Infisical. Until it is set, forwarded-IP headers are honored from any source for backwards compatibility, so a caller can present an address that is not theirs. Set it before relying on an IP scope. Infisical Cloud is already configured this way.
-  </Warning>
-
-- **Data Digest** is computed from the payload submitted for signing. A caller can only obtain a signature over the bytes they actually sent, so an approval pinned to a digest cannot be turned into a signature over different content.
-
-A command is stored on the approval and on the signing operation, where approvers and auditors can read it. Infisical strips the values of credential arguments it recognises, and the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) and [Windows KSP](/documentation/platform/pki/code-signing/windows-ksp) strip them before sending too, but recognition is best-effort on both sides. Keep secrets off the command lines you sign with.
-
-The remaining parameters (command, signing application, checksum, hostname, OS username) are reported by the signing client. With the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) they are captured from the real signing process, so they describe what is happening on well-behaved machines and give approvers useful context. Someone calling the [Sign API](/api-reference/endpoints/code-signing/signers/sign) directly, however, can report whatever values they like. Treat them as identification, not as a security boundary, and reach for **IP address** and **data digest** when you need a limit that holds regardless of how the caller behaves.
-
-<Tip>
-  For release pipelines, the strongest combination is a **data digest** scope on the artifact you just built plus a signature count of **1**. The approval then covers exactly one signature over exactly one file, whatever tooling is used.
-</Tip>
-
-### Pre-qualifying a build artifact
-
-A pipeline can ask for approval of one specific artifact before it signs. Build first, hash the artifact, then open a request scoped to that digest: the approval it produces cannot sign anything else, so the approver is signing off on a file rather than on a window of time.
-
-The digest to declare is the SHA-256 of **the bytes your sign call submits**, because that is what Infisical hashes to check the scope. The recipe below therefore applies when the pipeline posts the file itself to the Sign API:
-
-```bash
-# 1. Digest the artifact. This is what a signing tool submits, and what you will sign.
-DIGEST=$(sha256sum installer-v2.4.0.msi | cut -d' ' -f1)
-
-# 2. Scope the request to it. Infisical hashes whatever the sign call submits, so the value
-#    to declare is the hash of those digest bytes rather than the hash of the file.
-SCOPE_HASH=$(echo -n "$DIGEST" | xxd -r -p | sha256sum | cut -d' ' -f1)
-
-curl -s -X POST "$INFISICAL_URL/api/v1/cert-manager/signers/$SIGNER_ID/requests" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"justification\": \"Release v2.4.0 Windows installer\",
-    \"requestedSignings\": 1,
-    \"scope\": { \"dataHash\": \"$SCOPE_HASH\" }
-  }"
-
-# 3. Once it is approved, sign the digest
-curl -s -X POST "$INFISICAL_URL/api/v1/cert-manager/signers/$SIGNER_ID/sign" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"data\": \"$(echo -n "$DIGEST" | xxd -r -p | base64 -w0)\",
-    \"signingAlgorithm\": \"RSASSA_PKCS1_V1_5_SHA_256\",
-    \"isDigest\": true
-  }"
-```
-
 <Warning>
-  **`sha256sum yourfile` is not the value to declare.** A sign call carries a digest, not the file, so the value Infisical compares is the hash of that digest, as in step 2 above. Declaring the file's own hash never matches and every sign call is denied. The [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) and the [Windows KSP](/documentation/platform/pki/code-signing/windows-ksp) work this out for you, so scoping by artifact is far easier through them than by hand.
+  On a self-hosted instance, an **IP Address** scope is only reliable once [`TRUSTED_PROXY_CIDRS`](/self-hosting/configuration/envars) names the reverse proxies in front of Infisical. Until it is set, forwarded-IP headers are honored from any source for backwards compatibility, so a caller can present an address that is not theirs.
 </Warning>
 
-An approver reviews the request and approves it. The pipeline then signs that artifact, and only that artifact: any other payload is refused because Infisical recomputes the digest from whatever is submitted. An Administrator can do the same up front with **Pre-approve signing**, which skips the review step.
+<Note>
+  A command is stored on the approval and on the signing operation, where approvers and auditors can read it. Infisical strips the values of credential arguments it recognises, and the signing clients strip them before sending too, but recognition is best-effort on both sides. Keep secrets off the command lines you sign with.
+</Note>
+
+### Scoping to one artifact
+
+Pinning an approval to a **Data Digest** is the tightest option: the approver signs off on one file rather than on a window of time, and no other payload can be signed under it.
+
+The [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) and the [Windows KSP](/documentation/platform/pki/code-signing/windows-ksp) fill this in for you. When signing is denied, the request they open is already scoped to the artifact of the denied attempt, along with the command and machine it came from, so you approve it in Infisical and re-run the same command.
+
+<Tip>
+  For release pipelines, pair a data digest scope with a signature count of **1**. The approval then covers exactly one signature over exactly one file.
+</Tip>
 
 <Note>
-  Signing tools that go through the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) do this automatically when signing is denied: the request they open is already scoped to the digest of the payload the denied call attempted, along with the command and machine it came from. Because that request is pinned to one artifact, a signature count above 1 only allows re-signing that same artifact.
+  Filling in a digest by hand is fiddly, because a sign call carries a digest rather than the file, so the value to declare is the hash of the bytes the call submits and not `sha256sum yourfile`. If you are calling the API directly, see the [Sign API reference](/api-reference/endpoints/code-signing/signers/sign).
 </Note>
 
 ## Access lifecycle
@@ -315,7 +273,7 @@ In-flight sign calls already in progress complete normally; revocation is checke
     **Expired** is automatic: the window ended or the signature count was reached. **Revoked** is explicit: an Administrator (or the requester via cancel) ended the access before its natural expiry. Either way, signing under it is no longer possible. The status difference shows up in the audit log.
   </Accordion>
   <Accordion title="My sign call is denied even though I have active access.">
-    If the error mentions your access being scoped to specific signing parameters, the request was scoped and your sign call does not match one of the declared values. Open the request to see the scope, and compare it against what you are signing with now: a different machine, tool, command, IP address, or payload is enough to be denied even when signatures remain. Send the declared command, signing application, hostname or OS username in `clientMetadata` on the sign call, and to sign in a different situation open a new request describing it.
+    If the error mentions your access being scoped to specific signing parameters, the request was scoped and your sign call does not match one of the declared values. Open the request to see the scope, and compare it against what you are signing with now: a different machine, tool, command, IP address, or payload is enough to be denied even when signatures remain. Either sign in the situation that was approved, or open a new request describing the one you need.
   </Accordion>
   <Accordion title="What happens to a pending request when I edit the policy?">
     Pending requests run under the policy that was active when they were submitted. Edits affect only new requests. To force a refresh, revoke the pending request and have the requester submit again.
