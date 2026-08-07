@@ -1798,6 +1798,7 @@ export const registerRoutes = async (
     resourceTokenAuthDAL,
     kmsService,
     gatewayV2DAL,
+    gatewayPoolDAL,
     relayDAL,
     kmipServerDAL,
     identityDAL,

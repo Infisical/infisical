@@ -8,6 +8,7 @@ import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { TGatewayPoolDALFactory } from "../gateway-pool/gateway-pool-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TKmipServerDALFactory } from "../kmip-server/kmip-server-dal";
 import {
@@ -79,6 +80,7 @@ type TResourceAuthMethodServiceFactoryDep = {
   resourceTokenAuthDAL: TResourceTokenAuthDALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById" | "updateById">;
+  gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   relayDAL: Pick<TRelayDALFactory, "findById" | "updateById">;
   kmipServerDAL: Pick<TKmipServerDALFactory, "findById" | "updateById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -122,6 +124,7 @@ export const resourceAuthMethodServiceFactory = ({
   resourceTokenAuthDAL,
   kmsService,
   gatewayV2DAL,
+  gatewayPoolDAL,
   relayDAL,
   kmipServerDAL,
   identityDAL,
@@ -358,14 +361,17 @@ export const resourceAuthMethodServiceFactory = ({
 
   // Picks the route to the API server: straight out from Infisical, or tunnelled through a gateway.
   // Makes network calls when proxied, so call it outside a transaction.
-  const $buildKubernetesExecutor = async (config: {
-    kubernetesHost?: string | null;
-    caCertificate?: string;
-    verifyTlsCertificate: boolean;
-    tokenReviewMode?: string | null;
-    gatewayV2Id?: string | null;
-    gatewayPoolId?: string | null;
-  }): Promise<{ executor: TKubernetesRequestExecutor; target: string; isGatewayReviewer: boolean }> => {
+  const $buildKubernetesExecutor = async (
+    config: {
+      kubernetesHost?: string | null;
+      caCertificate?: string;
+      verifyTlsCertificate: boolean;
+      tokenReviewMode?: string | null;
+      gatewayV2Id?: string | null;
+      gatewayPoolId?: string | null;
+    },
+    orgId: string
+  ): Promise<{ executor: TKubernetesRequestExecutor; target: string; isGatewayReviewer: boolean }> => {
     const proxyId = config.gatewayV2Id ?? config.gatewayPoolId;
     const isGatewayReviewer = config.tokenReviewMode === KubernetesTokenReviewMode.Gateway;
 
@@ -390,6 +396,22 @@ export const resourceAuthMethodServiceFactory = ({
       throw new BadRequestError({
         message: "A Kubernetes host is required when the review mode is the token reviewer JWT."
       });
+    }
+
+    // Without this an editor could name another tenant's gateway UUID and have us mint proxy
+    // credentials for it, sending requests into that tenant's network. The resolvers below look
+    // their argument up by id alone, so ownership has to be established here.
+    if (config.gatewayV2Id) {
+      const proxyGateway = await gatewayV2DAL.findById(config.gatewayV2Id);
+      if (!proxyGateway || proxyGateway.orgId !== orgId) {
+        throw new NotFoundError({ message: `Gateway with ID '${config.gatewayV2Id}' not found` });
+      }
+    }
+    if (config.gatewayPoolId) {
+      const proxyPool = await gatewayPoolDAL.findById(config.gatewayPoolId);
+      if (!proxyPool || proxyPool.orgId !== orgId) {
+        throw new NotFoundError({ message: `Gateway pool with ID '${config.gatewayPoolId}' not found` });
+      }
     }
 
     const { targetHost, targetPort } = resolveKubernetesProxyTarget(proxiedHost ?? undefined);
@@ -432,6 +454,7 @@ export const resourceAuthMethodServiceFactory = ({
       | "gatewayV2Id"
       | "gatewayPoolId"
     >,
+    orgId: string,
     // Absent when the resource does not exist yet, where it cannot be its own proxy.
     resource?: ResourceRef
   ) => {
@@ -442,14 +465,17 @@ export const resourceAuthMethodServiceFactory = ({
       await assertKubernetesHostAllowed(config.kubernetesHost);
     }
 
-    const { executor, target, isGatewayReviewer } = await $buildKubernetesExecutor({
-      kubernetesHost: config.kubernetesHost,
-      caCertificate: config.caCertificate,
-      verifyTlsCertificate: config.verifyTlsCertificate,
-      tokenReviewMode: config.tokenReviewMode,
-      gatewayV2Id: config.gatewayV2Id,
-      gatewayPoolId: config.gatewayPoolId
-    });
+    const { executor, target, isGatewayReviewer } = await $buildKubernetesExecutor(
+      {
+        kubernetesHost: config.kubernetesHost,
+        caCertificate: config.caCertificate,
+        verifyTlsCertificate: config.verifyTlsCertificate,
+        tokenReviewMode: config.tokenReviewMode,
+        gatewayV2Id: config.gatewayV2Id,
+        gatewayPoolId: config.gatewayPoolId
+      },
+      orgId
+    );
 
     await validateKubernetesConfigReachable({
       executor,
@@ -625,14 +651,17 @@ export const resourceAuthMethodServiceFactory = ({
 
       assertKubernetesProxyNotSelf(resource, authMethod.gatewayV2Id);
 
-      const validation = await $buildKubernetesExecutor({
-        kubernetesHost: authMethod.kubernetesHost,
-        caCertificate: effectiveCa,
-        verifyTlsCertificate: authMethod.verifyTlsCertificate,
-        tokenReviewMode: authMethod.tokenReviewMode,
-        gatewayV2Id: authMethod.gatewayV2Id,
-        gatewayPoolId: authMethod.gatewayPoolId
-      });
+      const validation = await $buildKubernetesExecutor(
+        {
+          kubernetesHost: authMethod.kubernetesHost,
+          caCertificate: effectiveCa,
+          verifyTlsCertificate: authMethod.verifyTlsCertificate,
+          tokenReviewMode: authMethod.tokenReviewMode,
+          gatewayV2Id: authMethod.gatewayV2Id,
+          gatewayPoolId: authMethod.gatewayPoolId
+        },
+        actor.orgId
+      );
 
       await validateKubernetesConfigReachable({
         executor: validation.executor,
@@ -945,14 +974,17 @@ export const resourceAuthMethodServiceFactory = ({
       }
     }
 
-    const login = await $buildKubernetesExecutor({
-      kubernetesHost: config.kubernetesHost,
-      caCertificate,
-      verifyTlsCertificate: config.verifyTlsCertificate,
-      tokenReviewMode: config.tokenReviewMode,
-      gatewayV2Id: config.gatewayV2Id,
-      gatewayPoolId: config.gatewayPoolId
-    });
+    const login = await $buildKubernetesExecutor(
+      {
+        kubernetesHost: config.kubernetesHost,
+        caCertificate,
+        verifyTlsCertificate: config.verifyTlsCertificate,
+        tokenReviewMode: config.tokenReviewMode,
+        gatewayV2Id: config.gatewayV2Id,
+        gatewayPoolId: config.gatewayPoolId
+      },
+      resourceOrgId
+    );
 
     const { namespace, serviceAccountName, audiences } = await reviewServiceAccountToken({
       jwt,
