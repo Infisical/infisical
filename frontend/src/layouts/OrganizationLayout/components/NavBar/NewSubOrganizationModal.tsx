@@ -142,7 +142,7 @@ export const NewSubOrganizationModal = ({ isOpen, onOpenChange, handleOrgSelecti
           </FieldGroup>
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">
+              <Button type="button" variant="ghost">
                 Cancel
               </Button>
             </DialogClose>
