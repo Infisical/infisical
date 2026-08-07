@@ -81,7 +81,7 @@ export const AddIdentityModal = ({ isOpen, onOpenChange }: Props) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-visible sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Add Identity</DialogTitle>
           <DialogDescription>Add an existing organization identity.</DialogDescription>

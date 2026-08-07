@@ -18,6 +18,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   Empty,
@@ -469,7 +470,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
       </form>
 
       <Dialog open={isAddIdentityModalOpen} onOpenChange={setIsAddIdentityModalOpen}>
-        <DialogContent className="max-w-xl overflow-visible">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Add Machine Identity to Template</DialogTitle>
             <DialogDescription>
@@ -553,7 +554,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                   </Field>
                 )}
               />
-              <div className="mt-4 flex items-center justify-end gap-4">
+              <DialogFooter className="mt-4">
                 <Button type="button" variant="ghost" onClick={handleCloseAddIdentityModal}>
                   Cancel
                 </Button>
@@ -565,7 +566,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                 >
                   Add to Template
                 </Button>
-              </div>
+              </DialogFooter>
             </form>
           )}
           {addMachineIdentityType === AddIdentityType.AssignExisting && (
@@ -613,7 +614,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                   </Field>
                 )}
               />
-              <div className="mt-4 flex items-center justify-end gap-4">
+              <DialogFooter className="mt-4">
                 <Button type="button" variant="ghost" onClick={handleCloseAddIdentityModal}>
                   Cancel
                 </Button>
@@ -625,7 +626,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                 >
                   Assign to Template
                 </Button>
-              </div>
+              </DialogFooter>
             </form>
           )}
         </DialogContent>

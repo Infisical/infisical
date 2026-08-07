@@ -96,7 +96,7 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg overflow-visible">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit Certificate Configuration</DialogTitle>
           <DialogDescription>

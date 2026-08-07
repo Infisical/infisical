@@ -205,7 +205,7 @@ export const ProjectIdentityDetailsSection = ({
         open={popUp.editIdentity.isOpen}
         onOpenChange={(open) => handlePopUpToggle("editIdentity", open)}
       >
-        <DialogContent className="max-w-xl overflow-visible">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Edit Project Identity</DialogTitle>
             <DialogDescription>
