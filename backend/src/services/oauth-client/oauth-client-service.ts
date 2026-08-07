@@ -368,8 +368,11 @@ export const oauthClientServiceFactory = ({
     return { client: sanitizeOauthClient(updatedClient), clientSecret };
   };
 
+  const isGrantEnabled = (client: TOauthClients, grantType: OauthGrantType) =>
+    (client.grantTypes as OauthGrantType[]).includes(grantType);
+
   const assertGrantEnabled = (client: TOauthClients, grantType: OauthGrantType) => {
-    if (!(client.grantTypes as OauthGrantType[]).includes(grantType)) {
+    if (!isGrantEnabled(client, grantType)) {
       throw new UnauthorizedError({
         message: `This application is not registered for the '${grantType}' grant type`
       });
@@ -703,21 +706,23 @@ export const oauthClientServiceFactory = ({
         accessTokenExpiresIn
       );
 
-      const refreshToken = signOauthToken(
-        {
-          ...sharedClaims,
-          tokenType: AuthTokenType.REFRESH_TOKEN,
-          version: tokenSession.refreshVersion,
-          oauthClientId: client.clientId
-        },
-        refreshTokenExpiresIn
-      );
+      const refreshToken = isGrantEnabled(client, OauthGrantType.RefreshToken)
+        ? signOauthToken(
+            {
+              ...sharedClaims,
+              tokenType: AuthTokenType.REFRESH_TOKEN,
+              version: tokenSession.refreshVersion,
+              oauthClientId: client.clientId
+            },
+            refreshTokenExpiresIn
+          )
+        : undefined;
 
       return {
         access_token: accessToken,
         token_type: "Bearer" as const,
         expires_in: expiresInToSeconds(accessTokenExpiresIn),
-        refresh_token: refreshToken,
+        ...(refreshToken ? { refresh_token: refreshToken } : {}),
         scope: grantedScopes.join(" ")
       };
     }
