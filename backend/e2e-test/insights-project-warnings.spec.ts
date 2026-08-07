@@ -280,7 +280,7 @@ describe("insights secrets project warnings", () => {
   });
 
   test("returns all secret-manager projects ordered by severity with correct counts", async () => {
-    const result = await insightsService.getSecretsProjectWarnings(actor(ORG_ID));
+    const result = await insightsService.getSecretsProjects(actor(ORG_ID));
 
     // warn, clean, noBlindIndex, deletedEnv. The PAM project, the soft-deleted
     // project, the v1 project and the other org's project are excluded from the listing.
@@ -339,7 +339,7 @@ describe("insights secrets project warnings", () => {
   });
 
   test("pagination slices rows while window totals stay constant", async () => {
-    const page = await insightsService.getSecretsProjectWarnings(actor(ORG_ID, { offset: 1, limit: 2 }));
+    const page = await insightsService.getSecretsProjects(actor(ORG_ID, { offset: 1, limit: 2 }));
 
     expect(page.totalProjects).toBe(4);
     expect(page.projectsWithIssues).toBe(1);
@@ -349,7 +349,7 @@ describe("insights secrets project warnings", () => {
   });
 
   test("an organization with no projects reports empty results", async () => {
-    const result = await insightsService.getSecretsProjectWarnings(actor(randomUUID()));
+    const result = await insightsService.getSecretsProjects(actor(randomUUID()));
     expect(result.projects).toEqual([]);
     expect(result.totalProjects).toBe(0);
     expect(result.projectsWithIssues).toBe(0);
@@ -358,7 +358,7 @@ describe("insights secrets project warnings", () => {
   test("throws when the actor cannot read secrets management insights", async () => {
     setCanReadInsights(false);
     try {
-      await expect(insightsService.getSecretsProjectWarnings(actor(ORG_ID))).rejects.toBeInstanceOf(ForbiddenError);
+      await expect(insightsService.getSecretsProjects(actor(ORG_ID))).rejects.toBeInstanceOf(ForbiddenError);
     } finally {
       setCanReadInsights(true);
     }
@@ -367,7 +367,7 @@ describe("insights secrets project warnings", () => {
   test("throws when the plan does not include secret access insights", async () => {
     setPlanHasInsights(false);
     try {
-      await expect(insightsService.getSecretsProjectWarnings(actor(ORG_ID))).rejects.toThrow(/Upgrade your plan/);
+      await expect(insightsService.getSecretsProjects(actor(ORG_ID))).rejects.toThrow(/Upgrade your plan/);
     } finally {
       setPlanHasInsights(true);
     }

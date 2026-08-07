@@ -297,5 +297,58 @@ export const insightsDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { findProjectWarningsForOrg, findSecretCreationsByWeekForOrg, countSecretCreationsForOrg };
+  const countOrgSecretsResources = async (
+    orgId: string,
+    tx?: Knex
+  ): Promise<{ projects: number; secrets: number; environments: number; rotations: number }> => {
+    try {
+      const conn = tx || db.replicaNode();
+
+      const scopeToOrgProjects = <T extends Knex.QueryBuilder>(qb: T): T =>
+        qb
+          .where(`${TableName.Project}.orgId`, orgId)
+          .where(`${TableName.Project}.type`, ProjectType.SecretManager)
+          .where(`${TableName.Project}.version`, ProjectVersion.V3)
+          .whereNull(`${TableName.Project}.deleteAfter`) as T;
+
+      const [projectsRow, environmentsRow, secretsRow, rotationsRow] = await Promise.all([
+        scopeToOrgProjects(conn(TableName.Project)).count("* as count").first(),
+        scopeToOrgProjects(
+          conn(TableName.Environment)
+            .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+            .whereNull(`${TableName.Environment}.deleteAfter`)
+        )
+          .count("* as count")
+          .first(),
+        orgStaticSecretsQuery(conn, orgId).count("* as count").first(),
+        scopeToOrgProjects(
+          conn(TableName.SecretRotationV2)
+            .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
+            .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+            .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+            .whereNull(`${TableName.Environment}.deleteAfter`)
+        )
+          .count("* as count")
+          .first()
+      ]);
+
+      const toCount = (row: unknown) => Number((row as { count?: string | number } | undefined)?.count ?? 0);
+
+      return {
+        projects: toCount(projectsRow),
+        secrets: toCount(secretsRow),
+        environments: toCount(environmentsRow),
+        rotations: toCount(rotationsRow)
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountOrgSecretsResources" });
+    }
+  };
+
+  return {
+    findProjectWarningsForOrg,
+    findSecretCreationsByWeekForOrg,
+    countSecretCreationsForOrg,
+    countOrgSecretsResources
+  };
 };

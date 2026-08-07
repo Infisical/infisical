@@ -50,6 +50,13 @@ export const OrgAuthMethodDistributionSchema = z.object({
     .describe(INSIGHTS.GET_SECRETS_AUTH_METHOD_DISTRIBUTION.methods)
 });
 
+export const OrgSecretsCountsSchema = z.object({
+  projects: z.number().int().describe(INSIGHTS.GET_SECRETS_COUNTS.projects),
+  secrets: z.number().int().describe(INSIGHTS.GET_SECRETS_COUNTS.secrets),
+  environments: z.number().int().describe(INSIGHTS.GET_SECRETS_COUNTS.environments),
+  rotations: z.number().int().describe(INSIGHTS.GET_SECRETS_COUNTS.rotations)
+});
+
 export const StaticSecretsUsageSchema = z.object({
   weeks: z
     .object({

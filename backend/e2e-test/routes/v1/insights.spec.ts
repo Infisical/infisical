@@ -11,7 +11,8 @@ const ORG_SCOPED_URLS = {
   projects: PROJECTS_URL,
   accessVolume: "/api/v1/insights/secrets/access-volume",
   authMethods: "/api/v1/insights/secrets/usage/auth-methods",
-  staticSecrets: "/api/v1/insights/secrets/usage/static-secrets"
+  staticSecrets: "/api/v1/insights/secrets/usage/static-secrets",
+  counts: "/api/v1/insights/secrets/counts"
 };
 
 describe("Insights V1 Router (org-scoped)", async () => {

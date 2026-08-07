@@ -940,6 +940,13 @@ export const INSIGHTS = {
     unknownCount:
       "The number of accesses whose authentication method could not be determined, which happens for accesses recorded before the method was captured in audit logs. These are included in the total but not in the methods list."
   },
+  GET_SECRETS_COUNTS: {
+    projects: "The number of secret management projects in the organization.",
+    secrets:
+      "The total number of shared static secrets across every secret management project in the organization. Personal secret overrides are not counted.",
+    environments: "The total number of environments across every secret management project in the organization.",
+    rotations: "The total number of secret rotations across every secret management project in the organization."
+  },
   GET_STATIC_SECRETS_USAGE: {
     weeks:
       "One entry for each of the last twelve weeks, oldest first. Weeks in which no secret was created are included with a count of zero.",

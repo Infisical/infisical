@@ -686,6 +686,7 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE = "view-insights-secrets-management-usage",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS = "view-insights-secrets-management-project-warnings",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_COUNTS = "view-insights-secrets-management-org-counts",
 
   CREATE_AUDIT_REPORT = "create-audit-report",
   GET_AUDIT_REPORTS = "get-audit-reports",
@@ -5569,6 +5570,16 @@ interface ViewSecretManagementInsightsProjectWarningsEvent {
   };
 }
 
+interface ViewSecretManagementInsightsOrgCountsEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_COUNTS;
+  metadata: {
+    projects: number;
+    secrets: number;
+    environments: number;
+    rotations: number;
+  };
+}
+
 interface CreateAuditReportEvent {
   type: EventType.CREATE_AUDIT_REPORT;
   metadata: {
@@ -7524,6 +7535,7 @@ export type Event =
   | ViewSecretManagementInsightsCountsEvent
   | ViewSecretManagementInsightsUsageEvent
   | ViewSecretManagementInsightsProjectWarningsEvent
+  | ViewSecretManagementInsightsOrgCountsEvent
   | CreateAuditReportEvent
   | GetAuditReportsEvent
   | GetAuditReportEvent
