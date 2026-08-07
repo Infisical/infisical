@@ -51,12 +51,12 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
+  OauthGrantType,
   TOauthClient,
   useDeleteOauthClient,
   useGetOauthClients,
   useRotateOauthClientSecret
 } from "@app/hooks/api";
-import { OauthGrantType } from "@app/hooks/api/oauthClients/types";
 
 import { OauthClientModal } from "./OauthClientModal";
 import { OauthClientSecretModal } from "./OauthClientSecretModal";

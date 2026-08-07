@@ -6750,6 +6750,8 @@ interface CreateOauthClientEvent {
     clientId: string;
     name: string;
     grantTypes: string[];
+    tokenExchangeAudience?: string | null;
+    tokenExchangeIdpSatisfiesMfa: boolean;
   };
 }
 

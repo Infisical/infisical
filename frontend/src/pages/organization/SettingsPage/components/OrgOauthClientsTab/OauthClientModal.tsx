@@ -32,12 +32,12 @@ import {
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
+  OauthGrantType,
   TOauthClient,
   useCreateOauthClient,
   useGetOIDCConfig,
   useUpdateOauthClient
 } from "@app/hooks/api";
-import { OauthGrantType } from "@app/hooks/api/oauthClients/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
