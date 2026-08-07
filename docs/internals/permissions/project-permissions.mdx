@@ -190,6 +190,16 @@ Supports conditions and permission inversion.
 | `edit` | Modify folder properties | `environment`, `secretPath` |
 | `delete` | Remove secret folders | `environment`, `secretPath` |
 
+#### Subject: `project-folder-grant`
+
+Supports conditions and permission inversion.
+
+| Action | Description | Condition keys |
+| -------------- | ---------------------------------------- | ----- |
+| `read-grant` | View access grants on secret paths | `environment`, `secretPath` |
+| `create-grant` | Create access grants on secret paths | `environment`, `secretPath` |
+| `revoke-grant` | Revoke access grants on secret paths | `environment`, `secretPath` |
+
 #### Subject: `secret-imports`
 
 Supports conditions and permission inversion.
@@ -244,6 +254,13 @@ Supports conditions and permission inversion.
 <Note>
   Project admins and users with **Secret Approval Requests** (`secret-approval-request`) **Read** can view all approval requests; others only see requests where they are committer or approver. Secret values in requests follow `secrets.readValue` for the secret's environment/path, or reviewer access.
 </Note>
+
+#### Subject: `approval-request-grants`
+
+| Action   | Description                            |
+| -------- | -------------------------------------- |
+| `read`   | View grants tied to approval requests  |
+| `revoke` | Revoke grants tied to approval requests |
 
 #### Subject: `secret-rotation`
 
