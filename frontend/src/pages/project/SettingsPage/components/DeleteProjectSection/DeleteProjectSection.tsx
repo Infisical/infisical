@@ -2,8 +2,9 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal, Tooltip } from "@app/components/v2";
+import { DeleteActionModal, Tooltip } from "@app/components/v2";
 import { LeaveProjectModal } from "@app/components/v2/LeaveProjectModal";
+import { Button } from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -82,11 +83,9 @@ export const DeleteProjectSection = () => {
         <ProjectPermissionCan I={ProjectPermissionActions.Delete} a={ProjectPermissionSub.Project}>
           {(isAllowed) => (
             <Button
-              isLoading={isDeleting}
+              isPending={isDeleting}
               isDisabled={!isAllowed || isDeleting}
-              colorSchema="danger"
-              variant="outline_bg"
-              type="submit"
+              variant="danger"
               onClick={() => handlePopUpOpen("deleteWorkspace")}
             >
               {`Delete ${currentProject?.name}`}
@@ -99,11 +98,9 @@ export const DeleteProjectSection = () => {
         >
           <span>
             <Button
-              isLoading={isLeaving}
+              isPending={isLeaving}
               isDisabled={!isDirectMember}
-              colorSchema="danger"
-              variant="outline_bg"
-              type="submit"
+              variant="danger"
               onClick={() => handlePopUpOpen("leaveWorkspace")}
             >
               {`Leave ${currentProject?.name}`}
