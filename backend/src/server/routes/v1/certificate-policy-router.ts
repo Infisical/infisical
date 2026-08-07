@@ -249,7 +249,8 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: certificatePolicy.projectId
         }
       });
 
@@ -399,6 +400,16 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertificatePolicyUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: certificatePolicy.projectId
+        }
+      });
+
       return { certificatePolicy };
     }
   });
@@ -449,7 +460,8 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: certificatePolicy.projectId
         }
       });
 

@@ -102,7 +102,8 @@ export const pkiSubscriberQueueServiceFactory = ({
                         distinctId: `platform/${subscriber.projectId}`,
                         organizationId: project.orgId,
                         properties: {
-                          orgId: project.orgId
+                          orgId: project.orgId,
+                          projectId: subscriber.projectId
                         }
                       });
                     }
@@ -129,7 +130,8 @@ export const pkiSubscriberQueueServiceFactory = ({
                         distinctId: `platform/${subscriber.projectId}`,
                         organizationId: project.orgId,
                         properties: {
-                          orgId: project.orgId
+                          orgId: project.orgId,
+                          projectId: subscriber.projectId
                         }
                       });
                     }
@@ -156,7 +158,8 @@ export const pkiSubscriberQueueServiceFactory = ({
                         distinctId: `platform/${subscriber.projectId}`,
                         organizationId: project.orgId,
                         properties: {
-                          orgId: project.orgId
+                          orgId: project.orgId,
+                          projectId: subscriber.projectId
                         }
                       });
                     }
@@ -216,7 +219,8 @@ export const pkiSubscriberQueueServiceFactory = ({
                     distinctId: `platform/${subscriber.projectId}`,
                     organizationId: project.orgId,
                     properties: {
-                      orgId: project.orgId
+                      orgId: project.orgId,
+                      projectId: subscriber.projectId
                     }
                   });
                 }
