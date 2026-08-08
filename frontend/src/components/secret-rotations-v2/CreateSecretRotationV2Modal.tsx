@@ -88,7 +88,7 @@ export const CreateSecretRotationV2Modal = ({ onOpenChange, isOpen, ...props }: 
             ...form,
             connection: { id: connectionId, name: connectionName }
           });
-          setIsDirty(false);
+          setIsDirty(true);
           onOpenChange(true);
         }
       } catch {

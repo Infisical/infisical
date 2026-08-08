@@ -31,19 +31,17 @@ const ProviderCard = ({ type, onSelect }: { type: SecretRotation; onSelect: () =
     <button
       type="button"
       onClick={onSelect}
-      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700/50"
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-foreground/15 hover:bg-container-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex size-9 items-center justify-center rounded-md bg-mineshaft-700">
+        <div className="flex size-9 items-center justify-center rounded-md bg-container">
           <img
             src={`/images/integrations/${image}`}
             alt={`${name} logo`}
             className="size-6 object-contain"
           />
         </div>
-        <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
-          {connectionName}
-        </span>
+        <span className="text-xs font-medium text-muted">{connectionName}</span>
       </div>
       <div className="flex flex-col gap-1">
         <p className="text-sm font-semibold text-foreground">{name}</p>
@@ -113,9 +111,7 @@ export const SecretRotationV2Select = ({ onSelect }: Props) => {
       </InputGroup>
 
       <section>
-        <p className="mb-3 text-[11px] font-medium tracking-wider text-muted uppercase">
-          All providers
-        </p>
+        <p className="mb-3 text-xs font-medium text-muted">All providers</p>
         {filteredOptions.length ? (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
             {filteredOptions.map(({ type }) => (

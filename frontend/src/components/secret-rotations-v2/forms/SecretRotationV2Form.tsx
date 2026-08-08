@@ -166,17 +166,18 @@ export const SecretRotationV2Form = ({
   });
 
   const { handleSubmit, trigger, formState } = formMethods;
+  const hasUnsavedChanges = formState.isDirty || Boolean(initialFormData);
   const {
     confirmDiscard,
     isDiscardDialogOpen,
     requestDiscard: requestCancel,
     setIsDiscardDialogOpen
-  } = useDiscardChangesGuard({ isDirty: formState.isDirty, onDiscard: onCancel });
+  } = useDiscardChangesGuard({ isDirty: hasUnsavedChanges, onDiscard: onCancel });
 
   useEffect(() => {
-    onDirtyChange?.(formState.isDirty);
+    onDirtyChange?.(hasUnsavedChanges);
     return () => onDirtyChange?.(false);
-  }, [formState.isDirty, onDirtyChange]);
+  }, [hasUnsavedChanges, onDirtyChange]);
 
   const onSubmit = async ({ environment, connection, ...formData }: TSecretRotationV2Form) => {
     const mutation = secretRotation
@@ -315,7 +316,7 @@ export const SecretRotationV2Form = ({
         </div>
 
         <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-4 py-4 md:px-6">
-          <span className="text-xs text-muted">{formState.isDirty ? "Unsaved changes" : ""}</span>
+          <span className="text-xs text-muted">{hasUnsavedChanges ? "Unsaved changes" : ""}</span>
           <div className="flex items-center gap-3">
             <span className="hidden text-xs text-muted sm:inline">
               Step {displayedStepNumber} of {totalSteps}
