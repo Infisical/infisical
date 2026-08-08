@@ -18,7 +18,6 @@ import {
   buildNativeIntegrationsUrl,
   groupIntegrationsByProject,
   NATIVE_INTEGRATION_DEPRECATION_DATE,
-  TIntegrationProjectSummary,
   TNoticeRecipient,
   toRecipients
 } from "./integration-deprecation-fns";
@@ -39,7 +38,11 @@ type TIntegrationDeprecationQueueFactoryDep = {
 
 export type TIntegrationDeprecationQueueFactory = ReturnType<typeof integrationDeprecationQueueFactory>;
 
-const EMAIL_SUBJECT = `Action required: Migrate Native Integrations by ${NATIVE_INTEGRATION_DEPRECATION_DATE}`;
+const PROJECT_ADMIN_EMAIL_SUBJECT = `Action required: Migrate Native Integrations by ${NATIVE_INTEGRATION_DEPRECATION_DATE}`;
+const getOrgAdminEmailSubject = (projectCount: number, orgName: string) =>
+  projectCount === 1
+    ? `Action needed: 1 project in ${orgName} still uses native integrations`
+    : `Action needed: ${projectCount} projects in ${orgName} still use native integrations`;
 // the notification dropdown renders the title on a single ellipsised line next to a timestamp, so this
 // stays shorter than the subject line and front-loads the part that matters
 const NOTIFICATION_TITLE = `Native integrations stop working ${NATIVE_INTEGRATION_DEPRECATION_DATE}`;
@@ -73,17 +76,17 @@ export const integrationDeprecationQueueFactory = ({
 }: TIntegrationDeprecationQueueFactoryDep) => {
   const sendNotice = async ({
     orgId,
-    orgName,
-    projects,
     recipients,
-    siteUrl,
+    email,
     link
   }: {
     orgId: string;
-    orgName: string;
-    projects: TIntegrationProjectSummary[];
     recipients: TNoticeRecipient[];
-    siteUrl: string;
+    email: {
+      template: SmtpTemplates;
+      subjectLine: string;
+      substitutions: Record<string, unknown>;
+    };
     /** site-relative — see buildNativeIntegrationsPath */
     link?: string;
   }) => {
@@ -92,17 +95,10 @@ export const integrationDeprecationQueueFactory = ({
     const sendEmail = async () => {
       try {
         await smtpService.sendMail({
-          template: SmtpTemplates.NativeIntegrationDeprecation,
-          subjectLine: EMAIL_SUBJECT,
+          template: email.template,
+          subjectLine: email.subjectLine,
           recipients: recipients.map((recipient) => recipient.email),
-          substitutions: {
-            orgName,
-            projects: projects.map((project) => ({
-              name: project.projectName,
-              integrations: project.integrations,
-              url: buildNativeIntegrationsUrl(siteUrl, orgId, project.projectId)
-            }))
-          }
+          substitutions: email.substitutions
         });
       } catch (error) {
         logger.error(error, `integrationDeprecationNotice: failed to send email [orgId=${orgId}]`);
@@ -177,25 +173,40 @@ export const integrationDeprecationQueueFactory = ({
 
     // every recipient list is resolved above; from here on it is only sending
     const { SITE_URL: siteUrl } = appCfg;
-    const notify = (recipients: TNoticeRecipient[], noticeProjects: TIntegrationProjectSummary[], link?: string) =>
-      sendNotice({ orgId, orgName: org.name, siteUrl, recipients, projects: noticeProjects, link });
 
     // org admins get one notice covering every affected project; a deep link only makes sense when there is a
     // single project to point at
-    await notify(
-      orgAdminRecipients,
-      projects,
-      projects.length === 1 ? buildNativeIntegrationsPath(orgId, projects[0].projectId) : undefined
-    );
+    await sendNotice({
+      orgId,
+      recipients: orgAdminRecipients,
+      email: {
+        template: SmtpTemplates.NativeIntegrationDeprecationOrgAdmin,
+        subjectLine: getOrgAdminEmailSubject(projects.length, org.name),
+        substitutions: { orgName: org.name, projectCount: projects.length }
+      },
+      link: projects.length === 1 ? buildNativeIntegrationsPath(orgId, projects[0].projectId) : undefined
+    });
 
     // then each project's admins get a notice scoped to their own project, minus anyone already reached above
     for (const project of projects) {
       // eslint-disable-next-line no-await-in-loop
-      await notify(
-        toRecipients(projectAdminsByProjectId[project.projectId] ?? [], orgAdminUserIds),
-        [project],
-        buildNativeIntegrationsPath(orgId, project.projectId)
-      );
+      await sendNotice({
+        orgId,
+        recipients: toRecipients(projectAdminsByProjectId[project.projectId] ?? [], orgAdminUserIds),
+        email: {
+          template: SmtpTemplates.NativeIntegrationDeprecationProjectAdmin,
+          subjectLine: PROJECT_ADMIN_EMAIL_SUBJECT,
+          substitutions: {
+            orgName: org.name,
+            project: {
+              name: project.projectName,
+              integrations: project.integrations,
+              url: buildNativeIntegrationsUrl(siteUrl, orgId, project.projectId)
+            }
+          }
+        },
+        link: buildNativeIntegrationsPath(orgId, project.projectId)
+      });
     }
 
     logger.info(
