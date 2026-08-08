@@ -31,13 +31,16 @@ const SanitizedKmipServerSchema = KmipServersSchema.pick({
 // Cert config lives on the server entity. The daemon's /connect call reads it, rather than
 // passing it on every launch. TTL is API-only (no UI field) and defaults to 1y.
 // ms() throws on unparseable input (including ""), so guard it to return a clean 400.
+// The 1h floor catches accidents like "1m" (ms reads it as one minute, not one month) that
+// would otherwise have the server reissuing its certificate every few seconds forever.
+const MIN_TTL_MS = ms("1h");
 const ttlField = z.string().refine((val) => {
   try {
-    return ms(val) > 0;
+    return ms(val) >= MIN_TTL_MS;
   } catch {
     return false;
   }
-}, "TTL must be a positive number");
+}, "TTL must be a valid duration of at least 1 hour (e.g. 12h, 30d, 1y)");
 
 // hostnamesOrIps is stored in a varchar(4096) column (matching the issued cert's altNames), so cap
 // the resolved SAN list there to surface a clean 400 instead of a DB "value too long" error.
