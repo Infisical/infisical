@@ -19,11 +19,11 @@ export const ResourceKubernetesAuthsSchema = z.object({
   allowedNames: z.string().default(""),
   allowedAudience: z.string().default(""),
   verifyTlsCertificate: z.boolean().default(true),
-  createdAt: z.date(),
-  updatedAt: z.date(),
   tokenReviewMode: z.string().default("api"),
   gatewayV2Id: z.string().uuid().nullable().optional(),
-  gatewayPoolId: z.string().uuid().nullable().optional()
+  gatewayPoolId: z.string().uuid().nullable().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TResourceKubernetesAuths = z.infer<typeof ResourceKubernetesAuthsSchema>;
