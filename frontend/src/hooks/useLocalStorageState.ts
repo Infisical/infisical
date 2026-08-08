@@ -38,6 +38,19 @@ const getLocalStorageServerSnapshot = (): never => {
   throw Error("useLocalStorage is a client-only hook");
 };
 
+// localStorage is writable by anything on the origin, so the stored string may not be
+// valid JSON. Parsing happens during render, where a throw takes down the whole page
+// instead of degrading to the initial value.
+const parseStoredValue = <T>(raw: string | null, fallback: T): T => {
+  if (!raw) return fallback;
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+};
+
 export const useLocalStorageState = <T>(
   key: string,
   initialValue: T
@@ -74,5 +87,5 @@ export const useLocalStorageState = <T>(
     }
   }, [key, initialValue]);
 
-  return [store ? JSON.parse(store) : initialValue, setState];
+  return [parseStoredValue(store, initialValue), setState];
 };
