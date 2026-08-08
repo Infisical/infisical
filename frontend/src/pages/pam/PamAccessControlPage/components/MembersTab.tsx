@@ -64,17 +64,18 @@ export const MembersTab = () => {
     }
   }, [requesterEmail]);
 
-  const filteredMembers = useMemo(
-    () =>
-      members.filter(
-        ({ user: u, inviteEmail }) =>
-          u?.firstName?.toLowerCase().includes(search.toLowerCase()) ||
-          u?.lastName?.toLowerCase().includes(search.toLowerCase()) ||
-          u?.email?.toLowerCase().includes(search.toLowerCase()) ||
-          inviteEmail?.toLowerCase().includes(search.toLowerCase())
-      ),
-    [members, search]
-  );
+  const filteredMembers = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return members;
+
+    // Username is the login address and the only always-populated field: a member who hasn't
+    // accepted their org invite can have no name and no email.
+    return members.filter(({ user: u, inviteEmail }) =>
+      [u?.firstName, u?.lastName, u?.username, u?.email, inviteEmail].some((field) =>
+        field?.toLowerCase().includes(term)
+      )
+    );
+  }, [members, search]);
 
   const handleRemoveMember = async () => {
     if (!memberToRemove) return;
@@ -171,7 +172,7 @@ export const MembersTab = () => {
                     </TableCell>
                     <TableCell className="text-sm">
                       <HighlightText
-                        text={member.user.email || member.inviteEmail || ""}
+                        text={member.user.email || member.inviteEmail || member.user.username || ""}
                         highlight={search}
                       />
                     </TableCell>
