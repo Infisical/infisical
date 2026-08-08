@@ -169,7 +169,11 @@ export const KeyStorePrefixes = {
   TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const,
 
   AuditLogStreamFlushDebounce: (streamId: string) => `audit-log-stream:${streamId}:flush-debounce` as const,
-  AuditLogIngestConsumerLock: "audit-log-ingest:consumer-lock" as const
+  AuditLogIngestConsumerLock: "audit-log-ingest:consumer-lock" as const,
+
+  // period is a YYYY-MM stamp so the monthly notice can only go out once per org per month
+  NativeIntegrationDeprecationNotice: (orgId: string, period: string) =>
+    `native-integration-deprecation-notice:${orgId}:${period}` as const
 };
 
 export const KeyStoreTtls = {
@@ -225,7 +229,8 @@ export const KeyStoreTtls = {
   SecretEtagInSeconds: 900, // 15 minutes
   PkiAcmeNonceInSeconds: 300, // 5 minutes
   GatewayRelayCredentialInSeconds: 600, // 10 minutes - TURN credential lifetime
-  SecretReplicationSuccessInSeconds: 10
+  SecretReplicationSuccessInSeconds: 10,
+  NativeIntegrationDeprecationNoticeInSeconds: 3888000 // 45 days - outlives one monthly cycle
 };
 
 type TDeleteItems = {
