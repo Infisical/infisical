@@ -104,7 +104,7 @@ export const useRevokeGatewayAccess = () => {
   return useMutation({
     mutationFn: async ({ gatewayId }: { gatewayId: string }) => {
       const { data } = await apiRequest.post<{
-        method: "aws" | "token";
+        method: "aws" | "kubernetes" | "token";
       }>(`/api/v3/gateways/${gatewayId}/revoke`);
       return data;
     },

@@ -4,12 +4,18 @@ import { Knex } from "knex";
 import { OrganizationActionScope } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { OrgServiceActor } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { TGatewayPoolDALFactory } from "../gateway-pool/gateway-pool-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TKmipServerDALFactory } from "../kmip-server/kmip-server-dal";
+import { TLicenseServiceFactory } from "../license/license-service";
 import {
   OrgPermissionGatewayActions,
+  OrgPermissionGatewayPoolActions,
   OrgPermissionKmipServerActions,
   OrgPermissionRelayActions,
   OrgPermissionSubjects
@@ -18,25 +24,42 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TResourceAwsAuthDALFactory } from "./aws-auth-dal";
 import { validateAllowlists, verifyStsAndExtractCaller } from "./aws-auth-fns";
+import { TGatewayProxyRegistry } from "./gateway-proxy-registry";
+import { TResourceKubernetesAuthDALFactory } from "./kubernetes-auth-dal";
+import {
+  assertKubernetesHostAllowed,
+  assertKubernetesProxyNotSelf,
+  buildDirectKubernetesExecutor,
+  reviewServiceAccountToken,
+  TKubernetesRequestExecutor,
+  validateKubernetesAllowlists,
+  validateKubernetesConfigReachable
+} from "./kubernetes-auth-fns";
+import { buildGatewayKubernetesExecutor, resolveKubernetesProxyTarget } from "./kubernetes-gateway-executor";
 import { TResourceAuthMethodDALFactory } from "./resource-auth-method-dal";
 import {
   assertGatewayResource,
   assertKmipServerResource,
   assertRelayResource,
+  KubernetesTokenReviewMode,
   mintGatewayJwt,
   mintKmipServerJwt,
   mintRelayJwt,
   RESOURCE_TYPE_GATEWAY,
   RESOURCE_TYPE_KMIP,
   RESOURCE_TYPE_RELAY,
+  ResourceAuthLoginFailureReason,
   ResourceAuthMethodType,
   type ResourceRef
 } from "./resource-auth-method-fns";
 import {
   TAuthMethodView,
   TAwsAuthMethodConfig,
+  TEncryptedKubernetesSecrets,
   TGetAuthMethodDTO,
+  TKubernetesAuthMethodConfig,
   TLoginWithAwsDTO,
+  TLoginWithKubernetesDTO,
   TLoginWithTokenDTO,
   TMintTokenDTO,
   TRevokeTokenDTO,
@@ -56,12 +79,17 @@ const $generateEnrollmentToken = () => {
 type TResourceAuthMethodServiceFactoryDep = {
   resourceAuthMethodDAL: TResourceAuthMethodDALFactory;
   resourceAwsAuthDAL: TResourceAwsAuthDALFactory;
+  resourceKubernetesAuthDAL: TResourceKubernetesAuthDALFactory;
   resourceTokenAuthDAL: TResourceTokenAuthDALFactory;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById" | "updateById">;
+  gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   relayDAL: Pick<TRelayDALFactory, "findById" | "updateById">;
   kmipServerDAL: Pick<TKmipServerDALFactory, "findById" | "updateById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  gatewayProxyRegistry: TGatewayProxyRegistry;
 };
 
 export type TResourceAuthMethodServiceFactory = ReturnType<typeof resourceAuthMethodServiceFactory>;
@@ -96,12 +124,17 @@ type TBasicResource = { id: string; name: string; orgId: string | null; identity
 export const resourceAuthMethodServiceFactory = ({
   resourceAuthMethodDAL,
   resourceAwsAuthDAL,
+  resourceKubernetesAuthDAL,
   resourceTokenAuthDAL,
+  kmsService,
   gatewayV2DAL,
+  gatewayPoolDAL,
   relayDAL,
   kmipServerDAL,
   identityDAL,
-  permissionService
+  permissionService,
+  licenseService,
+  gatewayProxyRegistry
 }: TResourceAuthMethodServiceFactoryDep) => {
   // Registry rows carry the resource FK in a per-type column (gatewayId/relayId/kmipServerId).
   const $registryFilter = (resource: ResourceRef) => {
@@ -184,6 +217,45 @@ export const resourceAuthMethodServiceFactory = ({
     }
   };
 
+  // Attaching a gateway to something is its own permission, and pools are a licensed feature.
+  // Machine identity Kubernetes auth gates its gateway selection the same way.
+  const $assertCanAttachProxy = async (
+    actor: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">,
+    proxy: { gatewayV2Id?: string | null; gatewayPoolId?: string | null }
+  ) => {
+    if (!proxy.gatewayV2Id && !proxy.gatewayPoolId) return;
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
+    if (proxy.gatewayV2Id) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    }
+
+    // Pools carry their own attach permission, so holding it for gateways is not sufficient.
+    if (proxy.gatewayPoolId) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
+
+      const plan = await licenseService.getPlan(actor.orgId);
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
+    }
+  };
+
   const $loadAuthMethodView = async (resource: ResourceRef): Promise<TAuthMethodView | null> => {
     const loaded = await $loadResource(resource);
     if (!loaded) return null;
@@ -216,6 +288,41 @@ export const resourceAuthMethodServiceFactory = ({
           stsEndpoint: config.stsEndpoint,
           allowedPrincipalArns: config.allowedPrincipalArns,
           allowedAccountIds: config.allowedAccountIds,
+          createdAt: config.createdAt,
+          updatedAt: config.updatedAt
+        }
+      };
+    }
+
+    if (registry.method === ResourceAuthMethodType.Kubernetes) {
+      const config = await resourceKubernetesAuthDAL.findOne({ authMethodId: registry.id });
+      if (!config) {
+        throw new NotFoundError({ message: `Kubernetes auth config missing for ${resource.type}` });
+      }
+
+      let caCertificate = "";
+      if (config.encryptedKubernetesCaCertificate && loaded.orgId) {
+        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.Organization,
+          orgId: loaded.orgId
+        });
+        caCertificate = decryptor({ cipherTextBlob: config.encryptedKubernetesCaCertificate }).toString();
+      }
+
+      return {
+        method: ResourceAuthMethodType.Kubernetes,
+        config: {
+          id: config.id,
+          kubernetesHost: config.kubernetesHost ?? "",
+          tokenReviewMode: config.tokenReviewMode,
+          gatewayV2Id: config.gatewayV2Id ?? null,
+          gatewayPoolId: config.gatewayPoolId ?? null,
+          allowedNamespaces: config.allowedNamespaces,
+          allowedNames: config.allowedNames,
+          allowedAudience: config.allowedAudience,
+          verifyTlsCertificate: config.verifyTlsCertificate,
+          caCertificate,
+          hasTokenReviewerJwt: Boolean(config.encryptedKubernetesTokenReviewerJwt),
           createdAt: config.createdAt,
           updatedAt: config.updatedAt
         }
@@ -296,6 +403,175 @@ export const resourceAuthMethodServiceFactory = ({
     return Boolean(pending);
   };
 
+  // Picks the route to the API server: straight out from Infisical, or tunnelled through a gateway.
+  // Makes network calls when proxied, so call it outside a transaction.
+  const $buildKubernetesExecutor = async (
+    config: {
+      kubernetesHost?: string | null;
+      caCertificate?: string;
+      verifyTlsCertificate: boolean;
+      tokenReviewMode?: string | null;
+      gatewayV2Id?: string | null;
+      gatewayPoolId?: string | null;
+    },
+    orgId: string
+  ): Promise<{ executor: TKubernetesRequestExecutor; target: string; isGatewayReviewer: boolean }> => {
+    const proxyId = config.gatewayV2Id ?? config.gatewayPoolId;
+    const isGatewayReviewer = config.tokenReviewMode === KubernetesTokenReviewMode.Gateway;
+
+    if (!proxyId) {
+      if (!config.kubernetesHost) {
+        throw new BadRequestError({ message: "A Kubernetes host is required unless the review runs via a gateway." });
+      }
+      return {
+        executor: buildDirectKubernetesExecutor({
+          kubernetesHost: config.kubernetesHost,
+          caCertificate: config.caCertificate,
+          verifyTlsCertificate: config.verifyTlsCertificate
+        }),
+        target: config.kubernetesHost,
+        isGatewayReviewer: false
+      };
+    }
+
+    // In gateway review mode the gateway calls its own API server, so no host is involved.
+    const proxiedHost = isGatewayReviewer ? undefined : config.kubernetesHost;
+    if (!isGatewayReviewer && !proxiedHost) {
+      throw new BadRequestError({
+        message: "A Kubernetes host is required when the review mode is the token reviewer JWT."
+      });
+    }
+
+    // Without this an editor could name another tenant's gateway UUID and have us mint proxy
+    // credentials for it, sending requests into that tenant's network. The resolvers below look
+    // their argument up by id alone, so ownership has to be established here.
+    if (config.gatewayV2Id) {
+      const proxyGateway = await gatewayV2DAL.findById(config.gatewayV2Id);
+      if (!proxyGateway || proxyGateway.orgId !== orgId) {
+        throw new NotFoundError({ message: `Gateway with ID '${config.gatewayV2Id}' not found` });
+      }
+    }
+    if (config.gatewayPoolId) {
+      const proxyPool = await gatewayPoolDAL.findById(config.gatewayPoolId);
+      if (!proxyPool || proxyPool.orgId !== orgId) {
+        throw new NotFoundError({ message: `Gateway pool with ID '${config.gatewayPoolId}' not found` });
+      }
+    }
+
+    const { targetHost, targetPort } = resolveKubernetesProxyTarget(proxiedHost ?? undefined);
+    const connectionDetails = await gatewayProxyRegistry.resolve({
+      gatewayV2Id: config.gatewayV2Id,
+      gatewayPoolId: config.gatewayPoolId,
+      targetHost,
+      targetPort
+    });
+
+    if (!connectionDetails) {
+      throw new BadRequestError({
+        message: `The gateway selected to review Kubernetes tokens is not reachable. It must be enrolled and connected before another gateway can authenticate through it.`
+      });
+    }
+
+    return {
+      executor: buildGatewayKubernetesExecutor({
+        connectionDetails,
+        kubernetesHost: proxiedHost ?? undefined,
+        caCertificate: config.caCertificate,
+        verifyTlsCertificate: config.verifyTlsCertificate
+      }),
+      target: proxiedHost || "the Kubernetes API server via the selected gateway",
+      isGatewayReviewer
+    };
+  };
+
+  // Whole config-time check for a Kubernetes auth method: the host is only reachable-checked when
+  // Infisical dials it directly, since a proxied address is resolved inside the customer network.
+  // Makes network calls, so call it outside a transaction.
+  const preflightKubernetesConfig = async (
+    config: Pick<
+      TKubernetesAuthMethodConfig,
+      | "kubernetesHost"
+      | "caCertificate"
+      | "tokenReviewerJwt"
+      | "verifyTlsCertificate"
+      | "tokenReviewMode"
+      | "gatewayV2Id"
+      | "gatewayPoolId"
+    >,
+    orgId: string,
+    // Absent when the resource does not exist yet, where it cannot be its own proxy.
+    resource?: ResourceRef,
+    // Absent on paths where the caller was already authorized to attach, e.g. an unauthenticated login.
+    actor?: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">
+  ) => {
+    if (resource) assertKubernetesProxyNotSelf(resource, config.gatewayV2Id);
+    if (actor) await $assertCanAttachProxy(actor, config);
+
+    const isProxied = Boolean(config.gatewayV2Id ?? config.gatewayPoolId);
+    if (!isProxied && config.kubernetesHost) {
+      await assertKubernetesHostAllowed(config.kubernetesHost);
+    }
+
+    const { executor, target, isGatewayReviewer } = await $buildKubernetesExecutor(
+      {
+        kubernetesHost: config.kubernetesHost,
+        caCertificate: config.caCertificate,
+        verifyTlsCertificate: config.verifyTlsCertificate,
+        tokenReviewMode: config.tokenReviewMode,
+        gatewayV2Id: config.gatewayV2Id,
+        gatewayPoolId: config.gatewayPoolId
+      },
+      orgId
+    );
+
+    await validateKubernetesConfigReachable({
+      executor,
+      target,
+      tokenReviewerJwt: config.tokenReviewerJwt,
+      isGatewayReviewer
+    });
+  };
+
+  // Names the gateways that would break if this one were deleted, so the delete path can say so
+  // instead of surfacing a bare foreign key violation.
+  const findKubernetesProxyDependents = async (gatewayV2Id: string): Promise<string[]> => {
+    const configs = await resourceKubernetesAuthDAL.find({ gatewayV2Id });
+    if (!configs.length) return [];
+
+    const registries = await Promise.all(configs.map((config) => resourceAuthMethodDAL.findById(config.authMethodId)));
+    const dependentIds = registries.map((registry) => registry?.gatewayId).filter(Boolean) as string[];
+
+    const gateways = await Promise.all(dependentIds.map((id) => gatewayV2DAL.findById(id)));
+    return gateways.map((gateway) => gateway?.name).filter(Boolean) as string[];
+  };
+
+  // Call before opening a transaction: the KMS round-trip must not hold a pool connection.
+  const encryptKubernetesSecrets = async (
+    orgId: string,
+    config: Pick<TKubernetesAuthMethodConfig, "caCertificate" | "tokenReviewerJwt">
+  ): Promise<TEncryptedKubernetesSecrets> => {
+    if (config.caCertificate === undefined && config.tokenReviewerJwt === undefined) {
+      return {};
+    }
+
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
+
+    const encrypt = (value: string | undefined) => {
+      if (value === undefined) return undefined;
+      if (value === "") return null;
+      return encryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
+    };
+
+    return {
+      ...(config.caCertificate !== undefined && {
+        encryptedKubernetesCaCertificate: encrypt(config.caCertificate)
+      }),
+      ...(config.tokenReviewerJwt !== undefined && {
+        encryptedKubernetesTokenReviewerJwt: encrypt(config.tokenReviewerJwt)
+      })
+    };
+  };
+
   const initAtCreate = async (
     {
       resource,
@@ -304,6 +580,10 @@ export const resourceAuthMethodServiceFactory = ({
       resource: ResourceRef;
       authMethod:
         | { method: typeof ResourceAuthMethodType.Aws; config: TAwsAuthMethodConfig }
+        | {
+            method: typeof ResourceAuthMethodType.Kubernetes;
+            config: TKubernetesAuthMethodConfig & TEncryptedKubernetesSecrets;
+          }
         | { method: typeof ResourceAuthMethodType.Token };
     },
     tx: Knex
@@ -319,6 +599,24 @@ export const resourceAuthMethodServiceFactory = ({
           stsEndpoint: authMethod.config.stsEndpoint,
           allowedPrincipalArns: authMethod.config.allowedPrincipalArns,
           allowedAccountIds: authMethod.config.allowedAccountIds
+        },
+        tx
+      );
+    }
+    if (authMethod.method === ResourceAuthMethodType.Kubernetes) {
+      await resourceKubernetesAuthDAL.create(
+        {
+          authMethodId: registry.id,
+          kubernetesHost: authMethod.config.kubernetesHost || null,
+          tokenReviewMode: authMethod.config.tokenReviewMode ?? KubernetesTokenReviewMode.Api,
+          gatewayV2Id: authMethod.config.gatewayV2Id ?? null,
+          gatewayPoolId: authMethod.config.gatewayPoolId ?? null,
+          allowedNamespaces: authMethod.config.allowedNamespaces,
+          allowedNames: authMethod.config.allowedNames,
+          allowedAudience: authMethod.config.allowedAudience,
+          verifyTlsCertificate: authMethod.config.verifyTlsCertificate,
+          encryptedKubernetesCaCertificate: authMethod.config.encryptedKubernetesCaCertificate ?? null,
+          encryptedKubernetesTokenReviewerJwt: authMethod.config.encryptedKubernetesTokenReviewerJwt ?? null
         },
         tx
       );
@@ -346,6 +644,96 @@ export const resourceAuthMethodServiceFactory = ({
     const current = await resourceAuthMethodDAL.findOne(registryFilter);
     const previousMethod = current?.method ?? null;
 
+    let encryptedKubernetesSecrets: TEncryptedKubernetesSecrets = {};
+    if (authMethod.method === ResourceAuthMethodType.Kubernetes) {
+      const isProxied = Boolean(authMethod.gatewayV2Id ?? authMethod.gatewayPoolId);
+      if (!isProxied && authMethod.kubernetesHost) {
+        await assertKubernetesHostAllowed(authMethod.kubernetesHost);
+      }
+
+      // Switching in from another method has no stored secret to preserve, so omitted means null.
+      const isMethodChange = previousMethod !== ResourceAuthMethodType.Kubernetes;
+
+      // Validate against the credentials that will actually be stored. An omitted secret keeps the
+      // stored one, so validating with only what this request carried would check a different
+      // config than the one a gateway later logs in with.
+      let effectiveCa = authMethod.caCertificate;
+      let effectiveReviewer = authMethod.tokenReviewerJwt;
+      if (!isMethodChange && current && (effectiveCa === undefined || effectiveReviewer === undefined)) {
+        const stored = await resourceKubernetesAuthDAL.findOne({ authMethodId: current.id });
+        // The reviewer token is a live cluster credential and the probe sends it as a bearer
+        // token, so it must never travel to an endpoint it was not validated against. Someone with
+        // edit access could otherwise point the host at a server they control, omit the write-only
+        // field, and read the stored token off the wire.
+        // Gateway review mode is exempt: the gateway reviews with its own service account, so the
+        // stored token is not sent anywhere and there is no endpoint for it to leak to.
+        const isGatewayReviewer = authMethod.tokenReviewMode === KubernetesTokenReviewMode.Gateway;
+
+        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.Organization,
+          orgId: actor.orgId
+        });
+        const storedCa = stored?.encryptedKubernetesCaCertificate
+          ? decryptor({ cipherTextBlob: stored.encryptedKubernetesCaCertificate }).toString()
+          : undefined;
+
+        // Everything that decides where the token ends up, and who could read it in transit. The
+        // host alone is not enough: routing it through a different gateway, trusting a different
+        // CA, or turning verification off all redirect it somewhere it was never validated against.
+        const destinationChanged =
+          stored?.kubernetesHost !== authMethod.kubernetesHost ||
+          (stored?.gatewayV2Id ?? null) !== (authMethod.gatewayV2Id ?? null) ||
+          (stored?.gatewayPoolId ?? null) !== (authMethod.gatewayPoolId ?? null) ||
+          stored?.verifyTlsCertificate !== authMethod.verifyTlsCertificate ||
+          (authMethod.caCertificate !== undefined && authMethod.caCertificate !== (storedCa ?? ""));
+        if (
+          !isGatewayReviewer &&
+          stored?.encryptedKubernetesTokenReviewerJwt &&
+          effectiveReviewer === undefined &&
+          destinationChanged
+        ) {
+          throw new BadRequestError({
+            message:
+              "Re-enter the token reviewer JWT when changing the Kubernetes host, the reviewing gateway, the CA certificate, or TLS verification. Reset it instead to remove it. The stored token is never sent to a destination it was not validated against."
+          });
+        }
+
+        if (effectiveCa === undefined && storedCa !== undefined) {
+          effectiveCa = storedCa;
+        }
+        if (effectiveReviewer === undefined && stored?.encryptedKubernetesTokenReviewerJwt) {
+          effectiveReviewer = decryptor({ cipherTextBlob: stored.encryptedKubernetesTokenReviewerJwt }).toString();
+        }
+      }
+
+      assertKubernetesProxyNotSelf(resource, authMethod.gatewayV2Id);
+      await $assertCanAttachProxy(actor, authMethod);
+
+      const validation = await $buildKubernetesExecutor(
+        {
+          kubernetesHost: authMethod.kubernetesHost,
+          caCertificate: effectiveCa,
+          verifyTlsCertificate: authMethod.verifyTlsCertificate,
+          tokenReviewMode: authMethod.tokenReviewMode,
+          gatewayV2Id: authMethod.gatewayV2Id,
+          gatewayPoolId: authMethod.gatewayPoolId
+        },
+        actor.orgId
+      );
+
+      await validateKubernetesConfigReachable({
+        executor: validation.executor,
+        target: validation.target,
+        tokenReviewerJwt: effectiveReviewer,
+        isGatewayReviewer: validation.isGatewayReviewer
+      });
+
+      encryptedKubernetesSecrets = await encryptKubernetesSecrets(actor.orgId, {
+        caCertificate: authMethod.caCertificate ?? (isMethodChange ? "" : undefined),
+        tokenReviewerJwt: authMethod.tokenReviewerJwt ?? (isMethodChange ? "" : undefined)
+      });
+    }
+
     await resourceAuthMethodDAL.transaction(async (tx) => {
       // 1. Upsert registry row to the new method.
       let registryRow = current;
@@ -362,6 +750,13 @@ export const resourceAuthMethodServiceFactory = ({
         current
       ) {
         await resourceAwsAuthDAL.delete({ authMethodId: current.id }, tx);
+      }
+      if (
+        previousMethod === ResourceAuthMethodType.Kubernetes &&
+        authMethod.method !== ResourceAuthMethodType.Kubernetes &&
+        current
+      ) {
+        await resourceKubernetesAuthDAL.delete({ authMethodId: current.id }, tx);
       }
       if (
         previousMethod === ResourceAuthMethodType.Token &&
@@ -391,6 +786,39 @@ export const resourceAuthMethodServiceFactory = ({
               stsEndpoint: authMethod.stsEndpoint,
               allowedPrincipalArns: authMethod.allowedPrincipalArns,
               allowedAccountIds: authMethod.allowedAccountIds
+            },
+            tx
+          );
+        }
+      }
+
+      if (authMethod.method === ResourceAuthMethodType.Kubernetes) {
+        const sharedFields = {
+          kubernetesHost: authMethod.kubernetesHost || null,
+          tokenReviewMode: authMethod.tokenReviewMode ?? KubernetesTokenReviewMode.Api,
+          gatewayV2Id: authMethod.gatewayV2Id ?? null,
+          gatewayPoolId: authMethod.gatewayPoolId ?? null,
+          allowedNamespaces: authMethod.allowedNamespaces,
+          allowedNames: authMethod.allowedNames,
+          allowedAudience: authMethod.allowedAudience,
+          verifyTlsCertificate: authMethod.verifyTlsCertificate
+        };
+
+        const existingKubernetes = await resourceKubernetesAuthDAL.findOne({ authMethodId: registryRow.id }, tx);
+        if (existingKubernetes) {
+          await resourceKubernetesAuthDAL.updateById(
+            existingKubernetes.id,
+            { ...sharedFields, ...encryptedKubernetesSecrets },
+            tx
+          );
+        } else {
+          await resourceKubernetesAuthDAL.create(
+            {
+              authMethodId: registryRow.id,
+              ...sharedFields,
+              encryptedKubernetesCaCertificate: encryptedKubernetesSecrets.encryptedKubernetesCaCertificate ?? null,
+              encryptedKubernetesTokenReviewerJwt:
+                encryptedKubernetesSecrets.encryptedKubernetesTokenReviewerJwt ?? null
             },
             tx
           );
@@ -462,7 +890,7 @@ export const resourceAuthMethodServiceFactory = ({
     }
     if (loaded.identityId) {
       throw new BadRequestError({
-        message: `Identity-bound ${resourceLabel.toLowerCase()}s cannot be revoked directly. Create a new ${resourceLabel.toLowerCase()} with AWS or Token auth instead.`
+        message: `Identity-bound ${resourceLabel.toLowerCase()}s cannot be revoked directly. Create a new ${resourceLabel.toLowerCase()} with AWS, Kubernetes, or Token auth instead.`
       });
     }
 
@@ -479,7 +907,7 @@ export const resourceAuthMethodServiceFactory = ({
     return {
       resourceName: loaded.name,
       orgId: loaded.orgId,
-      method: registry.method as "aws" | "token"
+      method: registry.method as "aws" | "kubernetes" | "token"
     };
   };
 
@@ -501,7 +929,11 @@ export const resourceAuthMethodServiceFactory = ({
     if (!registry || registry.method !== ResourceAuthMethodType.Aws) {
       throw new UnauthorizedError({
         message: `${resourceLabel} is not configured for AWS authentication`,
-        detail: { reasonCode: "method_mismatch", resourceId: resource.id, orgId: resourceOrgId }
+        detail: {
+          reasonCode: ResourceAuthLoginFailureReason.MethodMismatch,
+          resourceId: resource.id,
+          orgId: resourceOrgId
+        }
       });
     }
 
@@ -509,7 +941,11 @@ export const resourceAuthMethodServiceFactory = ({
     if (!config) {
       throw new UnauthorizedError({
         message: `${resourceLabel} is not configured for AWS authentication`,
-        detail: { reasonCode: "config_missing", resourceId: resource.id, orgId: resourceOrgId }
+        detail: {
+          reasonCode: ResourceAuthLoginFailureReason.ConfigMissing,
+          resourceId: resource.id,
+          orgId: resourceOrgId
+        }
       });
     }
 
@@ -543,6 +979,103 @@ export const resourceAuthMethodServiceFactory = ({
       config,
       principalArn: Arn,
       accountId: Account
+    };
+  };
+
+  const loginWithKubernetes = async ({ resource, jwt }: TLoginWithKubernetesDTO) => {
+    const resourceLabel = RESOURCE_LABEL[resource.type];
+    const loaded = await $loadResource(resource);
+    if (!loaded || !loaded.orgId) {
+      throw new UnauthorizedError({ message: `Invalid ${resourceLabel.toLowerCase()} credentials` });
+    }
+    const resourceName = loaded.name;
+    const resourceOrgId = loaded.orgId;
+
+    const registry = await resourceAuthMethodDAL.findOne($registryFilter(resource));
+    if (!registry || registry.method !== ResourceAuthMethodType.Kubernetes) {
+      throw new UnauthorizedError({
+        message: `${resourceLabel} is not configured for Kubernetes authentication`,
+        detail: {
+          reasonCode: ResourceAuthLoginFailureReason.MethodMismatch,
+          resourceId: resource.id,
+          orgId: resourceOrgId
+        }
+      });
+    }
+
+    const config = await resourceKubernetesAuthDAL.findOne({ authMethodId: registry.id });
+    if (!config) {
+      throw new UnauthorizedError({
+        message: `${resourceLabel} is not configured for Kubernetes authentication`,
+        detail: {
+          reasonCode: ResourceAuthLoginFailureReason.ConfigMissing,
+          resourceId: resource.id,
+          orgId: resourceOrgId
+        }
+      });
+    }
+
+    const errorContext = { resourceId: resource.id, orgId: resourceOrgId, resourceName };
+
+    let caCertificate = "";
+    let tokenReviewerJwt = "";
+    if (config.encryptedKubernetesCaCertificate || config.encryptedKubernetesTokenReviewerJwt) {
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId: resourceOrgId
+      });
+      if (config.encryptedKubernetesCaCertificate) {
+        caCertificate = decryptor({ cipherTextBlob: config.encryptedKubernetesCaCertificate }).toString();
+      }
+      if (config.encryptedKubernetesTokenReviewerJwt) {
+        tokenReviewerJwt = decryptor({ cipherTextBlob: config.encryptedKubernetesTokenReviewerJwt }).toString();
+      }
+    }
+
+    const login = await $buildKubernetesExecutor(
+      {
+        kubernetesHost: config.kubernetesHost,
+        caCertificate,
+        verifyTlsCertificate: config.verifyTlsCertificate,
+        tokenReviewMode: config.tokenReviewMode,
+        gatewayV2Id: config.gatewayV2Id,
+        gatewayPoolId: config.gatewayPoolId
+      },
+      resourceOrgId
+    );
+
+    const { namespace, serviceAccountName, audiences } = await reviewServiceAccountToken({
+      jwt,
+      executor: login.executor,
+      target: login.target,
+      tokenReviewerJwt,
+      isGatewayReviewer: login.isGatewayReviewer,
+      allowedAudience: config.allowedAudience,
+      errorContext
+    });
+
+    validateKubernetesAllowlists({
+      namespace,
+      serviceAccountName,
+      audiences,
+      allowedNamespaces: config.allowedNamespaces,
+      allowedNames: config.allowedNames,
+      allowedAudience: config.allowedAudience,
+      errorContext
+    });
+
+    const refreshedTokenVersion = await $bumpTokenVersion(resource);
+
+    const accessToken = $mintJwt(resource, resourceOrgId, refreshedTokenVersion);
+
+    return {
+      accessToken,
+      resourceId: resource.id,
+      resourceName,
+      orgId: resourceOrgId,
+      configId: config.id,
+      namespace,
+      serviceAccountName
     };
   };
 
@@ -618,11 +1151,15 @@ export const resourceAuthMethodServiceFactory = ({
     getByKmipServerId,
     loadView,
     canRevoke,
+    preflightKubernetesConfig,
+    findKubernetesProxyDependents,
+    encryptKubernetesSecrets,
     initAtCreate,
     setMethod,
     mintToken,
     revokeAccess,
     loginWithAws,
+    loginWithKubernetes,
     loginWithToken
   };
 };

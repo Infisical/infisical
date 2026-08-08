@@ -6736,7 +6736,7 @@ interface GatewayEnrollEvent {
   };
 }
 
-type ResourceAuthMethodKind = "aws" | "token";
+type ResourceAuthMethodKind = "aws" | "kubernetes" | "token";
 type ResourceAuthMethodResourceType = "gateway" | "relay" | "kmip";
 
 interface ResourceAuthMethodLoginEvent {
@@ -6749,6 +6749,8 @@ interface ResourceAuthMethodLoginEvent {
     principalArn?: string;
     accountId?: string;
     enrollmentTokenId?: string;
+    kubernetesNamespace?: string;
+    kubernetesServiceAccountName?: string;
   };
 }
 
@@ -6762,6 +6764,8 @@ interface ResourceAuthMethodLoginFailedEvent {
     message: string;
     principalArn?: string;
     accountId?: string;
+    kubernetesNamespace?: string;
+    kubernetesServiceAccountName?: string;
   };
 }
 
@@ -6775,6 +6779,10 @@ interface ResourceAuthMethodUpdateEvent {
     stsEndpoint?: string;
     allowedPrincipalArns?: string;
     allowedAccountIds?: string;
+    kubernetesHost?: string;
+    allowedNamespaces?: string;
+    allowedNames?: string;
+    allowedAudience?: string;
   };
 }
 
