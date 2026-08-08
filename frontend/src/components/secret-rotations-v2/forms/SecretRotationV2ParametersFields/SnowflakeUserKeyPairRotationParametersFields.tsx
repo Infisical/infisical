@@ -1,11 +1,23 @@
 import { Controller, useFormContext } from "react-hook-form";
 import { SingleValue } from "react-select";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon } from "lucide-react";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
-import { CreatableSelect } from "@app/components/v2/CreatableSelect";
+import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
+import {
+  CreatableSelect,
+  Field,
+  FieldError,
+  FieldFeedback,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useSnowflakeConnectionListUsers } from "@app/hooks/api/appConnections/snowflake";
 import { TSnowflakeUser } from "@app/hooks/api/appConnections/snowflake/types";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
@@ -34,40 +46,16 @@ export const SnowflakeUserKeyPairRotationParametersFields = () => {
       <Controller
         name="parameters.username"
         control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="User"
-            helperText={
-              isUpdate ? (
-                "Cannot be updated."
-              ) : (
-                <Tooltip
-                  className="max-w-md"
-                  content={
-                    <>
-                      Select an existing Snowflake user, or type a new username to create it. New
-                      users are created as key-pair-only SERVICE users. Ensure your connection&#39;s
-                      role has the privileges to list users, alter the user&#39;s RSA public key,
-                      and (for new users) create users. If the keys are rotated the user will
-                      continue to exist.
-                    </>
-                  }
-                >
-                  <div>
-                    <span>Don&#39;t see the user you&#39;re looking for?</span>{" "}
-                    <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                  </div>
-                </Tooltip>
-              )
-            }
-          >
+        render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabelWithTooltip htmlFor="snowflake-user">User</FieldLabelWithTooltip>
             <CreatableSelect<TUserOption>
+              inputId="snowflake-user"
               menuPlacement="top"
               isLoading={isUsersPending && Boolean(connectionId) && !isUpdate}
               isDisabled={!connectionId || isUpdate}
               value={users?.find((user) => user.name === value) ?? (value ? { name: value } : null)}
+              onBlur={onBlur}
               onChange={(option) => {
                 const selectedUser = option as SingleValue<TUserOption>;
                 onChange(selectedUser?.name ?? null);
@@ -83,8 +71,35 @@ export const SnowflakeUserKeyPairRotationParametersFields = () => {
               getOptionLabel={(option) => option.label ?? option.name}
               getOptionValue={(option) => option.name}
               isClearable
+              isError={Boolean(error)}
+              aria-describedby="snowflake-user-feedback"
             />
-          </FormControl>
+            <FieldFeedback
+              id="snowflake-user-feedback"
+              description={
+                isUpdate ? (
+                  "Cannot be updated."
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="inline-flex items-center gap-1 text-left">
+                        <span>Don&#39;t see the user you&#39;re looking for?</span>
+                        <InfoIcon className="size-3.5 shrink-0 text-muted" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-md">
+                      Select an existing Snowflake user, or type a new username to create it. New
+                      users are created as key-pair-only SERVICE users. Ensure your connection&#39;s
+                      role has the privileges to list users, alter the user&#39;s RSA public key,
+                      and (for new users) create users. If the keys are rotated the user will
+                      continue to exist.
+                    </TooltipContent>
+                  </Tooltip>
+                )
+              }
+              error={error?.message}
+            />
+          </Field>
         )}
       />
       <Controller
@@ -92,27 +107,27 @@ export const SnowflakeUserKeyPairRotationParametersFields = () => {
         control={control}
         defaultValue={2048}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="RSA Modulus Length"
-            tooltipText="The size in bits of the generated RSA key pairs. 2048-bit keys are faster to generate and use; 4096-bit keys provide a larger security margin."
-            tooltipClassName="max-w-sm"
-          >
-            <Select
-              value={String(value)}
-              onValueChange={(val) => onChange(Number(val))}
-              className="w-full border border-mineshaft-500"
-              position="popper"
-              dropdownContainerClassName="max-w-none"
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabelWithTooltip
+              tooltip="The size in bits of the generated RSA key pairs. 2048-bit keys are faster to generate and use; 4096-bit keys provide a larger security margin."
+              tooltipClassName="max-w-sm"
             >
-              {RSA_MODULUS_LENGTHS.map((length) => (
-                <SelectItem value={String(length)} key={length}>
-                  {length}-bit
-                </SelectItem>
-              ))}
+              RSA Modulus Length
+            </FieldLabelWithTooltip>
+            <Select value={String(value)} onValueChange={(val) => onChange(Number(val))}>
+              <SelectTrigger className="w-full" isError={Boolean(error)}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                {RSA_MODULUS_LENGTHS.map((length) => (
+                  <SelectItem value={String(length)} key={length}>
+                    {length}-bit
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
-          </FormControl>
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
     </>

@@ -1,11 +1,27 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { ClipboardCheckIcon, CopyIcon } from "lucide-react";
+import { ClipboardCheckIcon, CopyIcon, InfoIcon } from "lucide-react";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
+import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import { ValidationRuleOverrideNotice } from "@app/components/secret-validation/ValidationRuleOverrideNotice";
-import { FormControl, Input, Tab, TabList, TabPanel, Tabs, TextArea } from "@app/components/v2";
-import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
-import { IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Field,
+  FieldError,
+  FieldFeedback,
+  IconButton,
+  Input,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretRotation, useSecretRotationV2Option } from "@app/hooks/api/secretRotationsV2";
@@ -44,113 +60,127 @@ export const SqlCredentialsRotationParametersFields = () => {
 
   return (
     <Tabs defaultValue={ParameterTab.Statement}>
-      <TabList className="border-b border-mineshaft-500">
-        <Tab value={ParameterTab.Statement}>General</Tab>
-        <Tab value={ParameterTab.Advanced}>Advanced</Tab>
-      </TabList>
-      <TabPanel value={ParameterTab.Statement}>
+      <TabsList variant="project" className="w-full justify-start">
+        <TabsTrigger value={ParameterTab.Statement}>General</TabsTrigger>
+        <TabsTrigger value={ParameterTab.Advanced}>Advanced</TabsTrigger>
+      </TabsList>
+      <TabsContent value={ParameterTab.Statement}>
         <div className="flex items-start gap-x-2">
           <Controller
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                isError={Boolean(error)}
-                errorText={error?.message}
-                label="Database Username 1"
-                className="flex-1"
-              >
+            render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => (
+              <Field className="flex-1" data-invalid={Boolean(error)}>
+                <FieldLabelWithTooltip htmlFor="sql-username-1">
+                  Database Username 1
+                </FieldLabelWithTooltip>
                 <Input
+                  ref={ref}
+                  id="sql-username-1"
                   value={value}
+                  onBlur={onBlur}
                   onChange={onChange}
                   placeholder={
                     rotationOption.connection === AppConnection.OracleDB
                       ? "INFISICAL_USER_1"
                       : "infisical_user_1"
                   }
+                  isError={Boolean(error)}
                 />
-              </FormControl>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
             control={control}
             name="parameters.username1"
           />
           <Controller
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                isError={Boolean(error)}
-                errorText={error?.message}
-                label="Database Username 2"
-                className="flex-1"
-              >
+            render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => (
+              <Field className="flex-1" data-invalid={Boolean(error)}>
+                <FieldLabelWithTooltip htmlFor="sql-username-2">
+                  Database Username 2
+                </FieldLabelWithTooltip>
                 <Input
+                  ref={ref}
+                  id="sql-username-2"
                   value={value}
+                  onBlur={onBlur}
                   onChange={onChange}
                   placeholder={
                     rotationOption.connection === AppConnection.OracleDB
                       ? "INFISICAL_USER_2"
                       : "infisical_user_2"
                   }
+                  isError={Boolean(error)}
                 />
-              </FormControl>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
             control={control}
             name="parameters.username2"
           />
         </div>
 
-        <NoticeBannerV2 title="Example Create User Statement">
-          <p className="mb-3 text-sm text-mineshaft-300">
-            Infisical requires two database users to be created for rotation.
-          </p>
-          <p className="mb-3 text-sm text-mineshaft-300">
-            These users are intended to be solely managed by Infisical. Altering their login after
-            rotation may cause unexpected failure.
-          </p>
-          <p className="mb-3 text-sm text-mineshaft-300">
-            Below is an example statement for creating the required users. You may need to modify it
-            to suit your needs.
-          </p>
-          <div className="relative mb-3">
-            <pre className="max-h-[10vh] overflow-auto rounded-sm border border-mineshaft-700 bg-mineshaft-800 p-2 pr-9 text-sm break-words whitespace-pre-wrap text-mineshaft-300">
-              {rotationOption!.template.createUserStatement}
-            </pre>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <IconButton
-                  variant="ghost"
-                  size="xs"
-                  className="absolute top-1.5 right-1.5 text-mineshaft-300 hover:text-mineshaft-100"
-                  onClick={handleCopy}
-                >
-                  {isCopied ? (
-                    <ClipboardCheckIcon className="size-3.5" />
-                  ) : (
-                    <CopyIcon className="size-3.5" />
-                  )}
-                </IconButton>
-              </TooltipTrigger>
-              <TooltipContent>{isCopied ? "Copied!" : "Copy"}</TooltipContent>
-            </Tooltip>
-          </div>
-        </NoticeBannerV2>
-      </TabPanel>
-      <TabPanel value={ParameterTab.Advanced}>
+        <Alert variant="info">
+          <InfoIcon />
+          <AlertTitle>Example Create User Statement</AlertTitle>
+          <AlertDescription>
+            <p className="mb-3 text-sm">
+              Infisical requires two database users to be created for rotation.
+            </p>
+            <p className="mb-3 text-sm">
+              These users are intended to be solely managed by Infisical. Altering their login after
+              rotation may cause unexpected failure.
+            </p>
+            <p className="mb-3 text-sm">
+              Below is an example statement for creating the required users. You may need to modify
+              it to suit your needs.
+            </p>
+            <div className="relative mb-3">
+              <pre className="max-h-[10vh] overflow-auto rounded-sm border border-border bg-container p-2 pr-9 text-sm break-words whitespace-pre-wrap text-muted">
+                {rotationOption!.template.createUserStatement}
+              </pre>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    className="absolute top-1.5 right-1.5 text-muted hover:text-foreground"
+                    aria-label={isCopied ? "Copied" : "Copy"}
+                    onClick={handleCopy}
+                  >
+                    {isCopied ? (
+                      <ClipboardCheckIcon className="size-3.5" />
+                    ) : (
+                      <CopyIcon className="size-3.5" />
+                    )}
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>{isCopied ? "Copied!" : "Copy"}</TooltipContent>
+              </Tooltip>
+            </div>
+          </AlertDescription>
+        </Alert>
+      </TabsContent>
+      <TabsContent value={ParameterTab.Advanced}>
         <Controller
           control={control}
           name="parameters.rotationStatement"
           defaultValue={rotationOption?.template?.rotationStatement}
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              label="Rotation Statement"
-              isError={Boolean(error?.message)}
-              errorText={error?.message}
-              helperText="username, password and database are dynamically provisioned"
-            >
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabelWithTooltip>Rotation Statement</FieldLabelWithTooltip>
               <TextArea
                 {...field}
-                reSize="none"
+                className="resize-none text-sm"
                 rows={3}
-                className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                isError={Boolean(error)}
+                aria-describedby="sql-rotation-statement-feedback"
               />
-            </FormControl>
+              <FieldFeedback
+                id="sql-rotation-statement-feedback"
+                description="username, password and database are dynamically provisioned"
+                error={error?.message}
+              />
+            </Field>
           )}
         />
         <div className="flex flex-col gap-3">
@@ -162,10 +192,10 @@ export const SqlCredentialsRotationParametersFields = () => {
               secretPath={secretPath}
             />
           )}
-          <div className="w-full border-b border-mineshaft-600">
-            <span className="text-sm text-mineshaft-300">Password Requirements</span>
+          <div className="w-full border-b border-border">
+            <span className="text-sm text-label">Password Requirements</span>
           </div>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-sm border border-mineshaft-600 bg-mineshaft-700 px-3 pt-3">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-sm border border-border bg-card px-3 pt-3">
             <Controller
               control={control}
               name="parameters.passwordRequirements.length"
@@ -176,21 +206,20 @@ export const SqlCredentialsRotationParametersFields = () => {
                   : DEFAULT_PASSWORD_REQUIREMENTS.length
               }
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Password Length"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  tooltipText="The length of the password to generate"
-                >
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabelWithTooltip tooltip="The length of the password to generate">
+                    Password Length
+                  </FieldLabelWithTooltip>
                   <Input
                     type="number"
                     min={1}
                     max={250}
-                    size="sm"
                     {...field}
+                    isError={Boolean(error)}
                     onChange={(e) => field.onChange(Number(e.target.value))}
                   />
-                </FormControl>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
             <Controller
@@ -198,20 +227,19 @@ export const SqlCredentialsRotationParametersFields = () => {
               name="parameters.passwordRequirements.required.digits"
               defaultValue={DEFAULT_PASSWORD_REQUIREMENTS.required.digits}
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Digit Count"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  tooltipText="Minimum number of digits"
-                >
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabelWithTooltip tooltip="Minimum number of digits">
+                    Digit Count
+                  </FieldLabelWithTooltip>
                   <Input
                     type="number"
                     min={0}
-                    size="sm"
                     {...field}
+                    isError={Boolean(error)}
                     onChange={(e) => field.onChange(Number(e.target.value))}
                   />
-                </FormControl>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
             <Controller
@@ -219,20 +247,19 @@ export const SqlCredentialsRotationParametersFields = () => {
               name="parameters.passwordRequirements.required.lowercase"
               defaultValue={DEFAULT_PASSWORD_REQUIREMENTS.required.lowercase}
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Lowercase Character Count"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  tooltipText="Minimum number of lowercase characters"
-                >
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabelWithTooltip tooltip="Minimum number of lowercase characters">
+                    Lowercase Character Count
+                  </FieldLabelWithTooltip>
                   <Input
                     type="number"
                     min={0}
-                    size="sm"
                     {...field}
+                    isError={Boolean(error)}
                     onChange={(e) => field.onChange(Number(e.target.value))}
                   />
-                </FormControl>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
             <Controller
@@ -240,20 +267,19 @@ export const SqlCredentialsRotationParametersFields = () => {
               name="parameters.passwordRequirements.required.uppercase"
               defaultValue={DEFAULT_PASSWORD_REQUIREMENTS.required.uppercase}
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Uppercase Character Count"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  tooltipText="Minimum number of uppercase characters"
-                >
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabelWithTooltip tooltip="Minimum number of uppercase characters">
+                    Uppercase Character Count
+                  </FieldLabelWithTooltip>
                   <Input
                     type="number"
                     min={0}
-                    size="sm"
                     {...field}
+                    isError={Boolean(error)}
                     onChange={(e) => field.onChange(Number(e.target.value))}
                   />
-                </FormControl>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
             <Controller
@@ -261,20 +287,19 @@ export const SqlCredentialsRotationParametersFields = () => {
               name="parameters.passwordRequirements.required.symbols"
               defaultValue={DEFAULT_PASSWORD_REQUIREMENTS.required.symbols}
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Symbol Count"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  tooltipText="Minimum number of symbols"
-                >
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabelWithTooltip tooltip="Minimum number of symbols">
+                    Symbol Count
+                  </FieldLabelWithTooltip>
                   <Input
                     type="number"
                     min={0}
-                    size="sm"
                     {...field}
+                    isError={Boolean(error)}
                     onChange={(e) => field.onChange(Number(e.target.value))}
                   />
-                </FormControl>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
             <Controller
@@ -282,24 +307,23 @@ export const SqlCredentialsRotationParametersFields = () => {
               name="parameters.passwordRequirements.allowedSymbols"
               defaultValue={DEFAULT_PASSWORD_REQUIREMENTS.allowedSymbols}
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Allowed Symbols"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  tooltipText="Symbols to use in generated password"
-                >
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabelWithTooltip tooltip="Symbols to use in generated password">
+                    Allowed Symbols
+                  </FieldLabelWithTooltip>
                   <Input
                     placeholder="-_.~!*"
-                    size="sm"
                     {...field}
+                    isError={Boolean(error)}
                     onChange={(e) => field.onChange(e.target.value)}
                   />
-                </FormControl>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
           </div>
         </div>
-      </TabPanel>
+      </TabsContent>
     </Tabs>
   );
 };

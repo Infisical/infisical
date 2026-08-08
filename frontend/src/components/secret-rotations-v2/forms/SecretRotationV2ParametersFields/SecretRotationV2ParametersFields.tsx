@@ -70,7 +70,7 @@ export const SecretRotationV2ParametersFields = () => {
 
   return (
     <>
-      <p className="mb-4 text-sm text-bunker-300">
+      <p className="mb-4 text-sm text-muted">
         Configure the required parameters for this Secret Rotation.
       </p>
       <Component />
