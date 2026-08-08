@@ -2,11 +2,17 @@ import { useMemo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { subject } from "@casl/ability";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon } from "lucide-react";
 
 import { AppConnectionOption } from "@app/components/app-connections";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
+import {
+  Alert,
+  AlertDescription,
+  Field,
+  FieldFeedback,
+  FilterableSelect
+} from "@app/components/v3";
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionAppConnectionActions,
@@ -71,39 +77,28 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
   return (
     <>
       <Controller
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            tooltipText="App Connections can be created from the Organization Settings page."
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label={`${connectionName} Connection`}
-            helperText={
-              isUpdate ? (
-                "Cannot be updated"
-              ) : (
-                <p>
-                  Check out{" "}
-                  <a
-                    href={`https://infisical.com/docs/integrations/app-connections/${app}`}
-                    target="_blank"
-                    className="underline"
-                    rel="noopener noreferrer"
-                  >
-                    our docs
-                  </a>{" "}
-                  to ensure your connection has the required permissions for secret rotation.
-                </p>
-              )
-            }
-          >
+        render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabelWithTooltip
+              htmlFor="secret-rotation-connection"
+              tooltip="App Connections can be created from the Organization Settings page."
+            >
+              {connectionName} Connection
+            </FieldLabelWithTooltip>
             <FilterableSelect
-              value={value}
+              inputId="secret-rotation-connection"
+              value={value ?? null}
+              onBlur={onBlur}
               onChange={(newValue) => {
                 if ((newValue as SingleValue<{ id: string; name: string }>)?.id === "_create") {
                   handlePopUpOpen("addConnection");
                   onChange(null);
-                  // store for oauth callback connections
-                  localStorage.setItem("secretRotationFormData", JSON.stringify(watch()));
+                  localStorage.setItem(
+                    "secretRotationFormData",
+                    JSON.stringify(watch(), (key, serializedValue) =>
+                      key === "temporaryParameters" ? undefined : serializedValue
+                    )
+                  );
                   if (callback) callback();
                   return;
                 }
@@ -121,22 +116,47 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
               components={{ Option: AppConnectionOption }}
+              isError={Boolean(error)}
+              aria-describedby="secret-rotation-connection-feedback"
             />
-          </FormControl>
+            <FieldFeedback
+              id="secret-rotation-connection-feedback"
+              description={
+                isUpdate ? (
+                  "Cannot be updated"
+                ) : (
+                  <>
+                    Check out{" "}
+                    <a
+                      href={`https://infisical.com/docs/integrations/app-connections/${app}`}
+                      target="_blank"
+                      className="underline"
+                      rel="noopener noreferrer"
+                    >
+                      our docs
+                    </a>{" "}
+                    to ensure your connection has the required permissions for secret rotation.
+                  </>
+                )
+              }
+              error={error?.message}
+            />
+          </Field>
         )}
         control={control}
         name="connection"
       />
       {!isUpdate && !isPending && !allowedConnections.length && !canCreateConnection && (
-        <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
-          <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
-          You do not have access to any {appName} Connections. Contact an admin to create one.
-        </p>
+        <Alert variant="warning">
+          <InfoIcon />
+          <AlertDescription>
+            You do not have access to any {appName} Connections. Contact an admin to create one.
+          </AlertDescription>
+        </Alert>
       )}
       <AddAppConnectionModal
         isOpen={popUp.addConnection.isOpen}
         onOpenChange={(isOpen) => {
-          // remove form storage, not oauth connection
           localStorage.removeItem("secretRotationFormData");
           handlePopUpToggle("addConnection", isOpen);
         }}
@@ -145,7 +165,7 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
         app={app}
         onComplete={(connection) => {
           if (connection) {
-            setValue("connection", connection);
+            setValue("connection", connection, { shouldValidate: true, shouldDirty: true });
           }
         }}
       />

@@ -1,11 +1,19 @@
 import { Controller, useFormContext } from "react-hook-form";
 import { SingleValue } from "react-select";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon } from "lucide-react";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
+import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import { AwsRegionSelect } from "@app/components/secret-syncs/forms/SecretSyncDestinationFields/shared";
-import { FilterableSelect, FormControl, Tooltip } from "@app/components/v2";
+import {
+  Field,
+  FieldError,
+  FieldFeedback,
+  FilterableSelect,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { TAwsIamUserSecret, useListAwsConnectionIamUsers } from "@app/hooks/api/appConnections/aws";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
@@ -27,28 +35,16 @@ export const AwsIamUserSecretRotationParametersFields = () => {
       <Controller
         name="parameters.userName"
         control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="IAM User"
-            helperText={
-              <Tooltip
-                className="max-w-md"
-                content={<>Ensure that your connection has the correct permissions.</>}
-              >
-                <div>
-                  <span>Don&#39;t see the IAM user you&#39;re looking for?</span>{" "}
-                  <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                </div>
-              </Tooltip>
-            }
-          >
+        render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabelWithTooltip htmlFor="aws-iam-user">IAM User</FieldLabelWithTooltip>
             <FilterableSelect
+              inputId="aws-iam-user"
               menuPlacement="top"
               isLoading={isClientsPending && Boolean(connectionId)}
               isDisabled={!connectionId}
               value={clients?.find((client) => client.UserName === value) ?? ""}
+              onBlur={onBlur}
               onChange={(option) => {
                 onChange((option as SingleValue<TAwsIamUserSecret>)?.UserName ?? "");
               }}
@@ -60,23 +56,43 @@ export const AwsIamUserSecretRotationParametersFields = () => {
               getOptionValue={(option) =>
                 (option as SingleValue<TAwsIamUserSecret>)?.UserName ?? ""
               }
+              isError={Boolean(error)}
+              aria-describedby="aws-iam-user-feedback"
             />
-          </FormControl>
+            <FieldFeedback
+              id="aws-iam-user-feedback"
+              description={
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="inline-flex items-center gap-1 text-left">
+                      <span>Don&#39;t see the IAM user you&#39;re looking for?</span>
+                      <InfoIcon className="size-3.5 shrink-0 text-muted" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-md">
+                    Ensure that your connection has the correct permissions.
+                  </TooltipContent>
+                </Tooltip>
+              }
+              error={error?.message}
+            />
+          </Field>
         )}
       />
       <Controller
         control={control}
         name="parameters.region"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isOptional
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Region"
-            tooltipText="Required only if no global scope is set."
-          >
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabelWithTooltip
+              htmlFor="aws-region"
+              tooltip="Required only if no global scope is set."
+            >
+              Region <span className="font-normal text-muted">(optional)</span>
+            </FieldLabelWithTooltip>
             <AwsRegionSelect value={value ?? ""} onChange={onChange} />
-          </FormControl>
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
     </>

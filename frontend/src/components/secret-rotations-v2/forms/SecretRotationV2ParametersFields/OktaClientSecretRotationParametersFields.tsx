@@ -2,7 +2,8 @@ import { Controller, useFormContext } from "react-hook-form";
 import { SingleValue } from "react-select";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
+import { Field, FieldError, FilterableSelect } from "@app/components/v3";
 import { useOktaConnectionListApps } from "@app/hooks/api/appConnections/okta";
 import { TOktaApp } from "@app/hooks/api/appConnections/okta/types";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
@@ -24,17 +25,18 @@ export const OktaClientSecretRotationParametersFields = () => {
     <Controller
       name="parameters.clientId"
       control={control}
-      render={({ field: { value, onChange }, fieldState: { error } }) => (
-        <FormControl
-          isError={Boolean(error)}
-          errorText={error?.message}
-          label="OpenID Connect Application"
-        >
+      render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+        <Field data-invalid={Boolean(error)}>
+          <FieldLabelWithTooltip htmlFor="okta-application">
+            OpenID Connect Application
+          </FieldLabelWithTooltip>
           <FilterableSelect
+            inputId="okta-application"
             menuPlacement="top"
             isLoading={isAppsPending && Boolean(connectionId)}
             isDisabled={!connectionId}
             value={apps?.find((app) => app.id === value) ?? null}
+            onBlur={onBlur}
             onChange={(option) => {
               onChange((option as SingleValue<TOktaApp>)?.id ?? null);
               setValue("parameters.clientId", (option as SingleValue<TOktaApp>)?.id ?? "");
@@ -43,8 +45,10 @@ export const OktaClientSecretRotationParametersFields = () => {
             placeholder="Select an application..."
             getOptionLabel={(option) => option.label}
             getOptionValue={(option) => option.id}
+            isError={Boolean(error)}
           />
-        </FormControl>
+          <FieldError>{error?.message}</FieldError>
+        </Field>
       )}
     />
   );
