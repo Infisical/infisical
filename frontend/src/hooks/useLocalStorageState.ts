@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 
 type SetStateAction<T> = T | ((prevState: T) => T);
 
@@ -63,11 +63,19 @@ export const useLocalStorageState = <T>(
     getLocalStorageServerSnapshot
   );
 
+  // Read through a ref so setState can fall back to the same value the caller sees without
+  // taking initialValue as a dependency — callers commonly pass a fresh literal each render,
+  // which would give setState a new identity every time.
+  const initialValueRef = useRef(initialValue);
+  initialValueRef.current = initialValue;
+
   const setState = useCallback(
     (v: SetStateAction<T>): void => {
       try {
         const nextState =
-          typeof v === "function" ? (v as (prevState: T) => T)(JSON.parse(store || "null")) : v;
+          typeof v === "function"
+            ? (v as (prevState: T) => T)(parseStoredValue(store, initialValueRef.current))
+            : v;
 
         if (nextState === undefined || nextState === null) {
           removeLocalStorageItem(key);
