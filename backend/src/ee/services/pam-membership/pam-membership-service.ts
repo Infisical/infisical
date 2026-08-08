@@ -381,15 +381,12 @@ export const pamMembershipServiceFactory = ({
     const userByEmail = new Map(usersByEmail.map((u) => [u.username, u]));
     const unresolved = emails.filter((e) => !userByEmail.has(e));
 
-    const usersById = userIds.length ? await userDAL.find({ $in: { id: userIds } }) : [];
-    const usernameByUserId = new Map(usersById.map((u) => [u.id, u.username]));
-
     const candidates: { userId: string; label: string }[] = [];
     const seen = new Set<string>();
     for (const id of userIds) {
       if (!seen.has(id)) {
         seen.add(id);
-        candidates.push({ userId: id, label: usernameByUserId.get(id) || id });
+        candidates.push({ userId: id, label: id });
       }
     }
     for (const email of emails) {
