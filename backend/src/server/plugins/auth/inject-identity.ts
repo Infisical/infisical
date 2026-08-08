@@ -21,6 +21,7 @@ import {
   TRelayAccessTokenJwtPayload
 } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
+import { OauthDelegationMode } from "@app/services/oauth-client/oauth-client-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 export type TAuthMode =
@@ -306,9 +307,9 @@ export const injectIdentity = fp(
             await server.services.authToken.fnValidateJwtIdentity(token);
           requestContext.set(RequestContextKey.OrgId, orgId);
           requestContext.set(RequestContextKey.OrgName, orgName);
-          // Always set (even as []) so permission-service can distinguish a delegated OAuth request
-          // that must be scope-narrowed from a first-party session that must not be.
-          requestContext.set(RequestContextKey.OauthScopes, token.scopes ?? []);
+          if (token.delegation !== OauthDelegationMode.Full) {
+            requestContext.set(RequestContextKey.OauthScopes, token.scopes ?? []);
+          }
           requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
           req.auth = {
             authMode: AuthMode.OAUTH,

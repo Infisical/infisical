@@ -29,6 +29,7 @@ export type TGetAuditLogsFilter = {
 interface UserActorMetadata {
   userId: string;
   email: string;
+  oauthClientId?: string;
 }
 
 interface ServiceActorMetadata {

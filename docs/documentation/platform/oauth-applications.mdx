@@ -7,6 +7,10 @@ description: "Let external platforms request delegated access to Infisical on a 
 
 A common use case is wiring Infisical into a developer platform as an External Auth provider, so that `infisical run` can fetch secrets at runtime inside a remote development environment using the developer's own permissions.
 
+<Info>
+  This page covers the browser-based authorization code flow, where each user approves the application on a consent screen. If you are registering trusted middleware that acts on behalf of many users and has no browser to redirect through, see [OAuth Token Exchange](/documentation/platform/oauth-token-exchange).
+</Info>
+
 <Note>
   A delegated OAuth token can never do more than the user who authorized it. Scopes only **narrow** what the token can do; they never grant access the user does not already have. When the user's access changes or their session is revoked, every token issued for them through OAuth is affected immediately.
 </Note>
@@ -62,10 +66,11 @@ OAuth applications are managed at the organization level. You need permission to
     Head to **Organization Settings** and open **OAuth Applications** from the sidebar.
   </Step>
   <Step title="Add an application">
-    Press **Add OAuth application** and fill in the details:
+    Press **Add Application** and fill in the details:
 
     - **Name** (required): A friendly name shown to users on the consent screen.
     - **Description** (optional): A short note about what the application is used for. Also shown on the consent screen.
+    - **Flow**: Leave **Authorization code** selected. See [OAuth Token Exchange](/documentation/platform/oauth-token-exchange) for the other flow.
     - **Redirect URIs** (required): One URI per line. The authorization flow will only ever redirect to one of these exact URIs. Each must use `https://`; `http://` is allowed only for loopback addresses such as `localhost`, `127.0.0.1`, and `::1`.
     - **Require PKCE (S256)**: When enabled, authorization requests that do not include a PKCE code challenge are rejected. Recommended for public clients.
   </Step>
@@ -135,6 +140,8 @@ The response contains:
 
 Access token lifetime follows your organization's user token expiration setting (falling back to the platform default). Refresh tokens rotate on use, and a refresh never broadens the scopes originally granted.
 
+`refresh_token` is present only when the application holds the `refresh_token` grant, which applications created in the UI always do. If you registered one through the API with `grantTypes` limited to `authorization_code`, the field is omitted and the client should exchange a new authorization code when the access token expires.
+
 ### Validation endpoint
 
 ```
@@ -168,4 +175,6 @@ The effective permissions are the **intersection** of the user's permissions and
 
 ## Revoking access
 
-Deleting an OAuth application from the **OAuth Applications** tab immediately revokes every access and refresh token that application issued, so they stop working on the next request rather than living until expiry. Rotating the client secret invalidates the old secret for future token exchanges.
+Deleting an OAuth application from the **OAuth Applications** tab immediately revokes every access and refresh token that application issued, so they stop working on the next request rather than living until expiry.
+
+Rotating the client secret invalidates the old secret for future token requests but leaves already-issued tokens working until they expire, so users of the integration are not signed out. The secret alone cannot mint a token in this flow: it has to be paired with an authorization code from a user's browser or with a refresh token. To cut existing access off immediately, delete the application. Rotation on a [token exchange](/documentation/platform/oauth-token-exchange) application behaves differently, because there the secret is sufficient on its own.

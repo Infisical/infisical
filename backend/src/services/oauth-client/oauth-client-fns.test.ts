@@ -1,11 +1,14 @@
 import crypto from "node:crypto";
 
 import {
+  assertValidOauthClientGrantConfig,
   computePkceChallenge,
+  hasClientAuthorityChanged,
   isAllowedRedirectUri,
   isRegisteredRedirectUri,
   parseBasicAuthHeader
 } from "./oauth-client-fns";
+import { OauthGrantType } from "./oauth-client-types";
 
 describe("parseBasicAuthHeader", () => {
   test("parses a valid Basic auth header", () => {
@@ -117,5 +120,179 @@ describe("isRegisteredRedirectUri", () => {
         "https://coder.example.com/external-auth/other"
       )
     ).toBe(false);
+  });
+});
+
+describe("hasClientAuthorityChanged", () => {
+  const authenticated = {
+    clientSecretHash: "$2b$10$oldhasholdhasholdhashol",
+    grantTypes: [OauthGrantType.TokenExchange]
+  };
+
+  test("reports no change when the client is untouched", () => {
+    expect(hasClientAuthorityChanged(authenticated, { ...authenticated }, OauthGrantType.TokenExchange)).toBe(false);
+  });
+
+  test("reports a change when the client secret was rotated", () => {
+    expect(
+      hasClientAuthorityChanged(
+        authenticated,
+        { ...authenticated, clientSecretHash: "$2b$10$newhashnewhashnewhashne" },
+        OauthGrantType.TokenExchange
+      )
+    ).toBe(true);
+  });
+
+  test("reports a change when the grant was withdrawn", () => {
+    expect(
+      hasClientAuthorityChanged(
+        authenticated,
+        { ...authenticated, grantTypes: [OauthGrantType.AuthorizationCode] },
+        OauthGrantType.TokenExchange
+      )
+    ).toBe(true);
+  });
+
+  test("reports a change when the client was deleted", () => {
+    expect(hasClientAuthorityChanged(authenticated, undefined, OauthGrantType.TokenExchange)).toBe(true);
+  });
+
+  test("reports no change when an unrelated grant was added", () => {
+    expect(
+      hasClientAuthorityChanged(
+        authenticated,
+        { ...authenticated, grantTypes: [OauthGrantType.TokenExchange, OauthGrantType.AuthorizationCode] },
+        OauthGrantType.TokenExchange
+      )
+    ).toBe(false);
+  });
+});
+
+describe("assertValidOauthClientGrantConfig", () => {
+  const redirectFlow = {
+    grantTypes: [OauthGrantType.AuthorizationCode, OauthGrantType.RefreshToken],
+    resolved: { redirectUris: ["https://app.example.com/callback"] },
+    supplied: { redirectUris: ["https://app.example.com/callback"], requirePkce: true }
+  };
+
+  const exchangeFlow = {
+    grantTypes: [OauthGrantType.TokenExchange],
+    resolved: { redirectUris: [], tokenExchangeAudience: "api://mcp" },
+    supplied: { tokenExchangeAudience: "api://mcp", tokenExchangeIdpSatisfiesMfa: true }
+  };
+
+  test("accepts a redirect-flow application", () => {
+    expect(() => assertValidOauthClientGrantConfig(redirectFlow)).not.toThrow();
+  });
+
+  test("accepts a token-exchange-only application", () => {
+    expect(() => assertValidOauthClientGrantConfig(exchangeFlow)).not.toThrow();
+  });
+
+  test("accepts an application registered for both grants", () => {
+    expect(() =>
+      assertValidOauthClientGrantConfig({
+        grantTypes: [OauthGrantType.AuthorizationCode, OauthGrantType.RefreshToken, OauthGrantType.TokenExchange],
+        resolved: { redirectUris: ["https://app.example.com/callback"], tokenExchangeAudience: "api://mcp" },
+        supplied: { redirectUris: ["https://app.example.com/callback"], tokenExchangeAudience: "api://mcp" }
+      })
+    ).not.toThrow();
+  });
+
+  test("rejects an empty grant type list", () => {
+    expect(() =>
+      assertValidOauthClientGrantConfig({ grantTypes: [], resolved: { redirectUris: [] }, supplied: {} })
+    ).toThrow(/At least one grant type/);
+  });
+
+  test("rejects refresh_token without authorization_code", () => {
+    expect(() =>
+      assertValidOauthClientGrantConfig({
+        grantTypes: [OauthGrantType.RefreshToken],
+        resolved: { redirectUris: ["https://app.example.com/callback"] },
+        supplied: {}
+      })
+    ).toThrow(/requires the 'authorization_code' grant/);
+  });
+
+  test("rejects authorization_code with no redirect URI", () => {
+    expect(() =>
+      assertValidOauthClientGrantConfig({
+        grantTypes: [OauthGrantType.AuthorizationCode],
+        resolved: { redirectUris: [] },
+        supplied: {}
+      })
+    ).toThrow(/At least one redirect URI is required/);
+  });
+
+  test("rejects redirect URIs supplied without a redirect-based grant", () => {
+    expect(() =>
+      assertValidOauthClientGrantConfig({
+        grantTypes: [OauthGrantType.TokenExchange],
+        resolved: { redirectUris: ["https://app.example.com/callback"], tokenExchangeAudience: "api://mcp" },
+        supplied: { redirectUris: ["https://app.example.com/callback"] }
+      })
+    ).toThrow(/Redirect URIs only apply/);
+  });
+
+  test("rejects requirePkce supplied without a redirect-based grant", () => {
+    expect(() =>
+      assertValidOauthClientGrantConfig({
+        grantTypes: [OauthGrantType.TokenExchange],
+        resolved: { redirectUris: [], tokenExchangeAudience: "api://mcp" },
+        supplied: { requirePkce: true }
+      })
+    ).toThrow(/PKCE only applies/);
+  });
+
+  test("rejects the token exchange grant with no audience", () => {
+    expect(() =>
+      assertValidOauthClientGrantConfig({
+        grantTypes: [OauthGrantType.TokenExchange],
+        resolved: { redirectUris: [] },
+        supplied: {}
+      })
+    ).toThrow(/token exchange audience is required/);
+  });
+
+  test("rejects a whitespace-only audience", () => {
+    expect(() =>
+      assertValidOauthClientGrantConfig({
+        grantTypes: [OauthGrantType.TokenExchange],
+        resolved: { redirectUris: [], tokenExchangeAudience: "   " },
+        supplied: { tokenExchangeAudience: "   " }
+      })
+    ).toThrow(/token exchange audience is required/);
+  });
+
+  test("rejects an audience supplied without the token exchange grant", () => {
+    expect(() =>
+      assertValidOauthClientGrantConfig({
+        grantTypes: [OauthGrantType.AuthorizationCode],
+        resolved: { redirectUris: ["https://app.example.com/callback"], tokenExchangeAudience: "api://mcp" },
+        supplied: { tokenExchangeAudience: "api://mcp" }
+      })
+    ).toThrow(/audience only applies/);
+  });
+
+  test("rejects the IdP MFA declaration without the token exchange grant", () => {
+    expect(() =>
+      assertValidOauthClientGrantConfig({
+        grantTypes: [OauthGrantType.AuthorizationCode],
+        resolved: { redirectUris: ["https://app.example.com/callback"] },
+        supplied: { tokenExchangeIdpSatisfiesMfa: true }
+      })
+    ).toThrow(/MFA declaration only applies/);
+  });
+
+  // Dropping a grant must not force the caller to null out that grant's fields in the same request.
+  test("allows dropping the token exchange grant while its stored audience is still set", () => {
+    expect(() =>
+      assertValidOauthClientGrantConfig({
+        grantTypes: [OauthGrantType.AuthorizationCode],
+        resolved: { redirectUris: ["https://app.example.com/callback"], tokenExchangeAudience: "api://mcp" },
+        supplied: { grantTypes: [OauthGrantType.AuthorizationCode] } as never
+      })
+    ).not.toThrow();
   });
 });

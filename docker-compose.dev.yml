@@ -259,9 +259,9 @@ services:
 
   keycloak:
     # Admin console: http://localhost:8088 (admin / admin).
-    # On boot it imports the pre-seeded `infisical` realm (client `infisical-dev`,
-    # users jdoe/asmith) from the mounted realm file. The container has no volume,
-    # so the realm is re-imported fresh on every start. See sso.md.
+    # On boot it imports the pre-seeded `infisical` realm from the mounted realm file: clients
+    # `infisical-dev` (SSO login) and `infisical-mcp` (token exchange), users john/alice/admin.
+    # The container has no volume, so the realm is re-imported fresh on every start. See sso.md.
     image: quay.io/keycloak/keycloak:26.1.0
     restart: always
     environment:
