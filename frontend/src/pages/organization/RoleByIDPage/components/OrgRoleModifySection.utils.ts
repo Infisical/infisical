@@ -86,6 +86,7 @@ const identityPermissionSchema = z
       [OrgPermissionIdentityActions.Create]: z.boolean().optional(),
       [OrgPermissionIdentityActions.GrantPrivileges]: z.boolean().optional(),
       [OrgPermissionIdentityActions.RevokeAuth]: z.boolean().optional(),
+      [OrgPermissionIdentityActions.EditAuth]: z.boolean().optional(),
       [OrgPermissionIdentityActions.CreateToken]: z.boolean().optional(),
       [OrgPermissionIdentityActions.GetToken]: z.boolean().optional(),
       [OrgPermissionIdentityActions.DeleteToken]: z.boolean().optional()
@@ -628,6 +629,11 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         value: OrgPermissionIdentityActions.RevokeAuth,
         label: "Revoke Auth",
         description: "Revoke authentication for a machine identity"
+      },
+      {
+        value: OrgPermissionIdentityActions.EditAuth,
+        label: "Configure Auth Methods",
+        description: "Add or update authentication methods for a machine identity"
       },
       {
         value: OrgPermissionIdentityActions.CreateToken,
