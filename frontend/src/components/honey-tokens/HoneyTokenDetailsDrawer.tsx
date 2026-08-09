@@ -311,19 +311,15 @@ const DrawerContent = ({
                 How should I respond?
               </AccordionTrigger>
               <AccordionContent>
-                <Alert variant="info" className="flex flex-col gap-4">
+                <Alert variant="info" className="flex flex-col gap-4 [&>*]:ml-0">
                   <div>
-                    <p className="text-xs font-medium text-white">1. False alarm confirmed?</p>
-                    <p className="text-xs text-accent">
+                    <p className="text-xs font-medium text-white">False alarm confirmed?</p>
+                    <p className="mb-4 text-xs text-accent">
                       You might want to <strong>reset the honey token</strong>. This will revert its
                       status to active and hide the past events, so that the honey token can be
                       triggered again.
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-white">
-                      2. Malicious activity confirmed?
-                    </p>
+                    <p className="text-xs font-medium text-white">Malicious activity confirmed? </p>
                     <p className="text-xs text-accent">
                       1. Take immediate steps as per your company Incident Response Plan.
                       <br />
