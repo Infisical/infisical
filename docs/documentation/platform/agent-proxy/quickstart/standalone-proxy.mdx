@@ -34,7 +34,7 @@ By the end of this page an agent on one host makes authenticated GitHub calls th
   The template grants exactly what a proxy needs: read access to secret values, leases for dynamic secrets, and usage reporting. That is the identity's entire access, which is why its **Role** stays **No Access**. For production, scope the same permissions to specific environments and paths: see [Permissions](/documentation/platform/agent-proxy/standalone-agent-proxy#permissions).
 </Note>
 
-Now open the identity and go to its [Universal Auth](/documentation/platform/identities/universal-auth) authentication method.
+Now open the identity and go to its [Universal Auth](/documentation/platform/identities/universal-auth) authentication method. This quickstart uses Universal Auth because it works on any host; either command accepts [any of the CLI's auth methods](/documentation/platform/agent-proxy/standalone-agent-proxy#agent-authentication), and on a cloud host one of those saves you provisioning a credential at all.
 
 ![The machine identity's Universal Auth authentication method highlighted](/images/platform/agent-proxy/quickstart-universal-auth.png)
 

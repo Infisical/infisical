@@ -49,7 +49,9 @@ infisical secrets agent-proxy start
 infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=dev --path=/coding-agent -- claude
 ```
 
-Each authenticates as its own [machine identity](/documentation/platform/identities/machine-identities) via [Universal Auth](/documentation/platform/identities/universal-auth), and the proxy's is always separate from the agents'. The proxy needs read access to the secrets its services reference; an agent needs only **Proxy** on the services it uses. [Permissions](#permissions) covers both in full.
+Each authenticates as its own [machine identity](/documentation/platform/identities/machine-identities), and the proxy's is always separate from the agents'. The proxy needs read access to the secrets its services reference; an agent needs only **Proxy** on the services it uses. [Permissions](#permissions) covers both in full.
+
+Either command can authenticate by any of the CLI's machine identity auth methods, chosen with `--auth-method` or `INFISICAL_AUTH_METHOD`: `universal-auth`, `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, `aws-iam`, `oidc-auth`, `jwt-auth`, or `ldap-auth`. Pick the one that suits where each host runs. On a cloud host, `kubernetes`, `aws-iam`, `azure` and `gcp-id-token` authenticate with the identity the host already has, so there is no credential to provision or rotate; elsewhere [Universal Auth](/documentation/platform/identities/universal-auth) is the straightforward choice, and passing `--client-id` with `--client-secret` selects it without naming a method.
 
 ## What `connect` puts in the agent's environment
 
@@ -66,7 +68,9 @@ Every option resolves from the same sources, in order: **the flag → an environ
 
 | Option | Flag | Environment variable | `.infisical.json` |
 | --- | --- | --- | --- |
-| Auth | `--client-id` / `--client-secret` | `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` / `_SECRET` | — |
+| Auth method | `--auth-method` | `INFISICAL_AUTH_METHOD` | — |
+| Auth (universal-auth) | `--client-id` / `--client-secret` | `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` / `_SECRET` | — |
+| Auth (other methods) | `--machine-identity-id`, plus that method's credential | `INFISICAL_MACHINE_IDENTITY_ID`, and so on | — |
 | Instance | `--domain` | `INFISICAL_DOMAIN` | `domain` |
 | Project | `--projectId` | `INFISICAL_PROJECT_ID` | `workspaceId` |
 | Environment slug | `--env` | `INFISICAL_ENVIRONMENT` | `defaultEnvironment` |
@@ -81,7 +85,11 @@ See the [CLI reference](/cli/commands/agent-proxy) for every flag on both subcom
 
 ## Deployment
 
-Starting the proxy in a shell is fine while you are trying it out, but it dies with the terminal. Pick one of these instead. Whichever you choose, provide the identity's credentials, publish port `17322` to your agent machines only, and set `INFISICAL_DOMAIN` for EU Cloud or self-hosted.
+Starting the proxy in a shell is fine while you are trying it out, but it dies with the terminal. Pick one of these instead. Whichever you choose, publish port `17322` to your agent machines only, and set `INFISICAL_DOMAIN` for EU Cloud or self-hosted.
+
+How the proxy authenticates follows from where you run it. The first three tabs use Universal Auth, which works anywhere and means provisioning a client id and secret on the host. The Kubernetes and EC2 tabs use the identity the host already has, so there is no credential on the host to provision or rotate.
+
+With those two, what separates the proxy's identity from your agents' is no longer possession of a secret, because there isn't one, and the machine identity id is not confidential. It is the auth method's own configuration. Scope the proxy identity's **Allowed Principal ARNs** (AWS) or **Allowed Namespaces** and **Allowed Service Account Names** (Kubernetes) to the proxy host alone. Leave them unset or wildcarded and any host in the same account or cluster, including every agent host, can authenticate as the proxy and read every secret it can read.
 
 <Tabs>
   <Tab title="CLI (systemd, VM)">
@@ -117,7 +125,48 @@ Starting the proxy in a shell is fine while you are trying it out, but it dies w
 
     On Render, this is a private service pointed at the image with the start command above.
   </Tab>
+  <Tab title="Kubernetes">
+    On a cluster, authenticate with [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) and the pod's own service account, so no credential is stored in the cluster. The token path has to be given explicitly:
+
+    ```yaml
+    containers:
+      - name: agent-proxy
+        image: infisical/cli:latest
+        args:
+          - secrets
+          - agent-proxy
+          - start
+          - --auth-method=kubernetes
+          - --service-account-token-path=/var/run/secrets/kubernetes.io/serviceaccount/token
+        env:
+          - name: INFISICAL_MACHINE_IDENTITY_ID
+            value: <agent-proxy-machine-identity-id>
+          # - name: INFISICAL_DOMAIN
+          #   value: https://eu.infisical.com
+        ports:
+          - containerPort: 17322
+    ```
+
+    Expose it with a `ClusterIP` service so only pods in the cluster can reach it, and restrict which of them can with a network policy.
+  </Tab>
+  <Tab title="EC2">
+    On an instance with an IAM role, authenticate with [AWS Auth](/documentation/platform/identities/aws-auth). The instance metadata service supplies the credential, so there is nothing to provision on the host:
+
+    ```bash
+    export INFISICAL_AUTH_METHOD=aws-iam
+    export INFISICAL_MACHINE_IDENTITY_ID=<agent-proxy-machine-identity-id>
+    # export INFISICAL_DOMAIN=https://eu.infisical.com   # EU Cloud or self-hosted
+
+    infisical secrets agent-proxy start
+    ```
+
+    The same shape works on Azure with `--auth-method=azure` and on GCP with `--auth-method=gcp-id-token`.
+  </Tab>
 </Tabs>
+
+<Note>
+  The proxy re-authenticates before its token expires, using the same credential each time, so it keeps running for as long as that credential stays valid. Two cases do not last: `--token`, where you supply a token the proxy did not fetch and cannot renew (it warns at startup), and `jwt-auth` / `oidc-auth` given a short-lived JWT, which is reused at every refresh and will have expired by the first one.
+</Note>
 
 <Note>
   Keep the Agent Proxy on a private network reachable only by your agent machines (see [Network placement](#network-placement)). To run more than one instance, see [High availability](#high-availability).
@@ -131,7 +180,7 @@ Check that the proxy sits where the diagram above shows it:
 - **Reachable only by your agent machines.** Restrict inbound access to the Agent Proxy's port to the hosts that run agents, using your usual controls (security groups, firewall rules, network policies).
 - **On its own host.** Same network as the agents for low per-request latency, but a separate machine, which keeps the real credentials fully isolated from the agents.
 - **Alongside any plain-HTTP upstreams.** Internal services the Agent Proxy reaches over plain HTTP belong inside the same trusted network.
-- **Credentials where they are used.** Provision the Agent Proxy identity's client credentials only on its host, and each agent identity's only on its agent machine.
+- **Credentials where they are used.** Provision the Agent Proxy identity's client credentials only on its host, and each agent identity's only on its agent machine. Where an identity authenticates with the host's own cloud or cluster identity instead of a credential, there is nothing to place: scope its auth method to the right hosts instead, as under [Deployment](#deployment).
 
 Outbound, the Agent Proxy only needs to reach your Infisical instance and the APIs your proxied services define.
 
