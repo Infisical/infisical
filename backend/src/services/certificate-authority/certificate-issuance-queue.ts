@@ -660,6 +660,7 @@ export const certificateIssuanceQueueFactory = ({
           isRenewal,
           originalCertificateId,
           template,
+          ...(csr && { csr }),
           isCancelled
         };
 
