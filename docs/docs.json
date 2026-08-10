@@ -4,7 +4,7 @@
   "name": "Infisical",
   "colors": {
     "primary": "#26272b",
-    "light": "#EFFF33",
+    "light": "#c2d72a",
     "dark": "#A1B659"
   },
   "styling": {
@@ -4296,7 +4296,7 @@
   "background": {
     "color": {
       "light": "#ffffff",
-      "dark": "#0D1117"
+      "dark": "#0b0d10"
     }
   },
   "navbar": {
