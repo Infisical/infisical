@@ -129,32 +129,32 @@
 }
 
 .dark #navbar .max-w-8xl {
-  border-bottom-color: #333330;
-  background-color: #1C1C1A;
+  border-bottom-color: #26272b;
+  background-color: #111419;
 }
 
 .dark #sidebar {
-  border-right-color: #333330;
-  background-color: #1C1C1A;
+  border-right-color: #26272b;
+  background-color: #111419;
 }
 
 .dark #sidebar li > a.text-primary {
-  background-color: #34380B;
-  border-left-color: #DCEB30;
+  background-color: #26272b;
+  border-left-color: #c2d72a;
 }
 
 .dark #header {
-  background-color: #292B16;
-  border-left-color: #DCEB30;
+  background-color: #15181e;
+  border-left-color: #c2d72a;
 }
 
 .dark #page-context-menu button:hover {
-  background-color: #343434;
+  background-color: #26272b;
 }
 
 .dark #content-area .mt-8 .block {
-  border-color: #333330;
-  background-color: #242421;
+  border-color: #26272b;
+  background-color: #1e1f22;
 }
 
 .dark #topbar-cta-button .group .absolute {
@@ -162,7 +162,7 @@
 }
 
 .dark #topbar-cta-button .group .flex > * {
-  color: #1C1C1A;
+  color: #0e1014;
 }
 
 @media (min-width: 1024px) {
