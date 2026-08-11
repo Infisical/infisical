@@ -220,9 +220,3 @@ export type TOrgStaticSecretUsage = {
 export type TOrgSecretAccessVolume = {
   days: { date: string; total: number }[];
 };
-
-export type TOrgSecretsCounts = {
-  dynamicSecrets: number;
-  secrets: number;
-  rotations: number;
-};

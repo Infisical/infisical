@@ -5,7 +5,6 @@ import { TOrgPermission } from "@app/lib/types";
 import {
   OrgAuthMethodDistributionSchema,
   OrgSecretsAccessVolumeSchema,
-  OrgSecretsCountsSchema,
   SecretsProjectsSchema,
   SecretsProjectWarningSchema,
   SecretsSummarySchema,
@@ -60,7 +59,6 @@ export type TSecretsProjectWarnings = z.infer<typeof SecretsProjectsSchema>;
 export type TOrgAccessVolume = z.infer<typeof OrgSecretsAccessVolumeSchema>;
 export type TOrgAuthMethodDistribution = z.infer<typeof OrgAuthMethodDistributionSchema>;
 export type TStaticSecretsUsage = z.infer<typeof StaticSecretsUsageSchema>;
-export type TOrgSecretsCounts = z.infer<typeof OrgSecretsCountsSchema>;
 
 export type TAccessVolumeActor = {
   name: string;

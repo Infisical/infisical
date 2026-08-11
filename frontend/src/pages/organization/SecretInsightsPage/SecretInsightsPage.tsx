@@ -1,7 +1,7 @@
-import { Fragment, ReactNode, useMemo } from "react";
+import { useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { format } from "date-fns";
-import { BoxIcon, FileTextIcon, KeyIcon, RefreshCwIcon } from "lucide-react";
+import { FileTextIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
@@ -22,7 +22,6 @@ import {
   useGetOrgAuditReports,
   useGetOrgAuthMethodDistribution,
   useGetOrgSecretsAccessVolume,
-  useGetOrgSecretsCounts,
   useGetOrgSecretsProjects,
   useGetOrgSecretsSummary,
   useGetOrgStaticSecretsUsage
@@ -85,8 +84,6 @@ export const SecretInsightsPage = withPermission(
       { enabled: isClickhouseEnabled }
     );
 
-    const { data: counts } = useGetOrgSecretsCounts(currentOrg.id);
-
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["requestOrgReport"] as const);
     // Reports are generated asynchronously and delivered by email; the list is newest-first
     // and polls while a report is in flight (the backend allows one in-flight report per org).
@@ -102,44 +99,6 @@ export const SecretInsightsPage = withPermission(
     const isAccessVolumeLoading = isClickhouseEnabled && isAccessVolumePending;
     const showAuthMethodsSlot = isAuthMethodsLoading || Boolean(authMethodUsage);
 
-    const headerStats: { label: string; value: number; icon: ReactNode }[] = counts
-      ? [
-          {
-            label: "total dynamic secrets",
-            value: counts.dynamicSecrets,
-            icon: <BoxIcon className="size-3.5 text-accent" />
-          },
-          {
-            label: "secrets",
-            value: counts.secrets,
-            icon: <KeyIcon className="size-3.5 text-accent" />
-          },
-          {
-            label: "secret rotations",
-            value: counts.rotations,
-            icon: <RefreshCwIcon className="size-3.5 text-secret-rotation" />
-          }
-        ]
-      : [];
-
-    const renderStatStrip = (className: string, withTrailingSeparator = false) => (
-      <div className={`flex-wrap items-center gap-x-2 gap-y-1 text-xs text-accent ${className}`}>
-        {headerStats.map((stat, idx) => (
-          <Fragment key={stat.label}>
-            {idx > 0 && <span className="text-border">|</span>}
-            <span className="flex items-center gap-1 whitespace-nowrap">
-              {stat.icon}
-              <span className="ml-1">
-                <span className="text-foreground/75">{stat.value.toLocaleString()}</span>{" "}
-                {stat.label}
-              </span>
-            </span>
-          </Fragment>
-        ))}
-        {withTrailingSeparator && headerStats.length > 0 && <span className="text-border">|</span>}
-      </div>
-    );
-
     return (
       <>
         <Helmet>
@@ -154,7 +113,6 @@ export const SecretInsightsPage = withPermission(
               title="Insights"
               description="Organization-wide visibility into secret health, access patterns, and authentication hygiene."
             >
-              {renderStatStrip("hidden justify-end dashboard:flex", true)}
               <div className="flex items-center gap-3">
                 {lastSentReport && (
                   <span className="flex items-center gap-1.5 text-xs whitespace-nowrap text-mineshaft-300">
@@ -194,7 +152,6 @@ export const SecretInsightsPage = withPermission(
                 </OrgPermissionCan>
               </div>
             </PageHeader>
-            {renderStatStrip("mb-6 flex justify-start dashboard:hidden")}
             <div className="flex flex-col gap-4 pb-8">
               {isSummaryPending && (
                 <div className="grid gap-4 md:grid-cols-3">

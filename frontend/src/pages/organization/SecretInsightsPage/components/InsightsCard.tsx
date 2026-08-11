@@ -50,10 +50,10 @@ const WARNING_CHIPS: {
   variant: TBadgeProps["variant"];
   label: (count: number) => string;
 }[] = [
-  { key: "failedRotations", variant: "danger", label: (c) => pluralize(c, "failed rotation") },
-  { key: "failedSyncs", variant: "warning", label: (c) => pluralize(c, "failed sync") },
-  { key: "orphanedLeases", variant: "warning", label: (c) => pluralize(c, "orphaned lease") },
-  { key: "duplicatedSecrets", variant: "neutral", label: (c) => `${c.toLocaleString()} duplicated` }
+  { key: "failedRotations", variant: "danger", label: (c) => pluralize(c, "Failed rotation") },
+  { key: "failedSyncs", variant: "warning", label: (c) => pluralize(c, "Failed sync") },
+  { key: "orphanedLeases", variant: "danger", label: (c) => pluralize(c, "Orphaned lease") },
+  { key: "duplicatedSecrets", variant: "neutral", label: (c) => `${c.toLocaleString()} Duplicated` }
 ];
 
 const WarningBadges = ({ warnings }: { warnings: TOrgProjectInsightWarnings }) => (

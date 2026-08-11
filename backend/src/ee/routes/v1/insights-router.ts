@@ -17,7 +17,6 @@ import {
 import {
   OrgAuthMethodDistributionSchema,
   OrgSecretsAccessVolumeSchema,
-  OrgSecretsCountsSchema,
   SecretsProjectsSchema,
   SecretsSummarySchema,
   StaticSecretsUsageSchema
@@ -86,8 +85,6 @@ const OrgAuditReportSchema = z.object({
 });
 
 export const registerInsightsRouter = async (server: FastifyZodProvider) => {
-  // Org scoped insights don't have a :projectId, so they are gated on the org-level Secrets Management Insights subject.
-
   server.route({
     method: "GET",
     url: "/secrets/summary",
@@ -278,46 +275,6 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       });
 
       return { staticSecretUsage };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/secrets/counts",
-    config: {
-      rateLimit: readLimit
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    schema: {
-      operationId: "getSecretsCounts",
-      description:
-        "Get whole-organization counts of secret management resources: dynamic secrets, secrets, and secret rotations.",
-      security: [{ bearerAuth: [] }],
-      response: {
-        200: z.object({
-          counts: OrgSecretsCountsSchema
-        })
-      }
-    },
-    handler: async (req) => {
-      const counts = await server.services.insights.getOrgSecretsCounts({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        orgId: req.permission.orgId
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        event: {
-          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_COUNTS,
-          metadata: counts
-        }
-      });
-
-      return { counts };
     }
   });
 

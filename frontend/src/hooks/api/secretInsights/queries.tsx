@@ -23,7 +23,6 @@ import {
   TOrgAuthMethodUsage,
   TOrgProjectsInsights,
   TOrgSecretAccessVolume,
-  TOrgSecretsCounts,
   TOrgSecretsSummary,
   TOrgStaticSecretUsage
 } from "./types";
@@ -57,9 +56,7 @@ export const secretInsightsKeys = {
   orgStaticSecretsUsage: (orgId: string) =>
     [...secretInsightsKeys.all(), "org-static-secrets-usage", { orgId }] as const,
   orgAccessVolume: (orgId: string) =>
-    [...secretInsightsKeys.all(), "org-access-volume", { orgId }] as const,
-  orgSecretsCounts: (orgId: string) =>
-    [...secretInsightsKeys.all(), "org-secrets-counts", { orgId }] as const
+    [...secretInsightsKeys.all(), "org-access-volume", { orgId }] as const
 };
 
 const INSIGHTS_STALE_TIME = 5 * 60 * 1000; // 5 minutes
@@ -322,20 +319,6 @@ export const useGetOrgSecretsAccessVolume = (orgId: string, options?: { enabled?
       return data.accessVolume;
     },
     enabled: Boolean(orgId) && (options?.enabled ?? true),
-    staleTime: INSIGHTS_STALE_TIME
-  });
-};
-
-export const useGetOrgSecretsCounts = (orgId: string) => {
-  return useQuery({
-    queryKey: secretInsightsKeys.orgSecretsCounts(orgId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ counts: TOrgSecretsCounts }>(
-        "/api/v1/insights/secrets/counts"
-      );
-      return data.counts;
-    },
-    enabled: Boolean(orgId),
     staleTime: INSIGHTS_STALE_TIME
   });
 };

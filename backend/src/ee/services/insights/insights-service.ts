@@ -60,7 +60,6 @@ import {
   TOrgAccessVolume,
   TOrgAuthMethodDistribution,
   TOrgInsightsDTO,
-  TOrgSecretsCounts,
   TSecretsProjectWarnings,
   TSecretsUsageInsights,
   TStaticSecretsUsage
@@ -689,18 +688,6 @@ export const insightsServiceFactory = ({
     });
   };
 
-  const getOrgSecretsCounts = async (dto: TOrgInsightsDTO): Promise<TOrgSecretsCounts> => {
-    await assertOrgInsightsRead(dto);
-
-    const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, "org-counts-v2");
-    return withCache({
-      keyStore,
-      key: cacheKey,
-      ttlSeconds: KeyStoreTtls.InsightsOrgCacheInSeconds,
-      fetcher: () => insightsDAL.countOrgSecretsResources(dto.orgId)
-    });
-  };
-
   // How many static secrets the org created in each of the last 12 UTC calendar weeks.
   //
   // Deleting a secret is a hard delete with no tombstone, so a week can only be counted from the
@@ -758,7 +745,6 @@ export const insightsServiceFactory = ({
     getCounts,
     getSecretsUsageInsights,
     getSecretsProjects,
-    getStaticSecretsUsage,
-    getOrgSecretsCounts
+    getStaticSecretsUsage
   };
 };
