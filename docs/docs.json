@@ -17,7 +17,7 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Platform",
+        "tab": "Get Started",
         "groups": [
           {
             "group": "Getting Started",
@@ -463,11 +463,8 @@
         ]
       },
       {
-        "tab": "Products",
-        "menu": [
-          {
-            "item": "Secrets Management",
-            "groups": [
+        "tab": "Secrets Management",
+        "groups": [
               {
                 "group": "Get started",
                 "pages": [
@@ -853,39 +850,44 @@
                       "documentation/platform/agent-proxy/standalone-agent-proxy",
                       "documentation/platform/agent-proxy/activity-logs"
                     ]
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "item": "Secrets Scanning",
-            "groups": [
-              {
-                "group": "Secrets Scanning",
-                "pages": [
-                  "documentation/platform/secret-scanning/overview",
+                  },
                   {
-                    "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/secret-scanning/concepts/secret-scanning"
-                    ]
+                    "group": "Agent Vault",
+                    "icon": "arrow-up-right-from-square",
+                    "root": "https://docs.agent-vault.dev/"
                   }
                 ]
               },
               {
-                "group": "Product Reference",
+                "group": "Scan secrets",
                 "pages": [
-                  "documentation/platform/secret-scanning/usage",
-                  "documentation/platform/secret-scanning/bitbucket",
-                  "documentation/platform/secret-scanning/github",
-                  "documentation/platform/secret-scanning/gitlab"
+                  {
+                    "group": "Secrets Scanning",
+                    "pages": [
+                      "documentation/platform/secret-scanning/overview",
+                      {
+                        "group": "Concepts",
+                        "pages": [
+                          "documentation/platform/secret-scanning/concepts/secret-scanning"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "group": "Product Reference",
+                    "pages": [
+                      "documentation/platform/secret-scanning/usage",
+                      "documentation/platform/secret-scanning/bitbucket",
+                      "documentation/platform/secret-scanning/github",
+                      "documentation/platform/secret-scanning/gitlab"
+                    ]
+                  }
                 ]
               }
-            ]
-          },
-          {
-            "item": "Certificate Management",
+        ]
+      },
+      {
+            "tab": "Certificate Management",
             "groups": [
               {
                 "group": "Certificate Management",
@@ -1067,7 +1069,7 @@
             ]
           },
           {
-            "item": "Infisical KMS",
+            "tab": "KMS",
             "groups": [
               {
                 "group": "Infisical KMS",
@@ -1087,7 +1089,7 @@
             ]
           },
           {
-            "item": "Privileged Access Manager",
+            "tab": "Privileged Access Manager",
             "groups": [
               {
                 "group": "Privileged Access Manager",
@@ -1178,16 +1180,13 @@
               }
             ]
           },
-          {
-            "item": "Agent Vault",
-            "icon": "arrow-up-right-from-square",
-            "href": "https://docs.agent-vault.dev/"
-          }
-        ]
-      },
       {
-        "tab": "CLI Reference",
-        "groups": [
+        "tab": "Reference",
+        "icon": "code",
+        "menu": [
+          {
+            "item": "CLI",
+            "groups": [
           {
             "group": "Command line",
             "pages": [
@@ -1232,7 +1231,7 @@
         ]
       },
       {
-        "tab": "API Reference",
+        "item": "API",
         "groups": [
           {
             "group": "Overview",
@@ -4254,7 +4253,7 @@
         ]
       },
       {
-        "tab": "SDKs",
+        "item": "SDKs",
         "groups": [
           {
             "group": "Overview",
@@ -4274,6 +4273,8 @@
               "sdks/languages/ruby"
             ]
           }
+        ]
+      }
         ]
       }
     ]
