@@ -2,7 +2,7 @@ import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
-import { listProjects as getVercelProjects } from "./vercel-connection-fns";
+import { getProject as getVercelProject, listProjects as getVercelProjects } from "./vercel-connection-fns";
 import { TVercelConnection } from "./vercel-connection-types";
 
 type TGetAppConnectionFunc = (
@@ -23,7 +23,13 @@ export const vercelConnectionService = (getAppConnection: TGetAppConnectionFunc)
     }
   };
 
+  const getProject = async (connectionId: string, projectId: string, actor: OrgServiceActor, teamId?: string) => {
+    const appConnection = await getAppConnection(AppConnection.Vercel, connectionId, actor);
+    return getVercelProject(appConnection, projectId, teamId);
+  };
+
   return {
-    listProjects
+    listProjects,
+    getProject
   };
 };

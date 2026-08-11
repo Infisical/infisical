@@ -7,7 +7,8 @@ import {
   CreateVercelConnectionSchema,
   SanitizedVercelConnectionSchema,
   UpdateVercelConnectionSchema,
-  VercelOrgWithApps
+  VercelOrgWithApps,
+  VercelProject
 } from "@app/services/app-connection/vercel";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -46,20 +47,7 @@ export const registerVercelConnectionRouter = async (server: FastifyZodProvider)
             apps: z
               .object({
                 id: z.string(),
-                name: z.string(),
-                envs: z
-                  .object({
-                    id: z.string(),
-                    slug: z.string(),
-                    type: z.string(),
-                    target: z.array(z.string()).optional(),
-                    description: z.string().optional(),
-                    createdAt: z.number().optional(),
-                    updatedAt: z.number().optional()
-                  })
-                  .array()
-                  .optional(),
-                previewBranches: z.array(z.string()).optional()
+                name: z.string()
               })
               .array()
           })
@@ -78,6 +66,56 @@ export const registerVercelConnectionRouter = async (server: FastifyZodProvider)
       );
 
       return projects;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/projects/:projectId`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getVercelProject",
+      params: z.object({
+        connectionId: z.string().uuid(),
+        projectId: z.string().trim().min(1).max(256)
+      }),
+      querystring: z.object({
+        teamId: z.string().trim().max(256).optional()
+      }),
+      response: {
+        200: z.object({
+          id: z.string(),
+          name: z.string(),
+          envs: z
+            .object({
+              id: z.string(),
+              slug: z.string(),
+              type: z.string(),
+              target: z.array(z.string()).optional(),
+              description: z.string().optional(),
+              createdAt: z.number().optional(),
+              updatedAt: z.number().optional()
+            })
+            .array(),
+          previewBranches: z.array(z.string())
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId, projectId } = req.params;
+      const { teamId } = req.query;
+
+      const project: VercelProject = await server.services.appConnection.vercel.getProject(
+        connectionId,
+        projectId,
+        req.permission,
+        teamId
+      );
+
+      return project;
     }
   });
 };
