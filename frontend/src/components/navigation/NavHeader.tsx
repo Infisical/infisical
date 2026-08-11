@@ -127,8 +127,9 @@ export default function NavHeader({
         <div className="flex items-center space-x-3">
           <FontAwesomeIcon icon={faAngleRight} className="mr-1.5 ml-3 text-xs text-gray-400" />
           <Link
-            to="/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
-            params={{ orgId: currentOrg.id, projectId: currentProject.id, envSlug: routerEnvSlug }}
+            to="/organizations/$orgId/projects/secret-management/$projectId/overview"
+            params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+            search={{ secretPath: "/", environments: [routerEnvSlug] }}
             className="text-sm font-medium text-primary/80 hover:text-primary"
           >
             {userAvailableEnvs?.find(({ slug }) => slug === currentEnv)?.name}
@@ -189,13 +190,16 @@ export default function NavHeader({
                 </div>
               ) : (
                 <Link
-                  to="/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
+                  to="/organizations/$orgId/projects/secret-management/$projectId/overview"
                   params={{
                     orgId: currentOrg?.id || "",
-                    projectId: currentProject.id,
-                    envSlug: routerEnvSlug || ""
+                    projectId: currentProject.id
                   }}
-                  search={(query) => ({ ...query, secretPath: newSecretPath })}
+                  search={(query) => ({
+                    ...query,
+                    secretPath: newSecretPath,
+                    environments: [routerEnvSlug]
+                  })}
                   className={twMerge(
                     "text-sm transition-all hover:text-primary",
                     isHoveringCopyButton ? "text-primary" : "text-primary/80"
