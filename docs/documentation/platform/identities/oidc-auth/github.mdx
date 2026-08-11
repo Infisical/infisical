@@ -65,8 +65,10 @@ In the following steps, we explore how to create and use identities to access th
 
     Now input a few details for your new identity. Here's some guidance for each field:
 
-    - Name (required): A friendly name for the identity.
-    - Role (required): A role from the **Organization Roles** tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to.
+    | Field | Description |
+    |-------|-------------|
+    | **Name** (required) | A friendly name for the identity. |
+    | **Role** (required) | A role from the **Organization Roles** tab for the identity to assume. The organization role assigned will determine what organization level resources this identity can have access to. |
 
     Once you've created an identity, you'll be redirected to a page where you can manage the identity.
 
@@ -82,19 +84,23 @@ In the following steps, we explore how to create and use identities to access th
     <Warning>Restrict access by configuring the Subject, Audiences, and Claims fields</Warning>
 
     Here's some more guidance on each field:
-    - OIDC Discovery URL:  The URL used to retrieve the OpenID Connect configuration from the identity provider. This will be used to fetch the public key needed for verifying the provided JWT. This should be set to `https://token.actions.githubusercontent.com`
-    - Issuer: The unique identifier of the identity provider issuing the JWT. This value is used to verify the iss (issuer) claim in the JWT to ensure the token is issued by a trusted provider. This should be set to `https://token.actions.githubusercontent.com`
-    - CA Certificate: The PEM-encoded CA cert for establishing secure communication with the Identity Provider endpoints. For Github workflows, this can be left as blank.
-    - Subject: The expected principal that is the subject of the JWT. The format of the sub field for GitHub workflow OIDC tokens is as follows: `"repo:<owner>/<repo>:<environment>"`. The environment can be where the GitHub workflow is running, such as `environment`, `ref`, or `job_workflow_ref`. For example, if you have a repository owned by octocat named example-repo, and the GitHub workflow is running on the main branch, the subject field might look like this: `repo:octocat/example-repo:ref:refs/heads/main`
+
+    | Field | Description |
+    |-------|-------------|
+    | **OIDC Discovery URL** | The URL used to retrieve the OpenID Connect configuration from the identity provider. This will be used to fetch the public key needed for verifying the provided JWT. This should be set to `https://token.actions.githubusercontent.com` |
+    | **Issuer** | The unique identifier of the identity provider issuing the JWT. This value is used to verify the iss (issuer) claim in the JWT to ensure the token is issued by a trusted provider. This should be set to `https://token.actions.githubusercontent.com` |
+    | **CA Certificate** | The PEM-encoded CA cert for establishing secure communication with the Identity Provider endpoints. For Github workflows, this can be left as blank. |
+    | **Subject** | The expected principal that is the subject of the JWT. The format of the sub field for GitHub workflow OIDC tokens is as follows: `"repo:<owner>/<repo>:<environment>"`. The environment can be where the GitHub workflow is running, such as `environment`, `ref`, or `job_workflow_ref`. For example, if you have a repository owned by octocat named example-repo, and the GitHub workflow is running on the main branch, the subject field might look like this: `repo:octocat/example-repo:ref:refs/heads/main`. See the note below on GitHub's immutable subject format. |
+    | **Audiences** | A list of intended recipients. This value is checked against the aud (audience) claim in the token. By default, set this to the URL of the repository owner, such as the organization that owns the repository (e.g. `https://github.com/octo-org`). |
+    | **Claims** | Additional information or attributes that should be present in the JWT for it to be valid. You can refer to Github's [documentation](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#understanding-the-oidc-token) for the complete list of supported claims. |
+    | **Access Token TTL** | The lifetime for an acccess token in seconds. This value will be referenced at renewal time. Default is `2592000`, equivalent to 30 days. |
+    | **Access Token Max TTL** | The maximum lifetime for an acccess token in seconds. This value will be referenced at renewal time. Default is `2592000`, equivalent to 30 days. |
+    | **Access Token Max Number of Uses** | The maximum number of times that an access token can be used; a value of `0` implies infinite number of uses. Default is `0`. |
+    | **Access Token Trusted IPs** | The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the `0.0.0.0/0`, allowing usage from any network address. |
+
     <Note>
-      On GitHub.com, repositories created after July 15, 2026 use an immutable subject format where the owner and repository names are suffixed with their permanent numeric IDs using `@` as the delimiter: `repo:octocat@583231/example-repo@1296269:ref:refs/heads/main`. Renaming or transferring a repository after that date also switches it to this format, and existing repositories can opt in at the organization or repository level through GitHub's OIDC settings or REST API. GitHub Enterprise Server is unaffected. If the subject you configure doesn't include these IDs, authentication fails with a `403` error. To get the exact prefix your repository's tokens carry, call the GitHub API `GET /repos/{owner}/{repo}/actions/oidc/customization/sub` and read the `sub_claim_prefix` field. Alternatively, a glob pattern such as `repo:octocat@*/example-repo@*:ref:refs/heads/main` matches the immutable format without hardcoding the IDs.
+      **Subject field:** On GitHub.com, repositories created after July 15, 2026 use an immutable subject format where the owner and repository names are suffixed with their permanent numeric IDs using `@` as the delimiter: `repo:octocat@583231/example-repo@1296269:ref:refs/heads/main`. Renaming or transferring a repository after that date also switches it to this format, and existing repositories can opt in at the organization or repository level through GitHub's OIDC settings or REST API. GitHub Enterprise Server is unaffected. If the subject you configure doesn't include these IDs, authentication fails with a `403` error. To get the exact prefix your repository's tokens carry, call the GitHub API `GET /repos/{owner}/{repo}/actions/oidc/customization/sub` and read the `sub_claim_prefix` field. Alternatively, a glob pattern such as `repo:octocat@*/example-repo@*:ref:refs/heads/main` matches the immutable format without hardcoding the IDs.
     </Note>
-    - Audiences: A list of intended recipients. This value is checked against the aud (audience) claim in the token. By default, set this to the URL of the repository owner, such as the organization that owns the repository (e.g. `https://github.com/octo-org`).
-    - Claims: Additional information or attributes that should be present in the JWT for it to be valid. You can refer to Github's [documentation](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#understanding-the-oidc-token) for the complete list of supported claims.
-    - Access Token TTL (default is `2592000` equivalent to 30 days): The lifetime for an acccess token in seconds. This value will be referenced at renewal time.
-    - Access Token Max TTL (default is `2592000`  equivalent to 30 days): The maximum lifetime for an acccess token in seconds. This value will be referenced at renewal time.
-    - Access Token Max Number of Uses (default is `0`): The maximum number of times that an access token can be used; a value of `0` implies infinite number of uses.
-    - Access Token Trusted IPs: The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the `0.0.0.0/0`, allowing usage from any network address.
     <Tip>If you are unsure about what to configure for the subject, audience, and claims fields you can use [github/actions-oidc-debugger](https://github.com/github/actions-oidc-debugger) to get the appropriate values. Alternatively, you can fetch the JWT from the workflow and inspect the fields manually.</Tip>
     <Info>
     The `subject`, `audiences`, and `claims` fields support glob pattern matching; however, we highly recommend using hardcoded values whenever possible. See [General OIDC Auth](/documentation/platform/identities/oidc-auth/general#guide) for glob pattern matching behavior and examples.
