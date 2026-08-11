@@ -82,6 +82,7 @@ import {
   useGetOrgTrialUrl,
   useLogoutUser
 } from "@app/hooks/api";
+import { appConnectionKeys } from "@app/hooks/api/appConnections";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
@@ -99,7 +100,6 @@ import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { VersionBadge } from "./VersionBadge";
-import { appConnectionKeys } from "@app/hooks/api/appConnections";
 
 const getFormattedSupportEmailLink = (variables: {
   org_id: string;
