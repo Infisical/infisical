@@ -4136,13 +4136,13 @@ export const registerRoutes = async (
       const maxLagMs = histogram.max / 1e6;
       const p99LagMs = histogram.percentile(99) / 1e6;
 
-      logger.info(
+      logger.debug(
         `Event loop stats - Mean: ${meanLagMs.toFixed(2)}ms, Max: ${maxLagMs.toFixed(2)}ms, p99: ${p99LagMs.toFixed(
           2
         )}ms`
       );
 
-      logger.info(`Raw event loop stats: ${JSON.stringify(histogram, null, 2)}`);
+      logger.debug(`Raw event loop stats: ${JSON.stringify(histogram, null, 2)}`);
 
       return {
         date: new Date(),
