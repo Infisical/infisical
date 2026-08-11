@@ -2,7 +2,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { Info, Plus, ShieldCheck, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -16,7 +16,14 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
   Select,
   SelectContent,
   SelectItem,
@@ -63,10 +70,11 @@ import {
   SUBJECT_ATTRIBUTE_TYPE_OPTIONS
 } from "./shared/certificate-constants";
 import { CERTIFICATE_POLICY_PRESETS } from "./shared/policy-presets";
-import { PolicyFormData, policySchema } from "./shared";
+import { isValidDomainComponentSequence, PolicyFormData, policySchema } from "./shared";
 
 export type FormData = PolicyFormData;
 
+type AttributeRow = NonNullable<FormData["attributes"]>[number];
 type AttributeTransform = NonNullable<TCertificatePolicyRule["subject"]>[0];
 type SanTransform = NonNullable<TCertificatePolicyRule["sans"]>[0];
 type KeyUsagesTransform = TCertificatePolicyRule["keyUsages"];
@@ -92,6 +100,38 @@ const ATTRIBUTE_TYPE_LABELS: Record<(typeof SUBJECT_ATTRIBUTE_TYPE_OPTIONS)[numb
   domain_component: "Domain Component (DC)"
 };
 
+const ATTRIBUTE_TYPE_ABBREVIATIONS: Record<
+  (typeof SUBJECT_ATTRIBUTE_TYPE_OPTIONS)[number],
+  string
+> = {
+  common_name: "CN",
+  organization: "O",
+  organizational_unit: "OU",
+  country: "C",
+  state: "ST",
+  locality: "L",
+  domain_component: "DC"
+};
+
+const ATTRIBUTE_TYPE_PLACEHOLDERS: Record<(typeof SUBJECT_ATTRIBUTE_TYPE_OPTIONS)[number], string> =
+  {
+    common_name: "*.example.com",
+    organization: "Acme Inc.",
+    organizational_unit: "Engineering",
+    country: "US",
+    state: "California",
+    locality: "San Francisco",
+    domain_component: "corp,example,com"
+  };
+
+const SAN_TYPE_PLACEHOLDERS: Record<(typeof SAN_TYPE_OPTIONS)[number], string> = {
+  dns_name: "*.example.com",
+  ip_address: "10.0.0.1",
+  email: "admin@example.com",
+  uri: "spiffe://example.com/service",
+  upn: "user@example.com"
+};
+
 const SAN_TYPE_LABELS: Record<(typeof SAN_TYPE_OPTIONS)[number], string> = {
   dns_name: "DNS Name",
   ip_address: "IP Address",
@@ -111,6 +151,15 @@ const SAN_INCLUDE_LABELS: Record<(typeof SAN_INCLUDE_OPTIONS)[number], string> =
   mandatory: "Require",
   optional: "Allow",
   prohibit: "Deny"
+};
+
+const SUBJECT_INCLUDE_RULE_KEYS: Record<
+  CertSubjectAttributeInclude,
+  "required" | "allowed" | "denied"
+> = {
+  [CertSubjectAttributeInclude.REQUIRED]: "required",
+  [CertSubjectAttributeInclude.OPTIONAL]: "allowed",
+  [CertSubjectAttributeInclude.PROHIBIT]: "denied"
 };
 
 const USAGE_POLICY_OPTIONS = [
@@ -193,6 +242,86 @@ const STEPS = [
       "By default, validity and CA capability are unrestricted. Enable a restriction to cap the maximum validity period or control whether certificates can act as a CA, including path length limits."
   }
 ] as const;
+
+const SUBJECT_INCLUDE_VERBS: Record<CertSubjectAttributeInclude, string> = {
+  [CertSubjectAttributeInclude.REQUIRED]: "Requires",
+  [CertSubjectAttributeInclude.OPTIONAL]: "Allows",
+  [CertSubjectAttributeInclude.PROHIBIT]: "Denies"
+};
+
+const AttributeRulePreview = ({
+  type,
+  include,
+  value
+}: {
+  type: CertSubjectAttributeType;
+  include: CertSubjectAttributeInclude;
+  value: string;
+}) => {
+  const trimmed = value.trim();
+  const verb = SUBJECT_INCLUDE_VERBS[include];
+  const isDenyRule = include === CertSubjectAttributeInclude.PROHIBIT;
+
+  if (type !== CertSubjectAttributeType.DOMAIN_COMPONENT || !trimmed) return null;
+
+  if (!isValidDomainComponentSequence(trimmed)) {
+    return (
+      <p className="mt-2 pl-1 text-2xs text-danger">
+        Every component must be non-empty, for example corp,example,com.
+      </p>
+    );
+  }
+
+  const chain = trimmed.split(",").map((component) => component.trim());
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-1 text-2xs text-muted">
+      <span>{verb}</span>
+      <span className="font-mono text-label">
+        {chain.map((component) => `DC=${component}`).join(",")}
+      </span>
+      <span>
+        {isDenyRule ? "wherever they appear in the chain" : chain.length > 1 ? "in this order" : ""}
+      </span>
+    </div>
+  );
+};
+
+const DomainComponentHelp = ({ isDenyRule }: { isDenyRule: boolean }) => (
+  <HoverCard openDelay={150} closeDelay={150}>
+    <HoverCardTrigger asChild>
+      <InputGroupButton aria-label="Domain component format">
+        <Info />
+      </InputGroupButton>
+    </HoverCardTrigger>
+    <HoverCardContent side="bottom" align="end" className="w-96">
+      <p>
+        Domain components form an ordered chain. Enter the components most specific first, separated
+        by commas.
+      </p>
+      <dl className="mt-2.5 grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-1">
+        <dt className="whitespace-nowrap text-muted">Value</dt>
+        <dd className="font-mono">corp,example,com</dd>
+        <dt className={`whitespace-nowrap ${isDenyRule ? "text-danger" : "text-success"}`}>
+          {isDenyRule ? "Rejects" : "Matches"}
+        </dt>
+        <dd className="font-mono">DC=corp,DC=example,DC=com</dd>
+        <dt className="whitespace-nowrap text-danger">{isDenyRule ? "Also rejects" : "Rejects"}</dt>
+        <dd className="font-mono">
+          {isDenyRule ? "DC=host,DC=corp,DC=example,DC=com" : "DC=com,DC=example,DC=corp"}
+        </dd>
+      </dl>
+      <p className="mt-2.5">
+        {isDenyRule
+          ? "A denied chain is rejected wherever it appears, so denying a domain denies everything under it."
+          : "A request matches only when its components line up position by position."}
+      </p>
+      <p className="mt-2">
+        A <span className="font-mono text-accent">*</span> matches a single component:{" "}
+        <span className="font-mono">*,internal,example,com</span>.
+      </p>
+    </HoverCardContent>
+  </HoverCard>
+);
 
 const DurationInput = ({
   field,
@@ -326,39 +455,24 @@ export const CreatePolicyModal = ({
     if (step > 0) setStep((s) => s - 1);
   };
 
+  const toAttributeRows = (
+    type: CertSubjectAttributeType,
+    values: string[] | undefined,
+    include: CertSubjectAttributeInclude
+  ): AttributeRow[] =>
+    Array.isArray(values) ? values.map((value) => ({ type, include, value: [value] })) : [];
+
   const convertApiToUiFormat = (policyData: TCertificatePolicy): FormData => {
-    const attributes: FormData["attributes"] = [];
-    if (policyData.subject && Array.isArray(policyData.subject)) {
-      policyData.subject.forEach((subj) => {
-        if (subj.required && Array.isArray(subj.required)) {
-          subj.required.forEach((requiredValue) => {
-            attributes.push({
-              type: subj.type as CertSubjectAttributeType,
-              include: CertSubjectAttributeInclude.REQUIRED,
-              value: [requiredValue]
-            });
-          });
-        }
-        if (subj.allowed && Array.isArray(subj.allowed)) {
-          subj.allowed.forEach((allowedValue) => {
-            attributes.push({
-              type: subj.type as CertSubjectAttributeType,
-              include: CertSubjectAttributeInclude.OPTIONAL,
-              value: [allowedValue]
-            });
-          });
-        }
-        if (subj.denied && Array.isArray(subj.denied)) {
-          subj.denied.forEach((deniedValue) => {
-            attributes.push({
-              type: subj.type as CertSubjectAttributeType,
-              include: CertSubjectAttributeInclude.PROHIBIT,
-              value: [deniedValue]
-            });
-          });
-        }
-      });
-    }
+    const attributes: FormData["attributes"] = Array.isArray(policyData.subject)
+      ? policyData.subject.flatMap((subj) => {
+          const type = subj.type as CertSubjectAttributeType;
+          return [
+            ...toAttributeRows(type, subj.required, CertSubjectAttributeInclude.REQUIRED),
+            ...toAttributeRows(type, subj.allowed, CertSubjectAttributeInclude.OPTIONAL),
+            ...toAttributeRows(type, subj.denied, CertSubjectAttributeInclude.PROHIBIT)
+          ];
+        })
+      : [];
 
     const subjectAlternativeNames: FormData["subjectAlternativeNames"] = [];
     if (policyData.sans && Array.isArray(policyData.sans)) {
@@ -586,8 +700,18 @@ export const CreatePolicyModal = ({
     }
   };
 
+  const mergeRuleValues = (
+    existing: string[] | undefined,
+    incoming: string[] | undefined
+  ): string[] => Array.from(new Set([...(existing || []), ...(incoming || [])]));
+
   const consolidateByType = <
-    T extends { type: string; allowed?: string[]; required?: string[]; denied?: string[] }
+    T extends {
+      type: string;
+      allowed?: string[];
+      required?: string[];
+      denied?: string[];
+    }
   >(
     items: T[]
   ): T[] => {
@@ -598,9 +722,9 @@ export const CreatePolicyModal = ({
       if (existing) {
         const mergedItem = {
           ...item,
-          allowed: [...new Set([...(existing.allowed || []), ...(item.allowed || [])])],
-          required: [...new Set([...(existing.required || []), ...(item.required || [])])],
-          denied: [...new Set([...(existing.denied || []), ...(item.denied || [])])]
+          allowed: mergeRuleValues(existing.allowed, item.allowed),
+          required: mergeRuleValues(existing.required, item.required),
+          denied: mergeRuleValues(existing.denied, item.denied)
         } as T;
 
         if (mergedItem.allowed?.length === 0) delete mergedItem.allowed;
@@ -618,18 +742,14 @@ export const CreatePolicyModal = ({
 
   const transformToApiFormat = (data: FormData) => {
     const subjectRaw =
-      data.attributes?.map((attr) => {
-        const result: AttributeTransform = { type: attr.type };
-        if (attr.value && attr.value.length > 0) {
-          if (attr.include === CertSubjectAttributeInclude.REQUIRED) {
-            result.required = attr.value;
-          } else if (attr.include === CertSubjectAttributeInclude.OPTIONAL) {
-            result.allowed = attr.value;
-          } else if (attr.include === CertSubjectAttributeInclude.PROHIBIT) {
-            result.denied = attr.value;
-          }
-        }
-        return result;
+      data.attributes?.map((attr): AttributeTransform => {
+        const ruleKey = SUBJECT_INCLUDE_RULE_KEYS[attr.include];
+
+        const values = attr.value || [];
+        return {
+          type: attr.type,
+          ...(values.length > 0 ? { [ruleKey]: values } : {})
+        } as AttributeTransform;
       }) || [];
 
     const sansRaw =
@@ -733,6 +853,22 @@ export const CreatePolicyModal = ({
       return;
     }
 
+    const hasInvalidDomainComponentSequence =
+      restrictSubject &&
+      data.attributes?.some(
+        (attr) =>
+          attr.type === CertSubjectAttributeType.DOMAIN_COMPONENT &&
+          attr.value?.some((value) => !isValidDomainComponentSequence(value))
+      );
+
+    if (hasInvalidDomainComponentSequence) {
+      createNotification({
+        text: "Every domain component in a sequence must be non-empty, for example corp,example,com.",
+        type: "error"
+      });
+      return;
+    }
+
     const transformedData = transformToApiFormat(data);
 
     if (isEdit) {
@@ -763,7 +899,7 @@ export const CreatePolicyModal = ({
       {
         type: SUBJECT_ATTRIBUTE_TYPE_OPTIONS[0],
         include: SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS[1],
-        value: ["*"]
+        value: []
       }
     ]);
     clearError("subject");
@@ -781,7 +917,7 @@ export const CreatePolicyModal = ({
   const addSan = () => {
     setValue("subjectAlternativeNames", [
       ...watchedSans,
-      { type: SAN_TYPE_OPTIONS[0], include: SAN_INCLUDE_OPTIONS[1], value: ["*"] }
+      { type: SAN_TYPE_OPTIONS[0], include: SAN_INCLUDE_OPTIONS[1], value: [] }
     ]);
     clearError("sans");
     markCustomPreset();
@@ -955,7 +1091,7 @@ export const CreatePolicyModal = ({
         onClose();
       }}
     >
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-[1100px]">
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-[1260px]">
         <SheetHeader className="border-b border-border">
           <SheetTitle>
             <div className="flex w-full items-start gap-2">
@@ -1095,7 +1231,7 @@ export const CreatePolicyModal = ({
                       markCustomPreset();
                     }}
                   >
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {watchedAttributes.length === 0 && (
                         <p className="text-xs text-muted">
                           No attributes configured. Certificates issued under this policy cannot
@@ -1105,72 +1241,91 @@ export const CreatePolicyModal = ({
                       )}
                       {watchedAttributes.map((attr, index) => (
                         // eslint-disable-next-line react/no-array-index-key
-                        <div key={`attr-${index}`} className="flex items-start gap-2">
-                          <Select
-                            value={attr.type}
-                            onValueChange={(value) => {
-                              const next = [...watchedAttributes];
-                              next[index] = { ...attr, type: value as CertSubjectAttributeType };
-                              setValue("attributes", next);
-                              markCustomPreset();
-                            }}
-                          >
-                            <SelectTrigger className="w-52">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent position="popper">
-                              {SUBJECT_ATTRIBUTE_TYPE_OPTIONS.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {ATTRIBUTE_TYPE_LABELS[type]}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Select
-                            value={attr.include}
-                            onValueChange={(value) => {
-                              const next = [...watchedAttributes];
-                              next[index] = {
-                                ...attr,
-                                include: value as (typeof SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS)[number]
-                              };
-                              setValue("attributes", next);
-                              markCustomPreset();
-                            }}
-                          >
-                            <SelectTrigger className="w-28">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent position="popper">
-                              {SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {SUBJECT_ATTRIBUTE_LABELS[type]}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Input
-                            placeholder="Pattern/Value (use * for wildcards)"
+                        <div key={`attr-${index}`}>
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value={attr.type}
+                              onValueChange={(value) => {
+                                const next = [...watchedAttributes];
+                                next[index] = { ...attr, type: value as CertSubjectAttributeType };
+                                setValue("attributes", next);
+                                markCustomPreset();
+                              }}
+                            >
+                              <SelectTrigger className="w-18 shrink-0" aria-label="Attribute type">
+                                {ATTRIBUTE_TYPE_ABBREVIATIONS[attr.type]}
+                              </SelectTrigger>
+                              <SelectContent position="popper">
+                                {SUBJECT_ATTRIBUTE_TYPE_OPTIONS.map((type) => (
+                                  <SelectItem key={type} value={type}>
+                                    {ATTRIBUTE_TYPE_LABELS[type]}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Select
+                              value={attr.include}
+                              onValueChange={(value) => {
+                                const next = [...watchedAttributes];
+                                next[index] = {
+                                  ...attr,
+                                  include:
+                                    value as (typeof SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS)[number]
+                                };
+                                setValue("attributes", next);
+                                markCustomPreset();
+                              }}
+                            >
+                              <SelectTrigger className="w-24 shrink-0">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent position="popper">
+                                {SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS.map((type) => (
+                                  <SelectItem key={type} value={type}>
+                                    {SUBJECT_ATTRIBUTE_LABELS[type]}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <InputGroup className="min-w-0 flex-1">
+                              <InputGroupInput
+                                placeholder={ATTRIBUTE_TYPE_PLACEHOLDERS[attr.type]}
+                                value={attr.value?.[0] || ""}
+                                onChange={(e) => {
+                                  const next = [...watchedAttributes];
+                                  next[index] = {
+                                    ...attr,
+                                    value: e.target.value.trim() ? [e.target.value.trim()] : []
+                                  };
+                                  setValue("attributes", next);
+                                  markCustomPreset();
+                                }}
+                              />
+                              {attr.type === CertSubjectAttributeType.DOMAIN_COMPONENT && (
+                                <InputGroupAddon align="inline-end">
+                                  <DomainComponentHelp
+                                    isDenyRule={
+                                      attr.include === CertSubjectAttributeInclude.PROHIBIT
+                                    }
+                                  />
+                                </InputGroupAddon>
+                              )}
+                            </InputGroup>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="shrink-0"
+                              onClick={() => removeAttribute(index)}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                          <AttributeRulePreview
+                            type={attr.type}
+                            include={attr.include}
                             value={attr.value?.[0] || ""}
-                            onChange={(e) => {
-                              const next = [...watchedAttributes];
-                              next[index] = {
-                                ...attr,
-                                value: e.target.value.trim() ? [e.target.value.trim()] : []
-                              };
-                              setValue("attributes", next);
-                              markCustomPreset();
-                            }}
-                            className="flex-1"
                           />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeAttribute(index)}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
                         </div>
                       ))}
                       <Button type="button" variant="outline" size="sm" onClick={addAttribute}>
@@ -1248,7 +1403,7 @@ export const CreatePolicyModal = ({
                             </SelectContent>
                           </Select>
                           <Input
-                            placeholder="Pattern/Value (use * for wildcards)"
+                            placeholder={SAN_TYPE_PLACEHOLDERS[san.type]}
                             value={san.value?.[0] || ""}
                             onChange={(e) => {
                               const next = [...watchedSans];
