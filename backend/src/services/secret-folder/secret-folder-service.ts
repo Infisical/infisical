@@ -14,7 +14,7 @@ import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-app
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
-import { PgSqlLock } from "@app/keystore/keystore";
+import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, RateLimitError } from "@app/lib/errors";
 import { hasPostgresErrorCode, PostgresErrorCode } from "@app/lib/errors/postgres";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
@@ -113,6 +113,7 @@ type TSecretFolderServiceFactoryDep = {
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretMoveSideEffects">;
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   reminderService: Pick<TReminderServiceFactory, "batchCreateReminders">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
 export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceFactory>;
@@ -171,7 +172,8 @@ export const secretFolderServiceFactory = ({
   secretImportDAL,
   secretV2BridgeService,
   reminderDAL,
-  reminderService
+  reminderService,
+  keyStore
 }: TSecretFolderServiceFactoryDep) => {
   const createFolder = async ({
     projectId,
@@ -205,146 +207,151 @@ export const secretFolderServiceFactory = ({
       });
     }
 
-    const folder = await folderDAL.transaction(async (tx) => {
-      // the logic is simple we need to avoid creating same folder in same path multiple times
-      // that is this request must be idempotent
-      // so we do a tricky move. we try to find the to be created folder path if that is exactly match return that
-      // else we get some path before that then we will start creating remaining folder
-      await acquireCreateFolderLock(tx, env.id, env.projectId, environment);
+    const pathWithFolder = path.join(secretPath, name);
 
-      const pathWithFolder = path.join(secretPath, name);
-      const parentFolder = await folderDAL.findClosestFolder(projectId, environment, pathWithFolder, tx);
+    const lock = await keyStore.acquireLock([KeyStorePrefixes.CreateFolderLock(env.id)], 5000, {
+      retryCount: 25,
+      retryDelay: 200,
+      retryJitter: 50
+    });
 
-      if (!parentFolder) {
-        throw new NotFoundError({
-          message: `Parent folder for path '${pathWithFolder}' not found`
-        });
-      }
+    try {
+      const folder = await folderDAL.transaction(async (tx) => {
+        const parentFolder = await folderDAL.findClosestFolder(projectId, environment, pathWithFolder, tx);
 
-      // exact folder case
-      if (parentFolder.path === pathWithFolder) {
-        throw new BadRequestError({
-          message: `Folder with name '${name}' already exists in path '${secretPath}'`
-        });
-      }
+        if (!parentFolder) {
+          throw new NotFoundError({
+            message: `Parent folder for path '${pathWithFolder}' not found`
+          });
+        }
 
-      let currentParentId = parentFolder.id;
+        // exact folder case
+        if (parentFolder.path === pathWithFolder) {
+          throw new BadRequestError({
+            message: `Folder with name '${name}' already exists in path '${secretPath}'`
+          });
+        }
 
-      // build the full path we need by processing each segment
-      if (parentFolder.path !== secretPath) {
-        const missingSegments = secretPath.substring(parentFolder.path.length).split("/").filter(Boolean);
+        let currentParentId = parentFolder.id;
 
-        const newFolders: TSecretFoldersInsert[] = [];
+        // build the full path we need by processing each segment
+        if (parentFolder.path !== secretPath) {
+          const missingSegments = secretPath.substring(parentFolder.path.length).split("/").filter(Boolean);
 
-        // process each segment sequentially
-        for await (const segment of missingSegments) {
-          const existingSegment = await folderDAL.findOne(
-            {
-              name: segment,
-              parentId: currentParentId,
-              envId: env.id,
-              isReserved: false
-            },
-            tx
-          );
+          const newFolders: TSecretFoldersInsert[] = [];
 
-          if (existingSegment) {
-            // use existing folder and update the path / parent
-            currentParentId = existingSegment.id;
-          } else {
-            const newFolder = {
-              name: segment,
-              parentId: currentParentId,
-              id: uuidv4(),
-              envId: env.id,
-              version: 1
-            };
+          // process each segment sequentially
+          for await (const segment of missingSegments) {
+            const existingSegment = await folderDAL.findOne(
+              {
+                name: segment,
+                parentId: currentParentId,
+                envId: env.id,
+                isReserved: false
+              },
+              tx
+            );
 
-            currentParentId = newFolder.id;
-            newFolders.push(newFolder);
+            if (existingSegment) {
+              // use existing folder and update the path / parent
+              currentParentId = existingSegment.id;
+            } else {
+              const newFolder = {
+                name: segment,
+                parentId: currentParentId,
+                id: uuidv4(),
+                envId: env.id,
+                version: 1
+              };
+
+              currentParentId = newFolder.id;
+              newFolders.push(newFolder);
+            }
+          }
+
+          if (newFolders.length) {
+            const docs = await folderDAL.insertMany(newFolders, tx);
+            const folderVersions = await folderVersionDAL.insertMany(
+              docs.map((doc) => ({
+                name: doc.name,
+                envId: doc.envId,
+                version: doc.version,
+                folderId: doc.id,
+                description: doc.description
+              })),
+              tx
+            );
+            await folderCommitService.createCommit(
+              {
+                actor: {
+                  type: actor,
+                  metadata: {
+                    id: actorId
+                  }
+                },
+                message: "Folder created",
+                folderId: currentParentId,
+                changes: folderVersions.map((fv) => ({
+                  type: CommitType.ADD,
+                  folderVersionId: fv.id
+                }))
+              },
+              tx
+            );
           }
         }
 
-        if (newFolders.length) {
-          const docs = await folderDAL.insertMany(newFolders, tx);
-          const folderVersions = await folderVersionDAL.insertMany(
-            docs.map((doc) => ({
-              name: doc.name,
-              envId: doc.envId,
-              version: doc.version,
-              folderId: doc.id,
-              description: doc.description
-            })),
-            tx
-          );
-          await folderCommitService.createCommit(
-            {
-              actor: {
-                type: actor,
-                metadata: {
-                  id: actorId
-                }
-              },
-              message: "Folder created",
-              folderId: currentParentId,
-              changes: folderVersions.map((fv) => ({
-                type: CommitType.ADD,
-                folderVersionId: fv.id
-              }))
-            },
-            tx
-          );
-        }
-      }
+        const doc = await folderDAL.create(
+          { name, envId: env.id, version: 1, parentId: currentParentId, description },
+          tx
+        );
 
-      const doc = await folderDAL.create(
-        { name, envId: env.id, version: 1, parentId: currentParentId, description },
-        tx
-      );
-
-      const folderVersion = await folderVersionDAL.create(
-        {
-          name: doc.name,
-          envId: doc.envId,
-          version: doc.version,
-          folderId: doc.id,
-          description: doc.description
-        },
-        tx
-      );
-
-      await folderCommitService.createCommit(
-        {
-          actor: {
-            type: actor,
-            metadata: {
-              id: actorId
-            }
+        const folderVersion = await folderVersionDAL.create(
+          {
+            name: doc.name,
+            envId: doc.envId,
+            version: doc.version,
+            folderId: doc.id,
+            description: doc.description
           },
-          message: "Folder created",
-          folderId: parentFolder.id,
-          changes: [
-            {
-              type: CommitType.ADD,
-              folderVersionId: folderVersion.id
-            }
-          ]
-        },
-        tx
-      );
+          tx
+        );
 
-      const [folderWithFullPath] = await folderDAL.findSecretPathByFolderIds(projectId, [doc.id], tx);
+        await folderCommitService.createCommit(
+          {
+            actor: {
+              type: actor,
+              metadata: {
+                id: actorId
+              }
+            },
+            message: "Folder created",
+            folderId: parentFolder.id,
+            changes: [
+              {
+                type: CommitType.ADD,
+                folderVersionId: folderVersion.id
+              }
+            ]
+          },
+          tx
+        );
 
-      if (!folderWithFullPath) {
-        throw new NotFoundError({
-          message: `Failed to retrieve path for folder with ID '${doc.id}'`
-        });
-      }
+        const [folderWithFullPath] = await folderDAL.findSecretPathByFolderIds(projectId, [doc.id], tx);
 
-      return { ...doc, path: folderWithFullPath.path };
-    });
+        if (!folderWithFullPath) {
+          throw new NotFoundError({
+            message: `Failed to retrieve path for folder with ID '${doc.id}'`
+          });
+        }
 
-    return folder;
+        return { ...doc, path: folderWithFullPath.path };
+      });
+
+      return folder;
+    } finally {
+      await lock.release();
+    }
   };
 
   const updateManyFolders = async ({
