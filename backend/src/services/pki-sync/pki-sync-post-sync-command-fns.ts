@@ -175,10 +175,17 @@ const redactSecrets = (text: string, secrets: Array<string | undefined>): string
 
 const TRUNCATION_SUFFIX = "... (truncated)";
 
+// A cut between the halves of a surrogate pair leaves a lone surrogate, which is not valid UTF-8.
+const sliceWholeCharacters = (text: string, end: number): string => {
+  const cut = text.slice(0, end);
+  const last = cut.charCodeAt(cut.length - 1);
+  return last >= 0xd800 && last <= 0xdbff ? cut.slice(0, -1) : cut;
+};
+
 // The suffix counts against maxLength, so the cap bounds what actually gets stored.
 const truncate = (text: string, maxLength: number): string =>
   text.length > maxLength
-    ? `${text.slice(0, Math.max(0, maxLength - TRUNCATION_SUFFIX.length))}${TRUNCATION_SUFFIX}`
+    ? `${sliceWholeCharacters(text, Math.max(0, maxLength - TRUNCATION_SUFFIX.length))}${TRUNCATION_SUFFIX}`
     : text;
 
 const firstNonEmptyLine = (text?: string): string | undefined =>

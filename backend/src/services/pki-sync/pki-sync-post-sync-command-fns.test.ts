@@ -271,6 +271,18 @@ describe("runPostSyncCommand", () => {
     expect(result.output?.endsWith("... (truncated)")).toBe(true);
   });
 
+  test("does not split a surrogate pair when truncating", async () => {
+    // The cut would otherwise land inside the emoji, and a lone surrogate cannot be encoded as UTF-8
+    // so it reaches the audit log as a replacement character.
+    const result = await runPostSyncCommand({
+      syncId: "sync-id",
+      execute: async () => ({ stdout: `${"x".repeat(984)}🔒${"y".repeat(100)}`, stderr: "", exitCode: 0 })
+    });
+
+    expect(result.output).not.toContain("�");
+    expect(Buffer.from(result.output ?? "", "utf8").toString("utf8")).toBe(result.output);
+  });
+
   test("returns no output when the command was silent", async () => {
     const result = await runPostSyncCommand({
       syncId: "sync-id",
