@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Accordion,
   AccordionContent,
@@ -50,6 +51,10 @@ import {
 } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
 import { useProject } from "@app/context";
+import {
+  ProjectPermissionProjectFolderGrantActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext";
 import {
   TProjectFolderGrant,
   useListProjectFolderGrants
@@ -215,17 +220,25 @@ export const CrossProjectSharingSection = () => {
             Cross-Project Secret Sharing
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-reference#cross-project-secret-sharing" />
           </CardTitle>
-          <Button
-            variant="project"
-            size="sm"
-            onClick={() => {
-              setEditData(null);
-              setIsShareSheetOpen(true);
-            }}
+          <ProjectPermissionCan
+            I={ProjectPermissionProjectFolderGrantActions.CreateGrant}
+            a={ProjectPermissionSub.ProjectFolderGrant}
           >
-            <Plus className="size-3.5" />
-            Share Secrets
-          </Button>
+            {(isAllowed) => (
+              <Button
+                variant="project"
+                size="sm"
+                isDisabled={!isAllowed}
+                onClick={() => {
+                  setEditData(null);
+                  setIsShareSheetOpen(true);
+                }}
+              >
+                <Plus className="size-3.5" />
+                Share Secrets
+              </Button>
+            )}
+          </ProjectPermissionCan>
           <ShareSecretsSheet
             isOpen={isShareSheetOpen}
             onOpenChange={handleSheetOpenChange}
@@ -287,17 +300,35 @@ export const CrossProjectSharingSection = () => {
                         </IconButton>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(projectGroup)}>
-                          <PencilIcon className="mr-2 size-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          variant="danger"
-                          onClick={() => setDeleteTarget(projectGroup)}
+                        <ProjectPermissionCan
+                          I={ProjectPermissionProjectFolderGrantActions.CreateGrant}
+                          a={ProjectPermissionSub.ProjectFolderGrant}
                         >
-                          <TrashIcon className="mr-2 size-4" />
-                          Delete
-                        </DropdownMenuItem>
+                          {(isAllowed) => (
+                            <DropdownMenuItem
+                              isDisabled={!isAllowed}
+                              onClick={() => handleEdit(projectGroup)}
+                            >
+                              <PencilIcon className="mr-2 size-4" />
+                              Edit
+                            </DropdownMenuItem>
+                          )}
+                        </ProjectPermissionCan>
+                        <ProjectPermissionCan
+                          I={ProjectPermissionProjectFolderGrantActions.RevokeGrant}
+                          a={ProjectPermissionSub.ProjectFolderGrant}
+                        >
+                          {(isAllowed) => (
+                            <DropdownMenuItem
+                              variant="danger"
+                              isDisabled={!isAllowed}
+                              onClick={() => setDeleteTarget(projectGroup)}
+                            >
+                              <TrashIcon className="mr-2 size-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          )}
+                        </ProjectPermissionCan>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
