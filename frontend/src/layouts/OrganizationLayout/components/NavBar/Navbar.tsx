@@ -76,6 +76,7 @@ import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
 import {
   adminQueryKeys,
+  projectKeys,
   subOrganizationsQuery,
   useGetOrganizations,
   useGetOrgTrialUrl,
@@ -98,6 +99,7 @@ import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { VersionBadge } from "./VersionBadge";
+import { appConnectionKeys } from "@app/hooks/api/appConnections";
 
 const getFormattedSupportEmailLink = (variables: {
   org_id: string;
@@ -220,12 +222,16 @@ export const Navbar = () => {
     }
 
     SecurityClient.setToken(token);
-    queryClient.clear();
+    queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
+    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
+    queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
+    queryClient.removeQueries({ queryKey: appConnectionKeys.all });
 
     await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
     await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
 
     await navigateUserToOrg({ navigate, organizationId, navigateTo });
+    queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
 
     if (onSuccess) {
       await onSuccess();
