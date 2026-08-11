@@ -5573,9 +5573,8 @@ interface ViewSecretManagementInsightsProjectWarningsEvent {
 interface ViewSecretManagementInsightsOrgCountsEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_COUNTS;
   metadata: {
-    projects: number;
+    dynamicSecrets: number;
     secrets: number;
-    environments: number;
     rotations: number;
   };
 }

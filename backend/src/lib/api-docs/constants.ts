@@ -935,10 +935,9 @@ export const INSIGHTS = {
       "The total number of times a secret value was accessed by a machine identity across every project in the organization in the last seven days. Accesses by users are not counted, and neither are accesses whose authentication method could not be determined, which happens for accesses recorded before the method was captured in audit logs."
   },
   GET_SECRETS_COUNTS: {
-    projects: "The number of secret management projects in the organization.",
+    dynamicSecrets: "The total number of dynamic secrets across every secret management project in the organization.",
     secrets:
       "The total number of shared static secrets across every secret management project in the organization. Personal secret overrides are not counted.",
-    environments: "The total number of environments across every secret management project in the organization.",
     rotations: "The total number of secret rotations across every secret management project in the organization."
   },
   GET_STATIC_SECRETS_USAGE: {

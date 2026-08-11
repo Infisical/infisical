@@ -692,7 +692,7 @@ export const insightsServiceFactory = ({
   const getOrgSecretsCounts = async (dto: TOrgInsightsDTO): Promise<TOrgSecretsCounts> => {
     await assertOrgInsightsRead(dto);
 
-    const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, "org-counts");
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, "org-counts-v2");
     return withCache({
       keyStore,
       key: cacheKey,

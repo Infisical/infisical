@@ -1,7 +1,7 @@
 import { Fragment, ReactNode, useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { format } from "date-fns";
-import { BoxIcon, FileTextIcon, KeyIcon, LayersIcon, PlusIcon, RefreshCwIcon } from "lucide-react";
+import { BoxIcon, FileTextIcon, KeyIcon,  RefreshCwIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
@@ -107,8 +107,8 @@ export const SecretInsightsPage = withPermission(
     const headerStats: { label: string; value: number; icon: ReactNode }[] = counts
       ? [
           {
-            label: "projects",
-            value: counts.projects,
+            label: "total dynamic secrets",
+            value: counts.dynamicSecrets,
             icon: <BoxIcon className="size-3.5 text-accent" />
           },
           {
@@ -117,19 +117,14 @@ export const SecretInsightsPage = withPermission(
             icon: <KeyIcon className="size-3.5 text-accent" />
           },
           {
-            label: "environments",
-            value: counts.environments,
-            icon: <LayersIcon className="size-3.5 text-accent" />
-          },
-          {
-            label: "rotations",
+            label: "secret rotations",
             value: counts.rotations,
             icon: <RefreshCwIcon className="size-3.5 text-secret-rotation" />
           }
         ]
       : [];
 
-    const renderStatStrip = (className: string) => (
+    const renderStatStrip = (className: string, withTrailingSeparator = false) => (
       <div className={`flex-wrap items-center gap-x-2 gap-y-1 text-xs text-accent ${className}`}>
         {headerStats.map((stat, idx) => (
           <Fragment key={stat.label}>
@@ -143,6 +138,7 @@ export const SecretInsightsPage = withPermission(
             </span>
           </Fragment>
         ))}
+        {withTrailingSeparator && headerStats.length > 0 && <span className="text-border">|</span>}
       </div>
     );
 
@@ -160,7 +156,7 @@ export const SecretInsightsPage = withPermission(
               title="Insights"
               description="Organization-wide visibility into secret health, access patterns, and authentication hygiene."
             >
-              {renderStatStrip("hidden justify-end dashboard:flex")}
+              {renderStatStrip("hidden justify-end dashboard:flex", true)}
               <div className="flex items-center gap-3">
                 {lastSentReport && (
                   <span className="flex items-center gap-1.5 text-xs whitespace-nowrap text-mineshaft-300">

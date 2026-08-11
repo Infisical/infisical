@@ -222,8 +222,7 @@ export type TOrgSecretAccessVolume = {
 };
 
 export type TOrgSecretsCounts = {
-  projects: number;
+  dynamicSecrets: number;
   secrets: number;
-  environments: number;
   rotations: number;
 };

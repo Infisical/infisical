@@ -82,14 +82,10 @@ export const StaticSecretPresenceCard = ({ data }: { data: TOrgStaticSecretUsage
   const trend = useMemo(() => getCreationTrend(data.weeks), [data.weeks]);
 
   return (
-    // h-full lets the card stretch to match AuthMethodsCard when they share a grid row
-    // (the Card base class is h-fit, which would otherwise opt out of the stretch)
     <Card className="h-full">
       <CardHeader>
-        <CardTitle>Static Secret Presence</CardTitle>
-        <CardDescription>
-          Static secrets created across all projects, past 12 weeks.
-        </CardDescription>
+        <CardTitle>New Secrets Created</CardTitle>
+        <CardDescription>Secrets created across all projects, past 12 weeks.</CardDescription>
         {trend && (
           <CardAction>
             <Badge variant={trend.variant}>

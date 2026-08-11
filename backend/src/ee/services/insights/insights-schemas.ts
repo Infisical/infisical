@@ -48,9 +48,8 @@ export const OrgAuthMethodDistributionSchema = z.object({
 });
 
 export const OrgSecretsCountsSchema = z.object({
-  projects: z.number().int().describe(INSIGHTS.GET_SECRETS_COUNTS.projects),
+  dynamicSecrets: z.number().int().describe(INSIGHTS.GET_SECRETS_COUNTS.dynamicSecrets),
   secrets: z.number().int().describe(INSIGHTS.GET_SECRETS_COUNTS.secrets),
-  environments: z.number().int().describe(INSIGHTS.GET_SECRETS_COUNTS.environments),
   rotations: z.number().int().describe(INSIGHTS.GET_SECRETS_COUNTS.rotations)
 });
 

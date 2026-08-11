@@ -288,7 +288,7 @@ export const insightsDALFactory = (db: TDbClient) => {
   const countOrgSecretsResources = async (
     orgId: string,
     tx?: Knex
-  ): Promise<{ projects: number; secrets: number; environments: number; rotations: number }> => {
+  ): Promise<{ dynamicSecrets: number; secrets: number; rotations: number }> => {
     try {
       const conn = tx || db.replicaNode();
 
@@ -299,10 +299,11 @@ export const insightsDALFactory = (db: TDbClient) => {
           .where(`${TableName.Project}.version`, ProjectVersion.V3)
           .whereNull(`${TableName.Project}.deleteAfter`) as T;
 
-      const [projectsRow, environmentsRow, secretsRow, rotationsRow] = await Promise.all([
-        scopeToOrgProjects(conn(TableName.Project)).count("* as count").first(),
+      const [dynamicSecretsRow, secretsRow, rotationsRow] = await Promise.all([
         scopeToOrgProjects(
-          conn(TableName.Environment)
+          conn(TableName.DynamicSecret)
+            .join(TableName.SecretFolder, `${TableName.DynamicSecret}.folderId`, `${TableName.SecretFolder}.id`)
+            .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
             .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
             .whereNull(`${TableName.Environment}.deleteAfter`)
         )
@@ -323,9 +324,8 @@ export const insightsDALFactory = (db: TDbClient) => {
       const toCount = (row: unknown) => Number((row as { count?: string | number } | undefined)?.count ?? 0);
 
       return {
-        projects: toCount(projectsRow),
+        dynamicSecrets: toCount(dynamicSecretsRow),
         secrets: toCount(secretsRow),
-        environments: toCount(environmentsRow),
         rotations: toCount(rotationsRow)
       };
     } catch (error) {

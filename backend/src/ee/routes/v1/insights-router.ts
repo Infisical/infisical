@@ -291,7 +291,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "getSecretsCounts",
       description:
-        "Get whole-organization counts of secret management resources: projects, secrets, environments, and secret rotations.",
+        "Get whole-organization counts of secret management resources: dynamic secrets, secrets, and secret rotations.",
       security: [{ bearerAuth: [] }],
       response: {
         200: z.object({
