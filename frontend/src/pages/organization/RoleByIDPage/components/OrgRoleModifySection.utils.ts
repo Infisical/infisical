@@ -632,7 +632,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
       },
       {
         value: OrgPermissionIdentityActions.EditAuth,
-        label: "Configure Auth Methods",
+        label: "Configure Auth",
         description: "Add or update authentication methods for a machine identity"
       },
       {
