@@ -492,7 +492,7 @@ export const dynamicSecretServiceFactory = ({
     });
 
     return {
-      dynamicSecret: updatedDynamicCfg,
+      dynamicSecret: { ...updatedDynamicCfg, inputs: updatedInput },
       updatedFields,
       projectId: project.id,
       environment: environmentSlug,
