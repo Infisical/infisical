@@ -76,7 +76,6 @@ import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
 import {
   adminQueryKeys,
-  projectKeys,
   subOrganizationsQuery,
   useGetOrganizations,
   useGetOrgTrialUrl,
