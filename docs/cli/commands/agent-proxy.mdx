@@ -317,7 +317,7 @@ $ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
   <Accordion title="--auth-method">
     How to authenticate the agent proxy's machine identity: `universal-auth`, `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, `aws-iam`, `oidc-auth`, `jwt-auth`, or `ldap-auth`. Alternative to the `INFISICAL_AUTH_METHOD` environment variable.
 
-    Omit it and passing `--client-id` with `--client-secret` is taken to mean `universal-auth`, so a Universal Auth setup needs no extra flag. `--token` takes precedence over both.
+    Omit it and passing `--client-id` with `--client-secret` is taken to mean `universal-auth`, so a Universal Auth setup needs no extra flag. A token takes precedence over both, including one that came from `INFISICAL_TOKEN` rather than `--token`.
 
     The proxy re-authenticates before its token expires, using the same credential each time, so it keeps running for as long as that credential stays valid. That holds indefinitely for client credentials, LDAP, and the cloud methods, which re-read the host's identity every time. It does not hold for `jwt-auth` and `oidc-auth`: the JWT you passed is reused at every refresh, so a short-lived one (a CI OIDC token, say) will already have expired by then. Use those two only with a JWT that outlives the proxy.
 
