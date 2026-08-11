@@ -496,7 +496,7 @@ export const dynamicSecretServiceFactory = ({
       subject(ProjectPermissionSub.DynamicSecrets, {
         environment: environmentSlug,
         secretPath: path,
-        metadata: updatedDynamicCfg.metadata
+        metadata: metadata ?? []
       })
     );
 
