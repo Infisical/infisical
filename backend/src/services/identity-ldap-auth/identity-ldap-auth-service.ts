@@ -344,8 +344,6 @@ export const identityLdapAuthServiceFactory = ({
     lockoutDurationSeconds,
     lockoutCounterResetSeconds
   }: TAttachLdapAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -408,6 +406,8 @@ export const identityLdapAuthServiceFactory = ({
         OrgPermissionSubjects.MachineIdentityAuthTemplate
       );
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
 
@@ -547,8 +547,6 @@ export const identityLdapAuthServiceFactory = ({
     lockoutCounterResetSeconds,
     isActorSuperAdmin
   }: TUpdateLdapAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -616,6 +614,8 @@ export const identityLdapAuthServiceFactory = ({
         OrgPermissionSubjects.MachineIdentityAuthTemplate
       );
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
 
@@ -809,8 +809,6 @@ export const identityLdapAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TRevokeLdapAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -822,6 +820,7 @@ export const identityLdapAuthServiceFactory = ({
     if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
+
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.LDAP_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have LDAP Auth attached"
@@ -885,6 +884,8 @@ export const identityLdapAuthServiceFactory = ({
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const revokedIdentityLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
       const [deletedLdapAuth] = await identityLdapAuthDAL.delete({ identityId }, tx);
@@ -1028,6 +1029,10 @@ export const identityLdapAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.LDAP_AUTH)) {
       throw new BadRequestError({

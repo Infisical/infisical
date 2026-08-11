@@ -284,8 +284,6 @@ export const identityOciAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TAttachOciAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -336,6 +334,8 @@ export const identityOciAuthServiceFactory = ({
         OrgPermissionSubjects.Identity
       );
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -389,8 +389,6 @@ export const identityOciAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TUpdateOciAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -446,6 +444,8 @@ export const identityOciAuthServiceFactory = ({
         OrgPermissionSubjects.Identity
       );
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -537,8 +537,6 @@ export const identityOciAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TRevokeOciAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -550,6 +548,7 @@ export const identityOciAuthServiceFactory = ({
     if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
+
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OCI_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have OCI auth"
@@ -612,6 +611,8 @@ export const identityOciAuthServiceFactory = ({
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const revokedIdentityOciAuth = await identityOciAuthDAL.transaction(async (tx) => {
       const deletedOciAuth = await identityOciAuthDAL.delete({ identityId }, tx);

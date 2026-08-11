@@ -272,8 +272,6 @@ export const identityAliCloudAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TAttachAliCloudAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -324,6 +322,8 @@ export const identityAliCloudAuthServiceFactory = ({
         OrgPermissionSubjects.Identity
       );
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
@@ -374,8 +374,6 @@ export const identityAliCloudAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TUpdateAliCloudAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -432,6 +430,8 @@ export const identityAliCloudAuthServiceFactory = ({
         OrgPermissionSubjects.Identity
       );
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
@@ -521,8 +521,6 @@ export const identityAliCloudAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TRevokeAliCloudAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -534,6 +532,7 @@ export const identityAliCloudAuthServiceFactory = ({
     if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
+
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.ALICLOUD_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have Alibaba Cloud auth"
@@ -596,6 +595,8 @@ export const identityAliCloudAuthServiceFactory = ({
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const revokedIdentityAliCloudAuth = await identityAliCloudAuthDAL.transaction(async (tx) => {
       const deletedAliCloudAuth = await identityAliCloudAuthDAL.delete({ identityId }, tx);

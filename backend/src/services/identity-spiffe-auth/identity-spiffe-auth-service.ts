@@ -510,8 +510,6 @@ export const identitySpiffeAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TAttachSpiffeAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -523,6 +521,7 @@ export const identitySpiffeAuthServiceFactory = ({
     if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
+
     if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.SPIFFE_AUTH)) {
       throw new BadRequestError({
         message: "Failed to add SPIFFE Auth to already configured identity"
@@ -562,6 +561,8 @@ export const identitySpiffeAuthServiceFactory = ({
         OrgPermissionSubjects.Identity
       );
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -653,8 +654,6 @@ export const identitySpiffeAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TUpdateSpiffeAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -710,6 +709,8 @@ export const identitySpiffeAuthServiceFactory = ({
         OrgPermissionSubjects.Identity
       );
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -865,8 +866,6 @@ export const identitySpiffeAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TRevokeSpiffeAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -942,6 +941,8 @@ export const identitySpiffeAuthServiceFactory = ({
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const revokedIdentitySpiffeAuth = await identitySpiffeAuthDAL.transaction(async (tx) => {
       const deletedSpiffeAuth = await identitySpiffeAuthDAL.delete({ identityId }, tx);
