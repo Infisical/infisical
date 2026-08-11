@@ -127,6 +127,9 @@ export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceF
 const CREATE_FOLDER_LOCK_TIMEOUT_MS = 10_000;
 
 const acquireCreateFolderLock = async (tx: Knex, envId: string, projectId: string, environment: string) => {
+  const lockTimeoutResult = await tx.raw<{ rows: { lock_timeout: string }[] }>("SHOW lock_timeout");
+  const previousLockTimeout = lockTimeoutResult.rows[0].lock_timeout;
+
   await tx.raw(`SET LOCAL lock_timeout = '${CREATE_FOLDER_LOCK_TIMEOUT_MS}ms'`);
   try {
     await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateFolder(envId, projectId)]);
@@ -138,9 +141,11 @@ const acquireCreateFolderLock = async (tx: Knex, envId: string, projectId: strin
     }
     throw error;
   }
-  // Only the wait for this specific lock is bounded; restore the unbounded default for the rest of
-  // the transaction so unrelated lock waits later on (e.g. ordinary row locks) are unaffected.
-  await tx.raw("SET LOCAL lock_timeout = '0'");
+  // Only the wait for this specific lock is bounded; restore whatever lock_timeout was in effect
+  // before we bounded it (not hardcoded to unbounded/'0'), since the transaction may have inherited a
+  // finite timeout from a DB/role default or from an outer caller, and unrelated lock waits later on
+  // (e.g. ordinary row locks) should keep that original bound rather than becoming unbounded.
+  await tx.raw(`SET LOCAL lock_timeout = '${previousLockTimeout}'`);
 };
 
 export const secretFolderServiceFactory = ({
