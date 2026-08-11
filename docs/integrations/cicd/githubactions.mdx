@@ -141,7 +141,17 @@ In the following steps, we explore how to configure GitHub Actions to authentica
       - `repo:octocat/example-repo:ref:refs/heads/main` (specific branch)
       - `repo:octocat/example-repo:environment:production` (specific environment)
       - `repo:octocat/example-repo:*` (any context in the repository)
-      
+
+      <Note>
+        Repositories created after July 15, 2026 (and older repositories that opt in to GitHub's **Use immutable subject claim** setting) use an immutable subject format where the owner and repository names are suffixed with their permanent numeric IDs using `@` as the delimiter:
+
+        ```
+        repo:<owner>@<owner-id>/<repo>@<repo-id>:<context>
+        ```
+
+        For example: `repo:octocat@583231/example-repo@1296269:ref:refs/heads/main`. If the subject you configure doesn't include these IDs, authentication fails with a `403` error. You can find the IDs with the GitHub API: `GET /repos/{owner}/{repo}` returns the repository ID (`id`) and the owner ID (`owner.id`). Alternatively, a glob pattern such as `repo:octocat@*/example-repo@*:ref:refs/heads/main` matches the immutable format without hardcoding the IDs.
+      </Note>
+
       <Tip>
         If you're unsure about the exact subject format, you can use [github/actions-oidc-debugger](https://github.com/github/actions-oidc-debugger) to inspect the OIDC token claims from your workflow.
       </Tip>
