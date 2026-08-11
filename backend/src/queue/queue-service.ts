@@ -1,4 +1,3 @@
-import opentelemetry from "@opentelemetry/api";
 import {
   Job,
   JobSchedulerJson,
@@ -36,7 +35,8 @@ import {
   queueJobDurationHistogram,
   queueJobFailureCounter,
   queueJobWaitHistogram,
-  queueStalledCounter
+  queueStalledCounter,
+  resolveCoreMeter
 } from "@app/lib/telemetry/metrics";
 import { QueueWorkerProfile } from "@app/lib/types";
 import {
@@ -677,12 +677,10 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
   // push, on each scrape for Prometheus). Iterates only initialized queues in queueContainer; one
   // snapshot covers all ~30 named queues. Failures are swallowed because metrics must never crash the app.
   const QUEUE_DEPTH_STATES = ["waiting", "active", "delayed", "failed"] as const;
-  const queueDepthGauge = opentelemetry.metrics
-    .getMeter("InfisicalCore")
-    .createObservableGauge("infisical.queue.depth", {
-      description: "Number of jobs in each queue state (waiting, active, delayed, failed)",
-      unit: "{job}"
-    });
+  const queueDepthGauge = resolveCoreMeter().createObservableGauge("infisical.queue.depth", {
+    description: "Number of jobs in each queue state (waiting, active, delayed, failed)",
+    unit: "{job}"
+  });
 
   queueDepthGauge.addCallback(async (observableResult) => {
     if (!getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED) return;
