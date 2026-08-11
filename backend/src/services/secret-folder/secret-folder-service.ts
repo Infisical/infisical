@@ -15,7 +15,8 @@ import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approv
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { PgSqlLock } from "@app/keystore/keystore";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, RateLimitError } from "@app/lib/errors";
+import { hasPostgresErrorCode, PostgresErrorCode } from "@app/lib/errors/postgres";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -116,6 +117,32 @@ type TSecretFolderServiceFactoryDep = {
 
 export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceFactory>;
 
+// Bounds how long a single request waits to acquire the per-(environment, project) folder-creation
+// lock (`PgSqlLock.CreateFolder`). That lock is held for the rest of the transaction - including the
+// folder-path walk, the commit, and the checkpoint write - which can take several seconds, and every
+// waiter keeps a pooled DB connection checked out for as long as it waits. Left unbounded, a burst of
+// concurrent create-folder calls against the same environment queues up on this lock and can exhaust
+// the (small, e.g. 10-connection) pool for the whole instance. Failing fast instead lets the caller
+// retry rather than tie up a connection indefinitely.
+const CREATE_FOLDER_LOCK_TIMEOUT_MS = 10_000;
+
+const acquireCreateFolderLock = async (tx: Knex, envId: string, projectId: string, environment: string) => {
+  await tx.raw(`SET LOCAL lock_timeout = '${CREATE_FOLDER_LOCK_TIMEOUT_MS}ms'`);
+  try {
+    await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateFolder(envId, projectId)]);
+  } catch (error) {
+    if (hasPostgresErrorCode(error, PostgresErrorCode.LockNotAvailable)) {
+      throw new RateLimitError({
+        message: `Too many folders are being created at the same time in environment '${environment}'. Retry this request in a few seconds, and avoid sending many concurrent folder-create requests against the same environment.`
+      });
+    }
+    throw error;
+  }
+  // Only the wait for this specific lock is bounded; restore the unbounded default for the rest of
+  // the transaction so unrelated lock waits later on (e.g. ordinary row locks) are unaffected.
+  await tx.raw("SET LOCAL lock_timeout = '0'");
+};
+
 export const secretFolderServiceFactory = ({
   folderDAL,
   permissionService,
@@ -178,7 +205,7 @@ export const secretFolderServiceFactory = ({
       // that is this request must be idempotent
       // so we do a tricky move. we try to find the to be created folder path if that is exactly match return that
       // else we get some path before that then we will start creating remaining folder
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateFolder(env.id, env.projectId)]);
+      await acquireCreateFolderLock(tx, env.id, env.projectId, environment);
 
       const pathWithFolder = path.join(secretPath, name);
       const parentFolder = await folderDAL.findClosestFolder(projectId, environment, pathWithFolder, tx);
@@ -1179,7 +1206,7 @@ export const secretFolderServiceFactory = ({
           });
         }
 
-        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateFolder(env.id, env.projectId)]);
+        await acquireCreateFolderLock(tx, env.id, env.projectId, environment);
 
         for (const folderSpec of envFolders) {
           const { name, path: secretPath, description } = folderSpec;
