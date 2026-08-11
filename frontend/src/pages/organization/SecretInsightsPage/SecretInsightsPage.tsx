@@ -1,7 +1,7 @@
 import { Fragment, ReactNode, useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { format } from "date-fns";
-import { BoxIcon, FileTextIcon, KeyIcon,  RefreshCwIcon } from "lucide-react";
+import { BoxIcon, FileTextIcon, KeyIcon, RefreshCwIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
@@ -31,7 +31,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import {
   AuthMethodsCard,
-  NeedsAttentionCard,
+  InsightsCard,
   RequestOrgAuditReportModal,
   SecretAccessVolumeCard,
   StaticSecretPresenceCard,
@@ -48,8 +48,6 @@ export const SecretInsightsPage = withPermission(
     const isClickhouseEnabled = Boolean(config.isClickhouseAuditLogEnabled);
 
     const { data: summary, isPending: isSummaryPending } = useGetOrgSecretsSummary(currentOrg.id);
-    // Paginated: pages of 100 (the endpoint maximum); NeedsAttentionCard fetches further
-    // pages on demand while more problem projects remain on the server.
     const {
       data: projectsPages,
       isPending: isProjectsPending,
@@ -208,7 +206,7 @@ export const SecretInsightsPage = withPermission(
               {!isSummaryPending && summary && <SummaryCard summary={summary} />}
               {isProjectsPending && <Skeleton className="h-[320px]" />}
               {!isProjectsPending && projectsInsights && (
-                <NeedsAttentionCard
+                <InsightsCard
                   data={projectsInsights}
                   hasMore={hasMoreProjects}
                   onLoadMore={fetchMoreProjects}

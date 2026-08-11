@@ -24,12 +24,20 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   TBadgeProps
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { TOrgProjectInsightWarnings, TOrgProjectsInsights } from "@app/hooks/api";
 
 const COLLAPSED_ROW_COUNT = 4;
+
+enum InsightsView {
+  NeedsAttention = "needs-attention",
+  AllProjects = "all-projects"
+}
 
 const projectInsightsRoute =
   "/organizations/$orgId/projects/secret-management/$projectId/insights" as const;
@@ -63,7 +71,7 @@ const WarningBadges = ({ warnings }: { warnings: TOrgProjectInsightWarnings }) =
   </div>
 );
 
-export const NeedsAttentionCard = ({
+export const InsightsCard = ({
   data,
   hasMore,
   onLoadMore,
@@ -78,6 +86,7 @@ export const NeedsAttentionCard = ({
   const { currentOrg } = useOrganization();
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
+  const [view, setView] = useState<InsightsView>(InsightsView.NeedsAttention);
 
   const sortedProjects = useMemo(
     () =>
@@ -89,15 +98,23 @@ export const NeedsAttentionCard = ({
 
   const isHealthy = data.projectsWithIssues === 0;
 
+  const modeProjects = useMemo(
+    () =>
+      view === InsightsView.NeedsAttention
+        ? sortedProjects.filter((project) => project.severityScore > 0)
+        : sortedProjects,
+    [sortedProjects, view]
+  );
+
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return sortedProjects;
-    return sortedProjects.filter(
+    if (!query) return modeProjects;
+    return modeProjects.filter(
       (project) =>
         project.projectName.toLowerCase().includes(query) ||
         project.projectSlug.toLowerCase().includes(query)
     );
-  }, [sortedProjects, search]);
+  }, [modeProjects, search]);
 
   const isSearching = search.trim().length > 0;
   const visible = showAll || isSearching ? filtered : filtered.slice(0, COLLAPSED_ROW_COUNT);
@@ -105,13 +122,19 @@ export const NeedsAttentionCard = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Needs Attention</CardTitle>
+        <CardTitle>Insights</CardTitle>
         <CardDescription>
           {isHealthy
             ? "You don't have any projects with issues"
             : `${data.projectsWithIssues} of ${data.totalProjects} projects have outstanding issues, ordered by severity.`}
         </CardDescription>
-        <CardAction>
+        <CardAction className="flex items-center gap-2">
+          <Tabs value={view} onValueChange={(next) => setView(next as InsightsView)}>
+            <TabsList variant="filled">
+              <TabsTrigger value={InsightsView.NeedsAttention}>Needs Attention</TabsTrigger>
+              <TabsTrigger value={InsightsView.AllProjects}>All Projects</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <InputGroup className="w-64">
             <InputGroupAddon align="inline-start">
               <SearchIcon />
@@ -125,7 +148,14 @@ export const NeedsAttentionCard = ({
         </CardAction>
       </CardHeader>
       <CardContent>
-        {sortedProjects.length > 0 && filtered.length === 0 && (
+        {view === InsightsView.NeedsAttention && modeProjects.length === 0 && !isSearching && (
+          <Empty className="border-0">
+            <EmptyHeader>
+              <EmptyTitle>You don&apos;t have any projects with issues</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
+        )}
+        {modeProjects.length > 0 && filtered.length === 0 && (
           <Empty className="border-0">
             <EmptyHeader>
               <EmptyTitle>No projects match your search</EmptyTitle>
@@ -194,7 +224,7 @@ export const NeedsAttentionCard = ({
         )}
         {!isSearching && !hasMore && filtered.length > COLLAPSED_ROW_COUNT && (
           <Button variant="ghost" size="xs" onClick={() => setShowAll((prev) => !prev)}>
-            {showAll ? "Show Fewer Projects" : "Show All Projects"}
+            {showAll ? "Show Fewer" : "Show More"}
             {showAll ? <ChevronUpIcon /> : <ChevronDownIcon />}
           </Button>
         )}

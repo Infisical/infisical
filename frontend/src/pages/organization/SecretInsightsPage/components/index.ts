@@ -1,5 +1,5 @@
 export { AuthMethodsCard } from "./AuthMethodsCard";
-export { NeedsAttentionCard } from "./NeedsAttentionCard";
+export { InsightsCard } from "./InsightsCard";
 export { RequestOrgAuditReportModal } from "./RequestOrgAuditReportModal";
 export { SecretAccessVolumeCard } from "./SecretAccessVolumeCard";
 export { StaticSecretPresenceCard } from "./StaticSecretPresenceCard";
