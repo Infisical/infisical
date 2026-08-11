@@ -1,3 +1,4 @@
+import { Knex } from "knex";
 import net from "net";
 
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -10,6 +11,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamAccessMethod, PamAccountType, PamSessionEndReason } from "../pam/pam-enums";
+import { TPamSessionDALFactory } from "./pam-session-dal";
 
 export const resolvePamSessionDistinctId = async ({
   session,
@@ -125,4 +127,46 @@ export const sendPamSessionCancellationSignal = ({
       relayConn?.destroy();
     }
   })();
+};
+
+// Flips a set of session rows to terminated and returns the callback that cuts their live tunnels. The
+// two halves are deliberately separate: the row update is undone by a rollback, the ALPN signal is not.
+// A caller inside a transaction that can still fail (account deletion, which can be blocked by the
+// rotationAccountId FK guard) must pass `tx` and invoke the returned callback only after COMMIT, or a
+// failed operation kills privileged tunnels it then claims never to have touched. Callers with no
+// transaction can invoke it immediately.
+export const terminatePamSessions = async ({
+  sessions,
+  actorId,
+  actorEmail,
+  pamSessionDAL,
+  gatewayV2Service,
+  tx
+}: {
+  sessions: { id: string; gatewayId?: string | null; accountType: string }[];
+  actorId: string;
+  actorEmail: string;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "terminateSessionById">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  tx?: Knex;
+}) => {
+  for (const session of sessions) {
+    // eslint-disable-next-line no-await-in-loop
+    await pamSessionDAL.terminateSessionById(session.id, tx);
+  }
+
+  return () => {
+    for (const session of sessions) {
+      if (session.gatewayId) {
+        sendPamSessionCancellationSignal({
+          sessionId: session.id,
+          gatewayId: session.gatewayId,
+          accountType: session.accountType,
+          actorId,
+          actorEmail,
+          gatewayV2Service
+        });
+      }
+    }
+  };
 };

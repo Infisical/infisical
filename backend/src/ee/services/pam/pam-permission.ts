@@ -1,5 +1,6 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { PackRule, packRules } from "@casl/ability/extra";
+import { Knex } from "knex";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -101,6 +102,8 @@ export const checkAccountAccess = async (
   ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.PamResource);
 };
 
+// `tx` is for callers that must see their own uncommitted membership writes (revoking access and closing
+// the sessions it was holding open, in one transaction). Without it these are replica reads.
 export const getResourceIdsWithActions = async (
   membershipDAL: TMembershipDep,
   membershipRoleDAL: TMembershipRoleDep,
@@ -109,21 +112,28 @@ export const getResourceIdsWithActions = async (
     allOf?: ResourcePermissionPamResourceActions[];
     anyOf?: ResourcePermissionPamResourceActions[];
   },
-  ctx: TActorContext
+  ctx: TActorContext,
+  tx?: Knex
 ) => {
   const [folderMemberships, accountMemberships] = await Promise.all([
-    membershipDAL.findResourceMembershipsForActor({
-      projectId,
-      resourceType: ResourceType.PamFolder,
-      actorType: ctx.actor,
-      actorId: ctx.actorId
-    }),
-    membershipDAL.findResourceMembershipsForActor({
-      projectId,
-      resourceType: ResourceType.PamAccount,
-      actorType: ctx.actor,
-      actorId: ctx.actorId
-    })
+    membershipDAL.findResourceMembershipsForActor(
+      {
+        projectId,
+        resourceType: ResourceType.PamFolder,
+        actorType: ctx.actor,
+        actorId: ctx.actorId
+      },
+      tx
+    ),
+    membershipDAL.findResourceMembershipsForActor(
+      {
+        projectId,
+        resourceType: ResourceType.PamAccount,
+        actorType: ctx.actor,
+        actorId: ctx.actorId
+      },
+      tx
+    )
   ]);
 
   const activeFolderMemberships = folderMemberships.filter((m) => m.isActive);
@@ -134,9 +144,12 @@ export const getResourceIdsWithActions = async (
     return { folderIds: [], accountIds: [] };
   }
 
-  const roles = await membershipRoleDAL.find({
-    $in: { membershipId: allMemberships.map((m) => m.id) }
-  });
+  const roles = await membershipRoleDAL.find(
+    {
+      $in: { membershipId: allMemberships.map((m) => m.id) }
+    },
+    { tx }
+  );
   const now = new Date();
   const activeRoles = roles.filter(
     (r) => !r.isTemporary || (r.temporaryAccessEndTime && now < new Date(r.temporaryAccessEndTime))

@@ -21,9 +21,10 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { testConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
-import { PamAccessStatus, PamAccountType, PamProductRole } from "../pam/pam-enums";
+import { PamAccessStatus, PamAccountType, PamProductRole, PamSessionStatus } from "../pam/pam-enums";
 import {
   checkAccountAccess,
   checkFolderPermission,
@@ -43,6 +44,8 @@ import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-acces
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
+import { terminatePamSessions } from "../pam-session/pam-session-fns";
 import { buildGatewayConnectionTest, CLOUD_CONNECTION_VALIDATORS } from "./pam-account-connection-test";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
@@ -70,13 +73,18 @@ type TPamAccountServiceFactoryDep = {
   pamAccountTemplateDAL: Pick<TPamAccountTemplateDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "delete" | "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "delete" | "find">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "terminateSessionById">;
+  userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayV2Service: Pick<
+    TGatewayV2ServiceFactory,
+    "getPlatformConnectionDetailsByGatewayId" | "getPAMConnectionDetails"
+  >;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
     "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId"
@@ -140,6 +148,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     pamAccountTemplateDAL,
     membershipDAL,
     membershipRoleDAL,
+    pamSessionDAL,
+    userDAL,
     permissionService,
     kmsService,
     gatewayV2Service,
@@ -743,7 +753,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     );
 
     try {
-      return await pamAccountDAL.transaction(async (tx) => {
+      // Every session cancellation this delete triggers is held back until COMMIT: the delete can still
+      // fail on the rotationAccountId FK guard below, and a cut tunnel can't be brought back.
+      let sendSessionCancellations: (() => void) | undefined;
+
+      const deleted = await pamAccountDAL.transaction(async (tx) => {
         const memberships = await membershipDAL.find(
           {
             scope: RESOURCE_SCOPE,
@@ -761,13 +775,43 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
         await pamAccountDAL.updateById(accountId, { rotationAccountId: null }, tx);
 
-        await deps.pamAccessRequestService.cleanupAccountResources(
+        const sendGrantCancellations = await deps.pamAccessRequestService.cleanupAccountResources(
           { accountId, folderId: existing.folderId, projectId, actorId: ctx.actorId },
           tx
         );
 
+        // Sweep every live session on the account, not just the ones grant revocation reached: an
+        // account in a folder with no approval policy has no grant rows at all, and a session can be
+        // held by someone who is not a grantee. The account row is about to disappear (pam_sessions
+        // keeps history with a null accountId), so there is no access left to re-evaluate.
+        const liveSessions = await pamSessionDAL.find(
+          { accountId, $in: { status: [PamSessionStatus.Active, PamSessionStatus.Starting] } },
+          { tx }
+        );
+
+        let sendSweepCancellations: (() => void) | undefined;
+        if (liveSessions.length > 0) {
+          const actor = await userDAL.findById(ctx.actorId, tx);
+          sendSweepCancellations = await terminatePamSessions({
+            sessions: liveSessions,
+            actorId: ctx.actorId,
+            actorEmail: actor?.email ?? "",
+            pamSessionDAL,
+            gatewayV2Service,
+            tx
+          });
+        }
+
+        sendSessionCancellations = () => {
+          sendGrantCancellations();
+          sendSweepCancellations?.();
+        };
+
         return pamAccountDAL.deleteById(accountId, tx);
       });
+
+      sendSessionCancellations?.();
+      return deleted;
     } catch (err) {
       // The ON DELETE RESTRICT FK on rotationAccountId is the race-safe guard; on violation, look up the dependents
       // to name them (rather than paying for that lookup on every delete).
