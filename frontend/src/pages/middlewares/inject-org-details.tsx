@@ -3,12 +3,8 @@ import { createFileRoute, isRedirect, redirect } from "@tanstack/react-router";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { SessionStorageKeys } from "@app/const";
 import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/auth/queries";
-import { certManagerInstanceKeys } from "@app/hooks/api/certManagerInstance";
-import { identitiesKeys } from "@app/hooks/api/identities/queries";
 import { fetchOrganizationById, organizationKeys } from "@app/hooks/api/organization/queries";
-import { projectKeys } from "@app/hooks/api/projects";
 import { fetchUserOrgPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
-import { subOrganizationsQuery } from "@app/hooks/api/subOrganizations";
 import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
 
 // Route context to fill in organization's data like details, subscription etc
@@ -42,13 +38,7 @@ export const Route = createFileRoute("/_authenticate/_inject-org-details")({
 
           if (!isMfaEnabled && token) {
             SecurityClient.setToken(token);
-
-            context.queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-            context.queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
-            context.queryClient.removeQueries({ queryKey: subOrganizationsQuery.allKey() });
-            context.queryClient.removeQueries({ queryKey: certManagerInstanceKeys.all });
-            context.queryClient.removeQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
-            context.queryClient.removeQueries({ queryKey: identitiesKeys.countIdentitiesRoot });
+            context.queryClient.clear();
 
             await context.queryClient.fetchQuery({
               queryKey: authKeys.getAuthToken,

@@ -221,15 +221,12 @@ export const Navbar = () => {
     }
 
     SecurityClient.setToken(token);
-    queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
-    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-    queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
+    queryClient.clear();
 
     await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
     await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
 
     await navigateUserToOrg({ navigate, organizationId, navigateTo });
-    queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
 
     if (onSuccess) {
       await onSuccess();
