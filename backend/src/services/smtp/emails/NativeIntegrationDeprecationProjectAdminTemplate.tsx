@@ -1,4 +1,5 @@
 import { Heading, Section, Text } from "@react-email/components";
+import React from "react";
 
 import { NATIVE_INTEGRATION_DEPRECATION_DATE } from "@app/services/integration/integration-deprecation-fns";
 
@@ -7,8 +8,10 @@ import { BaseLink } from "./BaseLink";
 
 const MIGRATION_DOC_URL = "https://infisical.com/docs/integrations/secret-syncs/native-integrations-migration";
 
-interface NativeIntegrationDeprecationProjectAdminTemplateProps
-  extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
+interface NativeIntegrationDeprecationProjectAdminTemplateProps extends Omit<
+  BaseEmailWrapperProps,
+  "title" | "preview" | "children"
+> {
   orgName: string;
   project: { name: string; integrations: string[]; url: string };
 }

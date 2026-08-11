@@ -11,7 +11,7 @@ same services with more control over how secrets are named, updated, and removed
 <Warning>
     Native Integrations are being retired on **August 5, 2027**. New integrations can no longer be
     created, but your existing ones keep syncing until then. Reading, updating, deleting, and
-    manually syncing your existing integrations all keep working until the cutoff.
+    manually syncing your existing integrations all keep working until the cutoff date.
 
     Every Native Integration you rely on has a Secret Sync equivalent today, so you can migrate at
     your own pace before the retirement date.
@@ -24,11 +24,6 @@ stored its own copy of your provider credentials, scoped to one project, and eac
 supported a different subset of options depending on when it was written. That made behavior hard
 to predict: whether Infisical would delete a secret in your destination, or whether you could
 prefix your keys, depended on which provider you had picked.
-
-Secret Syncs separate the credential from the sync. An
-[App Connection](/integrations/app-connections/overview) holds the credential at the organization
-or project level, and any number of Secret Syncs reuse it. Every sync then exposes the same set of
-options, whichever service it targets.
 
 The three differences that matter most in day-to-day use:
 
@@ -50,19 +45,20 @@ destination. Secret Syncs can remove secrets from every destination: turn **Disa
 deletion** off to let deletions through, and leave it on when you manage some destination secrets by
 hand.
 
-Other differences:
+**Private networks.** Native Integrations could only reach destinations Infisical
+could contact directly. Secret Syncs can route through an Infisical
+[Gateway](/documentation/platform/gateways/overview): a lightweight service you
+deploy inside your network that opens an outbound tunnel. Syncs can
+then reach self-hosted or private destinations—such as GitHub Enterprise Server,
+HashiCorp Vault, or a private Azure Key Vault endpoint—without opening inbound
+firewall rules.
 
-| | Native Integration | Secret Sync |
-| --- | --- | --- |
-| **Credentials** | One copy per project, per provider, not reusable and with no rotation | An [App Connection](/integrations/app-connections/overview) shared across syncs and projects, with credential rotation |
-| **Private networks** | Not supported | Reach self-hosted destinations through a [Gateway](/documentation/platform/gateways/overview) |
-| **Secret naming** | A prefix or suffix, available for only a handful of providers | [Key Schemas](/integrations/secret-syncs/overview#key-schemas) on every destination, using `{{secretKey}}` and `{{environment}}` |
 
 ## How to migrate
 
-A Secret Sync and a Native Integration can point at the same destination at the same time. Both
-write the same values from the same source, so running them side by side is safe and gives you a
-window to confirm the new sync works before you remove anything.
+A Secret Sync and a Native Integration can point at the same destination and write the same
+values from the same source. Create the sync to match your current setup, confirm it works,
+then remove the Native Integration.
 
 The walkthrough below uses GitHub as the example. The same approach applies to every service.
 
@@ -164,7 +160,7 @@ The walkthrough below uses GitHub as the example. The same approach applies to e
 
 </Steps>
 
-## Migrating other services
+### Migrating other services
 
 The recipe is the same for every service: create the App Connection, create a Secret Sync with the
 same source and destination, match the secret naming with a Key Schema, enable **Disable secret
