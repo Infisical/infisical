@@ -77,11 +77,13 @@ export const useGetDynamicSecretProviderData = ({
   tenantId,
   applicationId,
   clientSecret,
+  projectSlug,
   enabled
 }: {
   tenantId: string;
   applicationId: string;
   clientSecret: string;
+  projectSlug: string;
   enabled: boolean;
 }) => {
   return useQuery({
@@ -92,7 +94,8 @@ export const useGetDynamicSecretProviderData = ({
         {
           tenantId,
           applicationId,
-          clientSecret
+          clientSecret,
+          projectSlug
         }
       );
       return data;
@@ -106,12 +109,14 @@ export const useGetIbmApiConnectOrgs = ({
   apiKey,
   clientId,
   clientSecret,
+  projectSlug,
   enabled
 }: {
   instanceUrl: string;
   apiKey: string;
   clientId: string;
   clientSecret: string;
+  projectSlug: string;
   enabled: boolean;
 }) => {
   return useQuery({
@@ -119,7 +124,7 @@ export const useGetIbmApiConnectOrgs = ({
     queryFn: async () => {
       const { data } = await apiRequest.post<{ name: string; title: string; id: string }[]>(
         "/api/v1/dynamic-secrets/ibm-api-connect/orgs",
-        { instanceUrl, apiKey, clientId, clientSecret }
+        { instanceUrl, apiKey, clientId, clientSecret, projectSlug }
       );
       return data;
     },
@@ -133,6 +138,7 @@ export const useGetIbmApiConnectOrgCatalogs = ({
   clientId,
   clientSecret,
   orgId,
+  projectSlug,
   enabled
 }: {
   instanceUrl: string;
@@ -140,6 +146,7 @@ export const useGetIbmApiConnectOrgCatalogs = ({
   clientId: string;
   clientSecret: string;
   orgId: string;
+  projectSlug: string;
   enabled: boolean;
 }) => {
   return useQuery({
@@ -147,7 +154,7 @@ export const useGetIbmApiConnectOrgCatalogs = ({
     queryFn: async () => {
       const { data } = await apiRequest.post<{ name: string; title: string; id: string }[]>(
         `/api/v1/dynamic-secrets/ibm-api-connect/orgs/${orgId}/catalogs`,
-        { instanceUrl, apiKey, clientId, clientSecret }
+        { instanceUrl, apiKey, clientId, clientSecret, projectSlug }
       );
       return data;
     },
@@ -162,6 +169,7 @@ export const useGetIbmApiConnectOrgApps = ({
   clientSecret,
   orgId,
   catalogId,
+  projectSlug,
   enabled
 }: {
   instanceUrl: string;
@@ -170,6 +178,7 @@ export const useGetIbmApiConnectOrgApps = ({
   clientSecret: string;
   orgId: string;
   catalogId: string;
+  projectSlug: string;
   enabled: boolean;
 }) => {
   return useQuery({
@@ -189,7 +198,8 @@ export const useGetIbmApiConnectOrgApps = ({
         instanceUrl,
         apiKey,
         clientId,
-        clientSecret
+        clientSecret,
+        projectSlug
       });
       return data;
     },

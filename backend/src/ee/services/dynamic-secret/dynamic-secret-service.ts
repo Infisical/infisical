@@ -949,8 +949,30 @@ export const dynamicSecretServiceFactory = ({
   const fetchAzureEntraIdUsers: TDynamicSecretServiceFactory["fetchAzureEntraIdUsers"] = async ({
     tenantId,
     applicationId,
-    clientSecret
+    clientSecret,
+    projectSlug,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
   }) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: project.id,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionDynamicSecretActions.ReadRootCredential,
+      ProjectPermissionSub.DynamicSecrets
+    );
+
     const azureEntraIdUsers = await AzureEntraIDProvider().fetchAzureEntraIdUsers(
       tenantId,
       applicationId,
@@ -963,8 +985,30 @@ export const dynamicSecretServiceFactory = ({
     instanceUrl,
     apiKey,
     clientId,
-    clientSecret
+    clientSecret,
+    projectSlug,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
   }) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: project.id,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionDynamicSecretActions.ReadRootCredential,
+      ProjectPermissionSub.DynamicSecrets
+    );
+
     return IbmApiConnectProvider().fetchOrganizations({ instanceUrl, apiKey, clientId, clientSecret });
   };
 
@@ -973,8 +1017,30 @@ export const dynamicSecretServiceFactory = ({
     apiKey,
     clientId,
     clientSecret,
-    orgId
+    orgId,
+    projectSlug,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
   }) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: project.id,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionDynamicSecretActions.ReadRootCredential,
+      ProjectPermissionSub.DynamicSecrets
+    );
+
     return IbmApiConnectProvider().fetchOrganizationCatalogs({ instanceUrl, apiKey, clientId, clientSecret }, orgId);
   };
 
@@ -984,8 +1050,30 @@ export const dynamicSecretServiceFactory = ({
     clientId,
     clientSecret,
     orgId,
-    catalogId
+    catalogId,
+    projectSlug,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
   }) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: project.id,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionDynamicSecretActions.ReadRootCredential,
+      ProjectPermissionSub.DynamicSecrets
+    );
+
     return IbmApiConnectProvider().fetchOrganizationApps(
       { instanceUrl, apiKey, clientId, clientSecret },
       orgId,
