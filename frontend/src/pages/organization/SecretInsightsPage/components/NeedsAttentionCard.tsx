@@ -1,12 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  CheckIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  ChevronUpIcon,
-  SearchIcon
-} from "lucide-react";
+import { ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, SearchIcon } from "lucide-react";
 
 import {
   Badge,
@@ -50,7 +44,6 @@ const WARNING_CHIPS: {
 }[] = [
   { key: "failedRotations", variant: "danger", label: (c) => pluralize(c, "failed rotation") },
   { key: "failedSyncs", variant: "warning", label: (c) => pluralize(c, "failed sync") },
-  { key: "staleSecrets", variant: "warning", label: (c) => pluralize(c, "stale secret") },
   { key: "orphanedLeases", variant: "warning", label: (c) => pluralize(c, "orphaned lease") },
   { key: "duplicatedSecrets", variant: "neutral", label: (c) => `${c.toLocaleString()} duplicated` }
 ];
@@ -70,9 +63,6 @@ const WarningBadges = ({ warnings }: { warnings: TOrgProjectInsightWarnings }) =
   </div>
 );
 
-const hasIssues = (warnings: TOrgProjectInsightWarnings) =>
-  WARNING_CHIPS.some(({ key }) => (warnings[key] ?? 0) > 0);
-
 export const NeedsAttentionCard = ({
   data,
   hasMore,
@@ -89,35 +79,37 @@ export const NeedsAttentionCard = ({
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
 
-  const issueProjects = useMemo(
+  const sortedProjects = useMemo(
     () =>
-      data.projects
-        .filter((project) => hasIssues(project.warnings))
-        .sort((a, b) => b.severityScore - a.severityScore),
+      [...data.projects].sort(
+        (a, b) => b.severityScore - a.severityScore || a.projectName.localeCompare(b.projectName)
+      ),
     [data.projects]
   );
 
+  const isHealthy = data.projectsWithIssues === 0;
+
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return issueProjects;
-    return issueProjects.filter(
+    if (!query) return sortedProjects;
+    return sortedProjects.filter(
       (project) =>
         project.projectName.toLowerCase().includes(query) ||
         project.projectSlug.toLowerCase().includes(query)
     );
-  }, [issueProjects, search]);
+  }, [sortedProjects, search]);
 
   const isSearching = search.trim().length > 0;
   const visible = showAll || isSearching ? filtered : filtered.slice(0, COLLAPSED_ROW_COUNT);
-  const cleanCount = data.totalProjects - data.projectsWithIssues;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Needs Attention</CardTitle>
         <CardDescription>
-          {data.projectsWithIssues} of {data.totalProjects} projects have outstanding issues,
-          ordered by severity.
+          {isHealthy
+            ? "You don't have any projects with issues"
+            : `${data.projectsWithIssues} of ${data.totalProjects} projects have outstanding issues, ordered by severity.`}
         </CardDescription>
         <CardAction>
           <InputGroup className="w-64">
@@ -133,14 +125,7 @@ export const NeedsAttentionCard = ({
         </CardAction>
       </CardHeader>
       <CardContent>
-        {issueProjects.length === 0 && (
-          <Empty className="border-0">
-            <EmptyHeader>
-              <EmptyTitle>All projects are healthy</EmptyTitle>
-            </EmptyHeader>
-          </Empty>
-        )}
-        {issueProjects.length > 0 && filtered.length === 0 && (
+        {sortedProjects.length > 0 && filtered.length === 0 && (
           <Empty className="border-0">
             <EmptyHeader>
               <EmptyTitle>No projects match your search</EmptyTitle>
@@ -153,8 +138,8 @@ export const NeedsAttentionCard = ({
               <TableRow>
                 <TableHead>Project</TableHead>
                 <TableHead>Issues</TableHead>
-                <TableHead className="text-right">Stale</TableHead>
-                <TableHead className="text-right">Secrets</TableHead>
+                <TableHead className="text-right">Stale Secrets</TableHead>
+                <TableHead className="text-right">Total Secrets</TableHead>
                 <TableHead className="w-8" />
               </TableRow>
             </TableHeader>
@@ -192,12 +177,7 @@ export const NeedsAttentionCard = ({
           </Table>
         )}
       </CardContent>
-      <CardFooter className="justify-between">
-        <span className="flex items-center gap-2 text-sm text-success">
-          <CheckIcon className="size-3.5" />
-          {cleanCount.toLocaleString()} {cleanCount === 1 ? "project has" : "projects have"} no
-          outstanding issues
-        </span>
+      <CardFooter className="justify-end">
         {!isSearching && hasMore && (
           <Button
             variant="ghost"

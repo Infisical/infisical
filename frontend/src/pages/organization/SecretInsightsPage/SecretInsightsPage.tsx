@@ -175,12 +175,11 @@ export const SecretInsightsPage = withPermission(
                   {(isAllowed) => {
                     const generateButton = (
                       <Button
-                        variant="neutral"
+                        variant="project"
                         size="xs"
                         isDisabled={!isAllowed || hasInFlightReport}
                         onClick={() => handlePopUpOpen("requestOrgReport")}
                       >
-                        <PlusIcon />
                         Generate Report
                       </Button>
                     );

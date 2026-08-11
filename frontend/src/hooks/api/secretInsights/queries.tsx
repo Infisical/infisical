@@ -274,12 +274,10 @@ export const useGetOrgSecretsProjects = (orgId: string, params: TGetOrgSecretsPr
       );
       return data.projectWarnings;
     },
-    // Rows are ordered severityScore desc, so the first `projectsWithIssues` rows are
-    // exactly the problem projects; there is nothing worth fetching past that boundary.
     getNextPageParam: (lastPage) => {
       if (lastPage.projects.length === 0) return undefined;
       const nextOffset = lastPage.offset + lastPage.projects.length;
-      return nextOffset < lastPage.projectsWithIssues ? nextOffset : undefined;
+      return nextOffset < lastPage.totalProjects ? nextOffset : undefined;
     },
     enabled: Boolean(orgId),
     staleTime: INSIGHTS_STALE_TIME

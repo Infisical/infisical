@@ -17,7 +17,6 @@ export const PROJECT_WARNING_SEVERITY_WEIGHTS = {
   failedRotation: 100,
   failedSync: 50,
   orphanedLease: 25,
-  staleSecret: 5,
   duplicatedSecret: 1
 } as const;
 
@@ -64,9 +63,6 @@ export const insightsDALFactory = (db: TDbClient) => {
               `${TableName.Project}.secretBlindIndexEnabled`
             )
         )
-        // totalSecrets + staleSecrets share one scan via FILTER. Mirrors
-        // countByProject / countStaleByProject in secret-v2-bridge-dal.ts:
-        // exclude personal/override secrets, skip soft-deleted environments.
         .with("secret_counts", (qb) =>
           qb
             .from(TableName.SecretV2)
@@ -95,7 +91,6 @@ export const insightsDALFactory = (db: TDbClient) => {
         // prohibitively expensive for a paginated org-level listing. Secrets that
         // merely reference the same secret are therefore counted as duplicates
         // here, so this count can be slightly higher than the duplication insight.
-        // TODO: perform a load testing to check how bad this can be for large orgs.
         .with("duplicate_groups", (qb) =>
           qb
             .from(TableName.SecretV2)
@@ -183,16 +178,9 @@ export const insightsDALFactory = (db: TDbClient) => {
                 `(? * coalesce(fr."failedRotations", 0)
                 + ? * coalesce(fs."failedSyncs", 0)
                 + ? * coalesce(ol."orphanedLeases", 0)
-                + ? * coalesce(sc."staleSecrets", 0)
                 + ? * (case when p."secretBlindIndexEnabled" then coalesce(dc."duplicatedSecrets", 0) else 0 end)
                 ) as "severityScore"`,
-                [
-                  weights.failedRotation,
-                  weights.failedSync,
-                  weights.orphanedLease,
-                  weights.staleSecret,
-                  weights.duplicatedSecret
-                ]
+                [weights.failedRotation, weights.failedSync, weights.orphanedLease, weights.duplicatedSecret]
               )
             )
         )
