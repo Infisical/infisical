@@ -677,16 +677,13 @@ export enum EventType {
   VIEW_INSIGHTS_AUTH_METHODS = "view-insights-auth-methods",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR = "view-insights-secrets-management-calendar",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME = "view-insights-secrets-management-access-volume",
-  VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_ACCESS_VOLUME = "view-insights-secrets-management-org-access-volume",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION = "view-insights-secrets-management-org-auth-method-distribution",
-  VIEW_INSIGHTS_SECRETS_MANAGEMENT_STATIC_SECRET_USAGE = "view-insights-secrets-management-static-secret-usage",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE = "view-insights-secrets-management-usage",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS = "view-insights-secrets-management-project-warnings",
-  VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_COUNTS = "view-insights-secrets-management-org-counts",
 
   CREATE_AUDIT_REPORT = "create-audit-report",
   GET_AUDIT_REPORTS = "get-audit-reports",
@@ -5493,24 +5490,10 @@ interface ViewSecretManagementInsightsAccessVolumeEvent {
   };
 }
 
-interface ViewSecretManagementInsightsOrgAccessVolumeEvent {
-  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_ACCESS_VOLUME;
-  metadata: {
-    totalEvents: number;
-  };
-}
-
 interface ViewSecretManagementInsightsOrgAuthMethodDistributionEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION;
   metadata: {
     totalFetches: number;
-  };
-}
-
-interface ViewSecretManagementInsightsStaticSecretUsageEvent {
-  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_STATIC_SECRET_USAGE;
-  metadata: {
-    totalSecretsCreated: number;
   };
 }
 
@@ -5567,15 +5550,6 @@ interface ViewSecretManagementInsightsProjectWarningsEvent {
     projectsWithIssues: number;
     offset: number;
     limit: number;
-  };
-}
-
-interface ViewSecretManagementInsightsOrgCountsEvent {
-  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_COUNTS;
-  metadata: {
-    dynamicSecrets: number;
-    secrets: number;
-    rotations: number;
   };
 }
 
@@ -7549,9 +7523,7 @@ export type Event =
   | DashboardGetSecretVersionValueEvent
   | ViewSecretManagementInsightsCalendarEvent
   | ViewSecretManagementInsightsAccessVolumeEvent
-  | ViewSecretManagementInsightsOrgAccessVolumeEvent
   | ViewSecretManagementInsightsOrgAuthMethodDistributionEvent
-  | ViewSecretManagementInsightsStaticSecretUsageEvent
   | ViewSecretManagementInsightsAccessLocationsEvent
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
@@ -7559,7 +7531,6 @@ export type Event =
   | ViewSecretManagementInsightsCountsEvent
   | ViewSecretManagementInsightsUsageEvent
   | ViewSecretManagementInsightsProjectWarningsEvent
-  | ViewSecretManagementInsightsOrgCountsEvent
   | CreateAuditReportEvent
   | GetAuditReportsEvent
   | GetAuditReportEvent

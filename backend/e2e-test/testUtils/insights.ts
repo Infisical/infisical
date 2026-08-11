@@ -22,7 +22,7 @@ const unreachable = (method: string) => (): never => {
 };
 
 // Specs supply their own getOrgPermission; this fills the other half of the permissionService contract.
-export const unreachableGetProjectPermission: Pick<
+const unreachableGetProjectPermission: Pick<
   TInsightsServiceFactoryDep["permissionService"],
   "getProjectPermission"
 > = {

@@ -284,12 +284,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
     "View Secrets Management Calendar Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME]:
     "View Secrets Management Access Volume Insights",
-  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_ACCESS_VOLUME]:
-    "View Organization Secrets Management Access Volume Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION]:
     "View Organization Secrets Management Auth Method Distribution Insights",
-  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_STATIC_SECRET_USAGE]:
-    "View Organization Static Secret Usage Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS]:
     "View Secrets Management Access Locations Insights",
   [EventType.VIEW_INSIGHTS_AUTH_METHODS]: "View Machine Identity Auth Methods Insights",
@@ -300,8 +296,6 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE]: "View Secrets Management Usage Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS]:
     "View Secrets Management Project Warnings Insights",
-  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_COUNTS]:
-    "View Organization Secrets Management Resource Counts Insights",
 
   [EventType.CREATE_ORG_AUDIT_REPORT]: "Create Organization Audit Report",
   [EventType.GET_ORG_AUDIT_REPORTS]: "List Organization Audit Reports",

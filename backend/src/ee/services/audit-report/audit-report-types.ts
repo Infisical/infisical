@@ -41,11 +41,6 @@ export type TAuditReportConfig = {
   inputs: Record<string, unknown>;
 };
 
-export type TOrgAuditReportConfig = {
-  type: OrgAuditReportType;
-  inputs: Record<string, unknown>;
-};
-
 export const AuditReportResultEntrySchema = z.object({
   type: z.nativeEnum(AuditReportType),
   rowCount: z.number(),

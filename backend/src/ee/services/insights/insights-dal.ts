@@ -285,58 +285,9 @@ export const insightsDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countOrgSecretsResources = async (
-    orgId: string,
-    tx?: Knex
-  ): Promise<{ dynamicSecrets: number; secrets: number; rotations: number }> => {
-    try {
-      const conn = tx || db.replicaNode();
-
-      const scopeToOrgProjects = <T extends Knex.QueryBuilder>(qb: T): T =>
-        qb
-          .where(`${TableName.Project}.orgId`, orgId)
-          .where(`${TableName.Project}.type`, ProjectType.SecretManager)
-          .where(`${TableName.Project}.version`, ProjectVersion.V3)
-          .whereNull(`${TableName.Project}.deleteAfter`) as T;
-
-      const [dynamicSecretsRow, secretsRow, rotationsRow] = await Promise.all([
-        scopeToOrgProjects(
-          conn(TableName.DynamicSecret)
-            .join(TableName.SecretFolder, `${TableName.DynamicSecret}.folderId`, `${TableName.SecretFolder}.id`)
-            .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-            .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
-            .whereNull(`${TableName.Environment}.deleteAfter`)
-        )
-          .count("* as count")
-          .first(),
-        orgStaticSecretsQuery(conn, orgId).count("* as count").first(),
-        scopeToOrgProjects(
-          conn(TableName.SecretRotationV2)
-            .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
-            .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-            .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
-            .whereNull(`${TableName.Environment}.deleteAfter`)
-        )
-          .count("* as count")
-          .first()
-      ]);
-
-      const toCount = (row: unknown) => Number((row as { count?: string | number } | undefined)?.count ?? 0);
-
-      return {
-        dynamicSecrets: toCount(dynamicSecretsRow),
-        secrets: toCount(secretsRow),
-        rotations: toCount(rotationsRow)
-      };
-    } catch (error) {
-      throw new DatabaseError({ error, name: "CountOrgSecretsResources" });
-    }
-  };
-
   return {
     findProjectWarningsForOrg,
     findSecretCreationsByWeekForOrg,
-    countSecretCreationsForOrg,
-    countOrgSecretsResources
+    countSecretCreationsForOrg
   };
 };
