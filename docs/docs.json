@@ -12,7 +12,14 @@
   },
   "favicon": "/favicon.ico",
   "contextual": {
-    "options": ["assistant", "copy", "view", "chatgpt", "claude", "mcp"]
+    "options": [
+      "assistant",
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "mcp"
+    ]
   },
   "navigation": {
     "tabs": [
@@ -474,22 +481,6 @@
                   "documentation/platform/secrets-mgmt/overview",
                   "documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret",
                   {
-                    "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/secrets-mgmt/concepts/secrets-mgmt",
-                      "documentation/platform/secrets-mgmt/concepts/access-control",
-                      "documentation/platform/secrets-mgmt/concepts/secrets-delivery",
-                      "documentation/platform/secrets-mgmt/concepts/secrets-rotation",
-                      "documentation/platform/secrets-mgmt/concepts/dynamic-secrets",
-                      "documentation/platform/secrets-mgmt/concepts/approval-workflows"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Manage secrets",
-                "pages": [
-                  {
                     "group": "Organize",
                     "pages": [
                       "documentation/platform/secrets-mgmt/project",
@@ -564,7 +555,9 @@
                       "integrations/platforms/apache-airflow",
                       {
                         "group": "AWS",
-                        "pages": ["integrations/platforms/aws/lambda"]
+                        "pages": [
+                          "integrations/platforms/aws/lambda"
+                        ]
                       },
                       "integrations/platforms/infisical-proxy",
                       {
@@ -1507,7 +1500,9 @@
               },
               {
                 "group": "Service Tokens",
-                "pages": ["api-reference/endpoints/service-tokens/get"]
+                "pages": [
+                  "api-reference/endpoints/service-tokens/get"
+                ]
               }
             ]
           },
@@ -2379,11 +2374,15 @@
               },
               {
                 "group": "Audit Logs",
-                "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
+                "pages": [
+                  "api-reference/endpoints/audit-logs/export-audit-log"
+                ]
               },
               {
                 "group": "Events",
-                "pages": ["api-reference/endpoints/events/project-events"]
+                "pages": [
+                  "api-reference/endpoints/events/project-events"
+                ]
               }
             ]
           },
@@ -3449,11 +3448,15 @@
                   },
                   {
                     "group": "Ona",
-                    "pages": ["api-reference/endpoints/secret-syncs/ona/create"]
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/ona/create"
+                    ]
                   },
                   {
                     "group": "OVH",
-                    "pages": ["api-reference/endpoints/secret-syncs/ovh/create"]
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/ovh/create"
+                    ]
                   },
                   {
                     "group": "Qovery",
@@ -4247,7 +4250,9 @@
             "pages": [
               {
                 "group": "Admin",
-                "pages": ["api-reference/endpoints/admin/bootstrap-instance"]
+                "pages": [
+                  "api-reference/endpoints/admin/bootstrap-instance"
+                ]
               }
             ]
           }
@@ -4258,7 +4263,9 @@
         "groups": [
           {
             "group": "Overview",
-            "pages": ["sdks/overview"]
+            "pages": [
+              "sdks/overview"
+            ]
           },
           {
             "group": "SDK's",
@@ -4286,7 +4293,9 @@
   "api": {
     "openapi": "https://app.infisical.com/api/docs/json",
     "mdx": {
-      "server": ["https://app.infisical.com"]
+      "server": [
+        "https://app.infisical.com"
+      ]
     }
   },
   "background": {
