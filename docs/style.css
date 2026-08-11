@@ -8,8 +8,8 @@
 
 #navbar .max-w-8xl {
   max-width: 100%;
-  border-bottom: 1px solid #ebebeb;
-  background-color: #F4F3EF;
+  border-bottom: 1px solid #f0f0f0;
+  background-color: #ffffff;
 }
 
 .max-w-8xl {
@@ -19,10 +19,8 @@
 #sidebar {
   left: 0;
   padding-right: 30px;
-  border-right: 1px;
-  border-color: #cdd64b;
-  background-color: #F4F3EF;
-  border-right: 1px solid #ebebeb;
+  background-color: #ffffff;
+  border-right: 1px solid #f0f0f0;
 }
 
 #sidebar-content {
@@ -38,8 +36,8 @@
 }
 
 #sidebar li > a.text-primary {
-  background-color: #FBFFCC;
-  border-left: 4px solid #EFFF33;
+  background-color: #f7f7f6;
+  border-left: 2px solid #dbf530;
   padding: 5px;
 }
 
@@ -63,10 +61,10 @@
 } */
 
 #header {
-  border-left: 4px solid #EFFF33;
+  border-left: 2px solid #dbf530;
   padding-left: 16px;
   padding-right: 16px;
-  background-color: #FDFFE5;
+  background-color: #f7f7f6;
   padding-bottom: 10px;
   padding-top: 10px;
 }
@@ -77,7 +75,7 @@
 
 #content-area .mt-8 .block{
   border-width: 1px;
-  background-color: #FCFBFA;
+  background-color: #fbfbfa;
   border-color: #ebebeb;
 }
 
@@ -129,32 +127,33 @@
 }
 
 .dark #navbar .max-w-8xl {
-  border-bottom-color: #26272b;
-  background-color: #111419;
+  border-bottom-color: #1e1f24;
+  background-color: #08090b;
 }
 
 .dark #sidebar {
-  border-right-color: #26272b;
-  background-color: #111419;
+  border-right-color: #1e1f24;
+  background-color: #08090b;
 }
 
 .dark #sidebar li > a.text-primary {
-  background-color: #26272b;
-  border-left-color: #c2d72a;
+  background-color: #1b1d0d;
+  border-left-color: #dbf530;
+  color: #dbf530;
 }
 
 .dark #header {
-  background-color: #15181e;
-  border-left-color: #c2d72a;
+  background-color: #101114;
+  border-left-color: #dbf530;
 }
 
 .dark #page-context-menu button:hover {
-  background-color: #26272b;
+  background-color: #1b1d0d;
 }
 
 .dark #content-area .mt-8 .block {
-  border-color: #26272b;
-  background-color: #1e1f22;
+  border-color: #1e1f24;
+  background-color: #101114;
 }
 
 .dark #topbar-cta-button .group .absolute {
