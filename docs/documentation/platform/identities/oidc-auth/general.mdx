@@ -104,6 +104,8 @@ In the following steps, we explore how to create and use identities to access th
         | `repo:my-org/my-repo:*` | `repo:my-org/my-repo:ref:refs/heads/main`, `repo:my-org/my-repo:environment:prod` | `repo:other-org/my-repo:ref:refs/heads/main` |
         | `repo:my-org/{app,api}:*` | `repo:my-org/app:ref:refs/heads/main`, `repo:my-org/api:environment:prod` | `repo:my-org/web:ref:refs/heads/main` |
         | `repo:my-org/my-repo:ref:refs/heads/*` | `repo:my-org/my-repo:ref:refs/heads/main`, `repo:my-org/my-repo:ref:refs/heads/dev` | `repo:my-org/my-repo:environment:prod` |
+
+        The subjects above are for illustration; see [GitHub OIDC Auth](/documentation/platform/identities/oidc-auth/github) for GitHub's current subject format.
         </Info>
 
     </Step>
