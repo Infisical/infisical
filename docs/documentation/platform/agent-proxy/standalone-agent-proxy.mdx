@@ -89,7 +89,16 @@ Starting the proxy in a shell is fine while you are trying it out, but it dies w
 
 How the proxy authenticates follows from where you run it. The first three tabs use Universal Auth, which works anywhere and means provisioning a client id and secret on the host. The Kubernetes and EC2 tabs use the identity the host already has, so there is no credential on the host to provision or rotate.
 
-With those two, what separates the proxy's identity from your agents' is no longer possession of a secret, because there isn't one, and the machine identity id is not confidential. It is the auth method's own configuration. Scope the proxy identity's **Allowed Principal ARNs** (AWS) or **Allowed Namespaces** and **Allowed Service Account Names** (Kubernetes) to the proxy host alone. Leave them unset or wildcarded and any host in the same account or cluster, including every agent host, can authenticate as the proxy and read every secret it can read.
+With those two, what separates the proxy's identity from your agents' is no longer possession of a secret, because there isn't one, and the machine identity id is not confidential. It is the auth method's own configuration. Scope the proxy identity to the proxy host alone, using whichever fields its method provides:
+
+| Method | Fields to scope |
+| --- | --- |
+| `aws-iam` | **Allowed Principal ARNs**, **Allowed Account IDs** |
+| `kubernetes` | **Allowed Namespaces**, **Allowed Service Account Names** |
+| `azure` | **Allowed Service Principal IDs** |
+| `gcp-id-token` | **Allowed Service Account Emails**, **Allowed Projects** |
+
+Infisical enforces each of these only when it is set. Leave them unset or wildcarded and any workload in the same account, cluster, tenant or project, including every agent host, can authenticate as the proxy and read every secret it can read.
 
 <Tabs>
   <Tab title="CLI (systemd, VM)">
