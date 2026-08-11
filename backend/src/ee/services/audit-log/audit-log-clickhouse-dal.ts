@@ -2,7 +2,7 @@ import { type ClickHouseClient } from "@clickhouse/client";
 import RE2 from "re2";
 
 import { TDbClient } from "@app/db";
-import { TableName, TAuditLogs } from "@app/db/schemas";
+import { IdentityAuthMethod, TableName, TAuditLogs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -46,7 +46,7 @@ type TClickHouseDateVolumeRow = {
 type TClickHouseDateVolumeRawRow = Omit<TClickHouseDateVolumeRow, "count"> & { count: string };
 
 type TClickHouseAuthMethodRow = {
-  authMethod: string;
+  authMethod: IdentityAuthMethod;
   count: number;
 };
 
@@ -312,6 +312,7 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
         AND eventType IN ({eventTypes:Array(String)})
         AND actor = {actorType:String}
       GROUP BY authMethod
+      HAVING authMethod IN ({authMethods:Array(String)})
     `;
 
     try {
@@ -323,7 +324,8 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
           startDate: startDate.replace("Z", ""),
           endDate: endDate.replace("Z", ""),
           eventTypes,
-          actorType: ActorType.IDENTITY
+          actorType: ActorType.IDENTITY,
+          authMethods: Object.values(IdentityAuthMethod)
         },
         clickhouse_settings: {
           max_execution_time: 10

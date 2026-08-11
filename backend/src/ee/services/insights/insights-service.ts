@@ -70,8 +70,6 @@ export type TInsightsServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByAuthMethod">;
-  // Undefined when the instance has no ClickHouse configured. Only the org-wide aggregates use it,
-  // and each degrades to an unsupported no-op response in that case.
   clickhouseAuditLogDAL?: Pick<TClickHouseAuditLogDALFactory, "countByDateForOrg" | "countByIdentityAuthMethodForOrg">;
   secretRotationV2DAL: Pick<
     TSecretRotationV2DALFactory,
@@ -625,7 +623,10 @@ export const insightsServiceFactory = ({
 
     const appCfg = getConfig();
     if (!appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED || !clickhouseAuditLogDAL) {
-      return { days: [], isSupported: false };
+      throw new BadRequestError({
+        message:
+          "Secret access volume requires audit logs to be stored in ClickHouse, which is not enabled on this instance"
+      });
     }
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, "org-access-volume");
@@ -646,8 +647,7 @@ export const insightsServiceFactory = ({
         const countsByDate = new Map(rows.map((row) => [row.date, row.count]));
 
         return {
-          days: dates.map((date) => ({ date, total: countsByDate.get(date) ?? 0 })),
-          isSupported: true
+          days: dates.map((date) => ({ date, total: countsByDate.get(date) ?? 0 }))
         };
       }
     });
@@ -658,7 +658,10 @@ export const insightsServiceFactory = ({
 
     const appCfg = getConfig();
     if (!appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED || !clickhouseAuditLogDAL) {
-      return { methods: [], totalFetches: 0, unknownCount: 0, isSupported: false };
+      throw new BadRequestError({
+        message:
+          "Identity authentication method usage requires audit logs to be stored in ClickHouse, which is not enabled on this instance"
+      });
     }
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, "org-auth-method-distribution");
@@ -676,30 +679,12 @@ export const insightsServiceFactory = ({
           endDate: endDate.toISOString()
         });
 
-        const knownAuthMethods = new Set<string>(Object.values(IdentityAuthMethod));
-        const countsByAuthMethod = new Map<IdentityAuthMethod, number>();
-        let unknownCount = 0;
-        let totalFetches = 0;
-
-        rows.forEach((row) => {
-          totalFetches += row.count;
-
-          // Logs written before the auth method was captured have no authMethod, and an instance
-          // reading logs written by a newer version can see a method it does not know yet.
-          if (!knownAuthMethods.has(row.authMethod)) {
-            unknownCount += row.count;
-            return;
-          }
-
-          const authMethod = row.authMethod as IdentityAuthMethod;
-          countsByAuthMethod.set(authMethod, (countsByAuthMethod.get(authMethod) ?? 0) + row.count);
-        });
-
-        const methods = Array.from(countsByAuthMethod.entries())
-          .map(([authMethod, count]) => ({ authMethod, count }))
+        const methods = rows
+          .map((row) => ({ authMethod: row.authMethod, count: row.count }))
           .sort((a, b) => b.count - a.count);
+        const totalFetches = rows.reduce((sum, row) => sum + row.count, 0);
 
-        return { methods, totalFetches, unknownCount, isSupported: true };
+        return { methods, totalFetches };
       }
     });
   };

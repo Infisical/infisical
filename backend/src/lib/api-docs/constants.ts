@@ -920,25 +920,19 @@ export const INSIGHTS = {
     projectsWithIssues: "The number of secret management projects in the organization with at least one issue."
   },
   GET_SECRETS_ACCESS_VOLUME: {
-    isSupported:
-      "Whether access volume could be calculated. This endpoint requires the instance to store audit logs in ClickHouse. When audit logs are stored in PostgreSQL this is false and no days are returned.",
     days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",
     date: "The day the accesses happened on, in UTC, as YYYY-MM-DD.",
     total:
       "The number of times a secret value was accessed across every project in the organization on this day, by any user or machine identity."
   },
   GET_SECRETS_AUTH_METHOD_DISTRIBUTION: {
-    isSupported:
-      "Whether the distribution could be calculated. This endpoint requires the instance to store audit logs in ClickHouse. When audit logs are stored in PostgreSQL this is false and no methods are returned.",
     methods:
       "One entry for each machine identity authentication method that was used to access a secret value in the last seven days, ordered from most to least used. Methods that were not used are not included.",
     authMethod: "The machine identity authentication method that was used to authenticate the accesses.",
     count:
       "The number of times a secret value was accessed across every project in the organization using this authentication method.",
     totalFetches:
-      "The total number of times a secret value was accessed by a machine identity across every project in the organization in the last seven days. Accesses by users are not counted.",
-    unknownCount:
-      "The number of accesses whose authentication method could not be determined, which happens for accesses recorded before the method was captured in audit logs. These are included in the total but not in the methods list."
+      "The total number of times a secret value was accessed by a machine identity across every project in the organization in the last seven days. Accesses by users are not counted, and neither are accesses whose authentication method could not be determined, which happens for accesses recorded before the method was captured in audit logs."
   },
   GET_SECRETS_COUNTS: {
     projects: "The number of secret management projects in the organization.",

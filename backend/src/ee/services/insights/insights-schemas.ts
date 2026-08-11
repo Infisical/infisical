@@ -27,7 +27,6 @@ export const SecretsProjectWarningSchema = z.object({
 });
 
 export const OrgSecretsAccessVolumeSchema = z.object({
-  isSupported: z.boolean().describe(INSIGHTS.GET_SECRETS_ACCESS_VOLUME.isSupported),
   days: z
     .object({
       date: z.string().describe(INSIGHTS.GET_SECRETS_ACCESS_VOLUME.date),
@@ -38,9 +37,7 @@ export const OrgSecretsAccessVolumeSchema = z.object({
 });
 
 export const OrgAuthMethodDistributionSchema = z.object({
-  isSupported: z.boolean().describe(INSIGHTS.GET_SECRETS_AUTH_METHOD_DISTRIBUTION.isSupported),
   totalFetches: z.number().int().describe(INSIGHTS.GET_SECRETS_AUTH_METHOD_DISTRIBUTION.totalFetches),
-  unknownCount: z.number().int().describe(INSIGHTS.GET_SECRETS_AUTH_METHOD_DISTRIBUTION.unknownCount),
   methods: z
     .object({
       authMethod: z.nativeEnum(IdentityAuthMethod).describe(INSIGHTS.GET_SECRETS_AUTH_METHOD_DISTRIBUTION.authMethod),

@@ -207,9 +207,7 @@ export type TGetOrgSecretsProjectsDTO = {
 };
 
 export type TOrgAuthMethodUsage = {
-  isSupported: boolean;
   totalFetches: number;
-  unknownCount: number;
   methods: { authMethod: IdentityAuthMethod; count: number }[];
 };
 
@@ -220,7 +218,6 @@ export type TOrgStaticSecretUsage = {
 };
 
 export type TOrgSecretAccessVolume = {
-  isSupported: boolean;
   days: { date: string; total: number }[];
 };
 

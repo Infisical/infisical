@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { InfoIcon, TriangleAlertIcon } from "lucide-react";
+import { TriangleAlertIcon } from "lucide-react";
 
 import {
   Alert,
@@ -11,14 +11,11 @@ import {
   CardTitle,
   Empty,
   EmptyHeader,
-  EmptyTitle,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  EmptyTitle
 } from "@app/components/v3";
 import { IdentityAuthMethod, identityAuthToNameMap, TOrgAuthMethodUsage } from "@app/hooks/api";
 
-import { CHART_COLORS, UNKNOWN_SERIES_COLOR } from "./chartColors";
+import { CHART_COLORS } from "./chartColors";
 
 type Segment = {
   key: string;
@@ -26,7 +23,6 @@ type Segment = {
   count: number;
   pct: number;
   color: string;
-  isUnknown: boolean;
 };
 
 const humanizeAuthMethod = (authMethod: string) =>
@@ -40,29 +36,15 @@ export const AuthMethodsCard = ({ data }: { data: TOrgAuthMethodUsage }) => {
   const segments = useMemo<Segment[]>(() => {
     if (data.totalFetches === 0) return [];
 
-    const methodSegments: Segment[] = [...data.methods]
+    return [...data.methods]
       .sort((a, b) => b.count - a.count)
       .map((method, index) => ({
         key: method.authMethod,
         label: humanizeAuthMethod(method.authMethod),
         count: method.count,
         pct: (method.count / data.totalFetches) * 100,
-        color: CHART_COLORS[index % CHART_COLORS.length],
-        isUnknown: false
+        color: CHART_COLORS[index % CHART_COLORS.length]
       }));
-
-    if (data.unknownCount > 0) {
-      methodSegments.push({
-        key: "unknown",
-        label: "Unknown",
-        count: data.unknownCount,
-        pct: (data.unknownCount / data.totalFetches) * 100,
-        color: UNKNOWN_SERIES_COLOR,
-        isUnknown: true
-      });
-    }
-
-    return methodSegments;
   }, [data]);
 
   const staticTokenPct = useMemo(() => {
@@ -112,22 +94,7 @@ export const AuthMethodsCard = ({ data }: { data: TOrgAuthMethodUsage }) => {
                     className="size-2.5 shrink-0 rounded-full"
                     style={{ backgroundColor: segment.color }}
                   />
-                  <span className="flex-1 text-sm">
-                    {segment.label}
-                    {segment.isUnknown && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <InfoIcon className="mb-0.5 ml-1 inline size-3 text-muted" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="max-w-xs text-xs">
-                            Only new requests will display the auth method. Older requests may not
-                            have this information recorded.
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </span>
+                  <span className="flex-1 text-sm">{segment.label}</span>
                   <span className="text-sm text-muted">
                     {segment.count.toLocaleString()} {segment.count === 1 ? "fetch" : "fetches"}
                   </span>

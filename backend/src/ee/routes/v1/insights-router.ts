@@ -204,18 +204,6 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         orgId: req.permission.orgId
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        event: {
-          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_ACCESS_VOLUME,
-          metadata: {
-            isSupported: accessVolume.isSupported,
-            totalEvents: accessVolume.days.reduce((sum, day) => sum + day.total, 0)
-          }
-        }
-      });
-
       return { accessVolume };
     }
   });
@@ -253,7 +241,6 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION,
           metadata: {
-            isSupported: authMethodDistribution.isSupported,
             totalFetches: authMethodDistribution.totalFetches
           }
         }
@@ -288,17 +275,6 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         orgId: req.permission.orgId
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        event: {
-          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_STATIC_SECRET_USAGE,
-          metadata: {
-            totalSecretsCreated: staticSecretUsage.weeks.reduce((sum, week) => sum + week.totalSecrets, 0)
-          }
-        }
       });
 
       return { staticSecretUsage };

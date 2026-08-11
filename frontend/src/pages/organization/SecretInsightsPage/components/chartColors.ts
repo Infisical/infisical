@@ -11,6 +11,3 @@ export const CHART_COLORS = [
   "var(--color-org)",
   "var(--color-danger)"
 ];
-
-// Reserved for the "Unknown" distribution segment so it never collides with a named series.
-export const UNKNOWN_SERIES_COLOR = "var(--color-muted)";

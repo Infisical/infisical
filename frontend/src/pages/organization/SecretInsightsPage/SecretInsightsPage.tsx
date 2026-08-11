@@ -13,7 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@app/components/v3";
-import { OrgPermissionSubjects, useOrganization } from "@app/context";
+import { OrgPermissionSubjects, useOrganization, useServerConfig } from "@app/context";
 import { OrgPermissionSecretsManagementInsightsActions } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
@@ -44,6 +44,8 @@ const IN_FLIGHT_REPORT_STATUSES = [AuditReportStatus.Pending, AuditReportStatus.
 export const SecretInsightsPage = withPermission(
   () => {
     const { currentOrg } = useOrganization();
+    const { config } = useServerConfig();
+    const isClickhouseEnabled = Boolean(config.isClickhouseAuditLogEnabled);
 
     const { data: summary, isPending: isSummaryPending } = useGetOrgSecretsSummary(currentOrg.id);
     // Paginated: pages of 100 (the endpoint maximum); NeedsAttentionCard fetches further
@@ -77,11 +79,12 @@ export const SecretInsightsPage = withPermission(
       };
     }, [projectsPages]);
     const { data: authMethodUsage, isPending: isAuthMethodsPending } =
-      useGetOrgAuthMethodDistribution(currentOrg.id);
+      useGetOrgAuthMethodDistribution(currentOrg.id, { enabled: isClickhouseEnabled });
     const { data: staticSecretUsage, isPending: isStaticSecretsPending } =
       useGetOrgStaticSecretsUsage(currentOrg.id);
     const { data: accessVolume, isPending: isAccessVolumePending } = useGetOrgSecretsAccessVolume(
-      currentOrg.id
+      currentOrg.id,
+      { enabled: isClickhouseEnabled }
     );
 
     const { data: counts } = useGetOrgSecretsCounts(currentOrg.id);
@@ -97,10 +100,9 @@ export const SecretInsightsPage = withPermission(
       orgReports?.reports.some((report) => IN_FLIGHT_REPORT_STATUSES.includes(report.status))
     );
 
-    // isSupported decides whether the audit-log-backed cards render at all
-    // (e.g. self-hosted instances without ClickHouse). While the auth methods query is
-    // pending we keep its grid slot so the row doesn't reflow when the card appears.
-    const showAuthMethodsSlot = isAuthMethodsPending || Boolean(authMethodUsage?.isSupported);
+    const isAuthMethodsLoading = isClickhouseEnabled && isAuthMethodsPending;
+    const isAccessVolumeLoading = isClickhouseEnabled && isAccessVolumePending;
+    const showAuthMethodsSlot = isAuthMethodsLoading || Boolean(authMethodUsage);
 
     const headerStats: { label: string; value: number; icon: ReactNode }[] = counts
       ? [
@@ -223,8 +225,8 @@ export const SecretInsightsPage = withPermission(
                   showAuthMethodsSlot ? "grid gap-4 xl:grid-cols-[1fr_1.35fr]" : "grid gap-4"
                 }
               >
-                {isAuthMethodsPending && <Skeleton className="h-[320px]" />}
-                {!isAuthMethodsPending && authMethodUsage?.isSupported && (
+                {isAuthMethodsLoading && <Skeleton className="h-[320px]" />}
+                {!isAuthMethodsLoading && authMethodUsage && (
                   <AuthMethodsCard data={authMethodUsage} />
                 )}
                 {isStaticSecretsPending && <Skeleton className="h-[320px]" />}
@@ -232,8 +234,8 @@ export const SecretInsightsPage = withPermission(
                   <StaticSecretPresenceCard data={staticSecretUsage} />
                 )}
               </div>
-              {isAccessVolumePending && <Skeleton className="h-[300px]" />}
-              {!isAccessVolumePending && accessVolume?.isSupported && (
+              {isAccessVolumeLoading && <Skeleton className="h-[300px]" />}
+              {!isAccessVolumeLoading && accessVolume && (
                 <SecretAccessVolumeCard data={accessVolume} />
               )}
             </div>
@@ -242,7 +244,7 @@ export const SecretInsightsPage = withPermission(
         <RequestOrgAuditReportModal
           isOpen={popUp.requestOrgReport.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("requestOrgReport", isOpen)}
-          isAuditLogSupported={Boolean(accessVolume?.isSupported)}
+          isAuditLogSupported={isClickhouseEnabled}
         />
       </>
     );

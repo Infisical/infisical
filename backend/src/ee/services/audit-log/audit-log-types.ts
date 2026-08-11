@@ -5496,8 +5496,6 @@ interface ViewSecretManagementInsightsAccessVolumeEvent {
 interface ViewSecretManagementInsightsOrgAccessVolumeEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_ACCESS_VOLUME;
   metadata: {
-    // false when the instance stores audit logs in Postgres, in which case no volume was calculated
-    isSupported: boolean;
     totalEvents: number;
   };
 }
@@ -5505,8 +5503,6 @@ interface ViewSecretManagementInsightsOrgAccessVolumeEvent {
 interface ViewSecretManagementInsightsOrgAuthMethodDistributionEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION;
   metadata: {
-    // false when the instance stores audit logs in Postgres, in which case no distribution was calculated
-    isSupported: boolean;
     totalFetches: number;
   };
 }

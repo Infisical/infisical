@@ -286,7 +286,7 @@ export const useGetOrgSecretsProjects = (orgId: string, params: TGetOrgSecretsPr
   });
 };
 
-export const useGetOrgAuthMethodDistribution = (orgId: string) => {
+export const useGetOrgAuthMethodDistribution = (orgId: string, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: secretInsightsKeys.orgAuthMethodDistribution(orgId),
     queryFn: async () => {
@@ -295,7 +295,7 @@ export const useGetOrgAuthMethodDistribution = (orgId: string) => {
       );
       return data.authMethodDistribution;
     },
-    enabled: Boolean(orgId),
+    enabled: Boolean(orgId) && (options?.enabled ?? true),
     staleTime: INSIGHTS_STALE_TIME
   });
 };
@@ -314,7 +314,7 @@ export const useGetOrgStaticSecretsUsage = (orgId: string) => {
   });
 };
 
-export const useGetOrgSecretsAccessVolume = (orgId: string) => {
+export const useGetOrgSecretsAccessVolume = (orgId: string, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: secretInsightsKeys.orgAccessVolume(orgId),
     queryFn: async () => {
@@ -323,7 +323,7 @@ export const useGetOrgSecretsAccessVolume = (orgId: string) => {
       );
       return data.accessVolume;
     },
-    enabled: Boolean(orgId),
+    enabled: Boolean(orgId) && (options?.enabled ?? true),
     staleTime: INSIGHTS_STALE_TIME
   });
 };

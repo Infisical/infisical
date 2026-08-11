@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { IdentityAuthMethod, TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas";
 import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { TInsightsDALFactory } from "@app/ee/services/insights/insights-dal";
@@ -154,27 +154,9 @@ const authMethodsReport: TOrgReportDefinition = {
       endDate: endDate.toISOString()
     });
 
-    // Logs written before the auth method was captured have no authMethod, and an instance reading
-    // logs written by a newer version can see a method it does not know yet — both land in "unknown".
-    const knownAuthMethods = new Set<string>(Object.values(IdentityAuthMethod));
-    const countsByAuthMethod = new Map<string, number>();
-    let unknownCount = 0;
-
-    rows.forEach((row) => {
-      if (!knownAuthMethods.has(row.authMethod)) {
-        unknownCount += row.count;
-        return;
-      }
-      countsByAuthMethod.set(row.authMethod, (countsByAuthMethod.get(row.authMethod) ?? 0) + row.count);
-    });
-
-    const methodRows = Array.from(countsByAuthMethod.entries())
-      .map(([authMethod, count]) => ({ authMethod, count }))
+    const methodRows = rows
+      .map((row) => ({ authMethod: row.authMethod, count: row.count }))
       .sort((a, b) => b.count - a.count);
-
-    if (unknownCount > 0) {
-      methodRows.push({ authMethod: "unknown", count: unknownCount });
-    }
 
     return { columns: ["authMethod", "count"], rows: methodRows, truncated: false };
   }
