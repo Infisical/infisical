@@ -2313,7 +2313,8 @@ export const registerRoutes = async (
     secretImportDAL,
     secretV2BridgeService,
     reminderDAL,
-    reminderService
+    reminderService,
+    keyStore
   });
 
   const secretSharingService = secretSharingServiceFactory({
