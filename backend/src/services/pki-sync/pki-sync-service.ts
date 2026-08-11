@@ -287,7 +287,7 @@ export const pkiSyncServiceFactory = ({
       throw new BadRequestError({
         message: `This sync's post-sync command uses ${formatPostSyncCommandVariables(
           singleCertificateVariables
-        )}. A placeholder that names one certificate can only be used on a sync with a single certificate linked. Use {{certificateFiles}} or {{certificateDirectory}} to write a command that covers every certificate in the run.`
+        )}. A variable that names one certificate can only be used on a sync with a single certificate linked. Use {{certificateFiles}} or {{certificateDirectory}} to write a command that covers every certificate in the run.`
       });
     }
   };

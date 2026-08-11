@@ -1,0 +1,21 @@
+Write a variable where you want this run's value. Infisical replaces it before the command is sent to the server, so the command keeps working when the name schema or export format changes.
+
+| Variable | Value |
+| --- | --- |
+| `{{certificatePath}}` | Full path of the certificate file delivered this run. Single-certificate syncs only |
+| `{{certificateDirectory}}` | The destination directory |
+| `{{certificateFiles}}` | Every path written this run, one per line |
+| `{{commonName}}` | The certificate's common name. Single-certificate syncs only |
+| `{{pkcs12Password}}` | The PKCS#12 export password, set only when the export format is PKCS#12 |
+
+Each value is inserted already quoted for the target's shell, so write `{{certificatePath}}` rather than `"{{certificatePath}}"`. A variable that has no value for the run becomes an empty string.
+
+Only the names in this table are substituted. Anything else in double braces is left in the command exactly as you wrote it, so a command that calls a tool with its own braces (helm, jq, a Go template) keeps working, and a misspelled variable reaches the server as literal text rather than silently turning into nothing.
+
+<Note>
+  `{{certificatePath}}` and `{{commonName}}` name one specific certificate, so a command that uses either can only be saved on a sync with a single certificate linked. Linking a second certificate to such a sync is rejected, as is adding one of these variables to a sync that already has several. To act on every certificate in the run, use `{{certificateFiles}}`, which lists one path per line:
+
+  ```bash
+  echo {{certificateFiles}} | while read -r file; do echo "delivered $file"; done
+  ```
+</Note>

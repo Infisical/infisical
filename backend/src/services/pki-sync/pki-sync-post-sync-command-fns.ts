@@ -13,8 +13,8 @@ export enum PostSyncCommandVariable {
   Pkcs12Password = "pkcs12Password"
 }
 
-// Matches a {{name}} placeholder.
-const PLACEHOLDER_PATTERN = new RE2("\\{\\{\\s*([a-zA-Z0-9_]+)\\s*\\}\\}", "g");
+// Matches a {{name}} variable.
+const VARIABLE_PATTERN = new RE2("\\{\\{\\s*([a-zA-Z0-9_]+)\\s*\\}\\}", "g");
 
 const isPostSyncCommandVariable = (name: string): name is PostSyncCommandVariable =>
   (Object.values(PostSyncCommandVariable) as string[]).includes(name);
@@ -31,7 +31,7 @@ export const findSingleCertificatePostSyncCommandVariables = (command?: string):
   if (!command) return [];
 
   const used = new Set<string>();
-  command.replace(PLACEHOLDER_PATTERN, (match: string, name: string) => {
+  command.replace(VARIABLE_PATTERN, (match: string, name: string) => {
     used.add(name);
     return match;
   });
@@ -116,7 +116,7 @@ export const buildPostSyncCommandPlan = (args: {
     throw new PkiSyncError({
       message: `Post-sync command uses ${formatPostSyncCommandVariables(
         singleCertificateVariables
-      )}. A placeholder that names one certificate cannot be resolved for a run that delivered ${
+      )}. A variable that names one certificate cannot be resolved for a run that delivered ${
         deliveredCertificates.length
       } certificates. Unlink all but one certificate, or use {{certificateFiles}} instead.`,
       shouldRetry: false
@@ -165,7 +165,7 @@ export const renderPostSyncCommand = (
     [PostSyncCommandVariable.Pkcs12Password, context.pkcs12Password]
   ]);
 
-  return command.replace(PLACEHOLDER_PATTERN, (match: string, name: string) =>
+  return command.replace(VARIABLE_PATTERN, (match: string, name: string) =>
     isPostSyncCommandVariable(name) ? toShellLiteral(values.get(name) ?? "") : match
   );
 };

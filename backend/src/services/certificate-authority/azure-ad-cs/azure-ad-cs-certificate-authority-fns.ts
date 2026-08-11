@@ -1108,6 +1108,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
     notAfter,
     signatureAlgorithm,
     keyAlgorithm = CertKeyAlgorithm.RSA_2048,
+    csr,
     isRenewal,
     originalCertificateId,
     isCancelled
@@ -1124,6 +1125,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
     notAfter?: Date;
     signatureAlgorithm?: string;
     keyAlgorithm?: CertKeyAlgorithm;
+    csr?: string;
     isRenewal?: boolean;
     originalCertificateId?: string;
     isCancelled?: () => Promise<boolean>;
@@ -1202,10 +1204,6 @@ export const AzureAdCsCertificateAuthorityFns = ({
       alg = keyAlgorithmToAlgCfg(keyAlgorithm);
     }
 
-    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
-    const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
-
     const subjectDN = buildSubjectDN(commonName);
 
     let sanExtension = "";
@@ -1213,21 +1211,31 @@ export const AzureAdCsCertificateAuthorityFns = ({
       sanExtension = altNames.join(",");
     }
 
-    const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
-      name: subjectDN,
-      keys: leafKeys,
-      signingAlgorithm: alg,
-      ...(sanExtension && {
-        extensions: [
-          new x509.SubjectAlternativeNameExtension(
-            altNames.map((name) => ({ type: "dns" as TAltNameType, value: name })),
-            false
-          )
-        ]
-      })
-    });
+    let skLeaf: string | undefined;
+    let csrPem: string;
+    if (csr) {
+      csrPem = new x509.Pkcs10CertificateRequest(csr).toString("pem");
+    } else {
+      const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+      const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
+      skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
-    const csrPem = csrObj.toString("pem");
+      const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
+        name: subjectDN,
+        keys: leafKeys,
+        signingAlgorithm: alg,
+        ...(sanExtension && {
+          extensions: [
+            new x509.SubjectAlternativeNameExtension(
+              altNames.map((name) => ({ type: "dns" as TAltNameType, value: name })),
+              false
+            )
+          ]
+        })
+      });
+
+      csrPem = csrObj.toString("pem");
+    }
 
     let templateValue = template;
     if (!templateValue) {
@@ -1396,9 +1404,9 @@ export const AzureAdCsCertificateAuthorityFns = ({
       plainText: Buffer.from(certificateChainPem)
     });
 
-    const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
-      plainText: Buffer.from(skLeaf)
-    });
+    const encryptedPrivateKey = skLeaf
+      ? (await kmsEncryptor({ plainText: Buffer.from(skLeaf) })).cipherTextBlob
+      : undefined;
 
     if (isCancelled && (await isCancelled())) {
       throw new CertificateRequestCancelledError();
@@ -1443,13 +1451,15 @@ export const AzureAdCsCertificateAuthorityFns = ({
         tx
       );
 
-      await certificateSecretDAL.create(
-        {
-          certId: cert.id,
-          encryptedPrivateKey
-        },
-        tx
-      );
+      if (encryptedPrivateKey) {
+        await certificateSecretDAL.create(
+          {
+            certId: cert.id,
+            encryptedPrivateKey
+          },
+          tx
+        );
+      }
 
       if (profileId && validity?.ttl && certificateProfileDAL) {
         const profile = await certificateProfileDAL.findById(profileId, tx);

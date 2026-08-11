@@ -10,6 +10,9 @@
   "styling": {
     "codeblocks": "dark"
   },
+  "thumbnails": {
+    "appearance": "light"
+  },
   "favicon": "/favicon.ico",
   "contextual": {
     "options": [

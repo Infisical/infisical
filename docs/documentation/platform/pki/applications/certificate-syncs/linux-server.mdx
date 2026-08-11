@@ -4,7 +4,8 @@ sidebarTitle: "Linux Server"
 description: "Deploy certificates to Linux servers over SSH."
 ---
 
-import PostSyncCommandPlaceholders from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-placeholders.mdx";
+import PostSyncCommandVariables from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-variables.mdx";
+import PostSyncCommandFlow from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-flow.mdx";
 
 Deploy certificates from Infisical to a directory on a Linux server over SSH. Files are written atomically over SFTP so a reader never sees a partially written certificate or key.
 
@@ -17,7 +18,7 @@ Deploy certificates from Infisical to a directory on a Linux server over SSH. Fi
 - An [SSH Connection](/integrations/app-connections/ssh) with access to the target server
 - The destination directory must already exist on the server and the connection user must be able to write to it
 - The server must be reachable from Infisical, either directly or through an [Infisical Gateway](/documentation/platform/gateways/overview)
-- A Gateway is required to use a [post-sync command](#post-sync-commands), because the Gateway is what executes it
+- A Gateway is required to use a [post-sync command](#post-sync-commands), because the Gateway is what executes it. It must be running Infisical CLI v0.43.120 or later
 
 ## Create a Linux Server Sync
 
@@ -45,7 +46,7 @@ Deploy certificates from Infisical to a directory on a Linux server over SSH. Fi
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
         5. Configure the **Post-Sync Command**, or leave it empty:
-            - **Command**: A command run on the server after the sync delivers a certificate, so the service that uses it picks up the new file, for example `sudo systemctl reload nginx`. [Post-Sync Commands](#post-sync-commands) covers the available placeholders and what happens when the command fails.
+            - **Command**: A command run on the server after the sync delivers a certificate, so the service that uses it picks up the new file, for example `sudo systemctl reload nginx`. [Post-Sync Commands](#post-sync-commands) covers the available variables and what happens when the command fails.
 
         6. Configure the **Details**:
             - **Name**: The name of your sync.
@@ -120,24 +121,11 @@ The field accepts a whole script, so several steps can run in one go: put each o
 
 <Note>
   Your [Infisical Gateway](/documentation/platform/gateways/overview) runs the command, never Infisical. The sync's SSH Connection must therefore use a gateway, otherwise the command is rejected when you save the sync.
+
+  The Gateway must be running Infisical CLI **v0.43.120 or later**. Earlier Gateways either cannot run the command at all or cannot unlock an SSH Connection's passphrase-protected private key, so the command fails. Run `infisical --version` on the Gateway host to check, and see [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for how to upgrade.
 </Note>
 
-The command runs on the target server, not on Infisical, and only after the whole delivery has finished:
-
-```mermaid
-sequenceDiagram
-    participant I as Infisical
-    participant G as Gateway
-    participant S as Target server
-    I->>G: Deliver certificate files
-    G->>S: Write files
-    G->>S: Remove files for certificates no longer synced
-    Note over G,S: Only once the server is in its final state
-    I->>G: Run the post-sync command
-    G->>S: Execute as the connection's account
-    S-->>G: Output and outcome
-    G-->>I: Success, or the reason it failed
-```
+<PostSyncCommandFlow />
 
 ### Setting a Command
 
@@ -146,7 +134,7 @@ sequenceDiagram
     Edit the sync and select **Post-Sync Command**.
   </Step>
   <Step title="Write the command">
-    Use a placeholder wherever you need a value from the run:
+    Use a variable wherever you need a value from the run. Typing `{{` in the command field lists the ones available for this sync, so you can pick one instead of remembering the name:
 
     ```bash
     cp {{certificatePath}} /etc/nginx/ssl/live.pem && systemctl reload nginx
@@ -157,13 +145,13 @@ sequenceDiagram
   </Step>
 </Steps>
 
-### Available Placeholders
+### Available Variables
 
-<PostSyncCommandPlaceholders />
+<PostSyncCommandVariables />
 
 ### Length Limit
 
-A command is limited to 8192 characters, counted after the placeholders are substituted. For anything longer, put the logic in a script on the server and call that script.
+A command is limited to 8192 characters, counted after the variables are substituted. For anything longer, put the logic in a script on the server and call that script.
 
 ### Post-Sync Command FAQ
 
