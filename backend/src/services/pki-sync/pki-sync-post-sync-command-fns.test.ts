@@ -266,7 +266,8 @@ describe("runPostSyncCommand", () => {
       execute: async () => ({ stdout: "x".repeat(5000), stderr: "", exitCode: 0 })
     });
 
-    expect(result.output).toHaveLength(1000 + "... (truncated)".length);
+    // The suffix counts against the cap, so the cap bounds what actually gets stored.
+    expect(result.output).toHaveLength(1000);
     expect(result.output?.endsWith("... (truncated)")).toBe(true);
   });
 

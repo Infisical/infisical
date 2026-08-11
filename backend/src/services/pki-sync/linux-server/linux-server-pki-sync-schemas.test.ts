@@ -81,8 +81,8 @@ describe("Linux Server postSyncCommand validation", () => {
   });
 
   test("rejects a command beyond the length limit", () => {
-    expect(parseCommand("a".repeat(2048)).success).toBe(true);
-    expect(parseCommand("a".repeat(2049)).success).toBe(false);
+    expect(parseCommand("a".repeat(8192)).success).toBe(true);
+    expect(parseCommand("a".repeat(8193)).success).toBe(false);
   });
 
   test("is optional", () => {

@@ -169,7 +169,7 @@ sequenceDiagram
 
 ### Length Limit
 
-A command is limited to 2048 characters. Windows caps a command line at 8191 characters and the command is sent to PowerShell encoded, which expands it, so the substituted values count against the same budget. If a long command combined with a sync that delivers many certificates does not fit, the sync reports it clearly. Move the logic into a script file on the server and call that script instead.
+A command is limited to 8192 characters, counted after the placeholders are substituted. For anything longer, put the logic in a script on the server and call that script.
 
 ### Post-Sync Command FAQ
 
