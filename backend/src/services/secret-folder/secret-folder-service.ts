@@ -178,7 +178,7 @@ export const secretFolderServiceFactory = ({
     const pathWithFolder = path.join(secretPath, name);
 
     const lock = await keyStore.acquireLock([KeyStorePrefixes.CreateFolderLock(env.id)], 5000, {
-      retryCount: -1,
+      retryCount: 25,
       retryDelay: 200,
       retryJitter: 50
     });
