@@ -38,6 +38,7 @@ export const Route = createFileRoute(
       search: {
         secretPath: search.secretPath,
         search: search.search,
+        tags: search.tags || undefined,
         filterBy: search.filterBy || undefined,
         connectionId: search.connectionId,
         connectionName: search.connectionName,

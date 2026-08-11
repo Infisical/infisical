@@ -305,6 +305,7 @@ const OverviewPageContent = () => {
       environments: el.environments,
       dynamicSecretId: el.dynamicSecretId,
       honeyTokenId: el.honeyTokenId,
+      tags: el.tags,
       filterBy: el.filterBy
     })
   });
@@ -456,18 +457,18 @@ const OverviewPageContent = () => {
   );
 
   // Apply one-shot deep-link inputs to local filters, then strip them from the URL in a SINGLE
-  // navigate. These arrive either from a notification/email link (`search`, `filterBy`) or from
-  // the secret reference tree (`environments` + `search`). Handling them in one effect/navigate
+  // navigate. These arrive from notifications, legacy dashboard bookmarks (`tags`, `filterBy`),
+  // or the secret reference tree (`environments` + `search`). Handling them in one effect/navigate
   // (rather than two racing effects) guarantees every param is cleared after it's applied. That
   // matters most for `environments`: re-selecting the same environment from the reference tree
   // changes the param again and re-fires this effect instead of being a no-op. Runs reactively
   // (not mount-only) because the tree is rendered inside this page, so navigating from a node
   // updates the params without remounting.
   useEffect(() => {
-    const { search, filterBy, environments: envSlugs, ...query } = routerSearch;
+    const { search, tags, filterBy, environments: envSlugs, ...query } = routerSearch;
     const hasEnvLink = Boolean(envSlugs?.length);
 
-    if (!search && !filterBy && !hasEnvLink) return;
+    if (!search && !tags && !filterBy && !hasEnvLink) return;
     // Env link present but envs not loaded yet → wait so we don't strip it before applying.
     if (hasEnvLink && userAvailableEnvs.length === 0) return;
 
@@ -480,15 +481,31 @@ const OverviewPageContent = () => {
       }
     }
 
-    if (search || filterBy) {
+    if (search || tags || filterBy) {
       const initialFilter = { ...DEFAULT_FILTER_STATE };
       if (filterBy) {
-        const rowType = Object.values(RowType).find((rt) => rt === filterBy);
-        if (rowType) {
-          initialFilter[rowType] = true;
-        }
+        filterBy
+          .split(",")
+          .map((value) => value.trim())
+          .filter((value): value is RowType => Object.values(RowType).includes(value as RowType))
+          .forEach((rowType) => {
+            initialFilter[rowType] = true;
+          });
       }
+
+      const initialTagFilter = (tags ?? "")
+        .split(",")
+        .reduce<Record<string, boolean>>((acc, tag) => {
+          const tagSlug = tag.trim();
+          if (tagSlug) acc[tagSlug] = true;
+          return acc;
+        }, {});
+      if (Object.keys(initialTagFilter).length > 0) {
+        initialFilter[RowType.Secret] = true;
+      }
+
       setFilter(initialFilter);
+      setTagFilter(initialTagFilter);
 
       if (search) {
         setSearchFilter(search as string);
@@ -498,6 +515,7 @@ const OverviewPageContent = () => {
     navigate({ search: query, replace: true });
   }, [
     routerSearch.search,
+    routerSearch.tags,
     routerSearch.filterBy,
     routerSearch.environments?.join(","),
     userAvailableEnvs.length
