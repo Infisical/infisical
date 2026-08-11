@@ -28,7 +28,7 @@ import { DynamicSecretStatus, TDynamicSecretServiceFactory } from "./dynamic-sec
 import { AzureEntraIDProvider } from "./providers/azure-entra-id";
 import { GcpIamServiceAccountSuffixError } from "./providers/gcp-iam";
 import { IbmApiConnectProvider } from "./providers/ibm-api-connect";
-import { DynamicSecretProviders, SshStoredSchema, TDynamicProviderFns } from "./providers/models";
+import { DynamicSecretProviders, redactStoredInputs, SshStoredSchema, TDynamicProviderFns } from "./providers/models";
 
 type TDynamicSecretServiceFactoryDep = {
   dynamicSecretDAL: TDynamicSecretDALFactory;
@@ -657,7 +657,7 @@ export const dynamicSecretServiceFactory = ({
 
     return {
       ...dynamicSecretCfg,
-      inputs: providerInputs,
+      inputs: redactStoredInputs(dynamicSecretCfg.type as DynamicSecretProviders, providerInputs),
       projectId: project.id,
       environment: environmentSlug,
       secretPath: path
