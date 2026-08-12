@@ -11,16 +11,19 @@ import {
   Button,
   Field,
   FieldContent,
+  FieldDescription,
   FieldError,
   FieldLabel,
   FilterableSelect,
   Input,
+  Label,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  Switch,
   Tabs,
   TabsList,
   TabsTrigger
@@ -40,7 +43,8 @@ enum IdentityWizardSteps {
 
 const schema = z.object({
   name: z.string().min(1, "Required"),
-  role: z.object({ slug: z.string(), name: z.string() })
+  role: z.object({ slug: z.string(), name: z.string() }),
+  isAgent: z.boolean()
 });
 
 type FormData = z.infer<typeof schema>;
@@ -52,7 +56,7 @@ type Props = {
 
 const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
   const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
   const {
@@ -73,18 +77,19 @@ const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "" }
+    defaultValues: { name: "", isAgent: false }
   });
 
   useEffect(() => {
     if (!roles?.length) return;
     reset({
       name: "",
-      role: findOrgMembershipRole(roles, currentOrg!.defaultMembershipRole)
+      role: findOrgMembershipRole(roles, currentOrg!.defaultMembershipRole),
+      isAgent: false
     });
   }, [roles]);
 
-  const onFormSubmit = async ({ name, role }: FormData) => {
+  const onFormSubmit = async ({ name, role, isAgent }: FormData) => {
     if (role?.slug && isCustomOrgRole(role.slug) && subscription && !subscription?.rbac) {
       handleUpgradePlanPopUpOpen("upgradePlan");
       return;
@@ -94,6 +99,7 @@ const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
       name,
       role: role.slug || undefined,
       hasDeleteProtection: true,
+      isAgent,
       organizationId: orgId
     });
 
@@ -161,6 +167,27 @@ const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
                 />
               </FieldContent>
               {error && <FieldError>{error.message}</FieldError>}
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="isAgent"
+          render={({ field: { onChange, value } }) => (
+            <Field orientation="horizontal">
+              <FieldContent>
+                <Label htmlFor="identity-is-agent">Agent</Label>
+                <FieldDescription>
+                  Lets this identity start a session on a user&apos;s behalf and appear in agent
+                  policies. It can then only do what both it and that user are allowed to do.
+                </FieldDescription>
+              </FieldContent>
+              <Switch
+                id="identity-is-agent"
+                variant={isSubOrganization ? "sub-org" : "org"}
+                checked={value}
+                onCheckedChange={onChange}
+              />
             </Field>
           )}
         />

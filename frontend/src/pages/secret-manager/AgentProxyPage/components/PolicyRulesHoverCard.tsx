@@ -1,3 +1,5 @@
+import { ListChecksIcon } from "lucide-react";
+
 import {
   Badge,
   HoverCard,
@@ -19,6 +21,7 @@ export const PolicyRulesHoverCard = ({ rules }: { rules: TPolicyRule[] }) => {
     <HoverCard>
       <HoverCardTrigger asChild>
         <Badge variant="neutral">
+          <ListChecksIcon />
           {rules.length} {rules.length === 1 ? "rule" : "rules"}
         </Badge>
       </HoverCardTrigger>

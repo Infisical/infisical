@@ -1402,6 +1402,7 @@ interface CreateIdentityEvent {
     identityId: string;
     name: string;
     hasDeleteProtection: boolean;
+    isAgent?: boolean;
     metadata?: { key: string; value: string }[];
     roles?: (
       | { role: string; isTemporary: false }
@@ -1422,6 +1423,7 @@ interface UpdateIdentityEvent {
     identityId: string;
     name?: string;
     hasDeleteProtection?: boolean;
+    isAgent?: boolean;
     metadata?: { key: string; value: string }[];
   };
 }

@@ -19,10 +19,12 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { TProjectIdentity, useUpdateProjectIdentity } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 const schema = z.object({
   name: z.string().min(1, "Required"),
   hasDeleteProtection: z.boolean(),
+  isAgent: z.boolean(),
   metadata: z
     .object({
       key: z.string().trim().min(1),
@@ -41,6 +43,8 @@ type ContentProps = {
 
 export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
   const { currentProject } = useProject();
+  // Matches the create form: the flag is only reachable where agent policies live.
+  const canBeAgent = currentProject.type === ProjectType.SecretManager;
 
   const { mutateAsync: updateMutateAsync } = useUpdateProjectIdentity();
 
@@ -54,6 +58,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
     defaultValues: {
       name: identity?.name ?? "",
       hasDeleteProtection: identity?.hasDeleteProtection ?? true,
+      isAgent: identity?.isAgent ?? false,
       metadata: identity?.metadata ?? []
     }
   });
@@ -63,12 +68,13 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
     name: "metadata"
   });
 
-  const onFormSubmit = async ({ name, metadata, hasDeleteProtection }: FormData) => {
+  const onFormSubmit = async ({ name, metadata, hasDeleteProtection, isAgent }: FormData) => {
     try {
       await updateMutateAsync({
         identityId: identity.id,
         name,
         hasDeleteProtection,
+        isAgent,
         projectId: currentProject.id,
         metadata
       });
@@ -129,6 +135,29 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
           </Field>
         )}
       />
+      {canBeAgent && (
+        <Controller
+          control={control}
+          name="isAgent"
+          render={({ field: { onChange, value } }) => (
+            <Field orientation="horizontal">
+              <Switch
+                id="identity-is-agent"
+                variant="project"
+                checked={value}
+                onCheckedChange={onChange}
+              />
+              <FieldContent>
+                <Label htmlFor="identity-is-agent">Agent</Label>
+                <FieldDescription>
+                  Lets this identity start a session on a user&apos;s behalf and appear in agent
+                  policies. It can then only do what both it and that user are allowed to do.
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
       <div className="flex flex-col gap-2">
         <Label>Metadata</Label>
         <div
