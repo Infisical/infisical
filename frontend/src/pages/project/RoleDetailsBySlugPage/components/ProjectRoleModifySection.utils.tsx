@@ -696,6 +696,7 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.AuditLogs]: AuditLogsPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Insights]: InsightsPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.IpAllowList]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.Endpoint]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.CertificateAuthorities]: CertificateAuthorityPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -2507,6 +2508,32 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Remove", value: "delete", description: "Remove IP addresses from the allowlist" }
     ]
   },
+  [ProjectPermissionSub.Endpoint]: {
+    title: "Endpoint",
+    description: "Manage endpoint devices, egress policies, and activity",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionActions.Read,
+        description: "View endpoint resources"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionActions.Create,
+        description: "Create endpoint resources"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionActions.Edit,
+        description: "Update endpoint resources"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionActions.Delete,
+        description: "Delete endpoint resources"
+      }
+    ]
+  },
   [ProjectPermissionSub.CertificateAuthorities]: {
     title: "Certificate Authorities",
     description: "Manage PKI root and intermediate certificate authorities",
@@ -3262,7 +3289,8 @@ export const ProjectTypePermissionSubjects: Record<
     [ProjectPermissionSub.AppConnections]: true,
     // Approval Requests / Grants are not used in Secret Manager (secret approvals use SecretApproval policy)
     [ProjectPermissionSub.ApprovalRequests]: false,
-    [ProjectPermissionSub.ApprovalRequestGrants]: false
+    [ProjectPermissionSub.ApprovalRequestGrants]: false,
+    [ProjectPermissionSub.Endpoint]: false
   },
   [ProjectType.KMS]: {
     ...SharedPermissionSubjects,
@@ -3270,7 +3298,8 @@ export const ProjectTypePermissionSubjects: Record<
     ...SecretsManagerPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(),
     ...SecretScanningSubject(),
-    [ProjectPermissionSub.AppConnections]: false
+    [ProjectPermissionSub.AppConnections]: false,
+    [ProjectPermissionSub.Endpoint]: false
   },
   [ProjectType.CertificateManager]: {
     ...SharedPermissionSubjects,
@@ -3278,7 +3307,8 @@ export const ProjectTypePermissionSubjects: Record<
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
     ...SecretScanningSubject(),
-    [ProjectPermissionSub.AppConnections]: true
+    [ProjectPermissionSub.AppConnections]: true,
+    [ProjectPermissionSub.Endpoint]: false
   },
   [ProjectType.SecretScanning]: {
     ...SharedPermissionSubjects,
@@ -3286,7 +3316,8 @@ export const ProjectTypePermissionSubjects: Record<
     ...CertificateManagerPermissionSubjects(),
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
-    [ProjectPermissionSub.AppConnections]: true
+    [ProjectPermissionSub.AppConnections]: true,
+    [ProjectPermissionSub.Endpoint]: false
   },
   [ProjectType.PAM]: {
     ...SharedPermissionSubjects,
@@ -3294,7 +3325,17 @@ export const ProjectTypePermissionSubjects: Record<
     ...CertificateManagerPermissionSubjects(),
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
-    [ProjectPermissionSub.AppConnections]: false
+    [ProjectPermissionSub.AppConnections]: false,
+    [ProjectPermissionSub.Endpoint]: false
+  },
+  [ProjectType.Endpoint]: {
+    ...SharedPermissionSubjects,
+    ...SecretScanningSubject(),
+    ...CertificateManagerPermissionSubjects(),
+    ...KmsPermissionSubjects(),
+    ...SecretsManagerPermissionSubjects(),
+    [ProjectPermissionSub.AppConnections]: false,
+    [ProjectPermissionSub.Endpoint]: true
   }
 };
 
@@ -3714,5 +3755,6 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       ]
     }
   ],
-  [ProjectType.PAM]: [projectManagerTemplate()]
+  [ProjectType.PAM]: [projectManagerTemplate()],
+  [ProjectType.Endpoint]: [projectManagerTemplate()]
 };

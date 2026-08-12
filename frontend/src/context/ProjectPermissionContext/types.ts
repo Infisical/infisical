@@ -431,7 +431,8 @@ export enum ProjectPermissionSub {
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   ProjectFolderGrant = "project-folder-grant",
-  Insights = "insights"
+  Insights = "insights",
+  Endpoint = "endpoint"
 }
 
 export type SecretSubjectFields = {
@@ -686,6 +687,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
   | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
+  | [ProjectPermissionActions, ProjectPermissionSub.Endpoint]
   | [
       ProjectPermissionHoneyTokenActions,
       (

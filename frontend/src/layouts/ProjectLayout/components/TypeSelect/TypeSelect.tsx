@@ -31,7 +31,8 @@ const PRODUCT_TYPES: ProjectType[] = [
   ProjectType.CertificateManager,
   ProjectType.KMS,
   ProjectType.SecretScanning,
-  ProjectType.PAM
+  ProjectType.PAM,
+  ProjectType.Endpoint
 ];
 
 const TypeSelectInner = ({
@@ -98,6 +99,14 @@ const TypeSelectInner = ({
       return;
     }
 
+    if (type === ProjectType.Endpoint) {
+      navigate({
+        to: "/organizations/$orgId/endpoint/devices",
+        params: { orgId }
+      });
+      return;
+    }
+
     navigate({
       to: "/organizations/$orgId/projects/$type",
       params: { orgId, type: projectTypeToUrlSlug(type) }
@@ -122,6 +131,11 @@ const TypeSelectInner = ({
             } else if (currentType === ProjectType.PAM) {
               navigate({
                 to: "/organizations/$orgId/pam/access",
+                params: { orgId: currentOrg?.id || "" }
+              });
+            } else if (currentType === ProjectType.Endpoint) {
+              navigate({
+                to: "/organizations/$orgId/endpoint/devices",
                 params: { orgId: currentOrg?.id || "" }
               });
             } else {
@@ -199,6 +213,10 @@ export const TypeSelect = () => {
 
   if (!params.projectId && pathname.includes("/pam/")) {
     return <TypeSelectInner currentType={ProjectType.PAM} />;
+  }
+
+  if (!params.projectId && pathname.includes("/endpoint/")) {
+    return <TypeSelectInner currentType={ProjectType.Endpoint} />;
   }
 
   if (params.projectId) {

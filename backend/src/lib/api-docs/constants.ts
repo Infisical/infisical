@@ -55,6 +55,7 @@ export enum ApiDocsTags {
   SecretImports = "Secret Imports",
   SecretRotations = "Secret Rotations",
   ProxiedServices = "Proxied Services",
+  Endpoint = "Endpoint",
   IdentitySpecificPrivilegesV1 = "Identity Specific Privileges",
   IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
   AppConnections = "App Connections",

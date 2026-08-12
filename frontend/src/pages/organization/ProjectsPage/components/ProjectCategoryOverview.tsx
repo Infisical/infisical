@@ -44,7 +44,8 @@ const PRODUCT_TYPES: ActiveProducts[] = [
   ProjectType.CertificateManager,
   ProjectType.KMS,
   ProjectType.SecretScanning,
-  ProjectType.PAM
+  ProjectType.PAM,
+  ProjectType.Endpoint
 ];
 
 const PRODUCT_STYLES: Record<
@@ -90,6 +91,14 @@ const PRODUCT_STYLES: Record<
       "border-product-pam/30 bg-gradient-to-br from-product-pam/20 to-product-pam/5 group-hover:border-product-pam/50 group-hover:from-product-pam/25 group-hover:to-product-pam/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-pam/[0.04] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-pam/60"
+  },
+  [ProjectType.Endpoint]: {
+    iconClassName: "h-4.5 w-4.5 text-product-endpoint",
+    containerClassName:
+      "border-product-endpoint/30 bg-gradient-to-br from-product-endpoint/20 to-product-endpoint/5 group-hover:border-product-endpoint/50 group-hover:from-product-endpoint/25 group-hover:to-product-endpoint/10",
+    cardClassName:
+      "hover:bg-gradient-to-br hover:from-product-endpoint/[0.04] hover:to-transparent",
+    titleUnderlineClassName: "decoration-product-endpoint/60"
   }
 };
 
@@ -199,6 +208,11 @@ export const ProjectCategoryOverview = () => {
           { label: "accounts", value: productStats.pam.accountsCount },
           { label: "account templates", value: productStats.pam.accountTemplatesCount },
           { label: "folders", value: productStats.pam.foldersCount }
+        ];
+      case ProjectType.Endpoint:
+        return [
+          { label: "devices", value: productStats.endpoint?.devicesCount ?? 0 },
+          { label: "egress rules", value: productStats.endpoint?.egressRulesCount ?? 0 }
         ];
       default:
         return [];
@@ -319,6 +333,12 @@ export const ProjectCategoryOverview = () => {
 
     if (type === ProjectType.PAM) {
       await enterPamProject();
+      return;
+    }
+
+    // Endpoint is org-scoped like PAM, so it has no /projects/$type landing page to fall through to.
+    if (type === ProjectType.Endpoint) {
+      navigate({ to: "/organizations/$orgId/endpoint/devices", params: { orgId } });
       return;
     }
 

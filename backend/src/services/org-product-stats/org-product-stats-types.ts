@@ -28,4 +28,8 @@ export type TOrgProductStats = {
     accountTemplatesCount: number;
     foldersCount: number;
   };
+  endpoint: {
+    devicesCount: number;
+    egressRulesCount: number;
+  };
 };

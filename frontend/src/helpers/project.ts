@@ -1,4 +1,12 @@
-import { FileKeyIcon, KeyIcon, LockIcon, LucideIcon, RadarIcon, UsersIcon } from "lucide-react";
+import {
+  FileKeyIcon,
+  KeyIcon,
+  LockIcon,
+  LucideIcon,
+  RadarIcon,
+  ShieldIcon,
+  UsersIcon
+} from "lucide-react";
 
 import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/projects/queries";
@@ -123,6 +131,8 @@ export const getProjectBaseURL = (type: ProjectType) => {
       return "/organizations/$orgId/projects/cert-manager/$projectId";
     case ProjectType.PAM:
       return "/organizations/$orgId/pam" as const;
+    case ProjectType.Endpoint:
+      return "/organizations/$orgId/endpoint" as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId` as const;
   }
@@ -140,6 +150,8 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
       return `/organizations/$orgId/projects/${type}/$projectId/data-sources` as const;
     case ProjectType.PAM:
       return "/organizations/$orgId/pam/access" as const;
+    case ProjectType.Endpoint:
+      return "/organizations/$orgId/endpoint/devices" as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId/overview` as const;
   }
@@ -151,7 +163,8 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.KMS]: "KMS",
     [ProjectType.CertificateManager]: "Certificate Manager",
     [ProjectType.SecretScanning]: "Secret Scanning",
-    [ProjectType.PAM]: "Privileged Access Manager"
+    [ProjectType.PAM]: "Privileged Access Manager",
+    [ProjectType.Endpoint]: "Endpoint"
   };
   return titleConvert[type] || type;
 };
@@ -167,7 +180,9 @@ export const getProjectDescription = (type: ProjectType) => {
     [ProjectType.SecretScanning]:
       "Continuously scan repositories, builds, and runtime artifacts for leaked secrets and misconfigurations.",
     [ProjectType.PAM]:
-      "Connect to databases and servers securely with session brokering, recording, and credential vaulting."
+      "Connect to databases and servers securely with session brokering, recording, and credential vaulting.",
+    [ProjectType.Endpoint]:
+      "Enforce egress policy and monitor activity on registered devices from a single fleet view."
   };
   return descriptions[type] ?? "";
 };
@@ -203,7 +218,8 @@ export const getProjectLucideIcon = (type: ProjectType): LucideIcon => {
     [ProjectType.KMS]: LockIcon,
     [ProjectType.CertificateManager]: FileKeyIcon,
     [ProjectType.SecretScanning]: RadarIcon,
-    [ProjectType.PAM]: UsersIcon
+    [ProjectType.PAM]: UsersIcon,
+    [ProjectType.Endpoint]: ShieldIcon
   };
   return iconConvert[type] || KeyIcon;
 };

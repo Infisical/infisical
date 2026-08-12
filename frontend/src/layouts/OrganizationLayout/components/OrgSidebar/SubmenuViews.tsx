@@ -33,9 +33,17 @@ export const ProjectSubmenuView = ({
   const typePath = PROJECT_TYPE_PATH[currentProject.type];
   const sidebarScope = useSidebarScope();
   const isPam = currentProject.type === ProjectType.PAM;
-  const basePath = isPam
-    ? `/organizations/${currentOrg.id}/pam`
-    : `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
+  const isEndpoint = currentProject.type === ProjectType.Endpoint;
+  const basePath = (() => {
+    if (isPam) return `/organizations/${currentOrg.id}/pam`;
+    if (isEndpoint) return `/organizations/${currentOrg.id}/endpoint`;
+    return `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
+  })();
+  const linkTo = (() => {
+    if (isPam) return `/organizations/$orgId/pam/${submenu.pathSuffix}`;
+    if (isEndpoint) return `/organizations/$orgId/endpoint/${submenu.pathSuffix}`;
+    return `/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}`;
+  })();
   const isOnExactPage = pathname.startsWith(`${basePath}/${submenu.pathSuffix}`);
   const currentTab = searchParams?.selectedTab;
   const anyItemMatchesDetail = submenu.items.some((s) => Boolean(s.activeMatch?.test(pathname)));
@@ -73,11 +81,7 @@ export const ProjectSubmenuView = ({
               >
                 <Link
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  to={
-                    isPam
-                      ? (`/organizations/$orgId/pam/${submenu.pathSuffix}` as any)
-                      : (`/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any)
-                  }
+                  to={linkTo as any}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   params={{ orgId: currentOrg.id, projectId: currentProject.id } as any}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any

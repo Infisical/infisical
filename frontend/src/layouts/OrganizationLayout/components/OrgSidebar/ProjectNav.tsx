@@ -9,6 +9,7 @@ import { hasIntermediateProjectsView, projectTypeToUrlSlug } from "@app/helpers/
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { CertManagerNav } from "./CertManagerNav";
+import { EndpointNav } from "./EndpointNav";
 import { KmsNav } from "./KmsNav";
 import { PamNav } from "./PamNav";
 import { SecretManagerNav } from "./SecretManagerNav";
@@ -33,7 +34,8 @@ const PROJECT_NAV_COMPONENT: Record<
   [ProjectType.KMS]: KmsNav,
   [ProjectType.CertificateManager]: CertManagerNav,
   [ProjectType.PAM]: PamNav,
-  [ProjectType.SecretScanning]: SecretScanningNav
+  [ProjectType.SecretScanning]: SecretScanningNav,
+  [ProjectType.Endpoint]: EndpointNav
 };
 
 // --- Project nav wrapper ---

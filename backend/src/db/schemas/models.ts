@@ -336,6 +336,12 @@ export enum TableName {
   ProxiedService = "proxied_services",
   ProxiedServiceCredential = "proxied_service_credentials",
 
+  // Infisical Endpoint (device egress policy)
+  EndpointDevice = "endpoint_devices",
+  EndpointEgressRule = "endpoint_egress_rules",
+  EndpointCounter = "endpoint_counters",
+  EndpointEvent = "endpoint_events",
+
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",
   DeprecatedSecretRotationV1 = "secret_rotations",
@@ -446,7 +452,8 @@ export enum ProjectType {
   CertificateManager = "cert-manager",
   KMS = "kms",
   SecretScanning = "secret-scanning",
-  PAM = "pam"
+  PAM = "pam",
+  Endpoint = "endpoint"
 }
 
 export enum ActionProjectType {
@@ -455,6 +462,7 @@ export enum ActionProjectType {
   KMS = ProjectType.KMS,
   SecretScanning = ProjectType.SecretScanning,
   PAM = ProjectType.PAM,
+  Endpoint = ProjectType.Endpoint,
   // project operations that happen on all types
   Any = "any"
 }

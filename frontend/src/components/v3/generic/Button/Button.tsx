@@ -36,6 +36,8 @@ const buttonVariants = cva(
         danger:
           "border-danger/25 bg-danger/10 text-foreground hover:bg-danger/15 hover:border-danger/30 data-[state=open]:bg-danger/15 data-[state=open]:border-danger/30",
         pam: "border-product-pam/30 bg-product-pam/25 text-foreground hover:bg-product-pam/30 hover:border-product-pam/35 data-[state=open]:bg-product-pam/30 data-[state=open]:border-product-pam/35",
+        endpoint:
+          "border-product-endpoint/30 bg-product-endpoint/25 text-foreground hover:bg-product-endpoint/30 hover:border-product-endpoint/35 data-[state=open]:bg-product-endpoint/30 data-[state=open]:border-product-endpoint/35",
         // Tinted from --product-color, which the caller must set inline (e.g. a billing catalog
         // product's color) since the palette isn't knowable at build time.
         product:

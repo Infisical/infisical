@@ -134,6 +134,18 @@ import {
   TDynamicSecrets,
   TDynamicSecretsInsert,
   TDynamicSecretsUpdate,
+  TEndpointCounters,
+  TEndpointCountersInsert,
+  TEndpointCountersUpdate,
+  TEndpointDevices,
+  TEndpointDevicesInsert,
+  TEndpointDevicesUpdate,
+  TEndpointEgressRules,
+  TEndpointEgressRulesInsert,
+  TEndpointEgressRulesUpdate,
+  TEndpointEvents,
+  TEndpointEventsInsert,
+  TEndpointEventsUpdate,
   TExternalCertificateAuthorities,
   TExternalCertificateAuthoritiesInsert,
   TExternalCertificateAuthoritiesUpdate,
@@ -1334,6 +1346,26 @@ declare module "knex/types/tables" {
       TDynamicSecretLeasesUpdate
     >;
     [TableName.EmailDomains]: KnexOriginal.CompositeTableType<TEmailDomains, TEmailDomainsInsert, TEmailDomainsUpdate>;
+    [TableName.EndpointDevice]: KnexOriginal.CompositeTableType<
+      TEndpointDevices,
+      TEndpointDevicesInsert,
+      TEndpointDevicesUpdate
+    >;
+    [TableName.EndpointEgressRule]: KnexOriginal.CompositeTableType<
+      TEndpointEgressRules,
+      TEndpointEgressRulesInsert,
+      TEndpointEgressRulesUpdate
+    >;
+    [TableName.EndpointCounter]: KnexOriginal.CompositeTableType<
+      TEndpointCounters,
+      TEndpointCountersInsert,
+      TEndpointCountersUpdate
+    >;
+    [TableName.EndpointEvent]: KnexOriginal.CompositeTableType<
+      TEndpointEvents,
+      TEndpointEventsInsert,
+      TEndpointEventsUpdate
+    >;
     [TableName.SamlConfig]: KnexOriginal.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;
     [TableName.OauthClient]: KnexOriginal.CompositeTableType<TOauthClients, TOauthClientsInsert, TOauthClientsUpdate>;
     [TableName.OidcConfig]: KnexOriginal.CompositeTableType<TOidcConfigs, TOidcConfigsInsert, TOidcConfigsUpdate>;

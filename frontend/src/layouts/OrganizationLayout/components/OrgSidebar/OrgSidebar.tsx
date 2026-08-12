@@ -24,7 +24,8 @@ export const OrgSidebar = () => {
   });
   const { pathname } = useLocation();
   const isPamRoute = pathname.includes("/pam/");
-  const isInsideProject = Boolean(projectId) || isPamRoute;
+  const isEndpointRoute = pathname.includes("/endpoint/");
+  const isInsideProject = Boolean(projectId) || isPamRoute || isEndpointRoute;
   // The org-wide KMIP servers and Secret Sharing pages live at literal /projects/<slug>/<resource>
   // paths with no $type route param, so fall back to parsing the product slug from the pathname.
   const effectiveTypeSlug = typeSlug ?? parseProjectSlugFromPath(pathname);
@@ -33,8 +34,9 @@ export const OrgSidebar = () => {
     !isInsideProject && Boolean(projectType) && hasIntermediateProjectsView(projectType!);
   const { isSubOrganization } = useOrganization();
 
-  let scope: "project" | "sub-org" | "org" | "pam" = "org";
+  let scope: "project" | "sub-org" | "org" | "pam" | "endpoint" = "org";
   if (isPamRoute) scope = "pam";
+  else if (isEndpointRoute) scope = "endpoint";
   else if (isInsideProject || isOnProjectTypeListing) scope = "project";
   else if (isSubOrganization) scope = "sub-org";
 

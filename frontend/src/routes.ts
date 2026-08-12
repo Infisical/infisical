@@ -388,6 +388,22 @@ const pamAccessRoute = route(
   "pam/PamAccountAccessPage/route.tsx"
 );
 
+const endpointRoutes = route("/organizations/$orgId/endpoint", [
+  layout("endpoint-layout", "endpoint/layout.tsx", [
+    route("/devices", "endpoint/EndpointDevicesPage/route.tsx"),
+    route("/egress-policy", "endpoint/EndpointEgressPolicyPage/route.tsx"),
+    route("/activity", "endpoint/EndpointActivityPage/route.tsx"),
+    route("/targets", "endpoint/EndpointTargetsPage/route.tsx"),
+
+    // Access Management
+    route("/access-management", "project/AccessControlPage/route-endpoint.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-endpoint.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-endpoint.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-endpoint.tsx"),
+    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-endpoint.tsx")
+  ])
+]);
+
 const organizationRoutes = route("/organizations/$orgId", [
   route("/projects", "organization/ProjectsPage/route.tsx"),
   route("/projects/$type", "organization/ProjectsPage/ProjectTypePage/route.tsx"),
@@ -500,7 +516,8 @@ export const routes = rootRoute("root.tsx", [
         certManagerRoutes,
         kmsRoutes,
         secretScanningRoutes,
-        pamRoutes
+        pamRoutes,
+        endpointRoutes
       ])
     ])
   ])

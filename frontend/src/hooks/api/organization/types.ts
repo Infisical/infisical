@@ -207,4 +207,9 @@ export type TOrgProductStats = {
     accountTemplatesCount: number;
     foldersCount: number;
   };
+  // Optional so a frontend deployed ahead of its backend renders zeroes instead of crashing.
+  endpoint?: {
+    devicesCount: number;
+    egressRulesCount: number;
+  };
 };

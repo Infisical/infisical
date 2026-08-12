@@ -359,7 +359,8 @@ export enum ProjectPermissionSub {
   ProjectFolderGrant = "project-folder-grant",
   HoneyTokens = "honey-tokens",
   ProxiedServices = "proxied-services",
-  Insights = "insights"
+  Insights = "insights",
+  Endpoint = "endpoint"
 }
 
 // Structure: { [subject]: { [action]: allowedConditionKeys[] } }
@@ -686,6 +687,7 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.CertificatePolicies> & CertificatePolicySubjectFields)
       )
     ]
+  | [ProjectPermissionActions, ProjectPermissionSub.Endpoint]
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
@@ -1592,6 +1594,13 @@ const GeneralPermissionSchema = [
     conditions: ProxiedServiceConditionSchema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Endpoint).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.ApprovalRequests).describe("The entity this permission pertains to."),

@@ -47,6 +47,12 @@ import { dynamicSecretLeaseQueueServiceFactory } from "@app/ee/services/dynamic-
 import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
 import { emailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { emailDomainServiceFactory } from "@app/ee/services/email-domain/email-domain-service";
+import { endpointCounterDALFactory } from "@app/ee/services/endpoint/endpoint-counter-dal";
+import { endpointDeviceDALFactory } from "@app/ee/services/endpoint/endpoint-device-dal";
+import { endpointEgressRuleDALFactory } from "@app/ee/services/endpoint/endpoint-egress-rule-dal";
+import { endpointEventDALFactory } from "@app/ee/services/endpoint/endpoint-event-dal";
+import { endpointProjectResolverFactory } from "@app/ee/services/endpoint/endpoint-project-resolver";
+import { endpointServiceFactory } from "@app/ee/services/endpoint/endpoint-service";
 import { eventBusServiceFactory } from "@app/ee/services/event-bus/event-bus-service";
 import { externalKmsDALFactory } from "@app/ee/services/external-kms/external-kms-dal";
 import { externalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
@@ -1714,6 +1720,30 @@ export const registerRoutes = async (
     membershipRoleDAL,
     keyStore,
     usageMeteringService
+  });
+
+  const endpointDeviceDAL = endpointDeviceDALFactory(db);
+  const endpointEgressRuleDAL = endpointEgressRuleDALFactory(db);
+  const endpointCounterDAL = endpointCounterDALFactory(db);
+  const endpointEventDAL = endpointEventDALFactory(db);
+
+  const endpointProjectResolver = endpointProjectResolverFactory({
+    db,
+    projectDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    keyStore
+  });
+
+  const endpointService = endpointServiceFactory({
+    endpointDeviceDAL,
+    endpointEgressRuleDAL,
+    endpointCounterDAL,
+    endpointEventDAL,
+    endpointProjectResolver,
+    userDAL,
+    membershipDAL,
+    permissionService
   });
 
   const pamAccountTemplateDAL = pamAccountTemplateDALFactory(db);
@@ -3932,6 +3962,7 @@ export const registerRoutes = async (
     pkiApplicationEnrollment: pkiApplicationEnrollmentService,
     certManagerProjectResolver,
     pamProjectResolver,
+    endpoint: endpointService,
     pamAccountTemplate: pamAccountTemplateService,
     pamFolder: pamFolderService,
     pamAccount: pamAccountService,
