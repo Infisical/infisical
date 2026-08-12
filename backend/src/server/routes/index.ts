@@ -161,6 +161,9 @@ import { resourceAuthMethodServiceFactory } from "@app/ee/services/resource-auth
 import { resourceTokenAuthDALFactory } from "@app/ee/services/resource-auth-method/token-auth-dal";
 import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { samlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
+import { sandboxDALFactory } from "@app/ee/services/sandbox/sandbox-dal";
+import { sandboxProjectResolverFactory } from "@app/ee/services/sandbox/sandbox-project-resolver";
+import { sandboxServiceFactory } from "@app/ee/services/sandbox/sandbox-service";
 import { scimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { scimEventsDALFactory } from "@app/ee/services/scim/scim-events-dal";
 import { scimServiceFactory } from "@app/ee/services/scim/scim-service";
@@ -2959,6 +2962,15 @@ export const registerRoutes = async (
     appConnectionService
   });
 
+  const sandboxDAL = sandboxDALFactory(db);
+  const sandboxProjectResolver = sandboxProjectResolverFactory({
+    db,
+    projectDAL,
+    membershipDAL,
+    membershipRoleDAL
+  });
+  const sandboxService = sandboxServiceFactory({ sandboxDAL, sandboxProjectResolver, permissionService });
+
   const honeyTokenService = honeyTokenServiceFactory({
     honeyTokenDAL,
     honeyTokenConfigDAL,
@@ -3994,6 +4006,7 @@ export const registerRoutes = async (
     gitHubApp: gitHubAppService,
     honeyTokenConfig: honeyTokenConfigService,
     honeyToken: honeyTokenService,
+    sandbox: sandboxService,
     proxiedService: proxiedServiceService,
     agentProxyCa: agentProxyCaService,
     folderCommit: folderCommitService,

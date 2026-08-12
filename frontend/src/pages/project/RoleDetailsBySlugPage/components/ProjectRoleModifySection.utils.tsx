@@ -3295,6 +3295,14 @@ export const ProjectTypePermissionSubjects: Record<
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: false
+  },
+  [ProjectType.Sandbox]: {
+    ...SharedPermissionSubjects,
+    ...SecretScanningSubject(),
+    ...CertificateManagerPermissionSubjects(),
+    ...KmsPermissionSubjects(),
+    ...SecretsManagerPermissionSubjects(),
+    [ProjectPermissionSub.AppConnections]: false
   }
 };
 
@@ -3714,5 +3722,6 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       ]
     }
   ],
-  [ProjectType.PAM]: [projectManagerTemplate()]
+  [ProjectType.PAM]: [projectManagerTemplate()],
+  [ProjectType.Sandbox]: [projectManagerTemplate()]
 };

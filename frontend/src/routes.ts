@@ -364,6 +364,19 @@ const secretScanningRoutes = route("/organizations/$orgId/projects/secret-scanni
   ])
 ]);
 
+const sandboxRoutes = route("/organizations/$orgId/sandboxes", [
+  layout("sandbox-layout", "sandbox/layout.tsx", [
+    index("sandbox/SandboxesPage/route.tsx"),
+    route("/audit-logs", "project/AuditLogsPage/route-sandbox.tsx"),
+    route("/access-management", "project/AccessControlPage/route-sandbox.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-sandbox.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-sandbox.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-sandbox.tsx"),
+    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-sandbox.tsx"),
+    route("/$sandboxId", "sandbox/SandboxPage/route.tsx")
+  ])
+]);
+
 const pamRoutes = route("/organizations/$orgId/pam", [
   layout("pam-layout", "pam/layout.tsx", [
     route("/access", [index("redirects/pam-org-access-redirect.tsx")]),
@@ -500,6 +513,7 @@ export const routes = rootRoute("root.tsx", [
         certManagerRoutes,
         kmsRoutes,
         secretScanningRoutes,
+        sandboxRoutes,
         pamRoutes
       ])
     ])

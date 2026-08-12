@@ -61,6 +61,11 @@ const PAGE_HEADER_SCOPE_CONFIG: Record<NonNullable<TPageHeaderScope>, TPageHeade
     icon: ProjectIcon,
     iconClassName: "text-product-pam",
     titleClassName: "decoration-product-pam/90"
+  },
+  [ProjectType.Sandbox]: {
+    icon: ProjectIcon,
+    iconClassName: "sandbox-chrome-icon",
+    titleClassName: "decoration-product-sandbox/90"
   }
 };
 

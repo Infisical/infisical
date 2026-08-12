@@ -24,7 +24,9 @@ export const OrgSidebar = () => {
   });
   const { pathname } = useLocation();
   const isPamRoute = pathname.includes("/pam/");
-  const isInsideProject = Boolean(projectId) || isPamRoute;
+  // Sandbox has no projectId in its URLs either, so the param check alone never sees it.
+  const isSandboxRoute = pathname.includes("/sandboxes");
+  const isInsideProject = Boolean(projectId) || isPamRoute || isSandboxRoute;
   // The org-wide KMIP servers and Secret Sharing pages live at literal /projects/<slug>/<resource>
   // paths with no $type route param, so fall back to parsing the product slug from the pathname.
   const effectiveTypeSlug = typeSlug ?? parseProjectSlugFromPath(pathname);

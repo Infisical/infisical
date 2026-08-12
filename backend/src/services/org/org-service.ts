@@ -211,15 +211,18 @@ export const orgServiceFactory = ({
 
     const data = hasSubOrg && subOrg ? subOrg : org;
 
-    const pamProjects = await projectDAL.find(
-      { orgId: data.id, type: ProjectType.PAM },
-      { sort: [["createdAt", "desc"]], limit: 1 }
-    );
+    // Both products are project-backed but have no user-facing project, so the client needs their ids
+    // here to resolve the Project/ProjectPermission contexts on routes that carry no projectId param.
+    const [pamProjects, sandboxProjects] = await Promise.all([
+      projectDAL.find({ orgId: data.id, type: ProjectType.PAM }, { sort: [["createdAt", "desc"]], limit: 1 }),
+      projectDAL.find({ orgId: data.id, type: ProjectType.Sandbox }, { sort: [["createdAt", "desc"]], limit: 1 })
+    ]);
 
     return {
       ...data,
       userTokenExpiration: data.userTokenExpiration || appCfg.JWT_REFRESH_LIFETIME,
-      pamProjectId: pamProjects[0]?.id ?? null
+      pamProjectId: pamProjects[0]?.id ?? null,
+      sandboxProjectId: sandboxProjects[0]?.id ?? null
     };
   };
 

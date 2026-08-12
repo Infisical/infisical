@@ -44,7 +44,8 @@ const PRODUCT_TYPES: ActiveProducts[] = [
   ProjectType.CertificateManager,
   ProjectType.KMS,
   ProjectType.SecretScanning,
-  ProjectType.PAM
+  ProjectType.PAM,
+  ProjectType.Sandbox
 ];
 
 const PRODUCT_STYLES: Record<
@@ -90,6 +91,13 @@ const PRODUCT_STYLES: Record<
       "border-product-pam/30 bg-gradient-to-br from-product-pam/20 to-product-pam/5 group-hover:border-product-pam/50 group-hover:from-product-pam/25 group-hover:to-product-pam/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-pam/[0.04] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-pam/60"
+  },
+  [ProjectType.Sandbox]: {
+    iconClassName: "h-4.5 w-4.5 sandbox-chrome-icon",
+    containerClassName:
+      "border-product-sandbox/25 bg-gradient-to-br from-product-sandbox/15 via-[#b9c0cc]/10 to-[#cfc5cd]/8 group-hover:border-product-sandbox/45 group-hover:from-product-sandbox/25 group-hover:via-[#b9c0cc]/18 group-hover:to-[#cfc5cd]/14",
+    cardClassName: "hover:bg-gradient-to-br hover:from-product-sandbox/[0.05] hover:to-transparent",
+    titleUnderlineClassName: "decoration-product-sandbox/60"
   }
 };
 
@@ -319,6 +327,12 @@ export const ProjectCategoryOverview = () => {
 
     if (type === ProjectType.PAM) {
       await enterPamProject();
+      return;
+    }
+
+    // Sandbox has no user-facing projects: the layout bootstraps the hidden one on arrival.
+    if (type === ProjectType.Sandbox) {
+      navigate({ to: "/organizations/$orgId/sandboxes", params: { orgId } });
       return;
     }
 

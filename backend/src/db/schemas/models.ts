@@ -70,6 +70,7 @@ export enum TableName {
   UserAction = "user_actions",
   UserSecretActivation = "user_secret_activation",
   SignupOnboardingResponse = "signup_onboarding_responses",
+  Sandbox = "sandboxes",
   SuperAdmin = "super_admin",
   RateLimit = "rate_limit",
   // dropped with the SSH product; member kept for historical migrations
@@ -446,7 +447,8 @@ export enum ProjectType {
   CertificateManager = "cert-manager",
   KMS = "kms",
   SecretScanning = "secret-scanning",
-  PAM = "pam"
+  PAM = "pam",
+  Sandbox = "sandbox"
 }
 
 export enum ActionProjectType {

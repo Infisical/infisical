@@ -2,10 +2,12 @@ import { useCallback } from "react";
 import { MongoAbility, RawRuleOf } from "@casl/ability";
 import { unpackRules } from "@casl/ability/extra";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
+import { useLocation, useParams } from "@tanstack/react-router";
 
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
+
+import { resolveImplicitProjectId } from "@app/helpers/project";
 
 import { useOrganization } from "../OrganizationContext";
 import { ProjectPermissionSet } from "./types";
@@ -17,7 +19,9 @@ export const useProjectPermission = () => {
 
   const { currentOrg } = useOrganization();
 
-  const projectId = params.projectId ?? currentOrg.pamProjectId;
+  const { pathname } = useLocation();
+
+  const projectId = params.projectId ?? resolveImplicitProjectId(pathname, currentOrg);
 
   if (!projectId) {
     throw new Error("useProjectPermission to be used within <ProjectPermissionContext>");

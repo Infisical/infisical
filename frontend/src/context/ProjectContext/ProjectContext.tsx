@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
+import { useLocation, useParams } from "@tanstack/react-router";
 
+import { resolveImplicitProjectId } from "@app/helpers/project";
 import { projectKeys } from "@app/hooks/api";
 import { fetchProjectById } from "@app/hooks/api/projects/queries";
 
@@ -13,7 +14,9 @@ export const useProject = () => {
 
   const { currentOrg } = useOrganization();
 
-  const projectId = params.projectId ?? currentOrg.pamProjectId;
+  const { pathname } = useLocation();
+
+  const projectId = params.projectId ?? resolveImplicitProjectId(pathname, currentOrg);
 
   if (!projectId) {
     throw new Error("Missing project id");

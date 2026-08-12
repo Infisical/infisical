@@ -123,6 +123,8 @@ export const getProjectBaseURL = (type: ProjectType) => {
       return "/organizations/$orgId/projects/cert-manager/$projectId";
     case ProjectType.PAM:
       return "/organizations/$orgId/pam" as const;
+    case ProjectType.Sandbox:
+      return "/organizations/$orgId/sandboxes" as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId` as const;
   }
@@ -140,6 +142,8 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
       return `/organizations/$orgId/projects/${type}/$projectId/data-sources` as const;
     case ProjectType.PAM:
       return "/organizations/$orgId/pam/access" as const;
+    case ProjectType.Sandbox:
+      return "/organizations/$orgId/sandboxes" as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId/overview` as const;
   }
@@ -151,7 +155,8 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.KMS]: "KMS",
     [ProjectType.CertificateManager]: "Certificate Manager",
     [ProjectType.SecretScanning]: "Secret Scanning",
-    [ProjectType.PAM]: "Privileged Access Manager"
+    [ProjectType.PAM]: "Privileged Access Manager",
+    [ProjectType.Sandbox]: "Sandbox"
   };
   return titleConvert[type] || type;
 };
@@ -167,7 +172,9 @@ export const getProjectDescription = (type: ProjectType) => {
     [ProjectType.SecretScanning]:
       "Continuously scan repositories, builds, and runtime artifacts for leaked secrets and misconfigurations.",
     [ProjectType.PAM]:
-      "Connect to databases and servers securely with session brokering, recording, and credential vaulting."
+      "Connect to databases and servers securely with session brokering, recording, and credential vaulting.",
+    [ProjectType.Sandbox]:
+      "Run AI agents and untrusted code in isolated environments that reach your systems through brokered credentials they never hold."
   };
   return descriptions[type] ?? "";
 };
@@ -222,3 +229,15 @@ export const PROJECT_TILE_STYLE: ProjectTileStyle = {
   cardHoverClassName: "hover:bg-gradient-to-br hover:from-project/[0.04] hover:to-transparent",
   titleUnderlineClassName: "decoration-project/60"
 };
+
+/**
+ * PAM and Sandbox are project-backed products whose URLs carry no `$projectId`, so their project has
+ * to be resolved from the org. Sandbox must take precedence on its own routes: an org that also has
+ * a PAM project would otherwise resolve to PAM there and render PAM's nav and links.
+ *
+ * Non-sandbox routes keep the previous PAM fallback exactly, so nothing else changes behaviour.
+ */
+export const resolveImplicitProjectId = (
+  pathname: string,
+  org: { pamProjectId?: string | null; sandboxProjectId?: string | null }
+) => (pathname.includes("/sandboxes") ? org.sandboxProjectId : null) ?? org.pamProjectId ?? null;

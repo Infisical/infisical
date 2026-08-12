@@ -204,6 +204,7 @@ export * from "./resource-metadata";
 export * from "./resource-token-auths";
 export * from "./roles";
 export * from "./saml-configs";
+export * from "./sandboxes";
 export * from "./scim-events";
 export * from "./scim-tokens";
 export * from "./secret-approval-policies";

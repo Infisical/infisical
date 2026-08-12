@@ -59,6 +59,7 @@ import { RateLimitConfiguration, TRateLimitServiceFactory } from "@app/ee/servic
 import { TRelayServiceFactory } from "@app/ee/services/relay/relay-service";
 import { TResourceAuthMethodServiceFactory } from "@app/ee/services/resource-auth-method/resource-auth-method-service";
 import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-types";
+import { TSandboxServiceFactory } from "@app/ee/services/sandbox/sandbox-service";
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
@@ -417,6 +418,7 @@ declare module "fastify" {
       gitHubApp: TGitHubAppServiceFactory;
       honeyTokenConfig: THoneyTokenConfigServiceFactory;
       honeyToken: THoneyTokenServiceFactory;
+      sandbox: TSandboxServiceFactory;
       proxiedService: TProxiedServiceServiceFactory;
       agentProxyCa: TAgentProxyCaServiceFactory;
       folderCommit: TFolderCommitServiceFactory;

@@ -512,6 +512,9 @@ import {
   TSamlConfigs,
   TSamlConfigsInsert,
   TSamlConfigsUpdate,
+  TSandboxes,
+  TSandboxesInsert,
+  TSandboxesUpdate,
   TScimEvents,
   TScimEventsInsert,
   TScimEventsUpdate,
@@ -1074,6 +1077,7 @@ declare module "knex/types/tables" {
       TSignupOnboardingResponsesInsert,
       TSignupOnboardingResponsesUpdate
     >;
+    [TableName.Sandbox]: KnexOriginal.CompositeTableType<TSandboxes, TSandboxesInsert, TSandboxesUpdate>;
     [TableName.SuperAdmin]: KnexOriginal.CompositeTableType<TSuperAdmin, TSuperAdminInsert, TSuperAdminUpdate>;
     [TableName.Project]: KnexOriginal.CompositeTableType<TProjects, TProjectsInsert, TProjectsUpdate>;
     [TableName.Environment]: KnexOriginal.CompositeTableType<

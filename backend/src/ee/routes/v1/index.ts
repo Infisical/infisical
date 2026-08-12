@@ -45,6 +45,7 @@ import { registerRateLimitRouter } from "./rate-limit-router";
 import { registerRelayRouter } from "./relay-router";
 import { registerRemovedProductTombstoneRouter } from "./removed-product-tombstone-router";
 import { registerSamlRouter } from "./saml-router";
+import { registerSandboxRouter } from "./sandbox-router";
 import { registerScimRouter } from "./scim-router";
 import { registerSecretApprovalRequestRouter } from "./secret-approval-request-router";
 import { registerSecretRouter } from "./secret-router";
@@ -105,6 +106,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerRelayRouter, { prefix: "/relays" });
   await server.register(registerGithubOrgSyncRouter, { prefix: "/github-org-sync-config" });
   await server.register(registerHoneyTokenRouter, { prefix: "/honey-tokens" });
+  await server.register(registerSandboxRouter, { prefix: "/sandboxes" });
 
   await server.register(registerProxiedServiceRouter, { prefix: "/proxied-services" });
   await server.register(registerAgentProxyCaRouter, { prefix: "/organization/agent-proxy-ca" });

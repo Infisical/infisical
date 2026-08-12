@@ -93,6 +93,7 @@
   --color-product-kms: #34edbf;
   --color-product-ss: #b056f0;
   --color-product-pam: #ff3568;
+  --color-product-sandbox: #c8ccd4;
   --color-admin: #c0c0c8;
   --color-neutral: #adaeb0;
   --color-border: #2b2c30;
@@ -525,4 +526,67 @@ input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+/*
+ * Sandbox product accent. The other products use a flat token; this one is polished chrome: a zinc
+ * and white ramp with faint steel / mauve undertones for iridescence, swept slowly. Deliberately
+ * decorative, which the rest of the system avoids, and scoped to the Sandbox surfaces only.
+ */
+@keyframes sandbox-chrome-sweep {
+  to {
+    background-position: 200% center;
+  }
+}
+
+@keyframes sandbox-chrome-shimmer {
+  0%,
+  100% {
+    opacity: 0.82;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@utility sandbox-chrome-text {
+  background-image: linear-gradient(
+    100deg,
+    #71717a 0%,
+    #a1a1aa 7%,
+    #e4e4e7 14%,
+    #ffffff 20%,
+    #b9c0cc 28%,
+    #97a2b0 35%,
+    #fafafa 44%,
+    #cfc5cd 51%,
+    #a9b3bd 58%,
+    #f4f4f5 68%,
+    #b4b0b8 78%,
+    #a1a1aa 88%,
+    #71717a 100%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: sandbox-chrome-sweep 8s linear infinite;
+}
+
+/* Stroke icons can't carry a gradient without an SVG def, so this is a metallic tone with a slow
+   shimmer rather than a sweep. Hue rotation read as rainbow, not chrome. */
+@utility sandbox-chrome-icon {
+  color: #d4d4d8;
+  animation: sandbox-chrome-shimmer 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The last two selectors matter because the header icon receives the utility through an arbitrary
+     variant (`[&_svg]:sandbox-chrome-icon`), so the element never carries the bare class. */
+  .sandbox-chrome-text,
+  .sandbox-chrome-icon,
+  [class*="sandbox-chrome"],
+  [class*="sandbox-chrome"] svg {
+    animation: none;
+  }
 }

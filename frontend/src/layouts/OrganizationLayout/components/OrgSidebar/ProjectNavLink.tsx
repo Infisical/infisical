@@ -30,11 +30,13 @@ export const ProjectNavLink = ({
   const sidebarScope = useSidebarScope();
 
   const typePath = PROJECT_TYPE_PATH[currentProject.type];
-  const isPam = currentProject.type === ProjectType.PAM;
-  const basePath = isPam
-    ? `/organizations/${currentOrg.id}/pam`
+  const isOrgPathed =
+    currentProject.type === ProjectType.PAM || currentProject.type === ProjectType.Sandbox;
+  const basePath = isOrgPathed
+    ? `/organizations/${currentOrg.id}/${typePath}`
     : `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
-  const fullPath = `${basePath}/${item.pathSuffix}`;
+  // A blank suffix is the product's own index route, so don't leave a trailing slash behind.
+  const fullPath = item.pathSuffix ? `${basePath}/${item.pathSuffix}` : basePath;
 
   const activeMatchResult = (() => {
     if (!item.activeMatch) return false;
@@ -89,8 +91,8 @@ export const ProjectNavLink = ({
         <Link
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           to={
-            isPam
-              ? (`/organizations/$orgId/pam/${item.pathSuffix}` as any)
+            isOrgPathed
+              ? (`/organizations/$orgId/${typePath}${item.pathSuffix ? `/${item.pathSuffix}` : ""}` as any)
               : (`/organizations/$orgId/projects/${typePath}/$projectId/${item.pathSuffix}` as any)
           }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -5,7 +5,8 @@ export const PROJECT_TYPE_PATH: Record<ProjectType, string> = {
   [ProjectType.CertificateManager]: "cert-manager",
   [ProjectType.KMS]: "kms",
   [ProjectType.PAM]: "pam",
-  [ProjectType.SecretScanning]: "secret-scanning"
+  [ProjectType.SecretScanning]: "secret-scanning",
+  [ProjectType.Sandbox]: "sandboxes"
 };
 
 export type SubmenuItem = {

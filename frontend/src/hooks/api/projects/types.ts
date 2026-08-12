@@ -13,7 +13,8 @@ export enum ProjectType {
   CertificateManager = "cert-manager",
   KMS = "kms",
   SecretScanning = "secret-scanning",
-  PAM = "pam"
+  PAM = "pam",
+  Sandbox = "sandbox"
 }
 
 export enum ProjectUserMembershipTemporaryMode {
