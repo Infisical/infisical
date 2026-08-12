@@ -60,6 +60,93 @@ export const registerAgentSessionRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
+    method: "GET",
+    url: "/",
+    config: { rateLimit: readLimit },
+    schema: {
+      description: "List the agent sessions in a project, most recently active first, up to the 200 most recent.",
+      operationId: "listAgentSessions",
+      querystring: z.object({
+        projectId: z.string().trim().min(1).max(64).describe("Project whose sessions to list.")
+      }),
+      response: {
+        200: z.object({
+          agentSessions: z
+            .object({
+              id: z.string(),
+              identityId: z.string(),
+              agentName: z.string(),
+              isAgentEnabled: z.boolean(),
+              userId: z.string(),
+              userEmail: z.string().nullable(),
+              username: z.string(),
+              firstName: z.string().nullable(),
+              lastName: z.string().nullable(),
+              createdAt: z.date(),
+              lastUsedAt: z.date().nullable(),
+              revokedAt: z.date().nullable()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const agentSessions = await server.services.agentSession.listSessions(
+        { projectId: req.query.projectId },
+        req.permission
+      );
+      return { agentSessions };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:sessionId/revoke",
+    config: { rateLimit: writeLimit },
+    schema: {
+      description: "Revoke an agent session. The proxy drops it on its next policy refresh.",
+      operationId: "revokeAgentSessionById",
+      params: z.object({ sessionId: z.string().uuid() }),
+      response: {
+        200: z.object({
+          agentSession: z.object({
+            id: z.string(),
+            identityId: z.string(),
+            userId: z.string(),
+            projectId: z.string(),
+            revokedAt: z.date().nullable()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const agentSession = await server.services.agentSession.revokeSessionById(
+        { sessionId: req.params.sessionId },
+        req.permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: agentSession.projectId,
+        event: {
+          type: EventType.AGENT_SESSION_REVOKE,
+          metadata: {
+            sessionId: agentSession.id,
+            identityId: agentSession.identityId,
+            userId: agentSession.userId,
+            projectId: agentSession.projectId
+          }
+        }
+      });
+
+      return { agentSession };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/revoke",
     config: { rateLimit: writeLimit },
@@ -157,6 +244,7 @@ export const registerAgentSessionRouter = async (server: FastifyZodProvider) => 
             path: z.string().trim().max(2048),
             statusCode: z.number().int().min(100).max(599).optional(),
             policyName: z.string().trim().max(64).optional(),
+            userPolicyName: z.string().trim().max(64).optional(),
             reason: z.string().trim().max(256).optional()
           })
           .array()
@@ -200,6 +288,7 @@ export const registerAgentSessionRouter = async (server: FastifyZodProvider) => 
                 path: event.path,
                 statusCode: event.statusCode,
                 policyName: event.policyName,
+                userPolicyName: event.userPolicyName,
                 reason: event.reason
               }
             }

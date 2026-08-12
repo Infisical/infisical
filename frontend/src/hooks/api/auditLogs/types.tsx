@@ -975,6 +975,79 @@ interface DeleteProjectFolderGrantEvent {
   };
 }
 
+export enum AgentProxyDecision {
+  Brokered = "brokered",
+  Passthrough = "passthrough",
+  Blocked = "blocked",
+  Error = "error"
+}
+
+interface AgentPolicyMutationEvent {
+  type:
+    | EventType.AGENT_POLICY_CREATE
+    | EventType.AGENT_POLICY_UPDATE
+    | EventType.AGENT_POLICY_DELETE
+    | EventType.USER_POLICY_CREATE
+    | EventType.USER_POLICY_UPDATE
+    | EventType.USER_POLICY_DELETE;
+  metadata: {
+    policyId: string;
+    name: string;
+    target: string;
+  };
+}
+
+interface AgentSessionCreateEvent {
+  type: EventType.AGENT_SESSION_CREATE;
+  metadata: {
+    identityId: string;
+    userId: string;
+    projectId: string;
+  };
+}
+
+interface AgentSessionRevokeEvent {
+  type: EventType.AGENT_SESSION_REVOKE;
+  metadata: {
+    sessionId: string;
+    identityId: string;
+    userId: string;
+    projectId: string;
+  };
+}
+
+// One entry per request an agent proxy handled, carrying both the agent and the user it acted for.
+interface AgentProxyRequestEvent {
+  type: EventType.AGENT_PROXY_REQUEST;
+  metadata: {
+    agentProxyId: string;
+    identityId: string;
+    agentName: string;
+    userId: string;
+    decision: AgentProxyDecision;
+    method: string;
+    host: string;
+    port: number;
+    path: string;
+    statusCode?: number;
+    policyName?: string;
+    userPolicyName?: string;
+    reason?: string;
+  };
+}
+
+interface AgentProxyMutationEvent {
+  type:
+    | EventType.AGENT_PROXY_CREATE
+    | EventType.AGENT_PROXY_UPDATE
+    | EventType.AGENT_PROXY_DELETE
+    | EventType.AGENT_PROXY_ENROLLMENT_TOKEN_CREATE;
+  metadata: {
+    agentProxyId: string;
+    name?: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -1066,7 +1139,12 @@ export type Event =
   | ClearIdentityLdapAuthLockoutsEvent
   | PamAccessPolicyBypassedEvent
   | CreateProjectFolderGrantEvent
-  | DeleteProjectFolderGrantEvent;
+  | DeleteProjectFolderGrantEvent
+  | AgentPolicyMutationEvent
+  | AgentSessionCreateEvent
+  | AgentSessionRevokeEvent
+  | AgentProxyRequestEvent
+  | AgentProxyMutationEvent;
 
 export type AuditLog = {
   id: string;

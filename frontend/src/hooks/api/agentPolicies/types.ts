@@ -25,12 +25,26 @@ export type TAgentPolicyAgent = {
   name: string;
 };
 
+export enum AgentPolicyCredentialRole {
+  HeaderRewrite = "header-rewrite",
+  CredentialSubstitution = "credential-substitution"
+}
+
 export type TAgentPolicyCredential = {
   id: string;
   slotKey: string;
   environment: string;
   secretPath: string;
   secretKey: string;
+  role: AgentPolicyCredentialRole;
+  headerName: string | null;
+  headerPrefix: string | null;
+  headerPurpose: string | null;
+  // The decoy the agent holds in its environment. Null for a header-rewrite credential, where the agent
+  // sends nothing and the proxy adds the header itself.
+  placeholderKey: string | null;
+  placeholderValue: string | null;
+  substitutionSurfaces: string[];
 };
 
 export type TAgentPolicyCredentialInput = {

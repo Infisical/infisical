@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import {
   ArrowRightIcon,
   BotIcon,
@@ -6,11 +6,13 @@ import {
   CircleAlertIcon,
   GlobeIcon,
   LucideIcon,
+  PlusIcon,
   SendIcon,
   UserIcon,
   XIcon
 } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Alert,
   AlertDescription,
@@ -38,7 +40,12 @@ import {
   SelectValue
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import {
   evaluatePolicyRules,
   findContendingAgentPolicy,
@@ -49,8 +56,14 @@ import {
   TPolicyRequest
 } from "@app/helpers/policyMatch";
 import { useDebounce } from "@app/hooks";
-import { PolicyRuleMethod, TAgentPolicy, useGetAgentPolicies } from "@app/hooks/api/agentPolicies";
-import { TUserPolicy, useGetUserPolicies } from "@app/hooks/api/userPolicies";
+import {
+  PolicyRuleMethod,
+  TAgentPolicy,
+  TPolicyRule,
+  useGetAgentPolicies,
+  useUpdateAgentPolicy
+} from "@app/hooks/api/agentPolicies";
+import { TUserPolicy, useGetUserPolicies, useUpdateUserPolicy } from "@app/hooks/api/userPolicies";
 
 const MISMATCH_LABEL: Record<PolicyRuleMismatch, string> = {
   [PolicyRuleMismatch.Host]: "different host",
@@ -81,7 +94,7 @@ const FlowStage = ({
   value: string;
   state: TStageState;
   className?: string;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }) => (
   <div
     className={cn(
@@ -182,12 +195,54 @@ const RulePanel = ({
   </div>
 );
 
+const ruleKey = (rule: { hostPattern: string; methods: PolicyRuleMethod[] }) =>
+  `${rule.hostPattern.toLowerCase()} ${[...rule.methods].sort().join(",")}`;
+
+// Merged into the host's existing rule rather than appended, because a second rule for the same host
+// reads as a mistake. Widening one rule can make it identical to another on the same host, which the
+// API rejects as a duplicate, so the result is deduplicated before it is sent.
+const withRequestAllowed = (
+  rules: TPolicyRule[],
+  hostPattern: string,
+  method: PolicyRuleMethod
+) => {
+  const covers = (rule: TPolicyRule) =>
+    rule.hostPattern.toLowerCase() === hostPattern.toLowerCase();
+  const existing = rules.find(covers);
+
+  const next = existing
+    ? rules.map((rule) =>
+        rule === existing
+          ? {
+              hostPattern: rule.hostPattern,
+              // An empty list already means every method, so widening it would narrow the rule.
+              methods: rule.methods.length ? [...new Set([...rule.methods, method])] : []
+            }
+          : { hostPattern: rule.hostPattern, methods: rule.methods }
+      )
+    : [
+        ...rules.map((rule) => ({ hostPattern: rule.hostPattern, methods: rule.methods })),
+        { hostPattern, methods: [method] }
+      ];
+
+  const seen = new Set<string>();
+  return next.filter((rule) => {
+    const key = ruleKey(rule);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   // The row the test was started from. Whichever side is missing is the one picked here.
   agentPolicy?: TAgentPolicy;
   userPolicy?: TUserPolicy;
+  // A request to open with, so a row in the activity feed can be replayed against the policies that
+  // judged it rather than retyped.
+  initialRequest?: { method: PolicyRuleMethod; url: string };
 };
 
 // Neither policy is a subset of the other and nothing is precomputed, so the only honest way to show
@@ -196,14 +251,23 @@ type Props = {
 //
 // The two gates are drawn in series, but they are an AND of two independent checks, not a pipeline:
 // each reports its own verdict even when the one before it already stopped the request.
-export const PolicySimulationModal = ({ isOpen, onOpenChange, agentPolicy, userPolicy }: Props) => {
+export const PolicySimulationModal = ({
+  isOpen,
+  onOpenChange,
+  agentPolicy,
+  userPolicy,
+  initialRequest
+}: Props) => {
   const { projectId } = useProject();
+  const { permission } = useProjectPermission();
   const [counterpartId, setCounterpartId] = useState<string>();
   const [method, setMethod] = useState<PolicyRuleMethod>(PolicyRuleMethod.Get);
   const [url, setUrl] = useState("");
 
   const { data: agentPolicies } = useGetAgentPolicies(projectId);
   const { data: userPolicies } = useGetUserPolicies(projectId);
+  const updateAgentPolicy = useUpdateAgentPolicy();
+  const updateUserPolicy = useUpdateUserPolicy();
 
   const isAgentAnchored = Boolean(agentPolicy);
   const counterparts = useMemo(
@@ -217,16 +281,31 @@ export const PolicySimulationModal = ({ isOpen, onOpenChange, agentPolicy, userP
 
   useEffect(() => {
     if (!isOpen) return;
-    setMethod(PolicyRuleMethod.Get);
-    setUrl("");
-    // With one policy on the other side there is nothing to choose.
-    setCounterpartId(counterparts.length === 1 ? counterparts[0].id : undefined);
-  }, [isOpen, agentPolicy?.id, userPolicy?.id, counterparts.length]);
+    setMethod(initialRequest?.method ?? PolicyRuleMethod.Get);
+    setUrl(initialRequest?.url ?? "");
+    // A caller that already knows both sides seeds the picker with the counterpart it used; otherwise
+    // one policy on the other side means there is nothing to choose.
+    const seeded = isAgentAnchored ? userPolicy?.id : agentPolicy?.id;
+    setCounterpartId(seeded ?? (counterparts.length === 1 ? counterparts[0].id : undefined));
+  }, [
+    isOpen,
+    agentPolicy?.id,
+    userPolicy?.id,
+    counterparts.length,
+    initialRequest?.method,
+    initialRequest?.url
+  ]);
 
-  const resolvedAgentPolicy =
-    agentPolicy ?? agentPolicies?.find((policy) => policy.id === counterpartId);
-  const resolvedUserPolicy =
-    userPolicy ?? userPolicies?.find((policy) => policy.id === counterpartId);
+  // The anchored side is fixed by the caller; the other one follows the picker, so a seeded counterpart
+  // can still be swapped for another policy. Both are re-read from the loaded list rather than used as
+  // handed over, so a rule added from here re-evaluates the request instead of leaving the caller's
+  // snapshot on screen.
+  const resolvedAgentPolicy = isAgentAnchored
+    ? (agentPolicies?.find((policy) => policy.id === agentPolicy?.id) ?? agentPolicy)
+    : agentPolicies?.find((policy) => policy.id === counterpartId);
+  const resolvedUserPolicy = isAgentAnchored
+    ? userPolicies?.find((policy) => policy.id === counterpartId)
+    : (userPolicies?.find((policy) => policy.id === userPolicy?.id) ?? userPolicy);
   const counterpart = counterparts.find((option) => option.id === counterpartId) ?? null;
 
   // Only the URL settles: a half-typed host parses fine, so evaluating every keystroke would flash a
@@ -302,14 +381,49 @@ export const PolicySimulationModal = ({ isOpen, onOpenChange, agentPolicy, userP
     return result?.isBrokered ? "Brokered" : "Blocked";
   })();
 
+  // The fix for a blocked request is one rule on whichever side turned it away, so it is offered here
+  // rather than sending the reader back to the policy form to re-derive it. The host alone is used,
+  // not the path: it is the narrowest rule that is still obvious to read later.
+  const handleAllowRequest = async (side: "agent" | "user") => {
+    const blocked = result?.request;
+    const policy = side === "agent" ? resolvedAgentPolicy : resolvedUserPolicy;
+    if (!blocked || !policy) return;
+
+    const rules = withRequestAllowed(policy.rules, blocked.host, method);
+    try {
+      if (side === "agent") {
+        await updateAgentPolicy.mutateAsync({ policyId: policy.id, projectId, rules });
+      } else {
+        await updateUserPolicy.mutateAsync({ policyId: policy.id, projectId, rules });
+      }
+      createNotification({
+        type: "success",
+        text: `${policy.name} now allows ${method} on ${blocked.host}`
+      });
+    } catch {
+      // The shared mutation error handler surfaces the API error.
+    }
+  };
+
+  const canEditAgentPolicy = permission.can(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.AgentPolicies
+  );
+  const canEditUserPolicy = permission.can(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.UserPolicies
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Test a Request</DialogTitle>
           <DialogDescription>
-            A request is brokered when it matches a rule on both sides. Type one to watch it land
-            against {anchoredName} and the policy you pick.
+            A request is brokered when it matches a rule on both sides.{" "}
+            {anchoredName
+              ? `Type one to watch it land against ${anchoredName} and the policy you pick.`
+              : "Pick the two policies to put a request through."}
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="flex flex-col gap-4">
@@ -425,6 +539,33 @@ export const PolicySimulationModal = ({ isOpen, onOpenChange, agentPolicy, userP
                   </span>
                 )}
               </p>
+
+              {!isIdle && !result.isBrokered && result.request && (
+                <div className="-mt-2 flex flex-wrap items-center gap-2">
+                  {!result.agent.isMatched && resolvedAgentPolicy && canEditAgentPolicy && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      isPending={updateAgentPolicy.isPending}
+                      onClick={() => handleAllowRequest("agent")}
+                    >
+                      <PlusIcon />
+                      Allow {method} on {result.request.host} in {resolvedAgentPolicy.name}
+                    </Button>
+                  )}
+                  {!result.user.isMatched && resolvedUserPolicy && canEditUserPolicy && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      isPending={updateUserPolicy.isPending}
+                      onClick={() => handleAllowRequest("user")}
+                    >
+                      <PlusIcon />
+                      Allow {method} on {result.request.host} in {resolvedUserPolicy.name}
+                    </Button>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <RulePanel heading="Agent Rules" side={result.agent} isIdle={isIdle} />

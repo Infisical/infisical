@@ -1,3 +1,6 @@
+import { ForbiddenError } from "@casl/ability";
+
+import { ActionProjectType } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -18,6 +21,8 @@ import { TAgentPolicyDALFactory } from "../agent-policy/agent-policy-dal";
 import { TAgentProxyDALFactory } from "../agent-proxy/agent-proxy-dal";
 import { TAgentProxyCaServiceFactory } from "../agent-proxy-ca/agent-proxy-ca-service";
 import { TLicenseServiceFactory } from "../license/license-service";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TUserPolicyDALFactory, TUserPolicyRuleDALFactory } from "../user-policy/user-policy-dal";
 import { TAgentSessionDALFactory } from "./agent-session-dal";
 
@@ -40,9 +45,14 @@ type TAgentSessionServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
 const SESSION_TOKEN_PREFIX = "ist";
+
+// Sessions are minted per agent run and never expire, so the list is capped rather than paginated: what
+// an operator wants from it is the recent picture, and the ordering already puts that first.
+const MAX_LISTED_SESSIONS = 200;
 
 const hashToken = (token: string) => crypto.nativeCrypto.createHash("sha256").update(token).digest("hex");
 
@@ -62,7 +72,8 @@ export const agentSessionServiceFactory = ({
   kmsService,
   orgDAL,
   projectFolderGrantDAL,
-  licenseService
+  licenseService,
+  permissionService
 }: TAgentSessionServiceFactoryDep) => {
   const $checkLicense = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
@@ -71,6 +82,24 @@ export const agentSessionServiceFactory = ({
         message: "Failed to use secrets brokering due to plan restriction. Upgrade your plan to use agent policies."
       });
     }
+  };
+
+  // A session is agent-policy state at runtime, so it is read and revoked with the same permission the
+  // policies themselves use rather than a subject of its own.
+  const $assertPolicyPermission = async (
+    actor: OrgServiceActor,
+    projectId: string,
+    action: ProjectPermissionActions
+  ) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentPolicies);
   };
 
   // Resolves the email an agent hands us to exactly one user in the agent's org. users.email is neither
@@ -171,6 +200,54 @@ export const agentSessionServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only the agent that started this session can revoke it" });
     }
     await agentSessionDAL.updateById(session.id, { revokedAt: new Date() });
+  };
+
+  const listSessions = async ({ projectId }: { projectId: string }, actor: OrgServiceActor) => {
+    await $checkLicense(actor.orgId);
+    await $assertPolicyPermission(actor, projectId, ProjectPermissionActions.Read);
+
+    const sessions = await agentSessionDAL.findByProjectId(projectId, MAX_LISTED_SESSIONS);
+
+    return sessions.map((session) => ({
+      id: session.id,
+      identityId: session.identityId,
+      agentName: session.agentName,
+      // An agent that lost its flag keeps its sessions in the table, but resolveSession refuses them, so
+      // the list says so rather than showing a session that cannot actually broker anything.
+      isAgentEnabled: Boolean(session.isAgent),
+      userId: session.userId,
+      userEmail: (session.userEmail as string | null) ?? null,
+      username: session.userUsername,
+      firstName: (session.userFirstName as string | null) ?? null,
+      lastName: (session.userLastName as string | null) ?? null,
+      createdAt: session.createdAt,
+      lastUsedAt: session.lastUsedAt ?? null,
+      revokedAt: session.revokedAt ?? null
+    }));
+  };
+
+  // The human counterpart to revokeSession: an operator killing an agent's session from the UI rather
+  // than the agent ending its own. Revoking twice is not an error, so a double click cannot 404.
+  const revokeSessionById = async ({ sessionId }: { sessionId: string }, actor: OrgServiceActor) => {
+    await $checkLicense(actor.orgId);
+
+    const session = await agentSessionDAL.findById(sessionId);
+    if (!session) {
+      throw new NotFoundError({ message: `Agent session with ID "${sessionId}" not found` });
+    }
+    await $assertPolicyPermission(actor, session.projectId, ProjectPermissionActions.Delete);
+
+    const revoked = session.revokedAt
+      ? session
+      : await agentSessionDAL.updateById(session.id, { revokedAt: new Date() });
+
+    return {
+      id: revoked.id,
+      identityId: revoked.identityId,
+      userId: revoked.userId,
+      projectId: revoked.projectId,
+      revokedAt: revoked.revokedAt ?? null
+    };
   };
 
   // Reads the referenced secret values directly. The agent proxy holds no project permissions of its
@@ -329,6 +406,8 @@ export const agentSessionServiceFactory = ({
   return {
     mintSession,
     revokeSession,
+    revokeSessionById,
+    listSessions,
     resolveSession
   };
 };

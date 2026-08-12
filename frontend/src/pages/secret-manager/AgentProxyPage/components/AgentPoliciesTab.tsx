@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   FlaskConicalIcon,
   HardDriveIcon,
+  KeyIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
@@ -60,6 +61,7 @@ import {
 } from "@app/hooks/api/agentPolicies";
 
 import { AgentPolicySheet } from "./AgentPolicySheet";
+import { BrokeredCredentialsDialog } from "./BrokeredCredentialsDialog";
 import { PolicyRulesHoverCard } from "./PolicyRulesHoverCard";
 import { PolicySimulationModal } from "./PolicySimulationModal";
 import { PolicyTargetCell } from "./PolicyTargetCell";
@@ -74,7 +76,8 @@ export const AgentPoliciesTab = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "policyForm",
     "deletePolicy",
-    "testPolicy"
+    "testPolicy",
+    "brokeredCredentials"
   ] as const);
 
   const handleDelete = async () => {
@@ -193,6 +196,12 @@ export const AgentPoliciesTab = () => {
                         </IconButton>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => handlePopUpOpen("brokeredCredentials", policy)}
+                        >
+                          <KeyIcon />
+                          Brokered Credentials
+                        </DropdownMenuItem>
                         {/* Reading the user side is what the test reconciles against. */}
                         <ProjectPermissionCan
                           I={ProjectPermissionActions.Read}
@@ -287,6 +296,11 @@ export const AgentPoliciesTab = () => {
           isOpen={popUp.testPolicy.isOpen}
           agentPolicy={popUp.testPolicy.data as TAgentPolicy | undefined}
           onOpenChange={(isOpen) => handlePopUpToggle("testPolicy", isOpen)}
+        />
+        <BrokeredCredentialsDialog
+          isOpen={popUp.brokeredCredentials.isOpen}
+          policy={popUp.brokeredCredentials.data as TAgentPolicy | undefined}
+          onOpenChange={(isOpen) => handlePopUpToggle("brokeredCredentials", isOpen)}
         />
       </CardContent>
     </Card>

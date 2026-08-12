@@ -36,7 +36,14 @@ const AgentPolicyResponseSchema = AgentPoliciesSchema.pick({
       slotKey: z.string(),
       environment: z.string(),
       secretPath: z.string(),
-      secretKey: z.string()
+      secretKey: z.string(),
+      role: z.string(),
+      headerName: z.string().nullable(),
+      headerPrefix: z.string().nullable(),
+      headerPurpose: z.string().nullable(),
+      placeholderKey: z.string().nullable(),
+      placeholderValue: z.string().nullable(),
+      substitutionSurfaces: z.string().array()
     })
     .array()
 });
