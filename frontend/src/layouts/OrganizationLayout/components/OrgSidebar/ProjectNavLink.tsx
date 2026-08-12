@@ -30,11 +30,15 @@ export const ProjectNavLink = ({
   const sidebarScope = useSidebarScope();
 
   const typePath = PROJECT_TYPE_PATH[currentProject.type];
-  const isPam = currentProject.type === ProjectType.PAM;
-  const basePath = isPam
-    ? `/organizations/${currentOrg.id}/pam`
-    : `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
+  const isOrganizationTarget = item.targetScope === "organization";
+  const isPam = currentProject.type === ProjectType.PAM && !isOrganizationTarget;
+  let basePath = `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
+  if (isOrganizationTarget) basePath = `/organizations/${currentOrg.id}`;
+  else if (isPam) basePath = `/organizations/${currentOrg.id}/pam`;
   const fullPath = `${basePath}/${item.pathSuffix}`;
+  let destination = `/organizations/$orgId/projects/${typePath}/$projectId/${item.pathSuffix}`;
+  if (isOrganizationTarget) destination = `/organizations/$orgId/${item.pathSuffix}`;
+  else if (isPam) destination = `/organizations/$orgId/pam/${item.pathSuffix}`;
 
   const activeMatchResult = (() => {
     if (!item.activeMatch) return false;
@@ -88,11 +92,7 @@ export const ProjectNavLink = ({
       >
         <Link
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          to={
-            isPam
-              ? (`/organizations/$orgId/pam/${item.pathSuffix}` as any)
-              : (`/organizations/$orgId/projects/${typePath}/$projectId/${item.pathSuffix}` as any)
-          }
+          to={destination as any}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           params={{ orgId: currentOrg.id, projectId: currentProject.id } as any}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

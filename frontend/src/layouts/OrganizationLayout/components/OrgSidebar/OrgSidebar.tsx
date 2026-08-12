@@ -1,6 +1,19 @@
 import { useLocation, useParams } from "@tanstack/react-router";
+import { Search } from "lucide-react";
 
-import { Sidebar, SidebarContent, SidebarFooter, SidebarTrigger } from "@app/components/v3";
+import {
+  getGlobalCommandMenuShortcutLabel,
+  openGlobalCommandMenu,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarTrigger
+} from "@app/components/v3";
+import { Kbd } from "@app/components/v3/generic/DataGrid/ui/kbd";
 import { useOrganization } from "@app/context";
 import {
   hasIntermediateProjectsView,
@@ -8,9 +21,11 @@ import {
   urlSlugToProjectType
 } from "@app/helpers/project";
 
+import { NotificationDropdown } from "../NavBar/NotificationDropdown";
 import { OrgNav } from "./OrgNav";
 import { ProjectNav } from "./ProjectNav";
 import { ProjectTypeNav } from "./ProjectTypeNav";
+import { SidebarUserMenu } from "./SidebarUserMenu";
 
 // --- Main sidebar ---
 
@@ -45,8 +60,32 @@ export const OrgSidebar = () => {
 
   return (
     <Sidebar scope={scope} collapsible="none" side="left">
+      <SidebarHeader className="border-b border-border p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              tooltip="Find"
+              onClick={openGlobalCommandMenu}
+              className="border border-border bg-background/40"
+            >
+              <Search />
+              <span>Find</span>
+              <Kbd className="ml-auto group-data-[collapsible=icon]:hidden">
+                {getGlobalCommandMenuShortcutLabel()}
+              </Kbd>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
       <SidebarContent>{body}</SidebarContent>
       <SidebarFooter className="border-t border-border p-2">
+        <div className="flex min-w-0 items-center gap-1">
+          <SidebarUserMenu />
+          <div className="group-data-[collapsible=icon]:hidden">
+            <NotificationDropdown side="right" align="end" />
+          </div>
+        </div>
         <SidebarTrigger variant="ghost" className="w-full" />
       </SidebarFooter>
     </Sidebar>

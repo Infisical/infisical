@@ -13,7 +13,8 @@ import {
   Search,
   Settings,
   Shield,
-  ShieldCheck
+  ShieldCheck,
+  SlidersHorizontal
 } from "lucide-react";
 
 import { ResourceIcon, SidebarCollapsibleGroup } from "@app/components/v3";
@@ -194,7 +195,14 @@ export const CertManagerNav = ({
       activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
     },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
-    { label: "Settings", icon: Settings, pathSuffix: "settings" }
+    { label: "Settings", icon: Settings, pathSuffix: "settings" },
+    {
+      label: "Product Settings",
+      icon: SlidersHorizontal,
+      pathSuffix: "settings",
+      targetScope: "organization",
+      search: { selectedTab: "product-settings" }
+    }
   ];
 
   const generalItemsForRole = isCertManagerAdmin

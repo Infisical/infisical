@@ -30,6 +30,8 @@ export type NavItem = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   pathSuffix: string;
+  /** Organization targets remain available from a project sidebar without inheriting projectId. */
+  targetScope?: "project" | "organization";
   activeMatch?: RegExp | ((pathname: string, search: Record<string, unknown>) => boolean);
   badgeCount?: number;
   badgeVariant?: "warning" | "danger" | "pam";

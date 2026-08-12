@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { Blocks, CreditCard, FileText, Settings, Shield } from "lucide-react";
+import { Blocks, CreditCard, FileText, Settings, Shield, Users } from "lucide-react";
 
-import { OrgIcon, SidebarCollapsibleGroup, SubOrgIcon } from "@app/components/v3";
+import { OrgIcon, SubOrgIcon } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 
 import { OrgNavList } from "./OrgNavLink";
 import { OrgSettingsSubmenuView } from "./OrgSubmenuView";
-import type { OrgNavGroup } from "./types";
+import type { OrgNavItem } from "./types";
 
 // --- Org nav ---
 
@@ -39,44 +39,39 @@ export const OrgNav = () => {
     });
   };
 
-  const groups: OrgNavGroup[] = [
+  const items: OrgNavItem[] = [
     {
-      label: "General",
-      collapsible: false,
-      items: [
-        {
-          label: "Home",
-          icon: isRootOrganization ? OrgIcon : SubOrgIcon,
-          pathSuffix: "projects"
-        },
-        {
-          label: "Integrations",
-          icon: Blocks,
-          pathSuffix: "integrations",
-          // Keep highlighted on the app-connections OAuth/manifest callback pages
-          activeMatch: /organizations\/[^/]+\/app-connections/
-        }
-      ]
+      label: "Projects",
+      icon: isRootOrganization ? OrgIcon : SubOrgIcon,
+      pathSuffix: "projects"
     },
     {
-      label: "Administration",
-      items: [
-        {
-          label: "Access Control",
-          icon: Shield,
-          pathSuffix: "access-management",
-          activeMatch: /organizations\/[^/]+\/(members|identities|groups|roles)/
-        },
-        {
-          label: "Usage & Billing",
-          icon: CreditCard,
-          pathSuffix: "billing",
-          hidden: !isRootOrganization
-        },
-        { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
-        { label: "Settings", icon: Settings, pathSuffix: "settings", opensSubmenu: true }
-      ]
-    }
+      label: "Integrations",
+      icon: Blocks,
+      pathSuffix: "integrations",
+      // Keep highlighted on the app-connections OAuth/manifest callback pages
+      activeMatch: /organizations\/[^/]+\/app-connections/
+    },
+    {
+      label: "PAM",
+      icon: Users,
+      pathSuffix: "pam/access",
+      activeMatch: /organizations\/[^/]+\/pam\//
+    },
+    {
+      label: "Access Control",
+      icon: Shield,
+      pathSuffix: "access-management",
+      activeMatch: /organizations\/[^/]+\/(members|identities|groups|roles)/
+    },
+    {
+      label: "Usage & Billing",
+      icon: CreditCard,
+      pathSuffix: "billing",
+      hidden: !isRootOrganization
+    },
+    { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
+    { label: "Settings", icon: Settings, pathSuffix: "settings", opensSubmenu: true }
   ];
 
   return (
@@ -99,16 +94,9 @@ export const OrgNav = () => {
           exit={{ x: -30, opacity: 0 }}
           transition={{ duration: 0.11, ease: "easeOut" }}
         >
-          {groups.map((group) => (
-            <SidebarCollapsibleGroup
-              key={group.label}
-              label={group.label}
-              collapsible={group.collapsible}
-              defaultOpen={group.defaultOpen}
-            >
-              <OrgNavList items={group.items} onOpenSubmenu={handleOpenSettings} />
-            </SidebarCollapsibleGroup>
-          ))}
+          <div className="py-2">
+            <OrgNavList items={items} onOpenSubmenu={handleOpenSettings} />
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

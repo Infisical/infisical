@@ -15,6 +15,7 @@ import {
 } from "./Command";
 
 const APPLE_PLATFORM_PATTERN = /Mac|iPhone|iPad|iPod/i;
+const GLOBAL_COMMAND_MENU_OPEN_EVENT = "infisical:open-command-menu";
 const SHORTCUT_EXCLUSION_SELECTOR =
   '[data-command-menu-shortcut="ignore"], [contenteditable]:not([contenteditable="false"]), .cm-editor, .monaco-editor, .xterm';
 
@@ -55,6 +56,12 @@ const usesAppleCommandKey = () => {
   if (typeof navigator === "undefined") return false;
   return APPLE_PLATFORM_PATTERN.test(`${navigator.platform} ${navigator.userAgent}`);
 };
+
+export const openGlobalCommandMenu = () => {
+  window.dispatchEvent(new Event(GLOBAL_COMMAND_MENU_OPEN_EVENT));
+};
+
+export const getGlobalCommandMenuShortcutLabel = () => (usesAppleCommandKey() ? "⌘K" : "Ctrl K");
 
 const isGlobalCommandShortcut = (event: KeyboardEvent) => {
   if (
@@ -195,7 +202,13 @@ export const GlobalCommandMenu = ({
     };
 
     window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
+    const handleOpenRequest = () => setOpen(true);
+    window.addEventListener(GLOBAL_COMMAND_MENU_OPEN_EVENT, handleOpenRequest);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener(GLOBAL_COMMAND_MENU_OPEN_EVENT, handleOpenRequest);
+    };
   }, [isEnabled, setOpen]);
 
   const goBack = () => {

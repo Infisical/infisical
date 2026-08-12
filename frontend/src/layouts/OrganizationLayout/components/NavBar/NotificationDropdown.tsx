@@ -21,7 +21,13 @@ import { isCriticalNotification } from "@app/hooks/api/notifications/types";
 
 import { Notification } from "./Notification";
 
-export const NotificationDropdown = () => {
+export const NotificationDropdown = ({
+  side = "bottom",
+  align = "end"
+}: {
+  side?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
+}) => {
   const router = useRouter();
 
   const { data: notifications, isLoading } = useGetMyNotifications();
@@ -55,9 +61,10 @@ export const NotificationDropdown = () => {
         </IconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        align="end"
-        side="bottom"
-        className="z-999 mt-3 flex h-[550px] w-[400px] overflow-hidden rounded-lg"
+        align={align}
+        side={side}
+        sideOffset={8}
+        className="z-999 flex h-[550px] w-[400px] max-w-[calc(100vw-1rem)] overflow-hidden rounded-lg"
       >
         <div className="flex w-full flex-col">
           <div className="flex items-center justify-between border-b border-mineshaft-500 px-3 py-2">

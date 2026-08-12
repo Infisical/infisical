@@ -381,6 +381,16 @@ const getOrganizationItems = ({
       navigate({ to: "/organizations/$orgId/integrations", params: { orgId: organizationId } })
   },
   {
+    id: `organization-${organizationId}-pam`,
+    label: "PAM",
+    breadcrumb: `${organizationName} / Organization`,
+    icon: UsersIcon,
+    keywords: ["privileged access", "accounts", "sessions"],
+    priority: 25,
+    onSelect: () =>
+      navigate({ to: "/organizations/$orgId/pam/access", params: { orgId: organizationId } })
+  },
+  {
     id: `organization-${organizationId}-access-control`,
     label: "Access Control",
     breadcrumb: `${organizationName} / Organization`,
@@ -428,6 +438,33 @@ const getOrganizationItems = ({
         to: "/organizations/$orgId/settings",
         params: { orgId: organizationId },
         search: { selectedTab: "tab-org-general" }
+      })
+  },
+  {
+    id: `organization-${organizationId}-secrets-product-settings`,
+    label: "Secrets Product Settings",
+    breadcrumb: `${organizationName} / Product Settings`,
+    icon: SettingsIcon,
+    keywords: ["secrets management", "organization settings", "product"],
+    priority: 25,
+    onSelect: () =>
+      navigate({
+        to: "/organizations/$orgId/projects/secret-management/product-settings",
+        params: { orgId: organizationId }
+      })
+  },
+  {
+    id: `organization-${organizationId}-pki-product-settings`,
+    label: "PKI Product Settings",
+    breadcrumb: `${organizationName} / Product Settings`,
+    icon: SettingsIcon,
+    keywords: ["certificate manager", "pki", "organization settings", "product"],
+    priority: 25,
+    onSelect: () =>
+      navigate({
+        to: "/organizations/$orgId/settings",
+        params: { orgId: organizationId },
+        search: { selectedTab: "product-settings" }
       })
   }
 ];

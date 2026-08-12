@@ -9,8 +9,6 @@ import {
   ChevronLeft,
   ChevronsUpDown,
   CircleHelp,
-  Clipboard,
-  ExternalLink,
   Github,
   Infinity,
   Info,
@@ -20,7 +18,6 @@ import {
   Settings,
   Slack,
   TriangleAlertIcon,
-  User,
   UserPlus,
   Users
 } from "lucide-react";
@@ -28,7 +25,6 @@ import { twMerge } from "tailwind-merge";
 
 import { AnnouncementNavButton } from "@app/components/announcements/AnnouncementNavButton";
 import { Mfa } from "@app/components/auth/Mfa";
-import { createNotification } from "@app/components/notifications";
 import { NewSubOrganizationModal } from "@app/components/organization/NewSubOrganizationModal";
 import { OrgPermissionCan } from "@app/components/permissions";
 import SecurityClient from "@app/components/utilities/SecurityClient";
@@ -61,7 +57,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { SidebarTrigger } from "@app/components/v3/generic/Sidebar";
+import { SidebarTrigger, useSidebar } from "@app/components/v3/generic/Sidebar";
 import { envConfig } from "@app/config/env";
 import {
   OrgPermissionActions,
@@ -85,7 +81,6 @@ import {
 import { appConnectionKeys } from "@app/hooks/api/appConnections";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
-import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { getSubscriptionPlanLabel } from "@app/hooks/api/subscriptions";
 import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { Organization } from "@app/hooks/api/types";
@@ -98,7 +93,7 @@ import { TypeSelect } from "@app/layouts/ProjectLayout/components/TypeSelect";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
-import { NotificationDropdown } from "./NotificationDropdown";
+import { ProductLauncher } from "./ProductLauncher";
 import { VersionBadge } from "./VersionBadge";
 
 const getFormattedSupportEmailLink = (variables: {
@@ -140,8 +135,18 @@ export const INFISICAL_SUPPORT_OPTIONS = [
   [Users, "Instance Admins", () => "server-admins"]
 ] as const;
 
+const getOrganizationLocationLabel = (pathname: string) => {
+  if (pathname.includes("/integrations")) return "Integrations";
+  if (pathname.includes("/access-management")) return "Access Control";
+  if (pathname.includes("/audit-logs")) return "Audit Logs";
+  if (pathname.includes("/billing")) return "Usage & Billing";
+  if (pathname.includes("/settings")) return "Settings";
+  return "Projects";
+};
+
 export const Navbar = () => {
   const { user } = useUser();
+  const { state: sidebarState, isMobile: isSidebarMobile } = useSidebar();
   const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
   const { config: serverConfig } = useServerConfig();
@@ -283,19 +288,6 @@ export const Navbar = () => {
     }
   };
 
-  const handleCopyToken = async () => {
-    try {
-      await window.navigator.clipboard.writeText(getAuthToken());
-      createNotification({
-        type: "success",
-        text: "Copied current login session token to clipboard"
-      });
-    } catch (error) {
-      console.log(error);
-      createNotification({ type: "error", text: "Failed to copy user token to clipboard" });
-    }
-  };
-
   if (shouldShowMfa) {
     return (
       <Mfa
@@ -346,7 +338,7 @@ export const Navbar = () => {
   return (
     <div
       className={twMerge(
-        "z-10 flex min-h-12 items-center border-b border-border bg-gradient-to-br to-transparent",
+        "z-10 flex h-14 min-h-14 items-center border-b border-border bg-gradient-to-br to-transparent",
         isServerAdminPanel && "from-admin/5",
         !isServerAdminPanel && isPamScope && "from-product-pam/5",
         !isServerAdminPanel && isProjectScope && !isPamScope && "from-project/5",
@@ -383,8 +375,10 @@ export const Navbar = () => {
           <>
             <div
               className={twMerge(
-                "flex h-full min-w-0 items-center overflow-hidden border-border pr-2 pl-4 transition-all duration-300 ease-in-out",
-                isProjectScope ? "mr-2 w-[72px] border-r" : "mr-4 w-96 max-w-96"
+                "mr-4 flex h-full min-w-0 shrink-0 items-center overflow-hidden border-r border-border pr-2 pl-4 transition-all duration-200 ease-linear",
+                sidebarState === "collapsed" && !isSidebarMobile
+                  ? "w-(--sidebar-width-icon) px-2"
+                  : "w-(--sidebar-width)"
               )}
             >
               <Popover open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
@@ -593,6 +587,11 @@ export const Navbar = () => {
                 </PopoverContent>
               </Popover>
             </div>
+            {!isProjectScope && (
+              <span className="truncate text-sm font-medium text-foreground">
+                {getOrganizationLocationLabel(location.pathname)}
+              </span>
+            )}
             {isProjectScope && (
               <>
                 <TypeSelect />
@@ -604,6 +603,7 @@ export const Navbar = () => {
         )}
       </div>
 
+      {!isServerAdminPanel && <ProductLauncher />}
       <VersionBadge />
       {subscription &&
       subscription.slug === SubscriptionPlanTypes.Starter &&
@@ -724,86 +724,6 @@ export const Navbar = () => {
           </DropdownMenuContent>
         </DropdownMenu>
         <AnnouncementNavButton />
-        <NotificationDropdown />
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <IconButton variant="outline" size="sm" aria-label="User menu">
-              <User />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="bottom" align="end" sideOffset={8}>
-            <div className="cursor-default px-3 py-2">
-              <div className="text-sm font-medium capitalize">
-                {user?.firstName} {user?.lastName}
-              </div>
-              <div className="text-muted-foreground text-xs">{user.email}</div>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/personal-settings">
-                <Settings className="size-4" />
-                Personal Settings
-              </Link>
-            </DropdownMenuItem>
-            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
-              {(isAllowed) =>
-                isAllowed ? (
-                  <DropdownMenuItem asChild>
-                    <Link
-                      to="/organizations/$orgId/access-management"
-                      params={{ orgId: currentOrg.id }}
-                      search={{
-                        selectedTab: "members",
-                        action: "invite-members"
-                      }}
-                    >
-                      <UserPlus />
-                      Invite Users
-                    </Link>
-                  </DropdownMenuItem>
-                ) : null
-              }
-            </OrgPermissionCan>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <a
-                href="https://infisical.com/docs/documentation/getting-started/introduction"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Book />
-                Documentation
-                <ExternalLink className="ml-auto size-3.5 opacity-50" />
-              </a>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <a href="https://infisical.com/slack" target="_blank" rel="noopener noreferrer">
-                <Slack />
-                Join Slack Community
-                <ExternalLink className="ml-auto size-3.5 opacity-50" />
-              </a>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={handleCopyToken}>
-              <Clipboard />
-              Copy Token
-              <Tooltip>
-                <TooltipTrigger>
-                  <Info className="size-3.5 opacity-50" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  This token is linked to your current login session and can only access resources
-                  within the organization you&apos;re currently logged into.
-                </TooltipContent>
-              </Tooltip>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={logOutUser}>
-              <LogOut />
-              Log Out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </ButtonGroup>
 
       <Modal
