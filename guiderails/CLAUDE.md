@@ -81,6 +81,7 @@ npx tsx src/cli.ts env up                   # start + bootstrap the instance und
 npx tsx src/cli.ts env fixture <name>       # build one fixture, print what it made
 npx tsx src/cli.ts compile [guide...]       # L2, needs Claude credentials
 npx tsx src/cli.ts run [guide...] --live    # L3/L4/L5, needs credentials + an instance
+npx tsx src/cli.ts live [recording]         # offline; replay a recorded run into the dashboard
 ```
 
 `lint-images`, `extract`, `check-drift` and `select` are fully offline. Everything else needs
@@ -103,6 +104,43 @@ Argument parsing goes through `src/args.ts`, which knows which flags take a valu
 filtering it replaced assumed anything following a `--flag` was that flag's value, so
 `run --live folder` discarded `folder` and silently walked the entire registry. Failing by doing
 *more* than asked is the worst shape of that bug, because the output looks fine.
+
+## The live dashboard
+
+`run --live` serves a React app at `http://localhost:4488` (`GUIDERAILS_LIVE_PORT` to move it). The
+browser screencast takes the left, and a rail on the right lists the whole plan grouped by
+procedure, expanding the current step to show the agent's thinking, tool calls and findings.
+
+It is a consumer of the same event stream the terminal reporter reads, never a second source of
+truth, so it cannot show an audience something the log does not contain. A client that connects
+mid-run gets the buffered history replayed first, so a reload during a demo restores the whole view.
+
+**The build is lazy and content-hashed.** The app lives in `dashboard/` and nothing built is
+committed. `startLiveServer` hashes the dashboard sources plus `src/live/protocol.ts`, compares
+against a stamp in `dashboard/dist/`, and calls Vite only on a mismatch. So `--live` works straight
+after `npm ci`, and no install or CI step has to know the dashboard exists. If the build fails the
+run prints why and continues with the console reporter: a walk costs API calls and a live instance,
+and losing one because the UI would not compile is not a trade worth making.
+
+**Iterating on it needs no instance and no API spend.** Record one real walk, then replay it as
+often as the UI takes:
+
+```
+GUIDERAILS_LIVE_RECORD=reports/last-run.jsonl npx tsx src/cli.ts run folder --live
+npx tsx src/cli.ts live                      # replays reports/last-run.jsonl, no Docker needed
+npx tsx src/cli.ts live --speed 8 --loop     # or --instant to jump to the finished state
+```
+
+The recording is JSONL, one `{ t, event }` per line, `t` being milliseconds from the first event.
+The offsets are the point: a page that paints 400 events at once cannot show whether the in-flight
+tool state ever renders. Frames are included, so a recording runs to about 10MB a minute — it lands
+in `reports/`, which is gitignored.
+
+**Two terminals, for CSS work.** Terminal 1 holds a run or a playback on 4488 (its server keeps
+serving after the walk ends). Terminal 2 runs `npm run dashboard:dev`, which serves the app on 4489
+and proxies `/events` through to 4488. Edit a `.tsx` and reload; because history is replayed on
+connect, a plain reload restores the entire view, which is why there is no React plugin and no Fast
+Refresh.
 
 ## Non-obvious things about the instance under test
 
@@ -175,6 +213,14 @@ Any of them silently breaks a run if reintroduced.
 - **Warn-only.** Guides start `critical: false` and earn gating.
 - **Prompt caching depends on frozen system prompts.** Interpolating anything per-step into a
   system prompt silently throws the cache away. Per-step content belongs in the user message.
+- **`docStepIndex` is never an identity on its own.** It is 1-based *within a procedure*
+  (`GuideStep.index`), so folder.mdx has five steps under three distinct indices and secret-sharing
+  has eleven under six. Keying on it alone has already caused three bugs: a rail that rendered three
+  rows for five steps, a passing step repainted as failed when a later procedure's step 1 overwrote
+  it, and a replay that ran one procedure's locators while reporting the failure against another's.
+  Always pair it with `procedureIndex`, via `stepKey` from `src/live/protocol.ts` wherever a string
+  key is wanted. `entry.skipSteps` in the registry has the same latent ambiguity — every entry is
+  `[]` today, and changing a documented field's meaning is a separate decision.
 
 ## Which comment goes where, and why
 
@@ -240,3 +286,7 @@ the rest report as unverified.
 No `.npmrc` here, matching `e2e/`: the 7-day minimum-release-age rule in `backend/` and
 `frontend/` exists for runtime artifacts, and this is a test harness. CI uses `npm ci`, so a
 dependency change must commit the lockfile in the same change.
+
+`vite`, `react` and `react-dom` are devDependencies used only to build the live dashboard. Nothing
+shipped depends on them, and nothing in CI builds the dashboard — a missing Vite degrades `--live`
+to the console reporter rather than failing a job.

@@ -9,9 +9,11 @@ import { setupFixture, type FixtureResult } from "../env/fixtures.js";
 import { createBrowserSession } from "../env/session.js";
 import { extractGuide } from "../extract/index.js";
 import { emptyUsage, type UsageTotals } from "../llm.js";
+import { type PlanOutlineProcedure } from "../live/protocol.js";
 import { DOCS_ROOT, REPORTS_DIR, REPO_ROOT, repoRelative, resolveGuidePath } from "../paths.js";
 import type {
   Finding,
+  GuideDoc,
   GuidePlan,
   GuideRegistryEntry,
   PlanStep,
@@ -57,6 +59,41 @@ export type RunOutput = {
   artifactDir: string;
 };
 
+/**
+ * Groups the plan's steps by procedure so the dashboard can list what is coming and label each
+ * group with its heading. Procedures keep first-appearance order, which is document order.
+ */
+export const planOutline = (plan: GuidePlan, doc: GuideDoc): PlanOutlineProcedure[] => {
+  const byIndex = new Map<number, PlanOutlineProcedure>();
+  const order: number[] = [];
+
+  for (const step of plan.steps) {
+    let procedure = byIndex.get(step.procedureIndex);
+    if (!procedure) {
+      procedure = {
+        index: step.procedureIndex,
+        heading:
+          doc.procedures.find((candidate) => candidate.index === step.procedureIndex)?.heading ??
+          null,
+        steps: []
+      };
+      byIndex.set(step.procedureIndex, procedure);
+      order.push(step.procedureIndex);
+    }
+    procedure.steps.push({
+      procedureIndex: step.procedureIndex,
+      docStepIndex: step.docStepIndex,
+      instruction: step.instruction
+    });
+  }
+
+  // flatMap rather than a non-null assertion, so noUncheckedIndexedAccess stays honest.
+  return order.flatMap((index) => {
+    const procedure = byIndex.get(index);
+    return procedure ? [procedure] : [];
+  });
+};
+
 const findDocImage = (docImage: string, guideFile: string): string | null => {
   const candidate = docImage.startsWith("/")
     ? path.join(DOCS_ROOT, docImage.split("#")[0] ?? docImage)
@@ -90,11 +127,23 @@ export const runGuide = async (options: RunOptions): Promise<RunOutput> => {
   const artifactDir = path.join(REPORTS_DIR, planSafeName(entry.guide));
   fs.mkdirSync(artifactDir, { recursive: true });
 
+  // Announced before the fixture is built, not after. Everything needed is already in hand, and
+  // the fixture takes several seconds, so this fills that time with the guide and its full step
+  // list rather than an empty screen. It also stops the fixture log landing in the previous
+  // guide's history segment on a multi-guide run.
+  events.runStarted({
+    guide: entry.guide,
+    title: doc.title,
+    baseUrl: state.baseUrl,
+    fixture: entry.fixture,
+    totalSteps: plan.steps.length
+  });
+  events.runPlan(planOutline(plan, doc));
+
   const fixture: FixtureResult = await setupFixture(entry.fixture, state);
   events.log(`fixture ${fixture.name}: ${fixture.describe.join(" ")}`);
 
   const recorded = options.forceAgent ? null : readResolved(entry.guide, doc.contentHash);
-  events.runStarted(entry.guide, state.baseUrl, plan.steps.length, fixture.name);
   if (recorded) {
     events.log(`replaying ${recorded.steps.length} recorded step(s); agent runs only on failure`);
   }
@@ -143,13 +192,13 @@ export const runGuide = async (options: RunOptions): Promise<RunOutput> => {
       if (blockedBy !== undefined) {
         const reason = `not reached: step ${blockedBy} of this procedure could not be completed`;
         steps.push(emptyStepResult(step, "unverified", reason));
-        events.stepResult(step.docStepIndex, "unverified", reason);
+        events.stepResult(step.procedureIndex, step.docStepIndex, "unverified", reason);
         continue;
       }
 
       if (entry.skipSteps.includes(step.docStepIndex)) {
         steps.push(emptyStepResult(step, "skipped", "skipped by the registry"));
-        events.stepResult(step.docStepIndex, "skipped", "skipped by the registry");
+        events.stepResult(step.procedureIndex, step.docStepIndex, "skipped", "skipped by the registry");
         continue;
       }
 
@@ -162,12 +211,17 @@ export const runGuide = async (options: RunOptions): Promise<RunOutput> => {
           .join("; ");
         steps.push(emptyStepResult(step, "unverified", reason));
         unverified.push({ reason, tab: doc.tab, line: step.actions[0]?.sourceQuote.line ?? 0 });
-        events.stepResult(step.docStepIndex, "unverified", reason);
+        events.stepResult(step.procedureIndex, step.docStepIndex, "unverified", reason);
         continue;
       }
 
+      // Both halves of the identity. docStepIndex alone is only unique within a procedure, so
+      // matching on it made procedure 2's step 1 replay procedure 1's step 1 locators and report
+      // the resulting failure against the wrong step.
       const recordedStep = recorded?.steps.find(
-        (candidate) => candidate.docStepIndex === step.docStepIndex
+        (candidate) =>
+          candidate.procedureIndex === step.procedureIndex &&
+          candidate.docStepIndex === step.docStepIndex
       );
 
       const started = Date.now();
@@ -179,7 +233,7 @@ export const runGuide = async (options: RunOptions): Promise<RunOutput> => {
       const stepFindings: Finding[] = [];
 
       if (recordedStep) {
-        events.stepStarted(step.docStepIndex, step.instruction, "replay");
+        events.stepStarted(step.procedureIndex, step.docStepIndex, step.instruction, "replay");
         const replay = await replayStep(recordedStep, tools, fixture.values);
         if (replay.ok) {
           outcome = "passed";
@@ -193,7 +247,7 @@ export const runGuide = async (options: RunOptions): Promise<RunOutput> => {
       }
 
       if (outcome !== "passed") {
-        events.stepStarted(step.docStepIndex, step.instruction, "agent");
+        events.stepStarted(step.procedureIndex, step.docStepIndex, step.instruction, "agent");
         const agent = await runStepAgent(
           step,
           tools,
@@ -274,7 +328,7 @@ export const runGuide = async (options: RunOptions): Promise<RunOutput> => {
         resolvedLocators: locators
       });
 
-      events.stepResult(step.docStepIndex, outcome, detail || outcome);
+      events.stepResult(step.procedureIndex, step.docStepIndex, outcome, detail || outcome);
 
       // Close the procedure so the cascade above suppresses the rest of it.
       if (outcome === "failed") blockedProcedures.set(step.procedureIndex, step.docStepIndex);

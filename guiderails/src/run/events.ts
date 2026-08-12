@@ -1,5 +1,7 @@
 import { EventEmitter } from "node:events";
+import { randomUUID } from "node:crypto";
 
+import { stepKey, type PlanOutlineProcedure, type RunEvent } from "../live/protocol.js";
 import type { Finding, StepOutcome } from "../types.js";
 
 /**
@@ -8,30 +10,50 @@ import type { Finding, StepOutcome } from "../types.js";
  * Keeping them on the same stream means the dashboard can never show something the log does
  * not, which matters for a demo: a divergence between what the audience sees and what the run
  * actually did would be worse than having no dashboard.
+ *
+ * The event shapes themselves live in `../live/protocol.ts`, shared with the browser.
  */
 
-export type RunEvent =
-  | { type: "run_started"; guide: string; baseUrl: string; totalSteps: number; fixture: string }
-  | { type: "step_started"; docStepIndex: number; instruction: string; mode: "replay" | "agent" }
-  | { type: "thinking"; text: string }
-  | { type: "assistant_text"; text: string }
-  | { type: "tool_call"; name: string }
-  | { type: "finding"; severity: string; summary: string }
-  | { type: "step_result"; docStepIndex: number; outcome: StepOutcome; detail: string }
-  | { type: "frame"; jpegBase64: string }
-  | { type: "log"; text: string }
-  | { type: "run_finished"; passed: number; failed: number; skipped: number; unverified: number };
+export type { RunEvent } from "../live/protocol.js";
+
+/**
+ * One guide's worth of buffered history.
+ *
+ * Segmenting per run fixes two real defects in the flat buffer this replaces. A second guide's
+ * `run_started` used to make the client wipe the first guide entirely, and once the buffer
+ * overflowed, `run_started` was the *first* thing evicted, so a reconnecting client never learned
+ * which guide the remaining events belonged to and appended them onto whatever was already on
+ * screen.
+ */
+type RunSegment = {
+  /** null for events emitted before any run started, which the fixture log used to be. */
+  runId: string | null;
+  /**
+   * `run_started` and `run_plan`. Never evicted: a client connecting after the tail has overflowed
+   * still has to learn which guide it is looking at and what the steps are.
+   */
+  header: RunEvent[];
+  /** Capped. The oldest chatter is the least interesting thing on screen. */
+  tail: RunEvent[];
+};
 
 export class RunEvents {
   private readonly emitter = new EventEmitter();
 
-  /** Replayed to any dashboard client that connects mid-run, so a late joiner sees context. */
-  private readonly history: RunEvent[] = [];
+  /**
+   * One segment per guide. Unbounded on purpose: the count is bounded by the number of guides in
+   * a single CLI invocation, which is at most the registry size.
+   */
+  private readonly segments: RunSegment[] = [];
 
-  private static readonly MAX_HISTORY = 500;
+  private static readonly MAX_TAIL_PER_RUN = 500;
 
   /** Frames are volatile and large; only the newest is worth replaying. */
   private latestFrame: RunEvent | null = null;
+
+  private runId: string | null = null;
+
+  private nextToolCallId = 1;
 
   on(listener: (event: RunEvent) => void): () => void {
     this.emitter.on("event", listener);
@@ -39,25 +61,75 @@ export class RunEvents {
   }
 
   replay(): RunEvent[] {
-    return this.latestFrame ? [...this.history, this.latestFrame] : [...this.history];
+    const events = this.segments.flatMap((segment) => [...segment.header, ...segment.tail]);
+    // Newest frame last, so it wins regardless of where it fell chronologically.
+    return this.latestFrame ? [...events, this.latestFrame] : events;
+  }
+
+  private currentSegment(): RunSegment {
+    const last = this.segments[this.segments.length - 1];
+    if (last) return last;
+    const opening: RunSegment = { runId: null, header: [], tail: [] };
+    this.segments.push(opening);
+    return opening;
   }
 
   private emit(event: RunEvent): void {
     if (event.type === "frame") {
       this.latestFrame = event;
+    } else if (event.type === "run_started") {
+      this.segments.push({ runId: event.runId, header: [event], tail: [] });
+    } else if (event.type === "run_plan") {
+      this.currentSegment().header.push(event);
     } else {
-      this.history.push(event);
-      if (this.history.length > RunEvents.MAX_HISTORY) this.history.shift();
+      const segment = this.currentSegment();
+      segment.tail.push(event);
+      if (segment.tail.length > RunEvents.MAX_TAIL_PER_RUN) segment.tail.shift();
     }
     this.emitter.emit("event", event);
   }
 
-  runStarted(guide: string, baseUrl: string, totalSteps: number, fixture: string): void {
-    this.emit({ type: "run_started", guide, baseUrl, totalSteps, fixture });
+  /**
+   * Feeds an already-formed event in, as though it had just happened.
+   *
+   * Only `guiderails live` uses this, to play a recorded walk back through the same buffering and
+   * segmenting a real run gets — so a reload mid-playback rebuilds correctly, exactly as it would
+   * against a live walk.
+   */
+  ingest(event: RunEvent): void {
+    if (event.type === "run_started") this.runId = event.runId;
+    this.emit(event);
   }
 
-  stepStarted(docStepIndex: number, instruction: string, mode: "replay" | "agent"): void {
-    this.emit({ type: "step_started", docStepIndex, instruction, mode });
+  /** Mints and returns the run id, which later events on this run carry. */
+  runStarted(params: {
+    guide: string;
+    title: string;
+    baseUrl: string;
+    fixture: string;
+    totalSteps: number;
+  }): string {
+    this.runId = randomUUID();
+    this.emit({
+      type: "run_started",
+      runId: this.runId,
+      startedAt: new Date().toISOString(),
+      ...params
+    });
+    return this.runId;
+  }
+
+  runPlan(procedures: PlanOutlineProcedure[]): void {
+    this.emit({ type: "run_plan", runId: this.runId ?? "", procedures });
+  }
+
+  stepStarted(
+    procedureIndex: number,
+    docStepIndex: number,
+    instruction: string,
+    mode: "replay" | "agent"
+  ): void {
+    this.emit({ type: "step_started", procedureIndex, docStepIndex, instruction, mode });
   }
 
   thinking(text: string): void {
@@ -68,16 +140,29 @@ export class RunEvents {
     this.emit({ type: "assistant_text", text });
   }
 
-  toolCall(name: string): void {
-    this.emit({ type: "tool_call", name });
+  /** Returns the id to pass to `toolResult` once the tool has run. */
+  toolCall(name: string, arg: string | null = null): number {
+    const id = this.nextToolCallId;
+    this.nextToolCallId += 1;
+    this.emit({ type: "tool_call", id, name, arg });
+    return id;
+  }
+
+  toolResult(id: number, name: string, ok: boolean, detail: string): void {
+    this.emit({ type: "tool_result", id, name, ok, detail });
   }
 
   finding(severity: string, summary: string): void {
     this.emit({ type: "finding", severity, summary });
   }
 
-  stepResult(docStepIndex: number, outcome: StepOutcome, detail: string): void {
-    this.emit({ type: "step_result", docStepIndex, outcome, detail });
+  stepResult(
+    procedureIndex: number,
+    docStepIndex: number,
+    outcome: StepOutcome,
+    detail: string
+  ): void {
+    this.emit({ type: "step_result", procedureIndex, docStepIndex, outcome, detail });
   }
 
   frame(jpegBase64: string): void {
@@ -94,7 +179,7 @@ export class RunEvents {
     skipped: number;
     unverified: number;
   }): void {
-    this.emit({ type: "run_finished", ...counts });
+    this.emit({ type: "run_finished", runId: this.runId ?? "", ...counts });
   }
 }
 
@@ -115,10 +200,20 @@ export const attachConsoleReporter = (events: RunEvents): (() => void) => {
         );
         break;
       case "step_started":
-        process.stdout.write(`  step ${event.docStepIndex} [${event.mode}] ${event.instruction}\n`);
+        // The composite key, because two different steps both used to print "step 1".
+        process.stdout.write(
+          `  step ${stepKey(event.procedureIndex, event.docStepIndex)} [${event.mode}] ${event.instruction}\n`
+        );
         break;
       case "tool_call":
-        process.stdout.write(`      . ${event.name}\n`);
+        // Reproduces the previous single-string form exactly, now that name and argument are
+        // separate fields on the wire.
+        process.stdout.write(`      . ${event.name}${event.arg ? ` ${event.arg}` : ""}\n`);
+        break;
+      case "tool_result":
+        // Only on failure. A successful tool is already implied by the call line, but a failure
+        // was previously invisible in the terminal.
+        if (!event.ok) process.stdout.write(`      x ${event.name}: ${event.detail}\n`);
         break;
       case "finding":
         process.stdout.write(`      ! ${event.severity}: ${event.summary}\n`);

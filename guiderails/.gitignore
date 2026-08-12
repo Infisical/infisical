@@ -5,3 +5,4 @@ playwright-report/
 test-results/
 .guiderails-state.json
 .DS_Store
+dashboard/dist/

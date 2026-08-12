@@ -161,22 +161,68 @@ export const runStepAgent = async (
    */
   const finish = new AbortController();
 
-  const guardedTool = <T>(name: string, fn: () => Promise<T>) =>
-    async (): Promise<T | string> => {
-      if (budgetExceeded()) {
-        return `Tool budget for this step is exhausted (${MAX_TOOL_CALLS_PER_STEP} calls). Report the step blocked with what you know.` as T | string;
-      }
-      toolCalls += 1;
-      events.toolCall(name);
-      return fn();
-    };
+  /**
+   * Every acting tool, in one place.
+   *
+   * The six tool bodies this replaces each re-implemented the same four concerns — budget check,
+   * call accounting, locator capture, event emission — and had already drifted: the budget message
+   * differed between snapshot and the rest, and only some of them emitted anything the dashboard
+   * could pair a result with.
+   *
+   * `reply` is what the model reads; `detail` is what the dashboard shows. They are separate
+   * because snapshot's reply is an entire accessibility tree, and putting that on the wire would
+   * bury every other entry in the activity feed.
+   */
+  type ActionOutcome = {
+    ok: boolean;
+    /** One line. Shown in the feed and the terminal. */
+    detail: string;
+    /** Defaults to the ok/failed form below, which is what every browser tool wants. */
+    reply?: string;
+    locator?: ResolvedLocator | null;
+  };
+
+  const acting = async (
+    name: string,
+    arg: string | null,
+    action: () => Promise<ActionOutcome>
+  ): Promise<string> => {
+    if (budgetExceeded()) {
+      return `Tool budget for this step is exhausted (${MAX_TOOL_CALLS_PER_STEP} calls). Report the step blocked with what you know.`;
+    }
+    toolCalls += 1;
+    // Before the tool runs, so a click that hangs shows as in-flight rather than as nothing.
+    const id = events.toolCall(name, arg);
+
+    let outcome: ActionOutcome;
+    try {
+      outcome = await action();
+    } catch (error) {
+      // The browser tools report failure by returning `ok: false`, so this is a genuine fault, most
+      // likely a navigation that killed the page mid-call. It still has to be paired: an unanswered
+      // call leaves the dashboard showing that tool as in flight for the rest of the run, and tells
+      // the model nothing about why its step stopped progressing.
+      const detail = error instanceof Error ? error.message : String(error);
+      events.toolResult(id, name, false, detail);
+      return `failed: ${detail}`;
+    }
+
+    if (outcome.locator) resolvedLocators.push(outcome.locator);
+    events.toolResult(id, name, outcome.ok, outcome.detail);
+    return outcome.reply ?? `${outcome.ok ? "ok" : "failed"}: ${outcome.detail}`;
+  };
 
   const snapshotTool = betaZodTool({
     name: "snapshot",
     description:
       "Read the page's accessibility tree: every control with its role and visible label.",
     inputSchema: z.object({}),
-    run: guardedTool("snapshot", async () => tools.snapshot())
+    run: async () =>
+      acting("snapshot", null, async () => {
+        const tree = await tools.snapshot();
+        const lines = tree.split("\n").length;
+        return { ok: true, detail: `${lines} line(s)`, reply: tree };
+      })
   });
 
   const clickTool = betaZodTool({
@@ -189,14 +235,7 @@ export const runStepAgent = async (
         .nullable()
         .describe("ARIA role if you are certain of it, otherwise null.")
     }),
-    run: async (input) => {
-      if (budgetExceeded()) return "Tool budget exhausted; report and block.";
-      toolCalls += 1;
-      events.toolCall(`click ${input.name}`);
-      const result = await tools.click(input.name, input.role);
-      if (result.locator) resolvedLocators.push(result.locator);
-      return `${result.ok ? "ok" : "failed"}: ${result.detail}`;
-    }
+    run: async (input) => acting("click", input.name, () => tools.click(input.name, input.role))
   });
 
   const fillTool = betaZodTool({
@@ -206,14 +245,7 @@ export const runStepAgent = async (
       field: z.string().describe("The field's visible label."),
       value: z.string().describe("The value to type.")
     }),
-    run: async (input) => {
-      if (budgetExceeded()) return "Tool budget exhausted; report and block.";
-      toolCalls += 1;
-      events.toolCall(`fill ${input.field}`);
-      const result = await tools.fill(input.field, input.value);
-      if (result.locator) resolvedLocators.push(result.locator);
-      return `${result.ok ? "ok" : "failed"}: ${result.detail}`;
-    }
+    run: async (input) => acting("fill", input.field, () => tools.fill(input.field, input.value))
   });
 
   const selectTool = betaZodTool({
@@ -223,28 +255,16 @@ export const runStepAgent = async (
       field: z.string().describe("The control's visible label."),
       option: z.string().describe("The option to choose.")
     }),
-    run: async (input) => {
-      if (budgetExceeded()) return "Tool budget exhausted; report and block.";
-      toolCalls += 1;
-      events.toolCall(`select ${input.field}`);
-      const result = await tools.select(input.field, input.option);
-      if (result.locator) resolvedLocators.push(result.locator);
-      return `${result.ok ? "ok" : "failed"}: ${result.detail}`;
-    }
+    run: async (input) =>
+      acting("select", input.field, () => tools.select(input.field, input.option))
   });
 
   const expectVisibleTool = betaZodTool({
     name: "expect_visible",
     description: "Check whether some text is present on the page.",
     inputSchema: z.object({ text: z.string() }),
-    run: async (input) => {
-      if (budgetExceeded()) return "Tool budget exhausted; report and block.";
-      toolCalls += 1;
-      events.toolCall(`expect_visible ${input.text}`);
-      const result = await tools.expectVisible(input.text);
-      if (result.locator) resolvedLocators.push(result.locator);
-      return `${result.ok ? "ok" : "failed"}: ${result.detail}`;
-    }
+    run: async (input) =>
+      acting("expect_visible", input.text, () => tools.expectVisible(input.text))
   });
 
   const reportFindingTool = betaZodTool({
@@ -253,7 +273,6 @@ export const runStepAgent = async (
       "Record a discrepancy between the guide and the app. Call at most once per step.",
     inputSchema: findingSchema,
     run: async (input) => {
-      events.toolCall(`report_finding ${input.severity}`);
       findings.push({
         severity: input.severity as Severity,
         // Blame is decided by a separate pass with the diff in hand; the agent only observes.

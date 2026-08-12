@@ -14,6 +14,7 @@ import {
 } from "../report/markdown.js";
 import { attachConsoleReporter, RunEvents } from "../run/events.js";
 import { runGuide } from "../run/index.js";
+import { attachRecorder, RECORD_ENV } from "../live/record.js";
 import { startLiveServer } from "../live/server.js";
 import type { RunResult } from "../types.js";
 
@@ -62,6 +63,10 @@ export const runRun = async (argv: string[]): Promise<number> => {
 
   const events = new RunEvents();
   const detachConsole = attachConsoleReporter(events);
+  // Opt-in tee to a JSONL file, so `guiderails live` can replay this walk with no instance and no
+  // API spend. Off unless the variable is set: a walk should not silently write megabytes of frames.
+  const recordPath = process.env[RECORD_ENV];
+  const stopRecording = recordPath ? attachRecorder(events, recordPath) : null;
   const liveServer = live ? await startLiveServer(events) : null;
   if (liveServer) {
     process.stdout.write(`\nlive view: ${liveServer.url}\n`);
@@ -99,6 +104,8 @@ export const runRun = async (argv: string[]): Promise<number> => {
   }
 
   detachConsole();
+  stopRecording?.();
+  if (recordPath) process.stdout.write(`\nrecorded  ${recordPath}\n`);
 
   if (results.length > 0) {
     const htmlPath = writeHtmlReport(results, usage);

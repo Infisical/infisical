@@ -11,19 +11,24 @@
     "check-drift": "tsx src/cli.ts check-drift",
     "select": "tsx src/cli.ts select",
     "run": "tsx src/cli.ts run",
-    "report": "tsx src/cli.ts report",
     "live": "tsx src/cli.ts live",
     "env:up": "tsx src/cli.ts env up",
     "env:down": "tsx src/cli.ts env down",
     "test": "vitest run",
-    "type:check": "tsc --noEmit"
+    "type:check": "tsc --noEmit && tsc --noEmit -p dashboard",
+    "dashboard:dev": "vite dashboard"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "@types/node": "^20.17.10",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
     "@types/ws": "^8.18.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "tsx": "^4.23.12",
     "typescript": "^5.6.3",
+    "vite": "^6.4.3",
     "vitest": "^4.1.10"
   },
   "dependencies": {

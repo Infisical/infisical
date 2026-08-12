@@ -4,6 +4,7 @@ import "./load-env.js";
 import { runCheckDrift, runCompile } from "./commands/compile.js";
 import { runEnv } from "./commands/env.js";
 import { runExtract } from "./commands/extract.js";
+import { runLive } from "./commands/live.js";
 import { runLintImages } from "./commands/lint-images.js";
 import { runRun } from "./commands/run.js";
 import { runSelect } from "./commands/select.js";
@@ -24,6 +25,8 @@ Commands
   run [guide...] [--live] [--headed]      Walk guides against the running instance.
              [--screenshots] [--force-agent]
              [--changed-files <path>] [--diff <path>]
+  live [recording.jsonl] [--speed n]      Replay a recorded run into the dashboard.
+             [--instant] [--loop]         Needs no instance. See "live --help".
 `;
 
 const main = async (): Promise<number> => {
@@ -44,6 +47,8 @@ const main = async (): Promise<number> => {
       return runCheckDrift(rest);
     case "run":
       return runRun(rest);
+    case "live":
+      return runLive(rest);
     case undefined:
     case "-h":
     case "--help":
