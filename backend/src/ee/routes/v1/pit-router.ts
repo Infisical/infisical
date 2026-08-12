@@ -7,6 +7,7 @@ import { isValidFolderName } from "@app/lib/validator";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { booleanSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -596,6 +597,28 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
           orgId: req.permission.orgId,
           projectId: req.body.projectId,
           event
+        });
+      }
+
+      const numberOfSecretChanges =
+        (req.body.changes.secrets.create?.length ?? 0) +
+        (req.body.changes.secrets.update?.length ?? 0) +
+        (req.body.changes.secrets.delete?.length ?? 0);
+      if (numberOfSecretChanges > 0) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SecretPush,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            numberOfSecrets: numberOfSecretChanges,
+            projectId: req.body.projectId,
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            channel: getUserAgentType(req.headers["user-agent"]),
+            isBatchCommit: true,
+            ...req.auditLogInfo,
+            actorType: req.permission.type
+          }
         });
       }
 

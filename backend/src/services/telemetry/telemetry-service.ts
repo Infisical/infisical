@@ -39,7 +39,9 @@ export const POSTHOG_AGGREGATED_EVENTS = [
 // property as a flat string — enabling clean PostHog breakdowns.
 const AGGREGATION_BREAKDOWN_DIMENSIONS: Partial<Record<PostHogEventTypes, string[]>> = {
   [PostHogEventTypes.PkiSyncExecuted]: ["destination"],
-  [PostHogEventTypes.IssueCert]: ["enrollmentType", "operation"]
+  [PostHogEventTypes.IssueCert]: ["enrollmentType", "operation"],
+  [PostHogEventTypes.SecretPulled]: ["channel"],
+  [PostHogEventTypes.MachineIdentityLogin]: ["channel"]
 };
 
 // Bucket configuration
