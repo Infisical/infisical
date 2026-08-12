@@ -1,0 +1,18 @@
+# The primary candidate. No license gate, seven screenshots, one clean <Steps> block,
+# and every step is pure Infisical UI with no third-party account involved.
+guide: docs/documentation/platform/access-controls/additional-privileges.mdx
+fixture: project-with-second-member
+tab: Infisical UI
+critical: false
+requiresLicense: false
+skipSteps: []
+watch:
+  - frontend/src/pages/project/MemberDetailsByIDPage/**
+  - frontend/src/pages/project/IdentityDetailsByIDPage/**
+  - frontend/src/pages/project/AccessControlPage/**
+  - frontend/src/hooks/api/additionalPrivilege/**
+  - backend/src/services/additional-privilege/**
+notes: >
+  The API tab hardcodes us.infisical.com and is reported as unverified rather than walked.
+  Step 1 needs at least one other member or machine identity in the project, which is what
+  the project-with-second-member fixture provides.

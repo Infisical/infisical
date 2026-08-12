@@ -1,0 +1,42 @@
+{
+  "name": "@infisical/guiderails",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Agent-verified documentation guides. Walks procedural docs against a live self-hosted instance and reports where the guide and the app disagree.",
+  "scripts": {
+    "lint:images": "tsx src/cli.ts lint-images",
+    "extract": "tsx src/cli.ts extract",
+    "compile": "tsx src/cli.ts compile",
+    "check-drift": "tsx src/cli.ts check-drift",
+    "select": "tsx src/cli.ts select",
+    "run": "tsx src/cli.ts run",
+    "report": "tsx src/cli.ts report",
+    "live": "tsx src/cli.ts live",
+    "env:up": "tsx src/cli.ts env up",
+    "env:down": "tsx src/cli.ts env down",
+    "test": "vitest run",
+    "type:check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^20.17.10",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.23.12",
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.116.0",
+    "dotenv": "^17.4.2",
+    "mdast-util-to-string": "^4.0.0",
+    "remark-frontmatter": "^5.0.0",
+    "remark-mdx": "^3.1.1",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.1.0",
+    "ws": "^8.21.3",
+    "yaml": "^2.9.0",
+    "zod": "^4.4.3"
+  }
+}

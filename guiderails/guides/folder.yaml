@@ -1,0 +1,19 @@
+# The deliberate hard case: no <Steps>, no numbered list, procedures described in running
+# prose. Extracts as three separate prose procedures split on heading boundaries.
+# Zero external dependencies and zero license gates, which makes it the cleanest possible
+# exercise of the prose path.
+guide: docs/documentation/platform/folder.mdx
+fixture: project-with-secrets
+tab: null
+critical: false
+requiresLicense: false
+skipSteps: []
+watch:
+  - frontend/src/pages/secret-manager/SecretDashboardPage/**
+  - frontend/src/pages/secret-manager/OverviewPage/**
+  - frontend/src/hooks/api/secretFolders/**
+  - backend/src/services/secret-folder/**
+notes: >
+  Procedures 2 and 3 (Comparing folders, Replicating Folder Contents) need at least two
+  environments with content, which the default project's Development/Staging/Production
+  environments satisfy once the fixture has seeded secrets.

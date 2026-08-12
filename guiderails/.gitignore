@@ -1,0 +1,7 @@
+node_modules/
+.env
+reports/
+playwright-report/
+test-results/
+.guiderails-state.json
+.DS_Store

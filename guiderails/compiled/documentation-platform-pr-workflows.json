@@ -1,0 +1,148 @@
+{
+  "guide": "docs/documentation/platform/pr-workflows.mdx",
+  "guideDocHash": "e273939cf5cc81d9e60d1658fbc987e9aa494e63a3ed50362b99d750a6a53069",
+  "compiledAt": "2026-08-12T18:55:44.154Z",
+  "model": "claude-sonnet-5",
+  "steps": [
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 1,
+      "instruction": "Create a change policy for a project environment.",
+      "actions": [
+        {
+          "kind": "navigate",
+          "path": [
+            "Project",
+            "Approvals"
+          ],
+          "sourceQuote": {
+            "text": "Navigate to Project → Approvals in the Infisical dashboard and create a new policy.",
+            "file": "docs/documentation/platform/pr-workflows.mdx",
+            "line": 23
+          }
+        },
+        {
+          "kind": "click",
+          "target": "create a new policy",
+          "role": null,
+          "sourceQuote": {
+            "text": "create a new policy",
+            "file": "docs/documentation/platform/pr-workflows.mdx",
+            "line": 22
+          }
+        },
+        {
+          "kind": "select",
+          "field": "Policy Type",
+          "option": "Change Policy",
+          "sourceQuote": {
+            "text": "Select Change Policy as the policy type.",
+            "file": "docs/documentation/platform/pr-workflows.mdx",
+            "line": 25
+          }
+        },
+        {
+          "kind": "select",
+          "field": "Target Environment",
+          "option": "{{fixture.environment}}",
+          "sourceQuote": {
+            "text": "Choose the target environment (for example, prod) and assign one or more approvers.",
+            "file": "docs/documentation/platform/pr-workflows.mdx",
+            "line": 27
+          }
+        },
+        {
+          "kind": "click",
+          "target": "Self Approvals",
+          "role": null,
+          "sourceQuote": {
+            "text": "Enable the Self Approvals toggle if you want designated approvers to be able to approve their own change requests.",
+            "file": "docs/documentation/platform/pr-workflows.mdx",
+            "line": 33
+          }
+        },
+        {
+          "kind": "click",
+          "target": "Bypass Approvals",
+          "role": null,
+          "sourceQuote": {
+            "text": "Enable the Bypass Approvals toggle to allow certain users to bypass the approval requirement in break-glass situations.",
+            "file": "docs/documentation/platform/pr-workflows.mdx",
+            "line": 39
+          }
+        },
+        {
+          "kind": "expect_screenshot",
+          "docImage": "../../images/platform/pr-workflows/create-change-policy.png",
+          "sourceQuote": {
+            "text": "Create a change policy",
+            "file": "docs/documentation/platform/pr-workflows.mdx",
+            "line": 22
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 2,
+      "instruction": "Observe that modifying secrets under an active change policy automatically creates a change request.",
+      "actions": [
+        {
+          "kind": "expect_screenshot",
+          "docImage": "../../images/platform/pr-workflows/secret-update-request.png",
+          "sourceQuote": {
+            "text": "a change request is automatically created and sent to the assigned approvers",
+            "file": "docs/documentation/platform/pr-workflows.mdx",
+            "line": 47
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 3,
+      "instruction": "Review and act on a change request as an approver.",
+      "actions": [
+        {
+          "kind": "click",
+          "target": "Approve",
+          "role": null,
+          "sourceQuote": {
+            "text": "Submit an approval vote for the change request.",
+            "file": "docs/documentation/platform/pr-workflows.mdx",
+            "line": 56
+          }
+        },
+        {
+          "kind": "click",
+          "target": "Merge",
+          "role": null,
+          "sourceQuote": {
+            "text": "Apply the approved changes to the target environment.",
+            "file": "docs/documentation/platform/pr-workflows.mdx",
+            "line": 57
+          }
+        },
+        {
+          "kind": "click",
+          "target": "Reject",
+          "role": null,
+          "sourceQuote": {
+            "text": "Decline the change request.",
+            "file": "docs/documentation/platform/pr-workflows.mdx",
+            "line": 58
+          }
+        },
+        {
+          "kind": "expect_screenshot",
+          "docImage": "../../images/platform/pr-workflows/secret-update-pr.png",
+          "sourceQuote": {
+            "text": "Review and act on a change request",
+            "file": "docs/documentation/platform/pr-workflows.mdx",
+            "line": 51
+          }
+        }
+      ]
+    }
+  ]
+}

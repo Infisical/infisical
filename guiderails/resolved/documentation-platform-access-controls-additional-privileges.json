@@ -1,0 +1,58 @@
+{
+  "guide": "docs/documentation/platform/access-controls/additional-privileges.mdx",
+  "guideDocHash": "43cc103d695c9955ebad8333348be32a6c8210de7e7a90342f52f122f6b00603",
+  "recordedAt": "2026-08-12T18:59:48.114Z",
+  "steps": [
+    {
+      "docStepIndex": 1,
+      "procedureIndex": 1,
+      "instruction": "Open the Access Controls page and select the user or machine identity.",
+      "locators": [
+        {
+          "action": "click",
+          "role": "link",
+          "name": "Access Control",
+          "value": null
+        },
+        {
+          "action": "click",
+          "role": "tab",
+          "name": "Machine Identities",
+          "value": null
+        },
+        {
+          "action": "click",
+          "role": "button",
+          "name": "{{fixture.subjectName}} Member Project",
+          "value": null
+        }
+      ]
+    },
+    {
+      "docStepIndex": 2,
+      "procedureIndex": 1,
+      "instruction": "Start creating a new additional privilege.",
+      "locators": [
+        {
+          "action": "click",
+          "role": "button",
+          "name": "Add Additional Privileges",
+          "value": null
+        }
+      ]
+    },
+    {
+      "docStepIndex": 3,
+      "procedureIndex": 1,
+      "instruction": "Open the policy selector dropdown.",
+      "locators": [
+        {
+          "action": "click",
+          "role": "button",
+          "name": "Add Policies",
+          "value": null
+        }
+      ]
+    }
+  ]
+}

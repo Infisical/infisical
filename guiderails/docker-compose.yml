@@ -1,0 +1,78 @@
+# Instance under test for guiderails.
+#
+# Deliberately separate from docker-compose.dev.yml: that one builds the backend from source
+# through the FIPS toolchain, which is the right tradeoff for development and the wrong one
+# here. This uses the published standalone image so a run starts in well under a minute.
+#
+# When a PR changes frontend code, that published image is the wrong artifact to test against
+# and the workflow builds the standalone image instead, overriding GUIDERAILS_IMAGE.
+#
+# All config is inlined rather than read from the repo root .env, so a developer's local
+# environment can never change what the harness verifies.
+
+services:
+  backend:
+    container_name: guiderails-backend
+    image: ${GUIDERAILS_IMAGE:-infisical/infisical:latest}
+    pull_policy: ${GUIDERAILS_PULL_POLICY:-always}
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "${GUIDERAILS_PORT:-8080}:8080"
+    environment:
+      NODE_ENV: production
+      # Fixed test values. Not secrets: this instance is disposable and never holds real data.
+      ENCRYPTION_KEY: f13dbc92aaaf86fa7cb0ed8ac3265f47
+      AUTH_SECRET: 5lrMXKKWCVocS/uerPsl7V+TX/aaUaI7iDkgl3tSmLE=
+      DB_CONNECTION_URI: postgres://infisical:infisical@db:5432/infisical
+      REDIS_URL: redis://redis:6379
+      SITE_URL: http://localhost:${GUIDERAILS_PORT:-8080}
+      TELEMETRY_ENABLED: "false"
+      # Enterprise features. Without this most access-control and workflow guides render
+      # nothing to walk, and their steps report as unverified rather than passing.
+      LICENSE_KEY_OFFLINE: ${LICENSE_KEY_OFFLINE:-}
+      # No SMTP on purpose. Any guide step that sends mail is skipped via the registry, and
+      # a configured-but-broken SMTP host produces slower, more confusing failures than none.
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -fsS http://localhost:8080/api/status || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 60s
+    networks:
+      - guiderails
+
+  redis:
+    container_name: guiderails-redis
+    image: redis:7-alpine
+    restart: "no"
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+    networks:
+      - guiderails
+
+  db:
+    container_name: guiderails-db
+    image: postgres:14-alpine
+    restart: "no"
+    environment:
+      POSTGRES_USER: infisical
+      POSTGRES_PASSWORD: infisical
+      POSTGRES_DB: infisical
+    # No volume. A run should always start from an empty database, and a stale volume is the
+    # single most confusing way for this harness to fail: bootstrap refuses an already
+    # initialized instance, so a leftover volume looks like a code bug.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username=infisical"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+    networks:
+      - guiderails
+
+networks:
+  guiderails:

@@ -1,0 +1,124 @@
+{
+  "guide": "docs/documentation/platform/folder.mdx",
+  "guideDocHash": "8989d1e1b4f3ba608789728d350aa8430dfa9da036c9ba2d6bd976b5087d2503",
+  "compiledAt": "2026-08-12T18:55:28.777Z",
+  "model": "claude-sonnet-5",
+  "steps": [
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 1,
+      "instruction": "Add a new folder using the chevron next to Add Secret.",
+      "actions": [
+        {
+          "kind": "click",
+          "target": "downward chevron",
+          "role": null,
+          "sourceQuote": {
+            "text": "press the downward chevron to the right of the Add Secret button",
+            "file": "docs/documentation/platform/folder.mdx",
+            "line": 31
+          }
+        },
+        {
+          "kind": "click",
+          "target": "Add Folder",
+          "role": null,
+          "sourceQuote": {
+            "text": "press on the Add Folder button",
+            "file": "docs/documentation/platform/folder.mdx",
+            "line": 31
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 2,
+      "instruction": "Delete a folder by hovering over it and pressing the X button.",
+      "actions": [
+        {
+          "kind": "click",
+          "target": "X",
+          "role": null,
+          "sourceQuote": {
+            "text": "press the X button that appears on the right side",
+            "file": "docs/documentation/platform/folder.mdx",
+            "line": 39
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 2,
+      "docStepIndex": 1,
+      "instruction": "Compare folder contents across environments using the Secrets Overview page.",
+      "actions": [
+        {
+          "kind": "navigate",
+          "path": [
+            "Project",
+            "Secrets Overview"
+          ],
+          "sourceQuote": {
+            "text": "Secrets Overview",
+            "file": "docs/documentation/platform/folder.mdx",
+            "line": 45
+          }
+        },
+        {
+          "kind": "expect_visible",
+          "text": "the table will display the items within it across environments",
+          "sourceQuote": {
+            "text": "the table will display the items within it across environments",
+            "file": "docs/documentation/platform/folder.mdx",
+            "line": 46
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 3,
+      "docStepIndex": 1,
+      "instruction": "Select the source environment and root path to copy secrets from.",
+      "actions": [
+        {
+          "kind": "select",
+          "field": "Source Environment",
+          "option": "{{fixture.environment}}",
+          "sourceQuote": {
+            "text": "select the Source Environment",
+            "file": "docs/documentation/platform/folder.mdx",
+            "line": 61
+          }
+        },
+        {
+          "kind": "select",
+          "field": "Source Root Path",
+          "option": "/dev-folder",
+          "sourceQuote": {
+            "text": "select the Source Environment and the Source Root Path",
+            "file": "docs/documentation/platform/folder.mdx",
+            "line": 61
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 3,
+      "docStepIndex": 2,
+      "instruction": "Select the secrets to copy and click Replicate Secrets.",
+      "actions": [
+        {
+          "kind": "click",
+          "target": "Replicate Secrets",
+          "role": null,
+          "sourceQuote": {
+            "text": "click Replicate Secrets",
+            "file": "docs/documentation/platform/folder.mdx",
+            "line": 63
+          }
+        }
+      ]
+    }
+  ]
+}
