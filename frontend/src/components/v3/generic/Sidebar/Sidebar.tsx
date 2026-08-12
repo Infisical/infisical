@@ -36,7 +36,13 @@ const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
-type SidebarScope = "org" | "sub-org" | "project" | "pam" | "admin";
+type SidebarScope = "org" | "sub-org" | "project" | "pam" | "sandbox" | "admin";
+
+// Products that repaint the shared `project` token instead of owning a scope colour of their own.
+const SCOPE_COLOR_OVERRIDE: Partial<Record<SidebarScope, Record<string, string>>> = {
+  pam: { "--color-project": "#ed3453" },
+  sandbox: { "--color-project": "#f4f4f5" }
+};
 
 const SidebarScopeContext = React.createContext<SidebarScope>("org");
 
@@ -196,7 +202,7 @@ function Sidebar({
               data-mobile="true"
               className={cn(
                 "w-(--sidebar-width) bg-gradient-to-r to-transparent p-0 text-foreground [&>button]:hidden",
-                (scope === "project" || scope === "pam") && "from-project/5",
+                (scope === "project" || scope === "pam" || scope === "sandbox") && "from-project/5",
                 scope === "sub-org" && "from-sub-org/5",
                 scope === "org" && "from-org/5",
                 scope === "admin" && "from-admin/5"
@@ -204,7 +210,7 @@ function Sidebar({
               style={
                 {
                   "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-                  ...(scope === "pam" ? { "--color-project": "#ed3453" } : {})
+                  ...SCOPE_COLOR_OVERRIDE[scope]
                 } as React.CSSProperties
               }
               side={side}
@@ -232,17 +238,13 @@ function Sidebar({
             className={cn(
               "flex h-full flex-col overflow-hidden border-r border-border bg-gradient-to-r to-transparent text-foreground transition-[width] duration-200 ease-linear",
               state === "collapsed" ? "w-(--sidebar-width-icon)" : "w-(--sidebar-width)",
-              (scope === "project" || scope === "pam") && "from-project/5",
+              (scope === "project" || scope === "pam" || scope === "sandbox") && "from-project/5",
               scope === "sub-org" && "from-sub-org/5",
               scope === "org" && "from-org/5",
               scope === "admin" && "from-admin/5",
               className
             )}
-            style={
-              scope === "pam"
-                ? ({ "--color-project": "#ed3453" } as React.CSSProperties)
-                : undefined
-            }
+            style={SCOPE_COLOR_OVERRIDE[scope] as React.CSSProperties}
             {...props}
           >
             {children}
@@ -648,6 +650,7 @@ const sidebarMenuButtonVariants = cva(
         "sub-org": "data-active:border-l-sub-org data-active:[&_svg]:text-sub-org",
         project: "data-active:border-l-project data-active:[&_svg]:text-project",
         pam: "data-active:border-l-project data-active:[&_svg]:text-project",
+        sandbox: "data-active:border-l-project data-active:[&_svg]:text-project",
         admin: "data-active:border-l-admin data-active:[&_svg]:text-admin"
       }
     },

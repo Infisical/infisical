@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SandboxKind, SandboxStatus, SandboxTemplate } from "@app/ee/services/sandbox/sandbox-types";
+import { SandboxStatus } from "@app/ee/services/sandbox/sandbox-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -21,8 +21,6 @@ const SandboxSchema = z.object({
   orgId: z.string().uuid(),
   name: z.string(),
   description: z.string().nullable(),
-  kind: z.nativeEnum(SandboxKind),
-  template: z.nativeEnum(SandboxTemplate),
   status: z.nativeEnum(SandboxStatus),
   vcpu: z.number(),
   memoryMb: z.number(),
@@ -104,8 +102,6 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         name: GenericResourceNameSchema,
         description: z.string().trim().max(500).optional(),
-        kind: z.nativeEnum(SandboxKind).default(SandboxKind.Agent),
-        template: z.nativeEnum(SandboxTemplate).default(SandboxTemplate.Base),
         vcpu: z.number().int().min(1).max(16).default(2),
         memoryMb: z.number().int().min(256).max(32768).default(2048),
         grants: GrantsSchema.partial().optional()

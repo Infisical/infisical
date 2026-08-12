@@ -12,8 +12,6 @@ export const SandboxesSchema = z.object({
   orgId: z.string().uuid(),
   name: z.string(),
   description: z.string().nullable().optional(),
-  kind: z.string(),
-  template: z.string(),
   vcpu: z.number().default(2),
   memoryMb: z.number().default(2048),
   grants: z.unknown(),

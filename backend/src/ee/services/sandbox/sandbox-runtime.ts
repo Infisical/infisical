@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import crypto from "node:crypto";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 
@@ -8,7 +8,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { SandboxTemplate, TSandboxExecResult } from "./sandbox-types";
+import { TSandboxExecResult } from "./sandbox-types";
 
 /**
  * Stands in for real sandbox isolation. Each sandbox is a working directory on the API host and
@@ -32,22 +32,6 @@ type TSandboxProcessState = {
 
 const states = new Map<string, TSandboxProcessState>();
 
-const TEMPLATE_FILES: Record<SandboxTemplate, { name: string; body: string } | null> = {
-  [SandboxTemplate.Base]: null,
-  [SandboxTemplate.Python]: {
-    name: "main.py",
-    body: 'print("hello from the sandbox")\n'
-  },
-  [SandboxTemplate.Node]: {
-    name: "index.js",
-    body: 'console.log("hello from the sandbox");\n'
-  },
-  [SandboxTemplate.Ops]: {
-    name: "README.md",
-    body: "# Ops sandbox\n\nGranted CLIs are on PATH. Credentials are brokered, never present here.\n"
-  }
-};
-
 export const assertSandboxRuntimeEnabled = () => {
   const appCfg = getConfig();
   if (appCfg.isProductionMode) {
@@ -58,20 +42,18 @@ export const assertSandboxRuntimeEnabled = () => {
   }
 };
 
-export const bootSandbox = async (sandboxId: string, template: SandboxTemplate) => {
+export const bootSandbox = async (sandboxId: string) => {
   assertSandboxRuntimeEnabled();
 
   const existing = states.get(sandboxId);
   if (existing) return existing;
 
   const rootDir = await mkdtemp(join(tmpdir(), `infisical-sandbox-${sandboxId}-`));
-  const seed = TEMPLATE_FILES[template];
-  if (seed) await writeFile(join(rootDir, seed.name), seed.body, "utf8");
 
   const state: TSandboxProcessState = { rootDir, cwd: rootDir };
   states.set(sandboxId, state);
 
-  logger.info(`Sandbox booted [sandboxId=${sandboxId}] [template=${template}]`);
+  logger.info(`Sandbox booted [sandboxId=${sandboxId}]`);
   return state;
 };
 

@@ -3,18 +3,6 @@ export enum SandboxStatus {
   Running = "running"
 }
 
-export enum SandboxTemplate {
-  Base = "base",
-  Python = "python",
-  Node = "node",
-  Ops = "ops"
-}
-
-export enum SandboxKind {
-  Agent = "agent",
-  Vm = "vm"
-}
-
 export type TSandboxGrants = {
   pamAccountIds: string[];
   proxiedServiceIds: string[];
@@ -26,8 +14,6 @@ export type TSandbox = {
   orgId: string;
   name: string;
   description: string | null;
-  kind: SandboxKind;
-  template: SandboxTemplate;
   status: SandboxStatus;
   vcpu: number;
   memoryMb: number;
@@ -51,8 +37,6 @@ export type TSandboxExecResult = {
 export type TCreateSandboxDTO = {
   name: string;
   description?: string;
-  kind: SandboxKind;
-  template: SandboxTemplate;
   vcpu: number;
   memoryMb: number;
   grants?: Partial<TSandboxGrants>;

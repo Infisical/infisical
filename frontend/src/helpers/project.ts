@@ -229,4 +229,3 @@ export const PROJECT_TILE_STYLE: ProjectTileStyle = {
   cardHoverClassName: "hover:bg-gradient-to-br hover:from-project/[0.04] hover:to-transparent",
   titleUnderlineClassName: "decoration-project/60"
 };
-

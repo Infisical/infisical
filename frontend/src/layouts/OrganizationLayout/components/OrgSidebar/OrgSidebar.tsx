@@ -35,8 +35,9 @@ export const OrgSidebar = () => {
     !isInsideProject && Boolean(projectType) && hasIntermediateProjectsView(projectType!);
   const { isSubOrganization } = useOrganization();
 
-  let scope: "project" | "sub-org" | "org" | "pam" = "org";
+  let scope: "project" | "sub-org" | "org" | "pam" | "sandbox" = "org";
   if (isPamRoute) scope = "pam";
+  else if (isSandboxRoute) scope = "sandbox";
   else if (isInsideProject || isOnProjectTypeListing) scope = "project";
   else if (isSubOrganization) scope = "sub-org";
 

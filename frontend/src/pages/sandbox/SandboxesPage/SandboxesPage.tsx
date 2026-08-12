@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "@tanstack/react-router";
-import { BotIcon, BoxIcon, PlusIcon, ServerIcon } from "lucide-react";
+import { BoxIcon, PlusIcon } from "lucide-react";
 
 import {
   Alert,
@@ -25,9 +25,9 @@ import {
   TableRow
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { SandboxKind, SandboxStatus, useListSandboxes } from "@app/hooks/api/sandboxes";
+import { SandboxStatus, useListSandboxes } from "@app/hooks/api/sandboxes";
 
-import { CreateSandboxDialog } from "./components/CreateSandboxDialog";
+import { CreateSandboxSheet } from "./components/CreateSandboxSheet";
 
 export const SandboxesPage = () => {
   const { currentOrg } = useOrganization();
@@ -52,7 +52,7 @@ export const SandboxesPage = () => {
             description="Isolated environments for AI agents and untrusted code. Credentials stay outside the boundary."
             className="[&_svg]:sandbox-chrome-icon"
           />
-          <Button variant="org" onClick={() => setIsCreateOpen(true)}>
+          <Button variant="project" onClick={() => setIsCreateOpen(true)}>
             <PlusIcon className="size-4" />
             Create Sandbox
           </Button>
@@ -79,7 +79,7 @@ export const SandboxesPage = () => {
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <Button variant="org" onClick={() => setIsCreateOpen(true)}>
+              <Button variant="project" onClick={() => setIsCreateOpen(true)}>
                 <PlusIcon className="size-4" />
                 Create Sandbox
               </Button>
@@ -97,7 +97,6 @@ export const SandboxesPage = () => {
               <TableHeader className="bg-container">
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
                   <TableHead>Size</TableHead>
                   <TableHead>Grants</TableHead>
                   <TableHead>Status</TableHead>
@@ -127,16 +126,6 @@ export const SandboxesPage = () => {
                           <p className="truncate text-xs text-muted">{sandbox.description}</p>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <Badge variant={sandbox.kind === SandboxKind.Agent ? "org" : "neutral"}>
-                          {sandbox.kind === SandboxKind.Agent ? (
-                            <BotIcon className="size-3" />
-                          ) : (
-                            <ServerIcon className="size-3" />
-                          )}
-                          {sandbox.kind === SandboxKind.Agent ? "Agent" : "VM"}
-                        </Badge>
-                      </TableCell>
                       <TableCell className="text-muted">
                         {sandbox.vcpu} vCPU · {sandbox.memoryMb / 1024} GB
                       </TableCell>
@@ -159,7 +148,7 @@ export const SandboxesPage = () => {
         )}
       </div>
 
-      <CreateSandboxDialog
+      <CreateSandboxSheet
         isOpen={isCreateOpen}
         onOpenChange={setIsCreateOpen}
         onCreated={() => setIsCreateOpen(false)}

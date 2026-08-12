@@ -8,9 +8,7 @@ import { TSandboxDALFactory } from "./sandbox-dal";
 import { TSandboxProjectResolverFactory } from "./sandbox-project-resolver";
 import { bootSandbox, execInSandbox, isSandboxBooted, shutdownSandbox } from "./sandbox-runtime";
 import {
-  SandboxKind,
   SandboxStatus,
-  SandboxTemplate,
   TCreateSandboxDTO,
   TExecInSandboxDTO,
   TSandbox,
@@ -43,8 +41,6 @@ const toSandbox = (row: TSandboxes): TSandbox => ({
   orgId: row.orgId,
   name: row.name,
   description: row.description ?? null,
-  kind: row.kind as SandboxKind,
-  template: row.template as SandboxTemplate,
   status: isSandboxBooted(row.id) ? SandboxStatus.Running : SandboxStatus.Stopped,
   vcpu: row.vcpu,
   memoryMb: row.memoryMb,
@@ -112,8 +108,6 @@ export const sandboxServiceFactory = ({
       orgId: actor.orgId,
       name: dto.name,
       description: dto.description ?? null,
-      kind: dto.kind,
-      template: dto.template,
       vcpu: dto.vcpu,
       memoryMb: dto.memoryMb,
       grants: { ...EMPTY_GRANTS, ...dto.grants },
@@ -168,7 +162,7 @@ export const sandboxServiceFactory = ({
       throw new BadRequestError({ message: `Sandbox '${row.name}' is already running` });
     }
 
-    await bootSandbox(sandboxId, row.template as SandboxTemplate);
+    await bootSandbox(sandboxId);
     return toSandbox(row);
   };
 

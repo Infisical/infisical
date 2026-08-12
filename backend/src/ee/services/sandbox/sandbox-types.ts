@@ -3,18 +3,6 @@ export enum SandboxStatus {
   Running = "running"
 }
 
-export enum SandboxTemplate {
-  Base = "base",
-  Python = "python",
-  Node = "node",
-  Ops = "ops"
-}
-
-export enum SandboxKind {
-  Agent = "agent",
-  Vm = "vm"
-}
-
 /**
  * What the sandbox is allowed to reach. Nothing here is wired to the brokers yet: this step only
  * models and displays the grants. `pamAccountIds` will resolve to brokered PAM sessions and
@@ -31,8 +19,6 @@ export type TSandbox = {
   orgId: string;
   name: string;
   description: string | null;
-  kind: SandboxKind;
-  template: SandboxTemplate;
   status: SandboxStatus;
   vcpu: number;
   memoryMb: number;
@@ -56,8 +42,6 @@ export type TSandboxExecResult = {
 export type TCreateSandboxDTO = {
   name: string;
   description?: string;
-  kind: SandboxKind;
-  template: SandboxTemplate;
   vcpu: number;
   memoryMb: number;
   grants?: Partial<TSandboxGrants>;

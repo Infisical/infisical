@@ -1,11 +1,10 @@
 import { Helmet } from "react-helmet";
 import { Link, useParams } from "@tanstack/react-router";
 import {
-  BotIcon,
+  BoxIcon,
   ChevronLeftIcon,
   KeyRoundIcon,
   PlayIcon,
-  ServerIcon,
   SquareIcon,
   TerminalIcon
 } from "lucide-react";
@@ -23,12 +22,7 @@ import {
   CardTitle,
   Skeleton
 } from "@app/components/v3";
-import {
-  SandboxKind,
-  SandboxStatus,
-  useGetSandboxById,
-  useSetSandboxPower
-} from "@app/hooks/api/sandboxes";
+import { SandboxStatus, useGetSandboxById, useSetSandboxPower } from "@app/hooks/api/sandboxes";
 
 import { SandboxTerminal } from "./components/SandboxTerminal";
 
@@ -117,11 +111,7 @@ export const SandboxPage = () => {
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              {sandbox.kind === SandboxKind.Agent ? (
-                <BotIcon className="size-5 sandbox-chrome-icon" />
-              ) : (
-                <ServerIcon className="size-5 text-muted" />
-              )}
+              <BoxIcon className="size-5 text-project" />
               <h1 className="sandbox-chrome-text text-2xl font-semibold">{sandbox.name}</h1>
               <Badge variant={isRunning ? "success" : "neutral"}>
                 {isRunning ? "Running" : "Stopped"}
@@ -144,7 +134,6 @@ export const SandboxPage = () => {
 
         <Card className="gap-4">
           <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Stat label="Template" value={sandbox.template} />
             <Stat label="Size" value={`${sandbox.vcpu} vCPU · ${sandbox.memoryMb / 1024} GB`} />
             <Stat label="Commands run" value={String(sandbox.commandsRun)} />
             <Stat

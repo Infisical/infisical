@@ -95,7 +95,7 @@ const PRODUCT_STYLES: Record<
   [ProjectType.Sandbox]: {
     iconClassName: "h-4.5 w-4.5 sandbox-chrome-icon",
     containerClassName:
-      "border-product-sandbox/25 bg-gradient-to-br from-product-sandbox/15 via-[#b9c0cc]/10 to-[#cfc5cd]/8 group-hover:border-product-sandbox/45 group-hover:from-product-sandbox/25 group-hover:via-[#b9c0cc]/18 group-hover:to-[#cfc5cd]/14",
+      "border-product-sandbox/25 bg-gradient-to-br from-product-sandbox/15 to-product-sandbox/5 group-hover:border-product-sandbox/45 group-hover:from-product-sandbox/25 group-hover:to-product-sandbox/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-sandbox/[0.05] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-sandbox/60"
   }
