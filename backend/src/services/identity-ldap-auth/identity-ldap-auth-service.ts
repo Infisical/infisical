@@ -48,6 +48,7 @@ import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/ide
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { recordIdentityLastLoginDebounced } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityLdapAuthDALFactory } from "./identity-ldap-auth-dal";
@@ -76,7 +77,13 @@ type TIdentityLdapAuthServiceFactoryDep = {
   identityAuthTemplateDAL: TIdentityAuthTemplateDALFactory;
   keyStore: Pick<
     TKeyStoreFactory,
-    "setItemWithExpiry" | "getItem" | "deleteItem" | "getKeysByPattern" | "deleteItems" | "acquireLock"
+    | "setItemWithExpiry"
+    | "setItemWithExpiryNX"
+    | "getItem"
+    | "deleteItem"
+    | "getKeysByPattern"
+    | "deleteItems"
+    | "acquireLock"
   >;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
@@ -231,26 +238,11 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     try {
-      await identityLdapAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.LDAP_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
+      await recordIdentityLastLoginDebounced({
+        keyStore,
+        membershipIdentityDAL,
+        identity,
+        lastLoginAuthMethod: IdentityAuthMethod.LDAP_AUTH
       });
 
       const subOrgDetails =
