@@ -77,6 +77,7 @@ export const KeyStorePrefixes = {
     `identity-trusted-ips:${identityId}:${authMethod}` as const,
   IdentityUaClientSecretUsageDebounce: (clientSecretId: string) =>
     `identity-ua-client-secret-usage-debounce:${clientSecretId}` as const,
+  IdentityLastLoginDebounce: (identityId: string) => `identity-last-login-debounce:${identityId}` as const,
   ProxiedServiceUsageDebounce: (serviceId: string) => `proxied-service-usage-debounce:${serviceId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
