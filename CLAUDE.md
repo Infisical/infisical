@@ -102,7 +102,7 @@ All user-facing "notify me when X happens" features share one module: `backend/s
 
 ### Agent Policies
 
-Agents and users each get their own policies, and a brokered request has to satisfy both. Spans all three repos: services and routes in `backend/src/ee/services/agent-{policy,proxy,session}/` and `user-policy/`, the proxy runtime in the CLI's `packages/agentproxy` (`policy_*.go`), and the UI under Networking plus a project-level Agent Proxy page. Read the agent policies section in [`backend/CLAUDE.md`](backend/CLAUDE.md) before changing any of it; the invariants there are not guessable from the code.
+Agents and users each get their own policies, and a brokered request has to satisfy both. Spans all three repos: services and routes in `backend/src/ee/services/agent-{policy,proxy,session}/` and `user-policy/`, the proxy runtime in the CLI's `packages/agentproxy` (`policy_*.go`), and the UI under Networking plus a project-level Agent Proxy page (agent policies, user policies, sessions, and an activity feed read from the audit log). Read the agent policies section in [`backend/CLAUDE.md`](backend/CLAUDE.md) before changing any of it; the invariants there are not guessable from the code.
 
 Distinct from the older **proxied services** feature, which stays as-is. The two share the template registry's shape and the CLI's `match.go`/`rewrite.go` neighbours but nothing else.
 

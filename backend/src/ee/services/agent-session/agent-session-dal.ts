@@ -32,5 +32,37 @@ export const agentSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findOrgUsersByEmail };
+  // The sessions live in a project, newest activity first, so the list reads as "who is acting right
+  // now". Revoked rows are kept in the result: a session that was just killed is the one an operator is
+  // most likely looking for. tokenHash is never selected, so it cannot leak through a caller.
+  const findByProjectId = async (projectId: string, limit: number) => {
+    try {
+      return await db
+        .replicaNode()(TableName.AgentSession)
+        .where(`${TableName.AgentSession}.projectId`, projectId)
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.AgentSession}.identityId`)
+        .join(TableName.Users, `${TableName.Users}.id`, `${TableName.AgentSession}.userId`)
+        .select(
+          db.ref("id").withSchema(TableName.AgentSession),
+          db.ref("identityId").withSchema(TableName.AgentSession),
+          db.ref("userId").withSchema(TableName.AgentSession),
+          db.ref("projectId").withSchema(TableName.AgentSession),
+          db.ref("createdAt").withSchema(TableName.AgentSession),
+          db.ref("lastUsedAt").withSchema(TableName.AgentSession),
+          db.ref("revokedAt").withSchema(TableName.AgentSession),
+          db.ref("name").withSchema(TableName.Identity).as("agentName"),
+          db.ref("isAgent").withSchema(TableName.Identity).as("isAgent"),
+          db.ref("email").withSchema(TableName.Users).as("userEmail"),
+          db.ref("username").withSchema(TableName.Users).as("userUsername"),
+          db.ref("firstName").withSchema(TableName.Users).as("userFirstName"),
+          db.ref("lastName").withSchema(TableName.Users).as("userLastName")
+        )
+        .orderByRaw(`coalesce("${TableName.AgentSession}"."lastUsedAt", "${TableName.AgentSession}"."createdAt") desc`)
+        .limit(limit);
+    } catch (error) {
+      throw new DatabaseError({ error, name: `${TableName.AgentSession}: FindByProjectId` });
+    }
+  };
+
+  return { ...orm, findOrgUsersByEmail, findByProjectId };
 };

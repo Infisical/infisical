@@ -3075,7 +3075,8 @@ export const registerRoutes = async (
     kmsService,
     orgDAL,
     projectFolderGrantDAL,
-    licenseService
+    licenseService,
+    permissionService
   });
 
   const webhookService = webhookServiceFactory({

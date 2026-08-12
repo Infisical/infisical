@@ -7,12 +7,16 @@ import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app
 import { withProjectPermission } from "@app/hoc";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { ActivityTab } from "./components/ActivityTab";
 import { AgentPoliciesTab } from "./components/AgentPoliciesTab";
+import { SessionsTab } from "./components/SessionsTab";
 import { UserPoliciesTab } from "./components/UserPoliciesTab";
 
 const TABS = [
   { key: "agent-policies", label: "Agent Policies", component: AgentPoliciesTab },
-  { key: "user-policies", label: "User Policies", component: UserPoliciesTab }
+  { key: "user-policies", label: "User Policies", component: UserPoliciesTab },
+  { key: "sessions", label: "Sessions", component: SessionsTab },
+  { key: "activity", label: "Activity", component: ActivityTab }
 ];
 
 export const AgentProxyPage = withProjectPermission(

@@ -3,6 +3,7 @@ export * from "./accountRecovery";
 export * from "./admin";
 export * from "./agentPolicies";
 export * from "./agentProxies";
+export * from "./agentSessions";
 export * from "./alerts";
 export * from "./approvalGrants";
 export * from "./approvalPolicies";

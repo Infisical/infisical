@@ -143,6 +143,15 @@ export const AgentPolicySheet = ({ isOpen, policy, onOpenChange }: Props) => {
   const selectedTarget = watch("target");
   const credentials = watch("credentials");
 
+  // The hosts this target covers, so a rule added by hand starts on one of them instead of blank.
+  const targetHostPatterns = useMemo(
+    () =>
+      targets
+        ?.find((target) => target.key === selectedTarget?.key)
+        ?.defaultRules.map((rule) => rule.hostPattern) ?? [],
+    [targets, selectedTarget?.key]
+  );
+
   // The target decides which credential slots exist and seeds the rules, so picking one rewrites both.
   // On edit the target is fixed, so this only ever runs for a fresh policy.
   useEffect(() => {
@@ -368,7 +377,12 @@ export const AgentPolicySheet = ({ isOpen, policy, onOpenChange }: Props) => {
                 </FieldDescription>
               </div>
             )}
-            <PolicyRulesFields control={control} errors={errors} excludePolicyId={policy?.id} />
+            <PolicyRulesFields
+              control={control}
+              errors={errors}
+              excludePolicyId={policy?.id}
+              hostPatternSuggestions={targetHostPatterns}
+            />
           </div>
           <SheetFooter className="border-t">
             <Button

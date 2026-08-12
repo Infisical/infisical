@@ -1,4 +1,4 @@
-import { Control, Controller, useFieldArray } from "react-hook-form";
+import { Control, Controller, useFieldArray, useWatch } from "react-hook-form";
 import { PlusIcon, TrashIcon } from "lucide-react";
 
 import {
@@ -26,7 +26,8 @@ export const PolicyRulesFields = ({
   control,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   errors,
-  excludePolicyId
+  excludePolicyId,
+  hostPatternSuggestions
 }: {
   // The two sheets have different form shapes but an identical `rules` field.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,8 +35,30 @@ export const PolicyRulesFields = ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   errors?: any;
   excludePolicyId?: string;
+  // The hosts the chosen target covers, used to prefill a new rule.
+  hostPatternSuggestions?: string[];
 }) => {
   const rules = useFieldArray({ control, name: "rules" });
+  const currentRules = useWatch({ control, name: "rules" }) as
+    | { hostPattern?: string }[]
+    | undefined;
+
+  // A new rule starts on the target's own host rather than blank: the next host it covers that no rule
+  // uses yet, otherwise the host of the row above, since a second rule on the same host is how you
+  // narrow it by path or method.
+  const nextHostPattern = () => {
+    if (!hostPatternSuggestions?.length) return "";
+    const used = (currentRules ?? [])
+      .map((rule) => rule?.hostPattern?.trim())
+      .filter((hostPattern): hostPattern is string => Boolean(hostPattern));
+    const usedLower = new Set(used.map((hostPattern) => hostPattern.toLowerCase()));
+
+    return (
+      hostPatternSuggestions.find((hostPattern) => !usedLower.has(hostPattern.toLowerCase())) ??
+      used[used.length - 1] ??
+      hostPatternSuggestions[0]
+    );
+  };
 
   return (
     <div className="flex flex-col gap-2">
@@ -116,7 +139,7 @@ export const PolicyRulesFields = ({
           variant="ghost"
           size="xs"
           type="button"
-          onClick={() => rules.append({ hostPattern: "", methods: [] })}
+          onClick={() => rules.append({ hostPattern: nextHostPattern(), methods: [] })}
         >
           <PlusIcon className="mr-1 size-4" />
           Add Rule

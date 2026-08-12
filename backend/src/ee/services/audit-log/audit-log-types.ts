@@ -864,6 +864,7 @@ export enum EventType {
   USER_POLICY_UPDATE = "user-policy-update",
   USER_POLICY_DELETE = "user-policy-delete",
   AGENT_SESSION_CREATE = "agent-session-create",
+  AGENT_SESSION_REVOKE = "agent-session-revoke",
   AGENT_PROXY_REQUEST = "agent-proxy-request",
 
   AGENT_PROXY_CREATE = "agent-proxy-create",
@@ -6893,12 +6894,23 @@ interface AgentSessionCreateEvent {
   };
 }
 
+interface AgentSessionRevokeEvent {
+  type: EventType.AGENT_SESSION_REVOKE;
+  metadata: {
+    sessionId: string;
+    identityId: string;
+    userId: string;
+    projectId: string;
+  };
+}
+
 // One entry per request an agent proxy handled. Carries both the agent and the user so the trail says
 // who acted and on whose behalf, and never carries the credential or the request body.
 interface AgentProxyRequestEvent {
   type: EventType.AGENT_PROXY_REQUEST;
   metadata: {
     agentProxyId: string;
+    sessionId: string;
     identityId: string;
     agentName: string;
     userId: string;
@@ -6908,7 +6920,10 @@ interface AgentProxyRequestEvent {
     port: number;
     path: string;
     statusCode?: number;
+    // Both halves of the intersection: the agent policy whose credential was brokered, and the user
+    // policy that allowed it. Either is absent when that side had no match.
     policyName?: string;
+    userPolicyName?: string;
     reason?: string;
   };
 }
@@ -7737,6 +7752,7 @@ export type Event =
   | UserPolicyUpdateEvent
   | UserPolicyDeleteEvent
   | AgentSessionCreateEvent
+  | AgentSessionRevokeEvent
   | AgentProxyRequestEvent
   | AgentProxyCreateEvent
   | AgentProxyUpdateEvent
