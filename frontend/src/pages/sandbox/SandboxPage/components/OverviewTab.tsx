@@ -36,7 +36,9 @@ const StatCard = ({
   footnoteVariant: "project" | "neutral" | "success";
 }) => (
   <Card className="flex-1 gap-4">
-    <CardHeader>
+    {/* Force the two-column header: CardHeader only splits at its @xs container width, and four
+        cards in a row are narrower than that, which drops the icon onto its own line. */}
+    <CardHeader className="grid-cols-[1fr_auto]">
       <CardTitle className="text-sm font-medium text-accent">{title}</CardTitle>
       <CardAction>
         <div
@@ -57,7 +59,9 @@ const StatCard = ({
         <span className="ml-2 text-sm text-muted">{subtitle}</span>
       </div>
       <Separator />
-      <Badge variant={footnoteVariant}>{footnote}</Badge>
+      <Badge variant={footnoteVariant} className="no-underline">
+        {footnote}
+      </Badge>
     </CardContent>
   </Card>
 );

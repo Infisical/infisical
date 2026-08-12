@@ -28,6 +28,8 @@ import {
 } from "@app/hooks/api/sandboxes";
 import { useGetProjectSecrets } from "@app/hooks/api/secrets/queries";
 
+import { INTEGRATION_ICONS } from "./integrationIcons";
+
 type Props = {
   sandboxId: string;
   isOpen: boolean;
@@ -116,11 +118,17 @@ export const AddIntegrationSheet = ({ sandboxId, isOpen, onOpenChange }: Props) 
                 <SelectValue placeholder="Choose an integration" />
               </SelectTrigger>
               <SelectContent position="popper" className="w-(--radix-select-trigger-width)">
-                {catalog?.integrations.map((item) => (
-                  <SelectItem key={item.type} value={item.type}>
-                    {item.name}
-                  </SelectItem>
-                ))}
+                {catalog?.integrations.map((item) => {
+                  const Icon = INTEGRATION_ICONS[item.type];
+                  return (
+                    <SelectItem key={item.type} value={item.type}>
+                      <span className="flex items-center gap-2">
+                        <Icon className="size-4 shrink-0" />
+                        {item.name}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
             {definition && <FieldDescription>{definition.description}</FieldDescription>}

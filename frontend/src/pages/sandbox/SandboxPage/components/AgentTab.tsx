@@ -101,7 +101,7 @@ export const AgentTab = ({ sandbox }: { sandbox: TSandbox }) => {
         </Field>
       </CardContent>
 
-      <CardFooter className="border-t">
+      <CardFooter className="border-t pt-4">
         <Button
           variant="project"
           onClick={handleSave}

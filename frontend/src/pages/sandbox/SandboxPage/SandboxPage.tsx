@@ -83,8 +83,13 @@ export const SandboxPage = () => {
           <PageHeader
             scope={ProjectType.Sandbox}
             title={
-              <span className="flex items-center gap-3">
-                {sandbox.name}
+              // PageHeader underlines its h1, and text decoration propagates from an ancestor: a
+              // descendant cannot switch it off. An inline-flex box is atomic, so the line is not
+              // drawn through it, which lets the name opt back in on its own.
+              <span className="inline-flex items-center gap-3 align-middle">
+                <span className="underline decoration-project/90 underline-offset-4">
+                  {sandbox.name}
+                </span>
                 <Badge variant={isRunning ? "success" : "neutral"}>
                   {isRunning ? "Running" : "Stopped"}
                 </Badge>

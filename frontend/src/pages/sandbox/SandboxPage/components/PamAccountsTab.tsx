@@ -1,8 +1,10 @@
-import { ServerIcon } from "lucide-react";
+import { useState } from "react";
+import { PlusIcon, ServerIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
+  Button,
   Card,
   CardAction,
   CardContent,
@@ -18,11 +20,15 @@ import {
 import { useListPamAccounts } from "@app/hooks/api/pam/queries";
 import { TSandbox, useUpdateSandbox } from "@app/hooks/api/sandboxes";
 
+import { AddPamAccountsSheet } from "./AddPamAccountsSheet";
+
 export const PamAccountsTab = ({ sandbox }: { sandbox: TSandbox }) => {
   const { data: accounts } = useListPamAccounts();
   const updateSandbox = useUpdateSandbox();
+  const [isAddOpen, setIsAddOpen] = useState(false);
 
   const selected = new Set(sandbox.grants.pamAccountIds);
+  const granted = (accounts ?? []).filter((account) => selected.has(account.id));
 
   const toggle = async (accountId: string) => {
     const next = new Set(selected);
@@ -42,14 +48,15 @@ export const PamAccountsTab = ({ sandbox }: { sandbox: TSandbox }) => {
           never receives the credential.
         </CardDescription>
         <CardAction>
-          <div className="flex size-9 items-center justify-center rounded-md border border-product-pam/15 bg-product-pam/10 text-product-pam [&>svg]:size-5">
-            <ServerIcon />
-          </div>
+          <Button variant="project" onClick={() => setIsAddOpen(true)}>
+            <PlusIcon />
+            Grant Accounts
+          </Button>
         </CardAction>
       </CardHeader>
 
       <CardContent>
-        {!accounts?.length ? (
+        {!granted.length ? (
           <Empty frame="dashed">
             <EmptyHeader>
               <EmptyMedia>
@@ -61,7 +68,7 @@ export const PamAccountsTab = ({ sandbox }: { sandbox: TSandbox }) => {
           </Empty>
         ) : (
           <ul className="flex flex-col gap-2">
-            {accounts.map((account) => (
+            {granted.map((account) => (
               <li key={account.id}>
                 <button
                   type="button"
@@ -85,6 +92,7 @@ export const PamAccountsTab = ({ sandbox }: { sandbox: TSandbox }) => {
             ))}
           </ul>
         )}
+        <AddPamAccountsSheet sandbox={sandbox} isOpen={isAddOpen} onOpenChange={setIsAddOpen} />
       </CardContent>
     </Card>
   );

@@ -25,6 +25,7 @@ import {
 } from "@app/hooks/api/sandboxes";
 
 import { AddIntegrationSheet } from "./AddIntegrationSheet";
+import { INTEGRATION_ICONS } from "./integrationIcons";
 
 export const IntegrationsTab = ({ sandbox }: { sandbox: TSandbox }) => {
   const { data: catalog } = useGetSandboxCatalog();
@@ -69,27 +70,33 @@ export const IntegrationsTab = ({ sandbox }: { sandbox: TSandbox }) => {
           <ul className="flex flex-col gap-2">
             {sandbox.grants.integrations.map((integration) => {
               const definition = catalog?.integrations.find((i) => i.type === integration.type);
+              const Icon = INTEGRATION_ICONS[integration.type];
 
               return (
                 <li
                   key={integration.id}
                   className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-3"
                 >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        {definition?.name ?? integration.type}
-                      </span>
-                      {definition?.cli && (
-                        <Badge variant="neutral">{definition.cli.name} CLI</Badge>
-                      )}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-container [&>svg]:size-4">
+                      <Icon />
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-muted">
-                      {integration.hostnames.join(", ")}
-                    </p>
-                    <p className="mt-0.5 truncate font-mono text-[11px] text-muted">
-                      {integration.secret.secretKey}
-                    </p>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">
+                          {definition?.name ?? integration.type}
+                        </span>
+                        {definition?.cli && (
+                          <Badge variant="neutral">{definition.cli.name} CLI</Badge>
+                        )}
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-muted">
+                        {integration.hostnames.join(", ")}
+                      </p>
+                      <p className="mt-0.5 truncate font-mono text-[11px] text-muted">
+                        {integration.secret.secretKey}
+                      </p>
+                    </div>
                   </div>
                   <IconButton
                     variant="ghost"
