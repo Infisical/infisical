@@ -5,6 +5,16 @@ import { cn } from "@app/components/v3/utils";
 
 import { Button } from "../Button";
 
+const OVERLAY_SELECTOR = [
+  '[role="dialog"]',
+  '[role="menu"]',
+  '[role="listbox"]',
+  '[data-slot="dialog-content"]',
+  '[data-slot="popover-content"]',
+  '[data-slot="dropdown-menu-content"]',
+  '[data-slot="select-content"]'
+].join(", ");
+
 type SelectedActionBarProps = Omit<React.ComponentProps<"div">, "children"> & {
   selectedCount: number;
   onClearSelection: () => void;
@@ -38,10 +48,7 @@ function SelectedActionBar({
       const target = event.target instanceof Element ? event.target : null;
       const isEditableTarget =
         target?.closest("input, textarea, select, [contenteditable='true']") ?? false;
-      const isOverlayTarget =
-        target?.closest(
-          '[role="dialog"], [role="menu"], [role="listbox"], [data-slot$="-content"]'
-        ) ?? false;
+      const isOverlayTarget = target?.closest(OVERLAY_SELECTOR) ?? false;
 
       if (isEditableTarget || isOverlayTarget) return;
 

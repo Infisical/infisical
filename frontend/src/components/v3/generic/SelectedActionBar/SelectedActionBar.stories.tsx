@@ -63,7 +63,7 @@ export const EscapeClearsSelection: Story = {
       <>
         <div className="fixed top-6 left-6 space-y-2 text-sm text-foreground">
           <p>Press Escape while this story is focused to clear the selection.</p>
-          <Button size="sm" variant="outline_bg" onClick={() => setSelectedCount(3)}>
+          <Button size="sm" variant="outline" onClick={() => setSelectedCount(3)}>
             Restore selection
           </Button>
         </div>
