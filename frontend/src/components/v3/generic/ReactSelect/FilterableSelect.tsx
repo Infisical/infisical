@@ -1,6 +1,13 @@
 import Select, { GroupBase, Props } from "react-select";
 
-import { ClearIndicator, DropdownIndicator, Group, MultiValueRemove, Option } from "./components";
+import {
+  ClearIndicator,
+  DropdownIndicator,
+  Group,
+  Menu,
+  MultiValueRemove,
+  Option
+} from "./components";
 import { getSelectClassNames, selectClassNames, selectStyles } from "./styles";
 
 export const FilterableSelect = <T,>({
@@ -61,6 +68,7 @@ export const FilterableSelect = <T,>({
         MultiValueRemove,
         Option,
         Group,
+        Menu,
         ...components
       }}
       classNames={(isError ? getSelectClassNames(isError) : selectClassNames) as any}

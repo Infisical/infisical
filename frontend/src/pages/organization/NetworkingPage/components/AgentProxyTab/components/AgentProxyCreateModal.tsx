@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TriangleAlertIcon } from "lucide-react";
 
 import {
   Alert,
@@ -110,10 +111,10 @@ export const AgentProxyCreateModal = ({ isOpen, onOpenChange }: Props) => {
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <CodeBlock label="Run on the agent proxy host" value={command} />
-            <Alert variant="warning" appearance="borderless">
+            <Alert variant="warning">
+              <TriangleAlertIcon />
               <AlertDescription>
-                The enrollment token is shown once and can only be used once. Generate a new one
-                from the agent proxy&apos;s menu if you lose it.
+                The enrollment token is shown once and can only be used once.
               </AlertDescription>
             </Alert>
             <DialogFooter>
@@ -131,7 +132,7 @@ export const AgentProxyCreateModal = ({ isOpen, onOpenChange }: Props) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Create Agent Proxy</DialogTitle>
           <DialogDescription>

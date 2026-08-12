@@ -1,16 +1,11 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CopyIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   Field,
   FieldContent,
   FieldDescription,
@@ -26,16 +21,13 @@ import {
   SheetTitle
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import {
-  PolicyRuleMethod,
-  useGetAgentPolicies,
-  useGetAgentPolicyTargets
-} from "@app/hooks/api/agentPolicies";
+import { PolicyRuleMethod, useGetAgentPolicyTargets } from "@app/hooks/api/agentPolicies";
 import { useGetWorkspaceUsers } from "@app/hooks/api/projects/queries";
 import { TUserPolicy, useCreateUserPolicy, useUpdateUserPolicy } from "@app/hooks/api/userPolicies";
 
 import { PolicyRulesFields } from "./PolicyRulesFields";
 import { findPolicyTemplate } from "./PolicyTargetCell";
+import { PolicyTargetSelect } from "./PolicyTargetSelect";
 
 const schema = z.object({
   name: z
@@ -72,9 +64,6 @@ export const UserPolicySheet = ({ isOpen, policy, onOpenChange }: Props) => {
 
   const { data: targets } = useGetAgentPolicyTargets();
   const { data: projectUsers } = useGetWorkspaceUsers(projectId, true);
-  // Source for "copy rules from": a one-time copy, never a reference, so the two policies drift freely
-  // afterwards. Copying then narrowing the methods is the common case.
-  const { data: agentPolicies } = useGetAgentPolicies(projectId);
 
   const createPolicy = useCreateUserPolicy();
   const updatePolicy = useUpdateUserPolicy();
@@ -104,7 +93,6 @@ export const UserPolicySheet = ({ isOpen, policy, onOpenChange }: Props) => {
     control,
     handleSubmit,
     reset,
-    setValue,
     formState: { isSubmitting, errors }
   } = useForm<TForm>({
     resolver: zodResolver(schema),
@@ -228,13 +216,10 @@ export const UserPolicySheet = ({ isOpen, policy, onOpenChange }: Props) => {
                 <Field>
                   <FieldLabel>Target</FieldLabel>
                   <FieldContent>
-                    <FilterableSelect
-                      placeholder="Select target..."
+                    <PolicyTargetSelect
                       options={targetOptions}
                       value={value}
                       onChange={onChange}
-                      getOptionValue={(option) => option.key}
-                      getOptionLabel={(option) => option.label}
                       isDisabled={isEdit}
                       isError={Boolean(error)}
                     />
@@ -246,37 +231,7 @@ export const UserPolicySheet = ({ isOpen, policy, onOpenChange }: Props) => {
                 </Field>
               )}
             />
-            <PolicyRulesFields control={control} errors={errors} />
-            {Boolean(agentPolicies?.length) && (
-              <div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="xs" type="button">
-                      <CopyIcon className="mr-1 size-4" />
-                      Copy rules from...
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {agentPolicies?.map((agentPolicy) => (
-                      <DropdownMenuItem
-                        key={agentPolicy.id}
-                        onClick={() =>
-                          setValue(
-                            "rules",
-                            agentPolicy.rules.map((rule) => ({
-                              hostPattern: rule.hostPattern,
-                              methods: rule.methods
-                            }))
-                          )
-                        }
-                      >
-                        {agentPolicy.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )}
+            <PolicyRulesFields control={control} errors={errors} excludePolicyId={policy?.id} />
           </div>
           <SheetFooter className="border-t">
             <Button
@@ -287,7 +242,7 @@ export const UserPolicySheet = ({ isOpen, policy, onOpenChange }: Props) => {
             >
               {policy ? "Save" : "Create"}
             </Button>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
           </SheetFooter>

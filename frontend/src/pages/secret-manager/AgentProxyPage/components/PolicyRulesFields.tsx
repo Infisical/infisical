@@ -13,6 +13,8 @@ import {
 } from "@app/components/v3";
 import { PolicyRuleMethod } from "@app/hooks/api/agentPolicies";
 
+import { CopyRulesPopover } from "./CopyRulesPopover";
+
 const METHOD_OPTIONS = Object.values(PolicyRuleMethod).map((method) => ({
   label: method,
   value: method
@@ -23,13 +25,15 @@ const METHOD_OPTIONS = Object.values(PolicyRuleMethod).map((method) => ({
 export const PolicyRulesFields = ({
   control,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  errors
+  errors,
+  excludePolicyId
 }: {
   // The two sheets have different form shapes but an identical `rules` field.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   control: Control<any>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   errors?: any;
+  excludePolicyId?: string;
 }) => {
   const rules = useFieldArray({ control, name: "rules" });
 
@@ -107,7 +111,7 @@ export const PolicyRulesFields = ({
           <FieldError>{errors.rules.message}</FieldError>
         )}
       </div>
-      <div>
+      <div className="flex items-center justify-between">
         <Button
           variant="ghost"
           size="xs"
@@ -117,6 +121,7 @@ export const PolicyRulesFields = ({
           <PlusIcon className="mr-1 size-4" />
           Add Rule
         </Button>
+        <CopyRulesPopover excludePolicyId={excludePolicyId} onCopy={rules.replace} />
       </div>
     </div>
   );

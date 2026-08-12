@@ -3,6 +3,7 @@ import {
   components,
   DropdownIndicatorProps,
   GroupProps,
+  MenuProps,
   MultiValueRemoveProps,
   OptionProps
 } from "react-select";
@@ -41,3 +42,17 @@ export const Option = <T,>({ isSelected, children, ...props }: OptionProps<T>) =
 export const Group = <T,>(props: GroupProps<T>) => {
   return <components.Group {...props} />;
 };
+
+// The menu portals to document.body, which puts it outside the scroll lock a Radix dialog installs
+// (react-remove-scroll cancels wheel/touch events for anything it doesn't own), so the menu would
+// not scroll inside a modal. Swallowing the event here keeps it from reaching that document listener.
+export const Menu = <T,>({ innerProps, ...props }: MenuProps<T>) => (
+  <components.Menu
+    {...props}
+    innerProps={{
+      ...innerProps,
+      onWheel: (event) => event.stopPropagation(),
+      onTouchMove: (event) => event.stopPropagation()
+    }}
+  />
+);

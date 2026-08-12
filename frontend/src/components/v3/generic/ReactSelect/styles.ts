@@ -11,7 +11,13 @@ export const selectClassNames: ClassNamesConfig<unknown, boolean, GroupBase<unkn
       isDisabled && "pointer-events-none cursor-not-allowed opacity-50"
     ),
   placeholder: () => "text-muted text-sm",
-  input: () => "text-foreground text-sm",
+  // The search input sits in the same grid cell as the rendered value, so with nothing typed its
+  // caret lands on top of that value, which shows badly when the value leads with an icon.
+  input: ({ hasValue, isMulti, selectProps }) =>
+    cn(
+      "text-foreground text-sm",
+      hasValue && !isMulti && !selectProps.inputValue && "caret-transparent"
+    ),
   singleValue: () => "truncate pr-2 text-foreground",
   valueContainer: () =>
     "gap-1 max-h-40 !pointer-events-auto !overflow-y-auto thin-scrollbar flex-wrap",

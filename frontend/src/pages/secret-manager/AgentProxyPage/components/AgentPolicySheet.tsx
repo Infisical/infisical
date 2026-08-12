@@ -33,6 +33,7 @@ import { SearchIdentitiesScope } from "@app/hooks/api/identities/types";
 
 import { PolicyRulesFields } from "./PolicyRulesFields";
 import { findPolicyTemplate } from "./PolicyTargetCell";
+import { PolicyTargetSelect } from "./PolicyTargetSelect";
 import { SecretPickerPopover } from "./SecretPickerPopover";
 
 const schema = z.object({
@@ -78,12 +79,14 @@ export const AgentPolicySheet = ({ isOpen, policy, onOpenChange }: Props) => {
   const isEdit = Boolean(policy);
 
   const { data: targets } = useGetAgentPolicyTargets();
-  // Agents are org-level, and only those explicitly marked as agents may appear here.
+  // Only identities explicitly marked as agents may appear here. Both scopes are needed: the org
+  // scope excludes project-owned identities, so a project-level agent is invisible without the
+  // project scope. 100 is the endpoint's max limit.
   const { data: identityData } = useSearchOrgIdentityMemberships({
     orgId: currentProject.orgId,
-    limit: 200,
+    limit: 100,
     offset: 0,
-    scope: [SearchIdentitiesScope.OrganizationScope],
+    scope: [SearchIdentitiesScope.OrganizationScope, SearchIdentitiesScope.ProjectScope],
     search: {}
   });
 
@@ -93,12 +96,17 @@ export const AgentPolicySheet = ({ isOpen, policy, onOpenChange }: Props) => {
   const agentOptions = useMemo(
     () =>
       (identityData?.identities ?? [])
-        .filter((membership) => membership.identity.isAgent)
+        .filter(
+          (membership) =>
+            membership.identity.isAgent &&
+            (membership.scope === SearchIdentitiesScope.OrganizationScope ||
+              membership.projectId === projectId)
+        )
         .map((membership) => ({
           identityId: membership.identity.id,
           name: membership.identity.name
         })),
-    [identityData]
+    [identityData, projectId]
   );
 
   const targetOptions = useMemo(
@@ -292,13 +300,10 @@ export const AgentPolicySheet = ({ isOpen, policy, onOpenChange }: Props) => {
                 <Field>
                   <FieldLabel>Target</FieldLabel>
                   <FieldContent>
-                    <FilterableSelect
-                      placeholder="Select target..."
+                    <PolicyTargetSelect
                       options={targetOptions}
                       value={value}
                       onChange={onChange}
-                      getOptionValue={(option) => option.key}
-                      getOptionLabel={(option) => option.label}
                       isDisabled={isEdit}
                       isError={Boolean(error)}
                     />
@@ -363,7 +368,7 @@ export const AgentPolicySheet = ({ isOpen, policy, onOpenChange }: Props) => {
                 </FieldDescription>
               </div>
             )}
-            <PolicyRulesFields control={control} errors={errors} />
+            <PolicyRulesFields control={control} errors={errors} excludePolicyId={policy?.id} />
           </div>
           <SheetFooter className="border-t">
             <Button
@@ -374,7 +379,7 @@ export const AgentPolicySheet = ({ isOpen, policy, onOpenChange }: Props) => {
             >
               {policy ? "Save" : "Create"}
             </Button>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
           </SheetFooter>

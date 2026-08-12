@@ -1,4 +1,12 @@
-import { ActivityIcon, Blocks, BookCheck, BotIcon, FileText, Settings, Shield } from "lucide-react";
+import {
+  ActivityIcon,
+  Blocks,
+  BookCheck,
+  FileText,
+  Settings,
+  Shield,
+  WaypointsIcon
+} from "lucide-react";
 
 import { ProjectIcon, SidebarCollapsibleGroup } from "@app/components/v3";
 
@@ -36,7 +44,7 @@ export const SecretManagerNav = ({
     },
     {
       label: "Agent Proxy",
-      icon: BotIcon,
+      icon: WaypointsIcon,
       pathSuffix: "agent-proxy"
     },
     {

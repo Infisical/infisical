@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { formatRelative } from "date-fns";
 import {
-  BotIcon,
+  ActivityIcon,
+  CircleDashedIcon,
+  CircleXIcon,
   CopyIcon,
-  KeyRoundIcon,
+  GlobeIcon,
+  KeyIcon,
   MoreHorizontalIcon,
   PlusIcon,
   SearchIcon,
-  TrashIcon
+  TrashIcon,
+  WaypointsIcon
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -89,7 +93,10 @@ const AgentProxyHealthStatus = ({ heartbeat }: { heartbeat: string | null }) => 
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge variant="warning">Unregistered</Badge>
+          <Badge variant="warning" iconPosition="left">
+            <CircleDashedIcon />
+            Unregistered
+          </Badge>
         </TooltipTrigger>
         <TooltipContent>This agent proxy has never checked in</TooltipContent>
       </Tooltip>
@@ -102,7 +109,8 @@ const AgentProxyHealthStatus = ({ heartbeat }: { heartbeat: string | null }) => 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Badge variant={isHealthy ? "success" : "danger"}>
+        <Badge variant={isHealthy ? "success" : "danger"} iconPosition="left">
+          {isHealthy ? <ActivityIcon /> : <CircleXIcon />}
           {isHealthy ? "Healthy" : "Unreachable"}
         </Badge>
       </TooltipTrigger>
@@ -194,7 +202,7 @@ export const AgentProxyTab = withPermission(
             <Empty className="border">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
-                  {agentProxies?.length ? <SearchIcon /> : <BotIcon />}
+                  {agentProxies?.length ? <SearchIcon /> : <WaypointsIcon />}
                 </EmptyMedia>
                 <EmptyTitle>
                   {agentProxies?.length
@@ -242,7 +250,8 @@ export const AgentProxyTab = withPermission(
                       {el.allowedHosts?.length ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Badge variant="neutral">
+                            <Badge variant="neutral" iconPosition="left">
+                              <GlobeIcon />
                               {el.allowedHosts.length}{" "}
                               {el.allowedHosts.length === 1 ? "host" : "hosts"}
                             </Badge>
@@ -278,7 +287,7 @@ export const AgentProxyTab = withPermission(
                                 isDisabled={!isAllowed}
                                 onClick={() => handleReissueToken(el)}
                               >
-                                <KeyRoundIcon />
+                                <KeyIcon />
                                 New Enrollment Token
                               </DropdownMenuItem>
                             )}

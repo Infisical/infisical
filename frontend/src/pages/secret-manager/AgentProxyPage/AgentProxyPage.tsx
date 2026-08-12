@@ -49,7 +49,7 @@ export const AgentProxyPage = withProjectPermission(
                 })
               }
             >
-              <TabsList>
+              <TabsList variant="project">
                 {TABS.map(({ key, label }) => (
                   <TabsTrigger value={key} key={`tab-${key}`}>
                     {label}

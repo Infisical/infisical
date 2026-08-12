@@ -50,6 +50,7 @@ export const ProjectIdentityDetailsSection = ({
   const { currentProject } = useProject();
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   const isPam = currentProject?.type === ProjectType.PAM;
+  const canBeAgent = currentProject?.type === ProjectType.SecretManager;
 
   let productLabel = "Project";
   if (isCertManager) {
@@ -188,6 +189,24 @@ export const ProjectIdentityDetailsSection = ({
                     )}
                   </DetailValue>
                 </Detail>
+                {canBeAgent && (
+                  <Detail>
+                    <DetailLabel>Agent</DetailLabel>
+                    <DetailValue>
+                      {identity.isAgent ? (
+                        <Badge variant="success">
+                          <CheckIcon />
+                          Enabled
+                        </Badge>
+                      ) : (
+                        <Badge variant="neutral">
+                          <BanIcon />
+                          Disabled
+                        </Badge>
+                      )}
+                    </DetailValue>
+                  </Detail>
+                )}
                 <Detail>
                   <DetailLabel>Delete protection</DetailLabel>
                   <DetailValue>

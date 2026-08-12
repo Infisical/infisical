@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
-  BotIcon,
+  FlaskConicalIcon,
+  HardDriveIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
@@ -60,6 +61,7 @@ import {
 
 import { AgentPolicySheet } from "./AgentPolicySheet";
 import { PolicyRulesHoverCard } from "./PolicyRulesHoverCard";
+import { PolicySimulationModal } from "./PolicySimulationModal";
 import { PolicyTargetCell } from "./PolicyTargetCell";
 
 export const AgentPoliciesTab = () => {
@@ -71,7 +73,8 @@ export const AgentPoliciesTab = () => {
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "policyForm",
-    "deletePolicy"
+    "deletePolicy",
+    "testPolicy"
   ] as const);
 
   const handleDelete = async () => {
@@ -94,7 +97,7 @@ export const AgentPoliciesTab = () => {
       <CardHeader>
         <CardTitle>Agent Policies</CardTitle>
         <CardDescription>
-          What an agent may reach, and which secret is brokered when it does
+          What an agent may reach, and which secret is brokered when it does.
         </CardDescription>
         <CardAction>
           <ProjectPermissionCan
@@ -129,7 +132,7 @@ export const AgentPoliciesTab = () => {
           <Empty className="border">
             <EmptyHeader>
               <EmptyMedia variant="icon">
-                {policies?.length ? <SearchIcon /> : <BotIcon />}
+                {policies?.length ? <SearchIcon /> : <HardDriveIcon />}
               </EmptyMedia>
               <EmptyTitle>
                 {policies?.length ? "No policies match your search" : "No agent policies yet"}
@@ -185,11 +188,26 @@ export const AgentPoliciesTab = () => {
                   <TableCell className="w-12">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <IconButton aria-label="Policy options" variant="ghost" size="sm">
+                        <IconButton aria-label="Policy options" variant="ghost" size="xs">
                           <MoreHorizontalIcon />
                         </IconButton>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {/* Reading the user side is what the test reconciles against. */}
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Read}
+                          a={ProjectPermissionSub.UserPolicies}
+                        >
+                          {(isAllowed: boolean) => (
+                            <DropdownMenuItem
+                              isDisabled={!isAllowed}
+                              onClick={() => handlePopUpOpen("testPolicy", policy)}
+                            >
+                              <FlaskConicalIcon />
+                              Test Request
+                            </DropdownMenuItem>
+                          )}
+                        </ProjectPermissionCan>
                         <ProjectPermissionCan
                           I={ProjectPermissionActions.Edit}
                           a={ProjectPermissionSub.AgentPolicies}
@@ -264,6 +282,11 @@ export const AgentPoliciesTab = () => {
           isOpen={popUp.policyForm.isOpen}
           policy={popUp.policyForm.data as TAgentPolicy | undefined}
           onOpenChange={(isOpen) => handlePopUpToggle("policyForm", isOpen)}
+        />
+        <PolicySimulationModal
+          isOpen={popUp.testPolicy.isOpen}
+          agentPolicy={popUp.testPolicy.data as TAgentPolicy | undefined}
+          onOpenChange={(isOpen) => handlePopUpToggle("testPolicy", isOpen)}
         />
       </CardContent>
     </Card>

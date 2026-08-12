@@ -83,6 +83,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
           metadata: {
             name: identity.name,
             hasDeleteProtection: identity.hasDeleteProtection,
+            isAgent: identity.isAgent,
             identityId: identity.id
           }
         }
@@ -162,6 +163,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
           metadata: {
             name: identity.name,
             hasDeleteProtection: identity.hasDeleteProtection,
+            isAgent: identity.isAgent,
             identityId: identity.id
           }
         }
