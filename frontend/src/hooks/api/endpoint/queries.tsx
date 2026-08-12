@@ -3,8 +3,10 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import {
+  TEndpointCounter,
   TEndpointDevice,
-  TEndpointEgressRule,
+  TEndpointNetworkRule,
+  TListEndpointCountersDTO,
   TListEndpointEventsDTO,
   TListEndpointEventsResponse
 } from "./types";
@@ -21,12 +23,35 @@ export const endpointKeys = {
   project: () => [...endpointKeys.all, "project"] as const,
   devices: () => [...endpointKeys.all, "devices"] as const,
   listDevices: () => [...endpointKeys.devices(), "list"] as const,
-  egressRules: () => [...endpointKeys.all, "egress-rules"] as const,
-  listEgressRules: () => [...endpointKeys.egressRules(), "list"] as const,
+  networkRules: () => [...endpointKeys.all, "network-rules"] as const,
+  listNetworkRules: () => [...endpointKeys.networkRules(), "list"] as const,
   events: () => [...endpointKeys.all, "events"] as const,
   listEvents: (params?: TListEndpointEventsDTO) =>
-    [...endpointKeys.events(), "list", params] as const
+    [...endpointKeys.events(), "list", params] as const,
+  counters: () => [...endpointKeys.all, "counters"] as const,
+  listCounters: (params?: TListEndpointCountersDTO) =>
+    [...endpointKeys.counters(), "list", params] as const
 };
+
+// The counter is the thing an admin watches climb, so it overrides the 60s global staleTime and
+// polls at the agent's own heartbeat cadence.
+export const useListEndpointCounters = (
+  params: TListEndpointCountersDTO = {},
+  options?: Omit<UseQueryOptions<TEndpointCounter[]>, "queryKey" | "queryFn">
+) =>
+  useQuery({
+    queryKey: endpointKeys.listCounters(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ counters: TEndpointCounter[] }>(
+        "/api/v1/endpoint/counters",
+        { params }
+      );
+      return data.counters;
+    },
+    refetchInterval: 1000,
+    staleTime: 0,
+    ...options
+  });
 
 export const useListEndpointDevices = (
   options?: Omit<UseQueryOptions<TEndpointDevice[]>, "queryKey" | "queryFn">
@@ -42,16 +67,16 @@ export const useListEndpointDevices = (
     ...options
   });
 
-export const useListEndpointEgressRules = (
-  options?: Omit<UseQueryOptions<TEndpointEgressRule[]>, "queryKey" | "queryFn">
+export const useListEndpointNetworkRules = (
+  options?: Omit<UseQueryOptions<TEndpointNetworkRule[]>, "queryKey" | "queryFn">
 ) =>
   useQuery({
-    queryKey: endpointKeys.listEgressRules(),
+    queryKey: endpointKeys.listNetworkRules(),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ egressRules: TEndpointEgressRule[] }>(
-        "/api/v1/endpoint/egress-rules"
+      const { data } = await apiRequest.get<{ networkRules: TEndpointNetworkRule[] }>(
+        "/api/v1/endpoint/network-rules"
       );
-      return data.egressRules;
+      return data.networkRules;
     },
     ...options
   });

@@ -1,13 +1,13 @@
-import { TEndpointDevices, TEndpointEgressRules, TEndpointEvents } from "@app/db/schemas";
+import { TEndpointDevices, TEndpointEvents, TEndpointNetworkRules } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 
 import { ENDPOINT_DEVICE_OFFLINE_AFTER_SECONDS } from "./endpoint-constants";
 import {
   EndpointDestinationKind,
   EndpointDeviceStatus,
-  EndpointEgressRuleAction,
-  EndpointEgressRuleType,
-  EndpointEventType
+  EndpointEventType,
+  EndpointNetworkRuleAction,
+  EndpointNetworkRuleType
 } from "./endpoint-enums";
 
 export const encodeEndpointEventCursor = (event: { occurredAt: Date; id: string }) =>
@@ -60,11 +60,11 @@ export const toEndpointDeviceOwner = (owner: {
   };
 };
 
-export const toEndpointEgressRuleResponse = (rule: TEndpointEgressRules) => ({
+export const toEndpointNetworkRuleResponse = (rule: TEndpointNetworkRules) => ({
   ...rule,
-  ruleType: rule.ruleType as EndpointEgressRuleType,
+  ruleType: rule.ruleType as EndpointNetworkRuleType,
   kind: rule.kind as EndpointDestinationKind,
-  action: (rule.action ?? null) as EndpointEgressRuleAction | null
+  action: (rule.action ?? null) as EndpointNetworkRuleAction | null
 });
 
 export const toEndpointEventResponse = (event: TEndpointEvents & { deviceName: string }) => ({

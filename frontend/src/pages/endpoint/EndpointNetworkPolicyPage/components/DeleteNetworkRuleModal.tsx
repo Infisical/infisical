@@ -12,16 +12,16 @@ import {
   AlertDialogMedia,
   AlertDialogTitle
 } from "@app/components/v3";
-import { TEndpointEgressRule, useDeleteEndpointEgressRule } from "@app/hooks/api/endpoint";
+import { TEndpointNetworkRule, useDeleteEndpointNetworkRule } from "@app/hooks/api/endpoint";
 
 type Props = {
-  rule?: TEndpointEgressRule;
+  rule?: TEndpointNetworkRule;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-export const DeleteEgressRuleModal = ({ rule, isOpen, onOpenChange }: Props) => {
-  const deleteRule = useDeleteEndpointEgressRule();
+export const DeleteNetworkRuleModal = ({ rule, isOpen, onOpenChange }: Props) => {
+  const deleteRule = useDeleteEndpointNetworkRule();
 
   const onConfirm = () => {
     if (!rule) return;

@@ -25,7 +25,7 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL }: TOrgProduc
       accountTemplatesCount,
       foldersCount,
       endpointDevicesCount,
-      endpointEgressRulesCount,
+      endpointNetworkRulesCount,
       projectCounts
     ] = await Promise.all([
       orgProductStatsDAL.countSecretsForOrg(actorOrgId),
@@ -41,7 +41,7 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL }: TOrgProduc
       orgProductStatsDAL.countPamAccountTemplatesForOrg(actorOrgId),
       orgProductStatsDAL.countPamFoldersForOrg(actorOrgId),
       orgProductStatsDAL.countEndpointDevicesForOrg(actorOrgId),
-      orgProductStatsDAL.countEndpointEgressRulesForOrg(actorOrgId),
+      orgProductStatsDAL.countEndpointNetworkRulesForOrg(actorOrgId),
       orgProductStatsDAL.countProjectsByTypeForOrg(actorOrgId)
     ]);
 
@@ -73,7 +73,7 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL }: TOrgProduc
       },
       endpoint: {
         devicesCount: endpointDevicesCount,
-        egressRulesCount: endpointEgressRulesCount
+        networkRulesCount: endpointNetworkRulesCount
       }
     };
   };

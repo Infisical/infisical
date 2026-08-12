@@ -10,7 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const EndpointCountersSchema = z.object({
   id: z.string().uuid(),
   deviceId: z.string().uuid(),
-  egressRuleId: z.string().uuid(),
+  networkRuleId: z.string().uuid(),
   destination: z.string(),
   bytesOut: z.coerce.number().default(0),
   thresholdBytes: z.coerce.number().nullable().optional(),

@@ -99,8 +99,7 @@ import { Route as pamPamAccountsPageRouteImport } from './pages/pam/PamAccountsP
 import { Route as organizationNetworkingPageRelayDetailsByIDPageRouteImport } from './pages/organization/NetworkingPage/RelayDetailsByIDPage/route'
 import { Route as organizationNetworkingPageGatewayDetailsByIDPageRouteImport } from './pages/organization/NetworkingPage/GatewayDetailsByIDPage/route'
 import { Route as endpointEndpointTargetsPageRouteImport } from './pages/endpoint/EndpointTargetsPage/route'
-import { Route as endpointEndpointEgressPolicyPageRouteImport } from './pages/endpoint/EndpointEgressPolicyPage/route'
-import { Route as endpointEndpointDevicesPageRouteImport } from './pages/endpoint/EndpointDevicesPage/route'
+import { Route as endpointEndpointNetworkPolicyPageRouteImport } from './pages/endpoint/EndpointNetworkPolicyPage/route'
 import { Route as endpointEndpointActivityPageRouteImport } from './pages/endpoint/EndpointActivityPage/route'
 import { Route as secretScanningLayoutImport } from './pages/secret-scanning/layout'
 import { Route as secretManagerLayoutImport } from './pages/secret-manager/layout'
@@ -117,11 +116,13 @@ import { Route as projectGroupDetailsByIDPageRouteEndpointImport } from './pages
 import { Route as redirectsPamOrgAccessRedirectImport } from './pages/redirects/pam-org-access-redirect'
 import { Route as pamPamAccountAccessPageRouteImport } from './pages/pam/PamAccountAccessPage/route'
 import { Route as organizationKmipServersPageKmipServerDetailsByIDPageRouteImport } from './pages/organization/KmipServersPage/KmipServerDetailsByIDPage/route'
+import { Route as endpointEndpointDeviceDetailsPageRouteImport } from './pages/endpoint/EndpointDeviceDetailsPage/route'
 import { Route as organizationAppConnectionsGitHubManifestCallbackPageRouteImport } from './pages/organization/AppConnections/GitHubManifestCallbackPage/route'
 import { Route as organizationAppConnectionsOauthCallbackPageRouteImport } from './pages/organization/AppConnections/OauthCallbackPage/route'
 import { Route as organizationSecretSharingPageRouteImport } from './pages/organization/SecretSharingPage/route'
 import { Route as organizationProductSettingsPageSecretsManagementRouteImport } from './pages/organization/ProductSettingsPage/SecretsManagement/route'
 import { Route as organizationKmipServersPageRouteImport } from './pages/organization/KmipServersPage/route'
+import { Route as endpointEndpointDevicesPageRouteImport } from './pages/endpoint/EndpointDevicesPage/route'
 import { Route as projectAuditLogsPageRouteSecretScanningImport } from './pages/project/AuditLogsPage/route-secret-scanning'
 import { Route as projectAppConnectionsPageRouteSecretScanningImport } from './pages/project/AppConnectionsPage/route-secret-scanning'
 import { Route as projectAccessControlPageRouteSecretScanningImport } from './pages/project/AccessControlPage/route-secret-scanning'
@@ -351,6 +352,10 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManager
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessImport =
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access',
+  )()
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesImport =
+  createFileRoute(
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices',
   )()
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretScanningProjectIdSecretScanningLayoutDataSourcesImport =
   createFileRoute(
@@ -1106,6 +1111,15 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessR
     } as any,
   )
 
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRoute =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesImport.update(
+    {
+      id: '/devices',
+      path: '/devices',
+      getParentRoute: () => endpointLayoutRoute,
+    } as any,
+  )
+
 const projectAccessControlPageRouteEndpointRoute =
   projectAccessControlPageRouteEndpointImport.update({
     id: '/access-management',
@@ -1175,17 +1189,10 @@ const endpointEndpointTargetsPageRouteRoute =
     getParentRoute: () => endpointLayoutRoute,
   } as any)
 
-const endpointEndpointEgressPolicyPageRouteRoute =
-  endpointEndpointEgressPolicyPageRouteImport.update({
-    id: '/egress-policy',
-    path: '/egress-policy',
-    getParentRoute: () => endpointLayoutRoute,
-  } as any)
-
-const endpointEndpointDevicesPageRouteRoute =
-  endpointEndpointDevicesPageRouteImport.update({
-    id: '/devices',
-    path: '/devices',
+const endpointEndpointNetworkPolicyPageRouteRoute =
+  endpointEndpointNetworkPolicyPageRouteImport.update({
+    id: '/network-policy',
+    path: '/network-policy',
     getParentRoute: () => endpointLayoutRoute,
   } as any)
 
@@ -1299,6 +1306,14 @@ const organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute =
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsKmipServersRoute,
   } as any)
 
+const endpointEndpointDeviceDetailsPageRouteRoute =
+  endpointEndpointDeviceDetailsPageRouteImport.update({
+    id: '/$deviceId',
+    path: '/$deviceId',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRoute,
+  } as any)
+
 const organizationAppConnectionsGitHubManifestCallbackPageRouteRoute =
   organizationAppConnectionsGitHubManifestCallbackPageRouteImport.update({
     id: '/github/manifest/callback',
@@ -1337,6 +1352,14 @@ const organizationKmipServersPageRouteRoute =
     path: '/',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsKmipServersRoute,
+  } as any)
+
+const endpointEndpointDevicesPageRouteRoute =
+  endpointEndpointDevicesPageRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRoute,
   } as any)
 
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretScanningProjectIdSecretScanningLayoutDataSourcesRoute =
@@ -3236,18 +3259,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof endpointEndpointActivityPageRouteImport
       parentRoute: typeof endpointLayoutImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices'
-      path: '/devices'
-      fullPath: '/organizations/$orgId/endpoint/devices'
-      preLoaderRoute: typeof endpointEndpointDevicesPageRouteImport
-      parentRoute: typeof endpointLayoutImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/egress-policy': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/egress-policy'
-      path: '/egress-policy'
-      fullPath: '/organizations/$orgId/endpoint/egress-policy'
-      preLoaderRoute: typeof endpointEndpointEgressPolicyPageRouteImport
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/network-policy': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/network-policy'
+      path: '/network-policy'
+      fullPath: '/organizations/$orgId/endpoint/network-policy'
+      preLoaderRoute: typeof endpointEndpointNetworkPolicyPageRouteImport
       parentRoute: typeof endpointLayoutImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/targets': {
@@ -3318,6 +3334,13 @@ declare module '@tanstack/react-router' {
       path: '/access-management'
       fullPath: '/organizations/$orgId/endpoint/access-management'
       preLoaderRoute: typeof projectAccessControlPageRouteEndpointImport
+      parentRoute: typeof endpointLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices'
+      path: '/devices'
+      fullPath: '/organizations/$orgId/endpoint/devices'
+      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesImport
       parentRoute: typeof endpointLayoutImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access': {
@@ -3397,6 +3420,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof secretManagerRedirectsRedirectApprovalPageImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretManagerProjectIdImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices/': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices/'
+      path: '/'
+      fullPath: '/organizations/$orgId/endpoint/devices/'
+      preLoaderRoute: typeof endpointEndpointDevicesPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/'
       path: '/'
@@ -3431,6 +3461,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$orgId/app-connections/github/manifest/callback'
       preLoaderRoute: typeof organizationAppConnectionsGitHubManifestCallbackPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices/$deviceId': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices/$deviceId'
+      path: '/$deviceId'
+      fullPath: '/organizations/$orgId/endpoint/devices/$deviceId'
+      preLoaderRoute: typeof endpointEndpointDeviceDetailsPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
@@ -5566,12 +5603,30 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRoute
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRouteChildren,
   )
 
+interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRouteChildren {
+  endpointEndpointDevicesPageRouteRoute: typeof endpointEndpointDevicesPageRouteRoute
+  endpointEndpointDeviceDetailsPageRouteRoute: typeof endpointEndpointDeviceDetailsPageRouteRoute
+}
+
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRouteChildren =
+  {
+    endpointEndpointDevicesPageRouteRoute:
+      endpointEndpointDevicesPageRouteRoute,
+    endpointEndpointDeviceDetailsPageRouteRoute:
+      endpointEndpointDeviceDetailsPageRouteRoute,
+  }
+
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRouteWithChildren =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRoute._addFileChildren(
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRouteChildren,
+  )
+
 interface endpointLayoutRouteChildren {
   endpointEndpointActivityPageRouteRoute: typeof endpointEndpointActivityPageRouteRoute
-  endpointEndpointDevicesPageRouteRoute: typeof endpointEndpointDevicesPageRouteRoute
-  endpointEndpointEgressPolicyPageRouteRoute: typeof endpointEndpointEgressPolicyPageRouteRoute
+  endpointEndpointNetworkPolicyPageRouteRoute: typeof endpointEndpointNetworkPolicyPageRouteRoute
   endpointEndpointTargetsPageRouteRoute: typeof endpointEndpointTargetsPageRouteRoute
   projectAccessControlPageRouteEndpointRoute: typeof projectAccessControlPageRouteEndpointRoute
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRouteWithChildren
   projectGroupDetailsByIDPageRouteEndpointRoute: typeof projectGroupDetailsByIDPageRouteEndpointRoute
   projectIdentityDetailsByIDPageRouteEndpointRoute: typeof projectIdentityDetailsByIDPageRouteEndpointRoute
   projectMemberDetailsByIDPageRouteEndpointRoute: typeof projectMemberDetailsByIDPageRouteEndpointRoute
@@ -5581,12 +5636,13 @@ interface endpointLayoutRouteChildren {
 const endpointLayoutRouteChildren: endpointLayoutRouteChildren = {
   endpointEndpointActivityPageRouteRoute:
     endpointEndpointActivityPageRouteRoute,
-  endpointEndpointDevicesPageRouteRoute: endpointEndpointDevicesPageRouteRoute,
-  endpointEndpointEgressPolicyPageRouteRoute:
-    endpointEndpointEgressPolicyPageRouteRoute,
+  endpointEndpointNetworkPolicyPageRouteRoute:
+    endpointEndpointNetworkPolicyPageRouteRoute,
   endpointEndpointTargetsPageRouteRoute: endpointEndpointTargetsPageRouteRoute,
   projectAccessControlPageRouteEndpointRoute:
     projectAccessControlPageRouteEndpointRoute,
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRoute:
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRouteWithChildren,
   projectGroupDetailsByIDPageRouteEndpointRoute:
     projectGroupDetailsByIDPageRouteEndpointRoute,
   projectIdentityDetailsByIDPageRouteEndpointRoute:
@@ -6092,8 +6148,7 @@ export interface FileRoutesByFullPath {
   '/organization/app-connections/$appConnection/oauth/callback': typeof redirectsOauthCallbackRedirectRoute
   '/organization/app-connections/github/manifest/callback': typeof redirectsGithubManifestCallbackRedirectRoute
   '/organizations/$orgId/endpoint/activity': typeof endpointEndpointActivityPageRouteRoute
-  '/organizations/$orgId/endpoint/devices': typeof endpointEndpointDevicesPageRouteRoute
-  '/organizations/$orgId/endpoint/egress-policy': typeof endpointEndpointEgressPolicyPageRouteRoute
+  '/organizations/$orgId/endpoint/network-policy': typeof endpointEndpointNetworkPolicyPageRouteRoute
   '/organizations/$orgId/endpoint/targets': typeof endpointEndpointTargetsPageRouteRoute
   '/organizations/$orgId/networking/gateways/$gatewayId': typeof organizationNetworkingPageGatewayDetailsByIDPageRouteRoute
   '/organizations/$orgId/networking/relays/$relayId': typeof organizationNetworkingPageRelayDetailsByIDPageRouteRoute
@@ -6104,6 +6159,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/pam/templates': typeof pamPamTemplatesPageRouteRoute
   '/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
   '/organizations/$orgId/endpoint/access-management': typeof projectAccessControlPageRouteEndpointRoute
+  '/organizations/$orgId/endpoint/devices': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRouteWithChildren
   '/organizations/$orgId/pam/access': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRouteWithChildren
   '/organizations/$orgId/pam/access-management': typeof projectAccessControlPageRoutePamRoute
   '/organizations/$orgId/pam/audit-logs': typeof projectAuditLogsPageRoutePamRoute
@@ -6115,11 +6171,13 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/secret-management/secret-sharing': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementSecretSharingRouteWithChildren
   '/organizations/$orgId/projects/secret-scanning/$projectId': typeof secretScanningLayoutRouteWithChildren
   '/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
+  '/organizations/$orgId/endpoint/devices/': typeof endpointEndpointDevicesPageRouteRoute
   '/organizations/$orgId/projects/kms/kmip-servers/': typeof organizationKmipServersPageRouteRoute
   '/organizations/$orgId/projects/secret-management/product-settings/': typeof organizationProductSettingsPageSecretsManagementRouteRoute
   '/organizations/$orgId/projects/secret-management/secret-sharing/': typeof organizationSecretSharingPageRouteRoute
   '/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
+  '/organizations/$orgId/endpoint/devices/$deviceId': typeof endpointEndpointDeviceDetailsPageRouteRoute
   '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute
   '/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/organizations/$orgId/pam/access/': typeof redirectsPamOrgAccessRedirectRoute
@@ -6371,8 +6429,7 @@ export interface FileRoutesByTo {
   '/organization/app-connections/$appConnection/oauth/callback': typeof redirectsOauthCallbackRedirectRoute
   '/organization/app-connections/github/manifest/callback': typeof redirectsGithubManifestCallbackRedirectRoute
   '/organizations/$orgId/endpoint/activity': typeof endpointEndpointActivityPageRouteRoute
-  '/organizations/$orgId/endpoint/devices': typeof endpointEndpointDevicesPageRouteRoute
-  '/organizations/$orgId/endpoint/egress-policy': typeof endpointEndpointEgressPolicyPageRouteRoute
+  '/organizations/$orgId/endpoint/network-policy': typeof endpointEndpointNetworkPolicyPageRouteRoute
   '/organizations/$orgId/endpoint/targets': typeof endpointEndpointTargetsPageRouteRoute
   '/organizations/$orgId/networking/gateways/$gatewayId': typeof organizationNetworkingPageGatewayDetailsByIDPageRouteRoute
   '/organizations/$orgId/networking/relays/$relayId': typeof organizationNetworkingPageRelayDetailsByIDPageRouteRoute
@@ -6390,11 +6447,13 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/secret-management/$projectId': typeof secretManagerLayoutRouteWithChildren
   '/organizations/$orgId/projects/secret-scanning/$projectId': typeof secretScanningLayoutRouteWithChildren
   '/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
+  '/organizations/$orgId/endpoint/devices': typeof endpointEndpointDevicesPageRouteRoute
   '/organizations/$orgId/projects/kms/kmip-servers': typeof organizationKmipServersPageRouteRoute
   '/organizations/$orgId/projects/secret-management/product-settings': typeof organizationProductSettingsPageSecretsManagementRouteRoute
   '/organizations/$orgId/projects/secret-management/secret-sharing': typeof organizationSecretSharingPageRouteRoute
   '/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
+  '/organizations/$orgId/endpoint/devices/$deviceId': typeof endpointEndpointDeviceDetailsPageRouteRoute
   '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute
   '/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/organizations/$orgId/pam/access': typeof redirectsPamOrgAccessRedirectRoute
@@ -6647,8 +6706,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/organization/app-connections/$appConnection/oauth/callback': typeof redirectsOauthCallbackRedirectRoute
   '/_authenticate/_inject-org-details/organization/app-connections/github/manifest/callback': typeof redirectsGithubManifestCallbackRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/activity': typeof endpointEndpointActivityPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices': typeof endpointEndpointDevicesPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/egress-policy': typeof endpointEndpointEgressPolicyPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/network-policy': typeof endpointEndpointNetworkPolicyPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/targets': typeof endpointEndpointTargetsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/gateways/$gatewayId': typeof organizationNetworkingPageGatewayDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/relays/$relayId': typeof organizationNetworkingPageRelayDetailsByIDPageRouteRoute
@@ -6659,6 +6717,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/templates': typeof pamPamTemplatesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/access-management': typeof projectAccessControlPageRouteEndpointRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access-management': typeof projectAccessControlPageRoutePamRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/audit-logs': typeof projectAuditLogsPageRoutePamRoute
@@ -6670,11 +6729,13 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManagementSecretSharingRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretScanningProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices/': typeof endpointEndpointDevicesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/': typeof organizationKmipServersPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings/': typeof organizationProductSettingsPageSecretsManagementRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing/': typeof organizationSecretSharingPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices/$deviceId': typeof endpointEndpointDeviceDetailsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/': typeof redirectsPamOrgAccessRedirectRoute
@@ -6939,8 +7000,7 @@ export interface FileRouteTypes {
     | '/organization/app-connections/$appConnection/oauth/callback'
     | '/organization/app-connections/github/manifest/callback'
     | '/organizations/$orgId/endpoint/activity'
-    | '/organizations/$orgId/endpoint/devices'
-    | '/organizations/$orgId/endpoint/egress-policy'
+    | '/organizations/$orgId/endpoint/network-policy'
     | '/organizations/$orgId/endpoint/targets'
     | '/organizations/$orgId/networking/gateways/$gatewayId'
     | '/organizations/$orgId/networking/relays/$relayId'
@@ -6951,6 +7011,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/pam/templates'
     | '/organizations/$orgId/settings/oauth/callback'
     | '/organizations/$orgId/endpoint/access-management'
+    | '/organizations/$orgId/endpoint/devices'
     | '/organizations/$orgId/pam/access'
     | '/organizations/$orgId/pam/access-management'
     | '/organizations/$orgId/pam/audit-logs'
@@ -6962,11 +7023,13 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/secret-management/secret-sharing'
     | '/organizations/$orgId/projects/secret-scanning/$projectId'
     | '/organizations/$orgId/secret-manager/$projectId/approval'
+    | '/organizations/$orgId/endpoint/devices/'
     | '/organizations/$orgId/projects/kms/kmip-servers/'
     | '/organizations/$orgId/projects/secret-management/product-settings/'
     | '/organizations/$orgId/projects/secret-management/secret-sharing/'
     | '/organizations/$orgId/app-connections/$appConnection/oauth/callback'
     | '/organizations/$orgId/app-connections/github/manifest/callback'
+    | '/organizations/$orgId/endpoint/devices/$deviceId'
     | '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
     | '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
     | '/organizations/$orgId/pam/access/'
@@ -7217,8 +7280,7 @@ export interface FileRouteTypes {
     | '/organization/app-connections/$appConnection/oauth/callback'
     | '/organization/app-connections/github/manifest/callback'
     | '/organizations/$orgId/endpoint/activity'
-    | '/organizations/$orgId/endpoint/devices'
-    | '/organizations/$orgId/endpoint/egress-policy'
+    | '/organizations/$orgId/endpoint/network-policy'
     | '/organizations/$orgId/endpoint/targets'
     | '/organizations/$orgId/networking/gateways/$gatewayId'
     | '/organizations/$orgId/networking/relays/$relayId'
@@ -7236,11 +7298,13 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/secret-management/$projectId'
     | '/organizations/$orgId/projects/secret-scanning/$projectId'
     | '/organizations/$orgId/secret-manager/$projectId/approval'
+    | '/organizations/$orgId/endpoint/devices'
     | '/organizations/$orgId/projects/kms/kmip-servers'
     | '/organizations/$orgId/projects/secret-management/product-settings'
     | '/organizations/$orgId/projects/secret-management/secret-sharing'
     | '/organizations/$orgId/app-connections/$appConnection/oauth/callback'
     | '/organizations/$orgId/app-connections/github/manifest/callback'
+    | '/organizations/$orgId/endpoint/devices/$deviceId'
     | '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
     | '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
     | '/organizations/$orgId/pam/access'
@@ -7491,8 +7555,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/organization/app-connections/$appConnection/oauth/callback'
     | '/_authenticate/_inject-org-details/organization/app-connections/github/manifest/callback'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/activity'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/egress-policy'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/network-policy'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/targets'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/gateways/$gatewayId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/relays/$relayId'
@@ -7503,6 +7566,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/templates'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/access-management'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access-management'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/audit-logs'
@@ -7514,11 +7578,13 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId/approval'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/secret-sharing/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices/$deviceId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
     | '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/'
@@ -8189,10 +8255,10 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint",
       "children": [
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/activity",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/egress-policy",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/network-policy",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/targets",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/access-management",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/groups/$groupId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/identities/$identityId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/members/$membershipId",
@@ -8236,12 +8302,8 @@ export const routeTree = rootRoute
       "filePath": "endpoint/EndpointActivityPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout"
     },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices": {
-      "filePath": "endpoint/EndpointDevicesPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/egress-policy": {
-      "filePath": "endpoint/EndpointEgressPolicyPage/route.tsx",
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/network-policy": {
+      "filePath": "endpoint/EndpointNetworkPolicyPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/targets": {
@@ -8283,6 +8345,14 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/access-management": {
       "filePath": "project/AccessControlPage/route-endpoint.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices": {
+      "filePath": "",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout",
+      "children": [
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices/",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices/$deviceId"
+      ]
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access": {
       "filePath": "",
@@ -8354,6 +8424,10 @@ export const routeTree = rootRoute
       "filePath": "secret-manager/redirects/redirect-approval-page.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId"
     },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices/": {
+      "filePath": "endpoint/EndpointDevicesPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices"
+    },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/": {
       "filePath": "organization/KmipServersPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers"
@@ -8373,6 +8447,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback": {
       "filePath": "organization/AppConnections/GitHubManifestCallbackPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices/$deviceId": {
+      "filePath": "endpoint/EndpointDeviceDetailsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId": {
       "filePath": "organization/KmipServersPage/KmipServerDetailsByIDPage/route.tsx",

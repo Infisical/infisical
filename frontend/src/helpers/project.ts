@@ -182,7 +182,7 @@ export const getProjectDescription = (type: ProjectType) => {
     [ProjectType.PAM]:
       "Connect to databases and servers securely with session brokering, recording, and credential vaulting.",
     [ProjectType.Endpoint]:
-      "Enforce egress policy and monitor activity on registered devices from a single fleet view."
+      "Enforce network policy and monitor activity on registered devices from a single fleet view."
   };
   return descriptions[type] ?? "";
 };

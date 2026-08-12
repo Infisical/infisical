@@ -34,8 +34,8 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.EndpointDevice);
   }
 
-  if (!(await knex.schema.hasTable(TableName.EndpointEgressRule))) {
-    await knex.schema.createTable(TableName.EndpointEgressRule, (t) => {
+  if (!(await knex.schema.hasTable(TableName.EndpointNetworkRule))) {
+    await knex.schema.createTable(TableName.EndpointNetworkRule, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
       t.string("projectId").notNullable();
@@ -53,7 +53,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
 
-    await createOnUpdateTrigger(knex, TableName.EndpointEgressRule);
+    await createOnUpdateTrigger(knex, TableName.EndpointNetworkRule);
   }
 
   if (!(await knex.schema.hasTable(TableName.EndpointCounter))) {
@@ -64,9 +64,9 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("deviceId").references("id").inTable(TableName.EndpointDevice).onDelete("CASCADE");
       t.index("deviceId");
 
-      t.uuid("egressRuleId").notNullable();
-      t.foreign("egressRuleId").references("id").inTable(TableName.EndpointEgressRule).onDelete("CASCADE");
-      t.index("egressRuleId");
+      t.uuid("networkRuleId").notNullable();
+      t.foreign("networkRuleId").references("id").inTable(TableName.EndpointNetworkRule).onDelete("CASCADE");
+      t.index("networkRuleId");
 
       t.string("destination").notNullable();
       t.bigint("bytesOut").notNullable().defaultTo(0);
@@ -74,7 +74,7 @@ export async function up(knex: Knex): Promise<void> {
       t.boolean("tripped").notNullable().defaultTo(false);
       t.datetime("reportedAt").notNullable();
 
-      t.unique(["deviceId", "egressRuleId"]);
+      t.unique(["deviceId", "networkRuleId"]);
 
       t.timestamps(true, true, true);
     });
@@ -98,9 +98,9 @@ export async function up(knex: Knex): Promise<void> {
       t.datetime("occurredAt").notNullable();
       t.string("destination");
 
-      t.uuid("egressRuleId");
-      t.foreign("egressRuleId").references("id").inTable(TableName.EndpointEgressRule).onDelete("SET NULL");
-      t.index("egressRuleId");
+      t.uuid("networkRuleId");
+      t.foreign("networkRuleId").references("id").inTable(TableName.EndpointNetworkRule).onDelete("SET NULL");
+      t.index("networkRuleId");
 
       t.jsonb("detail");
       t.string("idempotencyKey").notNullable();
@@ -122,8 +122,8 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.EndpointCounter);
   await dropOnUpdateTrigger(knex, TableName.EndpointCounter);
 
-  await knex.schema.dropTableIfExists(TableName.EndpointEgressRule);
-  await dropOnUpdateTrigger(knex, TableName.EndpointEgressRule);
+  await knex.schema.dropTableIfExists(TableName.EndpointNetworkRule);
+  await dropOnUpdateTrigger(knex, TableName.EndpointNetworkRule);
 
   await knex.schema.dropTableIfExists(TableName.EndpointDevice);
   await dropOnUpdateTrigger(knex, TableName.EndpointDevice);

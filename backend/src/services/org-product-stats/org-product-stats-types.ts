@@ -30,6 +30,6 @@ export type TOrgProductStats = {
   };
   endpoint: {
     devicesCount: number;
-    egressRulesCount: number;
+    networkRulesCount: number;
   };
 };

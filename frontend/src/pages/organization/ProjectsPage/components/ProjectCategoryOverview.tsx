@@ -212,7 +212,7 @@ export const ProjectCategoryOverview = () => {
       case ProjectType.Endpoint:
         return [
           { label: "devices", value: productStats.endpoint?.devicesCount ?? 0 },
-          { label: "egress rules", value: productStats.endpoint?.egressRulesCount ?? 0 }
+          { label: "network rules", value: productStats.endpoint?.networkRulesCount ?? 0 }
         ];
       default:
         return [];

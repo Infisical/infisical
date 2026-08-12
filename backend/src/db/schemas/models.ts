@@ -336,9 +336,9 @@ export enum TableName {
   ProxiedService = "proxied_services",
   ProxiedServiceCredential = "proxied_service_credentials",
 
-  // Infisical Endpoint (device egress policy)
+  // Infisical Endpoint (device network policy)
   EndpointDevice = "endpoint_devices",
-  EndpointEgressRule = "endpoint_egress_rules",
+  EndpointNetworkRule = "endpoint_network_rules",
   EndpointCounter = "endpoint_counters",
   EndpointEvent = "endpoint_events",
 

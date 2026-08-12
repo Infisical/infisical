@@ -390,8 +390,11 @@ const pamAccessRoute = route(
 
 const endpointRoutes = route("/organizations/$orgId/endpoint", [
   layout("endpoint-layout", "endpoint/layout.tsx", [
-    route("/devices", "endpoint/EndpointDevicesPage/route.tsx"),
-    route("/egress-policy", "endpoint/EndpointEgressPolicyPage/route.tsx"),
+    route("/devices", [
+      index("endpoint/EndpointDevicesPage/route.tsx"),
+      route("/$deviceId", "endpoint/EndpointDeviceDetailsPage/route.tsx")
+    ]),
+    route("/network-policy", "endpoint/EndpointNetworkPolicyPage/route.tsx"),
     route("/activity", "endpoint/EndpointActivityPage/route.tsx"),
     route("/targets", "endpoint/EndpointTargetsPage/route.tsx"),
 

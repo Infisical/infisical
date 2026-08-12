@@ -3,12 +3,12 @@ export enum EndpointDeviceStatus {
   Inactive = "inactive"
 }
 
-export enum EndpointEgressRuleType {
+export enum EndpointNetworkRuleType {
   Destination = "destination",
   Volume = "volume"
 }
 
-export enum EndpointEgressRuleAction {
+export enum EndpointNetworkRuleAction {
   Deny = "deny",
   Allow = "allow"
 }
@@ -22,9 +22,9 @@ export enum EndpointDestinationKind {
 export enum EndpointEventType {
   AgentStarted = "agent.started",
   AgentStopped = "agent.stopped",
-  EgressPolicyApplied = "egress.policy_applied",
-  EgressDestinationBlocked = "egress.destination_blocked",
-  EgressVolumeThresholdTripped = "egress.volume_threshold_tripped",
+  NetworkPolicyApplied = "network.policy_applied",
+  NetworkDestinationBlocked = "network.destination_blocked",
+  NetworkTransferThresholdTripped = "network.transfer_threshold_tripped",
   PrivateAccessTunnelUp = "private_access.tunnel_up",
   PrivateAccessTunnelDown = "private_access.tunnel_down"
 }

@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const EndpointEgressRulesSchema = z.object({
+export const EndpointNetworkRulesSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string(),
   ruleType: z.string(),
@@ -21,6 +21,6 @@ export const EndpointEgressRulesSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TEndpointEgressRules = z.infer<typeof EndpointEgressRulesSchema>;
-export type TEndpointEgressRulesInsert = Omit<z.input<typeof EndpointEgressRulesSchema>, TImmutableDBKeys>;
-export type TEndpointEgressRulesUpdate = Partial<Omit<z.input<typeof EndpointEgressRulesSchema>, TImmutableDBKeys>>;
+export type TEndpointNetworkRules = z.infer<typeof EndpointNetworkRulesSchema>;
+export type TEndpointNetworkRulesInsert = Omit<z.input<typeof EndpointNetworkRulesSchema>, TImmutableDBKeys>;
+export type TEndpointNetworkRulesUpdate = Partial<Omit<z.input<typeof EndpointNetworkRulesSchema>, TImmutableDBKeys>>;

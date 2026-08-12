@@ -37,27 +37,28 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { formatBytes } from "@app/helpers/bytes";
 import { usePopUp } from "@app/hooks";
 import {
-  EndpointEgressRuleAction,
-  EndpointEgressRuleType,
-  TEndpointEgressRule,
-  useListEndpointEgressRules,
-  useUpdateEndpointEgressRule
+  EndpointNetworkRuleAction,
+  EndpointNetworkRuleType,
+  TEndpointNetworkRule,
+  useListEndpointNetworkRules,
+  useUpdateEndpointNetworkRule
 } from "@app/hooks/api/endpoint";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
-import { DeleteEgressRuleModal } from "./components/DeleteEgressRuleModal";
-import { EgressRuleModal } from "./components/EgressRuleModal";
+import { DeleteNetworkRuleModal } from "./components/DeleteNetworkRuleModal";
+import { NetworkRuleModal } from "./components/NetworkRuleModal";
 
-const KIND_LABEL: Record<TEndpointEgressRule["kind"], string> = {
+const KIND_LABEL: Record<TEndpointNetworkRule["kind"], string> = {
   ip: "IP Address",
   cidr: "CIDR Block",
   domain: "Domain"
 };
 
-const ActionBadge = ({ action }: { action?: EndpointEgressRuleAction | null }) => {
-  if (action === EndpointEgressRuleAction.Allow) {
+const ActionBadge = ({ action }: { action?: EndpointNetworkRuleAction | null }) => {
+  if (action === EndpointNetworkRuleAction.Allow) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
@@ -73,20 +74,49 @@ const ActionBadge = ({ action }: { action?: EndpointEgressRuleAction | null }) =
   return <Badge variant="danger">Deny</Badge>;
 };
 
-export const EndpointEgressPolicyPage = () => {
-  const { data: rules, isPending } = useListEndpointEgressRules();
-  const updateRule = useUpdateEndpointEgressRule();
+// A volume rule has no action of its own: it allows the destination until the threshold is crossed,
+// so the threshold is the meaningful thing to show in this column.
+const EnforcementCell = ({ rule }: { rule: TEndpointNetworkRule }) => {
+  if (rule.ruleType !== EndpointNetworkRuleType.Volume) {
+    return <ActionBadge action={rule.action} />;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge variant="warning" className="cursor-default">
+          Limit {formatBytes(rule.thresholdBytes ?? 0)}
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent>
+        Blocked once a device has sent more than {formatBytes(rule.thresholdBytes ?? 0)} to this
+        destination.
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
+export const EndpointNetworkPolicyPage = () => {
+  const { data: rules, isPending } = useListEndpointNetworkRules();
+  const updateRule = useUpdateEndpointNetworkRule();
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "ruleModal",
     "deleteRule"
   ] as const);
 
-  const destinationRules = useMemo(
-    () => (rules ?? []).filter((rule) => rule.ruleType === EndpointEgressRuleType.Destination),
+  // Destination rules first: they are the unconditional ones, and a reader should see what is
+  // always blocked before what is only blocked past a threshold.
+  const sortedRules = useMemo(
+    () =>
+      [...(rules ?? [])].sort((a, b) => {
+        if (a.ruleType !== b.ruleType)
+          return a.ruleType === EndpointNetworkRuleType.Volume ? 1 : -1;
+        return a.createdAt < b.createdAt ? 1 : -1;
+      }),
     [rules]
   );
 
-  const onToggleEnabled = (rule: TEndpointEgressRule, isEnabled: boolean) => {
+  const onToggleEnabled = (rule: TEndpointNetworkRule, isEnabled: boolean) => {
     updateRule.mutate(
       { ruleId: rule.id, isEnabled },
       {
@@ -103,18 +133,18 @@ export const EndpointEgressPolicyPage = () => {
   return (
     <>
       <Helmet>
-        <title>Endpoint Egress Policy</title>
+        <title>Endpoint Network Policy</title>
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.Endpoint}
-          title="Egress Policy"
-          description="Destinations that devices deny or allow outbound connections to."
+          title="Network Policy"
+          description="Destinations devices may not reach, and how much they may send to the ones they can."
         />
 
         <Card>
           <CardHeader>
-            <CardTitle>Egress Rules</CardTitle>
+            <CardTitle>Network Rules</CardTitle>
             <CardAction>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Create}
@@ -144,37 +174,38 @@ export const EndpointEgressPolicyPage = () => {
             </CardContent>
           )}
 
-          {!isPending && destinationRules.length === 0 && (
+          {!isPending && sortedRules.length === 0 && (
             <CardContent>
               <Empty className="border">
                 <EmptyMedia variant="icon">
                   <ShieldBanIcon />
                 </EmptyMedia>
                 <EmptyHeader>
-                  <EmptyTitle>No egress rules yet</EmptyTitle>
+                  <EmptyTitle>No network rules yet</EmptyTitle>
                   <EmptyDescription>
-                    Add a rule to start denying outbound connections from registered devices.
+                    Add a rule to block a destination outright, or to cap how much a device may send
+                    to it.
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
             </CardContent>
           )}
 
-          {!isPending && destinationRules.length > 0 && (
+          {!isPending && sortedRules.length > 0 && (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Destination</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead>Enforcement</TableHead>
                   <TableHead>Enabled</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {destinationRules.map((rule) => (
+                {sortedRules.map((rule) => (
                   <TableRow key={rule.id}>
                     <TableCell className="font-medium text-foreground">{rule.name}</TableCell>
                     <TableCell className="text-muted">{KIND_LABEL[rule.kind]}</TableCell>
@@ -182,7 +213,7 @@ export const EndpointEgressPolicyPage = () => {
                       {rule.destination}
                     </TableCell>
                     <TableCell>
-                      <ActionBadge action={rule.action} />
+                      <EnforcementCell rule={rule} />
                     </TableCell>
                     <TableCell>
                       <ProjectPermissionCan
@@ -253,16 +284,16 @@ export const EndpointEgressPolicyPage = () => {
         </Card>
       </div>
 
-      <EgressRuleModal
-        rule={popUp.ruleModal.data as TEndpointEgressRule | undefined}
+      <NetworkRuleModal
+        rule={popUp.ruleModal.data as TEndpointNetworkRule | undefined}
         isOpen={popUp.ruleModal.isOpen}
         onOpenChange={(open) => {
           if (!open) handlePopUpClose("ruleModal");
         }}
       />
 
-      <DeleteEgressRuleModal
-        rule={popUp.deleteRule.data as TEndpointEgressRule | undefined}
+      <DeleteNetworkRuleModal
+        rule={popUp.deleteRule.data as TEndpointNetworkRule | undefined}
         isOpen={popUp.deleteRule.isOpen}
         onOpenChange={(open) => {
           if (!open) handlePopUpClose("deleteRule");

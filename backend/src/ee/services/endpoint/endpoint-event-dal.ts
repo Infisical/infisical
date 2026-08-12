@@ -27,7 +27,12 @@ export const endpointEventDALFactory = (db: TDbClient) => {
   };
 
   const findFeedByProject = async (
-    { projectId, limit, cursor }: { projectId: string; limit: number; cursor?: { occurredAt: Date; id: string } },
+    {
+      projectId,
+      deviceId,
+      limit,
+      cursor
+    }: { projectId: string; deviceId?: string; limit: number; cursor?: { occurredAt: Date; id: string } },
     tx?: Knex
   ) => {
     try {
@@ -41,6 +46,10 @@ export const endpointEventDALFactory = (db: TDbClient) => {
         .limit(limit)
         .select(selectAllTableCols(TableName.EndpointEvent))
         .select(db.ref("name").withSchema(TableName.EndpointDevice).as("deviceName"));
+
+      if (deviceId) {
+        void query.andWhere(`${TableName.EndpointEvent}.deviceId`, deviceId);
+      }
 
       if (cursor) {
         void query.whereRaw(`("${TableName.EndpointEvent}"."occurredAt", "${TableName.EndpointEvent}"."id") < (?, ?)`, [

@@ -45,7 +45,7 @@ export const DeleteDeviceModal = ({ device, isOpen, onOpenChange }: Props) => {
           </AlertDialogMedia>
           <AlertDialogTitle>Remove &quot;{device?.name}&quot;</AlertDialogTitle>
           <AlertDialogDescription>
-            The device will stop enforcing egress policy immediately. This cannot be undone.
+            The device will stop enforcing network policy immediately. This cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

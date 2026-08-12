@@ -1,8 +1,8 @@
 import {
   EndpointDestinationKind,
-  EndpointEgressRuleAction,
-  EndpointEgressRuleType,
-  EndpointEventType
+  EndpointEventType,
+  EndpointNetworkRuleAction,
+  EndpointNetworkRuleType
 } from "./endpoint-enums";
 
 export type TRegisterEndpointDeviceDTO = {
@@ -14,31 +14,32 @@ export type TDeleteEndpointDeviceDTO = {
   deviceId: string;
 };
 
-export type TCreateEndpointEgressRuleDTO = {
-  ruleType: EndpointEgressRuleType;
+export type TCreateEndpointNetworkRuleDTO = {
+  ruleType: EndpointNetworkRuleType;
   name: string;
   kind: EndpointDestinationKind;
   destination: string;
-  action?: EndpointEgressRuleAction;
+  action?: EndpointNetworkRuleAction;
   thresholdBytes?: number;
   isEnabled?: boolean;
 };
 
-export type TUpdateEndpointEgressRuleDTO = {
+export type TUpdateEndpointNetworkRuleDTO = {
   ruleId: string;
   name?: string;
   kind?: EndpointDestinationKind;
   destination?: string;
-  action?: EndpointEgressRuleAction;
+  action?: EndpointNetworkRuleAction;
   thresholdBytes?: number;
   isEnabled?: boolean;
 };
 
-export type TDeleteEndpointEgressRuleDTO = {
+export type TDeleteEndpointNetworkRuleDTO = {
   ruleId: string;
 };
 
 export type TListEndpointEventsDTO = {
+  deviceId?: string;
   limit: number;
   cursor?: string;
 };
@@ -68,4 +69,8 @@ export type TReportEndpointEventsDTO = {
     ruleId?: string | null;
     detail?: Record<string, unknown> | null;
   }[];
+};
+
+export type TListEndpointCountersDTO = {
+  deviceId?: string;
 };

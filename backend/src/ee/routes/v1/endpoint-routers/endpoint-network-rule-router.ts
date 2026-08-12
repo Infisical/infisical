@@ -2,13 +2,13 @@ import { z } from "zod";
 
 import {
   EndpointDestinationKind,
-  EndpointEgressRuleAction,
-  EndpointEgressRuleType
+  EndpointNetworkRuleAction,
+  EndpointNetworkRuleType
 } from "@app/ee/services/endpoint/endpoint-enums";
 import {
   assertDestinationMatchesKind,
   EndpointDestinationSchema,
-  SanitizedEndpointEgressRuleSchema
+  SanitizedEndpointNetworkRuleSchema
 } from "@app/ee/services/endpoint/endpoint-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -20,7 +20,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 // threshold no transfer could ever reach.
 const MAX_THRESHOLD_BYTES = 1024 ** 4;
 
-export const registerEndpointEgressRuleRouter = async (server: FastifyZodProvider) => {
+export const registerEndpointNetworkRuleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/",
@@ -29,14 +29,14 @@ export const registerEndpointEgressRuleRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       tags: [ApiDocsTags.Endpoint],
-      description: "List the egress rules every Infisical Endpoint device in this organization enforces",
+      description: "List the network rules every Infisical Endpoint device in this organization enforces",
       response: {
-        200: z.object({ egressRules: SanitizedEndpointEgressRuleSchema.array() })
+        200: z.object({ networkRules: SanitizedEndpointNetworkRuleSchema.array() })
       }
     },
     handler: async (req) => {
-      const egressRules = await server.services.endpoint.listEgressRules(req.permission);
-      return { egressRules };
+      const networkRules = await server.services.endpoint.listNetworkRules(req.permission);
+      return { networkRules };
     }
   });
 
@@ -48,11 +48,11 @@ export const registerEndpointEgressRuleRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       tags: [ApiDocsTags.Endpoint],
-      description: "Create an egress rule",
+      description: "Create an network rule",
       body: z
         .object({
           ruleType: z
-            .nativeEnum(EndpointEgressRuleType)
+            .nativeEnum(EndpointNetworkRuleType)
             .describe(
               "'destination' blocks or allows traffic to a destination outright. 'volume' blocks it once a transfer threshold is crossed."
             ),
@@ -62,7 +62,7 @@ export const registerEndpointEgressRuleRouter = async (server: FastifyZodProvide
             "The destination to match, interpreted according to 'kind'. Domains are resolved on the device."
           ),
           action: z
-            .nativeEnum(EndpointEgressRuleAction)
+            .nativeEnum(EndpointNetworkRuleAction)
             .optional()
             .describe("Required for destination rules. Agents currently enforce 'deny' only."),
           thresholdBytes: z
@@ -79,12 +79,12 @@ export const registerEndpointEgressRuleRouter = async (server: FastifyZodProvide
         })
         .superRefine(assertDestinationMatchesKind),
       response: {
-        200: z.object({ egressRule: SanitizedEndpointEgressRuleSchema })
+        200: z.object({ networkRule: SanitizedEndpointNetworkRuleSchema })
       }
     },
     handler: async (req) => {
-      const egressRule = await server.services.endpoint.createEgressRule(req.body, req.permission);
-      return { egressRule };
+      const networkRule = await server.services.endpoint.createNetworkRule(req.body, req.permission);
+      return { networkRule };
     }
   });
 
@@ -96,7 +96,7 @@ export const registerEndpointEgressRuleRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       tags: [ApiDocsTags.Endpoint],
-      description: "Update an egress rule",
+      description: "Update an network rule",
       params: z.object({
         ruleId: z.string().uuid().describe("The ID of the rule to update.")
       }),
@@ -105,7 +105,7 @@ export const registerEndpointEgressRuleRouter = async (server: FastifyZodProvide
           name: GenericResourceNameSchema.optional().describe("A name for the rule."),
           kind: z.nativeEnum(EndpointDestinationKind).optional().describe("How to interpret 'destination'."),
           destination: EndpointDestinationSchema.optional().describe("The destination to match."),
-          action: z.nativeEnum(EndpointEgressRuleAction).optional().describe("Destination rules only."),
+          action: z.nativeEnum(EndpointNetworkRuleAction).optional().describe("Destination rules only."),
           thresholdBytes: z
             .number()
             .int()
@@ -130,15 +130,15 @@ export const registerEndpointEgressRuleRouter = async (server: FastifyZodProvide
           }
         }),
       response: {
-        200: z.object({ egressRule: SanitizedEndpointEgressRuleSchema })
+        200: z.object({ networkRule: SanitizedEndpointNetworkRuleSchema })
       }
     },
     handler: async (req) => {
-      const egressRule = await server.services.endpoint.updateEgressRule(
+      const networkRule = await server.services.endpoint.updateNetworkRule(
         { ruleId: req.params.ruleId, ...req.body },
         req.permission
       );
-      return { egressRule };
+      return { networkRule };
     }
   });
 
@@ -150,17 +150,17 @@ export const registerEndpointEgressRuleRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       tags: [ApiDocsTags.Endpoint],
-      description: "Delete an egress rule",
+      description: "Delete an network rule",
       params: z.object({
         ruleId: z.string().uuid().describe("The ID of the rule to delete.")
       }),
       response: {
-        200: z.object({ egressRule: SanitizedEndpointEgressRuleSchema })
+        200: z.object({ networkRule: SanitizedEndpointNetworkRuleSchema })
       }
     },
     handler: async (req) => {
-      const egressRule = await server.services.endpoint.deleteEgressRule(req.params, req.permission);
-      return { egressRule };
+      const networkRule = await server.services.endpoint.deleteNetworkRule(req.params, req.permission);
+      return { networkRule };
     }
   });
 };

@@ -1,4 +1,5 @@
 import { Helmet } from "react-helmet";
+import { Link, useParams } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { MonitorIcon, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 
@@ -82,6 +83,7 @@ const BlockedAddressesCell = ({ device }: { device: TEndpointDevice }) => {
 };
 
 export const EndpointDevicesPage = () => {
+  const { orgId } = useParams({ strict: false }) as { orgId: string };
   const { data: devices, isPending } = useListEndpointDevices();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "registerDevice",
@@ -167,7 +169,15 @@ export const EndpointDevicesPage = () => {
               <TableBody>
                 {devices.map((device) => (
                   <TableRow key={device.id}>
-                    <TableCell className="font-medium text-foreground">{device.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        to="/organizations/$orgId/endpoint/devices/$deviceId"
+                        params={{ orgId, deviceId: device.id }}
+                        className="text-foreground hover:text-primary hover:underline"
+                      >
+                        {device.name}
+                      </Link>
+                    </TableCell>
                     <TableCell>
                       <div className="text-foreground">{device.owner.name}</div>
                       {device.owner.name !== device.owner.email && (

@@ -21,6 +21,7 @@ export const registerEndpointEventRouter = async (server: FastifyZodProvider) =>
       tags: [ApiDocsTags.Endpoint],
       description: "List what Infisical Endpoint devices in this organization have reported, newest first",
       querystring: z.object({
+        deviceId: z.string().uuid().optional().describe("Only return events reported by this device."),
         limit: z.coerce
           .number()
           .int()

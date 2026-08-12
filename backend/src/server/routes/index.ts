@@ -49,8 +49,8 @@ import { emailDomainDALFactory } from "@app/ee/services/email-domain/email-domai
 import { emailDomainServiceFactory } from "@app/ee/services/email-domain/email-domain-service";
 import { endpointCounterDALFactory } from "@app/ee/services/endpoint/endpoint-counter-dal";
 import { endpointDeviceDALFactory } from "@app/ee/services/endpoint/endpoint-device-dal";
-import { endpointEgressRuleDALFactory } from "@app/ee/services/endpoint/endpoint-egress-rule-dal";
 import { endpointEventDALFactory } from "@app/ee/services/endpoint/endpoint-event-dal";
+import { endpointNetworkRuleDALFactory } from "@app/ee/services/endpoint/endpoint-network-rule-dal";
 import { endpointProjectResolverFactory } from "@app/ee/services/endpoint/endpoint-project-resolver";
 import { endpointServiceFactory } from "@app/ee/services/endpoint/endpoint-service";
 import { eventBusServiceFactory } from "@app/ee/services/event-bus/event-bus-service";
@@ -1723,7 +1723,7 @@ export const registerRoutes = async (
   });
 
   const endpointDeviceDAL = endpointDeviceDALFactory(db);
-  const endpointEgressRuleDAL = endpointEgressRuleDALFactory(db);
+  const endpointNetworkRuleDAL = endpointNetworkRuleDALFactory(db);
   const endpointCounterDAL = endpointCounterDALFactory(db);
   const endpointEventDAL = endpointEventDALFactory(db);
 
@@ -1737,7 +1737,7 @@ export const registerRoutes = async (
 
   const endpointService = endpointServiceFactory({
     endpointDeviceDAL,
-    endpointEgressRuleDAL,
+    endpointNetworkRuleDAL,
     endpointCounterDAL,
     endpointEventDAL,
     endpointProjectResolver,

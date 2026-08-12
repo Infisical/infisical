@@ -12,12 +12,11 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { ENDPOINT_AGENT_POLL_INTERVAL_SECONDS } from "./endpoint-constants";
 import { TEndpointCounterDALFactory } from "./endpoint-counter-dal";
 import { TEndpointDeviceDALFactory } from "./endpoint-device-dal";
-import { TEndpointEgressRuleDALFactory } from "./endpoint-egress-rule-dal";
 import {
   EndpointDestinationKind,
   EndpointDeviceStatus,
-  EndpointEgressRuleAction,
-  EndpointEgressRuleType
+  EndpointNetworkRuleAction,
+  EndpointNetworkRuleType
 } from "./endpoint-enums";
 import { TEndpointEventDALFactory } from "./endpoint-event-dal";
 import {
@@ -26,24 +25,26 @@ import {
   isEndpointDeviceOnline,
   toEndpointDeviceOwner,
   toEndpointDeviceResponse,
-  toEndpointEgressRuleResponse,
-  toEndpointEventResponse
+  toEndpointEventResponse,
+  toEndpointNetworkRuleResponse
 } from "./endpoint-fns";
+import { TEndpointNetworkRuleDALFactory } from "./endpoint-network-rule-dal";
 import { TEndpointProjectResolverFactory } from "./endpoint-project-resolver";
 import {
-  TCreateEndpointEgressRuleDTO,
+  TCreateEndpointNetworkRuleDTO,
   TDeleteEndpointDeviceDTO,
-  TDeleteEndpointEgressRuleDTO,
+  TDeleteEndpointNetworkRuleDTO,
   TEndpointHeartbeatDTO,
+  TListEndpointCountersDTO,
   TListEndpointEventsDTO,
   TRegisterEndpointDeviceDTO,
   TReportEndpointEventsDTO,
-  TUpdateEndpointEgressRuleDTO
+  TUpdateEndpointNetworkRuleDTO
 } from "./endpoint-types";
 
 type TEndpointServiceFactoryDep = {
   endpointDeviceDAL: TEndpointDeviceDALFactory;
-  endpointEgressRuleDAL: TEndpointEgressRuleDALFactory;
+  endpointNetworkRuleDAL: TEndpointNetworkRuleDALFactory;
   endpointCounterDAL: TEndpointCounterDALFactory;
   endpointEventDAL: TEndpointEventDALFactory;
   endpointProjectResolver: TEndpointProjectResolverFactory;
@@ -56,7 +57,7 @@ export type TEndpointServiceFactory = ReturnType<typeof endpointServiceFactory>;
 
 export const endpointServiceFactory = ({
   endpointDeviceDAL,
-  endpointEgressRuleDAL,
+  endpointNetworkRuleDAL,
   endpointCounterDAL,
   endpointEventDAL,
   endpointProjectResolver,
@@ -106,11 +107,11 @@ export const endpointServiceFactory = ({
   };
 
   const $assertRuleShape = (dto: {
-    ruleType: EndpointEgressRuleType;
-    action?: EndpointEgressRuleAction;
+    ruleType: EndpointNetworkRuleType;
+    action?: EndpointNetworkRuleAction;
     thresholdBytes?: number;
   }) => {
-    if (dto.ruleType === EndpointEgressRuleType.Destination) {
+    if (dto.ruleType === EndpointNetworkRuleType.Destination) {
       if (!dto.action) {
         throw new BadRequestError({ message: "A destination rule needs an 'action' of either 'deny' or 'allow'." });
       }
@@ -214,20 +215,28 @@ export const endpointServiceFactory = ({
     return toEndpointDeviceResponse(device);
   };
 
-  const listEgressRules = async (actor: OrgServiceActor) => {
+  // What the console's live transfer counter reads. The numbers are whatever the agent last
+  // reported on its heartbeat, which is the same tally that decides whether a rule has tripped.
+  const listCounters = async ({ deviceId }: TListEndpointCountersDTO, actor: OrgServiceActor) => {
     const projectId = await $authorizeProject(actor, ProjectPermissionActions.Read);
 
-    const rules = await endpointEgressRuleDAL.find({ projectId }, { sort: [["createdAt", "desc"]] });
-
-    return rules.map(toEndpointEgressRuleResponse);
+    return endpointCounterDAL.findByProject({ projectId, deviceId });
   };
 
-  const createEgressRule = async (dto: TCreateEndpointEgressRuleDTO, actor: OrgServiceActor) => {
+  const listNetworkRules = async (actor: OrgServiceActor) => {
+    const projectId = await $authorizeProject(actor, ProjectPermissionActions.Read);
+
+    const rules = await endpointNetworkRuleDAL.find({ projectId }, { sort: [["createdAt", "desc"]] });
+
+    return rules.map(toEndpointNetworkRuleResponse);
+  };
+
+  const createNetworkRule = async (dto: TCreateEndpointNetworkRuleDTO, actor: OrgServiceActor) => {
     const projectId = await $authorizeProject(actor, ProjectPermissionActions.Create);
     $assertRuleShape(dto);
 
-    return endpointEgressRuleDAL.transaction(async (tx) => {
-      const rule = await endpointEgressRuleDAL.create(
+    return endpointNetworkRuleDAL.transaction(async (tx) => {
+      const rule = await endpointNetworkRuleDAL.create(
         {
           projectId,
           ruleType: dto.ruleType,
@@ -243,54 +252,55 @@ export const endpointServiceFactory = ({
 
       await endpointDeviceDAL.bumpConfigVersionForProject(projectId, tx);
 
-      return toEndpointEgressRuleResponse(rule);
+      return toEndpointNetworkRuleResponse(rule);
     });
   };
 
-  const updateEgressRule = async ({ ruleId, ...dto }: TUpdateEndpointEgressRuleDTO, actor: OrgServiceActor) => {
+  const updateNetworkRule = async ({ ruleId, ...dto }: TUpdateEndpointNetworkRuleDTO, actor: OrgServiceActor) => {
     const projectId = await $authorizeProject(actor, ProjectPermissionActions.Edit);
 
-    const rule = await endpointEgressRuleDAL.findOne({ id: ruleId, projectId });
+    const rule = await endpointNetworkRuleDAL.findOne({ id: ruleId, projectId });
     if (!rule) {
-      throw new NotFoundError({ message: `Egress rule with ID '${ruleId}' not found.` });
+      throw new NotFoundError({ message: `Network rule with ID '${ruleId}' not found.` });
     }
 
     $assertRuleShape({
-      ruleType: rule.ruleType as EndpointEgressRuleType,
-      action: (dto.action ?? rule.action ?? undefined) as EndpointEgressRuleAction | undefined,
+      ruleType: rule.ruleType as EndpointNetworkRuleType,
+      action: (dto.action ?? rule.action ?? undefined) as EndpointNetworkRuleAction | undefined,
       thresholdBytes: dto.thresholdBytes ?? rule.thresholdBytes ?? undefined
     });
 
-    return endpointEgressRuleDAL.transaction(async (tx) => {
-      const updatedRule = await endpointEgressRuleDAL.updateById(ruleId, dto, tx);
+    return endpointNetworkRuleDAL.transaction(async (tx) => {
+      const updatedRule = await endpointNetworkRuleDAL.updateById(ruleId, dto, tx);
 
       await endpointDeviceDAL.bumpConfigVersionForProject(projectId, tx);
 
-      return toEndpointEgressRuleResponse(updatedRule);
+      return toEndpointNetworkRuleResponse(updatedRule);
     });
   };
 
-  const deleteEgressRule = async ({ ruleId }: TDeleteEndpointEgressRuleDTO, actor: OrgServiceActor) => {
+  const deleteNetworkRule = async ({ ruleId }: TDeleteEndpointNetworkRuleDTO, actor: OrgServiceActor) => {
     const projectId = await $authorizeProject(actor, ProjectPermissionActions.Delete);
 
-    const rule = await endpointEgressRuleDAL.findOne({ id: ruleId, projectId });
+    const rule = await endpointNetworkRuleDAL.findOne({ id: ruleId, projectId });
     if (!rule) {
-      throw new NotFoundError({ message: `Egress rule with ID '${ruleId}' not found.` });
+      throw new NotFoundError({ message: `Network rule with ID '${ruleId}' not found.` });
     }
 
-    return endpointEgressRuleDAL.transaction(async (tx) => {
-      await endpointEgressRuleDAL.deleteById(ruleId, tx);
+    return endpointNetworkRuleDAL.transaction(async (tx) => {
+      await endpointNetworkRuleDAL.deleteById(ruleId, tx);
       await endpointDeviceDAL.bumpConfigVersionForProject(projectId, tx);
 
-      return toEndpointEgressRuleResponse(rule);
+      return toEndpointNetworkRuleResponse(rule);
     });
   };
 
-  const listEvents = async ({ limit, cursor }: TListEndpointEventsDTO, actor: OrgServiceActor) => {
+  const listEvents = async ({ limit, cursor, deviceId }: TListEndpointEventsDTO, actor: OrgServiceActor) => {
     const projectId = await $authorizeProject(actor, ProjectPermissionActions.Read);
 
     const events = await endpointEventDAL.findFeedByProject({
       projectId,
+      deviceId,
       limit: limit + 1,
       cursor: cursor ? decodeEndpointEventCursor(cursor) : undefined
     });
@@ -304,31 +314,34 @@ export const endpointServiceFactory = ({
   const getAgentConfig = async (actor: OrgServiceActor) => {
     const device = await $resolveDeviceForAgent(actor);
 
-    const rules = await endpointEgressRuleDAL.find({ projectId: device.projectId, isEnabled: true });
+    const rules = await endpointNetworkRuleDAL.find({ projectId: device.projectId, isEnabled: true });
 
     return {
       config: {
         device: { id: device.id, name: device.name, status: device.status as EndpointDeviceStatus },
         configVersion: device.configVersion,
         pollIntervalSeconds: ENDPOINT_AGENT_POLL_INTERVAL_SECONDS,
-        egressPolicy: {
+        networkPolicy: {
           enabled: device.status === EndpointDeviceStatus.Active,
           destinationRules: rules
-            .filter((rule) => rule.ruleType === EndpointEgressRuleType.Destination)
+            .filter((rule) => rule.ruleType === EndpointNetworkRuleType.Destination)
             .map((rule) => ({
               id: rule.id,
-              action: (rule.action ?? EndpointEgressRuleAction.Deny) as EndpointEgressRuleAction,
+              action: (rule.action ?? EndpointNetworkRuleAction.Deny) as EndpointNetworkRuleAction,
               kind: rule.kind as EndpointDestinationKind,
               destination: rule.destination,
               name: rule.name
             })),
           volumeRules: rules
-            .filter((rule) => rule.ruleType === EndpointEgressRuleType.Volume)
+            .filter((rule) => rule.ruleType === EndpointNetworkRuleType.Volume)
             .map((rule) => ({
               id: rule.id,
               kind: rule.kind as EndpointDestinationKind,
               destination: rule.destination,
-              thresholdBytes: rule.thresholdBytes ?? 0,
+              // thresholdBytes is a bigint, which pg returns as a string even though the generated
+              // schema types it as a number. Without this the agent's config response fails its own
+              // validation and every poll 500s.
+              thresholdBytes: Number(rule.thresholdBytes ?? 0),
               name: rule.name
             }))
         },
@@ -356,7 +369,7 @@ export const endpointServiceFactory = ({
 
     if (dto.counters.length) {
       const knownRuleIds = new Set(
-        (await endpointEgressRuleDAL.find({ projectId: device.projectId })).map((rule) => rule.id)
+        (await endpointNetworkRuleDAL.find({ projectId: device.projectId })).map((rule) => rule.id)
       );
       const reportedAt = new Date();
 
@@ -364,7 +377,7 @@ export const endpointServiceFactory = ({
         .filter((counter) => knownRuleIds.has(counter.volumeRuleId))
         .map((counter) => ({
           deviceId: device.id,
-          egressRuleId: counter.volumeRuleId,
+          networkRuleId: counter.volumeRuleId,
           destination: counter.destination,
           bytesOut: counter.bytesOut,
           thresholdBytes: counter.thresholdBytes,
@@ -372,7 +385,7 @@ export const endpointServiceFactory = ({
           reportedAt
         }));
 
-      await endpointCounterDAL.upsert(counters, ["deviceId", "egressRuleId"]);
+      await endpointCounterDAL.upsert(counters, ["deviceId", "networkRuleId"]);
     }
 
     return { device: { configVersion: stampedDevice.configVersion } };
@@ -384,7 +397,7 @@ export const endpointServiceFactory = ({
     // A rule the agent references may already have been deleted in the console. The event still
     // happened, so it is recorded with a null rule rather than rejected.
     const knownRuleIds = new Set(
-      (await endpointEgressRuleDAL.find({ projectId: device.projectId })).map((rule) => rule.id)
+      (await endpointNetworkRuleDAL.find({ projectId: device.projectId })).map((rule) => rule.id)
     );
 
     const inserted = await endpointEventDAL.insertIgnoringDuplicates(
@@ -394,7 +407,7 @@ export const endpointServiceFactory = ({
         eventType: event.type,
         occurredAt: new Date(event.occurredAt),
         destination: event.destination ?? null,
-        egressRuleId: event.ruleId && knownRuleIds.has(event.ruleId) ? event.ruleId : null,
+        networkRuleId: event.ruleId && knownRuleIds.has(event.ruleId) ? event.ruleId : null,
         detail: event.detail ? JSON.stringify(event.detail) : null,
         idempotencyKey: event.idempotencyKey
       }))
@@ -406,12 +419,13 @@ export const endpointServiceFactory = ({
   return {
     getProjectId,
     listDevices,
+    listCounters,
     registerDevice,
     deleteDevice,
-    listEgressRules,
-    createEgressRule,
-    updateEgressRule,
-    deleteEgressRule,
+    listNetworkRules,
+    createNetworkRule,
+    updateNetworkRule,
+    deleteNetworkRule,
     listEvents,
     getAgentConfig,
     heartbeat,

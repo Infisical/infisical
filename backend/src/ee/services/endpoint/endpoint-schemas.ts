@@ -1,14 +1,19 @@
 import { z } from "zod";
 
-import { EndpointDevicesSchema, EndpointEgressRulesSchema, EndpointEventsSchema } from "@app/db/schemas";
+import {
+  EndpointCountersSchema,
+  EndpointDevicesSchema,
+  EndpointEventsSchema,
+  EndpointNetworkRulesSchema
+} from "@app/db/schemas";
 import { isValidCidr, isValidIp } from "@app/lib/ip";
 
 import {
   EndpointDestinationKind,
   EndpointDeviceStatus,
-  EndpointEgressRuleAction,
-  EndpointEgressRuleType,
-  EndpointEventType
+  EndpointEventType,
+  EndpointNetworkRuleAction,
+  EndpointNetworkRuleType
 } from "./endpoint-enums";
 
 const HOSTNAME_REGEX = /^(?=.{1,253}$)(?!-)[a-zA-Z0-9-]{1,63}(?<!-)(\.(?!-)[a-zA-Z0-9-]{1,63}(?<!-))+$/;
@@ -61,10 +66,18 @@ export const EndpointDeviceWithLivenessSchema = SanitizedEndpointDeviceSchema.ex
   isOnline: z.boolean()
 });
 
-export const SanitizedEndpointEgressRuleSchema = EndpointEgressRulesSchema.extend({
-  ruleType: z.nativeEnum(EndpointEgressRuleType),
+export const SanitizedEndpointNetworkRuleSchema = EndpointNetworkRulesSchema.extend({
+  ruleType: z.nativeEnum(EndpointNetworkRuleType),
   kind: z.nativeEnum(EndpointDestinationKind),
-  action: z.nativeEnum(EndpointEgressRuleAction).nullable().optional()
+  action: z.nativeEnum(EndpointNetworkRuleAction).nullable().optional()
+});
+
+// bytesOut and thresholdBytes are bigint columns, so the generated schema already coerces them from
+// the strings pg returns. Extending it keeps that coercion instead of re-declaring them as numbers.
+export const SanitizedEndpointCounterSchema = EndpointCountersSchema.extend({
+  deviceName: z.string(),
+  ruleName: z.string(),
+  ruleDestination: z.string()
 });
 
 export const SanitizedEndpointEventSchema = EndpointEventsSchema.omit({ detail: true }).extend({

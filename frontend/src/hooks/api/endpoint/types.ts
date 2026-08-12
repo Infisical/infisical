@@ -3,12 +3,12 @@ export enum EndpointDeviceStatus {
   Inactive = "inactive"
 }
 
-export enum EndpointEgressRuleType {
+export enum EndpointNetworkRuleType {
   Destination = "destination",
   Volume = "volume"
 }
 
-export enum EndpointEgressRuleAction {
+export enum EndpointNetworkRuleAction {
   Deny = "deny",
   Allow = "allow"
 }
@@ -22,9 +22,9 @@ export enum EndpointDestinationKind {
 export enum EndpointEventType {
   AgentStarted = "agent.started",
   AgentStopped = "agent.stopped",
-  EgressPolicyApplied = "egress.policy_applied",
-  EgressDestinationBlocked = "egress.destination_blocked",
-  EgressVolumeThresholdTripped = "egress.volume_threshold_tripped",
+  NetworkPolicyApplied = "network.policy_applied",
+  NetworkDestinationBlocked = "network.destination_blocked",
+  NetworkTransferThresholdTripped = "network.transfer_threshold_tripped",
   PrivateAccessTunnelUp = "private_access.tunnel_up",
   PrivateAccessTunnelDown = "private_access.tunnel_down"
 }
@@ -52,11 +52,11 @@ export type TEndpointDevice = {
   updatedAt: string;
 };
 
-export type TEndpointEgressRule = {
+export type TEndpointNetworkRule = {
   id: string;
   projectId: string;
-  ruleType: EndpointEgressRuleType;
-  action?: EndpointEgressRuleAction | null;
+  ruleType: EndpointNetworkRuleType;
+  action?: EndpointNetworkRuleAction | null;
   kind: EndpointDestinationKind;
   destination: string;
   thresholdBytes?: number | null;
@@ -74,8 +74,24 @@ export type TEndpointEvent = {
   eventType: EndpointEventType;
   occurredAt: string;
   destination?: string | null;
-  egressRuleId?: string | null;
+  networkRuleId?: string | null;
   detail?: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TEndpointCounter = {
+  id: string;
+  deviceId: string;
+  deviceName: string;
+  networkRuleId: string;
+  ruleName: string;
+  ruleDestination: string;
+  destination: string;
+  bytesOut: number;
+  thresholdBytes?: number | null;
+  tripped: boolean;
+  reportedAt: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -83,6 +99,11 @@ export type TEndpointEvent = {
 export type TListEndpointEventsDTO = {
   limit?: number;
   cursor?: string;
+  deviceId?: string;
+};
+
+export type TListEndpointCountersDTO = {
+  deviceId?: string;
 };
 
 export type TListEndpointEventsResponse = {
@@ -99,26 +120,26 @@ export type TDeleteEndpointDeviceDTO = {
   deviceId: string;
 };
 
-export type TCreateEndpointEgressRuleDTO = {
-  ruleType: EndpointEgressRuleType;
+export type TCreateEndpointNetworkRuleDTO = {
+  ruleType: EndpointNetworkRuleType;
   name: string;
   kind: EndpointDestinationKind;
   destination: string;
-  action?: EndpointEgressRuleAction;
+  action?: EndpointNetworkRuleAction;
   thresholdBytes?: number;
   isEnabled?: boolean;
 };
 
-export type TUpdateEndpointEgressRuleDTO = {
+export type TUpdateEndpointNetworkRuleDTO = {
   ruleId: string;
   name?: string;
   kind?: EndpointDestinationKind;
   destination?: string;
-  action?: EndpointEgressRuleAction;
+  action?: EndpointNetworkRuleAction;
   thresholdBytes?: number;
   isEnabled?: boolean;
 };
 
-export type TDeleteEndpointEgressRuleDTO = {
+export type TDeleteEndpointNetworkRuleDTO = {
   ruleId: string;
 };

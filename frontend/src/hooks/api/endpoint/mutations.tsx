@@ -4,13 +4,13 @@ import { apiRequest } from "@app/config/request";
 
 import { endpointKeys } from "./queries";
 import {
-  TCreateEndpointEgressRuleDTO,
+  TCreateEndpointNetworkRuleDTO,
   TDeleteEndpointDeviceDTO,
-  TDeleteEndpointEgressRuleDTO,
+  TDeleteEndpointNetworkRuleDTO,
   TEndpointDevice,
-  TEndpointEgressRule,
+  TEndpointNetworkRule,
   TRegisterEndpointDeviceDTO,
-  TUpdateEndpointEgressRuleDTO
+  TUpdateEndpointNetworkRuleDTO
 } from "./types";
 
 export const useRegisterEndpointDevice = () => {
@@ -43,52 +43,52 @@ export const useDeleteEndpointDevice = () => {
 };
 
 // A rule change bumps every device's config version, so the device list is refreshed too.
-const invalidateEgressPolicy = (queryClient: ReturnType<typeof useQueryClient>) =>
+const invalidateNetworkPolicy = (queryClient: ReturnType<typeof useQueryClient>) =>
   Promise.all([
-    queryClient.invalidateQueries({ queryKey: endpointKeys.egressRules() }),
+    queryClient.invalidateQueries({ queryKey: endpointKeys.networkRules() }),
     queryClient.invalidateQueries({ queryKey: endpointKeys.devices() })
   ]);
 
-export const useCreateEndpointEgressRule = () => {
+export const useCreateEndpointNetworkRule = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (dto: TCreateEndpointEgressRuleDTO) => {
-      const { data } = await apiRequest.post<{ egressRule: TEndpointEgressRule }>(
-        "/api/v1/endpoint/egress-rules",
+    mutationFn: async (dto: TCreateEndpointNetworkRuleDTO) => {
+      const { data } = await apiRequest.post<{ networkRule: TEndpointNetworkRule }>(
+        "/api/v1/endpoint/network-rules",
         dto
       );
-      return data.egressRule;
+      return data.networkRule;
     },
-    onSuccess: () => invalidateEgressPolicy(queryClient)
+    onSuccess: () => invalidateNetworkPolicy(queryClient)
   });
 };
 
-export const useUpdateEndpointEgressRule = () => {
+export const useUpdateEndpointNetworkRule = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ ruleId, ...dto }: TUpdateEndpointEgressRuleDTO) => {
-      const { data } = await apiRequest.patch<{ egressRule: TEndpointEgressRule }>(
-        `/api/v1/endpoint/egress-rules/${ruleId}`,
+    mutationFn: async ({ ruleId, ...dto }: TUpdateEndpointNetworkRuleDTO) => {
+      const { data } = await apiRequest.patch<{ networkRule: TEndpointNetworkRule }>(
+        `/api/v1/endpoint/network-rules/${ruleId}`,
         dto
       );
-      return data.egressRule;
+      return data.networkRule;
     },
-    onSuccess: () => invalidateEgressPolicy(queryClient)
+    onSuccess: () => invalidateNetworkPolicy(queryClient)
   });
 };
 
-export const useDeleteEndpointEgressRule = () => {
+export const useDeleteEndpointNetworkRule = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ ruleId }: TDeleteEndpointEgressRuleDTO) => {
-      const { data } = await apiRequest.delete<{ egressRule: TEndpointEgressRule }>(
-        `/api/v1/endpoint/egress-rules/${ruleId}`
+    mutationFn: async ({ ruleId }: TDeleteEndpointNetworkRuleDTO) => {
+      const { data } = await apiRequest.delete<{ networkRule: TEndpointNetworkRule }>(
+        `/api/v1/endpoint/network-rules/${ruleId}`
       );
-      return data.egressRule;
+      return data.networkRule;
     },
-    onSuccess: () => invalidateEgressPolicy(queryClient)
+    onSuccess: () => invalidateNetworkPolicy(queryClient)
   });
 };

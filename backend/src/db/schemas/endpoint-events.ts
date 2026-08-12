@@ -14,7 +14,7 @@ export const EndpointEventsSchema = z.object({
   eventType: z.string(),
   occurredAt: z.date(),
   destination: z.string().nullable().optional(),
-  egressRuleId: z.string().uuid().nullable().optional(),
+  networkRuleId: z.string().uuid().nullable().optional(),
   detail: z.unknown().nullable().optional(),
   idempotencyKey: z.string(),
   createdAt: z.date(),

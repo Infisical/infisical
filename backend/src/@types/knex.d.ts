@@ -140,12 +140,12 @@ import {
   TEndpointDevices,
   TEndpointDevicesInsert,
   TEndpointDevicesUpdate,
-  TEndpointEgressRules,
-  TEndpointEgressRulesInsert,
-  TEndpointEgressRulesUpdate,
   TEndpointEvents,
   TEndpointEventsInsert,
   TEndpointEventsUpdate,
+  TEndpointNetworkRules,
+  TEndpointNetworkRulesInsert,
+  TEndpointNetworkRulesUpdate,
   TExternalCertificateAuthorities,
   TExternalCertificateAuthoritiesInsert,
   TExternalCertificateAuthoritiesUpdate,
@@ -1351,10 +1351,10 @@ declare module "knex/types/tables" {
       TEndpointDevicesInsert,
       TEndpointDevicesUpdate
     >;
-    [TableName.EndpointEgressRule]: KnexOriginal.CompositeTableType<
-      TEndpointEgressRules,
-      TEndpointEgressRulesInsert,
-      TEndpointEgressRulesUpdate
+    [TableName.EndpointNetworkRule]: KnexOriginal.CompositeTableType<
+      TEndpointNetworkRules,
+      TEndpointNetworkRulesInsert,
+      TEndpointNetworkRulesUpdate
     >;
     [TableName.EndpointCounter]: KnexOriginal.CompositeTableType<
       TEndpointCounters,

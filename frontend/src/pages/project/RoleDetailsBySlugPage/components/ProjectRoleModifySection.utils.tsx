@@ -2510,7 +2510,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Endpoint]: {
     title: "Endpoint",
-    description: "Manage endpoint devices, egress policies, and activity",
+    description: "Manage endpoint devices, network policies, and activity",
     actions: [
       {
         label: "Read",

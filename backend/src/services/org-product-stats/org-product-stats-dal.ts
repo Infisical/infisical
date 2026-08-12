@@ -208,19 +208,19 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countEndpointEgressRulesForOrg = async (orgId: string, tx?: Knex) => {
+  const countEndpointNetworkRulesForOrg = async (orgId: string, tx?: Knex) => {
     try {
-      const result = (await (tx || db.replicaNode())(TableName.EndpointEgressRule)
-        .join(TableName.Project, `${TableName.EndpointEgressRule}.projectId`, `${TableName.Project}.id`)
+      const result = (await (tx || db.replicaNode())(TableName.EndpointNetworkRule)
+        .join(TableName.Project, `${TableName.EndpointNetworkRule}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.Endpoint)
-        .count(`${TableName.EndpointEgressRule}.id as count`)
+        .count(`${TableName.EndpointNetworkRule}.id as count`)
         .first()) as { count: string } | undefined;
 
       return parseInt(result?.count || "0", 10);
     } catch (error) {
-      throw new DatabaseError({ error, name: "CountEndpointEgressRulesForOrg" });
+      throw new DatabaseError({ error, name: "CountEndpointNetworkRulesForOrg" });
     }
   };
 
@@ -275,7 +275,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     countPamAccountTemplatesForOrg,
     countPamFoldersForOrg,
     countEndpointDevicesForOrg,
-    countEndpointEgressRulesForOrg,
+    countEndpointNetworkRulesForOrg,
     countProjectsByTypeForOrg
   };
 };

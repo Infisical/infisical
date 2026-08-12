@@ -1,15 +1,16 @@
 export {
-  useCreateEndpointEgressRule,
+  useCreateEndpointNetworkRule,
   useDeleteEndpointDevice,
-  useDeleteEndpointEgressRule,
+  useDeleteEndpointNetworkRule,
   useRegisterEndpointDevice,
-  useUpdateEndpointEgressRule
+  useUpdateEndpointNetworkRule
 } from "./mutations";
 export {
   endpointKeys,
   fetchEndpointProjectId,
+  useListEndpointCounters,
   useListEndpointDevices,
-  useListEndpointEgressRules,
-  useListEndpointEvents
+  useListEndpointEvents,
+  useListEndpointNetworkRules
 } from "./queries";
 export * from "./types";

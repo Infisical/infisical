@@ -3,8 +3,8 @@ import { z } from "zod";
 import {
   EndpointDestinationKind,
   EndpointDeviceStatus,
-  EndpointEgressRuleAction,
-  EndpointEventType
+  EndpointEventType,
+  EndpointNetworkRuleAction
 } from "@app/ee/services/endpoint/endpoint-enums";
 import { EndpointDestinationSchema } from "@app/ee/services/endpoint/endpoint-schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -23,12 +23,12 @@ const AgentConfigSchema = z.object({
   }),
   configVersion: z.number(),
   pollIntervalSeconds: z.number(),
-  egressPolicy: z.object({
+  networkPolicy: z.object({
     enabled: z.boolean(),
     destinationRules: z
       .object({
         id: z.string().uuid(),
-        action: z.nativeEnum(EndpointEgressRuleAction),
+        action: z.nativeEnum(EndpointNetworkRuleAction),
         kind: z.nativeEnum(EndpointDestinationKind),
         destination: z.string(),
         name: z.string()
@@ -39,7 +39,8 @@ const AgentConfigSchema = z.object({
         id: z.string().uuid(),
         kind: z.nativeEnum(EndpointDestinationKind),
         destination: z.string(),
-        thresholdBytes: z.number(),
+        // Coerced because this value originates in a bigint column; see the mapper in the service.
+        thresholdBytes: z.coerce.number(),
         name: z.string()
       })
       .array()
