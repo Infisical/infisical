@@ -8,7 +8,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { extractObjectFieldPaths } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -24,7 +24,11 @@ import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
-import { DynamicSecretStatus, TDynamicSecretServiceFactory } from "./dynamic-secret-types";
+import {
+  DynamicSecretStatus,
+  TDynamicSecretProviderDiscoveryDTO,
+  TDynamicSecretServiceFactory
+} from "./dynamic-secret-types";
 import { AzureEntraIDProvider } from "./providers/azure-entra-id";
 import { GcpIamServiceAccountSuffixError } from "./providers/gcp-iam";
 import { IbmApiConnectProvider } from "./providers/ibm-api-connect";
@@ -946,11 +950,50 @@ export const dynamicSecretServiceFactory = ({
     return { caPublicKey: decryptedStoredInput.caPublicKey };
   };
 
+  // discovery endpoints have no dynamic secret to scope against yet, so they gate on the caller being able to
+  // configure dynamic secrets somewhere in the project rather than at a specific environment and secret path
+  const assertProviderDiscoveryPermission = async ({
+    projectSlug,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TDynamicSecretProviderDiscoveryDTO) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: project.id,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const canConfigureDynamicSecrets =
+      permission.can(ProjectPermissionDynamicSecretActions.CreateRootCredential, ProjectPermissionSub.DynamicSecrets) ||
+      permission.can(ProjectPermissionDynamicSecretActions.EditRootCredential, ProjectPermissionSub.DynamicSecrets);
+
+    if (!canConfigureDynamicSecrets) {
+      throw new ForbiddenRequestError({
+        message: `You do not have permission to create or edit dynamic secrets in project '${projectSlug}'`
+      });
+    }
+  };
+
   const fetchAzureEntraIdUsers: TDynamicSecretServiceFactory["fetchAzureEntraIdUsers"] = async ({
     tenantId,
     applicationId,
-    clientSecret
+    clientSecret,
+    projectSlug,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
   }) => {
+    await assertProviderDiscoveryPermission({ projectSlug, actor, actorId, actorAuthMethod, actorOrgId });
+
     const azureEntraIdUsers = await AzureEntraIDProvider().fetchAzureEntraIdUsers(
       tenantId,
       applicationId,
@@ -963,8 +1006,15 @@ export const dynamicSecretServiceFactory = ({
     instanceUrl,
     apiKey,
     clientId,
-    clientSecret
+    clientSecret,
+    projectSlug,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
   }) => {
+    await assertProviderDiscoveryPermission({ projectSlug, actor, actorId, actorAuthMethod, actorOrgId });
+
     return IbmApiConnectProvider().fetchOrganizations({ instanceUrl, apiKey, clientId, clientSecret });
   };
 
@@ -973,8 +1023,15 @@ export const dynamicSecretServiceFactory = ({
     apiKey,
     clientId,
     clientSecret,
-    orgId
+    orgId,
+    projectSlug,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
   }) => {
+    await assertProviderDiscoveryPermission({ projectSlug, actor, actorId, actorAuthMethod, actorOrgId });
+
     return IbmApiConnectProvider().fetchOrganizationCatalogs({ instanceUrl, apiKey, clientId, clientSecret }, orgId);
   };
 
@@ -984,8 +1041,15 @@ export const dynamicSecretServiceFactory = ({
     clientId,
     clientSecret,
     orgId,
-    catalogId
+    catalogId,
+    projectSlug,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
   }) => {
+    await assertProviderDiscoveryPermission({ projectSlug, actor, actorId, actorAuthMethod, actorOrgId });
+
     return IbmApiConnectProvider().fetchOrganizationApps(
       { instanceUrl, apiKey, clientId, clientSecret },
       orgId,

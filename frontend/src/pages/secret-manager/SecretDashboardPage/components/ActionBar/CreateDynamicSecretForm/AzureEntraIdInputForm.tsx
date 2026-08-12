@@ -95,6 +95,7 @@ export const AzureEntraIdInputForm = ({
     tenantId,
     applicationId,
     clientSecret,
+    projectSlug,
     enabled: !!configurationComplete
   });
   const loading = configurationComplete && isFetching;
