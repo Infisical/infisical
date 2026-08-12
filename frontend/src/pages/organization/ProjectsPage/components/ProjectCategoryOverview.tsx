@@ -38,6 +38,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Separator,
   Skeleton,
   Table,
   TableBody,
@@ -280,11 +281,12 @@ export const ProjectCategoryOverview = () => {
           <span className="block truncate text-base font-semibold text-foreground">
             {project.name}
           </span>
-          <p className="mt-1 truncate text-sm text-muted">
-            {currentOrg.name} / {project.slug}
+          <p className="mt-1 line-clamp-2 text-sm text-muted">
+            {project.description || <span className="italic">no description</span>}
           </p>
         </div>
-        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border pt-4 text-xs text-muted">
+        <Separator className="mt-auto" />
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-4 text-xs text-muted">
           <span className="flex items-center gap-1.5">
             <Layers3Icon className="size-3.5" aria-hidden />
             {project.environments.length}{" "}
