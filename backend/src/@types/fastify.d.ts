@@ -15,6 +15,7 @@ import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-types";
 import { TDynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-types";
 import { TEmailDomainServiceFactory } from "@app/ee/services/email-domain/email-domain-service";
+import { TEndpointScanServiceFactory } from "@app/ee/services/endpoint/endpoint-scan-service";
 import { TEndpointServiceFactory } from "@app/ee/services/endpoint/endpoint-service";
 import { TEventBusService as TInternalEventBusService } from "@app/ee/services/event-bus";
 import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
@@ -420,6 +421,7 @@ declare module "fastify" {
       honeyToken: THoneyTokenServiceFactory;
       proxiedService: TProxiedServiceServiceFactory;
       endpoint: TEndpointServiceFactory;
+      endpointScan: TEndpointScanServiceFactory;
       agentProxyCa: TAgentProxyCaServiceFactory;
       folderCommit: TFolderCommitServiceFactory;
       pit: TPitServiceFactory;

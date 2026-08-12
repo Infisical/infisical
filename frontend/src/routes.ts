@@ -397,6 +397,7 @@ const endpointRoutes = route("/organizations/$orgId/endpoint", [
     route("/network-policy", "endpoint/EndpointNetworkPolicyPage/route.tsx"),
     route("/activity", "endpoint/EndpointActivityPage/route.tsx"),
     route("/targets", "endpoint/EndpointTargetsPage/route.tsx"),
+    route("/settings", "endpoint/SettingsPage/route.tsx"),
 
     // Access Management
     route("/access-management", "project/AccessControlPage/route-endpoint.tsx"),

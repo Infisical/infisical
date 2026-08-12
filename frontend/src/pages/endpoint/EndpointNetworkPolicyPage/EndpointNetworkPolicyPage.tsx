@@ -37,9 +37,10 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
-import { formatBytes } from "@app/helpers/bytes";
+import { formatBytes, formatTransferWindow } from "@app/helpers/bytes";
 import { usePopUp } from "@app/hooks";
 import {
+  EndpointDestinationKind,
   EndpointNetworkRuleAction,
   EndpointNetworkRuleType,
   TEndpointNetworkRule,
@@ -51,7 +52,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { DeleteNetworkRuleModal } from "./components/DeleteNetworkRuleModal";
 import { NetworkRuleModal } from "./components/NetworkRuleModal";
 
-const KIND_LABEL: Record<TEndpointNetworkRule["kind"], string> = {
+const KIND_LABEL: Record<EndpointDestinationKind, string> = {
   ip: "IP Address",
   cidr: "CIDR Block",
   domain: "Domain"
@@ -74,23 +75,26 @@ const ActionBadge = ({ action }: { action?: EndpointNetworkRuleAction | null }) 
   return <Badge variant="danger">Deny</Badge>;
 };
 
-// A volume rule has no action of its own: it allows the destination until the threshold is crossed,
-// so the threshold is the meaningful thing to show in this column.
+// A volume rule has no action of its own: every destination is allowed until one crosses the
+// threshold, so the threshold is the meaningful thing to show in this column.
 const EnforcementCell = ({ rule }: { rule: TEndpointNetworkRule }) => {
   if (rule.ruleType !== EndpointNetworkRuleType.Volume) {
     return <ActionBadge action={rule.action} />;
   }
 
+  const perWindow = formatTransferWindow(rule.windowSeconds);
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Badge variant="warning" className="cursor-default">
-          Limit {formatBytes(rule.thresholdBytes ?? 0)}
+          {formatBytes(rule.thresholdBytes ?? 0)} / {perWindow}
         </Badge>
       </TooltipTrigger>
       <TooltipContent>
-        Blocked once a device has sent more than {formatBytes(rule.thresholdBytes ?? 0)} to this
-        destination.
+        A destination is blocked once a device has sent more than{" "}
+        {formatBytes(rule.thresholdBytes ?? 0)} to it within a rolling {perWindow}. Measured as a rate,
+        so ordinary long-term use never accumulates into a block.
       </TooltipContent>
     </Tooltip>
   );
@@ -208,9 +212,25 @@ export const EndpointNetworkPolicyPage = () => {
                 {sortedRules.map((rule) => (
                   <TableRow key={rule.id}>
                     <TableCell className="font-medium text-foreground">{rule.name}</TableCell>
-                    <TableCell className="text-muted">{KIND_LABEL[rule.kind]}</TableCell>
-                    <TableCell className="font-mono text-xs text-muted">
-                      {rule.destination}
+                    <TableCell className="text-muted">
+                      {rule.kind ? KIND_LABEL[rule.kind] : "Transfer Limit"}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted">
+                      {rule.destination ? (
+                        <span className="font-mono">{rule.destination}</span>
+                      ) : (
+                        // A volume rule names no destination. Saying so is the point: it is what makes
+                        // the rule catch a destination nobody thought to add.
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="cursor-default italic">Any destination</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Measured against every destination a device sends to, except private
+                            networks and Infisical itself.
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     </TableCell>
                     <TableCell>
                       <EnforcementCell rule={rule} />

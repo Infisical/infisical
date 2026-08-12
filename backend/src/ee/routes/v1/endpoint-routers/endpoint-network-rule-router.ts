@@ -7,9 +7,11 @@ import {
 } from "@app/ee/services/endpoint/endpoint-enums";
 import {
   assertDestinationMatchesKind,
+  assertNetworkRuleShape,
   EndpointDestinationSchema,
   SanitizedEndpointNetworkRuleSchema
 } from "@app/ee/services/endpoint/endpoint-schemas";
+import { ENDPOINT_MAX_TRANSFER_WINDOW_SECONDS } from "@app/ee/services/endpoint/endpoint-constants";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
@@ -57,9 +59,12 @@ export const registerEndpointNetworkRuleRouter = async (server: FastifyZodProvid
               "'destination' blocks or allows traffic to a destination outright. 'volume' blocks it once a transfer threshold is crossed."
             ),
           name: GenericResourceNameSchema.describe("A name for the rule, shown in the console and on events."),
-          kind: z.nativeEnum(EndpointDestinationKind).describe("How to interpret 'destination'."),
-          destination: EndpointDestinationSchema.describe(
-            "The destination to match, interpreted according to 'kind'. Domains are resolved on the device."
+          kind: z
+            .nativeEnum(EndpointDestinationKind)
+            .optional()
+            .describe("Destination rules only. How to interpret 'destination'."),
+          destination: EndpointDestinationSchema.optional().describe(
+            "Destination rules only. The destination to match, interpreted according to 'kind'. Domains are resolved on the device."
           ),
           action: z
             .nativeEnum(EndpointNetworkRuleAction)
@@ -71,13 +76,24 @@ export const registerEndpointNetworkRuleRouter = async (server: FastifyZodProvid
             .positive()
             .max(MAX_THRESHOLD_BYTES)
             .optional()
-            .describe("Required for volume rules. Bytes transferred to the destination before it is blocked."),
+            .describe(
+              "Required for volume rules. Bytes a device may send to any one destination within 'windowSeconds' before that destination is blocked."
+            ),
+          windowSeconds: z
+            .number()
+            .int()
+            .min(1)
+            .max(ENDPOINT_MAX_TRANSFER_WINDOW_SECONDS)
+            .optional()
+            .describe(
+              "Required for volume rules. The trailing window the threshold is measured over, so the limit is a rate rather than a lifetime total. Defaults to 60 in the console."
+            ),
           isEnabled: z
             .boolean()
             .optional()
             .describe("Disabled rules stay in the console but are not sent to any device. Defaults to true.")
         })
-        .superRefine(assertDestinationMatchesKind),
+        .superRefine(assertNetworkRuleShape),
       response: {
         200: z.object({ networkRule: SanitizedEndpointNetworkRuleSchema })
       }
@@ -103,8 +119,13 @@ export const registerEndpointNetworkRuleRouter = async (server: FastifyZodProvid
       body: z
         .object({
           name: GenericResourceNameSchema.optional().describe("A name for the rule."),
-          kind: z.nativeEnum(EndpointDestinationKind).optional().describe("How to interpret 'destination'."),
-          destination: EndpointDestinationSchema.optional().describe("The destination to match."),
+          kind: z
+            .nativeEnum(EndpointDestinationKind)
+            .optional()
+            .describe("Destination rules only. How to interpret 'destination'."),
+          destination: EndpointDestinationSchema.optional().describe(
+            "Destination rules only. The destination to match."
+          ),
           action: z.nativeEnum(EndpointNetworkRuleAction).optional().describe("Destination rules only."),
           thresholdBytes: z
             .number()
@@ -112,7 +133,16 @@ export const registerEndpointNetworkRuleRouter = async (server: FastifyZodProvid
             .positive()
             .max(MAX_THRESHOLD_BYTES)
             .optional()
-            .describe("Volume rules only."),
+            .describe(
+              "Volume rules only. Bytes a device may send to any one destination within 'windowSeconds' before it is blocked."
+            ),
+          windowSeconds: z
+            .number()
+            .int()
+            .min(1)
+            .max(ENDPOINT_MAX_TRANSFER_WINDOW_SECONDS)
+            .optional()
+            .describe("Volume rules only. The trailing window the threshold is measured over."),
           isEnabled: z.boolean().optional().describe("Whether devices should enforce this rule.")
         })
         .superRefine((body, ctx) => {

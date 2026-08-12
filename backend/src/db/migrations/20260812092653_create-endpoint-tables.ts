@@ -44,9 +44,19 @@ export async function up(knex: Knex): Promise<void> {
 
       t.string("ruleType").notNullable();
       t.string("action");
-      t.string("kind").notNullable();
-      t.string("destination").notNullable();
+
+      // A destination rule names where it applies. A volume rule deliberately does not: it means
+      // "block any destination this device sends more than thresholdBytes to", and the destinations
+      // are discovered from the device's own traffic. So both columns are nullable and which ones a
+      // row must carry depends on ruleType.
+      t.string("kind");
+      t.string("destination");
+
+      // A volume rule's threshold is a rate, not a lifetime total: thresholdBytes within
+      // windowSeconds. Measured cumulatively, uptime alone would eventually trip any rule against a
+      // destination the device uses legitimately.
       t.bigint("thresholdBytes");
+      t.integer("windowSeconds");
       t.string("name").notNullable();
       t.boolean("isEnabled").notNullable().defaultTo(true);
 
@@ -74,7 +84,9 @@ export async function up(knex: Knex): Promise<void> {
       t.boolean("tripped").notNullable().defaultTo(false);
       t.datetime("reportedAt").notNullable();
 
-      t.unique(["deviceId", "networkRuleId"]);
+      // One volume rule produces a counter per destination the device is measured against, so the
+      // destination is part of what makes a counter unique.
+      t.unique(["deviceId", "networkRuleId", "destination"]);
 
       t.timestamps(true, true, true);
     });

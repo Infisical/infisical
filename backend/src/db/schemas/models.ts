@@ -342,6 +342,11 @@ export enum TableName {
   EndpointCounter = "endpoint_counters",
   EndpointEvent = "endpoint_events",
 
+  // Infisical Endpoint (device secret scanning)
+  EndpointScanPolicy = "endpoint_scan_policies",
+  EndpointDeviceScan = "endpoint_device_scans",
+  EndpointSecretFinding = "endpoint_secret_findings",
+
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",
   DeprecatedSecretRotationV1 = "secret_rotations",

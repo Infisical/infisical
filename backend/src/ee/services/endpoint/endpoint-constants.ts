@@ -8,3 +8,10 @@ export const ENDPOINT_DEVICE_OFFLINE_AFTER_SECONDS = 30;
 
 export const ENDPOINT_EVENT_PAGE_SIZE_DEFAULT = 50;
 export const ENDPOINT_EVENT_PAGE_SIZE_MAX = 100;
+
+// A volume rule's threshold is a rate: bytes within a trailing window. One minute is the default
+// because it is long enough to describe a transfer rather than a burst, and short enough that a device
+// is not judged on what it did an hour ago. The hour cap bounds how much history an agent has to keep
+// per destination.
+export const ENDPOINT_DEFAULT_TRANSFER_WINDOW_SECONDS = 60;
+export const ENDPOINT_MAX_TRANSFER_WINDOW_SECONDS = 3600;

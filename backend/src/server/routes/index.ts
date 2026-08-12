@@ -52,6 +52,12 @@ import { endpointDeviceDALFactory } from "@app/ee/services/endpoint/endpoint-dev
 import { endpointEventDALFactory } from "@app/ee/services/endpoint/endpoint-event-dal";
 import { endpointNetworkRuleDALFactory } from "@app/ee/services/endpoint/endpoint-network-rule-dal";
 import { endpointProjectResolverFactory } from "@app/ee/services/endpoint/endpoint-project-resolver";
+import {
+  endpointDeviceScanDALFactory,
+  endpointScanPolicyDALFactory,
+  endpointSecretFindingDALFactory
+} from "@app/ee/services/endpoint/endpoint-scan-dal";
+import { endpointScanServiceFactory } from "@app/ee/services/endpoint/endpoint-scan-service";
 import { endpointServiceFactory } from "@app/ee/services/endpoint/endpoint-service";
 import { eventBusServiceFactory } from "@app/ee/services/event-bus/event-bus-service";
 import { externalKmsDALFactory } from "@app/ee/services/external-kms/external-kms-dal";
@@ -1743,6 +1749,19 @@ export const registerRoutes = async (
     endpointProjectResolver,
     userDAL,
     membershipDAL,
+    permissionService
+  });
+
+  const endpointScanPolicyDAL = endpointScanPolicyDALFactory(db);
+  const endpointDeviceScanDAL = endpointDeviceScanDALFactory(db);
+  const endpointSecretFindingDAL = endpointSecretFindingDALFactory(db);
+
+  const endpointScanService = endpointScanServiceFactory({
+    endpointScanPolicyDAL,
+    endpointDeviceScanDAL,
+    endpointSecretFindingDAL,
+    endpointDeviceDAL,
+    endpointProjectResolver,
     permissionService
   });
 
@@ -3963,6 +3982,7 @@ export const registerRoutes = async (
     certManagerProjectResolver,
     pamProjectResolver,
     endpoint: endpointService,
+    endpointScan: endpointScanService,
     pamAccountTemplate: pamAccountTemplateService,
     pamFolder: pamFolderService,
     pamAccount: pamAccountService,

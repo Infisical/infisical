@@ -14,13 +14,16 @@ export type TDeleteEndpointDeviceDTO = {
   deviceId: string;
 };
 
+// kind and destination belong to a destination rule only. A volume rule has no destination: it
+// applies to whichever destination a device sends too much to.
 export type TCreateEndpointNetworkRuleDTO = {
   ruleType: EndpointNetworkRuleType;
   name: string;
-  kind: EndpointDestinationKind;
-  destination: string;
+  kind?: EndpointDestinationKind;
+  destination?: string;
   action?: EndpointNetworkRuleAction;
   thresholdBytes?: number;
+  windowSeconds?: number;
   isEnabled?: boolean;
 };
 
@@ -31,6 +34,7 @@ export type TUpdateEndpointNetworkRuleDTO = {
   destination?: string;
   action?: EndpointNetworkRuleAction;
   thresholdBytes?: number;
+  windowSeconds?: number;
   isEnabled?: boolean;
 };
 

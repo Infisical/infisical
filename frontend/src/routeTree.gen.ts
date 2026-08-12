@@ -99,6 +99,7 @@ import { Route as pamPamAccountsPageRouteImport } from './pages/pam/PamAccountsP
 import { Route as organizationNetworkingPageRelayDetailsByIDPageRouteImport } from './pages/organization/NetworkingPage/RelayDetailsByIDPage/route'
 import { Route as organizationNetworkingPageGatewayDetailsByIDPageRouteImport } from './pages/organization/NetworkingPage/GatewayDetailsByIDPage/route'
 import { Route as endpointEndpointTargetsPageRouteImport } from './pages/endpoint/EndpointTargetsPage/route'
+import { Route as endpointSettingsPageRouteImport } from './pages/endpoint/SettingsPage/route'
 import { Route as endpointEndpointNetworkPolicyPageRouteImport } from './pages/endpoint/EndpointNetworkPolicyPage/route'
 import { Route as endpointEndpointActivityPageRouteImport } from './pages/endpoint/EndpointActivityPage/route'
 import { Route as secretScanningLayoutImport } from './pages/secret-scanning/layout'
@@ -1188,6 +1189,12 @@ const endpointEndpointTargetsPageRouteRoute =
     path: '/targets',
     getParentRoute: () => endpointLayoutRoute,
   } as any)
+
+const endpointSettingsPageRouteRoute = endpointSettingsPageRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => endpointLayoutRoute,
+} as any)
 
 const endpointEndpointNetworkPolicyPageRouteRoute =
   endpointEndpointNetworkPolicyPageRouteImport.update({
@@ -3264,6 +3271,13 @@ declare module '@tanstack/react-router' {
       path: '/network-policy'
       fullPath: '/organizations/$orgId/endpoint/network-policy'
       preLoaderRoute: typeof endpointEndpointNetworkPolicyPageRouteImport
+      parentRoute: typeof endpointLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/settings': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/settings'
+      path: '/settings'
+      fullPath: '/organizations/$orgId/endpoint/settings'
+      preLoaderRoute: typeof endpointSettingsPageRouteImport
       parentRoute: typeof endpointLayoutImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/targets': {
@@ -5624,6 +5638,7 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLay
 interface endpointLayoutRouteChildren {
   endpointEndpointActivityPageRouteRoute: typeof endpointEndpointActivityPageRouteRoute
   endpointEndpointNetworkPolicyPageRouteRoute: typeof endpointEndpointNetworkPolicyPageRouteRoute
+  endpointSettingsPageRouteRoute: typeof endpointSettingsPageRouteRoute
   endpointEndpointTargetsPageRouteRoute: typeof endpointEndpointTargetsPageRouteRoute
   projectAccessControlPageRouteEndpointRoute: typeof projectAccessControlPageRouteEndpointRoute
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdEndpointEndpointLayoutDevicesRouteWithChildren
@@ -5638,6 +5653,7 @@ const endpointLayoutRouteChildren: endpointLayoutRouteChildren = {
     endpointEndpointActivityPageRouteRoute,
   endpointEndpointNetworkPolicyPageRouteRoute:
     endpointEndpointNetworkPolicyPageRouteRoute,
+  endpointSettingsPageRouteRoute: endpointSettingsPageRouteRoute,
   endpointEndpointTargetsPageRouteRoute: endpointEndpointTargetsPageRouteRoute,
   projectAccessControlPageRouteEndpointRoute:
     projectAccessControlPageRouteEndpointRoute,
@@ -6149,6 +6165,7 @@ export interface FileRoutesByFullPath {
   '/organization/app-connections/github/manifest/callback': typeof redirectsGithubManifestCallbackRedirectRoute
   '/organizations/$orgId/endpoint/activity': typeof endpointEndpointActivityPageRouteRoute
   '/organizations/$orgId/endpoint/network-policy': typeof endpointEndpointNetworkPolicyPageRouteRoute
+  '/organizations/$orgId/endpoint/settings': typeof endpointSettingsPageRouteRoute
   '/organizations/$orgId/endpoint/targets': typeof endpointEndpointTargetsPageRouteRoute
   '/organizations/$orgId/networking/gateways/$gatewayId': typeof organizationNetworkingPageGatewayDetailsByIDPageRouteRoute
   '/organizations/$orgId/networking/relays/$relayId': typeof organizationNetworkingPageRelayDetailsByIDPageRouteRoute
@@ -6430,6 +6447,7 @@ export interface FileRoutesByTo {
   '/organization/app-connections/github/manifest/callback': typeof redirectsGithubManifestCallbackRedirectRoute
   '/organizations/$orgId/endpoint/activity': typeof endpointEndpointActivityPageRouteRoute
   '/organizations/$orgId/endpoint/network-policy': typeof endpointEndpointNetworkPolicyPageRouteRoute
+  '/organizations/$orgId/endpoint/settings': typeof endpointSettingsPageRouteRoute
   '/organizations/$orgId/endpoint/targets': typeof endpointEndpointTargetsPageRouteRoute
   '/organizations/$orgId/networking/gateways/$gatewayId': typeof organizationNetworkingPageGatewayDetailsByIDPageRouteRoute
   '/organizations/$orgId/networking/relays/$relayId': typeof organizationNetworkingPageRelayDetailsByIDPageRouteRoute
@@ -6707,6 +6725,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/organization/app-connections/github/manifest/callback': typeof redirectsGithubManifestCallbackRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/activity': typeof endpointEndpointActivityPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/network-policy': typeof endpointEndpointNetworkPolicyPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/settings': typeof endpointSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/targets': typeof endpointEndpointTargetsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/gateways/$gatewayId': typeof organizationNetworkingPageGatewayDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/relays/$relayId': typeof organizationNetworkingPageRelayDetailsByIDPageRouteRoute
@@ -7001,6 +7020,7 @@ export interface FileRouteTypes {
     | '/organization/app-connections/github/manifest/callback'
     | '/organizations/$orgId/endpoint/activity'
     | '/organizations/$orgId/endpoint/network-policy'
+    | '/organizations/$orgId/endpoint/settings'
     | '/organizations/$orgId/endpoint/targets'
     | '/organizations/$orgId/networking/gateways/$gatewayId'
     | '/organizations/$orgId/networking/relays/$relayId'
@@ -7281,6 +7301,7 @@ export interface FileRouteTypes {
     | '/organization/app-connections/github/manifest/callback'
     | '/organizations/$orgId/endpoint/activity'
     | '/organizations/$orgId/endpoint/network-policy'
+    | '/organizations/$orgId/endpoint/settings'
     | '/organizations/$orgId/endpoint/targets'
     | '/organizations/$orgId/networking/gateways/$gatewayId'
     | '/organizations/$orgId/networking/relays/$relayId'
@@ -7556,6 +7577,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/organization/app-connections/github/manifest/callback'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/activity'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/network-policy'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/targets'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/gateways/$gatewayId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/relays/$relayId'
@@ -8256,6 +8278,7 @@ export const routeTree = rootRoute
       "children": [
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/activity",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/network-policy",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/settings",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/targets",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/access-management",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/devices",
@@ -8304,6 +8327,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/network-policy": {
       "filePath": "endpoint/EndpointNetworkPolicyPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/settings": {
+      "filePath": "endpoint/SettingsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/targets": {

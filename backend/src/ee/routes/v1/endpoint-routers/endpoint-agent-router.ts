@@ -34,13 +34,15 @@ const AgentConfigSchema = z.object({
         name: z.string()
       })
       .array(),
+    // A volume rule carries no destination: it applies to every destination the device sends to, and
+    // the agent discovers those from its own traffic rather than being told them here. The threshold is
+    // a rate, so the window travels with it.
     volumeRules: z
       .object({
         id: z.string().uuid(),
-        kind: z.nativeEnum(EndpointDestinationKind),
-        destination: z.string(),
         // Coerced because this value originates in a bigint column; see the mapper in the service.
         thresholdBytes: z.coerce.number(),
+        windowSeconds: z.number(),
         name: z.string()
       })
       .array()

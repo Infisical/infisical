@@ -52,14 +52,18 @@ export type TEndpointDevice = {
   updatedAt: string;
 };
 
+// kind and destination are null on a volume rule. A volume rule applies to every destination, and
+// the ones it is actually measuring are discovered on the device and arrive as counters.
 export type TEndpointNetworkRule = {
   id: string;
   projectId: string;
   ruleType: EndpointNetworkRuleType;
   action?: EndpointNetworkRuleAction | null;
-  kind: EndpointDestinationKind;
-  destination: string;
+  kind?: EndpointDestinationKind | null;
+  destination?: string | null;
+  // thresholdBytes is a rate, not a lifetime total: that many bytes within windowSeconds.
   thresholdBytes?: number | null;
+  windowSeconds?: number | null;
   name: string;
   isEnabled: boolean;
   createdAt: string;
@@ -86,7 +90,7 @@ export type TEndpointCounter = {
   deviceName: string;
   networkRuleId: string;
   ruleName: string;
-  ruleDestination: string;
+  ruleWindowSeconds?: number | null;
   destination: string;
   bytesOut: number;
   thresholdBytes?: number | null;
@@ -123,10 +127,11 @@ export type TDeleteEndpointDeviceDTO = {
 export type TCreateEndpointNetworkRuleDTO = {
   ruleType: EndpointNetworkRuleType;
   name: string;
-  kind: EndpointDestinationKind;
-  destination: string;
+  kind?: EndpointDestinationKind;
+  destination?: string;
   action?: EndpointNetworkRuleAction;
   thresholdBytes?: number;
+  windowSeconds?: number;
   isEnabled?: boolean;
 };
 
@@ -137,6 +142,7 @@ export type TUpdateEndpointNetworkRuleDTO = {
   destination?: string;
   action?: EndpointNetworkRuleAction;
   thresholdBytes?: number;
+  windowSeconds?: number;
   isEnabled?: boolean;
 };
 

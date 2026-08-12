@@ -23,12 +23,15 @@ export const endpointCounterDALFactory = (db: TDbClient) => {
           `${TableName.EndpointCounter}.networkRuleId`
         )
         .where(`${TableName.EndpointDevice}.projectId`, projectId)
-        .orderBy(`${TableName.EndpointCounter}.reportedAt`, "desc")
+        // Heaviest transfer first: every counter in a report shares a reportedAt, so the byte count
+        // is the only ordering that tells the reader anything.
+        .orderBy(`${TableName.EndpointCounter}.bytesOut`, "desc")
         .select(selectAllTableCols(TableName.EndpointCounter))
         .select(
           db.ref("name").withSchema(TableName.EndpointDevice).as("deviceName"),
           db.ref("name").withSchema(TableName.EndpointNetworkRule).as("ruleName"),
-          db.ref("destination").withSchema(TableName.EndpointNetworkRule).as("ruleDestination")
+          // The window makes the counter readable: 100 MB means nothing without "per minute".
+          db.ref("windowSeconds").withSchema(TableName.EndpointNetworkRule).as("ruleWindowSeconds")
         );
 
       if (deviceId) {
@@ -41,5 +44,16 @@ export const endpointCounterDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...counterOrm, findByProject };
+  // A volume rule's destinations come and go with the device's traffic, so the console has to be able
+  // to lose one. Every counter in a report carries the same reportedAt, which makes "older than this
+  // report" the whole set the agent no longer measures — no need to send the survivors back as a list.
+  const deleteReportedBefore = async ({ deviceId, reportedAt }: { deviceId: string; reportedAt: Date }, tx?: Knex) => {
+    try {
+      return await (tx || db)(TableName.EndpointCounter).where({ deviceId }).andWhere("reportedAt", "<", reportedAt).del();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete stale endpoint counters" });
+    }
+  };
+
+  return { ...counterOrm, findByProject, deleteReportedBefore };
 };

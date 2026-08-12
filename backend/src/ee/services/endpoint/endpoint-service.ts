@@ -9,7 +9,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { ENDPOINT_AGENT_POLL_INTERVAL_SECONDS } from "./endpoint-constants";
+import { ENDPOINT_AGENT_POLL_INTERVAL_SECONDS, ENDPOINT_DEFAULT_TRANSFER_WINDOW_SECONDS } from "./endpoint-constants";
 import { TEndpointCounterDALFactory } from "./endpoint-counter-dal";
 import { TEndpointDeviceDALFactory } from "./endpoint-device-dal";
 import {
@@ -106,18 +106,30 @@ export const endpointServiceFactory = ({
     return device;
   };
 
+  // The two rule types are different shapes, not one shape with optional fields. A destination rule
+  // names where it applies; a volume rule deliberately names nothing, because a threshold is only
+  // worth setting when it can catch a destination nobody thought to list.
   const $assertRuleShape = (dto: {
     ruleType: EndpointNetworkRuleType;
     action?: EndpointNetworkRuleAction;
+    kind?: EndpointDestinationKind;
+    destination?: string;
     thresholdBytes?: number;
+    windowSeconds?: number;
   }) => {
     if (dto.ruleType === EndpointNetworkRuleType.Destination) {
       if (!dto.action) {
         throw new BadRequestError({ message: "A destination rule needs an 'action' of either 'deny' or 'allow'." });
       }
-      if (dto.thresholdBytes !== undefined) {
+      if (!dto.kind || !dto.destination) {
         throw new BadRequestError({
-          message: "'thresholdBytes' only applies to volume rules. Remove it, or create a volume rule instead."
+          message: "A destination rule needs a 'destination' and the 'kind' that says how to read it."
+        });
+      }
+      if (dto.thresholdBytes !== undefined || dto.windowSeconds !== undefined) {
+        throw new BadRequestError({
+          message:
+            "'thresholdBytes' and 'windowSeconds' only apply to volume rules. Remove them, or create a volume rule instead."
         });
       }
       return;
@@ -126,10 +138,22 @@ export const endpointServiceFactory = ({
     if (dto.thresholdBytes === undefined) {
       throw new BadRequestError({ message: "A volume rule needs a 'thresholdBytes' transfer threshold." });
     }
+    if (dto.windowSeconds === undefined) {
+      throw new BadRequestError({
+        message:
+          "A volume rule needs a 'windowSeconds' window, because the threshold is a rate: that many bytes within that many seconds."
+      });
+    }
     if (dto.action) {
       throw new BadRequestError({
         message:
           "'action' only applies to destination rules. A volume rule always blocks once its threshold is crossed."
+      });
+    }
+    if (dto.kind || dto.destination) {
+      throw new BadRequestError({
+        message:
+          "A volume rule applies to every destination, so it takes no 'destination' or 'kind'. It blocks whichever destination a device sends more than the threshold to. To cap traffic to one destination you already know, create a destination rule instead."
       });
     }
   };
@@ -241,10 +265,11 @@ export const endpointServiceFactory = ({
           projectId,
           ruleType: dto.ruleType,
           name: dto.name,
-          kind: dto.kind,
-          destination: dto.destination,
+          kind: dto.kind ?? null,
+          destination: dto.destination ?? null,
           action: dto.action,
           thresholdBytes: dto.thresholdBytes,
+          windowSeconds: dto.windowSeconds,
           isEnabled: dto.isEnabled ?? true
         },
         tx
@@ -267,7 +292,10 @@ export const endpointServiceFactory = ({
     $assertRuleShape({
       ruleType: rule.ruleType as EndpointNetworkRuleType,
       action: (dto.action ?? rule.action ?? undefined) as EndpointNetworkRuleAction | undefined,
-      thresholdBytes: dto.thresholdBytes ?? rule.thresholdBytes ?? undefined
+      kind: (dto.kind ?? rule.kind ?? undefined) as EndpointDestinationKind | undefined,
+      destination: dto.destination ?? rule.destination ?? undefined,
+      thresholdBytes: dto.thresholdBytes ?? rule.thresholdBytes ?? undefined,
+      windowSeconds: dto.windowSeconds ?? rule.windowSeconds ?? undefined
     });
 
     return endpointNetworkRuleDAL.transaction(async (tx) => {
@@ -324,24 +352,28 @@ export const endpointServiceFactory = ({
         networkPolicy: {
           enabled: device.status === EndpointDeviceStatus.Active,
           destinationRules: rules
-            .filter((rule) => rule.ruleType === EndpointNetworkRuleType.Destination)
+            .filter(
+              (rule) => rule.ruleType === EndpointNetworkRuleType.Destination && rule.kind && rule.destination
+            )
             .map((rule) => ({
               id: rule.id,
               action: (rule.action ?? EndpointNetworkRuleAction.Deny) as EndpointNetworkRuleAction,
               kind: rule.kind as EndpointDestinationKind,
-              destination: rule.destination,
+              destination: rule.destination as string,
               name: rule.name
             })),
+          // No destination and no kind: a volume rule means "block any destination this device sends
+          // more than thresholdBytes to within windowSeconds", and which destinations those are is only
+          // known on the device, from its own traffic.
           volumeRules: rules
             .filter((rule) => rule.ruleType === EndpointNetworkRuleType.Volume)
             .map((rule) => ({
               id: rule.id,
-              kind: rule.kind as EndpointDestinationKind,
-              destination: rule.destination,
               // thresholdBytes is a bigint, which pg returns as a string even though the generated
               // schema types it as a number. Without this the agent's config response fails its own
               // validation and every poll 500s.
               thresholdBytes: Number(rule.thresholdBytes ?? 0),
+              windowSeconds: rule.windowSeconds ?? ENDPOINT_DEFAULT_TRANSFER_WINDOW_SECONDS,
               name: rule.name
             }))
         },
@@ -367,11 +399,12 @@ export const endpointServiceFactory = ({
       blockedAddresses: dto.enforcement.blockedAddresses
     });
 
+    const reportedAt = new Date();
+
     if (dto.counters.length) {
       const knownRuleIds = new Set(
         (await endpointNetworkRuleDAL.find({ projectId: device.projectId })).map((rule) => rule.id)
       );
-      const reportedAt = new Date();
 
       const counters = dto.counters
         .filter((counter) => knownRuleIds.has(counter.volumeRuleId))
@@ -385,8 +418,16 @@ export const endpointServiceFactory = ({
           reportedAt
         }));
 
-      await endpointCounterDAL.upsert(counters, ["deviceId", "networkRuleId"]);
+      if (counters.length) {
+        // One catch-all rule reports a counter per destination, so the destination is part of the
+        // conflict key. Without it, every destination would overwrite the last one's row.
+        await endpointCounterDAL.upsert(counters, ["deviceId", "networkRuleId", "destination"]);
+      }
     }
+
+    // The agent is authoritative about what it is measuring. Anything it did not report this time is
+    // no longer being measured, so the console should stop showing it rather than freeze a stale bar.
+    await endpointCounterDAL.deleteReportedBefore({ deviceId: device.id, reportedAt });
 
     return { device: { configVersion: stampedDevice.configVersion } };
   };

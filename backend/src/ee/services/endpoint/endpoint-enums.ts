@@ -26,5 +26,9 @@ export enum EndpointEventType {
   NetworkDestinationBlocked = "network.destination_blocked",
   NetworkTransferThresholdTripped = "network.transfer_threshold_tripped",
   PrivateAccessTunnelUp = "private_access.tunnel_up",
-  PrivateAccessTunnelDown = "private_access.tunnel_down"
+  PrivateAccessTunnelDown = "private_access.tunnel_down",
+  // The agent sends every event through one batched endpoint, so a type missing from this enum fails
+  // validation for the whole batch and takes the network events down with it.
+  ScanStarted = "scan.started",
+  ScanCompleted = "scan.completed"
 }

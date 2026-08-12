@@ -21,6 +21,7 @@ import { useListEndpointDevices } from "@app/hooks/api/endpoint";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { EventFeedCard } from "../components/EventFeedCard";
+import { SecretFindingsCard } from "../components/SecretFindingsCard";
 import { TransferCountersCard } from "../components/TransferCountersCard";
 
 const Detail = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -132,6 +133,8 @@ export const EndpointDeviceDetailsPage = () => {
                 </div>
               </CardContent>
             </Card>
+
+            <SecretFindingsCard deviceId={device.id} />
 
             <TransferCountersCard deviceId={device.id} />
 

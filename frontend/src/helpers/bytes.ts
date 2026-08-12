@@ -10,3 +10,15 @@ export const formatBytes = (bytes: number, fractionDigits = 1) => {
 
   return `${Number(value.toFixed(exponent === 0 ? 0 : fractionDigits))} ${BYTE_UNITS[exponent]}`;
 };
+
+// A transfer threshold is a rate, so the window is half the number's meaning: "100 MB" alone says
+// nothing without "per minute". Renders the common windows as words and anything else as a duration.
+export const formatTransferWindow = (seconds?: number | null) => {
+  if (!seconds || seconds <= 0) return "minute";
+  if (seconds === 1) return "second";
+  if (seconds === 60) return "minute";
+  if (seconds === 3600) return "hour";
+  if (seconds % 3600 === 0) return `${seconds / 3600} hours`;
+  if (seconds % 60 === 0) return `${seconds / 60} min`;
+  return `${seconds}s`;
+};

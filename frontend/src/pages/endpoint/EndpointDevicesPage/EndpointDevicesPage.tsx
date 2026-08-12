@@ -1,7 +1,8 @@
+import { useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { Link, useParams } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
-import { MonitorIcon, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { KeyRound, MonitorIcon, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
@@ -38,13 +39,41 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   EndpointDeviceStatus,
+  EndpointSecretFindingStatus,
   TEndpointDevice,
-  useListEndpointDevices
+  useListEndpointDevices,
+  useListEndpointDeviceScans,
+  useListEndpointSecretFindings
 } from "@app/hooks/api/endpoint";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { DeleteDeviceModal } from "./components/DeleteDeviceModal";
 import { RegisterDeviceModal } from "./components/RegisterDeviceModal";
+
+const SecretsCell = ({ openCount }: { openCount?: number }) => {
+  if (openCount === undefined) {
+    return <span className="text-muted">—</span>;
+  }
+
+  if (openCount === 0) {
+    return <Badge variant="success">Clean</Badge>;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge variant="danger" className="cursor-default">
+          <KeyRound className="size-3" />
+          {openCount}
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent>
+        {openCount} credential{openCount === 1 ? "" : "s"} found in files on this device. Open the
+        device to see where.
+      </TooltipContent>
+    </Tooltip>
+  );
+};
 
 const DeviceStatusBadge = ({ device }: { device: TEndpointDevice }) => {
   if (device.status === EndpointDeviceStatus.Inactive) {
@@ -85,10 +114,25 @@ const BlockedAddressesCell = ({ device }: { device: TEndpointDevice }) => {
 export const EndpointDevicesPage = () => {
   const { orgId } = useParams({ strict: false }) as { orgId: string };
   const { data: devices, isPending } = useListEndpointDevices();
+  const { data: findings } = useListEndpointSecretFindings();
+  const { data: deviceScans } = useListEndpointDeviceScans();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "registerDevice",
     "deleteDevice"
   ] as const);
+
+  const openFindingsByDevice = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    (deviceScans ?? []).forEach((scan) => counts.set(scan.deviceId, 0));
+    (findings ?? [])
+      .filter((finding) => finding.status === EndpointSecretFindingStatus.Open)
+      .forEach((finding) =>
+        counts.set(finding.deviceId, (counts.get(finding.deviceId) ?? 0) + 1)
+      );
+
+    return counts;
+  }, [findings, deviceScans]);
 
   return (
     <>
@@ -162,6 +206,7 @@ export const EndpointDevicesPage = () => {
                   <TableHead>Agent Version</TableHead>
                   <TableHead>Config Version</TableHead>
                   <TableHead>Last Seen</TableHead>
+                  <TableHead>Secrets</TableHead>
                   <TableHead>Enforcing</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
@@ -195,6 +240,9 @@ export const EndpointDevicesPage = () => {
                       {device.lastSeenAt
                         ? formatDistanceToNow(new Date(device.lastSeenAt), { addSuffix: true })
                         : "Never"}
+                    </TableCell>
+                    <TableCell>
+                      <SecretsCell openCount={openFindingsByDevice.get(device.id)} />
                     </TableCell>
                     <TableCell>
                       <BlockedAddressesCell device={device} />
