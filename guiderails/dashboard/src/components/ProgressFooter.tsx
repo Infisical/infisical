@@ -1,6 +1,6 @@
 import type React from "react";
 
-import { countByStatus, type RunState } from "../useRunStream.js";
+import type { RunState, StepState } from "../useRunStream.js";
 
 /**
  * One cell per step, in plan order, plus the tally.
@@ -15,14 +15,20 @@ import { countByStatus, type RunState } from "../useRunStream.js";
 
 export const ProgressFooter = ({
   run,
+  selectedProcedureIndex,
   children
 }: {
   run: RunState | null;
+  selectedProcedureIndex: number | null;
   /** The run switcher, when a walk covers more than one guide. */
   children?: React.ReactNode;
 }): JSX.Element => {
-  const counts = run ? countByStatus(run) : null;
-  const cells = run ? run.procedures.flatMap((procedure) => procedure.stepKeys) : [];
+  const procedure = run
+    ? (run.procedures.find((candidate) => candidate.index === selectedProcedureIndex) ??
+      run.procedures[0])
+    : undefined;
+  const cells = procedure?.stepKeys ?? [];
+  const counts = run && procedure ? countSteps(run, cells) : null;
 
   return (
     <footer className="footer">
@@ -58,4 +64,23 @@ export const ProgressFooter = ({
       ) : null}
     </footer>
   );
+};
+
+const countSteps = (
+  run: RunState,
+  stepKeys: string[]
+): Record<StepState["status"], number> => {
+  const counts: Record<StepState["status"], number> = {
+    upcoming: 0,
+    running: 0,
+    passed: 0,
+    failed: 0,
+    skipped: 0,
+    unverified: 0
+  };
+  for (const key of stepKeys) {
+    const step = run.steps.get(key);
+    if (step) counts[step.status] += 1;
+  }
+  return counts;
 };

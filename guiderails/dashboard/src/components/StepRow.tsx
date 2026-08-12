@@ -6,17 +6,17 @@ import { ActivityEntry } from "./ActivityEntry.js";
 /**
  * One step. Collapsed to a single line unless it is the one running.
  *
- * The marker carries the outcome, so the rail is readable at a glance without reading any prose:
- * a check for verified, a cross for failed, a hollow circle for not yet reached.
+ * The marker carries both the documented step index and outcome, so the rail is readable at a
+ * glance without losing the order expressed in the guide.
  */
 
 const MARKER: Record<StepState["status"], string> = {
   upcoming: "○",
-  running: "▸",
+  running: "",
   passed: "✓",
   failed: "✕",
   skipped: "–",
-  unverified: "?"
+  unverified: "○"
 };
 
 export const StepRow = ({
@@ -41,6 +41,8 @@ export const StepRow = ({
   const showActivity = isCurrent || step.status === "failed";
   const hasFinding =
     showActivity && step.activity.some((entry) => entry.kind === "finding");
+  const toolCount = step.activity.filter((entry) => entry.kind === "tool").length;
+  let toolLabelRendered = false;
 
   useEffect(() => {
     if (!isCurrent || !autoScroll) return;
@@ -49,18 +51,49 @@ export const StepRow = ({
 
   return (
     <div ref={element} className={`step step--${step.status}`}>
-      <div className="step__marker">{MARKER[step.status]}</div>
+      <div className="step__marker">
+        <span className="step__index">{step.docStepIndex}</span>
+        <span className="step__status" aria-label={step.status}>
+          {step.status === "running" ? (
+            <span className="agent-pulse" aria-hidden="true" />
+          ) : (
+            MARKER[step.status]
+          )}
+        </span>
+      </div>
       <div>
         <div className="step__instruction">
           {step.instruction || <span className="eyebrow">no instruction recorded</span>}
           {isCurrent && step.mode ? <span className="step__mode">{step.mode}</span> : null}
         </div>
 
+        {step.agentPhase === "thinking" ? (
+          <div className="step__thinking" role="status">
+            <span>Thinking</span>
+            <span className="step__thinking-dots" aria-hidden="true">
+              <span>.</span>
+              <span>.</span>
+              <span>.</span>
+            </span>
+          </div>
+        ) : null}
+
         {showActivity && step.activity.length > 0 ? (
           <div className="activity">
-            {step.activity.map((entry) => (
-              <ActivityEntry key={`${entry.kind}-${entry.id}`} entry={entry} />
-            ))}
+            {step.activity.map((entry) => {
+              const showToolLabel = entry.kind === "tool" && !toolLabelRendered;
+              if (showToolLabel) toolLabelRendered = true;
+              return (
+                <div key={`${entry.kind}-${entry.id}`}>
+                  {showToolLabel ? (
+                    <div className="activity__tool-label">
+                      called {toolCount === 1 ? "tool" : "tools"}
+                    </div>
+                  ) : null}
+                  <ActivityEntry entry={entry} />
+                </div>
+              );
+            })}
           </div>
         ) : null}
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { BrowserPane } from "./components/BrowserPane.js";
 import { Header } from "./components/Header.js";
@@ -11,10 +11,22 @@ export const App = (): JSX.Element => {
   const state = useRunStream();
   /** Null means follow the newest run, which is what an unattended walk should do. */
   const [pinnedId, setPinnedId] = useState<string | null>(null);
+  const [selectedProcedureIndex, setSelectedProcedureIndex] = useState<number | null>(null);
 
   const newest = activeRun(state);
   const pinned = pinnedId ? state.runs.find((run) => run.runId === pinnedId) : undefined;
   const run = pinned ?? newest;
+  const currentProcedureIndex = run?.currentKey
+    ? run.steps.get(run.currentKey)?.procedureIndex
+    : undefined;
+
+  useEffect(() => {
+    setSelectedProcedureIndex(run?.procedures[0]?.index ?? null);
+  }, [run?.runId]);
+
+  useEffect(() => {
+    if (currentProcedureIndex !== undefined) setSelectedProcedureIndex(currentProcedureIndex);
+  }, [currentProcedureIndex]);
 
   return (
     <>
@@ -27,8 +39,13 @@ export const App = (): JSX.Element => {
           // would caption someone else's screenshot with the wrong guide.
           stale={Boolean(pinned) && pinned !== newest}
         />
-        <StepRail run={run} live={state.live} />
-        <ProgressFooter run={run}>
+        <StepRail
+          run={run}
+          live={state.live}
+          selectedProcedureIndex={selectedProcedureIndex}
+          onSelectProcedure={setSelectedProcedureIndex}
+        />
+        <ProgressFooter run={run} selectedProcedureIndex={selectedProcedureIndex}>
           <RunTabs
             runs={state.runs}
             activeId={run?.runId ?? ""}

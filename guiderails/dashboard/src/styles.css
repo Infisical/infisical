@@ -191,6 +191,20 @@ body {
   background: var(--text-3);
 }
 
+.status__icon {
+  width: 10px;
+  line-height: 1;
+  text-align: center;
+}
+
+.status--passed {
+  color: var(--pass);
+}
+
+.status--failed {
+  color: var(--fail);
+}
+
 .status--lost {
   color: var(--fail);
 }
@@ -294,30 +308,69 @@ body {
   padding-bottom: var(--s6);
 }
 
-.rail__procedure + .rail__procedure {
-  border-top: 1px solid var(--border);
-}
-
-.rail__heading {
+.rail__procedure-tabs {
   position: sticky;
   top: 0;
   z-index: 1;
   background: var(--panel);
-  padding: var(--s4) var(--s4) var(--s2);
   border-bottom: 1px solid var(--border);
   display: flex;
-  gap: var(--s2);
-  align-items: baseline;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
-.rail__heading-text {
+.rail__procedure-tab {
+  position: relative;
+  flex: 1 0 128px;
+  min-width: 0;
+  padding: var(--s3) var(--s3) var(--s2);
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-3);
+  text-align: left;
+  cursor: pointer;
+}
+
+.rail__procedure-tab::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: transparent;
+}
+
+.rail__procedure-tab:hover,
+.rail__procedure-tab--active {
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text);
+}
+
+.rail__procedure-tab--active::after,
+.rail__procedure-tab--running::after {
+  background: var(--volt);
+}
+
+.rail__procedure-tab--failed::after {
+  background: var(--fail);
+}
+
+.rail__procedure-index {
+  display: block;
+  margin-bottom: 2px;
   font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+}
+
+.rail__procedure-label {
+  display: block;
   font-size: 12px;
-  color: var(--text-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 0;
 }
 
 .rail__log {
@@ -342,7 +395,7 @@ body {
 
 .step {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
+  grid-template-columns: 34px minmax(0, 1fr);
   gap: var(--s2);
   padding: var(--s2) var(--s4) var(--s2) var(--s3);
   /* Volt lives here, unpainted, so switching it on for the active step does not shift the text. */
@@ -356,11 +409,37 @@ body {
 }
 
 .step__marker {
+  display: grid;
+  grid-template-columns: minmax(12px, 1fr) 14px;
+  align-items: center;
+  align-self: start;
+  gap: 3px;
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 21px;
-  text-align: center;
   color: var(--text-3);
+}
+
+.step__index {
+  color: var(--text-3);
+  text-align: right;
+}
+
+.step__status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 21px;
+  line-height: 1;
+  text-align: center;
+}
+
+.agent-pulse {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  background: var(--volt);
+  animation: pulse 1.6s var(--ease) infinite;
 }
 
 .step--passed .step__marker {
@@ -369,7 +448,6 @@ body {
 .step--failed .step__marker {
   color: var(--fail);
 }
-.step--unverified .step__marker,
 .step--skipped .step__marker {
   color: var(--warn);
 }
@@ -407,6 +485,45 @@ body {
   margin-left: var(--s2);
 }
 
+.step__thinking {
+  display: flex;
+  align-items: baseline;
+  margin-top: 2px;
+  color: var(--volt);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.step__thinking-dots {
+  display: inline-flex;
+  width: 12px;
+}
+
+.step__thinking-dots span {
+  animation: thinking-dot 1.2s infinite;
+}
+
+.step__thinking-dots span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.step__thinking-dots span:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+@keyframes thinking-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.2;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
 .step__detail {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -439,6 +556,13 @@ body {
 .activity__text {
   font-size: 13px;
   color: var(--text-2);
+}
+
+.activity__tool-label {
+  margin-bottom: var(--s1);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
 }
 
 .activity__tool {
@@ -588,9 +712,13 @@ body {
 .progress__cell--running {
   background: var(--volt);
 }
-.progress__cell--skipped,
-.progress__cell--unverified {
+.progress__cell--skipped {
   background: var(--warn);
+  opacity: 0.5;
+}
+
+.progress__cell--unverified {
+  background: var(--text-3);
   opacity: 0.5;
 }
 
@@ -615,7 +743,7 @@ body {
   color: var(--fail);
 }
 .footer__count--unverified strong {
-  color: var(--warn);
+  color: var(--text-3);
 }
 
 /* Respect the setting rather than animating regardless: a pulsing dot next to a live screencast is

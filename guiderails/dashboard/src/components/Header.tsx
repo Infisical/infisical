@@ -10,11 +10,22 @@ import type { RunState, StreamState } from "../useRunStream.js";
 const connectionStatus = (
   state: StreamState,
   run: RunState | null
-): { className: string; label: string } => {
-  if (state.connection === "closed") return { className: "status--lost", label: "reconnecting" };
-  if (state.connection === "connecting") return { className: "status--done", label: "connecting" };
-  if (run?.finished) return { className: "status--done", label: "finished" };
-  return { className: "status--live", label: "live" };
+): { className: string; label: string; icon: string | null } => {
+  if (state.connection === "closed") {
+    return { className: "status--lost", label: "reconnecting", icon: null };
+  }
+  if (state.connection === "connecting") {
+    return { className: "status--done", label: "connecting", icon: null };
+  }
+  if (run?.finished) {
+    const failed = run.finished.failed > 0;
+    return {
+      className: failed ? "status--failed" : "status--passed",
+      label: "finished",
+      icon: failed ? "✕" : "✓"
+    };
+  }
+  return { className: "status--live", label: "live", icon: null };
 };
 
 export const Header = ({
@@ -33,7 +44,13 @@ export const Header = ({
       <div className="header__meta">
         {run?.fixture ? <span className="chip">fixture {run.fixture}</span> : null}
         <span className={`status ${status.className}`}>
-          <span className="status__dot" />
+          {status.icon ? (
+            <span className="status__icon" aria-label={status.className === "status--failed" ? "failed" : "passed"}>
+              {status.icon}
+            </span>
+          ) : (
+            <span className="status__dot" />
+          )}
           {status.label}
         </span>
       </div>

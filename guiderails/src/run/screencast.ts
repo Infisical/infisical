@@ -42,9 +42,10 @@ export const startScreencast = async (
 
   await cdp.send("Page.startScreencast", {
     format: "jpeg",
-    quality: options.quality ?? 60,
-    maxWidth: options.maxWidth ?? 1280,
-    maxHeight: options.maxHeight ?? 800,
+    quality: options.quality ?? 80,
+    // Match the runner's viewport so text is not downscaled before the dashboard fits the image.
+    maxWidth: options.maxWidth ?? 1440,
+    maxHeight: options.maxHeight ?? 900,
     everyNthFrame: 1
   });
 

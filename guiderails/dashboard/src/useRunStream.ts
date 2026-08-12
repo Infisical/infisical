@@ -34,6 +34,8 @@ export type StepState = {
   instruction: string;
   status: "upcoming" | "running" | "passed" | "failed" | "skipped" | "unverified";
   mode: "replay" | "agent" | null;
+  /** What an active agent is waiting on. Replay never adopts an agent phase. */
+  agentPhase: "thinking" | "acting" | null;
   detail: string | null;
   activity: ActivityEntry[];
 };
@@ -131,6 +133,7 @@ export const reduce = (state: StreamState, event: RunEvent): StreamState => {
             instruction: step.instruction,
             status: "upcoming",
             mode: null,
+            agentPhase: null,
             detail: null,
             activity: []
           });
@@ -144,6 +147,7 @@ export const reduce = (state: StreamState, event: RunEvent): StreamState => {
       if (!step || !current) return state;
       step.status = "running";
       step.mode = event.mode;
+      step.agentPhase = event.mode === "agent" ? "thinking" : null;
       // The plan is the source of truth for the instruction, but a step reached without a plan
       // event still has to render something.
       step.instruction = event.instruction;
@@ -155,6 +159,7 @@ export const reduce = (state: StreamState, event: RunEvent): StreamState => {
       const step = lookup(current, event.procedureIndex, event.docStepIndex);
       if (!step) return state;
       step.status = outcomeStatus[event.outcome];
+      step.agentPhase = null;
       step.detail = event.detail;
       // currentKey deliberately stays put. A result arrives before the next step starts, and
       // clearing it here would blank the rail between every pair of steps.
@@ -165,6 +170,7 @@ export const reduce = (state: StreamState, event: RunEvent): StreamState => {
     case "assistant_text": {
       const step = currentStep(current);
       if (!step) return appendLog(state, event.text);
+      if (step.mode === "agent") step.agentPhase = "thinking";
       step.activity.push({
         kind: event.type === "thinking" ? "thinking" : "text",
         id: nextEntryId(),
@@ -176,6 +182,7 @@ export const reduce = (state: StreamState, event: RunEvent): StreamState => {
     case "tool_call": {
       const step = currentStep(current);
       if (!step) return state;
+      if (step.mode === "agent") step.agentPhase = "acting";
       step.activity.push({
         kind: "tool",
         id: event.id,
@@ -198,6 +205,7 @@ export const reduce = (state: StreamState, event: RunEvent): StreamState => {
       if (!entry || entry.kind !== "tool") return state;
       entry.state = event.ok ? "ok" : "failed";
       entry.detail = event.detail;
+      if (step.mode === "agent") step.agentPhase = "thinking";
       return { ...state, runs };
     }
 
@@ -263,6 +271,7 @@ const lookup = (
     instruction: "",
     status: "upcoming",
     mode: null,
+    agentPhase: null,
     detail: null,
     activity: []
   };

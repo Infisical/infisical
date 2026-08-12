@@ -170,6 +170,41 @@ describe("tool calls", () => {
   });
 });
 
+describe("agent phase", () => {
+  it("moves from thinking to acting and back until the step completes", () => {
+    let state = apply([
+      START,
+      PLAN,
+      { type: "step_started", procedureIndex: 1, docStepIndex: 1, instruction: "a", mode: "agent" }
+    ]);
+    expect(run(state).steps.get(stepKey(1, 1))?.agentPhase).toBe("thinking");
+
+    state = reduce(state, { type: "tool_call", id: 1, name: "click", arg: "Add" });
+    expect(run(state).steps.get(stepKey(1, 1))?.agentPhase).toBe("acting");
+
+    state = reduce(state, { type: "tool_result", id: 1, name: "click", ok: true, detail: "ok" });
+    expect(run(state).steps.get(stepKey(1, 1))?.agentPhase).toBe("thinking");
+
+    state = reduce(state, {
+      type: "step_result",
+      procedureIndex: 1,
+      docStepIndex: 1,
+      outcome: "passed",
+      detail: "ok"
+    });
+    expect(run(state).steps.get(stepKey(1, 1))?.agentPhase).toBeNull();
+  });
+
+  it("does not describe deterministic replay as thinking", () => {
+    const state = apply([
+      START,
+      PLAN,
+      { type: "step_started", procedureIndex: 1, docStepIndex: 1, instruction: "a", mode: "replay" }
+    ]);
+    expect(run(state).steps.get(stepKey(1, 1))?.agentPhase).toBeNull();
+  });
+});
+
 describe("frames and logs", () => {
   it("keeps only the newest frame", () => {
     const state = apply([START, { type: "frame", jpegBase64: "a" }, { type: "frame", jpegBase64: "b" }]);
