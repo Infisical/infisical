@@ -184,22 +184,22 @@ export const SessionsTab = () => {
             </EmptyHeader>
           </Empty>
         ) : (
-          <Table className="min-w-[56rem] table-fixed">
+          <Table className="min-w-[60rem] table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-56">
+                <TableHead className="w-40">
                   <TableHeadLabel>Agent</TableHeadLabel>
                 </TableHead>
                 <TableHead>
                   <TableHeadLabel>Acting for</TableHeadLabel>
                 </TableHead>
-                <TableHead className="w-36">
+                <TableHead className="w-48">
                   <TableHeadLabel>Started</TableHeadLabel>
                 </TableHead>
-                <TableHead className="w-36">
+                <TableHead className="w-48">
                   <TableHeadLabel>Last request</TableHeadLabel>
                 </TableHead>
-                <TableHead className="w-36">
+                <TableHead className="w-28">
                   <TableHeadLabel>Status</TableHeadLabel>
                 </TableHead>
                 <TableHead className="w-28" />
@@ -242,7 +242,7 @@ export const SessionsTab = () => {
                       <span className="text-sm">{session.userEmail ?? session.username}</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-muted">
+                  <TableCell className="truncate text-muted">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span>{formatDistanceToNow(new Date(session.createdAt))} ago</span>
@@ -255,7 +255,7 @@ export const SessionsTab = () => {
                       </TooltipContent>
                     </Tooltip>
                   </TableCell>
-                  <TableCell className="text-muted">{describeLastUsed(session)}</TableCell>
+                  <TableCell className="truncate text-muted">{describeLastUsed(session)}</TableCell>
                   <TableCell>
                     <SessionStatus session={session} />
                   </TableCell>
