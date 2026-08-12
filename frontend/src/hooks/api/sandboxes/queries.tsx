@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TSandbox } from "./types";
+import { TSandbox, TSandboxCatalog } from "./types";
 
 // Mirrors PAM: the sandbox project is hidden, resolved (and bootstrapped) on first visit so the
 // Project and ProjectPermission contexts have something to hang off.
@@ -13,6 +13,7 @@ export const fetchSandboxProjectId = async () => {
 
 export const sandboxKeys = {
   all: () => ["sandboxes"] as const,
+  catalog: () => [...sandboxKeys.all(), "catalog"] as const,
   list: () => [...sandboxKeys.all(), "list"] as const,
   byId: (sandboxId: string) => [...sandboxKeys.all(), "detail", sandboxId] as const
 };
@@ -39,5 +40,16 @@ export const useGetSandboxById = (sandboxId?: string) =>
         `/api/v1/sandboxes/${sandboxId}`
       );
       return data.sandbox;
+    }
+  });
+
+export const useGetSandboxCatalog = () =>
+  useQuery({
+    queryKey: sandboxKeys.catalog(),
+    // The catalog is a static server-side constant.
+    staleTime: Infinity,
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TSandboxCatalog>("/api/v1/sandboxes/catalog");
+      return data;
     }
   });

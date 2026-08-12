@@ -1,0 +1,75 @@
+import { ServerIcon } from "lucide-react";
+
+import { createNotification } from "@app/components/notifications";
+import {
+  Badge,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle
+} from "@app/components/v3";
+import { useListPamAccounts } from "@app/hooks/api/pam/queries";
+import { TSandbox, useUpdateSandbox } from "@app/hooks/api/sandboxes";
+
+export const PamAccountsTab = ({ sandbox }: { sandbox: TSandbox }) => {
+  const { data: accounts } = useListPamAccounts();
+  const updateSandbox = useUpdateSandbox();
+
+  const selected = new Set(sandbox.grants.pamAccountIds);
+
+  const toggle = async (accountId: string) => {
+    const next = new Set(selected);
+    if (next.has(accountId)) next.delete(accountId);
+    else next.add(accountId);
+
+    await updateSandbox.mutateAsync({ sandboxId: sandbox.id, pamAccountIds: [...next] });
+    createNotification({ type: "success", text: "PAM access updated" });
+  };
+
+  return (
+    <>
+      <p className="text-xs text-muted">
+        Selected accounts are described to the agent. It connects through a brokered session and
+        never receives the credential.
+      </p>
+
+      {!accounts?.length ? (
+        <Empty frame="dashed" className="mt-3">
+          <EmptyHeader>
+            <EmptyMedia>
+              <ServerIcon />
+            </EmptyMedia>
+            <EmptyTitle>No PAM accounts</EmptyTitle>
+            <EmptyDescription>Add accounts in PAM to grant the agent access.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <ul className="mt-3 flex flex-col gap-2">
+          {accounts.map((account) => (
+            <li key={account.id}>
+              <button
+                type="button"
+                onClick={() => toggle(account.id)}
+                className={`flex w-full items-center justify-between gap-4 rounded-lg border p-3 text-left transition duration-200 ease-in-out ${
+                  selected.has(account.id)
+                    ? "border-project/40 bg-project/10"
+                    : "border-border bg-card hover:bg-container-hover"
+                }`}
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{account.name}</p>
+                  <p className="truncate text-xs text-muted">
+                    {account.accountType}
+                    {account.folderName ? ` · ${account.folderName}` : ""}
+                  </p>
+                </div>
+                {selected.has(account.id) && <Badge variant="project">Granted</Badge>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+};

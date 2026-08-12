@@ -52,8 +52,12 @@ export const ProjectNav = () => {
   const isFromRootRequests = (locationSearch as { from?: string })?.from === "root-requests";
   const hasSignerContext = Boolean((locationSearch as { signerId?: string })?.signerId);
   const intermediateAvailable = hasIntermediateProjectsView(currentProject.type);
+  // Inside a sandbox the group label is the way back to the list, so it names that rather than the
+  // org, matching how the rest of the sidebar reads as a breadcrumb.
+  const isInsideSandbox = /\/sandboxes\/[0-9a-f-]{36}/.test(pathname);
   let projectLabel: string;
-  if (intermediateAvailable) projectLabel = "Projects";
+  if (isInsideSandbox) projectLabel = "All sandboxes";
+  else if (intermediateAvailable) projectLabel = "Projects";
   else if (isSubOrganization) projectLabel = "Sub-Organization";
   else projectLabel = "Organization";
   const NavComponent = PROJECT_NAV_COMPONENT[currentProject.type];
@@ -144,6 +148,13 @@ export const ProjectNav = () => {
                 className="cursor-pointer hover:bg-foreground/[0.025]"
                 type="button"
                 onClick={() => {
+                  if (isInsideSandbox) {
+                    navigate({
+                      to: "/organizations/$orgId/sandboxes",
+                      params: { orgId: currentOrg.id }
+                    });
+                    return;
+                  }
                   if (intermediateAvailable) {
                     navigate({
                       to: "/organizations/$orgId/projects/$type",

@@ -105,9 +105,7 @@ export const SandboxesPage = () => {
               <TableBody>
                 {sandboxes.map((sandbox) => {
                   const grantCount =
-                    sandbox.grants.pamAccountIds.length +
-                    sandbox.grants.proxiedServiceIds.length +
-                    sandbox.grants.clis.length;
+                    sandbox.grants.integrations.length + sandbox.grants.pamAccountIds.length;
 
                   return (
                     <TableRow

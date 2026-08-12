@@ -3,7 +3,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { sandboxKeys } from "./queries";
-import { TCreateSandboxDTO, TSandbox, TSandboxExecResult, TUpdateSandboxDTO } from "./types";
+import {
+  SandboxIntegrationType,
+  TCreateSandboxDTO,
+  TSandbox,
+  TSandboxExecResult,
+  TSandboxSecretRef,
+  TUpdateSandboxDTO
+} from "./types";
 
 export const useCreateSandbox = () => {
   const queryClient = useQueryClient();
@@ -73,4 +80,53 @@ export const execInSandbox = async (sandboxId: string, command: string) => {
     { command }
   );
   return data.result;
+};
+
+export const useAddSandboxIntegration = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      sandboxId,
+      ...body
+    }: {
+      sandboxId: string;
+      type: SandboxIntegrationType;
+      hostnames?: string[];
+      secret: TSandboxSecretRef;
+    }) => {
+      const { data } = await apiRequest.post<{ sandbox: TSandbox }>(
+        `/api/v1/sandboxes/${sandboxId}/integrations`,
+        body
+      );
+      return data.sandbox;
+    },
+    onSuccess: (_, { sandboxId }) => {
+      queryClient.invalidateQueries({ queryKey: sandboxKeys.byId(sandboxId) });
+      queryClient.invalidateQueries({ queryKey: sandboxKeys.list() });
+    }
+  });
+};
+
+export const useRemoveSandboxIntegration = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      sandboxId,
+      integrationId
+    }: {
+      sandboxId: string;
+      integrationId: string;
+    }) => {
+      const { data } = await apiRequest.delete<{ sandbox: TSandbox }>(
+        `/api/v1/sandboxes/${sandboxId}/integrations/${integrationId}`
+      );
+      return data.sandbox;
+    },
+    onSuccess: (_, { sandboxId }) => {
+      queryClient.invalidateQueries({ queryKey: sandboxKeys.byId(sandboxId) });
+      queryClient.invalidateQueries({ queryKey: sandboxKeys.list() });
+    }
+  });
 };

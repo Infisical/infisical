@@ -3,10 +3,56 @@ export enum SandboxStatus {
   Running = "running"
 }
 
+export enum SandboxIntegrationType {
+  GitHub = "github",
+  Slack = "slack",
+  Stripe = "stripe",
+  Linear = "linear",
+  OpenAI = "openai",
+  Custom = "custom"
+}
+
+export enum SandboxAgentType {
+  Gemini = "gemini",
+  Claude = "claude",
+  Codex = "codex",
+  Copilot = "copilot"
+}
+
+export type TSandboxSecretRef = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  secretKey: string;
+};
+
+export type TSandboxIntegration = {
+  id: string;
+  type: SandboxIntegrationType;
+  hostnames: string[];
+  secret: TSandboxSecretRef;
+};
+
 export type TSandboxGrants = {
+  integrations: TSandboxIntegration[];
   pamAccountIds: string[];
-  proxiedServiceIds: string[];
-  clis: string[];
+};
+
+export type TSandboxCatalog = {
+  integrations: {
+    type: SandboxIntegrationType;
+    name: string;
+    description: string;
+    hostnames: string[];
+    envVarName: string;
+    cli: { name: string; binary: string } | null;
+  }[];
+  agents: {
+    type: SandboxAgentType;
+    name: string;
+    tokenLabel: string;
+    isSupported: boolean;
+  }[];
 };
 
 export type TSandbox = {
@@ -18,6 +64,8 @@ export type TSandbox = {
   vcpu: number;
   memoryMb: number;
   grants: TSandboxGrants;
+  agentType: SandboxAgentType | null;
+  hasAgentToken: boolean;
   createdAt: string;
   lastActivityAt: string | null;
   commandsRun: number;
@@ -39,7 +87,6 @@ export type TCreateSandboxDTO = {
   description?: string;
   vcpu: number;
   memoryMb: number;
-  grants?: Partial<TSandboxGrants>;
 };
 
 export type TUpdateSandboxDTO = {
@@ -48,5 +95,7 @@ export type TUpdateSandboxDTO = {
   description?: string;
   vcpu?: number;
   memoryMb?: number;
-  grants?: Partial<TSandboxGrants>;
+  pamAccountIds?: string[];
+  agentType?: SandboxAgentType;
+  agentToken?: string;
 };
