@@ -1,0 +1,145 @@
+import { request } from "@app/lib/config/request";
+import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+
+import { execInSandbox } from "./sandbox-runtime";
+
+/**
+ * The agent loop. Gemini is given one tool, a shell inside the sandbox, plus a system prompt naming
+ * the CLIs and databases it can reach. Everything it can touch is already brokered, so the loop
+ * itself needs no credential handling.
+ */
+
+const GEMINI_MODEL = "gemini-3.6-flash";
+const GEMINI_TIMEOUT_MS = 60_000;
+const MAX_TOOL_ROUNDS = 30;
+
+export type TAgentMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type TAgentToolCall = {
+  command: string;
+  exitCode: number | null;
+  output: string;
+};
+
+export type TAgentTurn = {
+  reply: string;
+  toolCalls: TAgentToolCall[];
+};
+
+type TGeminiPart = {
+  text?: string;
+  functionCall?: { name: string; args: Record<string, unknown> };
+  functionResponse?: { name: string; response: Record<string, unknown> };
+};
+
+type TGeminiContent = { role: "user" | "model"; parts: TGeminiPart[] };
+
+type TGeminiResponse = {
+  candidates?: { content?: { parts?: TGeminiPart[] } }[];
+};
+
+const RUN_COMMAND_TOOL = {
+  functionDeclarations: [
+    {
+      name: "run_command",
+      description:
+        "Run a shell command inside the sandbox and return its output. Use this for everything: CLIs, curl, psql, reading files.",
+      parameters: {
+        type: "OBJECT",
+        properties: {
+          command: { type: "STRING", description: "The shell command to run." }
+        },
+        required: ["command"]
+      }
+    }
+  ]
+};
+
+const callGemini = async (apiKey: string, systemPrompt: string, contents: TGeminiContent[]) => {
+  const { data } = await request.post<TGeminiResponse>(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+    {
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents,
+      tools: [RUN_COMMAND_TOOL],
+      generationConfig: { temperature: 0.2 }
+    },
+    { params: { key: apiKey }, timeout: GEMINI_TIMEOUT_MS }
+  );
+
+  return data.candidates?.[0]?.content?.parts ?? [];
+};
+
+export const runAgentTurn = async ({
+  sandboxId,
+  apiKey,
+  systemPrompt,
+  messages
+}: {
+  sandboxId: string;
+  apiKey: string;
+  systemPrompt: string;
+  messages: TAgentMessage[];
+}): Promise<TAgentTurn> => {
+  if (!apiKey) {
+    throw new BadRequestError({
+      message: "This sandbox has no agent API key. Add one under the Agent section before chatting."
+    });
+  }
+
+  const contents: TGeminiContent[] = messages.map((message) => ({
+    role: message.role === "user" ? "user" : "model",
+    parts: [{ text: message.content }]
+  }));
+
+  const toolCalls: TAgentToolCall[] = [];
+
+  for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
+    // eslint-disable-next-line no-await-in-loop -- the model decides each step from the last result
+    const parts = await callGemini(apiKey, systemPrompt, contents);
+    const calls = parts.filter((part) => part.functionCall);
+
+    if (!calls.length) {
+      const reply = parts
+        .map((part) => part.text)
+        .filter(Boolean)
+        .join("\n")
+        .trim();
+
+      return { reply: reply || "(no response)", toolCalls };
+    }
+
+    contents.push({ role: "model", parts });
+
+    const responseParts: TGeminiPart[] = [];
+    for (const part of calls) {
+      const command = String(part.functionCall?.args?.command ?? "");
+
+      // eslint-disable-next-line no-await-in-loop
+      const result = await execInSandbox(sandboxId, command).catch((error: Error) => ({
+        stdout: "",
+        stderr: error.message,
+        exitCode: null as number | null
+      }));
+
+      const output = [result.stdout, result.stderr].filter(Boolean).join("\n").slice(0, 8000);
+      toolCalls.push({ command, exitCode: result.exitCode, output });
+
+      responseParts.push({
+        functionResponse: {
+          name: "run_command",
+          response: { exitCode: result.exitCode, output: output || "(no output)" }
+        }
+      });
+    }
+
+    contents.push({ role: "user", parts: responseParts });
+  }
+
+  logger.warn(`Agent hit the tool round limit [sandboxId=${sandboxId}]`);
+  return { reply: "I ran out of steps before finishing that. Try narrowing the request.", toolCalls };
+};

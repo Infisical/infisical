@@ -5,6 +5,8 @@ import { apiRequest } from "@app/config/request";
 import { sandboxKeys } from "./queries";
 import {
   SandboxIntegrationType,
+  TAgentMessage,
+  TAgentTurn,
   TCreateSandboxDTO,
   TSandbox,
   TSandboxCredentialConfig,
@@ -132,3 +134,19 @@ export const useRemoveSandboxIntegration = () => {
     }
   });
 };
+
+export const useChatWithAgent = () =>
+  useMutation({
+    mutationFn: async ({
+      sandboxId,
+      messages
+    }: {
+      sandboxId: string;
+      messages: TAgentMessage[];
+    }) => {
+      const { data } = await apiRequest.post<TAgentTurn>(`/api/v1/sandboxes/${sandboxId}/chat`, {
+        messages
+      });
+      return data;
+    }
+  });

@@ -348,6 +348,45 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
+    url: "/:sandboxId/chat",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "chatWithSandboxAgent",
+      description: "Send a message to the sandbox's agent and run one turn, tools included.",
+      params: SandboxIdParamsSchema,
+      body: z.object({
+        messages: z
+          .object({
+            role: z.enum(["user", "assistant"]),
+            content: z.string().trim().min(1).max(10_000)
+          })
+          .array()
+          .min(1)
+          .max(50)
+      }),
+      response: {
+        200: z.object({
+          reply: z.string(),
+          toolCalls: z
+            .object({
+              command: z.string(),
+              exitCode: z.number().nullable(),
+              output: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) =>
+      server.services.sandbox.chatWithAgent(
+        { sandboxId: req.params.sandboxId, messages: req.body.messages },
+        req.permission
+      )
+  });
+
+  server.route({
+    method: "POST",
     url: "/:sandboxId/exec",
     config: { rateLimit: writeLimit },
     schema: {

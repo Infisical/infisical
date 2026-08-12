@@ -124,3 +124,19 @@ export type TUpdateSandboxDTO = {
   agentType?: SandboxAgentType;
   agentToken?: string;
 };
+
+export type TAgentMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type TAgentToolCall = {
+  command: string;
+  exitCode: number | null;
+  output: string;
+};
+
+export type TAgentTurn = {
+  reply: string;
+  toolCalls: TAgentToolCall[];
+};

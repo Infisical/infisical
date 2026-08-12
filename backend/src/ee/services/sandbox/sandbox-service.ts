@@ -8,6 +8,7 @@ import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/se
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { runAgentTurn, TAgentMessage } from "./sandbox-agent";
 import { installGithubCli, writeSandboxCaCertificate } from "./sandbox-cli-runtime";
 import { TSandboxDALFactory } from "./sandbox-dal";
 import { deprovisionSandboxIdentity, provisionSandboxIdentity, TSandboxIdentityDeps } from "./sandbox-identity";
@@ -429,6 +430,32 @@ export const sandboxServiceFactory = ({
     return toSandbox(row);
   };
 
+  const chatWithAgent = async (
+    { sandboxId, messages }: TSandboxIdDTO & { messages: TAgentMessage[] },
+    actor: OrgServiceActor
+  ) => {
+    const row = await $resolve(sandboxId, actor, true);
+
+    if (!isSandboxBooted(sandboxId)) {
+      throw new BadRequestError({
+        message: `Sandbox '${row.name}' is not running. Start it before chatting with the agent.`
+      });
+    }
+
+    if (!row.encryptedAgentToken) {
+      throw new BadRequestError({
+        message: "This sandbox has no agent API key. Add one under the Agent section before chatting."
+      });
+    }
+
+    return runAgentTurn({
+      sandboxId,
+      apiKey: await $decryptClientSecret(actor.orgId, row.encryptedAgentToken),
+      systemPrompt: buildSystemPrompt(toSandbox(row), getPamProxies(sandboxId)),
+      messages
+    });
+  };
+
   const getProxyActivity = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor) => {
     await $resolve(sandboxId, actor, false);
     return getSandboxProxyLog(sandboxId);
@@ -451,6 +478,7 @@ export const sandboxServiceFactory = ({
   };
 
   return {
+    chatWithAgent,
     getProxyActivity,
     getSystemPrompt,
     listPamProxies,

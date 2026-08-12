@@ -5,4 +5,5 @@ export * from "./AgentTab";
 export * from "./IntegrationsTab";
 export * from "./OverviewTab";
 export * from "./PamAccountsTab";
+export * from "./SandboxChat";
 export * from "./SandboxTerminal";
