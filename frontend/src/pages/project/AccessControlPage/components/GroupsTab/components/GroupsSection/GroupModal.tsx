@@ -11,13 +11,15 @@ import {
   Button,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect
+  FilterableSelect,
+  Skeleton
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -46,16 +48,21 @@ type Props = {
 const Content = ({ onClose }: { onClose: () => void }) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
   const orgId = currentOrg?.id || "";
 
-  const { data: groups } = useGetOrganizationGroups(orgId);
-  const { data: groupMemberships } = useListWorkspaceGroups(
+  const { data: groups, isPending: isGroupsPending } = useGetOrganizationGroups(orgId);
+  const { data: groupMemberships, isPending: isGroupMembershipsPending } = useListWorkspaceGroups(
     currentProject?.id || "",
     currentProject?.type
   );
 
-  const { data: roles } = useGetProjectRoles(currentProject?.id || "", currentProject?.type);
+  const { data: roles, isPending: isRolesPending } = useGetProjectRoles(
+    currentProject?.id || "",
+    currentProject?.type
+  );
 
   const { mutateAsync: addGroupToWorkspaceMutateAsync } = useAddGroupToWorkspace();
 
@@ -90,10 +97,35 @@ const Content = ({ onClose }: { onClose: () => void }) => {
     onClose();
 
     createNotification({
-      text: "Successfully added group to project",
+      text: `Successfully added group to ${productLabel.toLowerCase()}`,
       type: "success"
     });
   };
+
+  const isDataPending = isGroupsPending || isGroupMembershipsPending || isRolesPending;
+
+  if (isDataPending) {
+    return (
+      <div className="flex flex-col gap-4" role="status" aria-label="Loading groups and roles">
+        <Field>
+          <FieldLabel>Group</FieldLabel>
+          <Skeleton className="h-9 w-full" />
+        </Field>
+        <Field>
+          <FieldLabel>Role</FieldLabel>
+          <Skeleton className="h-9 w-full" />
+        </Field>
+        <DialogFooter>
+          <Button variant="ghost" type="button" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="project" type="button" isPending isDisabled>
+            Add
+          </Button>
+        </DialogFooter>
+      </div>
+    );
+  }
 
   return filteredGroupMembershipOrgs.length ? (
     <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
@@ -180,6 +212,9 @@ export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{`Add Group to ${productLabel}`}</DialogTitle>
+          <DialogDescription>
+            Select an organization group and assign its {productLabel.toLowerCase()} role.
+          </DialogDescription>
         </DialogHeader>
         <Content onClose={() => handlePopUpToggle("group", false)} />
       </DialogContent>

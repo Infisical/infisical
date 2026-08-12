@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -41,7 +41,7 @@ const Page = () => {
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between text-foreground">
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={currentProject.type}
@@ -69,45 +69,55 @@ const Page = () => {
           onValueChange={updateSelectedTab}
         >
           {(isCertManager || isSecretManager) && (
-            <TabList>
-              <Tab variant="project" value={ProjectAccessControlTabs.Member}>
-                Users
-              </Tab>
-              <Tab variant="project" value={ProjectAccessControlTabs.Identities}>
+            <TabsList
+              variant="project"
+              aria-label="Project access control sections"
+              className="w-full justify-start"
+            >
+              <TabsTrigger value={ProjectAccessControlTabs.Member}>Users</TabsTrigger>
+              <TabsTrigger value={ProjectAccessControlTabs.Identities}>
                 Machine Identities
-              </Tab>
-              <Tab variant="project" value={ProjectAccessControlTabs.Groups}>
-                Groups
-              </Tab>
+              </TabsTrigger>
+              <TabsTrigger value={ProjectAccessControlTabs.Groups}>Groups</TabsTrigger>
               {isSecretManager && (
-                <Tab variant="project" value={ProjectAccessControlTabs.ServiceTokens}>
+                <TabsTrigger value={ProjectAccessControlTabs.ServiceTokens}>
                   Service Tokens
-                </Tab>
+                </TabsTrigger>
               )}
               {isSecretManager && (
-                <Tab variant="project" value={ProjectAccessControlTabs.Roles}>
-                  Roles
-                </Tab>
+                <TabsTrigger value={ProjectAccessControlTabs.Roles}>Roles</TabsTrigger>
               )}
-            </TabList>
+            </TabsList>
           )}
-          <TabPanel value={ProjectAccessControlTabs.Member}>
+          <TabsContent
+            value={ProjectAccessControlTabs.Member}
+            className={isCertManager || isSecretManager ? undefined : "mt-0"}
+          >
             <MembersTab />
-          </TabPanel>
-          <TabPanel value={ProjectAccessControlTabs.Identities}>
+          </TabsContent>
+          <TabsContent
+            value={ProjectAccessControlTabs.Identities}
+            className={isCertManager || isSecretManager ? undefined : "mt-0"}
+          >
             <IdentityTab />
-          </TabPanel>
-          <TabPanel value={ProjectAccessControlTabs.Groups}>
+          </TabsContent>
+          <TabsContent
+            value={ProjectAccessControlTabs.Groups}
+            className={isCertManager || isSecretManager ? undefined : "mt-0"}
+          >
             <GroupsTab />
-          </TabPanel>
+          </TabsContent>
           {isSecretManager && (
-            <TabPanel value={ProjectAccessControlTabs.ServiceTokens}>
+            <TabsContent value={ProjectAccessControlTabs.ServiceTokens}>
               <ServiceTokenTab />
-            </TabPanel>
+            </TabsContent>
           )}
-          <TabPanel value={ProjectAccessControlTabs.Roles}>
+          <TabsContent
+            value={ProjectAccessControlTabs.Roles}
+            className={isCertManager || isSecretManager ? undefined : "mt-0"}
+          >
             <ProjectRoleListTab />
-          </TabPanel>
+          </TabsContent>
         </Tabs>
       </div>
     </div>

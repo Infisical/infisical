@@ -79,6 +79,7 @@
   --max-width-8xl: 88rem; /* 1408px */
 
   /* Colors v2 */
+  --color-page: #0e1014;
   --color-background: #19191c;
   --color-foreground: #ebebeb;
   --color-success: #2ecc71;
