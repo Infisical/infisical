@@ -53,7 +53,7 @@ export const AuthConsentWrapper = () => {
       <GtmHead />
       {config.authConsentContent && !hasConsented && (
         <div className="bg-opacity-90 fixed inset-0 z-50 flex items-center justify-center bg-mineshaft-700/80">
-          <div className="max-h-[80vh] w-4/12 overflow-y-auto rounded-lg bg-bunker-800 p-6 text-white">
+          <div className="max-h-[80vh] w-4/12 overflow-y-auto rounded-lg bg-bunker-800 p-6 text-foreground">
             <ReactMarkdown rehypePlugins={[rehypeRaw]}>
               {DOMPurify.sanitize(config.authConsentContent)}
             </ReactMarkdown>

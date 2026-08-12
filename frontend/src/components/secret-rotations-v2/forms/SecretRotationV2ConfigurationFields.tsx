@@ -90,7 +90,7 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
                     });
                   }
                 }}
-                className="bg-mineshaft-700 text-white scheme-dark"
+                className="bg-mineshaft-700 text-foreground scheme-dark"
               />
             </FormControl>
           );

@@ -514,7 +514,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
               />
             ) : (
               <div
-                className="h-full w-full flex-col items-center justify-center rounded-md text-white"
+                className="h-full w-full flex-col items-center justify-center rounded-md text-foreground"
                 ref={popoverContentRef}
               >
                 {suggestions.map((item, i) => {

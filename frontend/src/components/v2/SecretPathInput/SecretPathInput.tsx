@@ -142,7 +142,7 @@ const SecretPathInputBase = ({
             maxHeight: "var(--radix-select-content-available-height)"
           }}
         >
-          <div className="max-h-[25vh] thin-scrollbar w-full flex-col items-center justify-center overflow-y-auto rounded-md text-white">
+          <div className="max-h-[25vh] thin-scrollbar w-full flex-col items-center justify-center overflow-y-auto rounded-md text-foreground">
             {suggestions.map((suggestion, i) => (
               <div
                 tabIndex={0}

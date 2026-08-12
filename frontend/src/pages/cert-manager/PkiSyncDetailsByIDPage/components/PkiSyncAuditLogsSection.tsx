@@ -59,7 +59,7 @@ export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
                     params={{ orgId: currentOrg.id }}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="cursor-pointer underline transition-all hover:text-white"
+                    className="cursor-pointer underline transition-all hover:text-foreground"
                   >
                     upgrade your subscription
                   </Link>
@@ -68,7 +68,7 @@ export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
                     href="https://infisical.com/scheduledemo"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="cursor-pointer underline transition-all hover:text-white"
+                    className="cursor-pointer underline transition-all hover:text-foreground"
                   >
                     upgrade your subscription
                   </a>

@@ -126,7 +126,7 @@ const BreadcrumbContainer = ({
   breadcrumbs: TBreadcrumbFormat[];
   className?: string;
 }) => (
-  <div className={twMerge("mx-auto max-w-8xl overflow-hidden text-white", className)}>
+  <div className={twMerge("mx-auto max-w-8xl overflow-hidden text-foreground", className)}>
     <Breadcrumb className="overflow-hidden">
       <BreadcrumbList className="overflow-hidden">
         {(breadcrumbs as TBreadcrumbFormat[]).map((el, index) => {

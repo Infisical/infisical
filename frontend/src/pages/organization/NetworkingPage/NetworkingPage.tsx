@@ -14,7 +14,7 @@ export const NetworkingPage = () => {
         <title>Infisical | Networking</title>
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
-      <div className="flex w-full justify-center bg-bunker-800 text-white">
+      <div className="flex w-full justify-center bg-bunker-800 text-foreground">
         <div className="w-full max-w-8xl">
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}

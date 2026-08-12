@@ -83,7 +83,7 @@ export const AccessManagementPage = () => {
   const activeTab = selectedTabSection ? selectedTab : (visibleTabSections[0]?.key ?? selectedTab);
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-foreground">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
       </Helmet>

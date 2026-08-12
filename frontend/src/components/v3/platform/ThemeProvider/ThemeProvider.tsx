@@ -1,6 +1,6 @@
 import * as React from "react";
 
-export type Theme = "dark";
+export type Theme = "dark" | "light";
 
 type ThemeContextValue = {
   theme: Theme;
@@ -12,7 +12,7 @@ const DEFAULT_THEME: Theme = "dark";
 
 const ThemeContext = React.createContext<ThemeContextValue | null>(null);
 
-const isTheme = (value: string | null): value is Theme => value === "dark";
+const isTheme = (value: string | null): value is Theme => value === "dark" || value === "light";
 
 const readStoredTheme = (): Theme => {
   try {

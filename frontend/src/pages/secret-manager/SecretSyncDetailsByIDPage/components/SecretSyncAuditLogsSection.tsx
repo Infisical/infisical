@@ -110,7 +110,7 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
                     rel="noopener noreferrer"
                   >
                     <a
-                      className="cursor-pointer underline transition-all hover:text-white"
+                      className="cursor-pointer underline transition-all hover:text-foreground"
                       target="_blank"
                     >
                       upgrade your subscription
@@ -123,7 +123,7 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
                     rel="noopener noreferrer"
                   >
                     <a
-                      className="cursor-pointer underline transition-all hover:text-white"
+                      className="cursor-pointer underline transition-all hover:text-foreground"
                       target="_blank"
                     >
                       upgrade your subscription

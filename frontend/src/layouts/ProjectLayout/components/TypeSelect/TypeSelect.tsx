@@ -131,7 +131,7 @@ const TypeSelectInner = ({
               });
             }
           }}
-          className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-white"
+          className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-foreground"
         >
           <ProductIcon className="h-[14px] w-[14px] shrink-0" />
           <span className="truncate">{pillLabel}</span>

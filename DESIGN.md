@@ -16,8 +16,9 @@ agents producing new UI or user-visible copy.
 Infisical is a security tool for operators. The interface reads like
 infrastructure: dense, calm, and legible. Decorative treatments are reserved
 for brand-forward surfaces such as authentication and onboarding; the core
-product remains utilitarian. Dark is the native medium; the page canvas is
-`--color-background`, and light themes are not part of the system yet.
+product remains utilitarian. Dark is the default medium, with a light theme
+available through the same semantic token system. The page canvas is
+`--color-background` in both themes.
 
 Color carries **meaning before brand**. A danger badge is red because the
 action is destructive, not because red is the accent. A project-colored button
@@ -30,7 +31,7 @@ values are masked by default; revealing one is an intentional act.
 
 **Key characteristics:**
 
-- Dark-native; `--color-background` page canvas
+- Dark-default with a light alternative; `--color-background` page canvas
 - Semantic-first color (danger / success / warning / info / neutral)
 - Scope-aware (org / sub-org / project / admin)
 - Border-defined depth; overlapping labels retain the shared Badge styling

@@ -247,6 +247,92 @@
   --color-blue-900: #00367d;
 }
 
+html[data-theme="light"] {
+  --foreground: oklch(0.205 0 0);
+  --background: oklch(0.985 0 0);
+  color-scheme: light;
+
+  /* Semantic surfaces and text */
+  --color-background: #f5f5f5;
+  --color-foreground: #19191c;
+  --color-neutral: #525355;
+  --color-border: #d6d6d7;
+  --color-label: #525355;
+  --color-muted: #707174;
+  --color-popover: #ffffff;
+  --color-ring: #707174;
+  --color-card: #ffffff;
+  --color-accent: #5b5c5e;
+  --color-container: #f7f7f7;
+  --color-container-hover: #efefef;
+
+  /* Scope and product accents tuned for light surfaces */
+  --color-org: #0063e6;
+  --color-sub-org: #239955;
+  --color-project: #708f13;
+  --color-product-sm: #708f13;
+  --color-product-pki: #b85f10;
+  --color-product-kms: #147d65;
+  --color-product-ss: #7f32b5;
+  --color-product-pam: #c91e4b;
+  --color-admin: #525355;
+  --color-primary: #708f13;
+
+  /* Sidebar */
+  --color-sidebar: #f5f5f5;
+  --color-sidebar-foreground: #19191c;
+  --color-sidebar-border: #d6d6d7;
+  --color-sidebar-accent: #efefef;
+  --color-sidebar-accent-foreground: #19191c;
+  --color-sidebar-ring: #707174;
+
+  /* Resource accents */
+  --color-folder: #80661f;
+  --color-secret: #525355;
+  --color-dynamic-secret: #875616;
+  --color-import: #2f667a;
+  --color-secret-rotation: #3c5072;
+  --color-override: #5c3a73;
+  --color-proxied-service: #6c368f;
+
+  /* Legacy neutral ramps are inverted so existing v2 surfaces remain legible. */
+  --color-mineshaft-50: #19191c;
+  --color-mineshaft-100: #2d2d2e;
+  --color-mineshaft-200: #444547;
+  --color-mineshaft-300: #525355;
+  --color-mineshaft-400: #707174;
+  --color-mineshaft-500: #bdbebf;
+  --color-mineshaft-600: #d6d6d7;
+  --color-mineshaft-700: #efefef;
+  --color-mineshaft-800: #f7f7f7;
+  --color-mineshaft-900: #ffffff;
+  --color-mineshaft: #d6d6d7;
+
+  --color-chicago-50: #19191c;
+  --color-chicago-100: #2d2d2e;
+  --color-chicago-200: #444547;
+  --color-chicago-300: #525355;
+  --color-chicago-400: #707174;
+  --color-chicago-500: #8c8d8e;
+  --color-chicago-600: #bdbebf;
+  --color-chicago-700: #d6d6d7;
+  --color-chicago-800: #efefef;
+  --color-chicago-900: #f7f7f7;
+  --color-chicago: #8c8d8e;
+
+  --color-bunker-50: #19191c;
+  --color-bunker-100: #2d2d2e;
+  --color-bunker-200: #444547;
+  --color-bunker-300: #525355;
+  --color-bunker-400: #707174;
+  --color-bunker-500: #bdbebf;
+  --color-bunker-600: #d6d6d7;
+  --color-bunker-700: #efefef;
+  --color-bunker-800: #f7f7f7;
+  --color-bunker-900: #ffffff;
+  --color-bunker: #f7f7f7;
+}
+
 /* iOS Safari zooms the viewport when focusing an input whose font-size is below 16px.
    Bumping the type scale on detected iOS devices keeps form controls at/above that
    threshold to prevent the zoom while preserving their relationship to surrounding text. */

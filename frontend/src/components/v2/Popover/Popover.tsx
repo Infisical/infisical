@@ -38,7 +38,7 @@ export const PopoverObject = ({ children, text, onChangeHandler, id }: Props) =>
           />
         </div>
         <Popover.Close
-          className="hover:bg-violet4 focus:shadow-violet7 absolute top-[5px] right-[5px] inline-flex h-[25px] w-[25px] cursor-default items-center justify-center rounded-full text-bunker-300 outline-hidden hover:text-white focus:shadow-[0_0_0_2px]"
+          className="hover:bg-violet4 focus:shadow-violet7 absolute top-[5px] right-[5px] inline-flex h-[25px] w-[25px] cursor-default items-center justify-center rounded-full text-bunker-300 outline-hidden hover:text-foreground focus:shadow-[0_0_0_2px]"
           aria-label="Close"
         >
           <FontAwesomeIcon icon={faXmark} />

@@ -27,7 +27,7 @@ export const ManagePlansModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <button
                   type="button"
                   className={`p-4 ${
-                    selected ? "border-b-2 border-white text-white" : "text-mineshaft-400"
+                    selected ? "border-b-2 border-white text-foreground" : "text-mineshaft-400"
                   } w-30 font-medium whitespace-nowrap outline-hidden`}
                 >
                   Bill monthly
@@ -39,7 +39,7 @@ export const ManagePlansModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <button
                   type="button"
                   className={`p-4 ${
-                    selected ? "border-b-2 border-white text-white" : "text-mineshaft-400"
+                    selected ? "border-b-2 border-white text-foreground" : "text-mineshaft-400"
                   } w-30 font-medium outline-hidden`}
                 >
                   Bill yearly

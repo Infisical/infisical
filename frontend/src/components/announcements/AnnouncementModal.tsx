@@ -93,7 +93,7 @@ export const AnnouncementModal = ({ announcements, isOpen, onOpenChange }: Props
                 href={safeHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex w-fit items-center gap-1.5 text-sm text-white underline"
+                className="inline-flex w-fit items-center gap-1.5 text-sm text-foreground underline"
               >
                 {ctaLabel}
                 <ExternalLink className="size-3.5" />

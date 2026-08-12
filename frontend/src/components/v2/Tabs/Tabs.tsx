@@ -51,7 +51,7 @@ export const Tab = ({
       "px-3 text-sm font-medium whitespace-nowrap text-mineshaft-300/75 transition-all select-none",
       "data-[orientation=vertical]:xl:h-5 data-[orientation=vertical]:xl:border-b-0 data-[orientation=vertical]:xl:border-l",
       "border-b hover:text-mineshaft-200",
-      "data-[state=active]:border-mineshaft-400 data-[state=active]:text-white",
+      "data-[state=active]:border-mineshaft-400 data-[state=active]:text-foreground",
       "hover:border-mineshaft-400",
       variant === "project" && "data-[state=active]:border-primary",
       variant === "namespace" && "data-[state=active]:border-namespace-v1",

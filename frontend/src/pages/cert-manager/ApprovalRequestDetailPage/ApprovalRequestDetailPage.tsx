@@ -364,7 +364,7 @@ const PageContent = () => {
   };
 
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 font-inter text-white">
+    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 font-inter text-foreground">
       <div className="mx-auto mb-6 w-full max-w-8xl">
         {renderBackLink()}
 

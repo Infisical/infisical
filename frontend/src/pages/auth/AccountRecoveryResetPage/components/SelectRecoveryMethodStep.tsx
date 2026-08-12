@@ -41,7 +41,7 @@ export const SelectRecoveryMethodStep = ({ email, onSelect, hasEmailAuthEnabled 
         Account Recovery
       </h1>
       <p className="mb-4 text-center text-sm text-gray-300">
-        Email verified successfully for <span className="font-medium text-white">{email}</span>
+        Email verified successfully for <span className="font-medium text-foreground">{email}</span>
       </p>
       <p className="mb-8 text-center text-sm text-gray-500">
         Select how you&apos;d like to recover access to your account

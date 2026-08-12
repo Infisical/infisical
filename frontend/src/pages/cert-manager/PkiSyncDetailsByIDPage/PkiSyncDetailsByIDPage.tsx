@@ -96,7 +96,7 @@ const PageContent = () => {
 
   return (
     <>
-      <div className="container mx-auto flex flex-col justify-between bg-bunker-800 font-inter text-white">
+      <div className="container mx-auto flex flex-col justify-between bg-bunker-800 font-inter text-foreground">
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <button
             type="button"
@@ -113,7 +113,7 @@ const PageContent = () => {
               className="mt-1.5 ml-1 w-12"
             />
             <div className="min-w-0">
-              <p className="truncate text-2xl font-medium text-white">{pkiSync.name}</p>
+              <p className="truncate text-2xl font-medium text-foreground">{pkiSync.name}</p>
               <p className="mt-1 leading-3 text-accent">
                 {pkiSync.description || `${destinationDetails.name} PKI Sync`}
               </p>
