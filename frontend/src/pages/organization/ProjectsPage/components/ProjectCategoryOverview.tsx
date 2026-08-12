@@ -268,7 +268,7 @@ export const ProjectCategoryOverview = () => {
       <button
         type="button"
         aria-label={`Open ${project.name}`}
-        className="flex h-full min-h-48 w-full flex-col p-5 pr-14 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset"
+        className="flex h-full min-h-48 w-full flex-col p-5 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset"
         onClick={() => navigateToProject(project)}
       >
         <div className="flex items-center gap-2">
@@ -294,7 +294,7 @@ export const ProjectCategoryOverview = () => {
           </span>
           <span className="flex items-center gap-1.5">
             <Clock3Icon className="size-3.5" aria-hidden />
-            Updated {formatUpdatedAt(project.updatedAt)}
+            {formatUpdatedAt(project.updatedAt)}
           </span>
         </div>
       </button>
@@ -307,7 +307,7 @@ export const ProjectCategoryOverview = () => {
 
   if (isLoading) {
     projectContent = (
-      <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2 @5xl:grid-cols-3 @7xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2 @3xl:grid-cols-3 @6xl:grid-cols-4">
         {Array.from({ length: 6 }).map((_, index) => (
           <Card key={`project-loading-${index + 1}`} className="h-48 gap-4">
             <div className="flex items-center gap-2">
@@ -346,20 +346,19 @@ export const ProjectCategoryOverview = () => {
     );
   } else if (view === "grid") {
     projectContent = (
-      <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2 @5xl:grid-cols-3 @7xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2 @4xl:grid-cols-3 @6xl:grid-cols-4">
         {visibleProjects.map(renderProjectCard)}
       </div>
     );
   } else {
     projectContent = (
       <Card className="overflow-hidden p-0">
-        <Table>
+        <Table containerClassName="rounded-none border-0 bg-transparent">
           <TableHeader>
             <TableRow>
               <TableHead>Project</TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Environments</TableHead>
-              <TableHead>Updated</TableHead>
+              <TableHead className="text-right">Environments</TableHead>
+              <TableHead className="text-right">Last updated</TableHead>
               <TableHead aria-label="Favorite" className="w-0" />
             </TableRow>
           </TableHeader>
@@ -377,16 +376,28 @@ export const ProjectCategoryOverview = () => {
                       <span className="block truncate font-medium text-foreground">
                         {project.name}
                       </span>
-                      <span className="block truncate text-xs text-muted">
-                        {currentOrg.name} / {project.slug}
-                      </span>
+                      {project.description && (
+                        <span className="block truncate text-xs text-muted">
+                          {project.description}
+                        </span>
+                      )}
                     </span>
                   </button>
                 </TableCell>
-                <TableCell>{PROJECT_LABELS[project.type]}</TableCell>
-                <TableCell>{project.environments.length}</TableCell>
-                <TableCell className="whitespace-nowrap">
-                  {formatUpdatedAt(project.updatedAt)}
+                <TableCell className="text-right text-muted">
+                  {project.environments.length > 0 && project.environments.length < 4 ? (
+                    <span
+                      className="inline-block truncate align-bottom"
+                      title={project.environments.map(({ name }) => name).join(", ")}
+                    >
+                      {project.environments.map(({ name }) => name).join(", ")}
+                    </span>
+                  ) : (
+                    project.environments.length
+                  )}
+                </TableCell>
+                <TableCell className="text-right text-xs whitespace-nowrap text-muted">
+                  {formatDistanceToNow(new Date(project.updatedAt))}
                 </TableCell>
                 <TableCell className="text-right">{renderFavoriteButton(project)}</TableCell>
               </TableRow>
