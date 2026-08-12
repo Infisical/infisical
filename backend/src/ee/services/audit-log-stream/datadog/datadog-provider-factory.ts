@@ -5,7 +5,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 
 import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
-import { blockAuditLogStreamInternalIps } from "../audit-log-stream-fns";
+import { blockAuditLogStreamInternalIps, resolveEventTimestamp } from "../audit-log-stream-fns";
 import {
   TLogStreamFactoryBatchStreamLog,
   TLogStreamFactoryGetProviderBatchLimit,
@@ -13,13 +13,14 @@ import {
 } from "../audit-log-stream-types";
 import { TDatadogProviderCredentials } from "./datadog-provider-types";
 
-function createPayload(event: Record<string, unknown>) {
+function createPayload(event: Record<string, unknown> & { createdAt?: Date | string }) {
   const appCfg = getConfig();
 
   const ddtags = [`env:${appCfg.NODE_ENV || "unknown"}`].join(",");
 
   return {
     ...event,
+    timestamp: resolveEventTimestamp(event).toISOString(),
     hostname: new URL(appCfg.SITE_URL || "http://infisical").hostname,
     ddsource: "infisical",
     service: "infisical",
