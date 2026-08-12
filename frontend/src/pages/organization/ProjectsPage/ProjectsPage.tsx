@@ -5,8 +5,6 @@ import { Outlet, useMatches } from "@tanstack/react-router";
 
 import { AnnouncementModal } from "@app/components/announcements/AnnouncementModal";
 import { useAnnouncementSeen } from "@app/components/announcements/useAnnouncementSeen";
-import { PageHeader } from "@app/components/v3";
-import { useOrganization } from "@app/context";
 import { useGetRecentAnnouncements } from "@app/hooks/api/announcement";
 
 import { ProjectCategoryOverview } from "./components/ProjectCategoryOverview";
@@ -14,7 +12,6 @@ import { ProjectCategoryOverview } from "./components/ProjectCategoryOverview";
 export const ProjectsPage = () => {
   const { t } = useTranslation();
   const matches = useMatches();
-  const { currentOrg, isSubOrganization } = useOrganization();
 
   const projectsRouteId =
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects";
@@ -48,11 +45,6 @@ export const ProjectsPage = () => {
         <title>{t("common.head-title", { title: "Projects" })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <PageHeader
-        scope={isSubOrganization ? "namespace" : "org"}
-        title="Projects"
-        description={`Find and manage projects across ${currentOrg.name}.`}
-      />
       <ProjectCategoryOverview />
       {announcements && announcements.length > 0 && (
         <AnnouncementModal

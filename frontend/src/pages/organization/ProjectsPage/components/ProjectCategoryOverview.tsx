@@ -76,8 +76,7 @@ const PROJECT_TYPES = [
   ProjectType.SecretManager,
   ProjectType.CertificateManager,
   ProjectType.KMS,
-  ProjectType.SecretScanning,
-  ProjectType.PAM
+  ProjectType.SecretScanning
 ] as const;
 
 const CREATABLE_PROJECT_TYPES = [
@@ -86,10 +85,19 @@ const CREATABLE_PROJECT_TYPES = [
   ProjectType.SecretScanning
 ] as const;
 
-type ProjectFilter = "all" | ProjectType;
+type DashboardProjectType = (typeof PROJECT_TYPES)[number];
+type ProjectFilter = "all" | DashboardProjectType;
 type ProjectSort = "recent" | "name-asc" | "name-desc";
 type ProjectView = "grid" | "list";
-type ProjectWithFavorite = Project & { isFavorite: boolean };
+type DashboardProject = Project & { type: DashboardProjectType };
+type ProjectWithFavorite = DashboardProject & { isFavorite: boolean };
+
+const PROJECT_LABELS: Record<DashboardProjectType, string> = {
+  [ProjectType.SecretManager]: "Secrets",
+  [ProjectType.CertificateManager]: "PKI",
+  [ProjectType.KMS]: "KMS",
+  [ProjectType.SecretScanning]: "Scanners"
+};
 
 const PROJECT_ICON_STYLES: Record<ProjectType, string> = {
   [ProjectType.SecretManager]: "bg-product-sm/15 text-product-sm",
@@ -139,30 +147,43 @@ export const ProjectCategoryOverview = () => {
     initPerPage: getUserTablePreference("organizationProjects", PreferenceKey.PerPage, 24)
   });
 
+  const dashboardProjects = useMemo(
+    () =>
+      projects.filter((project): project is DashboardProject =>
+        PROJECT_TYPES.includes(project.type as DashboardProjectType)
+      ),
+    [projects]
+  );
+
   const projectCounts = useMemo(
     () =>
-      projects.reduce<Record<ProjectType, number>>(
+      dashboardProjects.reduce<Record<DashboardProjectType, number>>(
         (counts, project) => ({ ...counts, [project.type]: counts[project.type] + 1 }),
         {
           [ProjectType.SecretManager]: 0,
           [ProjectType.CertificateManager]: 0,
           [ProjectType.KMS]: 0,
-          [ProjectType.SecretScanning]: 0,
-          [ProjectType.PAM]: 0
+          [ProjectType.SecretScanning]: 0
         }
       ),
-    [projects]
+    [dashboardProjects]
   );
 
   const filteredProjects = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
-    return projects
+    return dashboardProjects
       .filter((project) => productFilter === "all" || project.type === productFilter)
       .filter((project) => {
         if (!normalizedSearch) return true;
 
-        return [project.name, project.slug, project.description, getProjectTitle(project.type)]
+        return [
+          project.name,
+          project.slug,
+          project.description,
+          getProjectTitle(project.type),
+          PROJECT_LABELS[project.type]
+        ]
           .filter(Boolean)
           .some((value) => value?.toLowerCase().includes(normalizedSearch));
       })
@@ -178,7 +199,7 @@ export const ProjectCategoryOverview = () => {
         if (sort === "name-desc") return b.name.localeCompare(a.name);
         return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
       });
-  }, [productFilter, projectFavorites, projects, search, sort]);
+  }, [dashboardProjects, productFilter, projectFavorites, search, sort]);
 
   useResetPageHelper({ setPage, offset, totalCount: filteredProjects.length });
 
@@ -252,7 +273,7 @@ export const ProjectCategoryOverview = () => {
         <div className="flex items-center gap-2">
           <ProjectProductIcon type={project.type} />
           <span className="truncate text-xs font-medium tracking-wide text-muted uppercase">
-            {getProjectTitle(project.type)}
+            {PROJECT_LABELS[project.type]}
           </span>
         </div>
         <div className="mt-5 min-w-0">
@@ -340,7 +361,7 @@ export const ProjectCategoryOverview = () => {
               <TableHead aria-label="Favorite" className="w-0" />
             </TableRow>
           </TableHeader>
-          <TableBody>
+          <TableBody className="[&_td]:h-fit [&_td]:py-2">
             {visibleProjects.map((project) => (
               <TableRow key={project.id}>
                 <TableCell>
@@ -360,7 +381,7 @@ export const ProjectCategoryOverview = () => {
                     </span>
                   </button>
                 </TableCell>
-                <TableCell>{getProjectTitle(project.type)}</TableCell>
+                <TableCell>{PROJECT_LABELS[project.type]}</TableCell>
                 <TableCell>{project.environments.length}</TableCell>
                 <TableCell className="whitespace-nowrap">
                   {formatUpdatedAt(project.updatedAt)}
@@ -446,7 +467,7 @@ export const ProjectCategoryOverview = () => {
                 return (
                   <DropdownMenuItem key={type} onSelect={() => handleCreateProject(type)}>
                     <Icon />
-                    {getProjectTitle(type)}
+                    {PROJECT_LABELS[type]}
                   </DropdownMenuItem>
                 );
               })}
@@ -464,14 +485,14 @@ export const ProjectCategoryOverview = () => {
       >
         <TabsList variant="filled" className="max-w-full justify-start overflow-x-auto">
           <TabsTrigger value="all">
-            All <span className="text-muted">{projects.length}</span>
+            All <span className="text-muted">{dashboardProjects.length}</span>
           </TabsTrigger>
           {PROJECT_TYPES.map((type) => {
             const Icon = getProjectLucideIcon(type);
             return (
               <TabsTrigger key={type} value={type}>
                 <Icon aria-hidden />
-                {getProjectTitle(type)} <span className="text-muted">{projectCounts[type]}</span>
+                {PROJECT_LABELS[type]} <span className="text-muted">{projectCounts[type]}</span>
               </TabsTrigger>
             );
           })}
