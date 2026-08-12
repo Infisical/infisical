@@ -6,8 +6,8 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { SANDBOX_INTEGRATIONS, SandboxIntegrationType } from "./sandbox-integrations";
 import { TSandboxDALFactory } from "./sandbox-dal";
+import { SANDBOX_INTEGRATIONS, SandboxIntegrationType } from "./sandbox-integrations";
 import { TSandboxProjectResolverFactory } from "./sandbox-project-resolver";
 import { bootSandbox, execInSandbox, isSandboxBooted, shutdownSandbox } from "./sandbox-runtime";
 import {
@@ -15,12 +15,12 @@ import {
   TAddSandboxIntegrationDTO,
   TCreateSandboxDTO,
   TExecInSandboxDTO,
+  TRemoveSandboxIntegrationDTO,
   TSandbox,
   TSandboxExecResult,
   TSandboxGrants,
   TSandboxIdDTO,
   TSandboxIntegration,
-  TRemoveSandboxIntegrationDTO,
   TUpdateSandboxDTO
 } from "./sandbox-types";
 

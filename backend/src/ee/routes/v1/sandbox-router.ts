@@ -1,10 +1,10 @@
 import { z } from "zod";
 
 import {
+  listSandboxIntegrations,
   SANDBOX_AGENTS,
   SandboxAgentType,
-  SandboxIntegrationType,
-  listSandboxIntegrations
+  SandboxIntegrationType
 } from "@app/ee/services/sandbox/sandbox-integrations";
 import { SandboxStatus } from "@app/ee/services/sandbox/sandbox-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
