@@ -604,7 +604,10 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         (req.body.changes.secrets.create?.length ?? 0) +
         (req.body.changes.secrets.update?.length ?? 0) +
         (req.body.changes.secrets.delete?.length ?? 0);
-      if (numberOfSecretChanges > 0) {
+      // when a secret approval policy applies, secret changes go to an approval request
+      // instead of being applied (mirroring the v3/v4 secret routers, which skip their
+      // telemetry events and return early in the approval case)
+      if (numberOfSecretChanges > 0 && !result.approvalId) {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.SecretPush,
           distinctId: getTelemetryDistinctId(req),
