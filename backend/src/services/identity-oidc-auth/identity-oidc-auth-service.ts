@@ -609,7 +609,6 @@ export const identityOidcAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TAttachOidcAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -623,6 +622,7 @@ export const identityOidcAuthServiceFactory = ({
     if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
+
     if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OIDC_AUTH)) {
       throw new BadRequestError({
         message: "Failed to add OIDC Auth to already configured identity"
@@ -644,7 +644,7 @@ export const identityOidcAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Create,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -658,10 +658,12 @@ export const identityOidcAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.Create,
+        OrgPermissionIdentityActions.EditAuth,
         OrgPermissionSubjects.Identity
       );
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -728,7 +730,8 @@ export const identityOidcAuthServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TUpdateOidcAuthDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -768,7 +771,7 @@ export const identityOidcAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Edit,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -781,8 +784,13 @@ export const identityOidcAuthServiceFactory = ({
         actorOrgId
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.EditAuth,
+        OrgPermissionSubjects.Identity
+      );
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -902,7 +910,14 @@ export const identityOidcAuthServiceFactory = ({
     return { ...identityOidcAuth, orgId: identityMembershipOrg.scopeOrgId, caCert };
   };
 
-  const revokeOidcAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TRevokeOidcAuthDTO) => {
+  const revokeOidcAuth = async ({
+    identityId,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId,
+    isActorSuperAdmin
+  }: TRevokeOidcAuthDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -981,6 +996,8 @@ export const identityOidcAuthServiceFactory = ({
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const revokedIdentityOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
       const deletedOidcAuth = await identityOidcAuthDAL.delete({ identityId }, tx);

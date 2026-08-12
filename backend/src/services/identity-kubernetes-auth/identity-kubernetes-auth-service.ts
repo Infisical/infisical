@@ -803,8 +803,6 @@ export const identityKubernetesAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TAttachKubernetesAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -838,7 +836,7 @@ export const identityKubernetesAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Create,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -851,7 +849,7 @@ export const identityKubernetesAuthServiceFactory = ({
         actorOrgId
       });
       ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.Create,
+        OrgPermissionIdentityActions.EditAuth,
         OrgPermissionSubjects.Identity
       );
     }
@@ -1000,6 +998,8 @@ export const identityKubernetesAuthServiceFactory = ({
       }
     }
 
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
@@ -1070,7 +1070,8 @@ export const identityKubernetesAuthServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TUpdateKubernetesAuthDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -1111,7 +1112,7 @@ export const identityKubernetesAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Edit,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -1123,7 +1124,10 @@ export const identityKubernetesAuthServiceFactory = ({
         actorAuthMethod,
         actorOrgId
       });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.EditAuth,
+        OrgPermissionSubjects.Identity
+      );
     }
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -1204,6 +1208,8 @@ export const identityKubernetesAuthServiceFactory = ({
         throw new NotFoundError({ message: `Gateway pool with ID ${gatewayPoolId} not found` });
       }
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     // Strict check to see if gateway ID is undefined. It should update the gateway ID to null if its strictly set to null.
     const shouldUpdateGatewayId = Boolean(gatewayId !== undefined || gatewayPoolId !== undefined);
@@ -1492,7 +1498,8 @@ export const identityKubernetesAuthServiceFactory = ({
     actorId,
     actor,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TRevokeKubernetesAuthDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -1566,6 +1573,8 @@ export const identityKubernetesAuthServiceFactory = ({
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
     const revokedIdentityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
       const deletedKubernetesAuth = await identityKubernetesAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.KUBERNETES_AUTH }, tx);
