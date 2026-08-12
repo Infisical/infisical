@@ -80,6 +80,13 @@ The v3 visual system (colors, typography, components, layout) and product voice/
 
 When writing or editing documentation in `docs/`, follow the [Documentation Style Guide](docs/STYLE_GUIDE.md). It covers writing for users (not implementers), Mintlify component usage, cross-referencing, page structure, and more.
 
+### Product Analytics
+
+Any PR that ships or changes a user-facing feature, API endpoint, or API client must follow
+[`.claude/skills/product-analytics/SKILL.md`](.claude/skills/product-analytics/SKILL.md). It defines the telemetry
+attribution contract: route events through the backend telemetry service, carry org/project attribution,
+aggregate high-volume events, register new client User-Agents in both backends, and honor opt-outs.
+
 ### Auth & Permissions
 
 Auth modes (JWT, IDENTITY_ACCESS_TOKEN, SCIM_TOKEN) are extracted in `backend/src/server/plugins/auth/`. Authorization uses CASL (`@casl/ability`) with project-level and org-level permission checks — see `backend/CLAUDE.md` for backend details and `frontend/CLAUDE.md` for frontend permission hooks/HOCs. Note: `API_KEY` and `SERVICE_TOKEN` auth modes are deprecated — do not use them in new code.
