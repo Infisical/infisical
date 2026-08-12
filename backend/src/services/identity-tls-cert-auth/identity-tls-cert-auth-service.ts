@@ -12,6 +12,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import {
@@ -39,6 +40,7 @@ import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/ide
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { recordIdentityLastLoginDebounced } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityTlsCertAuthDALFactory } from "./identity-tls-cert-auth-dal";
@@ -59,6 +61,7 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -74,6 +77,7 @@ export const identityTlsCertAuthServiceFactory = ({
   identityAccessTokenDAL,
   identityTlsCertAuthDAL,
   membershipIdentityDAL,
+  keyStore,
   licenseService,
   permissionService,
   kmsService,
@@ -284,26 +288,11 @@ export const identityTlsCertAuthServiceFactory = ({
       }
 
       // Generate the token
-      await identityTlsCertAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.TLS_CERT_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
+      await recordIdentityLastLoginDebounced({
+        keyStore,
+        membershipIdentityDAL,
+        identity,
+        lastLoginAuthMethod: IdentityAuthMethod.TLS_CERT_AUTH
       });
 
       const subOrgDetails =

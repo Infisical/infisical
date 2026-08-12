@@ -10,6 +10,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import {
   BadRequestError,
@@ -34,6 +35,7 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { recordIdentityLastLoginDebounced } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityGcpAuthDALFactory } from "./identity-gcp-auth-dal";
@@ -51,6 +53,7 @@ type TIdentityGcpAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityGcpAuthDAL: Pick<TIdentityGcpAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -67,6 +70,7 @@ export const identityGcpAuthServiceFactory = ({
   identityDAL,
   identityGcpAuthDAL,
   membershipIdentityDAL,
+  keyStore,
   identityAccessTokenDAL,
   permissionService,
   licenseService,
@@ -211,26 +215,11 @@ export const identityGcpAuthServiceFactory = ({
         }
       }
 
-      await identityGcpAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.GCP_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
+      await recordIdentityLastLoginDebounced({
+        keyStore,
+        membershipIdentityDAL,
+        identity,
+        lastLoginAuthMethod: IdentityAuthMethod.GCP_AUTH
       });
 
       const subOrgDetails =
