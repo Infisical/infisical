@@ -8,7 +8,7 @@ import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/se
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { runAgentTurn, TAgentMessage } from "./sandbox-agent";
+import { runAgentTurn, TAgentEventSink, TAgentMessage } from "./sandbox-agent";
 import { installGithubCli, writeSandboxCaCertificate } from "./sandbox-cli-runtime";
 import { TSandboxDALFactory } from "./sandbox-dal";
 import { deprovisionSandboxIdentity, provisionSandboxIdentity, TSandboxIdentityDeps } from "./sandbox-identity";
@@ -431,7 +431,7 @@ export const sandboxServiceFactory = ({
   };
 
   const chatWithAgent = async (
-    { sandboxId, messages }: TSandboxIdDTO & { messages: TAgentMessage[] },
+    { sandboxId, messages, onEvent }: TSandboxIdDTO & { messages: TAgentMessage[]; onEvent?: TAgentEventSink },
     actor: OrgServiceActor
   ) => {
     const row = await $resolve(sandboxId, actor, true);
@@ -452,7 +452,8 @@ export const sandboxServiceFactory = ({
       sandboxId,
       apiKey: await $decryptClientSecret(actor.orgId, row.encryptedAgentToken),
       systemPrompt: buildSystemPrompt(toSandbox(row), getPamProxies(sandboxId)),
-      messages
+      messages,
+      onEvent
     });
   };
 

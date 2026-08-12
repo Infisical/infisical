@@ -348,6 +348,50 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
+    url: "/:sandboxId/chat/stream",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: true,
+      operationId: "streamSandboxAgentChat",
+      description: "Run one agent turn, streaming text and tool calls as they happen.",
+      params: SandboxIdParamsSchema,
+      body: z.object({
+        messages: z
+          .object({ role: z.enum(["user", "assistant"]), content: z.string().trim().min(1).max(10_000) })
+          .array()
+          .min(1)
+          .max(50)
+      }),
+      produces: ["text/event-stream"]
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req, reply) => {
+      // Fastify replies are thenable, so the hijack call reads as a floating promise without this.
+      void reply.hijack();
+      reply.raw.writeHead(200, {
+        "Cache-Control": "no-cache",
+        "Content-Type": "text/event-stream",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no"
+      });
+
+      const send = (event: unknown) => reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+
+      try {
+        await server.services.sandbox.chatWithAgent(
+          { sandboxId: req.params.sandboxId, messages: req.body.messages, onEvent: send },
+          req.permission
+        );
+      } catch (error) {
+        send({ type: "error", message: error instanceof Error ? error.message : "The agent failed." });
+      } finally {
+        reply.raw.end();
+      }
+    }
+  });
+
+  server.route({
+    method: "POST",
     url: "/:sandboxId/chat",
     config: { rateLimit: writeLimit },
     schema: {

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { getAuthToken } from "@app/hooks/api/reactQuery";
 
 import { sandboxKeys } from "./queries";
 import {
@@ -150,3 +151,59 @@ export const useChatWithAgent = () =>
       return data;
     }
   });
+
+export type TAgentStreamEvent =
+  | { type: "text"; text: string }
+  | { type: "tool_start"; command: string }
+  | { type: "tool_end"; command: string; exitCode: number | null; output: string }
+  | { type: "done"; reply: string }
+  | { type: "error"; message: string };
+
+/**
+ * Streams one agent turn over SSE. Uses fetch rather than EventSource because the request is a POST
+ * carrying the conversation, and EventSource is GET-only.
+ */
+export const streamAgentChat = async (
+  sandboxId: string,
+  messages: TAgentMessage[],
+  onEvent: (event: TAgentStreamEvent) => void,
+  signal?: AbortSignal
+) => {
+  const response = await fetch(`/api/v1/sandboxes/${sandboxId}/chat/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken()}` },
+    body: JSON.stringify({ messages }),
+    signal
+  });
+
+  if (!response.ok || !response.body) {
+    const detail = (await response.json().catch(() => null)) as { message?: string } | null;
+    throw new Error(detail?.message ?? "The agent could not be reached.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  for (;;) {
+    // eslint-disable-next-line no-await-in-loop -- reading a stream is inherently sequential
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    // Frames are separated by a blank line; the trailing partial frame stays buffered.
+    const frames = buffer.split("\n\n");
+    buffer = frames.pop() ?? "";
+
+    frames.forEach((frame) => {
+      const line = frame.split("\n").find((l) => l.startsWith("data:"));
+      if (!line) return;
+      try {
+        onEvent(JSON.parse(line.slice(5).trim()) as TAgentStreamEvent);
+      } catch {
+        // partial frame, the next chunk completes it
+      }
+    });
+  }
+};

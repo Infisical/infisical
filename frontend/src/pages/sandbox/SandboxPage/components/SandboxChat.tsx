@@ -3,12 +3,7 @@ import Markdown from "react-markdown";
 import { BotIcon, SendIcon, UserIcon } from "lucide-react";
 
 import { Button, Input } from "@app/components/v3";
-import {
-  TAgentMessage,
-  TAgentToolCall,
-  TSandbox,
-  useChatWithAgent
-} from "@app/hooks/api/sandboxes";
+import { streamAgentChat, TAgentMessage, TAgentToolCall, TSandbox } from "@app/hooks/api/sandboxes";
 
 type TTurn = TAgentMessage & { toolCalls?: TAgentToolCall[] };
 
@@ -82,8 +77,11 @@ const ToolCall = ({ call }: { call: TAgentToolCall }) => (
       <span className="truncate font-mono text-[11px] leading-4 text-muted group-open/tool:text-foreground">
         {call.command}
       </span>
-      {call.exitCode !== 0 && (
-        <span className="shrink-0 font-mono text-[10px] text-danger">{call.exitCode ?? "err"}</span>
+      {call.exitCode !== null && call.exitCode !== 0 && (
+        <span className="shrink-0 font-mono text-[10px] text-danger">{call.exitCode}</span>
+      )}
+      {call.exitCode === null && (
+        <span className="shrink-0 animate-pulse font-mono text-[10px] text-muted">running</span>
       )}
     </summary>
     <pre className="mt-1 mb-1 max-h-40 thin-scrollbar overflow-auto border-l border-border py-0.5 pl-2 text-[10px] leading-4 whitespace-pre-wrap text-muted">
@@ -93,14 +91,17 @@ const ToolCall = ({ call }: { call: TAgentToolCall }) => (
 );
 
 export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunning: boolean }) => {
-  const chat = useChatWithAgent();
   const [turns, setTurns] = useState<TTurn[]>([]);
   const [draft, setDraft] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [turns, chat.isPending]);
+  }, [turns, isStreaming]);
 
   const send = async () => {
     const content = draft.trim();
@@ -111,17 +112,54 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
       { role: "user" as const, content }
     ];
 
-    setTurns((prev) => [...prev, { role: "user", content }]);
+    // The assistant turn is appended empty and filled in as events arrive.
+    setTurns((prev) => [...prev, { role: "user", content }, { role: "assistant", content: "" }]);
     setDraft("");
+    setIsStreaming(true);
+
+    const patchLast = (update: (turn: TTurn) => TTurn) =>
+      setTurns((prev) =>
+        prev.map((turn, index) => (index === prev.length - 1 ? update(turn) : turn))
+      );
+
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
-      const turn = await chat.mutateAsync({ sandboxId: sandbox.id, messages: history });
-      setTurns((prev) => [
-        ...prev,
-        { role: "assistant", content: turn.reply, toolCalls: turn.toolCalls }
-      ]);
+      await streamAgentChat(
+        sandbox.id,
+        history,
+        (event) => {
+          if (event.type === "text") {
+            patchLast((turn) => ({ ...turn, content: turn.content + event.text }));
+          } else if (event.type === "tool_start") {
+            patchLast((turn) => ({
+              ...turn,
+              toolCalls: [
+                ...(turn.toolCalls ?? []),
+                { command: event.command, exitCode: null, output: "" }
+              ]
+            }));
+          } else if (event.type === "tool_end") {
+            patchLast((turn) => ({
+              ...turn,
+              toolCalls: (turn.toolCalls ?? []).map((call, index, all) =>
+                index === all.length - 1
+                  ? { command: event.command, exitCode: event.exitCode, output: event.output }
+                  : call
+              )
+            }));
+          } else if (event.type === "error") {
+            patchLast((turn) => ({ ...turn, content: turn.content || event.message }));
+          }
+        },
+        controller.signal
+      );
     } catch (error) {
-      setTurns((prev) => [...prev, { role: "assistant", content: resolveErrorMessage(error) }]);
+      patchLast((turn) => ({ ...turn, content: turn.content || resolveErrorMessage(error) }));
+    } finally {
+      setIsStreaming(false);
+      abortRef.current = null;
     }
   };
 
@@ -131,7 +169,7 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
     return "Ask the agent to do something...";
   })();
 
-  const isDisabled = !isRunning || !sandbox.agentType || chat.isPending;
+  const isDisabled = !isRunning || !sandbox.agentType || isStreaming;
 
   return (
     <div className="flex h-[420px] flex-col rounded-md border border-border bg-bunker-800">
@@ -179,7 +217,7 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
           </div>
         ))}
 
-        {chat.isPending && (
+        {isStreaming && (
           <div className="flex items-center gap-2 text-xs text-muted">
             <BotIcon className="size-4 animate-pulse text-project" />
             Working...

@@ -30,6 +30,16 @@ export type TAgentTurn = {
   toolCalls: TAgentToolCall[];
 };
 
+/** Emitted as the turn runs so the UI can show work in progress rather than a spinner. */
+export type TAgentEvent =
+  | { type: "text"; text: string }
+  | { type: "tool_start"; command: string }
+  | { type: "tool_end"; command: string; exitCode: number | null; output: string }
+  | { type: "done"; reply: string }
+  | { type: "error"; message: string };
+
+export type TAgentEventSink = (event: TAgentEvent) => void;
+
 type TGeminiPart = {
   text?: string;
   functionCall?: { name: string; args: Record<string, unknown> };
@@ -59,31 +69,73 @@ const RUN_COMMAND_TOOL = {
   ]
 };
 
-const callGemini = async (apiKey: string, systemPrompt: string, contents: TGeminiContent[]) => {
-  const { data } = await request.post<TGeminiResponse>(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+/**
+ * Streams one model call, emitting text as it arrives and returning the accumulated parts so the
+ * caller can see whether the model asked for a tool.
+ */
+const streamGemini = async (
+  apiKey: string,
+  systemPrompt: string,
+  contents: TGeminiContent[],
+  onText: (text: string) => void
+): Promise<TGeminiPart[]> => {
+  const response = await request.post<NodeJS.ReadableStream>(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent`,
     {
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents,
       tools: [RUN_COMMAND_TOOL],
       generationConfig: { temperature: 0.2 }
     },
-    { params: { key: apiKey }, timeout: GEMINI_TIMEOUT_MS }
+    { params: { key: apiKey, alt: "sse" }, timeout: GEMINI_TIMEOUT_MS, responseType: "stream" }
   );
 
-  return data.candidates?.[0]?.content?.parts ?? [];
+  const parts: TGeminiPart[] = [];
+  let buffer = "";
+
+  await new Promise<void>((resolve, reject) => {
+    response.data.on("data", (chunk: Buffer) => {
+      buffer += chunk.toString("utf8");
+
+      // SSE frames are separated by a blank line; keep the trailing partial frame in the buffer.
+      const frames = buffer.split("\n\n");
+      buffer = frames.pop() ?? "";
+
+      frames.forEach((frame) => {
+        const line = frame.split("\n").find((l) => l.startsWith("data:"));
+        if (!line) return;
+
+        try {
+          const payload = JSON.parse(line.slice(5).trim()) as TGeminiResponse;
+          (payload.candidates?.[0]?.content?.parts ?? []).forEach((part) => {
+            parts.push(part);
+            if (part.text) onText(part.text);
+          });
+        } catch {
+          // a partial or non-JSON keepalive frame; the next chunk completes it
+        }
+      });
+    });
+
+    response.data.on("end", () => resolve());
+    response.data.on("error", reject);
+  });
+
+  return parts;
 };
 
 export const runAgentTurn = async ({
   sandboxId,
   apiKey,
   systemPrompt,
-  messages
+  messages,
+  onEvent = () => {}
 }: {
   sandboxId: string;
   apiKey: string;
   systemPrompt: string;
   messages: TAgentMessage[];
+  onEvent?: TAgentEventSink;
 }): Promise<TAgentTurn> => {
   if (!apiKey) {
     throw new BadRequestError({
@@ -100,16 +152,17 @@ export const runAgentTurn = async ({
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
     // eslint-disable-next-line no-await-in-loop -- the model decides each step from the last result
-    const parts = await callGemini(apiKey, systemPrompt, contents);
+    const parts = await streamGemini(apiKey, systemPrompt, contents, (text) => onEvent({ type: "text", text }));
     const calls = parts.filter((part) => part.functionCall);
 
     if (!calls.length) {
       const reply = parts
         .map((part) => part.text)
         .filter(Boolean)
-        .join("\n")
+        .join("")
         .trim();
 
+      onEvent({ type: "done", reply: reply || "(no response)" });
       return { reply: reply || "(no response)", toolCalls };
     }
 
@@ -118,6 +171,7 @@ export const runAgentTurn = async ({
     const responseParts: TGeminiPart[] = [];
     for (const part of calls) {
       const command = String(part.functionCall?.args?.command ?? "");
+      onEvent({ type: "tool_start", command });
 
       // eslint-disable-next-line no-await-in-loop
       const result = await execInSandbox(sandboxId, command).catch((error: Error) => ({
@@ -128,6 +182,7 @@ export const runAgentTurn = async ({
 
       const output = [result.stdout, result.stderr].filter(Boolean).join("\n").slice(0, 8000);
       toolCalls.push({ command, exitCode: result.exitCode, output });
+      onEvent({ type: "tool_end", command, exitCode: result.exitCode, output });
 
       responseParts.push({
         functionResponse: {
@@ -141,5 +196,7 @@ export const runAgentTurn = async ({
   }
 
   logger.warn(`Agent hit the tool round limit [sandboxId=${sandboxId}]`);
-  return { reply: "I ran out of steps before finishing that. Try narrowing the request.", toolCalls };
+  const reply = "I ran out of steps before finishing that. Try narrowing the request.";
+  onEvent({ type: "done", reply });
+  return { reply, toolCalls };
 };
