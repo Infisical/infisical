@@ -115,7 +115,14 @@ export const execInSandbox = async (sandboxId: string, command: string): Promise
   // its own process. The marker carries a per-exec nonce because the user's command runs *before* the
   // trailing printf and would otherwise be able to emit a marker of its own and choose the next cwd.
   const marker = `${CWD_MARKER}${crypto.randomBytes(12).toString("hex")}:`;
-  const wrapped = `cd ${shellQuote(state.cwd)} || exit 1\n${command}\nprintf '\\n${marker}%s' "$(pwd)"`;
+  // `bash -l` sources /etc/profile, which resets PATH, so the sandbox's own bin/ has to be put back
+  // after that rather than passed in the environment.
+  const wrapped = [
+    `export PATH=${shellQuote(`${state.rootDir}/bin`)}:"$PATH"`,
+    `cd ${shellQuote(state.cwd)} || exit 1`,
+    command,
+    `printf '\\n${marker}%s' "$(pwd)"`
+  ].join("\n");
 
   return new Promise<TSandboxExecResult>((resolve) => {
     const child = spawn("bash", ["-lc", wrapped], {

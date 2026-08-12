@@ -2971,6 +2971,7 @@ export const registerRoutes = async (
   });
   const sandboxService = sandboxServiceFactory({
     sandboxDAL,
+    secretService: secretV2BridgeService,
     sandboxProjectResolver,
     permissionService,
     kmsService

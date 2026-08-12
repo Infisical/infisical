@@ -1,15 +1,19 @@
-import { OrganizationActionScope, TSandboxes } from "@app/db/schemas";
+import { OrganizationActionScope, SecretType, TSandboxes } from "@app/db/schemas";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { installGithubCli } from "./sandbox-cli-runtime";
 import { TSandboxDALFactory } from "./sandbox-dal";
 import { SANDBOX_INTEGRATIONS, SandboxCredentialRole, SandboxIntegrationType } from "./sandbox-integrations";
 import { getPamProxies, startPamProxies, stopPamProxies } from "./sandbox-pam-runtime";
 import { TSandboxProjectResolverFactory } from "./sandbox-project-resolver";
+import { buildSystemPrompt } from "./sandbox-prompt";
 import { bootSandbox, execInSandbox, isSandboxBooted, setSandboxEnv, shutdownSandbox } from "./sandbox-runtime";
 import {
   SandboxStatus,
@@ -27,6 +31,7 @@ import {
 
 type TSandboxServiceFactoryDep = {
   sandboxDAL: TSandboxDALFactory;
+  secretService: Pick<TSecretV2BridgeServiceFactory, "getSecretByName">;
   sandboxProjectResolver: TSandboxProjectResolverFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -61,6 +66,7 @@ const toSandbox = (row: TSandboxes): TSandbox => ({
 
 export const sandboxServiceFactory = ({
   sandboxDAL,
+  secretService,
   sandboxProjectResolver,
   permissionService,
   kmsService
@@ -194,7 +200,7 @@ export const sandboxServiceFactory = ({
       throw new BadRequestError({ message: `Sandbox '${row.name}' is already running` });
     }
 
-    await bootSandbox(sandboxId);
+    const { rootDir } = await bootSandbox(sandboxId);
 
     // Open a brokered proxy per granted account and tell the sandbox only the port. The identity
     // token and the database credential both stay in this process.
@@ -202,7 +208,45 @@ export const sandboxServiceFactory = ({
     const targets = await sandboxDAL.findPamAccountTargets(grants.pamAccountIds);
     const proxies = await startPamProxies(sandboxId, targets);
 
+    // Resolve each integration's secret and hand the value to the tools that need it. Swapping this
+    // for a placeholder plus an egress proxy is the next step; the sandbox holds the real value today.
+    const integrationEnv: Record<string, string> = {};
+    for (const integration of grants.integrations) {
+      const definition = SANDBOX_INTEGRATIONS[integration.type];
+      try {
+        // eslint-disable-next-line no-await-in-loop -- a handful of secrets, resolved once at start
+        const secret = await secretService.getSecretByName({
+          actor: actor.type,
+          actorId: actor.id,
+          actorOrgId: actor.orgId,
+          actorAuthMethod: actor.authMethod,
+          projectId: integration.secret.projectId,
+          environment: integration.secret.environment,
+          path: integration.secret.secretPath,
+          secretName: integration.secret.secretKey,
+          type: SecretType.Shared,
+          viewSecretValue: true,
+          expandSecretReferences: true
+        });
+
+        if (secret?.secretValue) integrationEnv[definition.envVarName] = secret.secretValue;
+      } catch (error) {
+        logger.error(
+          error,
+          `Sandbox could not resolve integration secret [sandboxId=${sandboxId}] [key=${integration.secret.secretKey}]`
+        );
+      }
+
+      if (definition.cli?.name === "gh") {
+        // eslint-disable-next-line no-await-in-loop
+        await installGithubCli(rootDir).catch((error: Error) =>
+          logger.error(error, `Failed to install gh [sandboxId=${sandboxId}]`)
+        );
+      }
+    }
+
     setSandboxEnv(sandboxId, {
+      ...integrationEnv,
       ...Object.fromEntries(
         proxies.map((proxy) => [
           `PAM_${proxy.accountName.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_PORT`,
@@ -335,12 +379,19 @@ export const sandboxServiceFactory = ({
     return getPamProxies(sandboxId);
   };
 
+  /** The agent's system prompt, describing every tool the sandbox has and how it is authenticated. */
+  const getSystemPrompt = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor) => {
+    const row = await $resolve(sandboxId, actor, false);
+    return buildSystemPrompt(toSandbox(row), getPamProxies(sandboxId));
+  };
+
   const resolveProjectId = async (actor: OrgServiceActor) => {
     await $authorize(actor, false);
     return sandboxProjectResolver.resolve(actor);
   };
 
   return {
+    getSystemPrompt,
     listPamProxies,
     addIntegration,
     removeIntegration,

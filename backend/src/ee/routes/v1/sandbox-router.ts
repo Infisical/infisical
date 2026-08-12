@@ -211,6 +211,35 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/:sandboxId/system-prompt",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getSandboxSystemPrompt",
+      description: "The system prompt describing the tools and credentials available in this sandbox.",
+      params: SandboxIdParamsSchema,
+      response: {
+        200: z.object({
+          systemPrompt: z.string(),
+          pamProxies: z
+            .object({
+              accountId: z.string(),
+              accountName: z.string(),
+              resourceName: z.string(),
+              port: z.number()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => ({
+      systemPrompt: await server.services.sandbox.getSystemPrompt({ sandboxId: req.params.sandboxId }, req.permission),
+      pamProxies: await server.services.sandbox.listPamProxies({ sandboxId: req.params.sandboxId }, req.permission)
+    })
+  });
+
+  server.route({
+    method: "GET",
     url: "/:sandboxId",
     config: { rateLimit: readLimit },
     schema: {
