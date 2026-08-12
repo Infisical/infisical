@@ -1,492 +1,513 @@
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-
-import { createNotification } from "@app/components/notifications";
-import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
-import { CertManagerSelectInstanceModal } from "@app/components/projects/CertManagerSelectInstanceModal";
-import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
+import { formatDistanceToNow } from "date-fns";
 import {
+  ArrowDownAZIcon,
+  ArrowUpAZIcon,
+  Clock3Icon,
+  Layers3Icon,
+  LayoutGridIcon,
+  ListIcon,
+  PlusIcon,
+  SearchIcon,
+  StarIcon
+} from "lucide-react";
+
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { NewProjectModal } from "@app/components/projects";
+import {
+  Button,
+  ButtonGroup,
   Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  IconButton,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Pagination,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useOrgPermission } from "@app/context";
 import {
-  OrgPermissionAdminConsoleAction,
-  OrgPermissionProjectActions,
-  OrgPermissionSubjects
-} from "@app/context/OrgPermissionContext/types";
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useOrgPermission,
+  useSubscription
+} from "@app/context";
+import { OrgPermissionProjectActions } from "@app/context/OrgPermissionContext/types";
+import { getProjectHomePage, getProjectLucideIcon, getProjectTitle } from "@app/helpers/project";
 import {
-  getCertManagerActiveProjectCookie,
-  setCertManagerActiveProjectCookie
-} from "@app/helpers/certManagerActiveProject";
-import {
-  getProjectDescription,
-  getProjectLucideIcon,
-  getProjectTitle,
-  projectTypeToUrlSlug
-} from "@app/helpers/project";
-import { useGetOrgProductStats, useGetUserProjects } from "@app/hooks/api";
-import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
-import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
-import { resolvePamProjectId } from "@app/hooks/api/pam/queries";
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { usePagination, useResetPageHelper } from "@app/hooks";
+import { useGetUserProjects } from "@app/hooks/api";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
+import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
+import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 
-type ActiveProducts = ProjectType;
-
-const PRODUCT_TYPES: ActiveProducts[] = [
+const PROJECT_TYPES = [
   ProjectType.SecretManager,
   ProjectType.CertificateManager,
   ProjectType.KMS,
   ProjectType.SecretScanning,
   ProjectType.PAM
-];
+] as const;
 
-const PRODUCT_STYLES: Record<
-  ActiveProducts,
-  {
-    iconClassName: string;
-    containerClassName: string;
-    cardClassName: string;
-    titleUnderlineClassName: string;
-  }
-> = {
-  [ProjectType.SecretManager]: {
-    iconClassName: "h-4.5 w-4.5 text-product-sm",
-    containerClassName:
-      "border-product-sm/30 bg-gradient-to-br from-product-sm/20 to-product-sm/5 group-hover:border-product-sm/50 group-hover:from-product-sm/25 group-hover:to-product-sm/10",
-    cardClassName: "hover:bg-gradient-to-br hover:from-product-sm/[0.04] hover:to-transparent",
-    titleUnderlineClassName: "decoration-product-sm/60"
-  },
-  [ProjectType.CertificateManager]: {
-    iconClassName: "h-4.5 w-4.5 text-product-pki",
-    containerClassName:
-      "border-product-pki/30 bg-gradient-to-br from-product-pki/20 to-product-pki/5 group-hover:border-product-pki/50 group-hover:from-product-pki/25 group-hover:to-product-pki/10",
-    cardClassName: "hover:bg-gradient-to-br hover:from-product-pki/[0.04] hover:to-transparent",
-    titleUnderlineClassName: "decoration-product-pki/60"
-  },
-  [ProjectType.KMS]: {
-    iconClassName: "h-4.5 w-4.5 text-product-kms",
-    containerClassName:
-      "border-product-kms/30 bg-gradient-to-br from-product-kms/20 to-product-kms/5 group-hover:border-product-kms/50 group-hover:from-product-kms/25 group-hover:to-product-kms/10",
-    cardClassName: "hover:bg-gradient-to-br hover:from-product-kms/[0.04] hover:to-transparent",
-    titleUnderlineClassName: "decoration-product-kms/60"
-  },
-  [ProjectType.SecretScanning]: {
-    iconClassName: "h-4.5 w-4.5 text-product-ss",
-    containerClassName:
-      "border-product-ss/30 bg-gradient-to-br from-product-ss/20 to-product-ss/5 group-hover:border-product-ss/50 group-hover:from-product-ss/25 group-hover:to-product-ss/10",
-    cardClassName: "hover:bg-gradient-to-br hover:from-product-ss/[0.04] hover:to-transparent",
-    titleUnderlineClassName: "decoration-product-ss/60"
-  },
-  [ProjectType.PAM]: {
-    iconClassName: "h-4.5 w-4.5 text-product-pam",
-    containerClassName:
-      "border-product-pam/30 bg-gradient-to-br from-product-pam/20 to-product-pam/5 group-hover:border-product-pam/50 group-hover:from-product-pam/25 group-hover:to-product-pam/10",
-    cardClassName: "hover:bg-gradient-to-br hover:from-product-pam/[0.04] hover:to-transparent",
-    titleUnderlineClassName: "decoration-product-pam/60"
-  }
+const CREATABLE_PROJECT_TYPES = [
+  ProjectType.SecretManager,
+  ProjectType.KMS,
+  ProjectType.SecretScanning
+] as const;
+
+type ProjectFilter = "all" | ProjectType;
+type ProjectSort = "recent" | "name-asc" | "name-desc";
+type ProjectView = "grid" | "list";
+type ProjectWithFavorite = Project & { isFavorite: boolean };
+
+const PROJECT_ICON_STYLES: Record<ProjectType, string> = {
+  [ProjectType.SecretManager]: "bg-product-sm/15 text-product-sm",
+  [ProjectType.CertificateManager]: "bg-product-pki/15 text-product-pki",
+  [ProjectType.KMS]: "bg-product-kms/15 text-product-kms",
+  [ProjectType.SecretScanning]: "bg-product-ss/15 text-product-ss",
+  [ProjectType.PAM]: "bg-product-pam/15 text-product-pam"
 };
 
-const formatNumber = (num: number): string => {
-  return num.toLocaleString();
-};
+const formatUpdatedAt = (updatedAt: string) =>
+  formatDistanceToNow(new Date(updatedAt), { addSuffix: true });
 
-type ProductStat = {
-  label: string;
-  value: number;
+const ProjectProductIcon = ({ type }: { type: ProjectType }) => {
+  const Icon = getProjectLucideIcon(type);
+
+  return (
+    <div
+      className={`flex size-8 shrink-0 items-center justify-center rounded-sm ${PROJECT_ICON_STYLES[type]}`}
+    >
+      <Icon className="size-4" aria-hidden />
+    </div>
+  );
 };
 
 export const ProjectCategoryOverview = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
-  const canRequestAccess = permission.can(
-    OrgPermissionProjectActions.RequestAccess,
-    OrgPermissionSubjects.Project
-  );
+  const { subscription } = useSubscription();
+  const [search, setSearch] = useState("");
+  const [productFilter, setProductFilter] = useState<ProjectFilter>("all");
+  const [sort, setSort] = useState<ProjectSort>("recent");
+  const [view, setView] = useState<ProjectView>(() => {
+    const savedView = localStorage.getItem("organizationProjectsView");
+    return savedView === "list" ? "list" : "grid";
+  });
+  const [createProjectType, setCreateProjectType] = useState<ProjectType | null>(null);
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+
   const { data: projects = [], isPending: isProjectsLoading } = useGetUserProjects();
-  const { data: certManagerInstance } = useCertManagerInstanceState();
-  const { data: productStats } = useGetOrgProductStats(currentOrg?.id ?? "");
-  const orgAdminAccessProject = useOrgAdminAccessProject();
-
-  const [isRequestAccessOpen, setIsRequestAccessOpen] = useState(false);
-  const [isCertManagerSetupOpen, setIsCertManagerSetupOpen] = useState(false);
-  const [isCertManagerPickerOpen, setIsCertManagerPickerOpen] = useState(false);
-  const [pendingCertManagerProjectId, setPendingCertManagerProjectId] = useState<string | null>(
-    null
+  const { data: projectFavorites = [], isPending: isFavoritesLoading } = useGetUserProjectFavorites(
+    currentOrg.id
   );
-  const [isPamRequestAccessOpen, setIsPamRequestAccessOpen] = useState(false);
-  const [pendingPamProjectId, setPendingPamProjectId] = useState<string | null>(null);
+  const { mutate: updateProjectFavorites } = useUpdateUserProjectFavorites();
 
-  const orgDefaultCertManagerProjectId = certManagerInstance?.activeProjectId ?? null;
-  const cmInstances = useMemo(
-    () => certManagerInstance?.projects ?? [],
-    [certManagerInstance?.projects]
-  );
+  const { page, perPage, offset, setPage, setPerPage } = usePagination("updatedAt", {
+    initPerPage: getUserTablePreference("organizationProjects", PreferenceKey.PerPage, 24)
+  });
 
-  const isOrgAdmin = permission.can(
-    OrgPermissionAdminConsoleAction.AccessAllProjects,
-    OrgPermissionSubjects.AdminConsole
-  );
-  const isCertManagerMember = useMemo(
-    () => cmInstances.some((instance) => projects.some((project) => project.id === instance.id)),
-    [cmInstances, projects]
-  );
-  const isCertManagerAccessBlocked =
-    cmInstances.length > 0 && !isOrgAdmin && !canRequestAccess && !isCertManagerMember;
-
-  const isPamMember = useMemo(
+  const projectCounts = useMemo(
     () =>
-      Boolean(
-        currentOrg?.pamProjectId &&
-          projects.some((project) => project.id === currentOrg.pamProjectId)
+      projects.reduce<Record<ProjectType, number>>(
+        (counts, project) => ({ ...counts, [project.type]: counts[project.type] + 1 }),
+        {
+          [ProjectType.SecretManager]: 0,
+          [ProjectType.CertificateManager]: 0,
+          [ProjectType.KMS]: 0,
+          [ProjectType.SecretScanning]: 0,
+          [ProjectType.PAM]: 0
+        }
       ),
-    [currentOrg?.pamProjectId, projects]
-  );
-  const isPamAccessBlocked =
-    Boolean(currentOrg?.pamProjectId) && !isOrgAdmin && !canRequestAccess && !isPamMember;
-
-  const certManagerActiveProjectId = useMemo(() => {
-    const cookieValue = currentOrg?.id ? getCertManagerActiveProjectCookie(currentOrg.id) : null;
-    if (cookieValue && cmInstances.some((p) => p.id === cookieValue)) return cookieValue;
-    return orgDefaultCertManagerProjectId;
-  }, [currentOrg?.id, cmInstances, orgDefaultCertManagerProjectId]);
-
-  const certManagerActiveProject = useMemo(
-    () =>
-      certManagerActiveProjectId
-        ? cmInstances.find((p) => p.id === certManagerActiveProjectId)
-        : undefined,
-    [cmInstances, certManagerActiveProjectId]
+    [projects]
   );
 
-  const getStatsForType = (type: ProjectType): ProductStat[] => {
-    if (!productStats) return [];
+  const filteredProjects = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
 
-    switch (type) {
-      case ProjectType.SecretManager:
-        return [
-          { label: "secrets", value: productStats.secretManager.secretsCount },
-          { label: "environments", value: productStats.secretManager.environmentsCount },
-          { label: "projects", value: productStats.secretManager.projectsCount }
-        ];
-      case ProjectType.CertificateManager:
-        return [
-          { label: "certificates", value: productStats.certificateManager.certificatesCount },
-          { label: "CAs", value: productStats.certificateManager.certificateAuthoritiesCount },
-          { label: "signers", value: productStats.certificateManager.signersCount }
-        ];
-      case ProjectType.KMS:
-        return [
-          { label: "keys", value: productStats.kms.keysCount },
-          { label: "clients", value: productStats.kms.clientsCount },
-          { label: "projects", value: productStats.kms.projectsCount }
-        ];
-      case ProjectType.SecretScanning:
-        return [
-          { label: "data sources", value: productStats.secretScanning.dataSourcesCount },
-          { label: "resources", value: productStats.secretScanning.resourcesCount },
-          { label: "projects", value: productStats.secretScanning.projectsCount }
-        ];
-      case ProjectType.PAM:
-        return [
-          { label: "accounts", value: productStats.pam.accountsCount },
-          { label: "account templates", value: productStats.pam.accountTemplatesCount },
-          { label: "folders", value: productStats.pam.foldersCount }
-        ];
-      default:
-        return [];
-    }
-  };
+    return projects
+      .filter((project) => productFilter === "all" || project.type === productFilter)
+      .filter((project) => {
+        if (!normalizedSearch) return true;
 
-  const navigateToCertManager = (projectId: string) => {
+        return [project.name, project.slug, project.description, getProjectTitle(project.type)]
+          .filter(Boolean)
+          .some((value) => value?.toLowerCase().includes(normalizedSearch));
+      })
+      .map(
+        (project): ProjectWithFavorite => ({
+          ...project,
+          isFavorite: projectFavorites.includes(project.id)
+        })
+      )
+      .sort((a, b) => {
+        if (a.isFavorite !== b.isFavorite) return Number(b.isFavorite) - Number(a.isFavorite);
+        if (sort === "name-asc") return a.name.localeCompare(b.name);
+        if (sort === "name-desc") return b.name.localeCompare(a.name);
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
+  }, [productFilter, projectFavorites, projects, search, sort]);
+
+  useResetPageHelper({ setPage, offset, totalCount: filteredProjects.length });
+
+  const visibleProjects = filteredProjects.slice(offset, offset + perPage);
+  const isLoading = isProjectsLoading || isFavoritesLoading;
+  const canCreateProject =
+    permission.can(OrgPermissionProjectActions.Create, OrgPermissionSubjects.Project) ||
+    permission.can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
+  const isAddingProjectsAllowed = subscription?.workspaceLimit
+    ? subscription.workspacesUsed < subscription.workspaceLimit
+    : true;
+  const navigateToProject = (project: Project) => {
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
-      params: { orgId: currentOrg?.id ?? "", projectId }
+      to: getProjectHomePage(project.type, project.environments),
+      params: { orgId: currentOrg.id, projectId: project.id }
     });
   };
 
-  const enterCertManagerProject = async (projectId: string) => {
-    setPendingCertManagerProjectId(projectId);
-    const isMember = projects.some((p) => p.id === projectId);
-    if (isMember) {
-      navigateToCertManager(projectId);
-      return;
-    }
-    if (isOrgAdmin) {
-      try {
-        await orgAdminAccessProject.mutateAsync({ projectId });
-        navigateToCertManager(projectId);
-      } catch (err) {
-        createNotification({
-          type: "error",
-          text:
-            err instanceof Error ? err.message : "Failed to join the Certificate Manager project."
-        });
-      }
-    } else if (canRequestAccess) {
-      setIsRequestAccessOpen(true);
-    } else {
-      createNotification({
-        type: "error",
-        text: "You don't have access to this Certificate Manager project."
-      });
-    }
+  const toggleFavorite = (project: ProjectWithFavorite) => {
+    const nextFavorites = project.isFavorite
+      ? projectFavorites.filter((projectId) => projectId !== project.id)
+      : [...projectFavorites, project.id];
+
+    updateProjectFavorites({ orgId: currentOrg.id, projectFavorites: nextFavorites });
   };
 
-  const handleCertManagerInstanceSelect = async (projectId: string) => {
-    if (currentOrg?.id) setCertManagerActiveProjectCookie(currentOrg.id, projectId);
-    setIsCertManagerPickerOpen(false);
-    await enterCertManagerProject(projectId);
+  const updateView = (nextView: ProjectView) => {
+    localStorage.setItem("organizationProjectsView", nextView);
+    setView(nextView);
   };
 
-  const navigateToPam = () => {
-    navigate({
-      to: "/organizations/$orgId/pam/access",
-      params: { orgId: currentOrg?.id ?? "" }
-    });
-  };
-
-  const enterPamProject = async () => {
-    // Also lazily bootstraps the PAM project for orgs that don't have one yet.
-    let pamProjectId: string;
-    try {
-      pamProjectId = await resolvePamProjectId(currentOrg?.pamProjectId);
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text:
-          err instanceof Error
-            ? err.message
-            : "Failed to resolve the Privileged Access Manager project."
-      });
+  const handleCreateProject = (type: ProjectType) => {
+    if (!isAddingProjectsAllowed) {
+      setIsUpgradeOpen(true);
       return;
     }
 
-    const isMember = projects.some((p) => p.id === pamProjectId);
-    if (isMember) {
-      navigateToPam();
-      return;
-    }
-
-    setPendingPamProjectId(pamProjectId);
-
-    if (isOrgAdmin) {
-      try {
-        await orgAdminAccessProject.mutateAsync({ projectId: pamProjectId });
-        navigateToPam();
-      } catch (err) {
-        createNotification({
-          type: "error",
-          text:
-            err instanceof Error
-              ? err.message
-              : "Failed to join the Privileged Access Manager project."
-        });
-      }
-    } else if (canRequestAccess) {
-      setIsPamRequestAccessOpen(true);
-    } else {
-      createNotification({
-        type: "error",
-        text: "You don't have access to Privileged Access Manager."
-      });
-    }
+    setCreateProjectType(type);
   };
 
-  const handleTileClick = async (type: ProjectType) => {
-    const orgId = currentOrg?.id || "";
+  const renderFavoriteButton = (project: ProjectWithFavorite) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <IconButton
+          variant={project.isFavorite ? "ghost" : "ghost-muted"}
+          size="xs"
+          aria-label={project.isFavorite ? "Remove from favorites" : "Add to favorites"}
+          className={project.isFavorite ? "text-warning hover:text-warning/75" : ""}
+          onClick={() => toggleFavorite(project)}
+        >
+          <StarIcon fill={project.isFavorite ? "currentColor" : "none"} />
+        </IconButton>
+      </TooltipTrigger>
+      <TooltipContent>
+        {project.isFavorite ? "Remove from favorites" : "Add to favorites"}
+      </TooltipContent>
+    </Tooltip>
+  );
 
-    if (type === ProjectType.CertificateManager) {
-      if (cmInstances.length === 0) {
-        setIsCertManagerSetupOpen(true);
-        return;
-      }
-      if (cmInstances.length > 1) {
-        setIsCertManagerPickerOpen(true);
-        return;
-      }
-      const onlyId = cmInstances[0].id;
-      await enterCertManagerProject(onlyId);
-      return;
-    }
+  const renderProjectCard = (project: ProjectWithFavorite) => (
+    <Card
+      key={project.id}
+      className="group/card relative h-full gap-0 overflow-hidden p-0 transition-colors focus-within:border-ring hover:border-container-hover hover:bg-container-hover/40"
+    >
+      <button
+        type="button"
+        aria-label={`Open ${project.name}`}
+        className="flex h-full min-h-48 w-full flex-col p-5 pr-14 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset"
+        onClick={() => navigateToProject(project)}
+      >
+        <div className="flex items-center gap-2">
+          <ProjectProductIcon type={project.type} />
+          <span className="truncate text-xs font-medium tracking-wide text-muted uppercase">
+            {getProjectTitle(project.type)}
+          </span>
+        </div>
+        <div className="mt-5 min-w-0">
+          <span className="block truncate text-base font-semibold text-foreground">
+            {project.name}
+          </span>
+          <p className="mt-1 truncate text-sm text-muted">
+            {currentOrg.name} / {project.slug}
+          </p>
+        </div>
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border pt-4 text-xs text-muted">
+          <span className="flex items-center gap-1.5">
+            <Layers3Icon className="size-3.5" aria-hidden />
+            {project.environments.length}{" "}
+            {project.environments.length === 1 ? "environment" : "environments"}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Clock3Icon className="size-3.5" aria-hidden />
+            Updated {formatUpdatedAt(project.updatedAt)}
+          </span>
+        </div>
+      </button>
+      <div className="absolute top-5 right-5 z-10">{renderFavoriteButton(project)}</div>
+    </Card>
+  );
 
-    if (type === ProjectType.PAM) {
-      await enterPamProject();
-      return;
-    }
+  const hasFilters = Boolean(search) || productFilter !== "all";
+  let projectContent: ReactNode;
 
-    navigate({
-      to: "/organizations/$orgId/projects/$type",
-      params: { orgId, type: projectTypeToUrlSlug(type) }
-    });
-  };
-
-  if (isProjectsLoading) {
-    return (
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Card key={`tile-loading-${i + 1}`}>
-            <CardHeader>
-              <div className="flex items-start gap-3">
-                <Skeleton className="h-9 w-9 shrink-0" />
-                <div className="flex min-w-0 flex-1 flex-col gap-2">
-                  <Skeleton className="h-5 w-2/3" />
-                  <Skeleton className="h-4 w-full" />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <Skeleton className="h-3 w-1/3" />
-            </CardContent>
+  if (isLoading) {
+    projectContent = (
+      <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2 @5xl:grid-cols-3 @7xl:grid-cols-4">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <Card key={`project-loading-${index + 1}`} className="h-48 gap-4">
+            <div className="flex items-center gap-2">
+              <Skeleton className="size-8" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-5 w-1/2" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+            <div className="mt-auto flex justify-between border-t border-border pt-4">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-3 w-28" />
+            </div>
           </Card>
         ))}
       </div>
     );
+  } else if (!visibleProjects.length) {
+    projectContent = (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <SearchIcon />
+          </EmptyMedia>
+          <EmptyTitle>
+            {hasFilters ? "No projects match these filters" : "No projects yet"}
+          </EmptyTitle>
+          <EmptyDescription>
+            {hasFilters
+              ? "Try another search term or product filter."
+              : "Create a project to start managing your organization's resources."}
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  } else if (view === "grid") {
+    projectContent = (
+      <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2 @5xl:grid-cols-3 @7xl:grid-cols-4">
+        {visibleProjects.map(renderProjectCard)}
+      </div>
+    );
+  } else {
+    projectContent = (
+      <Card className="overflow-hidden p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Project</TableHead>
+              <TableHead>Product</TableHead>
+              <TableHead>Environments</TableHead>
+              <TableHead>Updated</TableHead>
+              <TableHead aria-label="Favorite" className="w-0" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visibleProjects.map((project) => (
+              <TableRow key={project.id}>
+                <TableCell>
+                  <button
+                    type="button"
+                    className="flex max-w-full items-center gap-3 rounded-sm text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    onClick={() => navigateToProject(project)}
+                  >
+                    <ProjectProductIcon type={project.type} />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-foreground">
+                        {project.name}
+                      </span>
+                      <span className="block truncate text-xs text-muted">
+                        {currentOrg.name} / {project.slug}
+                      </span>
+                    </span>
+                  </button>
+                </TableCell>
+                <TableCell>{getProjectTitle(project.type)}</TableCell>
+                <TableCell>{project.environments.length}</TableCell>
+                <TableCell className="whitespace-nowrap">
+                  {formatUpdatedAt(project.updatedAt)}
+                </TableCell>
+                <TableCell className="text-right">{renderFavoriteButton(project)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+    );
   }
 
-  const requestAccessTarget =
-    (pendingCertManagerProjectId
-      ? cmInstances.find((p) => p.id === pendingCertManagerProjectId)
-      : undefined) ?? certManagerActiveProject;
-  const requestAccessProject: Project | undefined = requestAccessTarget
-    ? ({
-        id: requestAccessTarget.id,
-        name: requestAccessTarget.name
-      } as Project)
-    : undefined;
-
-  const pamRequestAccessProject: Project | undefined = pendingPamProjectId
-    ? ({
-        id: pendingPamProjectId,
-        name: "Privileged Access Manager"
-      } as Project)
-    : undefined;
-
   return (
-    <>
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {PRODUCT_TYPES.map((type) => {
-          const stats = getStatsForType(type);
-          const { iconClassName, containerClassName, cardClassName, titleUnderlineClassName } =
-            PRODUCT_STYLES[type];
-          const Icon = getProjectLucideIcon(type);
+    <section
+      aria-labelledby="projects-inventory-heading"
+      className="@container flex flex-col gap-7"
+    >
+      <h2 id="projects-inventory-heading" className="sr-only">
+        Project inventory
+      </h2>
 
-          const tileBody = (
-            <>
-              <CardHeader>
-                <div className="flex items-start gap-3">
-                  <div
-                    className={`shrink-0 rounded-sm border p-1.5 transition-colors duration-200 ${containerClassName}`}
-                  >
-                    <Icon className={iconClassName} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <CardDescription className="text-base font-semibold text-foreground">
-                      <span
-                        className={`underline decoration-[1.5px] underline-offset-4 ${titleUnderlineClassName}`}
-                      >
-                        {getProjectTitle(type)}
-                      </span>
-                    </CardDescription>
-                    <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
-                      {getProjectDescription(type)}
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                {stats.length > 0 && (
-                  <div className="flex items-center gap-4 border-t border-border pt-3">
-                    {stats.map((stat, index) => (
-                      <div key={stat.label} className="flex items-center gap-4">
-                        <span className="text-muted">
-                          <span className="text-sm font-medium text-foreground">
-                            {formatNumber(stat.value)}
-                          </span>{" "}
-                          <span className="text-xs">{stat.label}</span>
-                        </span>
-                        {index < stats.length - 1 && <div className="h-4 w-px bg-border" />}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </>
-          );
-
-          const isAccessBlocked =
-            (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) ||
-            (type === ProjectType.PAM && isPamAccessBlocked);
-
-          if (isAccessBlocked) {
-            return (
-              <Tooltip key={type}>
-                <TooltipTrigger asChild>
-                  <div aria-disabled className="cursor-not-allowed">
-                    <Card className="h-auto rounded-md opacity-50">{tileBody}</Card>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  You don&apos;t have access to {getProjectTitle(type)}. Ask an organization admin
-                  for access.
-                </TooltipContent>
-              </Tooltip>
-            );
-          }
-
-          return (
-            <Card
-              key={type}
-              role="button"
-              tabIndex={0}
-              onClick={() => handleTileClick(type)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleTileClick(type);
-              }}
-              className={`group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`}
+      <div className="flex flex-col gap-3 @4xl:flex-row @4xl:items-center">
+        <InputGroup className="min-w-0 flex-1">
+          <InputGroupAddon align="inline-start">
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            aria-label="Search projects"
+            placeholder="Search projects..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </InputGroup>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={sort} onValueChange={(value) => setSort(value as ProjectSort)}>
+            <SelectTrigger className="w-44" aria-label="Sort projects">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">
+                <Clock3Icon />
+                Recent activity
+              </SelectItem>
+              <SelectItem value="name-asc">
+                <ArrowDownAZIcon />
+                Name, A to Z
+              </SelectItem>
+              <SelectItem value="name-desc">
+                <ArrowUpAZIcon />
+                Name, Z to A
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <ButtonGroup>
+            <IconButton
+              variant={view === "grid" ? "project" : "outline"}
+              size="sm"
+              aria-label="Grid view"
+              onClick={() => updateView("grid")}
             >
-              {tileBody}
-            </Card>
-          );
-        })}
+              <LayoutGridIcon />
+            </IconButton>
+            <IconButton
+              variant={view === "list" ? "project" : "outline"}
+              size="sm"
+              aria-label="List view"
+              onClick={() => updateView("list")}
+            >
+              <ListIcon />
+            </IconButton>
+          </ButtonGroup>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="project" size="sm" isDisabled={!canCreateProject}>
+                <PlusIcon />
+                Add project
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {CREATABLE_PROJECT_TYPES.map((type) => {
+                const Icon = getProjectLucideIcon(type);
+                return (
+                  <DropdownMenuItem key={type} onSelect={() => handleCreateProject(type)}>
+                    <Icon />
+                    {getProjectTitle(type)}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
-      <RequestProjectAccessModal
-        isOpen={isRequestAccessOpen}
-        onOpenChange={setIsRequestAccessOpen}
-        project={requestAccessProject}
-        subTitle="Requesting access to Certificate Manager. You may include an optional note for admins to review your request."
-      />
-
-      <RequestProjectAccessModal
-        isOpen={isPamRequestAccessOpen}
-        onOpenChange={(isOpen) => {
-          setIsPamRequestAccessOpen(isOpen);
-          if (!isOpen) setPendingPamProjectId(null);
+      <Tabs
+        value={productFilter}
+        onValueChange={(value) => {
+          setProductFilter(value as ProjectFilter);
+          setPage(1);
         }}
-        project={pamRequestAccessProject}
-        subTitle="Requesting access to Privileged Access Manager. You may include an optional note for admins to review your request."
-      />
+      >
+        <TabsList variant="filled" className="max-w-full justify-start overflow-x-auto">
+          <TabsTrigger value="all">
+            All <span className="text-muted">{projects.length}</span>
+          </TabsTrigger>
+          {PROJECT_TYPES.map((type) => {
+            const Icon = getProjectLucideIcon(type);
+            return (
+              <TabsTrigger key={type} value={type}>
+                <Icon aria-hidden />
+                {getProjectTitle(type)} <span className="text-muted">{projectCounts[type]}</span>
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+      </Tabs>
 
-      <CertManagerNotConfiguredModal
-        isOpen={isCertManagerSetupOpen}
-        onOpenChange={setIsCertManagerSetupOpen}
-      />
+      {projectContent}
 
-      <CertManagerSelectInstanceModal
-        isOpen={isCertManagerPickerOpen}
-        onOpenChange={setIsCertManagerPickerOpen}
-        instances={cmInstances}
-        orgDefaultProjectId={orgDefaultCertManagerProjectId}
-        onSelect={handleCertManagerInstanceSelect}
+      {!isLoading && filteredProjects.length > 0 && (
+        <Pagination
+          page={page}
+          perPage={perPage}
+          perPageList={[12, 24, 48, 96]}
+          count={filteredProjects.length}
+          onChangePage={setPage}
+          onChangePerPage={(nextPerPage) => {
+            setPerPage(nextPerPage);
+            setUserTablePreference("organizationProjects", PreferenceKey.PerPage, nextPerPage);
+          }}
+        />
+      )}
+
+      {createProjectType && (
+        <NewProjectModal
+          isOpen
+          projectType={createProjectType}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setCreateProjectType(null);
+          }}
+        />
+      )}
+      <UpgradePlanModal
+        isOpen={isUpgradeOpen}
+        onOpenChange={setIsUpgradeOpen}
+        text="You have reached the maximum number of projects allowed on your current plan. Upgrade your plan to add more projects."
       />
-    </>
+    </section>
   );
 };
