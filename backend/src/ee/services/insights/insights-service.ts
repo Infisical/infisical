@@ -92,10 +92,7 @@ export type TInsightsServiceFactoryDep = {
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "countLeasesForOrg">;
   insightsDAL: Pick<
     TInsightsDALFactory,
-    | "findProjectWarningsForOrg"
-    | "findSecretCreationsByWeekForOrg"
-    | "countSecretCreationsForOrg"
-    | "countOrgSecretsResources"
+    "findProjectWarningsForOrg" | "findSecretCreationsByWeekForOrg" | "countSecretCreationsForOrg"
   >;
 };
 
