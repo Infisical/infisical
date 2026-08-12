@@ -438,6 +438,13 @@ export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
   [UserAgentType.TERRAFORM]: "Terraform",
   [UserAgentType.NODE_SDK]: "InfisicalNodeSDK",
   [UserAgentType.PYTHON_SDK]: "InfisicalPythonSDK",
+  [UserAgentType.AGENT]: "Infisical Agent",
+  [UserAgentType.K8_EXTERNAL_SECRETS_OPERATOR]: "External Secrets Operator",
+  [UserAgentType.GO_SDK]: "Go SDK",
+  [UserAgentType.RUBY_SDK]: "Ruby SDK",
+  [UserAgentType.DOTNET_SDK]: ".NET SDK",
+  [UserAgentType.RUST_SDK]: "Rust SDK",
+  [UserAgentType.CPP_SDK]: "C++ SDK",
   [UserAgentType.OTHER]: "Other"
 };
 
