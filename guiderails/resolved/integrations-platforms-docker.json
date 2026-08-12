@@ -1,0 +1,90 @@
+{
+  "guide": "docs/integrations/platforms/docker.mdx",
+  "guideDocHash": "b336728c9c4d3cc6ce761ec43dc52aad5675765b8d34aaeff3cb2919c84c7cfc",
+  "recordedAt": "2026-08-12T22:57:32.187Z",
+  "steps": [
+    {
+      "docStepIndex": 1,
+      "procedureIndex": 2,
+      "instruction": "Click the button to add a new secret.",
+      "locators": [
+        {
+          "action": "click",
+          "role": "button",
+          "name": "Add a New Secret",
+          "value": null
+        }
+      ]
+    },
+    {
+      "docStepIndex": 2,
+      "procedureIndex": 2,
+      "instruction": "Enter a key-value pair for the secret.",
+      "locators": [
+        {
+          "action": "fill",
+          "role": "textbox",
+          "name": "secret value",
+          "value": "guiderails-test"
+        },
+        {
+          "action": "fill",
+          "role": "textbox",
+          "name": "Type your secret name",
+          "value": "{{fixture.secretName}}"
+        }
+      ]
+    },
+    {
+      "docStepIndex": 3,
+      "procedureIndex": 2,
+      "instruction": "Save the new secret.",
+      "locators": [
+        {
+          "action": "click",
+          "role": "button",
+          "name": "Create Secret",
+          "value": null
+        }
+      ]
+    },
+    {
+      "docStepIndex": 1,
+      "procedureIndex": 3,
+      "instruction": "Navigate to Machine Identities settings.",
+      "locators": [
+        {
+          "action": "click",
+          "role": "link",
+          "name": "Access Control",
+          "value": null
+        },
+        {
+          "action": "click",
+          "role": "tab",
+          "name": "Machine Identities",
+          "value": null
+        }
+      ]
+    },
+    {
+      "docStepIndex": 2,
+      "procedureIndex": 3,
+      "instruction": "Start creating a new machine identity.",
+      "locators": [
+        {
+          "action": "click",
+          "role": "button",
+          "name": "Add Machine Identity to Project",
+          "value": null
+        },
+        {
+          "action": "click",
+          "role": "tab",
+          "name": "Create New",
+          "value": null
+        }
+      ]
+    }
+  ]
+}

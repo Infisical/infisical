@@ -85,9 +85,14 @@ const freshOrg: Fixture = {
     project: null,
     values: {
       orgId: ctx.state.organizationId,
-      orgSlug: ctx.state.organizationSlug
+      orgSlug: ctx.state.organizationSlug,
+      projectName: `Guiderails ${ctx.runId}`,
+      secretName: "DATABASE_URL"
     },
-    describe: [`Organization ${ctx.state.organizationSlug} with no harness-created project.`],
+    describe: [
+      `Organization ${ctx.state.organizationSlug} with no harness-created project.`,
+      "Guide-created project and secret use deterministic fixture values."
+    ],
     entryPath: "/"
   })
 };
