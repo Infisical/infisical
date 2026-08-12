@@ -24,7 +24,33 @@ function SelectedActionBar({
   ...props
 }: SelectedActionBarProps) {
   const isVisible = selectedCount > 0;
+  const clearSelectionRef = React.useRef(onClearSelection);
   const lastVisibleContent = React.useRef({ children, selectedCount, selectionLabel });
+
+  clearSelectionRef.current = onClearSelection;
+
+  React.useEffect(() => {
+    if (!isVisible) return undefined;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+
+      const target = event.target instanceof Element ? event.target : null;
+      const isEditableTarget =
+        target?.closest("input, textarea, select, [contenteditable='true']") ?? false;
+      const isOverlayTarget =
+        target?.closest(
+          '[role="dialog"], [role="menu"], [role="listbox"], [data-slot$="-content"]'
+        ) ?? false;
+
+      if (isEditableTarget || isOverlayTarget) return;
+
+      clearSelectionRef.current();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isVisible]);
 
   if (isVisible) {
     lastVisibleContent.current = { children, selectedCount, selectionLabel };

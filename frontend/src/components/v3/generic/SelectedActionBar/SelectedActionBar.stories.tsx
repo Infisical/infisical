@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Button } from "../Button";
@@ -50,5 +51,28 @@ export const Hidden: Story = {
   name: "Example: No Selection",
   args: {
     selectedCount: 0
+  }
+};
+
+export const EscapeClearsSelection: Story = {
+  name: "Interaction: Escape clears selection",
+  render: (args) => {
+    const [selectedCount, setSelectedCount] = useState(args.selectedCount);
+
+    return (
+      <>
+        <div className="fixed top-6 left-6 space-y-2 text-sm text-foreground">
+          <p>Press Escape while this story is focused to clear the selection.</p>
+          <Button size="sm" variant="outline_bg" onClick={() => setSelectedCount(3)}>
+            Restore selection
+          </Button>
+        </div>
+        <SelectedActionBar
+          {...args}
+          selectedCount={selectedCount}
+          onClearSelection={() => setSelectedCount(0)}
+        />
+      </>
+    );
   }
 };
