@@ -1,7 +1,5 @@
 # backend
 node_modules
-.env
-.env.test
 .env.dev
 .env.gamma
 .env.prod
@@ -26,7 +24,6 @@ node_modules
 /.pnp
 .pnp.js
 
-.env
 
 # testing
 coverage
@@ -49,7 +46,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env.local
 .env.development.local
 .env.test.local
 .env.production.local
@@ -81,3 +77,7 @@ __pycache__
 # Local Codex design QA artifacts
 /.design-qa/
 /design-qa.md
+config.bat
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
