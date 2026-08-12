@@ -523,7 +523,7 @@
                   "documentation/platform/pr-workflows",
                   "documentation/platform/access-controls/access-requests",
                   "documentation/platform/webhooks",
-                  "documentation/platform/insights",
+                  "documentation/platform/insights", "documentation/platform/blast-radius",
                   {
                     "group": "Secret Rotation",
                     "pages": [

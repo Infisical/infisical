@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
+import { useNavigate } from "@tanstack/react-router";
 import {
   BanIcon,
   BellIcon,
@@ -16,6 +17,7 @@ import {
   GitBranchIcon,
   HistoryIcon,
   MessageSquareIcon,
+  NetworkIcon,
   PencilLineIcon,
   SaveIcon,
   TagsIcon,
@@ -77,9 +79,11 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission,
   useSubscription
@@ -217,6 +221,8 @@ export const SecretEditTableRow = ({
   ] as const);
 
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
+  const navigate = useNavigate();
   const { subscription } = useSubscription();
   const batchStore = useBatchStoreApi();
 
@@ -1638,6 +1644,41 @@ export const SecretEditTableRow = ({
                     : isImportedSecret
                       ? "Cannot View Access for Imported Secret"
                       : "Create Secret to View Access"}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip
+                open={isPendingBatchChange || isImportedSecret || isCreatable ? undefined : false}
+                disableHoverableContent
+              >
+                <TooltipTrigger className="block w-full">
+                  <DropdownMenuItem
+                    className="px-2.5 py-1.5 text-xs"
+                    onClick={() => {
+                      if (!subscription?.secretAccessInsights) {
+                        handlePopUpOpen("accessInsightsUpgrade");
+                        return;
+                      }
+
+                      navigate({
+                        to: ROUTE_PATHS.SecretManager.BlastRadiusPage.path,
+                        params: { orgId: currentOrg.id, projectId: currentProject.id },
+                        search: { secretKey: secretName, environment, secretPath }
+                      });
+                    }}
+                    isDisabled={
+                      isPendingBatchChange || !secretId || isCreatable || isImportedSecret
+                    }
+                  >
+                    <NetworkIcon />
+                    View Blast Radius
+                  </DropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  {isPendingBatchChange
+                    ? "Discard Pending Changes First"
+                    : isImportedSecret
+                      ? "Cannot View Blast Radius for Imported Secret"
+                      : "Create Secret to View Blast Radius"}
                 </TooltipContent>
               </Tooltip>
 

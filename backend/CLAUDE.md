@@ -202,6 +202,14 @@ Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. Custom roles use unpack
 - **No explicit cache invalidation calls exist.** The fingerprint self-corrects within the marker TTL (10s eventual consistency for access granting). The old `invalidateProjectPermissionCache` / DAL version counter pattern has been removed.
 - Cache helpers (`cacheGet`, `cacheSet`, `applyReviver`) in `src/lib/cache/with-cache.ts` are shared between the simple `withCache` and the fingerprint-based `withCacheFingerprint`.
 
+**Three ways to resolve permissions, and they answer different questions.** Reach for the narrowest one:
+
+- `getProjectPermission(actor)` — one merged ability for one actor. The request-path check.
+- `getProjectPermissions(projectId, orgId)` — one merged ability per principal in a project. Use when you need to know *who* can do something (the secret access list and blast radius entitlement leg).
+- `getProjectPermissionSources({ actors, groupIds })` — one ability **per grant source** (role, group role, additional privilege), so a caller can learn *why* a principal has access rather than only that they do. It reuses `buildProjectPermissionRules` and the same handlebars metadata interpolation as the merged path, which is the point: attribution must not drift from evaluation.
+
+  **Only call it for actors the merged ability already allows.** A single source cannot see a forbid rule contributed by a *different* source, so in isolation it will report access that the merged ability denies. Resolve "can they?" first, then attribute.
+
 ### Request-Scoped Memoization
 
 A per-request in-memory cache that eliminates redundant DB reads within a single HTTP request. Defined in `src/lib/request-context/request-memoizer.ts`, attached to Fastify's `@fastify/request-context` as the `memoizer` field (initialized in `src/server/app.ts`). Cache is automatically garbage-collected when the request ends — zero staleness risk, zero infrastructure.
@@ -321,6 +329,41 @@ Invariants worth knowing before extending it:
   - **`deleteAlertsForResource({ orgId, projectId?, resourceType, resourceId })`** when the resource merely **left a scope** (removed from a project, removed from an org) but still exists. Narrow on purpose: leaving one project must not drop the org-level alert, and leaving one org must not touch another org's alerts. Omitting `projectId` reaps the whole org, which is what org-membership removal wants since it cascades the project memberships.
 
   Wire it into **every** path that deletes or detaches the resource, not just the obvious one. A resource usually has several (a hard delete, an org-membership removal, a project-membership removal), and each needs its own reap. Call it **inside the delete transaction** and pass `tx`; the reap is pure DB (no KMS or network), so it is safe there. The `(resourceType, resourceId)` index on `alerts` is what keeps the unscoped reap off a seq scan, so a provider whose resource is deleted in bulk depends on it.
+
+### Blast Radius (secret exposure analysis)
+
+`src/ee/services/secret-blast-radius/` answers "everything that touches this secret, and what happens if
+you change it" for one secret: who is entitled and via which grant, where the value has been distributed,
+who has actually read it, and what a rotation would break. Routes live beside the secret access list in
+`src/ee/routes/v1/secret-router.ts`, plus a project-wide ranking on the insights router.
+
+Invariants worth knowing before extending it:
+
+- **Reuse, don't re-derive.** The entitlement leg calls `permissionService.getProjectPermissions`; grant
+  attribution calls `getProjectPermissionSources` (see the permission section above). Do not build CASL
+  rules inside this module.
+- **Consumption fidelity is a product fact, not an implementation detail.** `GET_SECRETS` (the bulk read
+  every CLI and SDK performs) records the folder and environment but **not which keys it returned**, so a
+  consumer carries `precision: "secret" | "folder"` and the UI renders folder counts with a leading `~`.
+  Never present a folder-precision count as a per-key count.
+- **A negative claim is bounded by retention.** `auditLogsRetentionDays` is a plan feature, so "no reads"
+  means "none inside a plan-bounded window". The window is clamped and returned (`window.effectiveDays`,
+  `boundByRetention`), and the copy is "No reads in 30d", never "never used".
+- **The exposure score requires the activity leg.** Two of its seven terms come from reads, so it returns
+  `score: null` / `band: "unavailable"` when activity is missing (no audit-log permission, or the caller
+  asked for the fast legs only). Scoring the remainder would publish a number that changes per viewer.
+- **The score describes the secret, not the current view.** It is computed before filtering and paging, so
+  a filter never moves it.
+- **Rotation simulation returns four lists, and ghost readers belong to `reasonsToRotate`.** They cannot
+  read the value, so they must never appear under `willUpdateAutomatically`; there is a regression test
+  for exactly that. An approval policy is `worthKnowing`, not an impact: "not safe to rotate" is reserved
+  for things that will actually break.
+- **Everything is bounded and says so.** Attribution runs on the drawn page (cap 60), the ranking scores a
+  prefiltered candidate slice, and truncation is reported as counts (`drawn`, `total`, and the not-drawn
+  breakdown) rather than a boolean, so the numbers stay complete when the canvas does not.
+- **Follow-ups**: the consumption aggregates live on the Postgres audit-log DAL only (matching how Insights
+  already aggregates), and the jsonb filters on `eventMetadata` want an expression index before this is
+  enabled for large tenants.
 
 ### Soft-Delete + Async Cleanup
 

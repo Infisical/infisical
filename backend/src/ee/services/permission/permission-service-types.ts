@@ -76,6 +76,30 @@ export type TPermissionAuditSource = {
   permissions: PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[];
 };
 
+// One resolved grant source, carrying the ability that source grants on its own. Callers evaluate
+// their own subject against `permission` to learn which sources actually reach a resource, which is
+// what turns "this actor has access" into "this actor has access because of this role".
+export type TProjectPermissionGrantSource = {
+  id: string;
+  kind: "role" | "groupRole" | "additionalPrivilege";
+  name: string;
+  roleSlug?: string;
+  groupId?: string;
+  groupName?: string;
+  isTemporary: boolean;
+  temporaryAccessEndTime?: string;
+  permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
+};
+
+export type TGetProjectPermissionSourcesArg = {
+  projectId: string;
+  orgId: string;
+  // `username` feeds the same handlebars interpolation the merged ability uses, so an ABAC rule
+  // templated on `identity.username` resolves identically here.
+  actors: { id: string; type: ActorType.USER | ActorType.IDENTITY; username: string }[];
+  groupIds?: string[];
+};
+
 export type TGetOrgPermissionArg = {
   actor: ActorType;
   actorId: string;
@@ -174,6 +198,10 @@ export type TPermissionServiceFactory = {
     projectId: string;
     checkPermissions: ProjectPermissionSet;
   }) => Promise<boolean>;
+  getProjectPermissionSources: (arg: TGetProjectPermissionSourcesArg) => Promise<{
+    actorSources: Record<string, TProjectPermissionGrantSource[]>;
+    groupSources: Record<string, TProjectPermissionGrantSource[]>;
+  }>;
   getMembershipPermissionAudit: (arg: TGetMembershipPermissionAuditArg) => Promise<{
     sources: TPermissionAuditSource[];
   }>;

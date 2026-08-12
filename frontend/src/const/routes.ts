@@ -139,6 +139,10 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/projects/secret-management/$projectId/insights",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/insights"
     ),
+    BlastRadiusPage: setRoute(
+      "/organizations/$orgId/projects/secret-management/$projectId/blast-radius",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/blast-radius"
+    ),
     IntegrationDetailsByIDPage: setRoute(
       "/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId"

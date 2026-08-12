@@ -12,6 +12,8 @@ import {
   AuditReportStatus,
   AuditReportType
 } from "@app/ee/services/audit-report/audit-report-types";
+import { BlastRadiusWindow, ExposureBand } from "@app/ee/services/secret-blast-radius/secret-blast-radius-types";
+import { RAW_SECRETS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -47,6 +49,57 @@ const AuditReportSchema = z.object({
 });
 
 export const registerInsightsRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/secrets/exposure-ranking",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getSecretExposureRanking",
+      description: "Rank the most exposed secrets in a project by the same score the blast radius view reports",
+      security: [{ bearerAuth: [] }],
+      querystring: z.object({
+        projectId: z.string().trim().min(1).max(36).describe(RAW_SECRETS.GET_EXPOSURE_RANKING.projectId),
+        environment: z.string().trim().max(64).optional().describe(RAW_SECRETS.GET_EXPOSURE_RANKING.environment),
+        window: z
+          .nativeEnum(BlastRadiusWindow)
+          .default(BlastRadiusWindow.ThirtyDays)
+          .describe(RAW_SECRETS.GET_EXPOSURE_RANKING.window),
+        limit: z.coerce.number().int().min(1).max(25).default(10).describe(RAW_SECRETS.GET_EXPOSURE_RANKING.limit)
+      }),
+      response: {
+        200: z.object({
+          rankings: z
+            .object({
+              secretId: z.string(),
+              secretKey: z.string(),
+              environment: z.string(),
+              environmentName: z.string(),
+              secretPath: z.string(),
+              score: z.number().nullable(),
+              band: z.nativeEnum(ExposureBand),
+              topDriver: z.string().nullable(),
+              entitledCount: z.number(),
+              noReadsCount: z.number(),
+              destinationCount: z.number(),
+              ghostReaderCount: z.number(),
+              valueAgeDays: z.number()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.secretBlastRadius.getProjectExposureRanking({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query
+      });
+    }
+  });
+
   server.route({
     method: "GET",
     url: "/secrets/calendar",

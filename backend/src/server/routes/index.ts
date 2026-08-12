@@ -175,6 +175,8 @@ import { secretApprovalRequestDALFactory } from "@app/ee/services/secret-approva
 import { secretApprovalRequestReviewerDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-reviewer-dal";
 import { secretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { secretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import { secretBlastRadiusDALFactory } from "@app/ee/services/secret-blast-radius/secret-blast-radius-dal";
+import { secretBlastRadiusServiceFactory } from "@app/ee/services/secret-blast-radius/secret-blast-radius-service";
 import { secretReplicationServiceFactory } from "@app/ee/services/secret-replication/secret-replication-service";
 import { secretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { secretRotationV2QueueServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-queue";
@@ -606,6 +608,8 @@ export const registerRoutes = async (
   const secretVersionDAL = secretVersionDALFactory(db);
   const secretVersionTagDAL = secretVersionTagDALFactory(db);
   const secretBlindIndexDAL = secretBlindIndexDALFactory(db);
+
+  const secretBlastRadiusDAL = secretBlastRadiusDALFactory(db);
 
   const secretV2BridgeDAL = secretV2BridgeDALFactory({ db, keyStore });
   const secretVersionV2BridgeDAL = secretVersionV2BridgeDALFactory(db);
@@ -2290,6 +2294,18 @@ export const registerRoutes = async (
     projectFolderGrantDAL
   });
 
+  const secretBlastRadiusService = secretBlastRadiusServiceFactory({
+    secretBlastRadiusDAL,
+    permissionService,
+    licenseService,
+    projectDAL,
+    folderDAL,
+    secretV2BridgeDAL,
+    auditLogDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL
+  });
+
   const folderService = secretFolderServiceFactory({
     permissionService,
     folderDAL,
@@ -3865,6 +3881,7 @@ export const registerRoutes = async (
     projectKey: projectKeyService,
     projectEnv: projectEnvService,
     secret: secretService,
+    secretBlastRadius: secretBlastRadiusService,
     secretReplication: secretReplicationService,
     secretTag: secretTagService,
     secretValidationRule: secretValidationRuleService,

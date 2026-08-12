@@ -76,6 +76,42 @@ CASL-based (`@casl/ability`). Contexts: `OrgPermissionContext` and `ProjectPermi
 
 Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in `src/index.css` (`@theme` directive). Custom breakpoint `dashboard: 1100px`. Typography roles: Inter is the default product UI face, Alliance is the display face, `font-mono` remains the functional application mono, and `font-jetbrains-mono` is reserved for decorative technical microcopy. See the root `DESIGN.md` before assigning a non-default face. Color palette: primary (blue), mineshaft (dark gray), bunker (darker bg), success/warning/danger/info.
 
+### Graph views (React Flow)
+
+Three graphs exist and they are not interchangeable, so extend the closest one rather than starting over:
+
+- `components/permissions/AccessTree/` — role to folder access, in the role editor. Dagre-laid out, and the
+  source of the reusable pieces (`positionElements`, `ShowMoreButtonNode`, progressive disclosure in its
+  hook).
+- `components/secrets/SecretReferenceDetails/` — reference *dependencies* of a secret, with cycle handling.
+- `pages/secret-manager/BlastRadiusPage/` — everything that touches one secret. Fixed three-band layout
+  (principals, secret, destinations) with a detached ghost-reader band, so it positions nodes explicitly in
+  `utils/buildGraph.ts` instead of using dagre: the bands are column math, and a hierarchical layout fights
+  them.
+
+Conventions the blast radius view depends on, worth preserving if you touch it:
+
+- **Solid edge means observed, dashed means entitled but not seen in the window.** With no activity data
+  every edge stays dashed, because unknown is not the same as unused.
+- **Ghost readers are drawn with no edge to the secret.** They have no current path, and drawing one would
+  misrepresent the access model.
+- **Folder-precision read counts render with a leading `~`** and a `folder-level` badge. The backend sends
+  `precision`; the client applies the tilde. Never format the count server-side.
+- **A cluster is not truncation.** `+N principals` folds nodes that are still counted in every total and
+  expands in place; a truncation banner reports a rendering cap with the not-drawn breakdown. Keep the two
+  visually and verbally distinct.
+- **The initial fit frames the three bands, not the ghost band.** Ghost readers hang below the entitled
+  column with no edges, so including them in `fitView` zooms every other node down to accommodate them.
+  They stay one pan away, and the header stat tile is what guarantees the count is never missed.
+- **The wheel belongs to the page.** The canvas sits in a scrolling page, so `zoomOnScroll` is off and
+  `preventScrolling` is false; zoom lives on the controls and pinch. Otherwise scrolling past the graph
+  traps the reader inside it.
+- **Badge text size is never overridden.** v3 badges carry `text-xs`, and node heights in
+  `utils/buildGraph.ts` are sized around that rather than shrinking the badges to fit.
+- **The Explain panel navigates, it does not mutate.** Revoking access from a read-only graph would put a
+  destructive action two clicks from a hover, so the actions link to the role editor and access page, which
+  own those flows and their guards.
+
 ### Layouts
 
 9 layout components in `src/layouts/` — `AdminLayout`, `OrganizationLayout`, `SecretManagerLayout`, `PkiManagerLayout`, `KmsLayout`, `PamLayout`, etc. Layouts handle sidebar navigation and page chrome for their product area.

@@ -130,6 +130,7 @@ import { Route as organizationProductSettingsPageSecretsManagementProjectTemplat
 import { Route as secretManagerSettingsPageRouteImport } from './pages/secret-manager/SettingsPage/route'
 import { Route as secretManagerOverviewPageRouteImport } from './pages/secret-manager/OverviewPage/route'
 import { Route as secretManagerInsightsPageRouteImport } from './pages/secret-manager/InsightsPage/route'
+import { Route as secretManagerBlastRadiusPageRouteImport } from './pages/secret-manager/BlastRadiusPage/route'
 import { Route as secretManagerSecretApprovalsPageRouteImport } from './pages/secret-manager/SecretApprovalsPage/route'
 import { Route as secretManagerIPAllowlistPageRouteImport } from './pages/secret-manager/IPAllowlistPage/route'
 import { Route as kmsSettingsPageRouteImport } from './pages/kms/SettingsPage/route'
@@ -1473,6 +1474,13 @@ const secretManagerInsightsPageRouteRoute =
   secretManagerInsightsPageRouteImport.update({
     id: '/insights',
     path: '/insights',
+    getParentRoute: () => secretManagerLayoutRoute,
+  } as any)
+
+const secretManagerBlastRadiusPageRouteRoute =
+  secretManagerBlastRadiusPageRouteImport.update({
+    id: '/blast-radius',
+    path: '/blast-radius',
     getParentRoute: () => secretManagerLayoutRoute,
   } as any)
 
@@ -3453,6 +3461,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof secretManagerSecretApprovalsPageRouteImport
       parentRoute: typeof secretManagerLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/blast-radius': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/blast-radius'
+      path: '/blast-radius'
+      fullPath: '/organizations/$orgId/projects/secret-management/$projectId/blast-radius'
+      preLoaderRoute: typeof secretManagerBlastRadiusPageRouteImport
+      parentRoute: typeof secretManagerLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/insights': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/insights'
       path: '/insights'
@@ -5176,6 +5191,7 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManag
 interface secretManagerLayoutRouteChildren {
   secretManagerIPAllowlistPageRouteRoute: typeof secretManagerIPAllowlistPageRouteRoute
   secretManagerSecretApprovalsPageRouteRoute: typeof secretManagerSecretApprovalsPageRouteRoute
+  secretManagerBlastRadiusPageRouteRoute: typeof secretManagerBlastRadiusPageRouteRoute
   secretManagerInsightsPageRouteRoute: typeof secretManagerInsightsPageRouteRoute
   secretManagerOverviewPageRouteRoute: typeof secretManagerOverviewPageRouteRoute
   secretManagerSettingsPageRouteRoute: typeof secretManagerSettingsPageRouteRoute
@@ -5196,6 +5212,8 @@ const secretManagerLayoutRouteChildren: secretManagerLayoutRouteChildren = {
     secretManagerIPAllowlistPageRouteRoute,
   secretManagerSecretApprovalsPageRouteRoute:
     secretManagerSecretApprovalsPageRouteRoute,
+  secretManagerBlastRadiusPageRouteRoute:
+    secretManagerBlastRadiusPageRouteRoute,
   secretManagerInsightsPageRouteRoute: secretManagerInsightsPageRouteRoute,
   secretManagerOverviewPageRouteRoute: secretManagerOverviewPageRouteRoute,
   secretManagerSettingsPageRouteRoute: secretManagerSettingsPageRouteRoute,
@@ -5913,6 +5931,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/kms/$projectId/settings': typeof kmsSettingsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/allowlist': typeof secretManagerIPAllowlistPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/approval': typeof secretManagerSecretApprovalsPageRouteRoute
+  '/organizations/$orgId/projects/secret-management/$projectId/blast-radius': typeof secretManagerBlastRadiusPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/insights': typeof secretManagerInsightsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/overview': typeof secretManagerOverviewPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/settings': typeof secretManagerSettingsPageRouteRoute
@@ -6178,6 +6197,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/kms/$projectId/settings': typeof kmsSettingsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/allowlist': typeof secretManagerIPAllowlistPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/approval': typeof secretManagerSecretApprovalsPageRouteRoute
+  '/organizations/$orgId/projects/secret-management/$projectId/blast-radius': typeof secretManagerBlastRadiusPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/insights': typeof secretManagerInsightsPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/overview': typeof secretManagerOverviewPageRouteRoute
   '/organizations/$orgId/projects/secret-management/$projectId/settings': typeof secretManagerSettingsPageRouteRoute
@@ -6451,6 +6471,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/settings': typeof kmsSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/allowlist': typeof secretManagerIPAllowlistPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/approval': typeof secretManagerSecretApprovalsPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/blast-radius': typeof secretManagerBlastRadiusPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/insights': typeof secretManagerInsightsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/overview': typeof secretManagerOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/settings': typeof secretManagerSettingsPageRouteRoute
@@ -6729,6 +6750,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/kms/$projectId/settings'
     | '/organizations/$orgId/projects/secret-management/$projectId/allowlist'
     | '/organizations/$orgId/projects/secret-management/$projectId/approval'
+    | '/organizations/$orgId/projects/secret-management/$projectId/blast-radius'
     | '/organizations/$orgId/projects/secret-management/$projectId/insights'
     | '/organizations/$orgId/projects/secret-management/$projectId/overview'
     | '/organizations/$orgId/projects/secret-management/$projectId/settings'
@@ -6993,6 +7015,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/kms/$projectId/settings'
     | '/organizations/$orgId/projects/secret-management/$projectId/allowlist'
     | '/organizations/$orgId/projects/secret-management/$projectId/approval'
+    | '/organizations/$orgId/projects/secret-management/$projectId/blast-radius'
     | '/organizations/$orgId/projects/secret-management/$projectId/insights'
     | '/organizations/$orgId/projects/secret-management/$projectId/overview'
     | '/organizations/$orgId/projects/secret-management/$projectId/settings'
@@ -7264,6 +7287,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/allowlist'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/approval'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/blast-radius'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/insights'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/overview'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/settings'
@@ -8132,6 +8156,7 @@ export const routeTree = rootRoute
       "children": [
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/allowlist",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/approval",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/blast-radius",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/insights",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/overview",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/settings",
@@ -8209,6 +8234,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/approval": {
       "filePath": "secret-manager/SecretApprovalsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/blast-radius": {
+      "filePath": "secret-manager/BlastRadiusPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/insights": {
