@@ -1,8 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import { createRootRouteWithContext, Outlet, useRouterState } from "@tanstack/react-router";
 
 import { NotificationContainer } from "@app/components/notifications";
 import { TooltipProvider } from "@app/components/v2";
+import {
+  RootCommandMenu,
+  type RootCommandMenuShell
+} from "@app/components/v3/platform/RootCommandMenu";
+import { ThemeProvider } from "@app/components/v3/platform/ThemeProvider";
 import { adminQueryKeys, fetchServerConfig } from "@app/hooks/api/admin/queries";
 import { TServerConfig } from "@app/hooks/api/admin/types";
 import { authKeys } from "@app/hooks/api/auth/queries";
@@ -14,14 +19,40 @@ type TRouterContext = {
   queryClient: QueryClient;
 };
 
+const RootCommandMenuMount = () => {
+  const shell = useRouterState({
+    select: (state): RootCommandMenuShell | null => {
+      const routeIds = new Set(state.matches.map((match) => match.routeId));
+
+      if (routeIds.has("/_authenticate/_inject-org-details/admin/_admin-layout")) {
+        return "admin";
+      }
+      if (routeIds.has("/_authenticate/_inject-org-details/_org-layout")) {
+        return "organization";
+      }
+      if (routeIds.has("/_authenticate/personal-settings/_layout")) {
+        return "personal-settings";
+      }
+      return null;
+    }
+  });
+
+  if (!shell) return null;
+
+  return <RootCommandMenu shell={shell} />;
+};
+
 const RootPage = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Outlet />
-        <NotificationContainer />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Outlet />
+          <RootCommandMenuMount />
+          <NotificationContainer />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 };
 

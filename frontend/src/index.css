@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @source not "../public";
 
 @font-face {
@@ -35,6 +37,13 @@
     @apply overflow-hidden;
   }
 
+  html,
+  body,
+  #root {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+
   /* Override browser/password-manager autofill styling for dark theme */
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
@@ -60,6 +69,7 @@
   font-family: var(--font-inter);
   --foreground: oklch(0.985 0 0);
   --background: oklch(0.145 0 0);
+  color-scheme: dark;
 }
 
 @theme {
