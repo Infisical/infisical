@@ -16,6 +16,7 @@ import { useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+import { SecretNameSchema } from "@app/lib/schemas";
 
 enum SecretActionType {
   Created = "created",
@@ -31,7 +32,7 @@ type Props = {
 };
 
 export const formSchema = z.object({
-  key: z.string().trim().min(1, { message: "Secret key is required" })
+  key: SecretNameSchema
 });
 
 type TFormSchema = z.infer<typeof formSchema>;
