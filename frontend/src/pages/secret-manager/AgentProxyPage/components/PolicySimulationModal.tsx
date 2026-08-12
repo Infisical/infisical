@@ -1,13 +1,11 @@
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowRightIcon,
   BotIcon,
   CheckIcon,
+  ChevronDownIcon,
   CircleAlertIcon,
-  GlobeIcon,
   LucideIcon,
   PlusIcon,
-  SendIcon,
   UserIcon,
   XIcon
 } from "lucide-react";
@@ -26,11 +24,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
   FilterableSelect,
   Input,
   Select,
@@ -50,10 +43,12 @@ import {
   evaluatePolicyRules,
   findContendingAgentPolicy,
   formatPolicyRequest,
+  parsePolicyPattern,
   parsePolicyRequest,
   PolicyRuleMismatch,
   TEvaluatedRule,
-  TPolicyRequest
+  TPolicyRequest,
+  TPolicyRuleSpecificity
 } from "@app/helpers/policyMatch";
 import { useDebounce } from "@app/hooks";
 import {
@@ -65,133 +60,330 @@ import {
 } from "@app/hooks/api/agentPolicies";
 import { TUserPolicy, useGetUserPolicies, useUpdateUserPolicy } from "@app/hooks/api/userPolicies";
 
-const MISMATCH_LABEL: Record<PolicyRuleMismatch, string> = {
-  [PolicyRuleMismatch.Host]: "different host",
-  [PolicyRuleMismatch.Port]: "different port",
-  [PolicyRuleMismatch.Scheme]: "different scheme",
-  [PolicyRuleMismatch.Path]: "path outside the rule",
-  [PolicyRuleMismatch.Method]: "method not covered"
+const CLAUSE_LABEL: Record<PolicyRuleMismatch, string> = {
+  [PolicyRuleMismatch.Host]: "host",
+  [PolicyRuleMismatch.Scheme]: "scheme",
+  [PolicyRuleMismatch.Port]: "port",
+  [PolicyRuleMismatch.Path]: "path",
+  [PolicyRuleMismatch.Method]: "method"
 };
 
-type TStageState = "idle" | "pass" | "stop";
-
-const STAGE_CLASSNAME: Record<TStageState, string> = {
-  idle: "border-border bg-container/40 text-muted",
-  pass: "border-success/25 bg-success/5 text-success",
-  stop: "border-danger/25 bg-danger/5 text-danger"
+type TMissContext = {
+  pattern: ReturnType<typeof parsePolicyPattern>;
+  request: TPolicyRequest;
+  rule: TEvaluatedRule;
 };
 
-const FlowStage = ({
-  label,
-  icon: Icon,
-  value,
-  state,
-  className,
-  children
-}: {
-  label: string;
-  icon: LucideIcon;
-  value: string;
-  state: TStageState;
-  className?: string;
-  children?: ReactNode;
-}) => (
-  <div
-    className={cn(
-      "flex min-w-0 flex-1 flex-col gap-1 rounded-md border px-3 py-2.5",
-      STAGE_CLASSNAME[state],
-      className
-    )}
-  >
-    <div className="flex items-center gap-1.5 text-[11px] tracking-wide text-label uppercase">
-      <Icon className="size-3.5 shrink-0" />
-      <span className="truncate">{label}</span>
-      {state === "pass" && <CheckIcon className="ml-auto size-3.5 shrink-0" />}
-      {state === "stop" && <XIcon className="ml-auto size-3.5 shrink-0" />}
-    </div>
-    <div className="truncate text-sm text-foreground" title={value}>
-      {value}
-    </div>
-    {children}
-  </div>
-);
+const MISS_REASON: Record<PolicyRuleMismatch, (context: TMissContext) => string> = {
+  [PolicyRuleMismatch.Host]: ({ request }) => `${request.host} is a different host`,
+  [PolicyRuleMismatch.Scheme]: ({ pattern, request }) =>
+    `${request.scheme} is not ${pattern.scheme}`,
+  [PolicyRuleMismatch.Port]: ({ pattern, request }) =>
+    `port ${request.port} is not ${pattern.port}`,
+  [PolicyRuleMismatch.Path]: ({ pattern, request }) => `${request.path} is outside ${pattern.path}`,
+  [PolicyRuleMismatch.Method]: ({ request, rule }) =>
+    `${request.method} is not in ${rule.methods.join(", ")}`
+};
 
-// The link between two stages: solid once traffic has reached the next one, severed where it stops.
-const FlowLink = ({ state }: { state: TStageState }) => (
-  <div className="flex w-7 shrink-0 items-center justify-center">
-    <ArrowRightIcon
-      className={cn(
-        "size-4",
-        state === "pass" && "text-success",
-        state === "stop" && "text-danger/50",
-        state === "idle" && "text-muted/40"
-      )}
-    />
-  </div>
-);
+const countLabel = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
 
-type TSide = {
+// Every clause the rule constrains, in one fixed order so the marks line up as columns down the list.
+// A rule naming no method still gets a method mark: "Any covers this one" answers the same question.
+const listRuleClauses = (rule: TEvaluatedRule) => {
+  const pattern = parsePolicyPattern(rule.hostPattern);
+  const clauses = [PolicyRuleMismatch.Host];
+  if (pattern.scheme) clauses.push(PolicyRuleMismatch.Scheme);
+  if (pattern.port) clauses.push(PolicyRuleMismatch.Port);
+  if (pattern.path) clauses.push(PolicyRuleMismatch.Path);
+  clauses.push(PolicyRuleMismatch.Method);
+
+  return clauses.map((clause) => ({ clause, isMatched: !rule.mismatches.includes(clause) }));
+};
+
+const joinReasons = (reasons: string[]) => {
+  if (reasons.length < 2) return reasons[0] ?? "";
+  return `${reasons.slice(0, -1).join(", ")} and ${reasons[reasons.length - 1]}`;
+};
+
+// The rule that failed on the fewest clauses is the one the author most likely meant to cover the
+// request, so it gets a sentence rather than leaving them to read every row's marks.
+const describeClosestMiss = (rules: TEvaluatedRule[], request: TPolicyRequest) => {
+  const closest = rules
+    .filter((rule) => !rule.isMatched)
+    .reduce<
+      TEvaluatedRule | undefined
+    >((best, rule) => (!best || rule.mismatches.length < best.mismatches.length ? rule : best), undefined);
+  if (!closest) return null;
+
+  const pattern = parsePolicyPattern(closest.hostPattern);
+  const reasons = joinReasons(
+    closest.mismatches.map((clause) => MISS_REASON[clause]({ pattern, request, rule: closest }))
+  );
+
+  // Leading with the clause the rule did cover is what turns a list of failures into a diagnosis.
+  const lead = () => {
+    if (closest.methods.length && !closest.mismatches.includes(PolicyRuleMismatch.Method))
+      return `allows ${request.method}, but`;
+    if (!closest.mismatches.includes(PolicyRuleMismatch.Host)) return "matches the host, but";
+    return "turns it away:";
+  };
+
+  return { hostPattern: closest.hostPattern, detail: `${lead()} ${reasons}.` };
+};
+
+type TGateSide = {
   name: string;
   isMatched: boolean;
+  matchedCount: number;
   rules: TEvaluatedRule[];
 };
 
-const RulePanel = ({
-  heading,
-  side,
-  // Before a request can be read there is nothing to dim: rules render as written, with no verdict.
-  isIdle
-}: {
-  heading: string;
-  side: TSide;
-  isIdle: boolean;
-}) => (
-  <div className="flex min-w-0 flex-col rounded-md border border-border bg-container/50">
-    <div className="border-b border-border px-3 py-2 text-[11px] tracking-wide text-label uppercase">
-      {heading}
-    </div>
-    <div className="flex flex-col divide-y divide-border">
-      {side.rules.map((rule) => {
-        const isDimmed = !isIdle && !rule.isMatched;
+const evaluateSide = (
+  policy: { name: string; rules: TAgentPolicy["rules"] } | undefined,
+  request: TPolicyRequest | null
+): { side: TGateSide; specificity?: TPolicyRuleSpecificity } | null => {
+  if (!policy) return null;
 
-        return (
-          <div
-            key={rule.id}
-            className={cn(
-              "flex items-start gap-2 px-3 py-2.5 transition-opacity duration-150",
-              isDimmed ? "opacity-45" : "opacity-100"
-            )}
-          >
-            <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center">
-              {isIdle && <span className="size-1.5 rounded-full bg-muted" />}
-              {!isIdle && rule.isMatched && <CheckIcon className="size-4 text-success" />}
-              {isDimmed && <XIcon className="size-4 text-muted" />}
-            </span>
-            <div className="min-w-0 flex-1">
-              <div
-                className={cn(
-                  "font-mono text-xs break-all",
-                  rule.isMatched && !isIdle ? "text-foreground" : "text-muted"
-                )}
+  // Before a request can be read there is nothing to judge: the rules render as written, no verdict.
+  if (!request) {
+    return {
+      side: {
+        name: policy.name,
+        isMatched: false,
+        matchedCount: 0,
+        rules: policy.rules.map((rule) => ({
+          ...rule,
+          isMatched: false,
+          isDeciding: false,
+          mismatches: []
+        }))
+      },
+      specificity: undefined
+    };
+  }
+
+  const evaluated = evaluatePolicyRules(policy.rules, request);
+  return {
+    side: {
+      name: policy.name,
+      isMatched: evaluated.isMatched,
+      matchedCount: evaluated.rules.filter((rule) => rule.isMatched).length,
+      rules: evaluated.rules
+    },
+    specificity: evaluated.specificity
+  };
+};
+
+type TGateVerdict = "idle" | "open" | "closed";
+
+const GATE_STYLE: Record<TGateVerdict, { card: string; divider: string; verdict: string }> = {
+  idle: { card: "border-border bg-container/30", divider: "border-border", verdict: "text-muted" },
+  open: {
+    card: "border-success/25 bg-success/5",
+    divider: "border-success/20",
+    verdict: "text-success"
+  },
+  closed: {
+    card: "border-danger/25 bg-danger/5",
+    divider: "border-danger/20",
+    verdict: "text-danger"
+  }
+};
+
+const gateVerdict = (side: TGateSide | null, request: TPolicyRequest | null): TGateVerdict => {
+  if (!side || !request) return "idle";
+  return side.isMatched ? "open" : "closed";
+};
+
+const GateCard = ({
+  index,
+  kind,
+  icon: Icon,
+  side,
+  request,
+  isPrecededByClosedGate,
+  isExpanded,
+  onExpandedChange,
+  missingPolicyMessage
+}: {
+  index: number;
+  kind: string;
+  icon: LucideIcon;
+  side: TGateSide | null;
+  request: TPolicyRequest | null;
+  isPrecededByClosedGate: boolean;
+  isExpanded: boolean;
+  onExpandedChange: (isExpanded: boolean) => void;
+  missingPolicyMessage: string;
+}) => {
+  const verdict = gateVerdict(side, request);
+  // A gate the request never reached keeps neutral chrome, so the gate that decided stays the one the
+  // colour points at.
+  const style = GATE_STYLE[isExpanded ? verdict : "idle"];
+  const miss = side && request && !side.isMatched ? describeClosestMiss(side.rules, request) : null;
+
+  const verdictLabel = () => {
+    if (!side) return null;
+    if (verdict === "idle") return countLabel(side.rules.length, "rule");
+    if (verdict === "open") return `open · ${countLabel(side.matchedCount, "rule")} matched`;
+    if (isPrecededByClosedGate)
+      return `also closed · ${countLabel(side.rules.length, "rule")} checked`;
+    return "closed · no rule matched";
+  };
+
+  const header = (
+    <>
+      <Icon className="size-3.5 shrink-0 text-label" />
+      <span className="shrink-0 text-[11px] tracking-wide text-label uppercase">
+        Gate {index} · {kind}
+      </span>
+      {side && (
+        <span className="min-w-0 truncate font-mono text-xs text-foreground" title={side.name}>
+          {side.name}
+        </span>
+      )}
+      <span
+        className={cn(
+          "ml-auto flex shrink-0 items-center gap-1 text-xs",
+          GATE_STYLE[verdict].verdict
+        )}
+      >
+        {verdict === "open" && <CheckIcon className="size-3.5" />}
+        {verdict === "closed" && <XIcon className="size-3.5" />}
+        {verdictLabel()}
+      </span>
+      {side && (
+        <ChevronDownIcon
+          className={cn(
+            "size-3.5 shrink-0 text-muted transition-transform",
+            !isExpanded && "-rotate-90"
+          )}
+        />
+      )}
+    </>
+  );
+
+  return (
+    <div className={cn("overflow-hidden rounded-md border transition-colors", style.card)}>
+      {side ? (
+        <button
+          type="button"
+          onClick={() => onExpandedChange(!isExpanded)}
+          className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-container/30"
+        >
+          {header}
+        </button>
+      ) : (
+        <div className="flex w-full items-center gap-2 px-3 py-2">{header}</div>
+      )}
+
+      {!side && (
+        <p className={cn("border-t px-3 py-2.5 text-xs text-label", style.divider)}>
+          {missingPolicyMessage}
+        </p>
+      )}
+
+      {side && isExpanded && (
+        <div className={cn("border-t", style.divider)}>
+          {!side.rules.length && (
+            <p className="px-3 py-2.5 text-xs text-label">
+              No rules on this policy, so nothing is brokered.
+            </p>
+          )}
+          {side.rules.map((rule) => (
+            <div
+              key={rule.id}
+              className={cn("flex items-center gap-3 px-3 py-2", rule.isMatched && "bg-success/10")}
+            >
+              <span
+                className="min-w-0 flex-1 truncate font-mono text-xs text-foreground"
+                title={rule.hostPattern}
               >
                 {rule.hostPattern}
-              </div>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <Badge variant="neutral">
-                  {rule.methods.length ? rule.methods.join(", ") : "Any"}
-                </Badge>
-                {rule.isDeciding && !isIdle && <Badge variant="success">Deciding</Badge>}
-                {isDimmed && (
-                  <span className="text-xs text-muted">
-                    {rule.mismatches.map((reason) => MISMATCH_LABEL[reason]).join(", ")}
-                  </span>
-                )}
-              </div>
+              </span>
+              <Badge variant="neutral">
+                {rule.methods.length ? rule.methods.join(", ") : "Any"}
+              </Badge>
+              {rule.isDeciding && <Badge variant="success">Deciding</Badge>}
+              {Boolean(request) && (
+                <div className="flex shrink-0 items-center gap-2.5">
+                  {listRuleClauses(rule).map(({ clause, isMatched }) => (
+                    <span
+                      key={clause}
+                      className={cn(
+                        "flex items-center gap-1 text-xs",
+                        isMatched ? "text-success" : "text-danger"
+                      )}
+                    >
+                      {isMatched ? <CheckIcon className="size-3" /> : <XIcon className="size-3" />}
+                      {CLAUSE_LABEL[clause]}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        );
-      })}
+          ))}
+          {miss && (
+            <p className={cn("border-t px-3 py-2 text-xs text-label", style.divider)}>
+              Closest miss: <span className="font-mono text-foreground">{miss.hostPattern}</span>{" "}
+              {miss.detail}
+            </p>
+          )}
+        </div>
+      )}
     </div>
+  );
+};
+
+type TOutcome = "idle" | "brokered" | "blocked";
+
+const OUTCOME_STYLE: Record<TOutcome, string> = {
+  idle: "border-border bg-container/30",
+  brokered: "border-success/25 bg-success/5",
+  blocked: "border-danger/25 bg-danger/5"
+};
+
+const OutcomeCard = ({
+  outcome,
+  host,
+  idleMessage
+}: {
+  outcome: TOutcome;
+  host?: string;
+  idleMessage: string;
+}) => (
+  <div
+    className={cn(
+      "flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-md border px-3 py-2.5",
+      OUTCOME_STYLE[outcome]
+    )}
+  >
+    {outcome === "idle" && <p className="text-sm text-label">{idleMessage}</p>}
+
+    {outcome === "brokered" && (
+      <>
+        <p className="text-sm text-foreground">
+          <span className="font-semibold text-success">Brokered</span>: the policy&apos;s
+          credentials go on the request before it leaves the proxy.
+        </p>
+        <span className="ml-auto shrink-0 font-mono text-xs text-muted">reaches {host}</span>
+      </>
+    )}
+
+    {outcome === "blocked" && (
+      <>
+        <p className="text-sm text-foreground">
+          <span className="font-semibold text-danger">Blocked</span>: the proxy answers 403 and no
+          credential is attached.
+        </p>
+        <span className="ml-auto shrink-0 font-mono text-xs text-muted">
+          nothing reaches {host}
+        </span>
+        <p className="w-full text-xs text-muted">
+          A host on the proxy&apos;s allowlist still passes through, without a credential.
+        </p>
+      </>
+    )}
   </div>
 );
 
@@ -234,6 +426,8 @@ const withRequestAllowed = (
   });
 };
 
+const RailSegment = () => <div className="ml-6 h-3 w-px shrink-0 bg-border" />;
+
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -245,12 +439,15 @@ type Props = {
   initialRequest?: { method: PolicyRuleMethod; url: string };
 };
 
+type TGateKey = "agent" | "user";
+
 // Neither policy is a subset of the other and nothing is precomputed, so the only honest way to show
 // where a request lands is to put one through. Matching is pure and the rules are already loaded, so it
 // runs on every change rather than behind a button: the answer is the feedback on what you typed.
 //
-// The two gates are drawn in series, but they are an AND of two independent checks, not a pipeline:
-// each reports its own verdict even when the one before it already stopped the request.
+// The two gates are stacked in the order the proxy reports them, but they are an AND of two independent
+// checks, not a pipeline: each reports its own verdict even when the one before it already stopped the
+// request.
 export const PolicySimulationModal = ({
   isOpen,
   onOpenChange,
@@ -263,6 +460,7 @@ export const PolicySimulationModal = ({
   const [counterpartId, setCounterpartId] = useState<string>();
   const [method, setMethod] = useState<PolicyRuleMethod>(PolicyRuleMethod.Get);
   const [url, setUrl] = useState("");
+  const [expandedGates, setExpandedGates] = useState<Partial<Record<TGateKey, boolean>>>({});
 
   const { data: agentPolicies } = useGetAgentPolicies(projectId);
   const { data: userPolicies } = useGetUserPolicies(projectId);
@@ -283,6 +481,7 @@ export const PolicySimulationModal = ({
     if (!isOpen) return;
     setMethod(initialRequest?.method ?? PolicyRuleMethod.Get);
     setUrl(initialRequest?.url ?? "");
+    setExpandedGates({});
     // A caller that already knows both sides seeds the picker with the counterpart it used; otherwise
     // one policy on the other side means there is nothing to choose.
     const seeded = isAgentAnchored ? userPolicy?.id : agentPolicy?.id;
@@ -316,80 +515,63 @@ export const PolicySimulationModal = ({
     [settledUrl, method]
   );
 
-  const result = useMemo(() => {
-    if (!resolvedAgentPolicy || !resolvedUserPolicy) return null;
+  const agentGate = useMemo(
+    () => evaluateSide(resolvedAgentPolicy, request),
+    [resolvedAgentPolicy, request]
+  );
+  const userGate = useMemo(
+    () => evaluateSide(resolvedUserPolicy, request),
+    [resolvedUserPolicy, request]
+  );
 
-    const idleSide = (policy: { name: string; rules: TAgentPolicy["rules"] }): TSide => ({
-      name: policy.name,
-      isMatched: false,
-      rules: policy.rules.map((rule) => ({
-        ...rule,
-        isMatched: false,
-        isDeciding: false,
-        mismatches: []
-      }))
-    });
+  const contender = useMemo(() => {
+    if (!resolvedAgentPolicy || !request || !agentGate?.specificity) return null;
+    return findContendingAgentPolicy(
+      resolvedAgentPolicy,
+      agentPolicies ?? [],
+      agentGate.specificity,
+      request
+    );
+  }, [resolvedAgentPolicy, agentPolicies, agentGate, request]);
 
-    if (!request) {
-      return {
-        request: null as TPolicyRequest | null,
-        agent: idleSide(resolvedAgentPolicy),
-        user: idleSide(resolvedUserPolicy),
-        isBrokered: false,
-        reason: null as string | null,
-        contender: null
-      };
-    }
+  const isAgentGateClosed = Boolean(request && agentGate && !agentGate.side.isMatched);
+  const isUserGateClosed = Boolean(request && userGate && !userGate.side.isMatched);
+  // A gate the request never reached is folded to its verdict: the first closed gate is the answer, and
+  // clicking it open is there for the reader who wants the rest anyway.
+  const isGateExpanded = (key: TGateKey, isPrecededByClosedGate: boolean) =>
+    expandedGates[key] ?? !isPrecededByClosedGate;
 
-    const agent = evaluatePolicyRules(resolvedAgentPolicy.rules, request);
-    const user = evaluatePolicyRules(resolvedUserPolicy.rules, request);
-
-    let reason: string | null = null;
-    // The agent side is named first when neither matches, the same order the proxy reports it in.
-    if (!agent.isMatched)
-      reason = `No rule on agent policy "${resolvedAgentPolicy.name}" covers this request.`;
-    else if (!user.isMatched)
-      reason = `No rule on user policy "${resolvedUserPolicy.name}" covers this request.`;
-
-    return {
-      request,
-      agent: { name: resolvedAgentPolicy.name, ...agent },
-      user: { name: resolvedUserPolicy.name, ...user },
-      isBrokered: agent.isMatched && user.isMatched,
-      reason,
-      contender: agent.specificity
-        ? findContendingAgentPolicy(
-            resolvedAgentPolicy,
-            agentPolicies ?? [],
-            agent.specificity,
-            request
-          )
-        : null
-    };
-  }, [resolvedAgentPolicy, resolvedUserPolicy, agentPolicies, request]);
-
-  const anchoredName = agentPolicy?.name ?? userPolicy?.name;
-  const isIdle = !result?.request;
-
-  const stageState = (isPassing: boolean): TStageState => {
-    if (isIdle) return "idle";
-    return isPassing ? "pass" : "stop";
+  const outcome = (): TOutcome => {
+    if (!request || !agentGate || !userGate) return "idle";
+    return agentGate.side.isMatched && userGate.side.isMatched ? "brokered" : "blocked";
   };
 
-  const outcomeLabel = (() => {
-    if (isIdle) return "—";
-    return result?.isBrokered ? "Brokered" : "Blocked";
-  })();
+  const missingCounterpartMessage = counterparts.length
+    ? `Pick ${isAgentAnchored ? "a user" : "an agent"} policy above to check this gate.`
+    : `No ${isAgentAnchored ? "user" : "agent"} policies in this project yet, so nothing is brokered.`;
+
+  const idleMessage =
+    !resolvedAgentPolicy || !resolvedUserPolicy
+      ? "Nothing is brokered until both gates have a policy."
+      : "Type a URL above to see where a request lands.";
+
+  // Only worth saying when the rules were matched against something other than what was typed: a filled
+  // in scheme, a dropped query string, a normalised address.
+  const requestHint = () => {
+    if (error) return error;
+    const formatted = request && formatPolicyRequest(request);
+    if (formatted && formatted !== settledUrl.trim()) return `Reads as ${formatted}`;
+    return "A missing scheme is read as https. The query string is ignored.";
+  };
 
   // The fix for a blocked request is one rule on whichever side turned it away, so it is offered here
   // rather than sending the reader back to the policy form to re-derive it. The host alone is used,
   // not the path: it is the narrowest rule that is still obvious to read later.
-  const handleAllowRequest = async (side: "agent" | "user") => {
-    const blocked = result?.request;
+  const handleAllowRequest = async (side: TGateKey) => {
     const policy = side === "agent" ? resolvedAgentPolicy : resolvedUserPolicy;
-    if (!blocked || !policy) return;
+    if (!request || !policy) return;
 
-    const rules = withRequestAllowed(policy.rules, blocked.host, method);
+    const rules = withRequestAllowed(policy.rules, request.host, method);
     try {
       if (side === "agent") {
         await updateAgentPolicy.mutateAsync({ policyId: policy.id, projectId, rules });
@@ -398,7 +580,7 @@ export const PolicySimulationModal = ({
       }
       createNotification({
         type: "success",
-        text: `${policy.name} now allows ${method} on ${blocked.host}`
+        text: `${policy.name} now allows ${method} on ${request.host}`
       });
     } catch {
       // The shared mutation error handler surfaces the API error.
@@ -416,22 +598,43 @@ export const PolicySimulationModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Test a Request</DialogTitle>
           <DialogDescription>
-            A request is brokered when it matches a rule on both sides.{" "}
-            {anchoredName
-              ? `Type one to watch it land against ${anchoredName} and the policy you pick.`
-              : "Pick the two policies to put a request through."}
+            A request is brokered only when it clears both gates.
           </DialogDescription>
         </DialogHeader>
-        <DialogBody className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-start gap-3">
-            <Field className="min-w-56 flex-1">
-              <FieldLabel>{isAgentAnchored ? "User Policy" : "Agent Policy"}</FieldLabel>
-              <FieldContent>
+        <DialogBody className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={method}
+                onValueChange={(value) => setMethod(value as PolicyRuleMethod)}
+              >
+                <SelectTrigger className="w-24 shrink-0" aria-label="Method">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(PolicyRuleMethod).map((option) => (
+                    <SelectItem value={option} key={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
+                placeholder="https://api.slack.com/chat.postMessage"
+                className="min-w-56 flex-1 font-mono"
+                isError={Boolean(error)}
+                aria-label="URL"
+                autoFocus
+              />
+              <div className="w-52 shrink-0">
                 <FilterableSelect
+                  aria-label={isAgentAnchored ? "User Policy" : "Agent Policy"}
                   placeholder={
                     isAgentAnchored ? "Select a user policy..." : "Select an agent policy..."
                   }
@@ -441,151 +644,82 @@ export const PolicySimulationModal = ({
                   getOptionValue={(option) => option.id}
                   getOptionLabel={(option) => option.name}
                 />
-              </FieldContent>
-              {!counterparts.length && (
-                <FieldDescription>
-                  No {isAgentAnchored ? "user" : "agent"} policies in this project yet, so nothing
-                  is brokered.
-                </FieldDescription>
-              )}
-            </Field>
-            <Field className="w-28 shrink-0">
-              <FieldLabel>Method</FieldLabel>
-              <FieldContent>
-                <Select
-                  value={method}
-                  onValueChange={(value) => setMethod(value as PolicyRuleMethod)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    {Object.values(PolicyRuleMethod).map((option) => (
-                      <SelectItem value={option} key={option}>
-                        {option}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FieldContent>
-            </Field>
-            <Field className="min-w-64 flex-[2]">
-              <FieldLabel>URL</FieldLabel>
-              <FieldContent>
-                <Input
-                  value={url}
-                  onChange={(event) => setUrl(event.target.value)}
-                  placeholder="https://api.slack.com/chat.postMessage"
-                  isError={Boolean(error)}
-                  autoFocus
-                />
-              </FieldContent>
-              {error ? (
-                <FieldError>{error}</FieldError>
-              ) : (
-                <FieldDescription>
-                  A missing scheme is read as https. The query string is ignored.
-                </FieldDescription>
-              )}
-            </Field>
+              </div>
+            </div>
+            <p className={cn("text-xs", error ? "text-danger" : "text-muted")}>{requestHint()}</p>
           </div>
 
-          {result && (
-            <>
-              <div className="flex items-stretch rounded-md border border-border bg-container/30 p-3">
-                <FlowStage
-                  label="Request"
-                  icon={SendIcon}
-                  state={isIdle ? "idle" : "pass"}
-                  value={result.request ? formatPolicyRequest(result.request) : "Waiting for a URL"}
-                  // The URL is the longest thing on the rail, and the one worth reading in full.
-                  className="flex-[1.8]"
+          <div className="flex flex-col">
+            <RailSegment />
+            <GateCard
+              index={1}
+              kind="Agent Policy"
+              icon={BotIcon}
+              side={agentGate?.side ?? null}
+              request={request}
+              isPrecededByClosedGate={false}
+              isExpanded={isGateExpanded("agent", false)}
+              onExpandedChange={(isExpanded) =>
+                setExpandedGates((prev) => ({ ...prev, agent: isExpanded }))
+              }
+              missingPolicyMessage={missingCounterpartMessage}
+            />
+            <RailSegment />
+            <GateCard
+              index={2}
+              kind="User Policy"
+              icon={UserIcon}
+              side={userGate?.side ?? null}
+              request={request}
+              isPrecededByClosedGate={isAgentGateClosed}
+              isExpanded={isGateExpanded("user", isAgentGateClosed)}
+              onExpandedChange={(isExpanded) =>
+                setExpandedGates((prev) => ({ ...prev, user: isExpanded }))
+              }
+              missingPolicyMessage={missingCounterpartMessage}
+            />
+            <RailSegment />
+            <OutcomeCard outcome={outcome()} host={request?.host} idleMessage={idleMessage} />
+          </div>
+
+          {request && (isAgentGateClosed || isUserGateClosed) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {isAgentGateClosed && resolvedAgentPolicy && canEditAgentPolicy && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  isPending={updateAgentPolicy.isPending}
+                  onClick={() => handleAllowRequest("agent")}
                 >
-                  <Badge className="w-fit" variant="neutral">
-                    {method}
-                  </Badge>
-                </FlowStage>
-                <FlowLink state={isIdle ? "idle" : "pass"} />
-                <FlowStage
-                  label="Agent Policy"
-                  icon={BotIcon}
-                  state={stageState(result.agent.isMatched)}
-                  value={result.agent.name}
-                />
-                <FlowLink state={stageState(result.agent.isMatched)} />
-                <FlowStage
-                  label="User Policy"
-                  icon={UserIcon}
-                  state={stageState(result.user.isMatched)}
-                  value={result.user.name}
-                />
-                <FlowLink state={stageState(result.isBrokered)} />
-                <FlowStage
-                  label="Upstream"
-                  icon={GlobeIcon}
-                  state={stageState(result.isBrokered)}
-                  value={outcomeLabel}
-                />
-              </div>
-
-              {/* Kept in the flow whether or not there is a reason, so the panels below it do not jump
-                  as the verdict changes under the cursor. */}
-              <p className="min-h-8 text-xs text-danger">
-                {result.reason}
-                {result.reason && !result.agent.isMatched && (
-                  <span className="text-muted">
-                    {" "}
-                    A host on the proxy&apos;s allowlist still passes through without a credential.
-                  </span>
-                )}
-              </p>
-
-              {!isIdle && !result.isBrokered && result.request && (
-                <div className="-mt-2 flex flex-wrap items-center gap-2">
-                  {!result.agent.isMatched && resolvedAgentPolicy && canEditAgentPolicy && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      isPending={updateAgentPolicy.isPending}
-                      onClick={() => handleAllowRequest("agent")}
-                    >
-                      <PlusIcon />
-                      Allow {method} on {result.request.host} in {resolvedAgentPolicy.name}
-                    </Button>
-                  )}
-                  {!result.user.isMatched && resolvedUserPolicy && canEditUserPolicy && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      isPending={updateUserPolicy.isPending}
-                      onClick={() => handleAllowRequest("user")}
-                    >
-                      <PlusIcon />
-                      Allow {method} on {result.request.host} in {resolvedUserPolicy.name}
-                    </Button>
-                  )}
-                </div>
+                  <PlusIcon />
+                  Allow {method} on {request.host} in {resolvedAgentPolicy.name}
+                </Button>
               )}
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <RulePanel heading="Agent Rules" side={result.agent} isIdle={isIdle} />
-                <RulePanel heading="User Rules" side={result.user} isIdle={isIdle} />
-              </div>
-
-              {result.contender && (
-                <Alert variant="warning">
-                  <CircleAlertIcon />
-                  <AlertTitle>Another agent policy wins this request</AlertTitle>
-                  <AlertDescription>
-                    <span>
-                      {result.contender.name} matches it more specifically for{" "}
-                      {result.contender.agentNames.join(", ")}, so its credentials are the ones
-                      brokered.
-                    </span>
-                  </AlertDescription>
-                </Alert>
+              {isUserGateClosed && resolvedUserPolicy && canEditUserPolicy && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  isPending={updateUserPolicy.isPending}
+                  onClick={() => handleAllowRequest("user")}
+                >
+                  <PlusIcon />
+                  Allow {method} on {request.host} in {resolvedUserPolicy.name}
+                </Button>
               )}
-            </>
+            </div>
+          )}
+
+          {contender && (
+            <Alert variant="warning">
+              <CircleAlertIcon />
+              <AlertTitle>Another agent policy wins this request</AlertTitle>
+              <AlertDescription>
+                <span>
+                  {contender.name} matches it more specifically for{" "}
+                  {contender.agentNames.join(", ")}, so its credentials are the ones brokered.
+                </span>
+              </AlertDescription>
+            </Alert>
           )}
         </DialogBody>
         <DialogFooter>
