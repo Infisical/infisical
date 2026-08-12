@@ -37,6 +37,7 @@ import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { recordIdentityLastLogin, shouldRecordIdentityLastLogin } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityUaClientSecretDALFactory } from "./identity-ua-client-secret-dal";
@@ -316,41 +317,33 @@ export const identityUaServiceFactory = ({
         }
       }
 
-      await identityUaDAL.transaction(async (tx) => {
-        if (clientSecretNumUsesLimit > 0) {
-          // finite usage limit: count must stay exact, so increment synchronously (low-frequency, no contention)
-          await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
-        } else {
-          // unlimited secret: numUses is informational, so collapse a login storm to one row write per window
-          const isFirstUseInWindow = await keyStore.setItemWithExpiryNX(
-            KeyStorePrefixes.IdentityUaClientSecretUsageDebounce(validClientSecretInfo!.id),
-            UA_CLIENT_SECRET_USAGE_DEBOUNCE_SECONDS,
-            "1"
-          );
-          if (isFirstUseInWindow) {
-            await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
+      const clientSecretId = validClientSecretInfo.id;
+
+      const [shouldIncrementUsage, shouldRecordLastLogin] = await Promise.all([
+        clientSecretNumUsesLimit > 0
+          ? // finite usage limit: count must stay exact, so increment synchronously (low-frequency, no contention)
+            Promise.resolve(true)
+          : // unlimited secret: numUses is informational, so collapse a login storm to one row write per window
+            keyStore
+              .setItemWithExpiryNX(
+                KeyStorePrefixes.IdentityUaClientSecretUsageDebounce(clientSecretId),
+                UA_CLIENT_SECRET_USAGE_DEBOUNCE_SECONDS,
+                "1"
+              )
+              .then(Boolean),
+        shouldRecordIdentityLastLogin(keyStore, identity.id)
+      ]);
+
+      if (shouldIncrementUsage || shouldRecordLastLogin) {
+        await identityUaDAL.transaction(async (tx) => {
+          if (shouldIncrementUsage) {
+            await identityUaClientSecretDAL.incrementUsage(clientSecretId, tx);
           }
-        }
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
-      });
+          if (shouldRecordLastLogin) {
+            await recordIdentityLastLogin(membershipIdentityDAL, identity, IdentityAuthMethod.UNIVERSAL_AUTH, tx);
+          }
+        });
+      }
 
       const subOrgDetails =
         subOrganizationId && subOrganizationId !== org.id ? await orgDAL.findById(subOrganizationId) : null;
