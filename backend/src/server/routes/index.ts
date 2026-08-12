@@ -2969,7 +2969,12 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL
   });
-  const sandboxService = sandboxServiceFactory({ sandboxDAL, sandboxProjectResolver, permissionService });
+  const sandboxService = sandboxServiceFactory({
+    sandboxDAL,
+    sandboxProjectResolver,
+    permissionService,
+    kmsService
+  });
 
   const honeyTokenService = honeyTokenServiceFactory({
     honeyTokenDAL,

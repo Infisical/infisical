@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const SandboxesSchema = z.object({
@@ -18,7 +20,9 @@ export const SandboxesSchema = z.object({
   commandsRun: z.number().default(0),
   lastActivityAt: z.date().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  agentType: z.string().nullable().optional(),
+  encryptedAgentToken: zodBuffer.nullable().optional()
 });
 
 export type TSandboxes = z.infer<typeof SandboxesSchema>;

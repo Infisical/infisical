@@ -1,20 +1,26 @@
 import { OrganizationActionScope, TSandboxes } from "@app/db/schemas";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { SANDBOX_INTEGRATIONS, SandboxIntegrationType } from "./sandbox-integrations";
 import { TSandboxDALFactory } from "./sandbox-dal";
 import { TSandboxProjectResolverFactory } from "./sandbox-project-resolver";
 import { bootSandbox, execInSandbox, isSandboxBooted, shutdownSandbox } from "./sandbox-runtime";
 import {
   SandboxStatus,
+  TAddSandboxIntegrationDTO,
   TCreateSandboxDTO,
   TExecInSandboxDTO,
   TSandbox,
   TSandboxExecResult,
   TSandboxGrants,
   TSandboxIdDTO,
+  TSandboxIntegration,
+  TRemoveSandboxIntegrationDTO,
   TUpdateSandboxDTO
 } from "./sandbox-types";
 
@@ -22,16 +28,16 @@ type TSandboxServiceFactoryDep = {
   sandboxDAL: TSandboxDALFactory;
   sandboxProjectResolver: TSandboxProjectResolverFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
-const EMPTY_GRANTS: TSandboxGrants = { pamAccountIds: [], proxiedServiceIds: [], clis: [] };
+const EMPTY_GRANTS: TSandboxGrants = { integrations: [], pamAccountIds: [] };
 
 const normalizeGrants = (value: unknown): TSandboxGrants => {
   const grants = (value ?? {}) as Partial<TSandboxGrants>;
   return {
-    pamAccountIds: grants.pamAccountIds ?? [],
-    proxiedServiceIds: grants.proxiedServiceIds ?? [],
-    clis: grants.clis ?? []
+    integrations: grants.integrations ?? [],
+    pamAccountIds: grants.pamAccountIds ?? []
   };
 };
 
@@ -45,6 +51,8 @@ const toSandbox = (row: TSandboxes): TSandbox => ({
   vcpu: row.vcpu,
   memoryMb: row.memoryMb,
   grants: normalizeGrants(row.grants),
+  agentType: (row.agentType as TSandbox["agentType"]) ?? null,
+  hasAgentToken: Boolean(row.encryptedAgentToken),
   commandsRun: row.commandsRun,
   lastActivityAt: row.lastActivityAt ? new Date(row.lastActivityAt).toISOString() : null,
   createdAt: new Date(row.createdAt).toISOString()
@@ -53,8 +61,17 @@ const toSandbox = (row: TSandboxes): TSandbox => ({
 export const sandboxServiceFactory = ({
   sandboxDAL,
   sandboxProjectResolver,
-  permissionService
+  permissionService,
+  kmsService
 }: TSandboxServiceFactoryDep) => {
+  const $encryptAgentToken = async (orgId: string, token: string) => {
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId
+    });
+    return encryptor({ plainText: Buffer.from(token) }).cipherTextBlob;
+  };
+
   /**
    * Sandboxes have no CASL subject of their own yet, so org membership plus the org-level Settings
    * ability stands in for it. A dedicated subject is the follow-up.
@@ -110,7 +127,7 @@ export const sandboxServiceFactory = ({
       description: dto.description ?? null,
       vcpu: dto.vcpu,
       memoryMb: dto.memoryMb,
-      grants: { ...EMPTY_GRANTS, ...dto.grants },
+      grants: EMPTY_GRANTS,
       commandsRun: 0
     });
 
@@ -120,12 +137,19 @@ export const sandboxServiceFactory = ({
   const updateSandbox = async (dto: TUpdateSandboxDTO, actor: OrgServiceActor): Promise<TSandbox> => {
     const existing = await $resolve(dto.sandboxId, actor, true);
 
-    const hasChange = [dto.name, dto.description, dto.vcpu, dto.memoryMb, dto.grants].some(
-      (field) => field !== undefined
-    );
+    const hasChange = [
+      dto.name,
+      dto.description,
+      dto.vcpu,
+      dto.memoryMb,
+      dto.pamAccountIds,
+      dto.agentType,
+      dto.agentToken
+    ].some((field) => field !== undefined);
     if (!hasChange) {
       throw new BadRequestError({
-        message: "No fields to update. Supply at least one of name, description, vcpu, memoryMb or grants."
+        message:
+          "No fields to update. Supply at least one of name, description, vcpu, memoryMb, pamAccountIds, agentType or agentToken."
       });
     }
 
@@ -139,7 +163,13 @@ export const sandboxServiceFactory = ({
       ...(dto.description !== undefined && { description: dto.description }),
       ...(dto.vcpu !== undefined && { vcpu: dto.vcpu }),
       ...(dto.memoryMb !== undefined && { memoryMb: dto.memoryMb }),
-      ...(dto.grants && { grants: { ...normalizeGrants(existing.grants), ...dto.grants } })
+      ...(dto.agentType !== undefined && { agentType: dto.agentType }),
+      ...(dto.agentToken !== undefined && {
+        encryptedAgentToken: await $encryptAgentToken(actor.orgId, dto.agentToken)
+      }),
+      ...(dto.pamAccountIds !== undefined && {
+        grants: { ...normalizeGrants(existing.grants), pamAccountIds: dto.pamAccountIds }
+      })
     });
 
     return toSandbox(row);
@@ -199,12 +229,63 @@ export const sandboxServiceFactory = ({
     return result;
   };
 
+  const addIntegration = async (
+    { sandboxId, integration }: TAddSandboxIntegrationDTO,
+    actor: OrgServiceActor
+  ): Promise<TSandbox> => {
+    const existing = await $resolve(sandboxId, actor, true);
+    const definition = SANDBOX_INTEGRATIONS[integration.type];
+
+    // Known integrations own their hostnames so a caller can't widen a GitHub grant to another host;
+    // Custom is the only type that takes them from the request.
+    const hostnames =
+      integration.type === SandboxIntegrationType.Custom
+        ? [...new Set((integration.hostnames ?? []).map((h) => h.trim().toLowerCase()).filter(Boolean))]
+        : definition.hostnames;
+
+    if (!hostnames.length) {
+      throw new BadRequestError({ message: "Provide at least one hostname for a custom endpoint" });
+    }
+
+    const grants = normalizeGrants(existing.grants);
+    const added: TSandboxIntegration = {
+      id: crypto.randomUUID(),
+      type: integration.type,
+      hostnames,
+      secret: integration.secret
+    };
+
+    const row = await sandboxDAL.updateById(sandboxId, {
+      grants: { ...grants, integrations: [...grants.integrations, added] }
+    });
+
+    return toSandbox(row);
+  };
+
+  const removeIntegration = async (
+    { sandboxId, integrationId }: TRemoveSandboxIntegrationDTO,
+    actor: OrgServiceActor
+  ): Promise<TSandbox> => {
+    const existing = await $resolve(sandboxId, actor, true);
+    const grants = normalizeGrants(existing.grants);
+
+    const remaining = grants.integrations.filter((item) => item.id !== integrationId);
+    if (remaining.length === grants.integrations.length) {
+      throw new NotFoundError({ message: `Integration with ID '${integrationId}' was not found` });
+    }
+
+    const row = await sandboxDAL.updateById(sandboxId, { grants: { ...grants, integrations: remaining } });
+    return toSandbox(row);
+  };
+
   const resolveProjectId = async (actor: OrgServiceActor) => {
     await $authorize(actor, false);
     return sandboxProjectResolver.resolve(actor);
   };
 
   return {
+    addIntegration,
+    removeIntegration,
     resolveProjectId,
     listSandboxes,
     getSandboxById,

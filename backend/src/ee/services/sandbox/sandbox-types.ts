@@ -1,17 +1,33 @@
+import { SandboxAgentType, SandboxIntegrationType } from "./sandbox-integrations";
+
 export enum SandboxStatus {
   Stopped = "stopped",
   Running = "running"
 }
 
+/** Where an integration's credential comes from in Secrets Manager. */
+export type TSandboxSecretRef = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  secretKey: string;
+};
+
+export type TSandboxIntegration = {
+  id: string;
+  type: SandboxIntegrationType;
+  /** Resolved at write time: from the catalog for known types, from the user for Custom. */
+  hostnames: string[];
+  secret: TSandboxSecretRef;
+};
+
 /**
- * What the sandbox is allowed to reach. Nothing here is wired to the brokers yet: this step only
- * models and displays the grants. `pamAccountIds` will resolve to brokered PAM sessions and
- * `proxiedServiceIds` / `clis` to Agent Proxy substitution in a later step.
+ * What the sandbox is allowed to reach. Integrations are brokered over HTTP by the sandbox's own
+ * reverse proxy; PAM accounts are handed to the agent as context.
  */
 export type TSandboxGrants = {
+  integrations: TSandboxIntegration[];
   pamAccountIds: string[];
-  proxiedServiceIds: string[];
-  clis: string[];
 };
 
 export type TSandbox = {
@@ -23,6 +39,9 @@ export type TSandbox = {
   vcpu: number;
   memoryMb: number;
   grants: TSandboxGrants;
+  agentType: SandboxAgentType | null;
+  /** The token itself is never returned, only whether one is configured. */
+  hasAgentToken: boolean;
   createdAt: string;
   lastActivityAt: string | null;
   commandsRun: number;
@@ -39,12 +58,18 @@ export type TSandboxExecResult = {
   timedOut: boolean;
 };
 
+export type TSandboxIntegrationInput = {
+  type: SandboxIntegrationType;
+  /** Required for Custom, ignored otherwise: the catalog supplies hostnames for known types. */
+  hostnames?: string[];
+  secret: TSandboxSecretRef;
+};
+
 export type TCreateSandboxDTO = {
   name: string;
   description?: string;
   vcpu: number;
   memoryMb: number;
-  grants?: Partial<TSandboxGrants>;
 };
 
 export type TUpdateSandboxDTO = {
@@ -53,11 +78,21 @@ export type TUpdateSandboxDTO = {
   description?: string;
   vcpu?: number;
   memoryMb?: number;
-  grants?: Partial<TSandboxGrants>;
+  pamAccountIds?: string[];
+  agentType?: SandboxAgentType;
+  agentToken?: string;
 };
 
 export type TSandboxIdDTO = {
   sandboxId: string;
+};
+
+export type TAddSandboxIntegrationDTO = TSandboxIdDTO & {
+  integration: TSandboxIntegrationInput;
+};
+
+export type TRemoveSandboxIntegrationDTO = TSandboxIdDTO & {
+  integrationId: string;
 };
 
 export type TExecInSandboxDTO = {
