@@ -10,14 +10,24 @@ import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certi
 import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
 import { exportCertificateForSync, PemCertificateExtension, PkiSyncExportFormat } from "../pki-sync-export-fns";
+import { toPowerShellLiteral } from "../pki-sync-host-command-fns";
 import {
   buildPostSyncCommandPlan,
   POST_SYNC_COMMAND_TIMEOUT_MS,
   renderPostSyncCommand,
   runPostSyncCommand,
-  toPowerShellLiteral,
   TPostSyncCommandPlan
 } from "../pki-sync-post-sync-command-fns";
+import {
+  buildPreflightCommandFailureMessage,
+  buildPreflightCommandPlan,
+  buildPreflightFailureSyncResult,
+  didPreflightCheckFail,
+  PREFLIGHT_COMMAND_TIMEOUT_MS,
+  renderPreflightCommand,
+  runPreflightCommand,
+  TPreflightCommandResult
+} from "../pki-sync-preflight-command-fns";
 import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
 import { TWindowsServerPkiSyncConfig } from "./windows-server-pki-sync-types";
 
@@ -38,6 +48,7 @@ type TWindowsServerSyncOptions = {
   includePrivateKey?: boolean;
   canRemoveCertificates?: boolean;
   fileAccessRules?: Array<{ identity: string; access: string }>;
+  preflightCommand?: string;
   postSyncCommand?: string;
 };
 
@@ -120,6 +131,56 @@ const reconcileWindowsServerRemovals = async (args: {
   return { removed, failedRemovals };
 };
 
+const runWindowsServerPreflightCommand = ({
+  pkiSync,
+  certificateMap,
+  target,
+  gatewayDeps
+}: {
+  pkiSync: TPkiSyncWithCredentials;
+  certificateMap: TCertificateMap;
+  target: ReturnType<typeof buildWinRMTarget>;
+  gatewayDeps: Parameters<typeof executeWinRMGatewayOperation>[1];
+}): Promise<TPreflightCommandResult> | undefined => {
+  const options = (pkiSync.syncOptions ?? {}) as TWindowsServerSyncOptions;
+  const config = pkiSync.destinationConfig as TWindowsServerPkiSyncConfig;
+  const format = options.exportFormat ?? PkiSyncExportFormat.Pkcs12;
+
+  const plan = buildPreflightCommandPlan({
+    command: options.preflightCommand,
+    destinationDirectory: config.destinationPath,
+    certificateMap,
+    exportOptions: {
+      format,
+      includePrivateKey: options.includePrivateKey ?? true,
+      pemCertificateExtension: options.pemCertificateExtension,
+      combineCertificateChain: options.combineCertificateChain
+    },
+    joinPath: joinWindowsPath,
+    pkcs12Password: format === PkiSyncExportFormat.Pkcs12 ? pkiSync.syncCredentials?.exportPassword : undefined
+  });
+  if (!plan) return undefined;
+
+  return runPreflightCommand({
+    syncId: pkiSync.id,
+    secretsToRedact: [plan.context.pkcs12Password],
+    execute: async () => {
+      const result = await executeWinRMGatewayOperation<WinRmRunCommandResult>(
+        {
+          ...target,
+          endpoint: WinRmRpcEndpoint.RunCommand,
+          params: {
+            command: renderPreflightCommand(plan.command, plan.context, toPowerShellLiteral),
+            timeoutMs: PREFLIGHT_COMMAND_TIMEOUT_MS
+          }
+        },
+        gatewayDeps
+      );
+      return { stdout: result.stdout, stderr: result.stderr, exitCode: result.exitCode };
+    }
+  });
+};
+
 const runWindowsServerPostSyncCommand = ({
   syncId,
   plan,
@@ -174,10 +235,18 @@ export const windowsServerPkiSyncFactory = ({
     // Paths confirmed on the host this run. Keeps the removal pass from deleting a file a renewal
     // just rewrote under the same name, and tells the post-sync command what landed.
     const deliveredPaths = new Set<string>();
-    const deliveredCertificates: Array<{ path: string; commonName?: string }> = [];
+    const deliveredCertificates: Array<{ paths: string[]; commonName?: string }> = [];
     const target = buildWinRMTarget(pkiSync);
     let uploaded = 0;
     let removed = 0;
+
+    const preflightCheck = await runWindowsServerPreflightCommand({ pkiSync, certificateMap, target, gatewayDeps });
+    if (preflightCheck && didPreflightCheckFail(preflightCheck)) {
+      logger.info(
+        `Windows Server PKI sync [syncId=${pkiSync.id}]: preflight check failed, delivered nothing (${buildPreflightCommandFailureMessage(preflightCheck)})`
+      );
+      return buildPreflightFailureSyncResult(certificateMap, preflightCheck);
+    }
 
     // Deliver each certificate over its own gateway operation so one certificate's failure is
     // recorded against that certificate only, rather than failing the whole batch.
@@ -232,7 +301,7 @@ export const windowsServerPkiSyncFactory = ({
         );
 
         paths.forEach((deliveredPath) => deliveredPaths.add(deliveredPath));
-        deliveredCertificates.push({ path: paths[0], commonName: certData.commonName ?? undefined });
+        deliveredCertificates.push({ paths, commonName: certData.commonName ?? undefined });
         if (typeof certificateId === "string") {
           let record = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
           if (!record) {
@@ -274,7 +343,6 @@ export const windowsServerPkiSyncFactory = ({
     const postSyncCommandPlan = buildPostSyncCommandPlan({
       command: options.postSyncCommand,
       destinationDirectory: config.destinationPath,
-      deliveredPaths,
       deliveredCertificates,
       pkcs12Password: format === PkiSyncExportFormat.Pkcs12 ? exportPassword : undefined
     });
@@ -292,6 +360,7 @@ export const windowsServerPkiSyncFactory = ({
       removed: removed > 0 ? removed : undefined,
       failedRemovals: failedRemovals.length > 0 ? failedRemovals.length : undefined,
       skipped: skippedCertificates.length,
+      preflightCheck,
       postSyncCommand,
       details: {
         failedUploads: failedUploads.length > 0 ? failedUploads : undefined,
@@ -344,5 +413,13 @@ export const windowsServerPkiSyncFactory = ({
     }
   };
 
-  return { syncCertificates, removeCertificates };
+  const runPreflightCheck = (pkiSync: TPkiSyncWithCredentials, certificateMap: TCertificateMap) =>
+    runWindowsServerPreflightCommand({
+      pkiSync,
+      certificateMap,
+      target: buildWinRMTarget(pkiSync),
+      gatewayDeps
+    });
+
+  return { syncCertificates, removeCertificates, runPreflightCheck };
 };

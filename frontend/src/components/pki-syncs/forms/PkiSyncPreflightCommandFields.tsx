@@ -3,7 +3,7 @@ import { Controller, useFormContext } from "react-hook-form";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@app/components/v3";
 import {
   buildHostCommandTooltipDescriptions,
-  POST_SYNC_COMMAND_VARIABLE_DESCRIPTIONS
+  PREFLIGHT_COMMAND_VARIABLE_DESCRIPTIONS
 } from "@app/helpers/pkiSyncs";
 import { HostCommandVariable, PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
 
@@ -12,12 +12,13 @@ import { HostCommandInput } from "./HostCommandInput";
 import { HostCommandVariablesTooltip } from "./HostCommandVariablesTooltip";
 
 const COMMAND_PLACEHOLDERS: Partial<Record<PkiSync, string>> = {
-  [PkiSync.LinuxServer]: "cp {{certificatePath}} /etc/nginx/ssl/live.pem && systemctl reload nginx",
-  [PkiSync.WindowsServer]: 'Restart-Service -Name "W3SVC"'
+  [PkiSync.LinuxServer]: "test -w {{certificateDirectory}} && systemctl is-active nginx",
+  [PkiSync.WindowsServer]:
+    'if (-not (Test-Path {{certificateDirectory}})) { throw "destination directory is missing" }'
 };
 
 const TOOLTIP_DESCRIPTIONS = buildHostCommandTooltipDescriptions(
-  POST_SYNC_COMMAND_VARIABLE_DESCRIPTIONS
+  PREFLIGHT_COMMAND_VARIABLE_DESCRIPTIONS
 );
 
 type Props = {
@@ -25,7 +26,7 @@ type Props = {
   canEditCommand?: boolean;
 };
 
-export const PkiSyncPostSyncCommandFields = ({ destination, canEditCommand = true }: Props) => {
+export const PkiSyncPreflightCommandFields = ({ destination, canEditCommand = true }: Props) => {
   const { control, watch } = useFormContext<TPkiSyncForm>();
   const currentDestination = destination ?? watch("destination");
   const isPkcs12 = watch("syncOptions.exportFormat") === PkiSyncExportFormat.Pkcs12;
@@ -37,38 +38,38 @@ export const PkiSyncPostSyncCommandFields = ({ destination, canEditCommand = tru
   return (
     <Controller
       control={control}
-      name="syncOptions.postSyncCommand"
+      name="syncOptions.preflightCommand"
       render={({ field: { value, onChange }, fieldState: { error } }) => (
         <Field data-invalid={Boolean(error)} data-disabled={!canEditCommand}>
-          <FieldLabel htmlFor="post-sync-command">
-            Post-sync command
+          <FieldLabel htmlFor="preflight-command">
+            Preflight check
             <HostCommandVariablesTooltip
               variables={variables}
               descriptions={TOOLTIP_DESCRIPTIONS}
               footer={
                 <>
-                  Type <span className="font-mono">{"{{"}</span> in the command to pick one. Each
-                  variable is replaced with its value before the command is sent to the host, and is
-                  inserted already quoted, so do not wrap one in quotes yourself. Do not paste
-                  secrets into the command.
+                  Type <span className="font-mono">{"{{"}</span> in the command to pick one. The
+                  paths describe the files this run is about to write, so a check can look at where
+                  a certificate is going before it goes there. Each variable is inserted already
+                  quoted, so do not wrap one in quotes yourself.
                 </>
               }
             />
           </FieldLabel>
           <HostCommandInput
-            id="post-sync-command"
+            id="preflight-command"
             value={value ?? ""}
             onChange={onChange}
             variables={variables}
-            descriptions={POST_SYNC_COMMAND_VARIABLE_DESCRIPTIONS}
+            descriptions={PREFLIGHT_COMMAND_VARIABLE_DESCRIPTIONS}
             isError={Boolean(error)}
             isDisabled={!canEditCommand}
             placeholder={canEditCommand ? COMMAND_PLACEHOLDERS[currentDestination] : undefined}
           />
           <FieldDescription>
             {canEditCommand
-              ? "Runs after the sync delivers a certificate, for example to reload the service that uses it. Runs once per sync run that delivers a file, as the sync's account, so keep that account least-privilege. If it fails, the sync is marked failed."
-              : "You do not have permission to set a post-sync command on this sync. Ask an administrator to change it."}
+              ? "Runs before any certificate is written. A non-zero exit stops the sync, so nothing is delivered to a host that is not ready. Also runs once a day on its own, so you hear about a host that went bad before the next renewal does. Capped at 10 seconds."
+              : "You do not have permission to set a preflight check on this sync. Ask an administrator to change it."}
           </FieldDescription>
           <FieldError>{error?.message}</FieldError>
         </Field>

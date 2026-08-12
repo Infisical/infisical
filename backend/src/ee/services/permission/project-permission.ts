@@ -169,7 +169,8 @@ export enum ProjectPermissionPkiSyncActions {
   SyncCertificates = "sync-certificates",
   ImportCertificates = "import-certificates",
   RemoveCertificates = "remove-certificates",
-  SetPostSyncCommand = "set-post-sync-command"
+  SetPostSyncCommand = "set-post-sync-command",
+  SetPreflightCommand = "set-preflight-command"
 }
 
 export enum ProjectPermissionPkiDiscoveryActions {

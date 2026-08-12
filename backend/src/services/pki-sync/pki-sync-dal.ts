@@ -331,8 +331,42 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Both of these rest on idx_pki_syncs_preflight_discovery, a partial index on the same predicate.
+  // Without it the jsonb condition cannot be indexed and discovery degrades to a full scan.
+  const PREFLIGHT_COMMAND_PREDICATE = `("${TableName.PkiSync}"."syncOptions" ->> 'preflightCommand') IS NOT NULL`;
+
+  const countPkiSyncsWithPreflightCommand = async () => {
+    try {
+      const [{ count }] = (await db
+        .replicaNode()(TableName.PkiSync)
+        .whereRaw(PREFLIGHT_COMMAND_PREDICATE)
+        .count("* as count")) as unknown as [{ count: string | number }];
+
+      return Number(count);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count PKI syncs with a preflight command" });
+    }
+  };
+
+  // Ordered so `offset` can walk the set in stable windows across consecutive ticks.
+  const findPkiSyncsWithPreflightCommand = async (limit: number, offset: number) => {
+    try {
+      return (await db
+        .replicaNode()(TableName.PkiSync)
+        .select(`${TableName.PkiSync}.id`, `${TableName.PkiSync}.destination`)
+        .whereRaw(PREFLIGHT_COMMAND_PREDICATE)
+        .orderBy(`${TableName.PkiSync}.createdAt`, "asc")
+        .offset(offset)
+        .limit(limit)) as Array<{ id: string; destination: string }>;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find PKI syncs with a preflight command" });
+    }
+  };
+
   return {
     ...pkiSyncOrm,
+    countPkiSyncsWithPreflightCommand,
+    findPkiSyncsWithPreflightCommand,
     findByProjectId,
     findByProjectIdWithSubscribers,
     findBySubscriberId,

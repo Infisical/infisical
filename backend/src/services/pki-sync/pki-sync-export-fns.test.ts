@@ -1,4 +1,10 @@
-import { exportCertificateForSync, PkiSyncExportFormat, TExportedCertificateFile } from "./pki-sync-export-fns";
+import {
+  exportCertificateForSync,
+  getExportedCertificateFileSuffixes,
+  PemCertificateExtension,
+  PkiSyncExportFormat,
+  TExportedCertificateFile
+} from "./pki-sync-export-fns";
 
 const CERT = "-----BEGIN CERTIFICATE-----\ncert\n-----END CERTIFICATE-----";
 const CHAIN = "-----BEGIN CERTIFICATE-----\nchain\n-----END CERTIFICATE-----";
@@ -47,5 +53,60 @@ describe("exportCertificateForSync (PEM)", () => {
     });
 
     expect(suffixes(files)).toEqual([".key", ".pem"]);
+  });
+});
+
+const everyPemShape = () => {
+  const shapes = [];
+  for (const pemCertificateExtension of [PemCertificateExtension.Pem, PemCertificateExtension.Crt]) {
+    for (const combineCertificateChain of [true, false]) {
+      for (const includePrivateKey of [true, false]) {
+        for (const hasCertificateChain of [true, false]) {
+          for (const hasPrivateKey of [true, false]) {
+            shapes.push({
+              format: PkiSyncExportFormat.Pem,
+              pemCertificateExtension,
+              combineCertificateChain,
+              includePrivateKey,
+              hasCertificateChain,
+              hasPrivateKey
+            });
+          }
+        }
+      }
+    }
+  }
+  return shapes;
+};
+
+describe("getExportedCertificateFileSuffixes matches the real export", () => {
+  test.each(everyPemShape())(
+    "PEM ext=$pemCertificateExtension combined=$combineCertificateChain includeKey=$includePrivateKey chain=$hasCertificateChain key=$hasPrivateKey",
+    async (shape) => {
+      const exported = await exportCertificateForSync({
+        format: shape.format,
+        certificate: CERT,
+        certificateChain: shape.hasCertificateChain ? CHAIN : undefined,
+        privateKey: shape.hasPrivateKey ? KEY : undefined,
+        includePrivateKey: shape.includePrivateKey,
+        password: "pw",
+        alias: "api.example.com",
+        pemCertificateExtension: shape.pemCertificateExtension,
+        combineCertificateChain: shape.combineCertificateChain
+      });
+
+      expect(getExportedCertificateFileSuffixes(shape).sort()).toEqual(suffixes(exported));
+    }
+  );
+
+  test.each([true, false])("PKCS#12 is always a single .pfx (includeKey=%s)", (includePrivateKey) => {
+    expect(
+      getExportedCertificateFileSuffixes({
+        format: PkiSyncExportFormat.Pkcs12,
+        includePrivateKey,
+        hasCertificateChain: true,
+        hasPrivateKey: true
+      })
+    ).toEqual([".pfx"]);
   });
 });

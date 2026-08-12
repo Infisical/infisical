@@ -8,7 +8,7 @@ import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-me
 
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PkiSync } from "./pki-sync-enums";
-import { TPostSyncCommandResult } from "./pki-sync-post-sync-command-fns";
+import { THostCommandResult } from "./pki-sync-host-command-fns";
 
 export type TPkiSync = {
   id: string;
@@ -99,7 +99,8 @@ export type TPkiSyncSyncResult = {
   removed?: number;
   failedRemovals?: number;
   skipped: number;
-  postSyncCommand?: TPostSyncCommandResult;
+  preflightCheck?: THostCommandResult;
+  postSyncCommand?: THostCommandResult;
   details?: {
     failedUploads?: Array<{ name: string; error: string }>;
     failedRemovals?: Array<{ name: string; error: string }>;
@@ -245,6 +246,10 @@ export type TQueuePkiSyncSyncCertificatesByIdDTO = {
 export type TQueuePkiSyncImportCertificatesByIdDTO = {
   syncId: string;
   auditLogInfo?: AuditLogInfo;
+};
+
+export type TQueuePkiSyncRunPreflightCheckByIdDTO = {
+  syncId: string;
 };
 
 export type TQueuePkiSyncRemoveCertificatesByIdDTO = {

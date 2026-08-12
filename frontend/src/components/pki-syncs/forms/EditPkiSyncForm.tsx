@@ -20,6 +20,7 @@ import {
   PkiSync,
   TPkiSync,
   useCanSetPostSyncCommand,
+  useCanSetPreflightCommand,
   usePkiSyncOption,
   useUpdatePkiSync
 } from "@app/hooks/api/pkiSyncs";
@@ -30,6 +31,7 @@ import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
 import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
 import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
+import { PkiSyncPreflightCommandFields } from "./PkiSyncPreflightCommandFields";
 
 type Props = {
   onComplete: (pkiSync: TPkiSync) => void;
@@ -48,7 +50,7 @@ type FormStep = {
   rightDescription: string;
 };
 
-const getFormSteps = (destination: PkiSync, canRunPostSyncCommand: boolean): FormStep[] => {
+const getFormSteps = (destination: PkiSync, canRunHostCommands: boolean): FormStep[] => {
   const steps: FormStep[] = [
     {
       key: "destination",
@@ -85,16 +87,16 @@ const getFormSteps = (destination: PkiSync, canRunPostSyncCommand: boolean): For
     });
   }
 
-  if (canRunPostSyncCommand) {
+  if (canRunHostCommands) {
     steps.push({
-      key: "postSyncCommand",
-      name: "Post-Sync Command",
-      description: "Command after sync",
-      title: "Post-Sync Command",
-      subtitle: "Optionally run a command on the host after certificates are written.",
-      rightLabel: "POST-SYNC COMMAND",
+      key: "hostCommands",
+      name: "Commands",
+      description: "Commands on the host",
+      title: "Commands",
+      subtitle: "Optionally check the host before the sync, and act on it afterward.",
+      rightLabel: "COMMANDS",
       rightDescription:
-        "The gateway runs your command on the destination host once the run's files are in place, so a service can reload and pick up the new certificate. It only runs when the sync delivers a file, and a failure marks the sync failed."
+        "The preflight check runs first and stops the sync if the host is not ready, so a bad host never receives a certificate. The post-sync command runs afterward, once the run's files are in place, so a service can reload and pick up the new certificate. It only runs when the sync delivers a file. Either command failing marks the sync failed."
     });
   }
 
@@ -117,7 +119,11 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
   const { name: destinationName } = PKI_SYNC_MAP[pkiSync.destination];
   const { syncOption } = usePkiSyncOption(pkiSync.destination);
   const canSetPostSyncCommand = useCanSetPostSyncCommand(pkiSync.applicationId);
-  const steps = getFormSteps(pkiSync.destination, Boolean(syncOption?.canRunPostSyncCommand));
+  const canSetPreflightCommand = useCanSetPreflightCommand(pkiSync.applicationId);
+  const steps = getFormSteps(
+    pkiSync.destination,
+    Boolean(syncOption?.canRunPreflightCommand || syncOption?.canRunPostSyncCommand)
+  );
 
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
 
@@ -205,12 +211,18 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
         );
       case "mappings":
         return <PkiSyncFieldMappingsFields destination={pkiSync.destination} />;
-      case "postSyncCommand":
+      case "hostCommands":
         return (
-          <PkiSyncPostSyncCommandFields
-            destination={pkiSync.destination}
-            canEditCommand={canSetPostSyncCommand}
-          />
+          <div className="flex flex-col gap-8">
+            <PkiSyncPreflightCommandFields
+              destination={pkiSync.destination}
+              canEditCommand={canSetPreflightCommand}
+            />
+            <PkiSyncPostSyncCommandFields
+              destination={pkiSync.destination}
+              canEditCommand={canSetPostSyncCommand}
+            />
+          </div>
         );
       case "details":
         return <PkiSyncDetailsFields />;

@@ -17,14 +17,24 @@ import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-s
 
 import { PkiSyncError } from "../pki-sync-errors";
 import { exportCertificateForSync, PemCertificateExtension, PkiSyncExportFormat } from "../pki-sync-export-fns";
+import { toPosixShellLiteral } from "../pki-sync-host-command-fns";
 import {
   buildPostSyncCommandPlan,
   POST_SYNC_COMMAND_TIMEOUT_MS,
   renderPostSyncCommand,
   runPostSyncCommand,
-  toPosixShellLiteral,
   TPostSyncCommandPlan
 } from "../pki-sync-post-sync-command-fns";
+import {
+  buildPreflightCommandFailureMessage,
+  buildPreflightCommandPlan,
+  buildPreflightFailureSyncResult,
+  didPreflightCheckFail,
+  PREFLIGHT_COMMAND_TIMEOUT_MS,
+  renderPreflightCommand,
+  runPreflightCommand,
+  TPreflightCommandResult
+} from "../pki-sync-preflight-command-fns";
 import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
 import { TLinuxServerPkiSyncConfig } from "./linux-server-pki-sync-types";
 
@@ -48,6 +58,7 @@ type TLinuxServerSyncOptions = {
   privateKeyFileMode?: string;
   owner?: string;
   group?: string;
+  preflightCommand?: string;
   postSyncCommand?: string;
 };
 
@@ -225,6 +236,45 @@ const reconcileLinuxServerRemovals = async (args: {
   return { removed, failedRemovals };
 };
 
+const runLinuxServerPreflightCommand = ({
+  pkiSync,
+  certificateMap,
+  gatewayServices
+}: {
+  pkiSync: TPkiSyncWithCredentials;
+  certificateMap: TCertificateMap;
+  gatewayServices: Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService">;
+}): Promise<TPreflightCommandResult> | undefined => {
+  const options = (pkiSync.syncOptions ?? {}) as TLinuxServerSyncOptions;
+  const config = pkiSync.destinationConfig as TLinuxServerPkiSyncConfig;
+  const format = options.exportFormat ?? PkiSyncExportFormat.Pem;
+
+  const plan = buildPreflightCommandPlan({
+    command: options.preflightCommand,
+    destinationDirectory: config.destinationPath,
+    certificateMap,
+    exportOptions: {
+      format,
+      includePrivateKey: options.includePrivateKey ?? true,
+      pemCertificateExtension: options.pemCertificateExtension,
+      combineCertificateChain: options.combineCertificateChain
+    },
+    joinPath: (directory, fileName) => path.posix.join(directory, fileName),
+    pkcs12Password: format === PkiSyncExportFormat.Pkcs12 ? pkiSync.syncCredentials?.exportPassword : undefined
+  });
+  if (!plan) return undefined;
+
+  return runPreflightCommand({
+    syncId: pkiSync.id,
+    secretsToRedact: [plan.context.pkcs12Password],
+    execute: () =>
+      executeSshCommandViaGateway(buildSshConfig(pkiSync), gatewayServices, {
+        command: renderPreflightCommand(plan.command, plan.context, toPosixShellLiteral),
+        timeoutMs: PREFLIGHT_COMMAND_TIMEOUT_MS
+      })
+  });
+};
+
 const runLinuxServerPostSyncCommand = ({
   syncId,
   plan,
@@ -270,11 +320,23 @@ export const linuxServerPkiSyncFactory = ({
     // Paths confirmed on the host this run. Keeps the removal pass from deleting a file a renewal
     // just rewrote under the same name, and tells the post-sync command what landed.
     const deliveredPaths = new Set<string>();
-    const deliveredCertificates: Array<{ path: string; commonName?: string }> = [];
+    const deliveredCertificates: Array<{ paths: string[]; commonName?: string }> = [];
     let uploaded = 0;
     let removed = 0;
 
     const sshConfig = buildSshConfig(pkiSync);
+
+    const preflightCheck = await runLinuxServerPreflightCommand({
+      pkiSync,
+      certificateMap,
+      gatewayServices: { gatewayV2Service, gatewayPoolService }
+    });
+    if (preflightCheck && didPreflightCheckFail(preflightCheck)) {
+      logger.info(
+        `Linux Server PKI sync [syncId=${pkiSync.id}]: preflight check failed, delivered nothing (${buildPreflightCommandFailureMessage(preflightCheck)})`
+      );
+      return buildPreflightFailureSyncResult(certificateMap, preflightCheck);
+    }
 
     await withSshConnection(sshConfig, { gatewayV2Service, gatewayPoolService }, async (client) => {
       const sftp = await openSftp(client);
@@ -335,7 +397,7 @@ export const linuxServerPkiSyncFactory = ({
           }
 
           const primaryPath = writtenPaths[0];
-          deliveredCertificates.push({ path: primaryPath, commonName: certData.commonName ?? undefined });
+          deliveredCertificates.push({ paths: writtenPaths, commonName: certData.commonName ?? undefined });
           if (typeof certificateId === "string") {
             let record = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
             if (!record) {
@@ -381,7 +443,6 @@ export const linuxServerPkiSyncFactory = ({
     const postSyncCommandPlan = buildPostSyncCommandPlan({
       command: options.postSyncCommand,
       destinationDirectory: config.destinationPath,
-      deliveredPaths,
       deliveredCertificates,
       pkcs12Password: format === PkiSyncExportFormat.Pkcs12 ? exportPassword : undefined
     });
@@ -399,6 +460,7 @@ export const linuxServerPkiSyncFactory = ({
       removed: removed > 0 ? removed : undefined,
       failedRemovals: failedRemovals.length > 0 ? failedRemovals.length : undefined,
       skipped: skippedCertificates.length,
+      preflightCheck,
       postSyncCommand,
       details: {
         failedUploads: failedUploads.length > 0 ? failedUploads : undefined,
@@ -455,5 +517,12 @@ export const linuxServerPkiSyncFactory = ({
     }
   };
 
-  return { syncCertificates, removeCertificates };
+  const runPreflightCheck = (pkiSync: TPkiSyncWithCredentials, certificateMap: TCertificateMap) =>
+    runLinuxServerPreflightCommand({
+      pkiSync,
+      certificateMap,
+      gatewayServices: { gatewayV2Service, gatewayPoolService }
+    });
+
+  return { syncCertificates, removeCertificates, runPreflightCheck };
 };

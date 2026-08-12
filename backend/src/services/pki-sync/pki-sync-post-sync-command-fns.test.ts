@@ -2,16 +2,18 @@ import { describe, expect, test, vi } from "vitest";
 
 import { PkiSyncStatus } from "./pki-sync-enums";
 import {
+  findSingleCertificateHostCommandVariables,
+  HostCommandVariable,
+  toPosixShellLiteral,
+  toPowerShellLiteral
+} from "./pki-sync-host-command-fns";
+import {
   applyPostSyncCommandUpdate,
   buildPostSyncCommandFailureMessage,
   buildPostSyncCommandPlan,
-  findSingleCertificatePostSyncCommandVariables,
   normalizeNewPostSyncCommand,
-  PostSyncCommandVariable,
   renderPostSyncCommand,
   runPostSyncCommand,
-  toPosixShellLiteral,
-  toPowerShellLiteral,
   TPostSyncCommandContext
 } from "./pki-sync-post-sync-command-fns";
 
@@ -30,13 +32,12 @@ describe("buildPostSyncCommandPlan", () => {
   const baseArgs = {
     command: "systemctl reload nginx",
     destinationDirectory: "/etc/ssl/certs",
-    deliveredPaths: new Set(["/etc/ssl/certs/app.pem"]),
-    deliveredCertificates: [{ path: "/etc/ssl/certs/app.pem", commonName: "app.example.com" }]
+    deliveredCertificates: [{ paths: ["/etc/ssl/certs/app.pem"], commonName: "app.example.com" }]
   };
 
   const twoCertificates = [
-    { path: "/etc/ssl/certs/a.pem", commonName: "a.example.com" },
-    { path: "/etc/ssl/certs/b.pem", commonName: "b.example.com" }
+    { paths: ["/etc/ssl/certs/a.pem"], commonName: "a.example.com" },
+    { paths: ["/etc/ssl/certs/b.pem"], commonName: "b.example.com" }
   ];
 
   test("returns a plan when a command is configured and files were delivered", () => {
@@ -88,30 +89,28 @@ describe("buildPostSyncCommandPlan", () => {
   });
 });
 
-describe("findSingleCertificatePostSyncCommandVariables", () => {
+describe("findSingleCertificateHostCommandVariables", () => {
   test("finds the placeholders that name one certificate", () => {
-    expect(findSingleCertificatePostSyncCommandVariables("cp {{certificatePath}} /tmp/{{commonName}}")).toEqual([
-      PostSyncCommandVariable.CertificatePath,
-      PostSyncCommandVariable.CommonName
+    expect(findSingleCertificateHostCommandVariables("cp {{certificatePath}} /tmp/{{commonName}}")).toEqual([
+      HostCommandVariable.CertificatePath,
+      HostCommandVariable.CommonName
     ]);
   });
 
   test("ignores placeholders that describe the whole run", () => {
-    expect(findSingleCertificatePostSyncCommandVariables("echo {{certificateFiles}} {{certificateDirectory}}")).toEqual(
-      []
-    );
+    expect(findSingleCertificateHostCommandVariables("echo {{certificateFiles}} {{certificateDirectory}}")).toEqual([]);
   });
 
   test("matches a placeholder regardless of its internal spacing", () => {
-    expect(findSingleCertificatePostSyncCommandVariables("echo {{  commonName  }}")).toEqual([
-      PostSyncCommandVariable.CommonName
+    expect(findSingleCertificateHostCommandVariables("echo {{  commonName  }}")).toEqual([
+      HostCommandVariable.CommonName
     ]);
   });
 
   test("returns none for an empty command, or text that is not a placeholder", () => {
-    expect(findSingleCertificatePostSyncCommandVariables()).toEqual([]);
-    expect(findSingleCertificatePostSyncCommandVariables("echo {{#if")).toEqual([]);
-    expect(findSingleCertificatePostSyncCommandVariables("jq {{.commonName}}")).toEqual([]);
+    expect(findSingleCertificateHostCommandVariables()).toEqual([]);
+    expect(findSingleCertificateHostCommandVariables("echo {{#if")).toEqual([]);
+    expect(findSingleCertificateHostCommandVariables("jq {{.commonName}}")).toEqual([]);
   });
 });
 
@@ -307,7 +306,7 @@ describe("buildPostSyncCommandFailureMessage", () => {
     expect(message).toBe("Post-sync command failed (exit 2): Unit nginx.service not found");
   });
 
-  test("still reports the exit code when the command produced no output at all", () => {
+  test("reports the exit code alone when the command produced no output at all", () => {
     const message = buildPostSyncCommandFailureMessage({
       status: PkiSyncStatus.Failed,
       exitCode: 42,
@@ -315,7 +314,7 @@ describe("buildPostSyncCommandFailureMessage", () => {
       error: "Command exited with code 42"
     });
 
-    expect(message).toBe("Post-sync command failed (exit 42): Command exited with code 42");
+    expect(message).toBe("Post-sync command failed (exit 42)");
   });
 
   test("falls back to the error when the command never ran, so there is no exit code", () => {

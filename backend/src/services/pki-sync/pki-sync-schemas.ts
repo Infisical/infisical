@@ -4,11 +4,19 @@ import { z } from "zod";
 import { buildCertificateNameSchemaTestName } from "./pki-sync-certificate-name-fns";
 import { PkiSync } from "./pki-sync-enums";
 import { POST_SYNC_COMMAND_MAX_LENGTH } from "./pki-sync-post-sync-command-fns";
+import { PREFLIGHT_COMMAND_MAX_LENGTH } from "./pki-sync-preflight-command-fns";
 
 export const PostSyncCommandSchema = z
   .string()
   .trim()
   .max(POST_SYNC_COMMAND_MAX_LENGTH, `Command must be at most ${POST_SYNC_COMMAND_MAX_LENGTH} characters`)
+  .nullable()
+  .optional();
+
+export const PreflightCommandSchema = z
+  .string()
+  .trim()
+  .max(PREFLIGHT_COMMAND_MAX_LENGTH, `Command must be at most ${PREFLIGHT_COMMAND_MAX_LENGTH} characters`)
   .nullable()
   .optional();
 
@@ -18,6 +26,7 @@ export const BasePkiSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
   includeRootCa: z.boolean().default(false),
   preserveItemOnRenewal: z.boolean().default(true),
+  preflightCommand: PreflightCommandSchema,
   postSyncCommand: PostSyncCommandSchema
 });
 

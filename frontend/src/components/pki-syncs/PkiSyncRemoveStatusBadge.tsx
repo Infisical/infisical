@@ -1,11 +1,11 @@
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { differenceInSeconds } from "date-fns";
 import { AlertTriangleIcon, CheckIcon, EraserIcon, LucideIcon } from "lucide-react";
 
 import { Badge, TBadgeProps, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
-import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import { getPkiSyncFailureMessage, PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { PkiSyncStatus, TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 type Props = {
@@ -26,19 +26,7 @@ export const PkiSyncRemoveStatusBadge = ({ pkiSync, mini }: Props) => {
     }
   }, [removeStatus]);
 
-  const failureMessage = useMemo(() => {
-    if (removeStatus === PkiSyncStatus.Failed) {
-      if (lastRemoveMessage)
-        try {
-          return JSON.stringify(JSON.parse(lastRemoveMessage), null, 2);
-        } catch {
-          return lastRemoveMessage;
-        }
-
-      return "An Unknown Error Occurred.";
-    }
-    return null;
-  }, [removeStatus, lastRemoveMessage]);
+  const failureMessage = getPkiSyncFailureMessage(removeStatus, lastRemoveMessage);
 
   if (!removeStatus || hide) return null;
 

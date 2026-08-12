@@ -12,6 +12,8 @@ export const PostSyncCommandSchema = z
   .nullish()
   .transform((command) => command || null);
 
+export const PreflightCommandSchema = PostSyncCommandSchema;
+
 export const BasePkiSyncSchema = <T extends AnyZodObject | undefined = undefined>(
   additionalSyncOptions?: T
 ) => {

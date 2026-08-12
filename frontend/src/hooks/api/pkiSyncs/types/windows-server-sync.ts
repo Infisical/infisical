@@ -14,6 +14,7 @@ export type TWindowsServerPkiSync = TRootPkiSync & {
     combineCertificateChain?: boolean;
     includePrivateKey?: boolean;
     fileAccessRules?: { identity: string; access: WindowsFileAccess }[];
+    preflightCommand?: string | null;
     postSyncCommand?: string | null;
   };
   connection: {

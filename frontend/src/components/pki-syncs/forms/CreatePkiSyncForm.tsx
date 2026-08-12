@@ -32,6 +32,7 @@ import {
   PkiSyncExportFormat,
   TPkiSync,
   useCanSetPostSyncCommand,
+  useCanSetPreflightCommand,
   useCreatePkiSync,
   usePkiSyncOption
 } from "@app/hooks/api/pkiSyncs";
@@ -44,6 +45,7 @@ import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
 import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
 import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
+import { PkiSyncPreflightCommandFields } from "./PkiSyncPreflightCommandFields";
 import { PkiSyncReviewFields } from "./PkiSyncReviewFields";
 
 type Props = {
@@ -79,12 +81,12 @@ const STEP_META: Record<
     rightDescription:
       "Map each certificate component (certificate, private key, and chain) to the field names used at the destination."
   },
-  postSyncCommand: {
-    short: "Command after sync",
-    subtitle: "Optionally run a command on the host after certificates are written.",
-    rightLabel: "POST-SYNC COMMAND",
+  hostCommands: {
+    short: "Commands on the host",
+    subtitle: "Optionally check the host before the sync, and act on it afterward.",
+    rightLabel: "COMMANDS",
     rightDescription:
-      "The gateway runs your command on the destination host once the run's files are in place, so a service can reload and pick up the new certificate. It only runs when the sync delivers a file, and a failure marks the sync failed."
+      "The preflight check runs first and stops the sync if the host is not ready, so a bad host never receives a certificate. The post-sync command runs afterward, once the run's files are in place, so a service can reload and pick up the new certificate. It only runs when the sync delivers a file. Either command failing marks the sync failed."
   },
   details: {
     short: "Name and description",
@@ -111,7 +113,7 @@ const STEP_META: Record<
 
 const getFormTabs = (
   destination: PkiSync,
-  canRunPostSyncCommand: boolean
+  canRunHostCommands: boolean
 ): { name: string; key: string; fields: FieldPath<TPkiSyncForm>[] }[] => {
   const baseTabs = [
     {
@@ -134,11 +136,14 @@ const getFormTabs = (
     });
   }
 
-  if (canRunPostSyncCommand) {
+  if (canRunHostCommands) {
     baseTabs.push({
-      name: "Post-Sync Command",
-      key: "postSyncCommand",
-      fields: ["syncOptions.postSyncCommand"] as FieldPath<TPkiSyncForm>[]
+      name: "Commands",
+      key: "hostCommands",
+      fields: [
+        "syncOptions.preflightCommand",
+        "syncOptions.postSyncCommand"
+      ] as FieldPath<TPkiSyncForm>[]
     });
   }
 
@@ -175,9 +180,11 @@ export const CreatePkiSyncForm = ({
 
   const { syncOption } = usePkiSyncOption(destination);
   const canSetPostSyncCommand = useCanSetPostSyncCommand(applicationId);
+  const canSetPreflightCommand = useCanSetPreflightCommand(applicationId);
   const FORM_TABS = getFormTabs(
     destination,
-    Boolean(syncOption?.canRunPostSyncCommand) && canSetPostSyncCommand
+    (Boolean(syncOption?.canRunPreflightCommand) && canSetPreflightCommand) ||
+      (Boolean(syncOption?.canRunPostSyncCommand) && canSetPostSyncCommand)
   );
 
   const formMethods = useForm<TPkiSyncForm>({
@@ -374,11 +381,17 @@ export const CreatePkiSyncForm = ({
               </>
             )}
             {currentKey === "mappings" && <PkiSyncFieldMappingsFields destination={destination} />}
-            {currentKey === "postSyncCommand" && (
-              <PkiSyncPostSyncCommandFields
-                destination={destination}
-                canEditCommand={canSetPostSyncCommand}
-              />
+            {currentKey === "hostCommands" && (
+              <div className="flex flex-col gap-8">
+                <PkiSyncPreflightCommandFields
+                  destination={destination}
+                  canEditCommand={canSetPreflightCommand}
+                />
+                <PkiSyncPostSyncCommandFields
+                  destination={destination}
+                  canEditCommand={canSetPostSyncCommand}
+                />
+              </div>
             )}
             {currentKey === "details" && <PkiSyncDetailsFields />}
             {currentKey === "certificates" && (

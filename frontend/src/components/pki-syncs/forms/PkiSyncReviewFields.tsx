@@ -69,6 +69,8 @@ export const PkiSyncReviewFields = () => {
   const selectedCertificates = getSelectedCertificates(certificateIds);
   const postSyncCommand =
     syncOptions && "postSyncCommand" in syncOptions ? syncOptions.postSyncCommand : undefined;
+  const preflightCommand =
+    syncOptions && "preflightCommand" in syncOptions ? syncOptions.preflightCommand : undefined;
 
   return (
     <div className="mb-4 flex flex-col gap-6">
@@ -179,6 +181,14 @@ export const PkiSyncReviewFields = () => {
           })}
         </div>
       </div>
+      {preflightCommand && (
+        <div className="flex flex-col gap-3">
+          <div className="w-full border-b border-border">
+            <span className="text-sm text-muted">Preflight Check</span>
+          </div>
+          <CodeBlock value={preflightCommand} className="max-h-48 whitespace-pre-wrap" />
+        </div>
+      )}
       {postSyncCommand && (
         <div className="flex flex-col gap-3">
           <div className="w-full border-b border-border">
