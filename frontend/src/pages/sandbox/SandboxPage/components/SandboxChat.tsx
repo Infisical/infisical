@@ -108,7 +108,10 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
     if (!content) return;
 
     const history: TAgentMessage[] = [
-      ...turns.map(({ role, content: text }) => ({ role, content: text })),
+      // Drop any empty turn: the API requires non-empty content, and a failed turn leaves one behind.
+      ...turns
+        .filter((turn) => turn.content.trim())
+        .map(({ role, content: text }) => ({ role, content: text })),
       { role: "user" as const, content }
     ];
 

@@ -97,12 +97,13 @@ const streamGemini = async (
     response.data.on("data", (chunk: Buffer) => {
       buffer += chunk.toString("utf8");
 
-      // SSE frames are separated by a blank line; keep the trailing partial frame in the buffer.
-      const frames = buffer.split("\n\n");
+      // SSE frames are separated by a blank line, which Google sends as CRLF. Splitting on "\n\n"
+      // alone never matches, so nothing is ever parsed.
+      const frames = buffer.split(/\r?\n\r?\n/);
       buffer = frames.pop() ?? "";
 
       frames.forEach((frame) => {
-        const line = frame.split("\n").find((l) => l.startsWith("data:"));
+        const line = frame.split(/\r?\n/).find((l) => l.startsWith("data:"));
         if (!line) return;
 
         try {
@@ -117,7 +118,22 @@ const streamGemini = async (
       });
     });
 
-    response.data.on("end", () => resolve());
+    response.data.on("end", () => {
+      // A last frame without a trailing blank line stays in the buffer, so flush it.
+      const line = buffer.split(/\r?\n/).find((l) => l.startsWith("data:"));
+      if (line) {
+        try {
+          const payload = JSON.parse(line.slice(5).trim()) as TGeminiResponse;
+          (payload.candidates?.[0]?.content?.parts ?? []).forEach((part) => {
+            parts.push(part);
+            if (part.text) onText(part.text);
+          });
+        } catch {
+          // incomplete trailing frame
+        }
+      }
+      resolve();
+    });
     response.data.on("error", reject);
   });
 

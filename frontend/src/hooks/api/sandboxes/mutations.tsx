@@ -177,8 +177,10 @@ export const streamAgentChat = async (
   });
 
   if (!response.ok || !response.body) {
-    const detail = (await response.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(detail?.message ?? "The agent could not be reached.");
+    const detail = (await response.json().catch(() => null)) as { message?: unknown } | null;
+    const message =
+      typeof detail?.message === "string" ? detail.message : "The agent could not be reached.";
+    throw new Error(message);
   }
 
   const reader = response.body.getReader();
@@ -192,12 +194,12 @@ export const streamAgentChat = async (
 
     buffer += decoder.decode(value, { stream: true });
 
-    // Frames are separated by a blank line; the trailing partial frame stays buffered.
-    const frames = buffer.split("\n\n");
+    // Frames are separated by a blank line, sent as CRLF, so match either form.
+    const frames = buffer.split(/\r?\n\r?\n/);
     buffer = frames.pop() ?? "";
 
     frames.forEach((frame) => {
-      const line = frame.split("\n").find((l) => l.startsWith("data:"));
+      const line = frame.split(/\r?\n/).find((l) => l.startsWith("data:"));
       if (!line) return;
       try {
         onEvent(JSON.parse(line.slice(5).trim()) as TAgentStreamEvent);
