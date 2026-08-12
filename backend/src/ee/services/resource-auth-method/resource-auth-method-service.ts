@@ -6,9 +6,11 @@ import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 
+import { TAgentProxyDALFactory } from "../agent-proxy/agent-proxy-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TKmipServerDALFactory } from "../kmip-server/kmip-server-dal";
 import {
+  OrgPermissionAgentProxyActions,
   OrgPermissionGatewayActions,
   OrgPermissionKmipServerActions,
   OrgPermissionRelayActions,
@@ -20,12 +22,15 @@ import { TResourceAwsAuthDALFactory } from "./aws-auth-dal";
 import { validateAllowlists, verifyStsAndExtractCaller } from "./aws-auth-fns";
 import { TResourceAuthMethodDALFactory } from "./resource-auth-method-dal";
 import {
+  assertAgentProxyResource,
   assertGatewayResource,
   assertKmipServerResource,
   assertRelayResource,
+  mintAgentProxyJwt,
   mintGatewayJwt,
   mintKmipServerJwt,
   mintRelayJwt,
+  RESOURCE_TYPE_AGENT_PROXY,
   RESOURCE_TYPE_GATEWAY,
   RESOURCE_TYPE_KMIP,
   RESOURCE_TYPE_RELAY,
@@ -60,6 +65,7 @@ type TResourceAuthMethodServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById" | "updateById">;
   relayDAL: Pick<TRelayDALFactory, "findById" | "updateById">;
   kmipServerDAL: Pick<TKmipServerDALFactory, "findById" | "updateById">;
+  agentProxyDAL: Pick<TAgentProxyDALFactory, "findById" | "updateById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
@@ -85,10 +91,17 @@ const KMIP_SERVER_PERMISSION_MAP = {
   revoke: OrgPermissionKmipServerActions.RevokeKmipServerAccess
 } as const;
 
+const AGENT_PROXY_PERMISSION_MAP = {
+  list: OrgPermissionAgentProxyActions.ListAgentProxies,
+  edit: OrgPermissionAgentProxyActions.EditAgentProxies,
+  revoke: OrgPermissionAgentProxyActions.RevokeAgentProxyAccess
+} as const;
+
 const RESOURCE_LABEL: Record<ResourceRef["type"], string> = {
   [RESOURCE_TYPE_GATEWAY]: "Gateway",
   [RESOURCE_TYPE_RELAY]: "Relay",
-  [RESOURCE_TYPE_KMIP]: "KMIP server"
+  [RESOURCE_TYPE_KMIP]: "KMIP server",
+  [RESOURCE_TYPE_AGENT_PROXY]: "Agent proxy"
 };
 
 type TBasicResource = { id: string; name: string; orgId: string | null; identityId: string | null };
@@ -100,13 +113,15 @@ export const resourceAuthMethodServiceFactory = ({
   gatewayV2DAL,
   relayDAL,
   kmipServerDAL,
+  agentProxyDAL,
   identityDAL,
   permissionService
 }: TResourceAuthMethodServiceFactoryDep) => {
-  // Registry rows carry the resource FK in a per-type column (gatewayId/relayId/kmipServerId).
+  // Registry rows carry the resource FK in a per-type column (gatewayId/relayId/kmipServerId/agentProxyId).
   const $registryFilter = (resource: ResourceRef) => {
     if (resource.type === RESOURCE_TYPE_GATEWAY) return { gatewayId: resource.id };
     if (resource.type === RESOURCE_TYPE_RELAY) return { relayId: resource.id };
+    if (resource.type === RESOURCE_TYPE_AGENT_PROXY) return { agentProxyId: resource.id };
     return { kmipServerId: resource.id };
   };
 
@@ -124,6 +139,12 @@ export const resourceAuthMethodServiceFactory = ({
       const relay = await relayDAL.findById(resource.id, tx);
       return relay
         ? { id: relay.id, name: relay.name, orgId: relay.orgId ?? null, identityId: relay.identityId ?? null }
+        : null;
+    }
+    if (resource.type === RESOURCE_TYPE_AGENT_PROXY) {
+      const agentProxy = await agentProxyDAL.findById(resource.id, tx);
+      return agentProxy
+        ? { id: agentProxy.id, name: agentProxy.name, orgId: agentProxy.orgId, identityId: null }
         : null;
     }
     const kmipServer = await kmipServerDAL.findById(resource.id, tx);
@@ -145,6 +166,14 @@ export const resourceAuthMethodServiceFactory = ({
       const refreshed = await relayDAL.updateById(resource.id, { $incr: { tokenVersion: 1 }, heartbeat: null }, tx);
       return refreshed.tokenVersion;
     }
+    if (resource.type === RESOURCE_TYPE_AGENT_PROXY) {
+      const refreshed = await agentProxyDAL.updateById(
+        resource.id,
+        { $incr: { tokenVersion: 1 }, heartbeat: null },
+        tx
+      );
+      return refreshed.tokenVersion;
+    }
     const refreshed = await kmipServerDAL.updateById(resource.id, { $incr: { tokenVersion: 1 } }, tx);
     return refreshed.tokenVersion;
   };
@@ -155,6 +184,9 @@ export const resourceAuthMethodServiceFactory = ({
     }
     if (resource.type === RESOURCE_TYPE_RELAY) {
       return mintRelayJwt({ relayId: resource.id, orgId, tokenVersion, accessTokenTTL: 0 });
+    }
+    if (resource.type === RESOURCE_TYPE_AGENT_PROXY) {
+      return mintAgentProxyJwt({ agentProxyId: resource.id, orgId, tokenVersion, accessTokenTTL: 0 });
     }
     return mintKmipServerJwt({ kmipServerId: resource.id, orgId, tokenVersion, accessTokenTTL: 0 });
   };
@@ -176,6 +208,11 @@ export const resourceAuthMethodServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(GATEWAY_PERMISSION_MAP[intent], OrgPermissionSubjects.Gateway);
     } else if (resourceType === RESOURCE_TYPE_RELAY) {
       ForbiddenError.from(permission).throwUnlessCan(RELAY_PERMISSION_MAP[intent], OrgPermissionSubjects.Relay);
+    } else if (resourceType === RESOURCE_TYPE_AGENT_PROXY) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        AGENT_PROXY_PERMISSION_MAP[intent],
+        OrgPermissionSubjects.AgentProxy
+      );
     } else {
       ForbiddenError.from(permission).throwUnlessCan(
         KMIP_SERVER_PERMISSION_MAP[intent],
@@ -276,6 +313,22 @@ export const resourceAuthMethodServiceFactory = ({
     const view = await $loadAuthMethodView(resource);
     if (!view) {
       throw new NotFoundError({ message: "KMIP server has no auth method configured" });
+    }
+    return view;
+  };
+
+  const getByAgentProxyId = async ({ resource, actor }: TGetAuthMethodDTO) => {
+    assertAgentProxyResource(resource, "auth-method");
+    await $checkPermission(actor, "list", RESOURCE_TYPE_AGENT_PROXY);
+
+    const loaded = await $loadResource(resource);
+    if (!loaded || loaded.orgId !== actor.orgId) {
+      throw new NotFoundError({ message: `Agent proxy with ID "${resource.id}" not found` });
+    }
+
+    const view = await $loadAuthMethodView(resource);
+    if (!view) {
+      throw new NotFoundError({ message: "Agent proxy has no auth method configured" });
     }
     return view;
   };
@@ -565,7 +618,7 @@ export const resourceAuthMethodServiceFactory = ({
     }
 
     // Determine resource type from which FK is set on the registry row — exactly one must be set.
-    const linkedResourceId = registry.gatewayId ?? registry.relayId ?? registry.kmipServerId;
+    const linkedResourceId = registry.gatewayId ?? registry.relayId ?? registry.kmipServerId ?? registry.agentProxyId;
     if (!linkedResourceId) {
       throw new BadRequestError({ message: "Enrollment token is not linked to a resource" });
     }
@@ -573,6 +626,7 @@ export const resourceAuthMethodServiceFactory = ({
     let actualResourceType: ResourceRef["type"];
     if (registry.gatewayId) actualResourceType = RESOURCE_TYPE_GATEWAY;
     else if (registry.relayId) actualResourceType = RESOURCE_TYPE_RELAY;
+    else if (registry.agentProxyId) actualResourceType = RESOURCE_TYPE_AGENT_PROXY;
     else actualResourceType = RESOURCE_TYPE_KMIP;
 
     if (actualResourceType !== expectedResourceType) {
@@ -616,6 +670,7 @@ export const resourceAuthMethodServiceFactory = ({
     getByGatewayId,
     getByRelayId,
     getByKmipServerId,
+    getByAgentProxyId,
     loadView,
     canRevoke,
     initAtCreate,

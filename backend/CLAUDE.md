@@ -322,6 +322,18 @@ Invariants worth knowing before extending it:
 
   Wire it into **every** path that deletes or detaches the resource, not just the obvious one. A resource usually has several (a hard delete, an org-membership removal, a project-membership removal), and each needs its own reap. Call it **inside the delete transaction** and pass `tx`; the reap is pure DB (no KMS or network), so it is safe there. The `(resourceType, resourceId)` index on `alerts` is what keeps the unscoped reap off a seq scan, so a provider whose resource is deleted in bulk depends on it.
 
+### Agent Policies (intersection model)
+
+`src/ee/services/agent-policy/`, `user-policy/`, `agent-session/`, `agent-proxy/`. An agent has its own policies and a user has theirs; a request is allowed when it matches **at least one rule on each side**. There is no set arithmetic and nothing is precomputed: a user rule saying `GET` narrows an agent rule saying `Any` on the same host, so the decision is per request, at the proxy.
+
+- **Agent proxy is a resource, not an identity.** It enrols through `resource_auth_methods` (token method only) and authenticates as `AGENT_PROXY_ACCESS_TOKEN` / `ActorType.AGENT_PROXY`, the same shape relays and KMIP servers use. `tokenVersion` on the row is what revokes it.
+- **Session tokens never expire.** Revocation is structural instead: `resolveSession` re-checks the agent flag, project membership and policies on every call, so losing any of them ends the session on the next refresh. Do not add a cache in front of it.
+- **Only the policy author's permissions are checked.** Writing a credential requires ReadValue on the referenced secret (mirrors `proxied-service-service.ts`); the proxy itself holds no project permissions and receives resolved values.
+- **Placeholder values are preserved across policy edits.** Rotating one breaks every agent already running with it in its environment.
+- **The template registry is copied, not shared.** `agent-policy-templates.ts` owns everything that reaches the wire (host pattern, credential slots, placeholder format, surfaces); the frontend copy keeps names and icons. Adding a target means touching both.
+
+**Adding a column to `identities` means updating five explicit select lists**, not one: `identity/identity-org-dal.ts` (three), `membership-identity/membership-identity-dal.ts`, and `identity-v2/identity-membership-dal.ts`. They select named columns rather than `selectAllTableCols`, and because generated Zod schemas apply the column default, a missed select returns a confident wrong value (`isAgent: false`) instead of an error.
+
 ### Soft-Delete + Async Cleanup
 
 Resources whose deletion cascades across many/large tables use a **soft-delete + paced async hard-delete** pattern instead of a synchronous cascade in the request path.

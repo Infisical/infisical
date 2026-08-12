@@ -130,17 +130,19 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("id").as("tlsCertId").withSchema(TableName.IdentityTlsCertAuth),
           db.ref("id").as("spiffeId").withSchema(TableName.IdentitySpiffeAuth),
           db.ref("name").withSchema(TableName.Identity),
-          db.ref("hasDeleteProtection").withSchema(TableName.Identity)
+          db.ref("hasDeleteProtection").withSchema(TableName.Identity),
+          db.ref("isAgent").withSchema(TableName.Identity)
         );
 
       if (data) {
-        const { name, hasDeleteProtection } = data;
+        const { name, hasDeleteProtection, isAgent } = data;
         return {
           ...data,
           identity: {
             id: data.actorIdentityId as string,
             name,
             hasDeleteProtection,
+            isAgent,
             authMethods: buildAuthMethods(data)
           }
         };
@@ -173,6 +175,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           selectAllTableCols(TableName.Membership),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity),
+          db.ref("isAgent").withSchema(TableName.Identity),
           db.ref("orgId").withSchema(TableName.Identity)
         )
         .where(filter)
@@ -277,6 +280,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("actorIdentityId").withSchema("paginatedIdentity").as("identityId"),
           db.ref("identityName").withSchema("paginatedIdentity"),
           db.ref("hasDeleteProtection").withSchema("paginatedIdentity"),
+          db.ref("isAgent").withSchema("paginatedIdentity"),
 
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
@@ -320,6 +324,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           identityId,
           identityName,
           hasDeleteProtection,
+          isAgent,
           role,
           roleId,
           id,
@@ -365,6 +370,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
             id: identityId as string,
             name: identityName,
             hasDeleteProtection,
+            isAgent,
             orgId: identityOrgId,
             authMethods: buildAuthMethods({
               uaId,
@@ -538,6 +544,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("actorIdentityId").withSchema(TableName.Membership).as("identityId"),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity),
+          db.ref("isAgent").withSchema(TableName.Identity),
           db.ref("orgId").withSchema(TableName.Identity).as("identityOrgId"),
 
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
@@ -594,6 +601,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           identityOrgId,
           identityName,
           hasDeleteProtection,
+          isAgent,
           role,
           roleId,
           total_count,
@@ -638,6 +646,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
             id: identityId as string,
             name: identityName,
             hasDeleteProtection,
+            isAgent,
             orgId: identityOrgId,
             authMethods: buildAuthMethods({
               uaId,

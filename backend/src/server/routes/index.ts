@@ -21,8 +21,19 @@ import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-appr
 import { accessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
 import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-reviewer-dal";
 import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
+import {
+  agentPolicyAgentDALFactory,
+  agentPolicyCredentialDALFactory,
+  agentPolicyRuleDALFactory
+} from "@app/ee/services/agent-policy/agent-policy-child-dals";
+import { agentPolicyDALFactory } from "@app/ee/services/agent-policy/agent-policy-dal";
+import { agentPolicyServiceFactory } from "@app/ee/services/agent-policy/agent-policy-service";
+import { agentProxyDALFactory } from "@app/ee/services/agent-proxy/agent-proxy-dal";
+import { agentProxyServiceFactory } from "@app/ee/services/agent-proxy/agent-proxy-service";
 import { agentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
 import { orgAgentProxyConfigDALFactory } from "@app/ee/services/agent-proxy-ca/org-agent-proxy-config-dal";
+import { agentSessionDALFactory } from "@app/ee/services/agent-session/agent-session-dal";
+import { agentSessionServiceFactory } from "@app/ee/services/agent-session/agent-session-service";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
 import { clickhouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
@@ -190,6 +201,12 @@ import { secretScanningV2ServiceFactory } from "@app/ee/services/secret-scanning
 import { subOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
+import {
+  userPolicyDALFactory,
+  userPolicyRuleDALFactory,
+  userPolicyUserDALFactory
+} from "@app/ee/services/user-policy/user-policy-dal";
+import { userPolicyServiceFactory } from "@app/ee/services/user-policy/user-policy-service";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
@@ -1626,6 +1643,15 @@ export const registerRoutes = async (
   const relayDAL = relayDalFactory(db);
   const gatewayV2DAL = gatewayV2DalFactory(db);
   const kmipServerDAL = kmipServerDALFactory(db);
+  const agentProxyDAL = agentProxyDALFactory(db);
+  const agentPolicyDAL = agentPolicyDALFactory(db);
+  const agentPolicyAgentDAL = agentPolicyAgentDALFactory(db);
+  const agentPolicyRuleDAL = agentPolicyRuleDALFactory(db);
+  const agentPolicyCredentialDAL = agentPolicyCredentialDALFactory(db);
+  const userPolicyDAL = userPolicyDALFactory(db);
+  const userPolicyUserDAL = userPolicyUserDALFactory(db);
+  const userPolicyRuleDAL = userPolicyRuleDALFactory(db);
+  const agentSessionDAL = agentSessionDALFactory(db);
   const resourceTokenAuthDAL = resourceTokenAuthDALFactory(db);
   const resourceAuthMethodDAL = resourceAuthMethodDALFactory(db);
   const resourceAwsAuthDAL = resourceAwsAuthDALFactory(db);
@@ -1792,6 +1818,7 @@ export const registerRoutes = async (
     gatewayV2DAL,
     relayDAL,
     kmipServerDAL,
+    agentProxyDAL,
     identityDAL,
     permissionService
   });
@@ -1814,6 +1841,13 @@ export const registerRoutes = async (
     kmipServerDAL,
     permissionService,
     resourceAuthMethodService
+  });
+
+  const agentProxyService = agentProxyServiceFactory({
+    agentProxyDAL,
+    permissionService,
+    resourceAuthMethodService,
+    licenseService
   });
 
   const gatewayV2Service = gatewayV2ServiceFactory({
@@ -3005,6 +3039,45 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const agentPolicyService = agentPolicyServiceFactory({
+    agentPolicyDAL,
+    agentPolicyAgentDAL,
+    agentPolicyRuleDAL,
+    agentPolicyCredentialDAL,
+    projectEnvDAL,
+    identityDAL,
+    secretV2BridgeService,
+    permissionService,
+    licenseService
+  });
+
+  const userPolicyService = userPolicyServiceFactory({
+    userPolicyDAL,
+    userPolicyUserDAL,
+    userPolicyRuleDAL,
+    permissionService,
+    licenseService
+  });
+
+  const agentSessionService = agentSessionServiceFactory({
+    agentSessionDAL,
+    agentPolicyDAL,
+    agentPolicyRuleDAL,
+    agentPolicyCredentialDAL,
+    userPolicyDAL,
+    userPolicyRuleDAL,
+    agentProxyDAL,
+    agentProxyCaService,
+    identityDAL,
+    projectDAL,
+    folderDAL,
+    secretV2BridgeDAL,
+    kmsService,
+    orgDAL,
+    projectFolderGrantDAL,
+    licenseService
+  });
+
   const webhookService = webhookServiceFactory({
     permissionService,
     webhookDAL,
@@ -3980,6 +4053,10 @@ export const registerRoutes = async (
     kmip: kmipService,
     kmipOperation: kmipOperationService,
     kmipServer: kmipServerService,
+    agentProxy: agentProxyService,
+    agentPolicy: agentPolicyService,
+    userPolicy: userPolicyService,
+    agentSession: agentSessionService,
     gateway: gatewayService,
     relay: relayService,
     gatewayV2: gatewayV2Service,

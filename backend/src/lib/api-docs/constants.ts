@@ -181,6 +181,8 @@ export const IDENTITIES = {
     organizationId: "The organization ID to which the identity belongs.",
     role: "The role of the identity. Possible values are 'no-access', 'member', and 'admin'.",
     hasDeleteProtection: "Prevents deletion of the identity when enabled.",
+    isAgent:
+      "Marks the identity as an agent, letting it start sessions on a user's behalf and appear in agent policies.",
     metadata: "An optional array of key-value pairs to attach to the identity."
   },
   UPDATE: {
@@ -188,6 +190,8 @@ export const IDENTITIES = {
     name: "The new name of the identity.",
     role: "The new role of the identity.",
     hasDeleteProtection: "Prevents deletion of the identity when enabled.",
+    isAgent:
+      "Marks the identity as an agent, letting it start sessions on a user's behalf and appear in agent policies.",
     metadata: "An optional array of key-value pairs to attach to the identity."
   },
   DELETE: {

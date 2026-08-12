@@ -359,6 +359,8 @@ export enum ProjectPermissionSub {
   ProjectFolderGrant = "project-folder-grant",
   HoneyTokens = "honey-tokens",
   ProxiedServices = "proxied-services",
+  AgentPolicies = "agent-policies",
+  UserPolicies = "user-policies",
   Insights = "insights"
 }
 
@@ -689,6 +691,8 @@ export type ProjectPermissionSet =
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
+  | [ProjectPermissionActions, ProjectPermissionSub.AgentPolicies]
+  | [ProjectPermissionActions, ProjectPermissionSub.UserPolicies]
   | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
   | [
       ProjectPermissionProjectFolderGrantActions,
@@ -1592,6 +1596,20 @@ const GeneralPermissionSchema = [
     conditions: ProxiedServiceConditionSchema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.AgentPolicies).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.UserPolicies).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.ApprovalRequests).describe("The entity this permission pertains to."),

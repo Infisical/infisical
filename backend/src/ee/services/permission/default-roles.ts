@@ -458,6 +458,26 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.ProxiedServices
   );
 
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.AgentPolicies
+  );
+
+  can(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.UserPolicies
+  );
+
   return rules;
 };
 
@@ -559,6 +579,9 @@ const buildMemberPermissionRules = () => {
     [ProjectPermissionProxiedServiceActions.Read, ProjectPermissionProxiedServiceActions.ReportUsage],
     ProjectPermissionSub.ProxiedServices
   );
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.AgentPolicies);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.UserPolicies);
 
   can(
     [
@@ -697,6 +720,8 @@ const buildViewerPermissionRules = () => {
     [ProjectPermissionProxiedServiceActions.Read, ProjectPermissionProxiedServiceActions.ReportUsage],
     ProjectPermissionSub.ProxiedServices
   );
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.AgentPolicies);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.UserPolicies);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);

@@ -100,6 +100,12 @@ All user-facing "notify me when X happens" features share one module: `backend/s
 
 **If you touch a code path that deletes or detaches an alertable resource, it must reap that resource's alerts.** `alerts.resourceId` has no foreign key, so nothing cascades and the alert is left dangling. Use `alertService.deleteAlertsForDeletedResource` when the row is gone (unscoped, reaps across every org) and `deleteAlertsForResource` when the resource only left a scope. See the alerting invariants in `backend/CLAUDE.md`.
 
+### Agent Policies
+
+Agents and users each get their own policies, and a brokered request has to satisfy both. Spans all three repos: services and routes in `backend/src/ee/services/agent-{policy,proxy,session}/` and `user-policy/`, the proxy runtime in the CLI's `packages/agentproxy` (`policy_*.go`), and the UI under Networking plus a project-level Agent Proxy page. Read the agent policies section in [`backend/CLAUDE.md`](backend/CLAUDE.md) before changing any of it; the invariants there are not guessable from the code.
+
+Distinct from the older **proxied services** feature, which stays as-is. The two share the template registry's shape and the CLI's `match.go`/`rewrite.go` neighbours but nothing else.
+
 ### API Layer (Frontend)
 
 React Query + Axios with query key factories per domain. Each API domain in `frontend/src/hooks/api/` has `queries.tsx`, `mutations.tsx`, and `types.tsx` — see `frontend/CLAUDE.md` for conventions.

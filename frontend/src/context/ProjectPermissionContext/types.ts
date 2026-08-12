@@ -428,6 +428,8 @@ export enum ProjectPermissionSub {
   HsmConnectors = "hsm-connectors",
   HoneyTokens = "honey-tokens",
   ProxiedServices = "proxied-services",
+  AgentPolicies = "agent-policies",
+  UserPolicies = "user-policies",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   ProjectFolderGrant = "project-folder-grant",
@@ -706,6 +708,8 @@ export type ProjectPermissionSet =
         | ProjectPermissionSub.ProjectFolderGrant
         | (ForcedSubject<ProjectPermissionSub.ProjectFolderGrant> & ProjectFolderGrantSubjectFields)
       )
-    ];
+    ]
+  | [ProjectPermissionActions, ProjectPermissionSub.AgentPolicies]
+  | [ProjectPermissionActions, ProjectPermissionSub.UserPolicies];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

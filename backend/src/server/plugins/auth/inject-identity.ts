@@ -16,6 +16,7 @@ import {
   AuthModeJwtTokenPayload,
   AuthTokenType,
   MfaMethod,
+  TAgentProxyAccessTokenJwtPayload,
   TGatewayAccessTokenJwtPayload,
   TKmipServerAccessTokenJwtPayload,
   TRelayAccessTokenJwtPayload
@@ -111,6 +112,16 @@ export type TAuthMode =
       parentOrgId: string;
       authMethod: null;
       token: TKmipServerAccessTokenJwtPayload;
+    }
+  | {
+      authMode: AuthMode.AGENT_PROXY_ACCESS_TOKEN;
+      actor: ActorType.AGENT_PROXY;
+      agentProxyId: string;
+      orgId: string;
+      rootOrgId: string;
+      parentOrgId: string;
+      authMethod: null;
+      token: TAgentProxyAccessTokenJwtPayload;
     };
 
 export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
@@ -190,6 +201,12 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
         authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN,
         token: decodedToken as TKmipServerAccessTokenJwtPayload,
         actor: ActorType.KMIP_SERVER
+      } as const;
+    case AuthTokenType.AGENT_PROXY_ACCESS_TOKEN:
+      return {
+        authMode: AuthMode.AGENT_PROXY_ACCESS_TOKEN,
+        token: decodedToken as TAgentProxyAccessTokenJwtPayload,
+        actor: ActorType.AGENT_PROXY
       } as const;
     default:
       return { authMode: null, token: null } as const;
@@ -478,6 +495,33 @@ export const injectIdentity = fp(
             authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN,
             actor,
             kmipServerId: token.kmipServerId,
+            orgId: token.orgId,
+            rootOrgId: token.orgId,
+            parentOrgId: token.orgId,
+            authMethod: null,
+            token
+          };
+          break;
+        }
+        case AuthMode.AGENT_PROXY_ACCESS_TOKEN: {
+          const agentProxy = await server.services.agentProxy.getAgentProxyById({
+            agentProxyId: token.agentProxyId
+          });
+
+          if (agentProxy.tokenVersion !== token.tokenVersion) {
+            throw new UnauthorizedError({ message: "Agent proxy token has been revoked" });
+          }
+
+          if (agentProxy.orgId !== token.orgId) {
+            throw new UnauthorizedError({ message: "Agent proxy token org mismatch" });
+          }
+
+          requestContext.set(RequestContextKey.OrgId, token.orgId);
+
+          req.auth = {
+            authMode: AuthMode.AGENT_PROXY_ACCESS_TOKEN,
+            actor,
+            agentProxyId: token.agentProxyId,
             orgId: token.orgId,
             rootOrgId: token.orgId,
             parentOrgId: token.orgId,

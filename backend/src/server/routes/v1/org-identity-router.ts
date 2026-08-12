@@ -19,7 +19,8 @@ const sanitizedIdentitySchema = IdentitiesSchema.pick({
   projectId: true,
   createdAt: true,
   updatedAt: true,
-  hasDeleteProtection: true
+  hasDeleteProtection: true,
+  isAgent: true
 }).extend({
   authMethods: z.array(z.string()).optional(),
   metadata: z.array(metadataSchema).optional()

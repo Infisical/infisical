@@ -246,6 +246,7 @@ export const identityMembershipV2DALFactory = (db: TDbClient) => {
           db.ref("actorIdentityId").withSchema(TableName.Membership).as("identityId"),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity),
+          db.ref("isAgent").withSchema(TableName.Identity),
           db.ref("orgId").withSchema(TableName.Identity).as("identityOrgId"),
 
           db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
@@ -312,6 +313,7 @@ export const identityMembershipV2DALFactory = (db: TDbClient) => {
           identityOrgId,
           identityName,
           hasDeleteProtection,
+          isAgent,
           total_count,
           id,
           membershipScope,
@@ -361,6 +363,7 @@ export const identityMembershipV2DALFactory = (db: TDbClient) => {
             id: identityId as string,
             name: identityName,
             hasDeleteProtection,
+            isAgent,
             orgId: identityOrgId,
             authMethods: buildAuthMethods({
               uaId,

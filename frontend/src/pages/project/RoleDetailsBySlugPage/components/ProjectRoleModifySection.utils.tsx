@@ -691,6 +691,8 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
+      [ProjectPermissionSub.AgentPolicies]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.UserPolicies]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Settings]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Environments]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AuditLogs]: AuditLogsPolicyActionSchema.array().default([]),
@@ -2420,6 +2422,42 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.AgentPolicies]: {
+    title: "Agent Policies",
+    description: "Manage what agents may reach and which secrets are brokered to them",
+    actions: [
+      { label: "Read", value: ProjectPermissionActions.Read, description: "View agent policies" },
+      {
+        label: "Create",
+        value: ProjectPermissionActions.Create,
+        description: "Create agent policies"
+      },
+      { label: "Edit", value: ProjectPermissionActions.Edit, description: "Modify agent policies" },
+      {
+        label: "Delete",
+        value: ProjectPermissionActions.Delete,
+        description: "Remove agent policies"
+      }
+    ]
+  },
+  [ProjectPermissionSub.UserPolicies]: {
+    title: "User Policies",
+    description: "Manage what people may do through an agent",
+    actions: [
+      { label: "Read", value: ProjectPermissionActions.Read, description: "View user policies" },
+      {
+        label: "Create",
+        value: ProjectPermissionActions.Create,
+        description: "Create user policies"
+      },
+      { label: "Edit", value: ProjectPermissionActions.Edit, description: "Modify user policies" },
+      {
+        label: "Delete",
+        value: ProjectPermissionActions.Delete,
+        description: "Remove user policies"
+      }
+    ]
+  },
   [ProjectPermissionSub.Settings]: {
     title: "Settings",
     description: "Configure project-level settings and preferences",
@@ -3213,6 +3251,8 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.ServiceTokens]: enabled,
   [ProjectPermissionSub.HoneyTokens]: enabled,
   [ProjectPermissionSub.ProxiedServices]: enabled,
+  [ProjectPermissionSub.AgentPolicies]: enabled,
+  [ProjectPermissionSub.UserPolicies]: enabled,
   [ProjectPermissionSub.Commits]: enabled,
   [ProjectPermissionSub.Insights]: enabled,
   [ProjectPermissionSub.SecretEventSubscriptions]: enabled,

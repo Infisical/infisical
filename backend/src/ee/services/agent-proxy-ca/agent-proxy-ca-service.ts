@@ -5,6 +5,7 @@ import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
+import { ActorType } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import {
   createSerialNumber,
@@ -47,6 +48,10 @@ export const agentProxyCaServiceFactory = ({
   };
 
   const $assertOrgMembership = async (actor: OrgServiceActor) => {
+    // An agent proxy is not an org member and has no roles; the enrolled resource itself is the
+    // authorization, exactly as it is for the policy resolve endpoint.
+    if (actor.type === ActorType.AGENT_PROXY) return;
+
     await permissionService.getOrgPermission({
       actor: actor.type,
       actorId: actor.id,

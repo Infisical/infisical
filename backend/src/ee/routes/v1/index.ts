@@ -4,7 +4,10 @@ import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-mana
 
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
+import { registerAgentPolicyRouter } from "./agent-policy-router";
 import { registerAgentProxyCaRouter } from "./agent-proxy-ca-router";
+import { registerAgentProxyRouter } from "./agent-proxy-router";
+import { registerAgentSessionRouter } from "./agent-session-router";
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
 import { AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP, registerAuditLogStreamRouter } from "./audit-log-stream-routers";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
@@ -53,6 +56,7 @@ import { registerSecretVersionRouter } from "./secret-version-router";
 import { registerSubOrgRouter } from "./sub-org-router";
 import { registerTrustedIpRouter } from "./trusted-ip-router";
 import { registerUserAdditionalPrivilegeRouter } from "./user-additional-privilege-router";
+import { registerUserPolicyRouter } from "./user-policy-router";
 
 export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   // org role starts with organization
@@ -108,6 +112,10 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(registerProxiedServiceRouter, { prefix: "/proxied-services" });
   await server.register(registerAgentProxyCaRouter, { prefix: "/organization/agent-proxy-ca" });
+  await server.register(registerAgentProxyRouter, { prefix: "/agent-proxies" });
+  await server.register(registerAgentPolicyRouter, { prefix: "/agent-policies" });
+  await server.register(registerUserPolicyRouter, { prefix: "/user-policies" });
+  await server.register(registerAgentSessionRouter, { prefix: "/agent-sessions" });
 
   await server.register(registerInsightsRouter, { prefix: "/insights" });
 

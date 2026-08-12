@@ -1,4 +1,4 @@
-import { ActivityIcon, Blocks, BookCheck, FileText, Settings, Shield } from "lucide-react";
+import { ActivityIcon, Blocks, BookCheck, BotIcon, FileText, Settings, Shield } from "lucide-react";
 
 import { ProjectIcon, SidebarCollapsibleGroup } from "@app/components/v3";
 
@@ -33,6 +33,11 @@ export const SecretManagerNav = ({
       pathSuffix: "integrations",
       // Keep highlighted on integration detail pages and the standalone app-connections page
       activeMatch: /\/app-connections|\/integrations\//
+    },
+    {
+      label: "Agent Proxy",
+      icon: BotIcon,
+      pathSuffix: "agent-proxy"
     },
     {
       label: "Insights",

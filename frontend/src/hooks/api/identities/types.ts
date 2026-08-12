@@ -17,6 +17,8 @@ export type Identity = {
   id: string;
   name: string;
   hasDeleteProtection: boolean;
+  // Only an agent may start a session on a user's behalf, and only agents appear in an agent policy.
+  isAgent: boolean;
   authMethods: IdentityAuthMethod[];
   activeLockoutAuthMethods: IdentityAuthMethod[];
   createdAt: string;
@@ -128,6 +130,7 @@ export type CreateIdentityDTO = {
   organizationId: string;
   role?: string;
   hasDeleteProtection: boolean;
+  isAgent?: boolean;
   metadata?: { key: string; value: string }[];
 };
 
@@ -136,6 +139,7 @@ export type UpdateIdentityDTO = {
   name?: string;
   role?: string;
   hasDeleteProtection?: boolean;
+  isAgent?: boolean;
   organizationId: string;
   metadata?: { key: string; value: string }[];
 };
@@ -1021,7 +1025,7 @@ export type IdentityMembershipSearchResult = {
   lastLoginAuthMethod?: IdentityAuthMethod | null;
   lastLoginTime?: string | null;
   roles: IdentityMembershipSearchRole[];
-  identity: Pick<Identity, "id" | "name" | "hasDeleteProtection" | "orgId"> & {
+  identity: Pick<Identity, "id" | "name" | "hasDeleteProtection" | "isAgent" | "orgId"> & {
     authMethods: IdentityAuthMethod[];
     activeLockoutAuthMethods: IdentityAuthMethod[];
   };

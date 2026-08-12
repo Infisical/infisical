@@ -50,6 +50,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         organizationId: z.string().trim().describe(IDENTITIES.CREATE.organizationId),
         role: z.string().trim().min(1).default(OrgMembershipRole.NoAccess).describe(IDENTITIES.CREATE.role),
         hasDeleteProtection: z.boolean().default(false).describe(IDENTITIES.CREATE.hasDeleteProtection),
+        isAgent: z.boolean().default(false).describe(IDENTITIES.CREATE.isAgent),
         metadata: z
           .object({ key: z.string().trim().min(1), value: z.string().trim().min(1) })
           .array()
@@ -128,6 +129,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         name: z.string().trim().optional().describe(IDENTITIES.UPDATE.name),
         role: z.string().trim().min(1).optional().describe(IDENTITIES.UPDATE.role),
         hasDeleteProtection: z.boolean().optional().describe(IDENTITIES.UPDATE.hasDeleteProtection),
+        isAgent: z.boolean().optional().describe(IDENTITIES.UPDATE.isAgent),
         metadata: z
           .object({ key: z.string().trim().min(1), value: z.string().trim().min(1) })
           .array()
@@ -288,7 +290,13 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
               permissions: true,
               description: true
             }).optional(),
-            identity: IdentitiesSchema.pick({ name: true, id: true, hasDeleteProtection: true, orgId: true }).extend({
+            identity: IdentitiesSchema.pick({
+              name: true,
+              id: true,
+              hasDeleteProtection: true,
+              isAgent: true,
+              orgId: true
+            }).extend({
               authMethods: z.array(z.string()),
               activeLockoutAuthMethods: z.array(z.string())
             })
@@ -339,7 +347,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
               permissions: true,
               description: true
             }).optional(),
-            identity: IdentitiesSchema.pick({ name: true, id: true, hasDeleteProtection: true }).extend({
+            identity: IdentitiesSchema.pick({ name: true, id: true, hasDeleteProtection: true, isAgent: true }).extend({
               authMethods: z.array(z.string())
             })
           }).array(),
@@ -434,7 +442,13 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
               permissions: true,
               description: true
             }).optional(),
-            identity: IdentitiesSchema.pick({ name: true, id: true, hasDeleteProtection: true, orgId: true }).extend({
+            identity: IdentitiesSchema.pick({
+              name: true,
+              id: true,
+              hasDeleteProtection: true,
+              isAgent: true,
+              orgId: true
+            }).extend({
               authMethods: z.array(z.string()),
               activeLockoutAuthMethods: z.array(z.string())
             })
@@ -501,7 +515,12 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
                   temporaryAccessEndTime: z.date().nullable().optional()
                 })
               ),
-              identity: IdentitiesSchema.pick({ name: true, id: true, hasDeleteProtection: true }).extend({
+              identity: IdentitiesSchema.pick({
+                name: true,
+                id: true,
+                hasDeleteProtection: true,
+                isAgent: true
+              }).extend({
                 authMethods: z.array(z.string())
               }),
               project: SanitizedProjectSchema.pick({ name: true, id: true, type: true })

@@ -1,0 +1,271 @@
+import { useState } from "react";
+import {
+  BotIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlusIcon,
+  SearchIcon,
+  TrashIcon
+} from "lucide-react";
+
+import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
+import {
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  IconButton,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  OverflowBadgeList,
+  Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableHeadLabel,
+  TableRow
+} from "@app/components/v3";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { usePopUp } from "@app/hooks";
+import {
+  TAgentPolicy,
+  useDeleteAgentPolicy,
+  useGetAgentPolicies
+} from "@app/hooks/api/agentPolicies";
+
+import { AgentPolicySheet } from "./AgentPolicySheet";
+import { PolicyRulesHoverCard } from "./PolicyRulesHoverCard";
+import { PolicyTargetCell } from "./PolicyTargetCell";
+
+export const AgentPoliciesTab = () => {
+  const { projectId } = useProject();
+  const [search, setSearch] = useState("");
+
+  const { data: policies, isPending } = useGetAgentPolicies(projectId);
+  const deletePolicy = useDeleteAgentPolicy();
+
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+    "policyForm",
+    "deletePolicy"
+  ] as const);
+
+  const handleDelete = async () => {
+    const policy = popUp.deletePolicy.data as TAgentPolicy;
+    try {
+      await deletePolicy.mutateAsync({ policyId: policy.id, projectId });
+      handlePopUpToggle("deletePolicy", false);
+      createNotification({ type: "success", text: "Successfully deleted agent policy" });
+    } catch {
+      // The shared mutation error handler surfaces the API error.
+    }
+  };
+
+  const filtered = policies?.filter((policy) =>
+    policy.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Agent Policies</CardTitle>
+        <CardDescription>
+          What an agent may reach, and which secret is brokered when it does
+        </CardDescription>
+        <CardAction>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.AgentPolicies}
+          >
+            {(isAllowed: boolean) => (
+              <Button
+                variant="project"
+                isDisabled={!isAllowed}
+                onClick={() => handlePopUpOpen("policyForm")}
+              >
+                <PlusIcon />
+                Add Policy
+              </Button>
+            )}
+          </ProjectPermissionCan>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <InputGroup className="mb-4">
+          <InputGroupAddon align="inline-start">
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search agent policies..."
+          />
+        </InputGroup>
+        {!isPending && !filtered?.length ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                {policies?.length ? <SearchIcon /> : <BotIcon />}
+              </EmptyMedia>
+              <EmptyTitle>
+                {policies?.length ? "No policies match your search" : "No agent policies yet"}
+              </EmptyTitle>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <Table className="min-w-[56rem] table-fixed">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-64">
+                  <TableHeadLabel>Name</TableHeadLabel>
+                </TableHead>
+                <TableHead className="w-44">
+                  <TableHeadLabel>Target</TableHeadLabel>
+                </TableHead>
+                <TableHead className="w-72">
+                  <TableHeadLabel>Agents</TableHeadLabel>
+                </TableHead>
+                <TableHead className="w-28">
+                  <TableHeadLabel>Rules</TableHeadLabel>
+                </TableHead>
+                <TableHead className="w-12" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isPending &&
+                ["first", "second", "third"].map((row) => (
+                  <TableRow key={`agent-policy-skeleton-${row}`}>
+                    {["name", "target", "agents", "rules", "actions"].map((cell) => (
+                      <TableCell key={`agent-policy-skeleton-${row}-${cell}`}>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              {filtered?.map((policy) => (
+                <TableRow key={policy.id}>
+                  <TableCell className="truncate">{policy.name}</TableCell>
+                  <TableCell>
+                    <PolicyTargetCell target={policy.target} />
+                  </TableCell>
+                  <TableCell>
+                    <OverflowBadgeList
+                      items={policy.agents}
+                      getKey={(agent) => agent.identityId}
+                      getLabel={(agent) => agent.name}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <PolicyRulesHoverCard rules={policy.rules} />
+                  </TableCell>
+                  <TableCell className="w-12">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton aria-label="Policy options" variant="ghost" size="sm">
+                          <MoreHorizontalIcon />
+                        </IconButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Edit}
+                          a={ProjectPermissionSub.AgentPolicies}
+                        >
+                          {(isAllowed: boolean) => (
+                            <DropdownMenuItem
+                              isDisabled={!isAllowed}
+                              onClick={() => handlePopUpOpen("policyForm", policy)}
+                            >
+                              <PencilIcon />
+                              Edit Policy
+                            </DropdownMenuItem>
+                          )}
+                        </ProjectPermissionCan>
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Delete}
+                          a={ProjectPermissionSub.AgentPolicies}
+                        >
+                          {(isAllowed: boolean) => (
+                            <DropdownMenuItem
+                              isDisabled={!isAllowed}
+                              variant="danger"
+                              onClick={() => handlePopUpOpen("deletePolicy", policy)}
+                            >
+                              <TrashIcon />
+                              Delete Policy
+                            </DropdownMenuItem>
+                          )}
+                        </ProjectPermissionCan>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+        <AlertDialog
+          open={popUp.deletePolicy.isOpen}
+          onOpenChange={(open) => handlePopUpToggle("deletePolicy", open)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Agent Policy?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Agents covered by{" "}
+                <span className="text-foreground">
+                  {(popUp.deletePolicy.data as TAgentPolicy)?.name}
+                </span>{" "}
+                stop being able to reach its hosts, and its credentials stop being brokered.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <Alert variant="danger" appearance="borderless">
+              <AlertDescription>This cannot be undone.</AlertDescription>
+            </Alert>
+            <AlertDialogFooter>
+              <AlertDialogCancel isDisabled={deletePolicy.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="danger"
+                isPending={deletePolicy.isPending}
+                onClick={(event) => {
+                  event.preventDefault();
+                  handleDelete();
+                }}
+              >
+                Delete Policy
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <AgentPolicySheet
+          isOpen={popUp.policyForm.isOpen}
+          policy={popUp.policyForm.data as TAgentPolicy | undefined}
+          onOpenChange={(isOpen) => handlePopUpToggle("policyForm", isOpen)}
+        />
+      </CardContent>
+    </Card>
+  );
+};

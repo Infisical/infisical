@@ -65,6 +65,7 @@ export const IdentityDetailsSection = ({
                     name: data.identity.name,
                     orgId: data.identity.orgId,
                     hasDeleteProtection: data.identity.hasDeleteProtection,
+                    isAgent: data.identity.isAgent,
                     role: data.role,
                     customRole: data.customRole,
                     metadata: data.metadata
@@ -168,6 +169,22 @@ export const IdentityDetailsSection = ({
                     format(data.lastLoginTime, "PPpp")
                   ) : (
                     <span className="text-muted">—</span>
+                  )}
+                </DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>Agent</DetailLabel>
+                <DetailValue>
+                  {data.identity.isAgent ? (
+                    <Badge variant="success">
+                      <CheckIcon />
+                      Enabled
+                    </Badge>
+                  ) : (
+                    <Badge variant="neutral">
+                      <BanIcon />
+                      Disabled
+                    </Badge>
                   )}
                 </DetailValue>
               </Detail>

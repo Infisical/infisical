@@ -31,6 +31,7 @@ const schema = z
     name: z.string().min(1, "Required"),
     role: z.object({ slug: z.string(), name: z.string() }),
     hasDeleteProtection: z.boolean(),
+    isAgent: z.boolean(),
     metadata: z
       .object({
         key: z.string().trim().min(1),
@@ -73,7 +74,8 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
     resolver: zodResolver(schema),
     defaultValues: {
       name: "",
-      hasDeleteProtection: true
+      hasDeleteProtection: true,
+      isAgent: false
     }
   });
 
@@ -87,6 +89,7 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
       name: string;
       role: string;
       hasDeleteProtection: boolean;
+      isAgent: boolean;
       metadata?: { key: string; value: string }[];
       customRole: {
         name: string;
@@ -101,18 +104,20 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
         name: identity.name,
         role: identity.customRole ?? findOrgMembershipRole(roles, identity.role),
         hasDeleteProtection: identity.hasDeleteProtection,
+        isAgent: identity.isAgent,
         metadata: identity.metadata
       });
     } else {
       reset({
         name: "",
         role: findOrgMembershipRole(roles, currentOrg!.defaultMembershipRole),
-        hasDeleteProtection: true
+        hasDeleteProtection: true,
+        isAgent: false
       });
     }
   }, [popUp?.identity?.data, roles]);
 
-  const onFormSubmit = async ({ name, role, metadata, hasDeleteProtection }: FormData) => {
+  const onFormSubmit = async ({ name, role, metadata, hasDeleteProtection, isAgent }: FormData) => {
     if (role?.slug && isCustomOrgRole(role.slug) && subscription && !subscription?.rbac) {
       handleUpgradePlanPopUpOpen("upgradePlan");
       return;
@@ -131,6 +136,7 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
       name,
       role: role.slug || undefined,
       hasDeleteProtection,
+      isAgent,
       organizationId: orgId,
       metadata
     });
@@ -201,6 +207,29 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <Label htmlFor="delete-protection-enabled">Delete Protection</Label>
                 <FieldDescription>
                   Prevents this identity from being deleted while enabled.
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
+      {isOrgIdentity && (
+        <Controller
+          control={control}
+          name="isAgent"
+          render={({ field: { onChange, value } }) => (
+            <Field orientation="horizontal">
+              <Switch
+                id="identity-is-agent"
+                variant={isSubOrganization ? "sub-org" : "org"}
+                checked={value}
+                onCheckedChange={onChange}
+              />
+              <FieldContent>
+                <Label htmlFor="identity-is-agent">Agent</Label>
+                <FieldDescription>
+                  Lets this identity start a session on a user&apos;s behalf and appear in agent
+                  policies. It can then only do what both it and that user are allowed to do.
                 </FieldDescription>
               </FieldContent>
             </Field>
