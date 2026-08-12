@@ -7,6 +7,7 @@ import {
   SandboxIntegrationType,
   TCreateSandboxDTO,
   TSandbox,
+  TSandboxCredentialConfig,
   TSandboxExecResult,
   TSandboxSecretRef,
   TUpdateSandboxDTO
@@ -93,6 +94,7 @@ export const useAddSandboxIntegration = () => {
       sandboxId: string;
       type: SandboxIntegrationType;
       hostnames?: string[];
+      credential?: TSandboxCredentialConfig;
       secret: TSandboxSecretRef;
     }) => {
       const { data } = await apiRequest.post<{ sandbox: TSandbox }>(

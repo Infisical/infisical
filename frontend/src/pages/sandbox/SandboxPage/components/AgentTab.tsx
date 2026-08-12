@@ -28,6 +28,8 @@ import {
   useUpdateSandbox
 } from "@app/hooks/api/sandboxes";
 
+import { AGENT_ICONS } from "./agentIcons";
+
 export const AgentTab = ({ sandbox }: { sandbox: TSandbox }) => {
   const { data: catalog } = useGetSandboxCatalog();
   const updateSandbox = useUpdateSandbox();
@@ -72,12 +74,17 @@ export const AgentTab = ({ sandbox }: { sandbox: TSandbox }) => {
               <SelectValue placeholder="Choose an agent" />
             </SelectTrigger>
             <SelectContent position="popper" className="w-(--radix-select-trigger-width)">
-              {catalog?.agents.map((agent) => (
-                <SelectItem key={agent.type} value={agent.type} disabled={!agent.isSupported}>
-                  {agent.name}
-                  {!agent.isSupported && " (coming soon)"}
-                </SelectItem>
-              ))}
+              {catalog?.agents.map((agent) => {
+                const Icon = AGENT_ICONS[agent.type];
+                return (
+                  <SelectItem key={agent.type} value={agent.type}>
+                    <span className="flex items-center gap-2">
+                      <Icon className="size-4 shrink-0" />
+                      {agent.name}
+                    </span>
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </Field>

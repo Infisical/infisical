@@ -29,17 +29,35 @@ export const SANDBOX_AGENTS: TSandboxAgentDefinition[] = [
   { type: SandboxAgentType.Copilot, name: "GitHub Copilot", tokenLabel: "GitHub token", isSupported: false }
 ];
 
+/**
+ * Mirrors the Agent Proxy's credential model (see ee/services/proxied-service): a credential is
+ * either rewritten into a header on the way out, or substituted for a placeholder the agent holds.
+ */
+export enum SandboxCredentialRole {
+  HeaderRewrite = "header-rewrite",
+  Substitution = "substitution"
+}
+
+/** The request surfaces scanned for the placeholder. Scoping these is the security boundary. */
+export enum SandboxSubstitutionSurface {
+  Header = "header",
+  Path = "path",
+  Query = "query",
+  Body = "body"
+}
+
 export type TSandboxIntegrationDefinition = {
   type: SandboxIntegrationType;
   name: string;
   description: string;
-  /** Hosts whose traffic the broker rewrites. Empty for Custom, which takes them from the user. */
+  /** Host patterns the broker matches, `host[:port][/path]` with `*.` wildcards. Empty for Custom. */
   hostnames: string[];
   /** Env var the sandbox receives holding a placeholder, never the real value. */
   envVarName: string;
-  /** Header the broker sets upstream, and how the secret is formatted into it. */
-  authHeader: string;
-  authScheme: string;
+  role: SandboxCredentialRole;
+  /** Header rewritten upstream, and the prefix the secret is formatted behind. */
+  headerName: string;
+  headerPrefix: string;
   /** CLI dropped into the sandbox's own bin/ when the integration is added. */
   cli: { name: string; binary: string } | null;
   /** Handed to the agent so it knows what it can call and how. */
@@ -53,8 +71,9 @@ export const SANDBOX_INTEGRATIONS: Record<SandboxIntegrationType, TSandboxIntegr
     description: "REST and GraphQL APIs, plus the gh CLI.",
     hostnames: ["api.github.com", "github.com", "uploads.github.com"],
     envVarName: "GH_TOKEN",
-    authHeader: "Authorization",
-    authScheme: "Bearer",
+    role: SandboxCredentialRole.HeaderRewrite,
+    headerName: "Authorization",
+    headerPrefix: "Bearer",
     cli: { name: "gh", binary: "gh" },
     agentContext:
       "GitHub is available. Use the `gh` CLI or call https://api.github.com directly. Authentication is already handled: never ask for or print a token."
@@ -65,8 +84,9 @@ export const SANDBOX_INTEGRATIONS: Record<SandboxIntegrationType, TSandboxIntegr
     description: "Web API for posting messages and reading channels.",
     hostnames: ["slack.com", "api.slack.com"],
     envVarName: "SLACK_TOKEN",
-    authHeader: "Authorization",
-    authScheme: "Bearer",
+    role: SandboxCredentialRole.HeaderRewrite,
+    headerName: "Authorization",
+    headerPrefix: "Bearer",
     cli: null,
     agentContext:
       "Slack is available at https://slack.com/api. Use chat.postMessage to post. Authentication is already handled: never ask for or print a token."
@@ -77,8 +97,9 @@ export const SANDBOX_INTEGRATIONS: Record<SandboxIntegrationType, TSandboxIntegr
     description: "Read customers, charges and subscriptions.",
     hostnames: ["api.stripe.com"],
     envVarName: "STRIPE_API_KEY",
-    authHeader: "Authorization",
-    authScheme: "Bearer",
+    role: SandboxCredentialRole.HeaderRewrite,
+    headerName: "Authorization",
+    headerPrefix: "Bearer",
     cli: null,
     agentContext:
       "Stripe is available at https://api.stripe.com. Authentication is already handled: never ask for or print a key."
@@ -89,8 +110,9 @@ export const SANDBOX_INTEGRATIONS: Record<SandboxIntegrationType, TSandboxIntegr
     description: "GraphQL API for issues and projects.",
     hostnames: ["api.linear.app"],
     envVarName: "LINEAR_API_KEY",
-    authHeader: "Authorization",
-    authScheme: "",
+    role: SandboxCredentialRole.HeaderRewrite,
+    headerName: "Authorization",
+    headerPrefix: "",
     cli: null,
     agentContext:
       "Linear's GraphQL API is available at https://api.linear.app/graphql. Authentication is already handled."
@@ -101,8 +123,9 @@ export const SANDBOX_INTEGRATIONS: Record<SandboxIntegrationType, TSandboxIntegr
     description: "Chat completions and embeddings.",
     hostnames: ["api.openai.com"],
     envVarName: "OPENAI_API_KEY",
-    authHeader: "Authorization",
-    authScheme: "Bearer",
+    role: SandboxCredentialRole.HeaderRewrite,
+    headerName: "Authorization",
+    headerPrefix: "Bearer",
     cli: null,
     agentContext:
       "OpenAI is available at https://api.openai.com. Authentication is already handled: never ask for or print a key."
@@ -113,8 +136,9 @@ export const SANDBOX_INTEGRATIONS: Record<SandboxIntegrationType, TSandboxIntegr
     description: "Your own hostnames, authenticated with a secret you choose.",
     hostnames: [],
     envVarName: "CUSTOM_API_TOKEN",
-    authHeader: "Authorization",
-    authScheme: "Bearer",
+    role: SandboxCredentialRole.HeaderRewrite,
+    headerName: "Authorization",
+    headerPrefix: "Bearer",
     cli: null,
     agentContext: "A custom endpoint is available. Authentication is already handled."
   }

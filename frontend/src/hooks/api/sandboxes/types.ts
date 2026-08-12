@@ -26,11 +26,33 @@ export type TSandboxSecretRef = {
   secretKey: string;
 };
 
+export enum SandboxCredentialRole {
+  HeaderRewrite = "header-rewrite",
+  Substitution = "substitution"
+}
+
+export enum SandboxSubstitutionSurface {
+  Header = "header",
+  Path = "path",
+  Query = "query",
+  Body = "body"
+}
+
+export type TSandboxCredentialConfig = {
+  role: SandboxCredentialRole;
+  headerName?: string;
+  headerPrefix?: string;
+  placeholderKey?: string;
+  placeholderValue?: string;
+  substitutionSurfaces?: SandboxSubstitutionSurface[];
+};
+
 export type TSandboxIntegration = {
   id: string;
   type: SandboxIntegrationType;
   hostnames: string[];
   secret: TSandboxSecretRef;
+  credential: TSandboxCredentialConfig;
 };
 
 export type TSandboxGrants = {
@@ -45,6 +67,9 @@ export type TSandboxCatalog = {
     description: string;
     hostnames: string[];
     envVarName: string;
+    role: SandboxCredentialRole;
+    headerName: string;
+    headerPrefix: string;
     cli: { name: string; binary: string } | null;
   }[];
   agents: {

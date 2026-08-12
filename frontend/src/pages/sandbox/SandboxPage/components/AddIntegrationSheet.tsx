@@ -22,6 +22,7 @@ import {
 import { useGetUserProjectsByType } from "@app/hooks/api/projects/queries";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import {
+  SandboxCredentialRole,
   SandboxIntegrationType,
   useAddSandboxIntegration,
   useGetSandboxCatalog
@@ -46,6 +47,8 @@ export const AddIntegrationSheet = ({ sandboxId, isOpen, onOpenChange }: Props) 
 
   const [type, setType] = useState<SandboxIntegrationType>(SandboxIntegrationType.GitHub);
   const [hostnames, setHostnames] = useState("");
+  const [headerName, setHeaderName] = useState("Authorization");
+  const [headerPrefix, setHeaderPrefix] = useState("Bearer");
   const [projectId, setProjectId] = useState("");
   const [secretKey, setSecretKey] = useState("");
 
@@ -62,11 +65,15 @@ export const AddIntegrationSheet = ({ sandboxId, isOpen, onOpenChange }: Props) 
 
   const definition = catalog?.integrations.find((item) => item.type === type);
   const isCustom = type === SandboxIntegrationType.Custom;
-  const canSubmit = Boolean(projectId && secretKey && (!isCustom || hostnames.trim()));
+  const canSubmit = Boolean(
+    projectId && secretKey && (!isCustom || (hostnames.trim() && headerName.trim()))
+  );
 
   const reset = () => {
     setType(SandboxIntegrationType.GitHub);
     setHostnames("");
+    setHeaderName("Authorization");
+    setHeaderPrefix("Bearer");
     setProjectId("");
     setSecretKey("");
   };
@@ -79,7 +86,12 @@ export const AddIntegrationSheet = ({ sandboxId, isOpen, onOpenChange }: Props) 
         hostnames: hostnames
           .split(",")
           .map((host) => host.trim())
-          .filter(Boolean)
+          .filter(Boolean),
+        credential: {
+          role: SandboxCredentialRole.HeaderRewrite,
+          headerName: headerName.trim(),
+          headerPrefix: headerPrefix.trim()
+        }
       }),
       secret: {
         projectId,
@@ -135,22 +147,65 @@ export const AddIntegrationSheet = ({ sandboxId, isOpen, onOpenChange }: Props) 
           </Field>
 
           {isCustom ? (
-            <Field>
-              <FieldLabel htmlFor="integration-hostnames">Hostnames</FieldLabel>
-              <Input
-                id="integration-hostnames"
-                value={hostnames}
-                onChange={(e) => setHostnames(e.target.value)}
-                placeholder="api.acme.com, files.acme.com"
-              />
-              <FieldDescription>Comma separated. Only these hosts get the secret.</FieldDescription>
-            </Field>
+            <>
+              <Field>
+                <FieldLabel htmlFor="integration-hostnames">Host patterns</FieldLabel>
+                <Input
+                  id="integration-hostnames"
+                  value={hostnames}
+                  onChange={(e) => setHostnames(e.target.value)}
+                  placeholder="api.acme.com, *.acme.com:443/v1/*"
+                />
+                <FieldDescription>
+                  Comma separated, <span className="font-mono">host[:port][/path]</span> with{" "}
+                  <span className="font-mono">*.</span> wildcards. No scheme. Only these hosts get
+                  the secret.
+                </FieldDescription>
+              </Field>
+
+              <div className="grid grid-cols-[1fr_auto] gap-3">
+                <Field>
+                  <FieldLabel htmlFor="integration-header">Header</FieldLabel>
+                  <Input
+                    id="integration-header"
+                    value={headerName}
+                    onChange={(e) => setHeaderName(e.target.value)}
+                    placeholder="Authorization"
+                  />
+                </Field>
+                <Field className="w-32">
+                  <FieldLabel htmlFor="integration-prefix">Prefix</FieldLabel>
+                  <Input
+                    id="integration-prefix"
+                    value={headerPrefix}
+                    onChange={(e) => setHeaderPrefix(e.target.value)}
+                    placeholder="Bearer"
+                  />
+                </Field>
+              </div>
+              <p className="-mt-2 text-xs text-muted">
+                Sent upstream as{" "}
+                <span className="font-mono text-foreground">
+                  {headerName || "Header"}: {headerPrefix ? `${headerPrefix} ` : ""}
+                  &lt;secret&gt;
+                </span>
+                . Leave the prefix empty for a bare API key header.
+              </p>
+            </>
           ) : (
             definition && (
               <div className="rounded-md border border-border bg-card p-3 text-xs text-muted">
                 <p className="text-foreground">Reaches {definition.hostnames.join(", ")}</p>
                 <p className="mt-1">
-                  Injected as <span className="font-mono">{definition.envVarName}</span>
+                  Sent as{" "}
+                  <span className="font-mono">
+                    {definition.headerName}:{" "}
+                    {definition.headerPrefix ? `${definition.headerPrefix} ` : ""}
+                    &lt;secret&gt;
+                  </span>
+                </p>
+                <p className="mt-1">
+                  Placeholder in <span className="font-mono">{definition.envVarName}</span>
                   {definition.cli ? ` · installs the ${definition.cli.name} CLI` : ""}
                 </p>
               </div>

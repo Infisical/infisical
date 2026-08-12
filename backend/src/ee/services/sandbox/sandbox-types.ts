@@ -1,4 +1,9 @@
-import { SandboxAgentType, SandboxIntegrationType } from "./sandbox-integrations";
+import {
+  SandboxAgentType,
+  SandboxCredentialRole,
+  SandboxIntegrationType,
+  SandboxSubstitutionSurface
+} from "./sandbox-integrations";
 
 export enum SandboxStatus {
   Stopped = "stopped",
@@ -13,12 +18,25 @@ export type TSandboxSecretRef = {
   secretKey: string;
 };
 
+/** How the broker applies the secret, mirroring the Agent Proxy's two credential roles. */
+export type TSandboxCredentialConfig = {
+  role: SandboxCredentialRole;
+  /** Header rewrite: the header set upstream and the prefix the secret sits behind. */
+  headerName?: string;
+  headerPrefix?: string;
+  /** Substitution: the placeholder the agent holds, and where it is swapped. */
+  placeholderKey?: string;
+  placeholderValue?: string;
+  substitutionSurfaces?: SandboxSubstitutionSurface[];
+};
+
 export type TSandboxIntegration = {
   id: string;
   type: SandboxIntegrationType;
   /** Resolved at write time: from the catalog for known types, from the user for Custom. */
   hostnames: string[];
   secret: TSandboxSecretRef;
+  credential: TSandboxCredentialConfig;
 };
 
 /**
@@ -60,8 +78,9 @@ export type TSandboxExecResult = {
 
 export type TSandboxIntegrationInput = {
   type: SandboxIntegrationType;
-  /** Required for Custom, ignored otherwise: the catalog supplies hostnames for known types. */
+  /** Required for Custom, ignored otherwise: the catalog supplies these for known types. */
   hostnames?: string[];
+  credential?: TSandboxCredentialConfig;
   secret: TSandboxSecretRef;
 };
 

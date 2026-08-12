@@ -28,6 +28,8 @@ const CWD_MARKER = "__INFISICAL_SANDBOX_CWD__";
 type TSandboxProcessState = {
   rootDir: string;
   cwd: string;
+  /** Non-secret handles the sandbox is allowed to see, such as brokered PAM ports. */
+  extraEnv: Record<string, string>;
 };
 
 const states = new Map<string, TSandboxProcessState>();
@@ -50,7 +52,7 @@ export const bootSandbox = async (sandboxId: string) => {
 
   const rootDir = await mkdtemp(join(tmpdir(), `infisical-sandbox-${sandboxId}-`));
 
-  const state: TSandboxProcessState = { rootDir, cwd: rootDir };
+  const state: TSandboxProcessState = { rootDir, cwd: rootDir, extraEnv: {} };
   states.set(sandboxId, state);
 
   logger.info(`Sandbox booted [sandboxId=${sandboxId}]`);
@@ -69,17 +71,23 @@ export const shutdownSandbox = async (sandboxId: string) => {
 
 export const isSandboxBooted = (sandboxId: string) => states.has(sandboxId);
 
+export const setSandboxEnv = (sandboxId: string, extraEnv: Record<string, string>) => {
+  const state = states.get(sandboxId);
+  if (state) state.extraEnv = { ...state.extraEnv, ...extraEnv };
+};
+
 /**
  * The environment is allowlisted rather than inherited, so the org's credentials are not handed to
  * the command directly. This is hygiene, not a boundary: the child runs as the same OS user as the
  * API process, so anything that can read /proc can still reach them. Real isolation is the VM.
  */
-const buildSandboxEnv = (sandboxId: string, rootDir: string) => ({
+const buildSandboxEnv = (sandboxId: string, rootDir: string, extraEnv: Record<string, string>) => ({
   PATH: process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin",
   HOME: rootDir,
   TERM: "xterm-256color",
   LANG: "C.UTF-8",
-  INFISICAL_SANDBOX_ID: sandboxId
+  INFISICAL_SANDBOX_ID: sandboxId,
+  ...extraEnv
 });
 
 const truncate = (value: string) => (value.length > MAX_OUTPUT_BYTES ? value.slice(0, MAX_OUTPUT_BYTES) : value);
@@ -112,7 +120,7 @@ export const execInSandbox = async (sandboxId: string, command: string): Promise
   return new Promise<TSandboxExecResult>((resolve) => {
     const child = spawn("bash", ["-lc", wrapped], {
       cwd: state.rootDir,
-      env: buildSandboxEnv(sandboxId, state.rootDir),
+      env: buildSandboxEnv(sandboxId, state.rootDir, state.extraEnv),
       stdio: ["ignore", "pipe", "pipe"],
       // Own process group, so the timeout can kill descendants rather than just bash.
       detached: true

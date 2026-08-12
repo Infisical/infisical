@@ -7,9 +7,10 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TSandboxDALFactory } from "./sandbox-dal";
-import { SANDBOX_INTEGRATIONS, SandboxIntegrationType } from "./sandbox-integrations";
+import { SANDBOX_INTEGRATIONS, SandboxCredentialRole, SandboxIntegrationType } from "./sandbox-integrations";
+import { getPamProxies, startPamProxies, stopPamProxies } from "./sandbox-pam-runtime";
 import { TSandboxProjectResolverFactory } from "./sandbox-project-resolver";
-import { bootSandbox, execInSandbox, isSandboxBooted, shutdownSandbox } from "./sandbox-runtime";
+import { bootSandbox, execInSandbox, isSandboxBooted, setSandboxEnv, shutdownSandbox } from "./sandbox-runtime";
 import {
   SandboxStatus,
   TAddSandboxIntegrationDTO,
@@ -178,7 +179,8 @@ export const sandboxServiceFactory = ({
   const deleteSandbox = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor): Promise<TSandbox> => {
     await $resolve(sandboxId, actor, true);
 
-    // Reap the running process before the row goes, or the runtime keeps a directory nothing owns.
+    // Reap the running processes before the row goes, or the runtime keeps a directory nothing owns.
+    stopPamProxies(sandboxId);
     await shutdownSandbox(sandboxId);
     const row = await sandboxDAL.deleteById(sandboxId);
 
@@ -193,6 +195,23 @@ export const sandboxServiceFactory = ({
     }
 
     await bootSandbox(sandboxId);
+
+    // Open a brokered proxy per granted account and tell the sandbox only the port. The identity
+    // token and the database credential both stay in this process.
+    const grants = normalizeGrants(row.grants);
+    const targets = await sandboxDAL.findPamAccountTargets(grants.pamAccountIds);
+    const proxies = await startPamProxies(sandboxId, targets);
+
+    setSandboxEnv(sandboxId, {
+      ...Object.fromEntries(
+        proxies.map((proxy) => [
+          `PAM_${proxy.accountName.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_PORT`,
+          String(proxy.port)
+        ])
+      ),
+      ...(proxies[0] && { PGHOST: "127.0.0.1", PGPORT: String(proxies[0].port) })
+    });
+
     return toSandbox(row);
   };
 
@@ -203,6 +222,7 @@ export const sandboxServiceFactory = ({
       throw new BadRequestError({ message: `Sandbox '${row.name}' is not running` });
     }
 
+    stopPamProxies(sandboxId);
     await shutdownSandbox(sandboxId);
     return toSandbox(row);
   };
@@ -247,12 +267,44 @@ export const sandboxServiceFactory = ({
       throw new BadRequestError({ message: "Provide at least one hostname for a custom endpoint" });
     }
 
+    // Known types own their credential config too, for the same reason they own their hostnames:
+    // otherwise a caller could point a "GitHub" grant at a header of their choosing.
+    const credential =
+      integration.type === SandboxIntegrationType.Custom
+        ? (integration.credential ?? {
+            role: SandboxCredentialRole.HeaderRewrite,
+            headerName: definition.headerName,
+            headerPrefix: definition.headerPrefix
+          })
+        : {
+            role: definition.role,
+            headerName: definition.headerName,
+            headerPrefix: definition.headerPrefix
+          };
+
+    if (credential.role === SandboxCredentialRole.HeaderRewrite && !credential.headerName?.trim()) {
+      throw new BadRequestError({ message: "A header rewrite requires a header name" });
+    }
+
+    if (
+      credential.role === SandboxCredentialRole.Substitution &&
+      (!credential.placeholderKey?.trim() ||
+        !credential.placeholderValue?.trim() ||
+        !credential.substitutionSurfaces?.length)
+    ) {
+      throw new BadRequestError({
+        message:
+          "Secret substitution requires an environment variable name, a placeholder value, and at least one surface to replace in"
+      });
+    }
+
     const grants = normalizeGrants(existing.grants);
     const added: TSandboxIntegration = {
       id: crypto.randomUUID(),
       type: integration.type,
       hostnames,
-      secret: integration.secret
+      secret: integration.secret,
+      credential
     };
 
     const row = await sandboxDAL.updateById(sandboxId, {
@@ -278,12 +330,18 @@ export const sandboxServiceFactory = ({
     return toSandbox(row);
   };
 
+  const listPamProxies = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor) => {
+    await $resolve(sandboxId, actor, false);
+    return getPamProxies(sandboxId);
+  };
+
   const resolveProjectId = async (actor: OrgServiceActor) => {
     await $authorize(actor, false);
     return sandboxProjectResolver.resolve(actor);
   };
 
   return {
+    listPamProxies,
     addIntegration,
     removeIntegration,
     resolveProjectId,

@@ -1,10 +1,13 @@
 import { z } from "zod";
 
+import { hostPatternSchema } from "@app/ee/services/proxied-service/proxied-service-schemas";
 import {
   listSandboxIntegrations,
   SANDBOX_AGENTS,
   SandboxAgentType,
-  SandboxIntegrationType
+  SandboxCredentialRole,
+  SandboxIntegrationType,
+  SandboxSubstitutionSurface
 } from "@app/ee/services/sandbox/sandbox-integrations";
 import { SandboxStatus } from "@app/ee/services/sandbox/sandbox-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -23,13 +26,23 @@ const SecretRefSchema = z.object({
   secretKey: z.string().trim().min(1).max(256)
 });
 
+const CredentialConfigSchema = z.object({
+  role: z.nativeEnum(SandboxCredentialRole),
+  headerName: z.string().trim().min(1).max(255).optional(),
+  headerPrefix: z.string().trim().max(255).optional(),
+  placeholderKey: z.string().trim().min(1).max(255).optional(),
+  placeholderValue: z.string().trim().min(1).max(255).optional(),
+  substitutionSurfaces: z.nativeEnum(SandboxSubstitutionSurface).array().max(4).optional()
+});
+
 const GrantsSchema = z.object({
   integrations: z
     .object({
       id: z.string().uuid(),
       type: z.nativeEnum(SandboxIntegrationType),
       hostnames: z.string().array(),
-      secret: SecretRefSchema
+      secret: SecretRefSchema,
+      credential: CredentialConfigSchema
     })
     .array()
     .default([]),
@@ -97,6 +110,9 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
               description: z.string(),
               hostnames: z.string().array(),
               envVarName: z.string(),
+              role: z.nativeEnum(SandboxCredentialRole),
+              headerName: z.string(),
+              headerPrefix: z.string(),
               cli: z.object({ name: z.string(), binary: z.string() }).nullable()
             })
             .array(),
@@ -113,14 +129,19 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async () => ({
-      integrations: listSandboxIntegrations().map(({ type, name, description, hostnames, envVarName, cli }) => ({
-        type,
-        name,
-        description,
-        hostnames,
-        envVarName,
-        cli
-      })),
+      integrations: listSandboxIntegrations().map(
+        ({ type, name, description, hostnames, envVarName, role, headerName, headerPrefix, cli }) => ({
+          type,
+          name,
+          description,
+          hostnames,
+          envVarName,
+          role,
+          headerName,
+          headerPrefix,
+          cli
+        })
+      ),
       agents: SANDBOX_AGENTS
     })
   });
@@ -135,7 +156,9 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
       params: SandboxIdParamsSchema,
       body: z.object({
         type: z.nativeEnum(SandboxIntegrationType),
-        hostnames: z.string().trim().min(1).max(253).array().max(25).optional(),
+        // Same pattern grammar the Agent Proxy uses: host[:port][/path] with `*.` wildcards.
+        hostnames: hostPatternSchema.array().max(25).optional(),
+        credential: CredentialConfigSchema.optional(),
         secret: SecretRefSchema
       }),
       response: { 200: z.object({ sandbox: SandboxSchema }) }
