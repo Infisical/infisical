@@ -4,6 +4,13 @@ import { BotIcon } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
   Field,
   FieldDescription,
   FieldLabel,
@@ -44,53 +51,66 @@ export const AgentTab = ({ sandbox }: { sandbox: TSandbox }) => {
   };
 
   return (
-    <div className="flex max-w-md flex-col gap-4">
-      <Field>
-        <FieldLabel htmlFor="agent-type">Agent</FieldLabel>
-        <Select value={agentType} onValueChange={(v) => setAgentType(v as SandboxAgentType)}>
-          <SelectTrigger id="agent-type" className="w-full">
-            <SelectValue placeholder="Choose an agent" />
-          </SelectTrigger>
-          <SelectContent position="popper" className="w-(--radix-select-trigger-width)">
-            {catalog?.agents.map((agent) => (
-              <SelectItem key={agent.type} value={agent.type} disabled={!agent.isSupported}>
-                {agent.name}
-                {!agent.isSupported && " (coming soon)"}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
+    <Card>
+      <CardHeader>
+        <CardTitle>Agent</CardTitle>
+        <CardDescription>
+          The agent that runs inside this sandbox, and the provider key it authenticates with.
+        </CardDescription>
+        <CardAction>
+          <div className="flex size-9 items-center justify-center rounded-md border border-info/15 bg-info/10 text-info [&>svg]:size-5">
+            <BotIcon />
+          </div>
+        </CardAction>
+      </CardHeader>
 
-      <Field>
-        <FieldLabel htmlFor="agent-token">{definition?.tokenLabel ?? "API key"}</FieldLabel>
-        <Input
-          id="agent-token"
-          type="password"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          placeholder={
-            sandbox.hasAgentToken
-              ? "A key is configured. Enter a new one to replace it."
-              : "Paste the key"
-          }
-        />
-        <FieldDescription>
-          Encrypted with your organization&apos;s key and never returned by the API.
-        </FieldDescription>
-      </Field>
+      <CardContent className="flex max-w-md flex-col gap-4">
+        <Field>
+          <FieldLabel htmlFor="agent-type">Agent</FieldLabel>
+          <Select value={agentType} onValueChange={(v) => setAgentType(v as SandboxAgentType)}>
+            <SelectTrigger id="agent-type" className="w-full">
+              <SelectValue placeholder="Choose an agent" />
+            </SelectTrigger>
+            <SelectContent position="popper" className="w-(--radix-select-trigger-width)">
+              {catalog?.agents.map((agent) => (
+                <SelectItem key={agent.type} value={agent.type} disabled={!agent.isSupported}>
+                  {agent.name}
+                  {!agent.isSupported && " (coming soon)"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
 
-      <div>
+        <Field>
+          <FieldLabel htmlFor="agent-token">{definition?.tokenLabel ?? "API key"}</FieldLabel>
+          <Input
+            id="agent-token"
+            type="password"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder={
+              sandbox.hasAgentToken
+                ? "A key is stored. Enter a new one to replace it."
+                : "Paste the key"
+            }
+          />
+          <FieldDescription>
+            Encrypted with your organization&apos;s key and never returned by the API.
+          </FieldDescription>
+        </Field>
+      </CardContent>
+
+      <CardFooter className="border-t">
         <Button
           variant="project"
           onClick={handleSave}
           isDisabled={!agentType || (!sandbox.hasAgentToken && !token.trim())}
           isPending={updateSandbox.isPending}
         >
-          <BotIcon className="size-4" />
           Save Agent
         </Button>
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 };

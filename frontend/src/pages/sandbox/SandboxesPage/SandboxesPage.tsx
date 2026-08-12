@@ -25,6 +25,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { SandboxStatus, useListSandboxes } from "@app/hooks/api/sandboxes";
 
 import { CreateSandboxSheet } from "./components/CreateSandboxSheet";
@@ -43,20 +44,17 @@ export const SandboxesPage = () => {
         <title>Sandboxes</title>
       </Helmet>
 
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-        <div className="flex items-start justify-between gap-4">
-          <PageHeader
-            scope="org"
-            icon={BoxIcon}
-            title={<span className="sandbox-chrome-text">Sandbox</span>}
-            description="Isolated environments for AI agents and untrusted code. Credentials stay outside the boundary."
-            className="[&_svg]:sandbox-chrome-icon"
-          />
+      <div className="mx-auto mb-6 w-full max-w-8xl">
+        <PageHeader
+          scope={ProjectType.Sandbox}
+          title={<span className="sandbox-chrome-text">Sandbox</span>}
+          description="Isolated environments for AI agents and untrusted code. Credentials stay outside the boundary."
+        >
           <Button variant="project" onClick={() => setIsCreateOpen(true)}>
-            <PlusIcon className="size-4" />
+            <PlusIcon />
             Create Sandbox
           </Button>
-        </div>
+        </PageHeader>
 
         {isPending && <Skeleton className="h-64" />}
 

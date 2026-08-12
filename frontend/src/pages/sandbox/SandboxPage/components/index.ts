@@ -4,4 +4,3 @@ export * from "./IntegrationsTab";
 export * from "./OverviewTab";
 export * from "./PamAccountsTab";
 export * from "./SandboxTerminal";
-export * from "./TerminalTab";
