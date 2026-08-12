@@ -22,7 +22,10 @@ export const SandboxesSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   agentType: z.string().nullable().optional(),
-  encryptedAgentToken: zodBuffer.nullable().optional()
+  encryptedAgentToken: zodBuffer.nullable().optional(),
+  identityId: z.string().uuid().nullable().optional(),
+  identityClientId: z.string().nullable().optional(),
+  encryptedIdentityClientSecret: zodBuffer.nullable().optional()
 });
 
 export type TSandboxes = z.infer<typeof SandboxesSchema>;

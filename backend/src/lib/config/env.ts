@@ -199,10 +199,7 @@ const envSchema = z
     INITIAL_ORGANIZATION_NAME: zpStr(z.string().optional()),
     // TODO(akhilmhdh): will be changed to one
     GEMINI_API_KEY: zpStr(z.string().optional()),
-    // Machine identity the sandbox uses to open PAM database proxies. It needs the Connector role on
-    // the accounts you grant. The CLI runs on the API host, never inside the sandbox.
-    SANDBOX_PAM_CLIENT_ID: zpStr(z.string().optional()),
-    SANDBOX_PAM_CLIENT_SECRET: zpStr(z.string().optional()),
+    // Where the sandbox's PAM CLI reaches this API. Defaults to loopback on the configured port.
     SANDBOX_INFISICAL_API_URL: zpStr(z.string().optional()),
     ENCRYPTION_KEY: zpStr(z.string().optional()),
     ROOT_ENCRYPTION_KEY: zpStr(z.string().optional()),

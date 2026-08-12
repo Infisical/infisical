@@ -2,7 +2,6 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 /**
@@ -54,24 +53,15 @@ const resolveApiUrl = () => {
 };
 
 /** Universal Auth login, printing the access token the proxy command then runs with. */
-const mintAccessToken = async (): Promise<string> => {
-  const appCfg = getConfig();
-
-  if (!appCfg.SANDBOX_PAM_CLIENT_ID || !appCfg.SANDBOX_PAM_CLIENT_SECRET) {
-    throw new BadRequestError({
-      message:
-        "PAM access is not configured. Set SANDBOX_PAM_CLIENT_ID and SANDBOX_PAM_CLIENT_SECRET to a machine identity holding the Connector role on the accounts you grant."
-    });
-  }
-
-  return new Promise<string>((resolve, reject) => {
+const mintAccessToken = async (clientId: string, clientSecret: string): Promise<string> =>
+  new Promise<string>((resolve, reject) => {
     const child = spawn(
       "infisical",
       [
         "login",
         "--method=universal-auth",
-        `--client-id=${appCfg.SANDBOX_PAM_CLIENT_ID}`,
-        `--client-secret=${appCfg.SANDBOX_PAM_CLIENT_SECRET}`,
+        `--client-id=${clientId}`,
+        `--client-secret=${clientSecret}`,
         "--plain",
         "--silent",
         `--domain=${resolveApiUrl()}`
@@ -95,7 +85,6 @@ const mintAccessToken = async (): Promise<string> => {
     });
     child.on("error", reject);
   });
-};
 
 const waitForPort = (port: number) =>
   new Promise<void>((resolve, reject) => {
@@ -116,10 +105,14 @@ const waitForPort = (port: number) =>
     attempt();
   });
 
-export const startPamProxies = async (sandboxId: string, targets: TPamTarget[]): Promise<TPamProxy[]> => {
+export const startPamProxies = async (
+  sandboxId: string,
+  targets: TPamTarget[],
+  identity: { clientId: string; clientSecret: string }
+): Promise<TPamProxy[]> => {
   if (!targets.length) return [];
 
-  const token = await mintAccessToken();
+  const token = await mintAccessToken(identity.clientId, identity.clientSecret);
   const apiUrl = resolveApiUrl();
   const state: TSandboxPamState = { proxies: [], processes: [] };
 

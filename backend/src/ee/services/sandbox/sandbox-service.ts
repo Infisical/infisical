@@ -8,12 +8,14 @@ import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/se
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { installGithubCli } from "./sandbox-cli-runtime";
+import { installGithubCli, writeSandboxCaCertificate } from "./sandbox-cli-runtime";
 import { TSandboxDALFactory } from "./sandbox-dal";
+import { deprovisionSandboxIdentity, provisionSandboxIdentity, TSandboxIdentityDeps } from "./sandbox-identity";
 import { SANDBOX_INTEGRATIONS, SandboxCredentialRole, SandboxIntegrationType } from "./sandbox-integrations";
 import { getPamProxies, startPamProxies, stopPamProxies } from "./sandbox-pam-runtime";
 import { TSandboxProjectResolverFactory } from "./sandbox-project-resolver";
 import { buildSystemPrompt } from "./sandbox-prompt";
+import { getSandboxProxyLog, startSandboxProxy, stopSandboxProxy } from "./sandbox-proxy";
 import { bootSandbox, execInSandbox, isSandboxBooted, setSandboxEnv, shutdownSandbox } from "./sandbox-runtime";
 import {
   SandboxStatus,
@@ -35,7 +37,7 @@ type TSandboxServiceFactoryDep = {
   sandboxProjectResolver: TSandboxProjectResolverFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-};
+} & TSandboxIdentityDeps;
 
 const EMPTY_GRANTS: TSandboxGrants = { integrations: [], pamAccountIds: [] };
 
@@ -69,7 +71,9 @@ export const sandboxServiceFactory = ({
   secretService,
   sandboxProjectResolver,
   permissionService,
-  kmsService
+  kmsService,
+  identityService,
+  identityUaService
 }: TSandboxServiceFactoryDep) => {
   const $encryptAgentToken = async (orgId: string, token: string) => {
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
@@ -77,6 +81,14 @@ export const sandboxServiceFactory = ({
       orgId
     });
     return encryptor({ plainText: Buffer.from(token) }).cipherTextBlob;
+  };
+
+  const $decryptClientSecret = async (orgId: string, blob: Buffer) => {
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId
+    });
+    return decryptor({ cipherTextBlob: blob }).toString();
   };
 
   /**
@@ -128,6 +140,10 @@ export const sandboxServiceFactory = ({
     const clash = await sandboxDAL.findOne({ orgId: actor.orgId, name: dto.name });
     if (clash) throw new BadRequestError({ message: `A sandbox named '${dto.name}' already exists` });
 
+    // Its own machine identity, so PAM sessions are attributable to this sandbox and deleting the
+    // sandbox revokes its access with it.
+    const identity = await provisionSandboxIdentity({ identityService, identityUaService }, dto.name, actor);
+
     const row = await sandboxDAL.create({
       orgId: actor.orgId,
       name: dto.name,
@@ -135,7 +151,10 @@ export const sandboxServiceFactory = ({
       vcpu: dto.vcpu,
       memoryMb: dto.memoryMb,
       grants: EMPTY_GRANTS,
-      commandsRun: 0
+      commandsRun: 0,
+      identityId: identity.identityId,
+      identityClientId: identity.clientId,
+      encryptedIdentityClientSecret: await $encryptAgentToken(actor.orgId, identity.clientSecret)
     });
 
     return toSandbox(row);
@@ -187,8 +206,15 @@ export const sandboxServiceFactory = ({
 
     // Reap the running processes before the row goes, or the runtime keeps a directory nothing owns.
     stopPamProxies(sandboxId);
+    stopSandboxProxy(sandboxId);
     await shutdownSandbox(sandboxId);
     const row = await sandboxDAL.deleteById(sandboxId);
+
+    if (row.identityId) {
+      await deprovisionSandboxIdentity({ identityService, identityUaService }, row.identityId, actor).catch(
+        (error: Error) => logger.error(error, `Failed to delete sandbox identity [sandboxId=${sandboxId}]`)
+      );
+    }
 
     return toSandbox(row);
   };
@@ -206,11 +232,21 @@ export const sandboxServiceFactory = ({
     // token and the database credential both stay in this process.
     const grants = normalizeGrants(row.grants);
     const targets = await sandboxDAL.findPamAccountTargets(grants.pamAccountIds);
-    const proxies = await startPamProxies(sandboxId, targets);
+    const proxies =
+      row.identityClientId && row.encryptedIdentityClientSecret
+        ? await startPamProxies(sandboxId, targets, {
+            clientId: row.identityClientId,
+            clientSecret: await $decryptClientSecret(actor.orgId, row.encryptedIdentityClientSecret)
+          }).catch((error: Error) => {
+            logger.error(error, `Sandbox could not open PAM proxies [sandboxId=${sandboxId}]`);
+            return [];
+          })
+        : [];
 
-    // Resolve each integration's secret and hand the value to the tools that need it. Swapping this
-    // for a placeholder plus an egress proxy is the next step; the sandbox holds the real value today.
+    // Resolve each integration's secret for the proxy. The sandbox only ever receives a placeholder.
     const integrationEnv: Record<string, string> = {};
+    const resolved: (TSandboxIntegration & { secretValue: string })[] = [];
+
     for (const integration of grants.integrations) {
       const definition = SANDBOX_INTEGRATIONS[integration.type];
       try {
@@ -229,7 +265,11 @@ export const sandboxServiceFactory = ({
           expandSecretReferences: true
         });
 
-        if (secret?.secretValue) integrationEnv[definition.envVarName] = secret.secretValue;
+        if (secret?.secretValue) {
+          resolved.push({ ...integration, secretValue: secret.secretValue });
+          // The real value never leaves this process: the proxy swaps it in on the way out.
+          integrationEnv[definition.envVarName] = `infisical-placeholder-${integration.id.slice(0, 8)}`;
+        }
       } catch (error) {
         logger.error(
           error,
@@ -245,8 +285,22 @@ export const sandboxServiceFactory = ({
       }
     }
 
+    const { port: proxyPort, certificatePem } = await startSandboxProxy(sandboxId, resolved);
+    const caPath = await writeSandboxCaCertificate(rootDir, certificatePem);
+    const proxyUrl = `http://127.0.0.1:${proxyPort}`;
+
     setSandboxEnv(sandboxId, {
       ...integrationEnv,
+      HTTP_PROXY: proxyUrl,
+      HTTPS_PROXY: proxyUrl,
+      http_proxy: proxyUrl,
+      https_proxy: proxyUrl,
+      NO_PROXY: "localhost,127.0.0.1",
+      // Trust the proxy's CA. Go (gh), curl, node and python each read a different variable.
+      SSL_CERT_FILE: caPath,
+      CURL_CA_BUNDLE: caPath,
+      NODE_EXTRA_CA_CERTS: caPath,
+      REQUESTS_CA_BUNDLE: caPath,
       ...Object.fromEntries(
         proxies.map((proxy) => [
           `PAM_${proxy.accountName.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_PORT`,
@@ -267,6 +321,7 @@ export const sandboxServiceFactory = ({
     }
 
     stopPamProxies(sandboxId);
+    stopSandboxProxy(sandboxId);
     await shutdownSandbox(sandboxId);
     return toSandbox(row);
   };
@@ -374,6 +429,11 @@ export const sandboxServiceFactory = ({
     return toSandbox(row);
   };
 
+  const getProxyActivity = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor) => {
+    await $resolve(sandboxId, actor, false);
+    return getSandboxProxyLog(sandboxId);
+  };
+
   const listPamProxies = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor) => {
     await $resolve(sandboxId, actor, false);
     return getPamProxies(sandboxId);
@@ -391,6 +451,7 @@ export const sandboxServiceFactory = ({
   };
 
   return {
+    getProxyActivity,
     getSystemPrompt,
     listPamProxies,
     addIntegration,

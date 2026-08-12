@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { chmod, mkdir } from "node:fs/promises";
+import { chmod, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { logger } from "@app/lib/logger";
@@ -43,8 +43,9 @@ export const installGithubCli = async (rootDir: string) => {
   logger.info(`Installed gh into sandbox bin [version=${GH_VERSION}]`);
 };
 
-export const ensureSandboxBin = async (rootDir: string) => {
-  const binDir = join(rootDir, "bin");
-  await mkdir(binDir, { recursive: true });
-  return binDir;
+/** Writes the proxy's CA where the sandbox's HTTP clients can be pointed at it. */
+export const writeSandboxCaCertificate = async (rootDir: string, certificatePem: string) => {
+  const path = join(rootDir, "infisical-proxy-ca.crt");
+  await writeFile(path, certificatePem, "utf8");
+  return path;
 };
