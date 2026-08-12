@@ -5,7 +5,9 @@ import { z } from "zod";
 import { AgentProxyPage } from "./AgentProxyPage";
 
 const AgentProxyPageQueryParams = z.object({
-  selectedTab: z.string().catch("agent-policies")
+  selectedTab: z.string().catch("agent-policies"),
+  // Set when the activity feed was opened from a session, so it shows only that session's requests.
+  sessionId: z.string().optional().catch(undefined)
 });
 
 export const Route = createFileRoute(

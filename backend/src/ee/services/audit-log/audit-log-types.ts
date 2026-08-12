@@ -6910,6 +6910,7 @@ interface AgentProxyRequestEvent {
   type: EventType.AGENT_PROXY_REQUEST;
   metadata: {
     agentProxyId: string;
+    sessionId: string;
     identityId: string;
     agentName: string;
     userId: string;

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import {
   ActivityIcon,
@@ -11,7 +12,8 @@ import {
   RefreshCwIcon,
   SearchIcon,
   TriangleAlertIcon,
-  UserIcon
+  UserIcon,
+  XIcon
 } from "lucide-react";
 
 import {
@@ -52,6 +54,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
+import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionAuditLogsActions,
   ProjectPermissionSub,
@@ -61,6 +64,7 @@ import {
 import { formatDateTime, Timezone } from "@app/helpers/datetime";
 import { usePopUp } from "@app/hooks";
 import { PolicyRuleMethod, TAgentPolicy, useGetAgentPolicies } from "@app/hooks/api/agentPolicies";
+import { useGetAgentSessions } from "@app/hooks/api/agentSessions";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { useGetAuditLogs } from "@app/hooks/api/auditLogs/queries";
 import { AgentProxyDecision, AuditLog } from "@app/hooks/api/auditLogs/types";
@@ -207,12 +211,19 @@ const StatTile = ({
 );
 
 export const ActivityTab = () => {
-  const { projectId } = useProject();
+  const { projectId, currentProject } = useProject();
+  const navigate = useNavigate();
   const { permission } = useProjectPermission();
   const canReadAuditLogs = permission.can(
     ProjectPermissionAuditLogsActions.Read,
     ProjectPermissionSub.AuditLogs
   );
+
+  // Set when the feed was opened from a session, so the whole tab narrows to that one agent run.
+  const sessionId = useSearch({
+    from: ROUTE_PATHS.SecretManager.AgentProxyPage.id,
+    select: (searchParams) => searchParams.sessionId
+  });
 
   const [isLive, setIsLive] = useState(true);
   const [windowKey, setWindowKey] = useState<TWindowKey>("24h");
@@ -237,6 +248,9 @@ export const ActivityTab = () => {
     useGetAuditLogs(
       {
         eventType: [EventType.AGENT_PROXY_REQUEST],
+        // Narrowed by the API rather than in the browser, so the counts and "load more" describe the
+        // session rather than whatever happened to be on the loaded page.
+        ...(sessionId ? { eventMetadata: { sessionId } } : {}),
         startDate,
         endDate,
         limit: PAGE_SIZE
@@ -248,6 +262,15 @@ export const ActivityTab = () => {
   const { data: agentPolicies } = useGetAgentPolicies(projectId);
   const { data: userPolicies } = useGetUserPolicies(projectId);
   const { data: projectUsers } = useGetWorkspaceUsers(projectId, true);
+  const { data: sessions } = useGetAgentSessions(projectId, { enabled: Boolean(sessionId) });
+  const session = sessions?.find((entry) => entry.id === sessionId);
+
+  const clearSessionFilter = () =>
+    navigate({
+      to: ROUTE_PATHS.SecretManager.AgentProxyPage.path,
+      params: { orgId: currentProject.orgId, projectId: currentProject.id },
+      search: { selectedTab: "activity" }
+    });
 
   const events = useMemo(
     () => (data?.pages ?? []).flat().flatMap((log) => toActivityEvent(log) ?? []),
@@ -399,6 +422,24 @@ export const ActivityTab = () => {
         </CardAction>
       </CardHeader>
       <CardContent>
+        {sessionId && (
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-border bg-container/50 px-3 py-2">
+            <BotIcon className="size-3.5 shrink-0 text-label" />
+            <span className="min-w-0 truncate text-sm text-foreground">
+              {session
+                ? `${session.agentName} acting for ${session.userEmail ?? session.username}`
+                : "One session"}
+            </span>
+            <span className="text-xs text-muted">
+              Showing this session only. Counts below cover it alone.
+            </span>
+            <Button variant="ghost" size="xs" className="ml-auto" onClick={clearSessionFilter}>
+              <XIcon />
+              Show all activity
+            </Button>
+          </div>
+        )}
+
         <div className="mb-4 flex flex-wrap gap-2">
           <StatTile
             label="Brokered"
@@ -486,12 +527,18 @@ export const ActivityTab = () => {
                 {events.length ? <SearchIcon /> : <ActivityIcon />}
               </EmptyMedia>
               <EmptyTitle>
-                {events.length ? "No requests match your filters" : "No proxy activity yet"}
+                {(() => {
+                  if (events.length) return "No requests match your filters";
+                  return sessionId
+                    ? "This session has not made a request yet"
+                    : "No proxy activity yet";
+                })()}
               </EmptyTitle>
               {!events.length && (
                 <EmptyDescription>
-                  Start an agent through the proxy and every request it makes lands here, brokered
-                  or blocked.
+                  {sessionId
+                    ? "It was started on the agent's behalf, but nothing has come through the proxy on it."
+                    : "Start an agent through the proxy and every request it makes lands here, brokered or blocked."}
                 </EmptyDescription>
               )}
             </EmptyHeader>
@@ -512,9 +559,12 @@ export const ActivityTab = () => {
                 <TableHead className="w-48">
                   <TableHeadLabel>Policies</TableHeadLabel>
                 </TableHead>
-                <TableHead className="w-56">
-                  <TableHeadLabel>Session</TableHeadLabel>
-                </TableHead>
+                {/* Every row would repeat the session the banner already names. */}
+                {!sessionId && (
+                  <TableHead className="w-56">
+                    <TableHeadLabel>Session</TableHeadLabel>
+                  </TableHead>
+                )}
                 <TableHead className="w-16">
                   <TableHeadLabel>Status</TableHeadLabel>
                 </TableHead>
@@ -524,20 +574,20 @@ export const ActivityTab = () => {
             <TableBody>
               {isPending &&
                 ["first", "second", "third", "fourth", "fifth"].map((row) => (
-                  <TableRow className="!h-16 !min-h-16" key={`activity-skeleton-${row}`}>
-                    {["time", "decision", "request", "policy", "session", "status", "action"].map(
-                      (cell) => (
+                  <TableRow className="!h-16" key={`activity-skeleton-${row}`}>
+                    {["time", "decision", "request", "policy", "session", "status", "action"]
+                      .filter((cell) => cell !== "session" || !sessionId)
+                      .map((cell) => (
                         <TableCell key={`activity-skeleton-${row}-${cell}`}>
                           <Skeleton className="h-4 w-full" />
                         </TableCell>
-                      )
-                    )}
+                      ))}
                   </TableRow>
                 ))}
               {filtered.map((event) => {
                 const meta = DECISION_META[event.decision];
                 return (
-                  <TableRow key={event.id}>
+                  <TableRow key={event.id} className="h-12">
                     <TableCell className="text-muted">
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -593,14 +643,16 @@ export const ActivityTab = () => {
                     <TableCell>
                       <PolicyPair event={event} />
                     </TableCell>
-                    <TableCell>
-                      <p className="truncate text-sm text-foreground" title={event.agentName}>
-                        {event.agentName}
-                      </p>
-                      <p className="truncate text-xs text-muted">
-                        for {describeUser(event.userId)}
-                      </p>
-                    </TableCell>
+                    {!sessionId && (
+                      <TableCell>
+                        <p className="truncate text-sm text-foreground" title={event.agentName}>
+                          {event.agentName}
+                        </p>
+                        <p className="truncate text-xs text-muted">
+                          for {describeUser(event.userId)}
+                        </p>
+                      </TableCell>
+                    )}
                     <TableCell
                       className={cn(
                         "text-sm",

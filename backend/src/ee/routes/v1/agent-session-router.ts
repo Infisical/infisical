@@ -278,6 +278,9 @@ export const registerAgentSessionRouter = async (server: FastifyZodProvider) => 
               type: EventType.AGENT_PROXY_REQUEST,
               metadata: {
                 agentProxyId: req.permission.id,
+                // Stamped here rather than sent by the proxy: the session is already resolved from the
+                // token, and it is what lets the UI show one session's requests on their own.
+                sessionId: resolved.session.id,
                 identityId: resolved.session.identityId,
                 agentName: resolved.session.agentName,
                 userId: resolved.session.userId,

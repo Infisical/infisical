@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { BotIcon, CircleSlashIcon, SearchIcon } from "lucide-react";
 
@@ -45,6 +46,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { formatDateTime, Timezone } from "@app/helpers/datetime";
 import { usePopUp } from "@app/hooks";
@@ -93,15 +95,24 @@ const SessionStatus = ({ session }: { session: TAgentSession }) => {
 };
 
 export const SessionsTab = () => {
-  const { projectId } = useProject();
+  const { projectId, currentProject } = useProject();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [isLive, setIsLive] = useState(true);
 
-  const { data: sessions, isPending } = useGetAgentSessions(
-    projectId,
-    isLive ? LIVE_REFETCH_MS : undefined
-  );
+  const { data: sessions, isPending } = useGetAgentSessions(projectId, {
+    refetchInterval: isLive ? LIVE_REFETCH_MS : undefined
+  });
   const revokeSession = useRevokeAgentSession();
+
+  // A session's requests are the audit trail, so the row hands off to the feed already narrowed to it
+  // rather than duplicating the same table here.
+  const openInActivity = (session: TAgentSession) =>
+    navigate({
+      to: ROUTE_PATHS.SecretManager.AgentProxyPage.path,
+      params: { orgId: currentProject.orgId, projectId: currentProject.id },
+      search: { selectedTab: "activity", sessionId: session.id }
+    });
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["revokeSession"] as const);
 
@@ -129,7 +140,7 @@ export const SessionsTab = () => {
       <CardHeader>
         <CardTitle>Sessions</CardTitle>
         <CardDescription>
-          Which agent is acting for which person right now, and on which policies.
+          Which agent is acting for which person right now. Select one to see its requests.
         </CardDescription>
         <CardAction>
           <div className="flex items-center gap-2">
@@ -197,7 +208,7 @@ export const SessionsTab = () => {
             <TableBody>
               {isPending &&
                 ["first", "second", "third"].map((row) => (
-                  <TableRow key={`agent-session-skeleton-${row}`}>
+                  <TableRow key={`agent-session-skeleton-${row}`} className="h-12">
                     {["agent", "user", "started", "used", "status", "actions"].map((cell) => (
                       <TableCell key={`agent-session-skeleton-${row}-${cell}`}>
                         <Skeleton className="h-4 w-full" />
@@ -206,7 +217,16 @@ export const SessionsTab = () => {
                   </TableRow>
                 ))}
               {filtered?.map((session) => (
-                <TableRow key={session.id}>
+                <TableRow
+                  key={session.id}
+                  role="button"
+                  tabIndex={0}
+                  className="h-12 cursor-pointer"
+                  onClick={() => openInActivity(session)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") openInActivity(session);
+                  }}
+                >
                   <TableCell className="truncate">{session.agentName}</TableCell>
                   <TableCell className="truncate">
                     {session.firstName || session.lastName ? (
@@ -250,7 +270,10 @@ export const SessionsTab = () => {
                             variant="outline"
                             size="xs"
                             isDisabled={!isAllowed}
-                            onClick={() => handlePopUpOpen("revokeSession", session)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handlePopUpOpen("revokeSession", session);
+                            }}
                           >
                             <CircleSlashIcon />
                             Revoke

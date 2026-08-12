@@ -16,13 +16,16 @@ const fetchAgentSessions = async (projectId: string) => {
   return data.agentSessions;
 };
 
-export const useGetAgentSessions = (projectId: string, refetchInterval?: number) =>
+export const useGetAgentSessions = (
+  projectId: string,
+  options?: { refetchInterval?: number; enabled?: boolean }
+) =>
   useQuery({
     queryKey: agentSessionQueryKeys.list(projectId),
     queryFn: () => fetchAgentSessions(projectId),
-    enabled: Boolean(projectId),
+    enabled: Boolean(projectId) && (options?.enabled ?? true),
     // A session's last-used stamp moves with every request the proxy handles, so the default 60s
     // staleTime would show a live agent as idle.
     staleTime: 0,
-    refetchInterval
+    refetchInterval: options?.refetchInterval
   });

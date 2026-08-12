@@ -1021,6 +1021,8 @@ interface AgentProxyRequestEvent {
   type: EventType.AGENT_PROXY_REQUEST;
   metadata: {
     agentProxyId: string;
+    // Absent on requests recorded before sessions were attributable.
+    sessionId?: string;
     identityId: string;
     agentName: string;
     userId: string;
