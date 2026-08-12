@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useLocation, useParams } from "@tanstack/react-router";
 
-import { resolveImplicitProjectId } from "@app/helpers/project";
+import { resolveImplicitProjectId } from "@app/helpers/implicitProject";
 import { projectKeys } from "@app/hooks/api";
 import { fetchProjectById } from "@app/hooks/api/projects/queries";
 

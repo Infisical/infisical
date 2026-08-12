@@ -230,14 +230,3 @@ export const PROJECT_TILE_STYLE: ProjectTileStyle = {
   titleUnderlineClassName: "decoration-project/60"
 };
 
-/**
- * PAM and Sandbox are project-backed products whose URLs carry no `$projectId`, so their project has
- * to be resolved from the org. Sandbox must take precedence on its own routes: an org that also has
- * a PAM project would otherwise resolve to PAM there and render PAM's nav and links.
- *
- * Non-sandbox routes keep the previous PAM fallback exactly, so nothing else changes behaviour.
- */
-export const resolveImplicitProjectId = (
-  pathname: string,
-  org: { pamProjectId?: string | null; sandboxProjectId?: string | null }
-) => (pathname.includes("/sandboxes") ? org.sandboxProjectId : null) ?? org.pamProjectId ?? null;

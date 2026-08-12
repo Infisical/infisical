@@ -7,7 +7,7 @@ import { useLocation, useParams } from "@tanstack/react-router";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
 
-import { resolveImplicitProjectId } from "@app/helpers/project";
+import { resolveImplicitProjectId } from "@app/helpers/implicitProject";
 
 import { useOrganization } from "../OrganizationContext";
 import { ProjectPermissionSet } from "./types";
