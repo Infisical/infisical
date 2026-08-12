@@ -15,6 +15,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -31,6 +32,7 @@ import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identit
 import { computeTokenAuthRevokeMarkerExpiry } from "../identity-access-token/identity-access-token-fns";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { recordIdentityLastLogin, shouldRecordIdentityLastLogin } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityTokenAuthDALFactory } from "./identity-token-auth-dal";
@@ -52,6 +54,7 @@ type TIdentityTokenAuthServiceFactoryDep = {
     "transaction" | "create" | "findOne" | "updateById" | "delete"
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   identityAccessTokenDAL: Pick<
     TIdentityAccessTokenDALFactory,
     "create" | "find" | "update" | "findById" | "findOne" | "updateById" | "delete"
@@ -73,6 +76,7 @@ export type TIdentityTokenAuthServiceFactory = ReturnType<typeof identityTokenAu
 export const identityTokenAuthServiceFactory = ({
   identityTokenAuthDAL,
   membershipIdentityDAL,
+  keyStore,
   identityAccessTokenDAL,
   identityAccessTokenService,
   permissionService,
@@ -571,27 +575,17 @@ export const identityTokenAuthServiceFactory = ({
     const tokenRootOrgId = tokenScopeOrg.rootOrgId ?? tokenScopeOrg.id;
     const tokenParentOrgId = tokenScopeOrg.parentOrgId ?? tokenRootOrgId;
 
+    // checked before the transaction opens so the Redis round trip doesn't hold a pooled connection
+    const shouldRecordLastLogin = await shouldRecordIdentityLastLogin(keyStore, identity.id);
+
     // Token Auth is the only auth method that materializes a real PG row at
     // issuance time — its tokens are admin-managed and listed in the UI, so
     // we hand the helper a transaction so the row insert and the
     // membership-update happen atomically.
     const { accessToken, identityAccessToken } = await identityTokenAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.update(
-        identity.projectId
-          ? {
-              scope: AccessScope.Project,
-              scopeOrgId: identity.orgId,
-              scopeProjectId: identity.projectId,
-              actorIdentityId: identity.id
-            }
-          : {
-              scope: AccessScope.Organization,
-              scopeOrgId: identity.orgId,
-              actorIdentityId: identity.id
-            },
-        { lastLoginAuthMethod: IdentityAuthMethod.TOKEN_AUTH, lastLoginTime: new Date() },
-        tx
-      );
+      if (shouldRecordLastLogin) {
+        await recordIdentityLastLogin(membershipIdentityDAL, identity, IdentityAuthMethod.TOKEN_AUTH, tx);
+      }
 
       return identityAccessTokenService.issueIdentityAccessToken({
         identityId: identity.id,
