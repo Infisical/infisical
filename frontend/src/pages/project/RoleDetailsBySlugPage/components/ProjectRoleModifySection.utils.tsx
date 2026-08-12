@@ -477,6 +477,7 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     ],
     [ProjectPermissionIdentityActions.AssumePrivileges]: ["identityId"],
     [ProjectPermissionIdentityActions.RevokeAuth]: ["identityId"],
+    [ProjectPermissionIdentityActions.EditAuth]: ["identityId"],
     [ProjectPermissionIdentityActions.CreateToken]: ["identityId"],
     [ProjectPermissionIdentityActions.GetToken]: ["identityId"],
     [ProjectPermissionIdentityActions.DeleteToken]: ["identityId"]
@@ -595,6 +596,7 @@ const IdentityPolicyActionSchema = createPolicySchemaWithConditions(
     [ProjectPermissionIdentityActions.AssignAdditionalPrivileges]: z.boolean().optional(),
     [ProjectPermissionIdentityActions.AssumePrivileges]: z.boolean().optional(),
     [ProjectPermissionIdentityActions.RevokeAuth]: z.boolean().optional(),
+    [ProjectPermissionIdentityActions.EditAuth]: z.boolean().optional(),
     [ProjectPermissionIdentityActions.GetToken]: z.boolean().optional(),
     [ProjectPermissionIdentityActions.CreateToken]: z.boolean().optional(),
     [ProjectPermissionIdentityActions.DeleteToken]: z.boolean().optional()
@@ -1234,6 +1236,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             ProjectPermissionIdentityActions.AssumePrivileges
           );
           const canRevokeAuth = action.includes(ProjectPermissionIdentityActions.RevokeAuth);
+          const canEditAuth = action.includes(ProjectPermissionIdentityActions.EditAuth);
           const canCreateToken = action.includes(ProjectPermissionIdentityActions.CreateToken);
           const canGetToken = action.includes(ProjectPermissionIdentityActions.GetToken);
           const canDeleteToken = action.includes(ProjectPermissionIdentityActions.DeleteToken);
@@ -1250,6 +1253,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
               canAssignAdditionalPrivileges,
             [ProjectPermissionIdentityActions.AssumePrivileges]: canAssumePrivileges,
             [ProjectPermissionIdentityActions.RevokeAuth]: canRevokeAuth,
+            [ProjectPermissionIdentityActions.EditAuth]: canEditAuth,
             [ProjectPermissionIdentityActions.CreateToken]: canCreateToken,
             [ProjectPermissionIdentityActions.GetToken]: canGetToken,
             [ProjectPermissionIdentityActions.DeleteToken]: canDeleteToken,
@@ -2268,6 +2272,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Revoke Auth",
         value: ProjectPermissionIdentityActions.RevokeAuth,
         description: "Revoke authentication for a machine identity"
+      },
+      {
+        label: "Configure Auth Methods",
+        value: ProjectPermissionIdentityActions.EditAuth,
+        description: "Add or update authentication methods for a machine identity"
       },
       {
         label: "Create Token",

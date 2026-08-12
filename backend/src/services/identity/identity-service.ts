@@ -215,8 +215,6 @@ export const identityServiceFactory = ({
     metadata,
     isActorSuperAdmin
   }: TUpdateIdentityDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
-
     const identityOrgMembership = await orgDAL.findEffectiveOrgMembership({
       actorType: ActorType.IDENTITY,
       actorId: id,
@@ -270,6 +268,8 @@ export const identityServiceFactory = ({
 
       if (isCustomRole) customRole = rolePermissionDetails?.role;
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
 
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
 
@@ -360,7 +360,6 @@ export const identityServiceFactory = ({
     id,
     isActorSuperAdmin
   }: TDeleteIdentityDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
     const identityOrgMembership = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -380,6 +379,8 @@ export const identityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
+
+    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
 
     if (identityOrgMembership.identity.projectId) {
       throw new BadRequestError({ message: `Identity is managed by project` });

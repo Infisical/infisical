@@ -27,6 +27,7 @@ export type TUpdateAzureAuthDTO = {
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetAzureAuthDTO = {
@@ -123,4 +124,5 @@ export type TDecodedAzureAuthJwt = {
 
 export type TRevokeAzureAuthDTO = {
   identityId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;

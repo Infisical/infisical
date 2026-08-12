@@ -224,7 +224,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionIdentityActions.GetToken,
       ProjectPermissionIdentityActions.CreateToken,
       ProjectPermissionIdentityActions.DeleteToken,
-      ProjectPermissionIdentityActions.RevokeAuth
+      ProjectPermissionIdentityActions.RevokeAuth,
+      ProjectPermissionIdentityActions.EditAuth
     ],
     ProjectPermissionSub.Identity
   );

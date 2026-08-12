@@ -46,6 +46,7 @@ export type TUpdateKubernetesAuthDTO = {
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetKubernetesAuthDTO = {
@@ -89,4 +90,5 @@ export type TKubernetesTokenRequest = {
 
 export type TRevokeKubernetesAuthDTO = {
   identityId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;

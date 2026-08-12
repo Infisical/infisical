@@ -91,8 +91,6 @@ export const identityTokenAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TAttachTokenAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -126,7 +124,7 @@ export const identityTokenAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Create,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -139,10 +137,12 @@ export const identityTokenAuthServiceFactory = ({
         actorOrgId
       });
       ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.Create,
+        OrgPermissionIdentityActions.EditAuth,
         OrgPermissionSubjects.Identity
       );
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -191,8 +191,6 @@ export const identityTokenAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TUpdateTokenAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -232,7 +230,7 @@ export const identityTokenAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Edit,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -244,8 +242,13 @@ export const identityTokenAuthServiceFactory = ({
         actorAuthMethod,
         actorOrgId
       });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.EditAuth,
+        OrgPermissionSubjects.Identity
+      );
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -339,8 +342,6 @@ export const identityTokenAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TRevokeTokenAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -416,6 +417,8 @@ export const identityTokenAuthServiceFactory = ({
         });
     }
 
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const revokedIdentityTokenAuth = await identityTokenAuthDAL.transaction(async (tx) => {
       const deletedTokenAuth = await identityTokenAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({
@@ -448,8 +451,6 @@ export const identityTokenAuthServiceFactory = ({
     isActorSuperAdmin,
     organizationSlug
   }: TCreateTokenAuthTokenDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -525,6 +526,8 @@ export const identityTokenAuthServiceFactory = ({
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const identityTokenAuth = await identityTokenAuthDAL.findOne({ identityId });
 
@@ -621,8 +624,6 @@ export const identityTokenAuthServiceFactory = ({
     actorOrgId,
     isActorSuperAdmin
   }: TGetTokenAuthTokensDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -631,6 +632,10 @@ export const identityTokenAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.TOKEN_AUTH)) {
       throw new BadRequestError({
@@ -663,6 +668,8 @@ export const identityTokenAuthServiceFactory = ({
       });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const tokens = await identityAccessTokenDAL.find(
       {
@@ -697,6 +704,10 @@ export const identityTokenAuthServiceFactory = ({
     });
     if (!identityMembershipOrg) {
       throw new NotFoundError({ message: `Failed to find identity with ID ${foundToken.identityId}` });
+    }
+
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.TOKEN_AUTH)) {
@@ -760,7 +771,10 @@ export const identityTokenAuthServiceFactory = ({
       throw new NotFoundError({ message: `Failed to find identity with ID ${foundToken.identityId}` });
     }
 
-    await validateIdentityUpdateForSuperAdminPrivileges(foundToken.identityId, isActorSuperAdmin);
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
+
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.TOKEN_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have Token Auth"
@@ -823,6 +837,8 @@ export const identityTokenAuthServiceFactory = ({
         });
     }
 
+    await validateIdentityUpdateForSuperAdminPrivileges(foundToken.identityId, isActorSuperAdmin);
+
     const [token] = await identityAccessTokenDAL.update(
       {
         authMethod: IdentityAuthMethod.TOKEN_AUTH,
@@ -856,8 +872,6 @@ export const identityTokenAuthServiceFactory = ({
         message: `Token with ID ${tokenId} not found or already revoked`
       });
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityAccessToken.identityId, isActorSuperAdmin);
-
     const identityOrgMembership = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -868,6 +882,10 @@ export const identityTokenAuthServiceFactory = ({
 
     if (!identityOrgMembership) {
       throw new NotFoundError({ message: `Failed to find identity with ID ${identityAccessToken.identityId}` });
+    }
+
+    if (identityOrgMembership.identity.orgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
     if (identityOrgMembership.identity.projectId) {
@@ -895,6 +913,8 @@ export const identityTokenAuthServiceFactory = ({
       });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityAccessToken.identityId, isActorSuperAdmin);
 
     const [revokedToken] = await identityAccessTokenDAL.update(
       {
