@@ -7,6 +7,7 @@ import {
   UseQueryOptions
 } from "@tanstack/react-query";
 
+import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
@@ -233,6 +234,13 @@ export const useUpdateFolder = () => {
         description
       });
       return data;
+    },
+    onError: (err) => {
+      createNotification({
+        text: "Failed to update folder",
+        type: "error"
+      });
+      console.error(err);
     },
     onSuccess: (_, { projectId, environment, path }) => {
       queryClient.invalidateQueries({

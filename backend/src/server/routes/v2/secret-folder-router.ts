@@ -135,7 +135,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .transform(prefixWithSlash) // Transformations get skipped if path is undefined
           .transform(removeTrailingSlash)
           .describe(FOLDERS.UPDATE.path),
-        description: z.string().optional().nullable().describe(FOLDERS.UPDATE.description)
+        description: z.string().optional().describe(FOLDERS.UPDATE.description)
       }),
       response: {
         200: z.object({

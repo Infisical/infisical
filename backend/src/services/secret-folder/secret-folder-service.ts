@@ -539,9 +539,12 @@ export const secretFolderServiceFactory = ({
         });
       }
 
+      // Keep the existing description when the caller does not send one.
+      const existingFolder = await folderDAL.findById(folder.id);
+
       const [doc] = await folderDAL.update(
         { envId: env.id, id: folder.id, parentId: parentFolder.id, isReserved: false },
-        { name, description },
+        { name, description: description ?? existingFolder?.description },
         tx
       );
       const folderVersion = await folderVersionDAL.create(
