@@ -164,14 +164,9 @@ const PolicyPair = ({ event }: { event: TActivityEvent }) => {
         { key: "agent", icon: BotIcon, name: event.policyName, missing: "no agent policy" },
         { key: "user", icon: UserIcon, name: event.userPolicyName, missing: "no user policy" }
       ].map(({ key, icon: Icon, name, missing }) => (
-        <span key={key} className="flex min-w-0 items-center gap-1.5 text-xs">
+        <span key={key} className="flex items-center gap-1.5 text-xs">
           <Icon className={cn("size-3 shrink-0", name ? "text-label" : "text-muted")} />
-          <span
-            className={cn("truncate", name ? "text-foreground" : "text-muted")}
-            title={name || missing}
-          >
-            {name || missing}
-          </span>
+          <span className={name ? "text-foreground" : "text-muted"}>{name || missing}</span>
         </span>
       ))}
     </div>
@@ -544,24 +539,27 @@ export const ActivityTab = () => {
             </EmptyHeader>
           </Empty>
         ) : (
-          <Table className="min-w-[64rem] table-fixed">
+          /* Auto layout, so every column shrinks to its own content and the URL cell (w-full with
+             max-w-0 on the cell) takes whatever is left and truncates alone. A policy name is the
+             thing an operator is scanning for, so it is the URL that gives way, never the name. */
+          <Table className="min-w-[64rem] table-auto">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-40">
+                <TableHead>
                   <TableHeadLabel>Time</TableHeadLabel>
                 </TableHead>
-                <TableHead className="w-36">
+                <TableHead>
                   <TableHeadLabel>Decision</TableHeadLabel>
                 </TableHead>
-                <TableHead>
+                <TableHead className="w-full">
                   <TableHeadLabel>Request</TableHeadLabel>
                 </TableHead>
-                <TableHead className="w-48">
+                <TableHead>
                   <TableHeadLabel>Policies</TableHeadLabel>
                 </TableHead>
                 {/* Every row would repeat the session the banner already names. */}
                 {!sessionId && (
-                  <TableHead className="w-56">
+                  <TableHead>
                     <TableHeadLabel>Session</TableHeadLabel>
                   </TableHead>
                 )}
@@ -617,7 +615,7 @@ export const ActivityTab = () => {
                         <TooltipContent className="max-w-xs">{meta.hint}</TooltipContent>
                       </Tooltip>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="w-full max-w-0">
                       <div className="flex min-w-0 items-center gap-2">
                         <Badge variant="neutral" className="shrink-0">
                           {event.method}
@@ -644,11 +642,16 @@ export const ActivityTab = () => {
                       <PolicyPair event={event} />
                     </TableCell>
                     {!sessionId && (
-                      <TableCell>
+                      /* Bounded, unlike the policy names: an address is recognisable from its start,
+                         so a long one gives way rather than pushing the URL out. */
+                      <TableCell className="max-w-52">
                         <p className="truncate text-sm text-foreground" title={event.agentName}>
                           {event.agentName}
                         </p>
-                        <p className="truncate text-xs text-muted">
+                        <p
+                          className="truncate text-xs text-muted"
+                          title={describeUser(event.userId)}
+                        >
                           for {describeUser(event.userId)}
                         </p>
                       </TableCell>
