@@ -17,7 +17,7 @@ import {
  * The live half of the access panel: the same surface the creation wizard uses, with each change
  * written straight through instead of held as a draft.
  */
-export const AccessTab = ({ sandbox }: { sandbox: TSandbox }) => {
+export const IntegrationsTab = ({ sandbox }: { sandbox: TSandbox }) => {
   const addIntegration = useAddSandboxIntegration();
   const removeIntegration = useRemoveSandboxIntegration();
   const updateSandbox = useUpdateSandbox();
@@ -50,7 +50,7 @@ export const AccessTab = ({ sandbox }: { sandbox: TSandbox }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Access</CardTitle>
+        <CardTitle>Integrations</CardTitle>
         <CardDescription>
           Everything this sandbox may reach. Credentials are swapped in outside the sandbox, so it
           only ever holds placeholders and ports.

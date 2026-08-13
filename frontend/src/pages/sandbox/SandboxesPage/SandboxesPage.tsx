@@ -25,6 +25,7 @@ import { useOrganization } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { SandboxStatus, useListSandboxes } from "@app/hooks/api/sandboxes";
 
+import { Sparkline } from "../components/charts";
 import { AGENT_ICONS } from "../SandboxPage/components/agentIcons";
 import { CreateSandboxWizard } from "./components/CreateSandboxWizard";
 
@@ -147,10 +148,20 @@ export const SandboxesPage = () => {
                             <Badge variant={isRunning ? "success" : "neutral"}>
                               {isRunning ? "Running" : "Stopped"}
                             </Badge>
+
+                            {/* Fixed width and pushed right, so appearing on start cannot reflow
+                                the name or the badge beside it. */}
+                            {isRunning && (
+                              <Sparkline
+                                values={sandbox.metrics?.series ?? []}
+                                isEmphasised
+                                gradientId={`spark-${sandbox.id}`}
+                                className="ml-auto h-5 w-16 shrink-0 sandbox-chrome-fade"
+                              />
+                            )}
                           </div>
                           <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
-                            {sandbox.description ||
-                              "No description. Open the sandbox to grant it access and talk to its agent."}
+                            {sandbox.description || "No description."}
                           </p>
                         </div>
                       </div>

@@ -575,6 +575,27 @@ input[type="number"]::-webkit-outer-spin-button {
 
 /* One-shot chrome sweep played over the whole screen when a freshly created sandbox is opened.
    Skewed and blurred so it reads as a reflection travelling across glass rather than a wipe. */
+/* Named with the sandbox-chrome prefix so the reduced-motion block below already covers it. */
+@utility sandbox-chrome-fade {
+  animation: sandbox-chrome-shimmer 4s ease-in-out infinite;
+}
+
+@keyframes sandbox-pulse-dot {
+  0%,
+  100% {
+    r: 2.5;
+    opacity: 1;
+  }
+  50% {
+    r: 4;
+    opacity: 0.55;
+  }
+}
+
+@utility sandbox-pulse-dot {
+  animation: sandbox-pulse-dot 1.8s ease-in-out infinite;
+}
+
 @keyframes sandbox-shine-sweep {
   from {
     transform: translateX(-160%) skewX(-12deg);

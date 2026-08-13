@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
+import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useSearch } from "@tanstack/react-router";
 import { PlayIcon, SquareIcon } from "lucide-react";
 
@@ -14,13 +15,20 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { SandboxStatus, useGetSandboxById, useSetSandboxPower } from "@app/hooks/api/sandboxes";
+import {
+  sandboxKeys,
+  SandboxStatus,
+  streamSandboxStart,
+  useGetSandboxById,
+  useSetSandboxPower
+} from "@app/hooks/api/sandboxes";
 
 import { SandboxShine } from "../components/SandboxShine";
+import { SandboxBootDock, TBootLine } from "./components/SandboxBootDock";
 import {
-  AccessTab,
   AgentTab,
   AuditLogTab,
+  IntegrationsTab,
   OverviewTab,
   SandboxChat,
   TerminalTab
@@ -31,7 +39,7 @@ export enum SandboxTab {
   Chat = "chat",
   Terminal = "terminal",
   AuditLog = "audit-log",
-  Access = "access",
+  Integrations = "integrations",
   Agent = "agent"
 }
 
@@ -41,6 +49,11 @@ export const SandboxPage = () => {
 
   const { data: sandbox, isPending, isError } = useGetSandboxById(sandboxId);
   const setPower = useSetSandboxPower();
+  const queryClient = useQueryClient();
+
+  const [dockLines, setDockLines] = useState<TBootLine[] | null>(null);
+  const [dockStep, setDockStep] = useState<string | null>(null);
+  const [isBooting, setIsBooting] = useState(false);
 
   const isRunning = sandbox?.status === SandboxStatus.Running;
 
@@ -77,16 +90,41 @@ export const SandboxPage = () => {
       return;
     }
 
+    // Streamed rather than a plain POST: a start takes tens of seconds, and a bare spinner for that
+    // long reads as a hang. The same events drive the dock and the button label.
     setBoot({ outcome: null });
+    setDockLines([]);
+    setDockStep("Starting sandbox");
+    setIsBooting(true);
+
+    let hasFailed = false;
+
     try {
-      await setPower.mutateAsync({ sandboxId: sandbox.id, action: "start" });
-      setBoot({ outcome: "success" });
+      await streamSandboxStart(sandbox.id, (event) => {
+        if (event.type === "step") {
+          setDockStep(event.message);
+          setDockLines((prev) => [...(prev ?? []), { text: event.message }]);
+        } else if (event.type === "log") {
+          setDockLines((prev) => [...(prev ?? []), { text: event.message }]);
+        } else if (event.type === "error") {
+          hasFailed = true;
+          setDockStep("Start failed");
+          setDockLines((prev) => [...(prev ?? []), { text: event.message, isError: true }]);
+        }
+      });
     } catch (error) {
-      // MutationCache reports the failure globally already; this copy is only so the console can
-      // stop on the step that failed rather than closing and leaving the toast to explain it.
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data
-        ?.message;
-      setBoot({ outcome: "error", errorMessage: message });
+      hasFailed = true;
+      const message = error instanceof Error ? error.message : "The sandbox failed to start.";
+      setDockStep("Start failed");
+      setDockLines((prev) => [...(prev ?? []), { text: message, isError: true }]);
+    } finally {
+      setIsBooting(false);
+      setBoot({ outcome: hasFailed ? "error" : "success" });
+      // The charts read `status` and the metrics endpoint, neither of which knows the start
+      // finished, so nothing repaints until these are refetched.
+      await queryClient.invalidateQueries({ queryKey: sandboxKeys.byId(sandbox.id) });
+      await queryClient.invalidateQueries({ queryKey: sandboxKeys.list() });
+      await queryClient.invalidateQueries({ queryKey: sandboxKeys.metrics(sandbox.id) });
     }
   };
 
@@ -126,6 +164,16 @@ export const SandboxPage = () => {
 
       <SandboxShine sandboxId={sandbox.id} />
 
+      {tab !== SandboxTab.Terminal && (
+        <SandboxBootDock
+          lines={dockLines}
+          step={dockStep}
+          isDone={!isBooting && !dockLines?.some((line) => line.isError)}
+          hasFailed={Boolean(dockLines?.some((line) => line.isError))}
+          onDismiss={() => setDockLines(null)}
+        />
+      )}
+
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <div>
           <PageHeader
@@ -152,7 +200,7 @@ export const SandboxPage = () => {
             <Button
               variant={isRunning ? "danger" : "project"}
               onClick={handlePower}
-              isPending={setPower.isPending}
+              isPending={setPower.isPending || isBooting}
             >
               {isRunning ? <SquareIcon /> : <PlayIcon />}
               {isRunning ? "Stop" : "Start"}
@@ -165,7 +213,7 @@ export const SandboxPage = () => {
               <TerminalTab sandbox={sandbox} boot={boot} onBootSettled={() => setBoot(null)} />
             )}
             {tab === SandboxTab.AuditLog && <AuditLogTab sandbox={sandbox} />}
-            {tab === SandboxTab.Access && <AccessTab sandbox={sandbox} />}
+            {tab === SandboxTab.Integrations && <IntegrationsTab sandbox={sandbox} />}
             {tab === SandboxTab.Agent && <AgentTab sandbox={sandbox} />}
             {tab === SandboxTab.Overview && <OverviewTab sandbox={sandbox} />}
           </div>

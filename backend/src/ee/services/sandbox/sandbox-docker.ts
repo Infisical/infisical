@@ -14,9 +14,11 @@ import { logger } from "@app/lib/logger";
 
 const IMAGE = "infisical-sandbox:1";
 const NETWORK = "infisical-sandbox-net";
-const DOCKER_BIN = "/usr/local/bin/docker";
+export const DOCKER_BIN = "/usr/local/bin/docker";
 const DOCKER_VERSION = "27.3.1";
 const CONTAINER_PREFIX = "infisical-sandbox-";
+/** Every sandbox container carries this, which is how they are found for stats and for reaping. */
+export const SANDBOX_LABEL = "infisical.sandbox";
 
 export const containerNameFor = (sandboxId: string) => `${CONTAINER_PREFIX}${sandboxId}`;
 
@@ -174,7 +176,7 @@ const reapOrphanedContainers = async () => {
   if (hasReapedOnBoot) return;
   hasReapedOnBoot = true;
 
-  const listed = await docker(["ps", "-aq", "--filter", "label=infisical.sandbox"]);
+  const listed = await docker(["ps", "-aq", "--filter", `label=${SANDBOX_LABEL}`]);
   const ids = listed.stdout.split("\n").filter(Boolean);
   if (!ids.length) return;
 
@@ -219,7 +221,7 @@ export const startContainer = async (
       "--pids-limit=512",
       "--security-opt=no-new-privileges",
       "--label",
-      `infisical.sandbox=${sandboxId}`,
+      `${SANDBOX_LABEL}=${sandboxId}`,
       IMAGE,
       "sleep",
       "infinity"

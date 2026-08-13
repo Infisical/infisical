@@ -88,6 +88,27 @@ export const execInSandbox = async (sandboxId: string, command: string) => {
   return data.result;
 };
 
+/**
+ * Starts or stops a real background process inside the sandbox. The load is genuine, so the metrics
+ * it produces are genuine; it exists because an idle container draws a flat line.
+ */
+export const useSetSandboxWorkload = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ sandboxId, isEnabled }: { sandboxId: string; isEnabled: boolean }) => {
+      const { data } = await apiRequest.post<{ sandbox: TSandbox }>(
+        `/api/v1/sandboxes/${sandboxId}/workload`,
+        { isEnabled }
+      );
+      return data.sandbox;
+    },
+    onSuccess: (_, { sandboxId }) => {
+      queryClient.invalidateQueries({ queryKey: sandboxKeys.byId(sandboxId) });
+    }
+  });
+};
+
 export const useAddSandboxIntegration = () => {
   const queryClient = useQueryClient();
 

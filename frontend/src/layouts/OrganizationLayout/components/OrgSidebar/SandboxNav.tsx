@@ -1,9 +1,9 @@
 import { useLocation } from "@tanstack/react-router";
 import {
   Box,
-  KeyRound,
   LayoutDashboard,
   MessageSquare,
+  Puzzle,
   ScrollText,
   SquareTerminal
 } from "lucide-react";
@@ -52,7 +52,7 @@ export const SandboxNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu
     buildTab(sandboxId, "Audit Log", ScrollText, "audit-log")
   ];
   const configureItems = [
-    buildTab(sandboxId, "Access", KeyRound, "access"),
+    buildTab(sandboxId, "Integrations", Puzzle, "integrations"),
     buildTab(sandboxId, "Agent", Box, "agent")
   ];
 

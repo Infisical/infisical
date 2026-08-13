@@ -93,6 +93,7 @@ export type TSandbox = {
   grants: TSandboxGrants;
   agentType: SandboxAgentType | null;
   agentModel: string | null;
+  metrics: { cpuPercent: number; memoryMb: number; series: number[] } | null;
   hasAgentToken: boolean;
   createdAt: string;
   lastActivityAt: string | null;
@@ -200,3 +201,25 @@ export type TSandboxProxyEntry = {
 };
 
 export type TSandboxActivityEntry = TSandboxCommandEntry | TSandboxProxyEntry;
+
+export type TSandboxMetrics = {
+  cpuPercent: number;
+  memoryMb: number;
+  memoryLimitMb: number;
+  networkInKb: number;
+  networkOutKb: number;
+  processes: number;
+  isWorkloadRunning: boolean;
+  samples: { at: number; cpuPercent: number; memoryMb: number; memoryLimitMb: number }[];
+};
+
+export type TSandboxProxyActivity = {
+  at: string;
+  decision: "brokered" | "blocked" | "error";
+  method: string;
+  host: string;
+  path: string;
+  status?: number;
+  integration?: string;
+  credential?: string;
+};

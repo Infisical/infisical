@@ -23,6 +23,7 @@ import { TSandboxDALFactory } from "./sandbox-dal";
 import { getProxyHostAddress } from "./sandbox-docker";
 import { deprovisionSandboxIdentity, provisionSandboxIdentity, TSandboxIdentityDeps } from "./sandbox-identity";
 import { SANDBOX_INTEGRATIONS, SandboxCredentialRole, SandboxIntegrationType } from "./sandbox-integrations";
+import { forgetSandboxMetrics, getSandboxCpuSeries, getSandboxMetrics, startSandboxMetrics } from "./sandbox-metrics";
 import { getPamProxies, startPamProxies, stopPamProxies, TPamTarget, TSandboxPamDeps } from "./sandbox-pam-runtime";
 import { TSandboxProjectResolverFactory } from "./sandbox-project-resolver";
 import { buildSystemPrompt } from "./sandbox-prompt";
@@ -31,7 +32,9 @@ import {
   bootSandbox,
   execInSandbox,
   isSandboxBooted,
+  isWorkloadRunning,
   sandboxHomePath,
+  setDemoWorkload,
   setSandboxEnv,
   shutdownSandbox,
   writeSandboxFile
@@ -112,6 +115,7 @@ const toSandbox = (row: TSandboxes): TSandbox => ({
   grants: normalizeGrants(row.grants),
   agentType: (row.agentType as TSandbox["agentType"]) ?? null,
   agentModel: row.agentModel ?? null,
+  metrics: getSandboxCpuSeries(row.id),
   hasAgentToken: Boolean(row.encryptedAgentToken),
   commandsRun: row.commandsRun,
   slackChannelId: row.slackChannelId ?? null,
@@ -349,6 +353,7 @@ export const sandboxServiceFactory = ({
       onProgress({ type: "log", message: line })
     );
     onProgress({ type: "step", label: "container", message: "Container running on the isolated network" });
+    startSandboxMetrics();
 
     // Open a brokered proxy per granted account and tell the sandbox only the port. The identity
     // token and the database credential both stay in this process.
@@ -497,6 +502,21 @@ export const sandboxServiceFactory = ({
     return toSandbox(row);
   };
 
+  const setWorkload = async (
+    { sandboxId, isEnabled }: TSandboxIdDTO & { isEnabled: boolean },
+    actor: OrgServiceActor
+  ) => {
+    const row = await $resolve(sandboxId, actor, true);
+    await setDemoWorkload(sandboxId, isEnabled);
+    return toSandbox(row);
+  };
+
+  const getMetrics = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor) => {
+    await $resolve(sandboxId, actor, false);
+    const metrics = getSandboxMetrics(sandboxId);
+    return metrics && { ...metrics, isWorkloadRunning: isWorkloadRunning(sandboxId) };
+  };
+
   const stopSandbox = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor): Promise<TSandbox> => {
     const row = await $resolve(sandboxId, actor, true);
 
@@ -507,6 +527,8 @@ export const sandboxServiceFactory = ({
     stopPamProxies({ pamSessionService }, sandboxId, { identityId: row.identityId ?? "", orgId: actor.orgId });
     stopSandboxProxy(sandboxId);
     await shutdownSandbox(sandboxId);
+    // Dropped so a restart charts the new container rather than continuing the old one's line.
+    forgetSandboxMetrics(sandboxId);
     return toSandbox(row);
   };
 
@@ -833,6 +855,8 @@ export const sandboxServiceFactory = ({
     linkSlackConversation,
     handleSlackEvent,
     getProxyActivity,
+    getMetrics,
+    setWorkload,
     getSystemPrompt,
     listPamProxies,
     addIntegration,

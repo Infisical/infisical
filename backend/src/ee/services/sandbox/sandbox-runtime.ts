@@ -81,6 +81,7 @@ export const shutdownSandbox = async (sandboxId: string) => {
   if (!states.has(sandboxId)) return;
 
   states.delete(sandboxId);
+  workloads.delete(sandboxId);
   await removeContainer(sandboxId).catch((error: Error) => {
     logger.error(error, `Failed to remove sandbox container [sandboxId=${sandboxId}]`);
   });
@@ -174,4 +175,56 @@ export const execInSandbox = async (
     wasTruncated: result.stdout.length > MAX_OUTPUT_BYTES || result.stderr.length > MAX_OUTPUT_BYTES,
     timedOut
   };
+};
+
+/**
+ * A real background workload for demos, not a synthetic chart.
+ *
+ * The CPU line is flat when a sandbox is idle, which is honest but shows nothing. This starts an
+ * actual process inside the container that burns and sleeps in varying bursts, so the chart moves
+ * because the container is genuinely busy. Marked and killed by that marker, so it can be stopped
+ * again and cannot outlive the sandbox.
+ */
+const WORKLOAD_MARKER = "INFISICAL_SANDBOX_DEMO_WORKLOAD";
+
+/**
+ * Which sandboxes have a workload running. Held here rather than on the row because it is runtime
+ * state like the container itself: it cannot outlive the container, and a stopped sandbox has none.
+ * Without it the UI could only guess, and a page refresh would offer to start a second one.
+ */
+const workloads = new Set<string>();
+
+export const isWorkloadRunning = (sandboxId: string) => workloads.has(sandboxId);
+
+export const setDemoWorkload = async (sandboxId: string, isEnabled: boolean) => {
+  const state = states.get(sandboxId);
+  if (!state) {
+    throw new BadRequestError({ message: "Sandbox is not running. Start it before running a workload." });
+  }
+
+  if (!isEnabled) {
+    await execInContainer(sandboxId, `pkill -f ${WORKLOAD_MARKER} || true`, {
+      cwd: SANDBOX_HOME,
+      env: {},
+      timeoutMs: 10_000
+    });
+    workloads.delete(sandboxId);
+    return;
+  }
+
+  // setsid + nohup so it is not torn down when this exec returns. Bursts vary in both length and
+  // spacing, which is what gives the trace peaks and troughs rather than a plateau.
+  const script = [
+    `pkill -f ${WORKLOAD_MARKER} || true`,
+    `setsid nohup bash -c '# ${WORKLOAD_MARKER}`,
+    "while true; do",
+    "  n=$(( (RANDOM % 1200000) + 200000 ))",
+    "  for ((i=0;i<n;i++)); do :; done",
+    "  sleep 0.$(( RANDOM % 6 + 1 ))",
+    "done' >/dev/null 2>&1 &",
+    "disown || true"
+  ].join("\n");
+
+  await execInContainer(sandboxId, script, { cwd: SANDBOX_HOME, env: {}, timeoutMs: 10_000 });
+  workloads.add(sandboxId);
 };
