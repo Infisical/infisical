@@ -20,11 +20,19 @@ export type TSandboxCa = {
   issue: (host: string) => Promise<{ key: string; cert: string }>;
 };
 
+const PEM_LINE_LENGTH = 64;
+
+// Chunked by hand rather than by regex: a global replace also matches the final full-width group,
+// so a body whose length is an exact multiple of the line length gains a trailing newline and the
+// PEM ends up with a blank line before its footer. OpenSSL rejects that outright
+// (SSL_CTX_use_certificate_chain), which made TLS interception fail for some hosts and not others.
 const toPem = (der: ArrayBuffer, label: string) => {
-  const body = Buffer.from(der)
-    .toString("base64")
-    .replace(/(.{64})/g, "$1\n");
-  return `-----BEGIN ${label}-----\n${body}\n-----END ${label}-----\n`;
+  const body = Buffer.from(der).toString("base64");
+  const lines: string[] = [];
+  for (let i = 0; i < body.length; i += PEM_LINE_LENGTH) {
+    lines.push(body.slice(i, i + PEM_LINE_LENGTH));
+  }
+  return `-----BEGIN ${label}-----\n${lines.join("\n")}\n-----END ${label}-----\n`;
 };
 
 export const createSandboxCa = async (sandboxId: string): Promise<TSandboxCa> => {
