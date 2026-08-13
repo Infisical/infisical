@@ -214,13 +214,21 @@ export const setDemoWorkload = async (sandboxId: string, isEnabled: boolean) => 
 
   // setsid + nohup so it is not torn down when this exec returns. Bursts vary in both length and
   // spacing, which is what gives the trace peaks and troughs rather than a plateau.
+  //
+  // Each round also holds a blob of a varying size and then drops it, so resident memory rises and
+  // falls with the load instead of sitting flat while only CPU moves. Sized well under the smallest
+  // container so the workload can never be what gets the sandbox OOM-killed.
   const script = [
     `pkill -f ${WORKLOAD_MARKER} || true`,
     `setsid nohup bash -c '# ${WORKLOAD_MARKER}`,
     "while true; do",
     "  n=$(( (RANDOM % 1200000) + 200000 ))",
     "  for ((i=0;i<n;i++)); do :; done",
+    "  mb=$(( (RANDOM % 90) + 20 ))",
+    "  blob=$(head -c $(( mb * 1048576 )) /dev/zero | tr \"\\0\" \"x\")",
     "  sleep 0.$(( RANDOM % 6 + 1 ))",
+    "  unset blob",
+    "  sleep 0.$(( RANDOM % 4 + 1 ))",
     "done' >/dev/null 2>&1 &",
     "disown || true"
   ].join("\n");

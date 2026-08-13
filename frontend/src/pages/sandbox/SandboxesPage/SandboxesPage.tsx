@@ -29,6 +29,9 @@ import { Sparkline } from "../components/charts";
 import { AGENT_ICONS } from "../SandboxPage/components/agentIcons";
 import { CreateSandboxWizard } from "./components/CreateSandboxWizard";
 
+/** Stable identity: a new [] each render reads as a new sample and restarts the sparkline's clock. */
+const NO_SAMPLES: number[] = [];
+
 export const SandboxesPage = () => {
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
@@ -153,7 +156,7 @@ export const SandboxesPage = () => {
                                 the name or the badge beside it. */}
                             {isRunning && (
                               <Sparkline
-                                values={sandbox.metrics?.series ?? []}
+                                values={sandbox.metrics?.series ?? NO_SAMPLES}
                                 isEmphasised
                                 gradientId={`spark-${sandbox.id}`}
                                 className="ml-auto h-5 w-16 shrink-0 sandbox-chrome-fade"

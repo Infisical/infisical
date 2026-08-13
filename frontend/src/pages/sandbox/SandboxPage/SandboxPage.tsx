@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useSearch } from "@tanstack/react-router";
-import { PlayIcon, SquareIcon } from "lucide-react";
+import { ActivityIcon, PlayIcon, SquareIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -11,8 +11,12 @@ import {
   AlertTitle,
   Badge,
   Button,
+  IconButton,
   PageHeader,
-  Skeleton
+  Skeleton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import {
@@ -20,7 +24,9 @@ import {
   SandboxStatus,
   streamSandboxStart,
   useGetSandboxById,
-  useSetSandboxPower
+  useGetSandboxMetrics,
+  useSetSandboxPower,
+  useSetSandboxWorkload
 } from "@app/hooks/api/sandboxes";
 
 import { SandboxShine } from "../components/SandboxShine";
@@ -49,6 +55,7 @@ export const SandboxPage = () => {
 
   const { data: sandbox, isPending, isError } = useGetSandboxById(sandboxId);
   const setPower = useSetSandboxPower();
+  const setWorkload = useSetSandboxWorkload();
   const queryClient = useQueryClient();
 
   const [dockLines, setDockLines] = useState<TBootLine[] | null>(null);
@@ -56,6 +63,10 @@ export const SandboxPage = () => {
   const [isBooting, setIsBooting] = useState(false);
 
   const isRunning = sandbox?.status === SandboxStatus.Running;
+
+  // Runtime state, not local: the process outlives the page, so a refresh must not lose track of it.
+  const { data: headerMetrics } = useGetSandboxMetrics(sandboxId, isRunning);
+  const isWorkloadOn = Boolean(headerMetrics?.isWorkloadRunning);
 
   // Only starting gets the boot console; stopping is immediate and does not need narrating.
   const [boot, setBoot] = useState<{
@@ -197,6 +208,29 @@ export const SandboxPage = () => {
           >
             {/* On every tab, not just the overview: the other pages are the ones that tell you to
                 start the sandbox, so that is exactly where the control needs to be. */}
+            {/* Only while running, and deliberately understated: it is a demo aid, not part of
+                operating a sandbox. */}
+            {isRunning && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    variant="ghost"
+                    size="xs"
+                    aria-label={isWorkloadOn ? "Stop demo workload" : "Run demo workload"}
+                    onClick={() =>
+                      setWorkload.mutate({ sandboxId: sandbox.id, isEnabled: !isWorkloadOn })
+                    }
+                  >
+                    <ActivityIcon
+                      className={`size-3.5 ${isWorkloadOn ? "text-product-sandbox" : "text-muted"}`}
+                    />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isWorkloadOn ? "Stop demo workload" : "Run a demo workload"}
+                </TooltipContent>
+              </Tooltip>
+            )}
             <Button
               variant={isRunning ? "danger" : "project"}
               onClick={handlePower}

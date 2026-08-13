@@ -6,15 +6,12 @@ import {
   BotIcon,
   CpuIcon,
   KeyRoundIcon,
-  PlayIcon,
   ShieldCheckIcon,
-  ShieldXIcon,
-  SquareIcon
+  ShieldXIcon
 } from "lucide-react";
 
 import {
   Badge,
-  Button,
   Card,
   CardAction,
   CardContent,
@@ -27,11 +24,10 @@ import {
   SandboxStatus,
   TSandbox,
   useGetSandboxMetrics,
-  useGetSandboxProxyActivity,
-  useSetSandboxWorkload
+  useGetSandboxProxyActivity
 } from "@app/hooks/api/sandboxes";
 
-import { CountUp, Dial, MetricChart, Sparkline } from "../../components/charts";
+import { CountUp, Dial, Sparkline } from "../../components/charts";
 
 type TStatVariant = "project" | "info" | "neutral";
 
@@ -102,13 +98,8 @@ export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
 
   const { data: metrics } = useGetSandboxMetrics(sandbox.id, isRunning);
   const { data: activity } = useGetSandboxProxyActivity(sandbox.id, isRunning);
-  const setWorkload = useSetSandboxWorkload();
-  // Read from the runtime, never held locally: the process outlives the page, so local state would
-  // offer to start a second one after a refresh and never offer to stop the first.
-  const isWorkloadOn = Boolean(metrics?.isWorkloadRunning);
 
   const cpuSeries = metrics?.samples.map((sample) => sample.cpuPercent) ?? [];
-  const memSeries = metrics?.samples.map((sample) => sample.memoryMb) ?? [];
   const memoryLimit = metrics?.memoryLimitMb || sandbox.memoryMb;
 
   const brokered = activity?.filter((entry) => entry.decision === "brokered").length ?? 0;
@@ -139,7 +130,7 @@ export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
                 values={cpuSeries}
                 max={100}
                 gradientId="stat-cpu"
-                className="h-7 w-full"
+                className="h-10 w-full"
               />
             ) : undefined
           }
@@ -164,16 +155,6 @@ export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
               : "No container"
           }
           footnoteVariant="neutral"
-          spark={
-            isRunning ? (
-              <Sparkline
-                values={memSeries}
-                max={memoryLimit}
-                gradientId="stat-mem"
-                className="h-7 w-full"
-              />
-            ) : undefined
-          }
         />
         <StatCard
           title="Granted Access"
@@ -199,41 +180,7 @@ export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2fr_1fr]">
-        <Card className="gap-4">
-          <CardHeader className="grid-cols-[1fr_auto]">
-            <CardTitle className="text-sm font-medium text-accent">CPU usage</CardTitle>
-            <CardAction className="flex items-center gap-3">
-              {isRunning && (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  isPending={setWorkload.isPending}
-                  onClick={() =>
-                    setWorkload.mutate({ sandboxId: sandbox.id, isEnabled: !isWorkloadOn })
-                  }
-                >
-                  {isWorkloadOn ? <SquareIcon /> : <PlayIcon />}
-                  {isWorkloadOn ? "Stop workload" : "Run workload"}
-                </Button>
-              )}
-              {isRunning && <LiveDot />}
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            {isRunning ? (
-              <MetricChart values={cpuSeries} max={100} unit="%" gradientId="cpu-main" />
-            ) : (
-              <p className="py-10 text-center text-sm text-muted">
-                Start the sandbox to see live usage.
-              </p>
-            )}
-            <p className="mt-2 text-xs text-muted">
-              Sampled from the container every second · last 45 seconds
-            </p>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_2fr]">
         <Card className="gap-4">
           <CardHeader className="grid-cols-[1fr_auto]">
             <CardTitle className="text-sm font-medium text-accent">Memory</CardTitle>
@@ -262,69 +209,73 @@ export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      <Card className="gap-4">
-        <CardHeader className="grid-cols-[1fr_auto]">
-          <CardTitle className="text-sm font-medium text-accent">Brokered egress</CardTitle>
-          <CardAction>{isRunning && <LiveDot />}</CardAction>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4 sm:flex-row">
-          <div className="flex flex-1 items-center gap-3 rounded-md border border-success/20 bg-success/5 p-4">
-            <ShieldCheckIcon className="size-5 shrink-0 text-success" />
-            <div>
-              <p className="text-2xl font-semibold text-foreground">
-                <CountUp value={brokered} />
-              </p>
-              <p className="text-xs text-muted">
-                requests brokered — a real credential was swapped in outside the sandbox
-              </p>
+        <Card className="gap-4">
+          <CardHeader className="grid-cols-[1fr_auto]">
+            <CardTitle className="text-sm font-medium text-accent">Brokered egress</CardTitle>
+            <CardAction>{isRunning && <LiveDot />}</CardAction>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 sm:flex-row">
+            <div className="flex flex-1 items-center gap-3 rounded-md border border-success/20 bg-success/5 p-4">
+              <ShieldCheckIcon className="size-5 shrink-0 text-success" />
+              <div>
+                <p className="text-2xl font-semibold text-foreground">
+                  <CountUp value={brokered} />
+                </p>
+                <p className="text-xs text-muted">
+                  requests brokered — a real credential was swapped in outside the sandbox
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="flex flex-1 items-center gap-3 rounded-md border border-danger/20 bg-danger/5 p-4">
-            <ShieldXIcon className="size-5 shrink-0 text-danger" />
-            <div>
-              <p className="text-2xl font-semibold text-foreground">
-                <CountUp value={blocked} />
-              </p>
-              <p className="text-xs text-muted">
-                requests blocked — the host was not on this sandbox&apos;s grant list
-              </p>
+            <div className="flex flex-1 items-center gap-3 rounded-md border border-danger/20 bg-danger/5 p-4">
+              <ShieldXIcon className="size-5 shrink-0 text-danger" />
+              <div>
+                <p className="text-2xl font-semibold text-foreground">
+                  <CountUp value={blocked} />
+                </p>
+                <p className="text-xs text-muted">
+                  requests blocked — the host was not on this sandbox&apos;s grant list
+                </p>
+              </div>
             </div>
-          </div>
-        </CardContent>
-
-        {Boolean(activity?.length) && (
-          <CardContent className="border-t border-border pt-4">
-            <p className="mb-2 text-[11px] font-medium tracking-wider text-muted uppercase">
-              Recent decisions
-            </p>
-            <ul className="flex flex-col">
-              {activity?.slice(0, 8).map((entry, index) => (
-                <li
-                  // eslint-disable-next-line react/no-array-index-key -- the log has no stable id
-                  key={`${entry.at}-${index}`}
-                  className="flex items-center gap-2.5 rounded px-1 py-1 transition-colors hover:bg-foreground/5"
-                >
-                  {entry.decision === "brokered" ? (
-                    <ShieldCheckIcon className="size-3.5 shrink-0 text-success" />
-                  ) : (
-                    <ShieldXIcon className="size-3.5 shrink-0 text-danger" />
-                  )}
-                  <span className="shrink-0 font-mono text-[10px] text-muted">{entry.method}</span>
-                  <span className="truncate font-mono text-[11px] text-foreground">
-                    {entry.host}
-                    <span className="text-muted">{entry.path}</span>
-                  </span>
-                  <span className="ml-auto shrink-0 font-mono text-[10px] text-muted">
-                    {entry.credential ? `${entry.credential} swapped` : (entry.status ?? "blocked")}
-                  </span>
-                </li>
-              ))}
-            </ul>
           </CardContent>
-        )}
-      </Card>
+
+          {Boolean(activity?.length) && (
+            <CardContent className="border-t border-border pt-4">
+              <p className="mb-2 text-[11px] font-medium tracking-wider text-muted uppercase">
+                Recent decisions
+              </p>
+              <ul className="flex flex-col">
+                {activity?.slice(0, 8).map((entry, index) => (
+                  <li
+                    // eslint-disable-next-line react/no-array-index-key -- the log has no stable id
+                    key={`${entry.at}-${index}`}
+                    className="flex items-center gap-2.5 rounded px-1 py-1 transition-colors hover:bg-foreground/5"
+                  >
+                    {entry.decision === "brokered" ? (
+                      <ShieldCheckIcon className="size-3.5 shrink-0 text-success" />
+                    ) : (
+                      <ShieldXIcon className="size-3.5 shrink-0 text-danger" />
+                    )}
+                    <span className="shrink-0 font-mono text-[10px] text-muted">
+                      {entry.method}
+                    </span>
+                    <span className="truncate font-mono text-[11px] text-foreground">
+                      {entry.host}
+                      <span className="text-muted">{entry.path}</span>
+                    </span>
+                    <span className="ml-auto shrink-0 font-mono text-[10px] text-muted">
+                      {entry.credential
+                        ? `${entry.credential} swapped`
+                        : (entry.status ?? "blocked")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          )}
+        </Card>
+      </div>
     </div>
   );
 };

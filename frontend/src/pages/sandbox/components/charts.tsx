@@ -28,35 +28,42 @@ const CHROME_STOPS = (
 export const METRIC_WINDOW = 45;
 /** The card spark is a fraction of the width, so it shows a correspondingly shorter slice. */
 const SPARK_WINDOW = 24;
-/** Matches the API's sampling interval, so one slide finishes exactly as the next sample lands. */
-const SAMPLE_INTERVAL_MS = 1000;
 
 /**
- * Slides a rendered trace one slot to the left, driven per frame from the clock.
- *
- * A CSS animation was the obvious approach and it does not work here: it keeps its own clock, so it
- * drifts against the polling that supplies the data and the correction shows up as a jump once a
- * sample. This computes the offset every frame as a pure function of "time since the newest sample
- * arrived", so there is nothing to drift.
- *
- * The trace is rendered one sample wider than the window (see `buildPath`), which is the buffer: the
- * newest sample is always sitting just off the right edge, and the slide walks it into view over the
- * sampling interval. There is always a next point to move toward, so the line never runs out of data
- * mid-travel. Data late? The offset clamps and the line rests instead of overshooting into a gap.
+ * How many samples are drawn past the right edge. This is the jitter buffer: the visible edge lags
+ * the newest reading, so a poll arriving late still has geometry to slide into instead of stalling.
  */
-const useSlide = (step: number, durationMs: number, sample: unknown) => {
+const OVERSCAN = 2;
+
+/**
+ * Slides a rendered trace leftwards, driven per frame from the clock.
+ *
+ * The offset is `-step × (time since the last sample ÷ how long samples actually take to arrive)`.
+ * Both terms are measured, never assumed, and that is the whole trick. Earlier attempts drove this
+ * from the nominal 1s interval — as a CSS animation, then as a phase advanced by a fixed amount —
+ * and both drift, because a poll does not arrive in exactly 1000ms. The drift accumulates until it
+ * hits a clamp (a freeze) or a correction (a jump).
+ *
+ * Measuring the interval makes it self-correcting: if polls really take 1150ms, the phase reaches 1
+ * after 1150ms, which is exactly when the next sample lands and the geometry shifts a slot. The two
+ * cancel with no correction to apply.
+ */
+const useSlide = (step: number, sample: unknown) => {
   const ref = useRef<SVGGElement>(null);
-  const startedAtRef = useRef(0);
+  const arrivedAtRef = useRef(0);
+  const intervalRef = useRef(1000);
 
-  const apply = (offset: number) => {
-    if (ref.current) ref.current.style.transform = `translateX(${offset}px)`;
-  };
-
-  // Before paint, so the frame that shows the shifted geometry also shows the reset offset. After
-  // paint the two land in different frames, which is a visible jump right and then back.
   useLayoutEffect(() => {
-    startedAtRef.current = performance.now();
-    apply(0);
+    const now = performance.now();
+    const observed = now - arrivedAtRef.current;
+
+    // Smoothed, and outliers ignored: a backgrounded tab or a paused query would otherwise poison
+    // the estimate with one absurd gap and stall the line for a long time afterwards.
+    if (arrivedAtRef.current && observed > 200 && observed < 5000) {
+      intervalRef.current = intervalRef.current * 0.7 + observed * 0.3;
+    }
+
+    arrivedAtRef.current = now;
   }, [sample]);
 
   useEffect(() => {
@@ -65,14 +72,17 @@ const useSlide = (step: number, durationMs: number, sample: unknown) => {
 
     let frame = 0;
     const tick = () => {
-      const elapsed = (performance.now() - startedAtRef.current) / durationMs;
-      apply(-step * Math.min(Math.max(elapsed, 0), 1));
+      const phase = (performance.now() - arrivedAtRef.current) / intervalRef.current;
+      // Clamped to the buffer: with nothing left to reveal, rest at the edge rather than dragging a
+      // gap in behind the line.
+      const offset = -step * Math.min(Math.max(phase, 0), OVERSCAN);
+      if (ref.current) ref.current.style.transform = `translateX(${offset}px)`;
       frame = requestAnimationFrame(tick);
     };
 
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [step, durationMs]);
+  }, [step]);
 
   return ref;
 };
@@ -93,14 +103,13 @@ const buildPath = (
   const slots = Math.max(windowSize, 2);
   const step = width / (slots - 1);
 
-  // One sample beyond the window is drawn, past the right edge, so sliding left reveals real data
-  // rather than a gap. The viewBox clips it until the slide brings it into view.
-  const shown = values.slice(-(slots + 1));
+  // Drawn past the right edge and clipped by the viewBox until the slide brings each one into view.
+  const shown = values.slice(-(slots + OVERSCAN));
   if (shown.length < 2) return { line: "", area: "", step };
 
-  // Right-aligned with the newest one step past the edge, so a short history grows leftwards into
-  // empty space instead of being stretched to fill it.
-  const offset = width + step - (shown.length - 1) * step;
+  // Right-aligned with the newest OVERSCAN steps past the edge, so a short history grows leftwards
+  // into empty space instead of being stretched to fill it.
+  const offset = width + step * OVERSCAN - (shown.length - 1) * step;
   const y = (value: number) => height - (Math.min(value, max) / max) ** curve * height;
 
   const points = shown.map((value, index) => `${offset + index * step},${y(value)}`);
@@ -147,7 +156,7 @@ export const Sparkline = ({
     isEmphasised ? 0.6 : 1,
     SPARK_WINDOW
   );
-  const slideRef = useSlide(step, SAMPLE_INTERVAL_MS, values);
+  const slideRef = useSlide(step, values);
 
   if (!line) {
     return (
@@ -250,7 +259,7 @@ export const MetricChart = ({
 }) => {
   const width = 600;
   const { line, area, step } = buildPath(values, width, height, max);
-  const slideRef = useSlide(step, SAMPLE_INTERVAL_MS, values);
+  const slideRef = useSlide(step, values);
   const last = values[values.length - 1] ?? 0;
   const headY = height - (Math.min(last, max) / max) * height;
   // One step past the edge, matching the newest point, so it travels in with the line.
