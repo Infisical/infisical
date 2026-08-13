@@ -145,10 +145,7 @@ const streamGemini = async (
   });
 
   if (!parts.length) {
-    logger.error(
-      { model, lastFrame: lastFrame.slice(0, 500) },
-      `Agent model returned nothing [model=${model}]`
-    );
+    logger.error({ model, lastFrame: lastFrame.slice(0, 500) }, `Agent model returned nothing [model=${model}]`);
     throw new BadRequestError({
       message: `The agent model '${model}' returned no response. ${lastFrame.slice(0, 200) || "The stream was empty."}`
     });

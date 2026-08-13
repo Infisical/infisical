@@ -156,7 +156,8 @@ export const SandboxTerminal = ({
   }, [sandboxId, sandboxName, isRunning, isBooting]);
 
   // The boot log owns this panel until the sequence settles, so starting reads as one console
-  // coming up rather than a separate surface appearing over the page.
+  // coming up rather than a separate surface appearing over the page. The page clears it as soon as
+  // no start is in flight, which is what keeps a fiction from outliving what it narrates.
   if (boot) {
     return <SandboxBootConsole sandbox={sandbox} boot={boot} onSettled={onBootSettled} />;
   }

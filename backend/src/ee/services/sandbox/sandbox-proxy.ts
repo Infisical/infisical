@@ -5,6 +5,7 @@ import tls from "node:tls";
 
 import { logger } from "@app/lib/logger";
 
+import { recordSandboxProxyEvent } from "./sandbox-command-log";
 import { SandboxCredentialRole } from "./sandbox-integrations";
 import { createSandboxCa, TSandboxCa } from "./sandbox-proxy-ca";
 import { TSandboxIntegration } from "./sandbox-types";
@@ -33,6 +34,7 @@ export type TProxyLogEntry = {
 type TResolvedIntegration = TSandboxIntegration & { secretValue: string };
 
 type TSandboxProxyState = {
+  sandboxId: string;
   server: http.Server;
   port: number;
   ca: TSandboxCa;
@@ -69,6 +71,10 @@ const findIntegration = (state: TSandboxProxyState, host: string, path: string) 
 const record = (state: TSandboxProxyState, entry: TProxyLogEntry) => {
   state.log.unshift(entry);
   if (state.log.length > MAX_LOG_ENTRIES) state.log.pop();
+
+  // The audit log shows requests and commands on one timeline: a command line says what was run,
+  // this says which host it actually reached and which secret was attached on the way out.
+  recordSandboxProxyEvent(state.sandboxId, entry);
 };
 
 const applyCredential = (headers: http.IncomingHttpHeaders, integration: TResolvedIntegration) => {
@@ -157,7 +163,7 @@ export const startSandboxProxy = async (
   const ca = await createSandboxCa(sandboxId);
   const server = http.createServer();
 
-  const state: TSandboxProxyState = { server, port: 0, ca, integrations, log: [] };
+  const state: TSandboxProxyState = { sandboxId, server, port: 0, ca, integrations, log: [] };
 
   // Plain HTTP through a forward proxy arrives with an absolute URL.
   server.on("request", (req, res) => {

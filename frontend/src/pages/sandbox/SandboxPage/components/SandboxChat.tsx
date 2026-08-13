@@ -190,7 +190,7 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
   return (
     // Chat is its own page now, so it fills the viewport instead of sitting at a fixed height.
     // The offset covers the org header and the page title block above it.
-    <div className="flex h-[calc(100vh-14.5rem)] min-h-[420px] flex-col rounded-md border border-border bg-bunker-800">
+    <div className="flex h-[calc(100vh-18rem)] min-h-[420px] flex-col rounded-md border border-border bg-bunker-800">
       <div ref={scrollRef} className="thin-scrollbar flex-1 space-y-2.5 overflow-y-auto p-3">
         {turns.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center">

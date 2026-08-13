@@ -154,7 +154,9 @@ export const ensureSandboxImage = async (dockerfile: string) => {
 
   logger.info(`Building the sandbox image, which takes a minute on first use [image=${IMAGE}]`);
   // Built from stdin: the image installs packages and downloads gh, so it needs no build context.
-  await dockerOrThrow(["build", "-q", "-t", IMAGE, "-f", "-", "-"], "Building the sandbox image", {
+  // The trailing `-` already means "Dockerfile on stdin, no context"; adding `-f -` as well claims
+  // stdin twice and docker refuses.
+  await dockerOrThrow(["build", "-q", "-t", IMAGE, "-"], "Building the sandbox image", {
     stdin: dockerfile,
     timeoutMs: 10 * 60_000
   });
