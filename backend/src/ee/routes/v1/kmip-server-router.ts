@@ -34,13 +34,16 @@ const SanitizedKmipServerSchema = KmipServersSchema.pick({
 // The 1h floor catches accidents like "1m" (ms reads it as one minute, not one month) that
 // would otherwise have the server reissuing its certificate every few seconds forever.
 const MIN_TTL_MS = ms("1h");
-const ttlField = z.string().refine((val) => {
+const isTtlAtLeastFloor = (val: string) => {
   try {
     return ms(val) >= MIN_TTL_MS;
   } catch {
     return false;
   }
-}, "TTL must be a valid duration of at least 1 hour (e.g. 12h, 30d, 1y)");
+};
+const ttlField = z
+  .string()
+  .refine(isTtlAtLeastFloor, "TTL must be a valid duration of at least 1 hour (e.g. 12h, 30d, 1y)");
 
 // hostnamesOrIps is stored in a varchar(4096) column (matching the issued cert's altNames), so cap
 // the resolved SAN list there to surface a clean 400 instead of a DB "value too long" error.
@@ -588,6 +591,14 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
       // the server CN), so it's derived from the server name rather than being separately configurable.
       const resolvedCommonName = kmipServer.name;
       const resolvedTtl = kmipServer.ttl ?? "1y";
+      // The floor is only enforced on input, so a server configured before it existed can still
+      // hold a sub-hour TTL. Refuse here rather than hand the daemon a certificate it would spend
+      // the rest of its life reissuing.
+      if (!isTtlAtLeastFloor(resolvedTtl)) {
+        throw new BadRequestError({
+          message: `KMIP server certificate TTL '${resolvedTtl}' is below the 1 hour minimum. Update the server's TTL before connecting.`
+        });
+      }
       const resolvedKeyAlgorithm = (kmipServer.keyAlgorithm as CertKeyAlgorithm) ?? undefined;
 
       const configs = await server.services.kmip.registerServer({
