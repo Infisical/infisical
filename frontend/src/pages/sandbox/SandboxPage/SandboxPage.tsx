@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useParams, useSearch } from "@tanstack/react-router";
 import { PlayIcon, SquareIcon } from "lucide-react";
@@ -15,10 +16,11 @@ import {
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { SandboxStatus, useGetSandboxById, useSetSandboxPower } from "@app/hooks/api/sandboxes";
 
-import { AgentTab, IntegrationsTab, OverviewTab, PamAccountsTab } from "./components";
+import { AgentTab, IntegrationsTab, OverviewTab, PamAccountsTab, SandboxChat } from "./components";
 
 export enum SandboxTab {
   Overview = "overview",
+  Chat = "chat",
   Integrations = "integrations",
   Pam = "pam",
   Agent = "agent"
@@ -33,15 +35,32 @@ export const SandboxPage = () => {
 
   const isRunning = sandbox?.status === SandboxStatus.Running;
 
+  // Only starting gets the boot console; stopping is immediate and does not need narrating.
+  const [boot, setBoot] = useState<{
+    outcome: "success" | "error" | null;
+    errorMessage?: string;
+  } | null>(null);
+
   const handlePower = async () => {
     if (!sandbox) return;
 
-    const action = isRunning ? "stop" : "start";
-    await setPower.mutateAsync({ sandboxId: sandbox.id, action });
-    createNotification({
-      type: "success",
-      text: action === "start" ? "Sandbox started" : "Sandbox stopped"
-    });
+    if (isRunning) {
+      await setPower.mutateAsync({ sandboxId: sandbox.id, action: "stop" });
+      createNotification({ type: "success", text: "Sandbox stopped" });
+      return;
+    }
+
+    setBoot({ outcome: null });
+    try {
+      await setPower.mutateAsync({ sandboxId: sandbox.id, action: "start" });
+      setBoot({ outcome: "success" });
+    } catch (error) {
+      // MutationCache reports the failure globally already; this copy is only so the console can
+      // stop on the step that failed rather than closing and leaving the toast to explain it.
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data
+        ?.message;
+      setBoot({ outcome: "error", errorMessage: message });
+    }
   };
 
   if (isPending) {
@@ -112,10 +131,13 @@ export const SandboxPage = () => {
           </PageHeader>
 
           <div className="mt-4">
+            {tab === SandboxTab.Chat && <SandboxChat sandbox={sandbox} isRunning={isRunning} />}
             {tab === SandboxTab.Integrations && <IntegrationsTab sandbox={sandbox} />}
             {tab === SandboxTab.Pam && <PamAccountsTab sandbox={sandbox} />}
             {tab === SandboxTab.Agent && <AgentTab sandbox={sandbox} />}
-            {tab === SandboxTab.Overview && <OverviewTab sandbox={sandbox} />}
+            {tab === SandboxTab.Overview && (
+              <OverviewTab sandbox={sandbox} boot={boot} onBootSettled={() => setBoot(null)} />
+            )}
           </div>
         </div>
       </div>

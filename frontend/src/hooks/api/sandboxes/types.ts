@@ -60,18 +60,20 @@ export type TSandboxGrants = {
   pamAccountIds: string[];
 };
 
+export type TSandboxCatalogIntegration = {
+  type: SandboxIntegrationType;
+  name: string;
+  description: string;
+  hostnames: string[];
+  envVarName: string;
+  role: SandboxCredentialRole;
+  headerName: string;
+  headerPrefix: string;
+  cli: { name: string; binary: string } | null;
+};
+
 export type TSandboxCatalog = {
-  integrations: {
-    type: SandboxIntegrationType;
-    name: string;
-    description: string;
-    hostnames: string[];
-    envVarName: string;
-    role: SandboxCredentialRole;
-    headerName: string;
-    headerPrefix: string;
-    cli: { name: string; binary: string } | null;
-  }[];
+  integrations: TSandboxCatalogIntegration[];
   agents: {
     type: SandboxAgentType;
     name: string;

@@ -1,5 +1,13 @@
 import { useLocation } from "@tanstack/react-router";
-import { Box, FileText, KeyRound, LayoutDashboard, Server, Shield } from "lucide-react";
+import {
+  Box,
+  FileText,
+  KeyRound,
+  LayoutDashboard,
+  MessageSquare,
+  Server,
+  Shield
+} from "lucide-react";
 
 import { SidebarCollapsibleGroup } from "@app/components/v3";
 
@@ -47,7 +55,10 @@ export const SandboxNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu
     return <ProjectNavList items={PRODUCT_ITEMS} onSubmenuOpen={onSubmenuOpen} />;
   }
 
-  const overview = [buildTab(sandboxId, "Overview", LayoutDashboard, "overview", true)];
+  const overview = [
+    buildTab(sandboxId, "Overview", LayoutDashboard, "overview", true),
+    buildTab(sandboxId, "Chat", MessageSquare, "chat")
+  ];
   const configureItems = [
     buildTab(sandboxId, "Integrations", KeyRound, "integrations"),
     buildTab(sandboxId, "PAM Accounts", Server, "pam"),

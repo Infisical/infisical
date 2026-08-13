@@ -2,9 +2,12 @@ import { useEffect, useRef } from "react";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Terminal } from "@xterm/xterm";
+import { TerminalIcon } from "lucide-react";
 import { Readline } from "xterm-readline";
 
-import { execInSandbox } from "@app/hooks/api/sandboxes";
+import { execInSandbox, TSandbox } from "@app/hooks/api/sandboxes";
+
+import { SandboxBootConsole, TSandboxBoot } from "./SandboxBootConsole";
 
 import "@xterm/xterm/css/xterm.css";
 
@@ -12,6 +15,10 @@ type Props = {
   sandboxId: string;
   sandboxName: string;
   isRunning: boolean;
+  /** Set while a start is in flight, so the boot log takes this panel until the shell is up. */
+  boot: TSandboxBoot | null;
+  onBootSettled: () => void;
+  sandbox: TSandbox;
 };
 
 const THEME = {
@@ -41,11 +48,22 @@ const resolveErrorMessage = (error: unknown) => {
 const isSandboxStoppedError = (error: unknown) =>
   Boolean(resolveErrorMessage(error).includes("not running"));
 
-export const SandboxTerminal = ({ sandboxId, sandboxName, isRunning }: Props) => {
+export const SandboxTerminal = ({
+  sandboxId,
+  sandboxName,
+  isRunning,
+  boot,
+  onBootSettled,
+  sandbox
+}: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  // The boot log owns the panel first, so the terminal's container does not exist yet. isRunning
+  // usually flips to true while it is still showing, which means it cannot be the only trigger:
+  // the effect has to re-run when the log clears, or it mounts into nothing.
+  const isBooting = Boolean(boot);
 
   useEffect(() => {
-    if (!containerRef.current || !isRunning) return undefined;
+    if (!containerRef.current || !isRunning || isBooting) return undefined;
 
     // Scoped to this effect run, not a shared ref: a loop parked on an in-flight exec must not see a
     // later mount's flag and resume writing into a terminal that has already been disposed.
@@ -135,18 +153,27 @@ export const SandboxTerminal = ({ sandboxId, sandboxName, isRunning }: Props) =>
       resizeObserver.disconnect();
       terminal.dispose();
     };
-  }, [sandboxId, sandboxName, isRunning]);
+  }, [sandboxId, sandboxName, isRunning, isBooting]);
 
+  // The boot log owns this panel until the sequence settles, so starting reads as one console
+  // coming up rather than a separate surface appearing over the page.
+  if (boot) {
+    return <SandboxBootConsole sandbox={sandbox} boot={boot} onSettled={onBootSettled} />;
+  }
+
+  // Terminal black is for a console that exists. An empty panel takes the same surface as the agent
+  // panel beside it, otherwise it reads as a hole in the card rather than something not started yet.
   if (!isRunning) {
     return (
-      <div className="flex h-[380px] items-center justify-center rounded-md border border-border bg-[#111417]">
-        <p className="text-sm text-muted">Start the sandbox to open a shell.</p>
+      <div className="flex h-[380px] flex-col items-center justify-center gap-2 rounded-md border border-border bg-bunker-800 text-center">
+        <TerminalIcon className="size-6 text-muted" />
+        <p className="text-xs text-muted">Start the sandbox to open a shell.</p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-[#111417] p-2">
+    <div className="w-full min-w-0 overflow-hidden rounded-md border border-border bg-[#111417] p-2">
       <div
         ref={containerRef}
         className="h-[380px] [&_.xterm-viewport]:thin-scrollbar"

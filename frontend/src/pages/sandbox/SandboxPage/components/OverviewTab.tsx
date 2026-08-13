@@ -1,12 +1,5 @@
 import { ReactNode } from "react";
-import {
-  ActivityIcon,
-  BotIcon,
-  CpuIcon,
-  KeyRoundIcon,
-  MessageSquareIcon,
-  TerminalIcon
-} from "lucide-react";
+import { ActivityIcon, BotIcon, CpuIcon, KeyRoundIcon, TerminalIcon } from "lucide-react";
 
 import {
   Badge,
@@ -21,7 +14,7 @@ import {
 import { cn } from "@app/components/v3/utils";
 import { SandboxStatus, TSandbox } from "@app/hooks/api/sandboxes";
 
-import { SandboxChat } from "./SandboxChat";
+import { TSandboxBoot } from "./SandboxBootConsole";
 import { SandboxTerminal } from "./SandboxTerminal";
 
 type TStatVariant = "project" | "info" | "neutral";
@@ -74,7 +67,15 @@ const StatCard = ({
   </Card>
 );
 
-export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
+export const OverviewTab = ({
+  sandbox,
+  boot,
+  onBootSettled
+}: {
+  sandbox: TSandbox;
+  boot: TSandboxBoot | null;
+  onBootSettled: () => void;
+}) => {
   const isRunning = sandbox.status === SandboxStatus.Running;
   const { integrations, pamAccountIds } = sandbox.grants;
 
@@ -127,25 +128,8 @@ export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Agent</CardTitle>
-            <CardDescription>
-              Talk to the agent. It can use every CLI and database granted to this sandbox.
-            </CardDescription>
-            <CardAction>
-              <div className="flex size-9 items-center justify-center rounded-md border border-info/15 bg-info/10 text-info [&>svg]:size-5">
-                <MessageSquareIcon />
-              </div>
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            <SandboxChat sandbox={sandbox} isRunning={isRunning} />
-          </CardContent>
-        </Card>
-
-        <Card>
+      <div className="grid min-w-0 gap-4">
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Terminal</CardTitle>
             <CardDescription>
@@ -162,6 +146,9 @@ export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
               sandboxId={sandbox.id}
               sandboxName={sandbox.name}
               isRunning={isRunning}
+              boot={boot}
+              onBootSettled={onBootSettled}
+              sandbox={sandbox}
             />
           </CardContent>
         </Card>
