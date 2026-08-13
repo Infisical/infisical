@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { ActivityIcon, BotIcon, CpuIcon, KeyRoundIcon, TerminalIcon } from "lucide-react";
+import { ActivityIcon, BotIcon, CpuIcon, KeyRoundIcon } from "lucide-react";
 
 import {
   Badge,
@@ -14,8 +14,6 @@ import {
 import { cn } from "@app/components/v3/utils";
 import { SandboxStatus, TSandbox } from "@app/hooks/api/sandboxes";
 
-import { TSandboxBoot } from "./SandboxBootConsole";
-import { SandboxTerminal } from "./SandboxTerminal";
 
 type TStatVariant = "project" | "info" | "neutral";
 
@@ -67,15 +65,7 @@ const StatCard = ({
   </Card>
 );
 
-export const OverviewTab = ({
-  sandbox,
-  boot,
-  onBootSettled
-}: {
-  sandbox: TSandbox;
-  boot: TSandboxBoot | null;
-  onBootSettled: () => void;
-}) => {
+export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
   const isRunning = sandbox.status === SandboxStatus.Running;
   const { integrations, pamAccountIds } = sandbox.grants;
 
@@ -128,31 +118,6 @@ export const OverviewTab = ({
         />
       </div>
 
-      <div className="grid min-w-0 gap-4">
-        <Card className="min-w-0">
-          <CardHeader>
-            <CardTitle>Terminal</CardTitle>
-            <CardDescription>
-              A shell inside the sandbox. No credentials are present in this environment.
-            </CardDescription>
-            <CardAction>
-              <div className="flex size-9 items-center justify-center rounded-md border border-neutral/15 bg-neutral/10 text-neutral [&>svg]:size-5">
-                <TerminalIcon />
-              </div>
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            <SandboxTerminal
-              sandboxId={sandbox.id}
-              sandboxName={sandbox.name}
-              isRunning={isRunning}
-              boot={boot}
-              onBootSettled={onBootSettled}
-              sandbox={sandbox}
-            />
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 };

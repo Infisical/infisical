@@ -22,12 +22,14 @@ import {
   IntegrationsTab,
   OverviewTab,
   PamAccountsTab,
-  SandboxChat
+  SandboxChat,
+  TerminalTab
 } from "./components";
 
 export enum SandboxTab {
   Overview = "overview",
   Chat = "chat",
+  Terminal = "terminal",
   AuditLog = "audit-log",
   Integrations = "integrations",
   Pam = "pam",
@@ -64,7 +66,7 @@ export const SandboxPage = () => {
 
   // Leaving the tab abandons the narration; it must not be waiting when the user comes back.
   useEffect(() => {
-    if (tab !== SandboxTab.Overview) setBoot(null);
+    if (tab !== SandboxTab.Terminal) setBoot(null);
   }, [tab]);
 
   const handlePower = async () => {
@@ -158,12 +160,15 @@ export const SandboxPage = () => {
 
           <div className="mt-4">
             {tab === SandboxTab.Chat && <SandboxChat sandbox={sandbox} isRunning={isRunning} />}
+            {tab === SandboxTab.Terminal && (
+              <TerminalTab sandbox={sandbox} boot={boot} onBootSettled={() => setBoot(null)} />
+            )}
             {tab === SandboxTab.AuditLog && <AuditLogTab sandbox={sandbox} />}
             {tab === SandboxTab.Integrations && <IntegrationsTab sandbox={sandbox} />}
             {tab === SandboxTab.Pam && <PamAccountsTab sandbox={sandbox} />}
             {tab === SandboxTab.Agent && <AgentTab sandbox={sandbox} />}
             {tab === SandboxTab.Overview && (
-              <OverviewTab sandbox={sandbox} boot={boot} onBootSettled={() => setBoot(null)} />
+              <OverviewTab sandbox={sandbox} />
             )}
           </div>
         </div>

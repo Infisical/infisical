@@ -7,7 +7,8 @@ import {
   MessageSquare,
   ScrollText,
   Server,
-  Shield
+  Shield,
+  SquareTerminal
 } from "lucide-react";
 
 import { SidebarCollapsibleGroup } from "@app/components/v3";
@@ -59,6 +60,7 @@ export const SandboxNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu
   const overview = [
     buildTab(sandboxId, "Overview", LayoutDashboard, "overview", true),
     buildTab(sandboxId, "Chat", MessageSquare, "chat"),
+    buildTab(sandboxId, "Terminal", SquareTerminal, "terminal"),
     buildTab(sandboxId, "Audit Log", ScrollText, "audit-log")
   ];
   const configureItems = [
