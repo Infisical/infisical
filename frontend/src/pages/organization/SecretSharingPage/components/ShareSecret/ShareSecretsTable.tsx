@@ -9,6 +9,7 @@ import {
   Skeleton,
   Table,
   TableBody,
+  TableCell,
   TableHead,
   TableHeader,
   TableRow
@@ -62,9 +63,9 @@ export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
                 <TableRow key={`skeleton-${i}`}>
                   {Array.from({ length: 7 }).map((__, j) => (
                     // eslint-disable-next-line react/no-array-index-key
-                    <td key={`skeleton-cell-${j}`} className="px-3 py-3">
+                    <TableCell key={`skeleton-cell-${j}`}>
                       <Skeleton className="h-4 w-full" />
-                    </td>
+                    </TableCell>
                   ))}
                 </TableRow>
               ))}
