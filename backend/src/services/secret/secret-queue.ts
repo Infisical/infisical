@@ -1,5 +1,4 @@
 /* eslint-disable no-await-in-loop */
-import opentelemetry from "@opentelemetry/api";
 import { AxiosError } from "axios";
 import { randomUUID } from "crypto";
 import { Knex } from "knex";
@@ -25,6 +24,7 @@ import { getTimeDifferenceInSeconds, groupBy, isSamePath, unique } from "@app/li
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { highCardinalityMeter } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { createManySecretsRawFnFactory, updateManySecretsRawFnFactory } from "@app/services/secret/secret-fns";
@@ -199,7 +199,7 @@ export const secretQueueFactory = ({
   projectFolderGrantDAL,
   orgDAL
 }: TSecretQueueFactoryDep) => {
-  const integrationMeter = opentelemetry.metrics.getMeter("Integrations");
+  const integrationMeter = highCardinalityMeter("Integrations");
   const errorHistogram = integrationMeter.createHistogram("integration_secret_sync_errors", {
     description: "Integration secret sync errors",
     unit: "1"
@@ -401,6 +401,7 @@ export const secretQueueFactory = ({
       canExpandValue: () => true,
       actorOrgId: dto.orgId,
       orgDAL,
+      licenseService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService
@@ -453,6 +454,7 @@ export const secretQueueFactory = ({
       projectFolderGrantDAL,
       actorOrgId: dto.orgId,
       orgDAL,
+      licenseService,
       kmsService
     });
 

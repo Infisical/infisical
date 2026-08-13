@@ -317,7 +317,7 @@ export const gitHubAppServiceFactory = ({
       projectId: app.projectId,
       orgAction: OrgPermissionAppConnectionActions.Delete,
       projectAction: ProjectPermissionAppConnectionActions.Delete,
-      orgScope: OrganizationActionScope.ParentOrganization
+      orgScope: OrganizationActionScope.Any
     });
 
     // Resolve credentials up front — once the row is deleted the private key is gone and we can no
@@ -410,7 +410,7 @@ export const gitHubAppServiceFactory = ({
       projectId,
       orgAction: OrgPermissionAppConnectionActions.Create,
       projectAction: ProjectPermissionAppConnectionActions.Create,
-      orgScope: OrganizationActionScope.ParentOrganization
+      orgScope: OrganizationActionScope.Any
     });
 
     assertPlatformGitHubHostAllowed(githubHost);
@@ -541,7 +541,7 @@ export const gitHubAppServiceFactory = ({
         projectId,
         orgAction: OrgPermissionAppConnectionActions.Create,
         projectAction: ProjectPermissionAppConnectionActions.Create,
-        orgScope: OrganizationActionScope.ParentOrganization
+        orgScope: OrganizationActionScope.Any
       });
 
       const existingByName = await gitHubAppDAL.findOne({ orgId, projectId, name });

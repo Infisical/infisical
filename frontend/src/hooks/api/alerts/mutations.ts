@@ -33,7 +33,12 @@ export const useUpdateAlert = () => {
       const { data } = await apiRequest.patch<{ alert: TAlert }>(`/api/v1/alerts/${alertId}`, body);
       return data.alert;
     },
-    onSuccess: () => {
+    onSuccess: (updatedAlert) => {
+      // Patch cached lists in place so status indicators reflect the change immediately
+      // instead of showing stale state until the invalidation refetch completes.
+      queryClient.setQueriesData<TAlert[]>({ queryKey: alertKeys.all }, (alerts) =>
+        alerts?.map((alert) => (alert.id === updatedAlert.id ? updatedAlert : alert))
+      );
       queryClient.invalidateQueries({ queryKey: alertKeys.all });
     }
   });
@@ -60,7 +65,12 @@ export const useDeleteAlert = () => {
       );
       return data.alert;
     },
-    onSuccess: () => {
+    onSuccess: (deletedAlert) => {
+      // Drop the alert from cached lists immediately so the header status dot clears
+      // without waiting for the invalidation refetch.
+      queryClient.setQueriesData<TAlert[]>({ queryKey: alertKeys.all }, (alerts) =>
+        alerts?.filter((alert) => alert.id !== deletedAlert.id)
+      );
       queryClient.invalidateQueries({ queryKey: alertKeys.all });
     }
   });

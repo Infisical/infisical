@@ -157,7 +157,7 @@ const formSchema = z.object({
     .min(1, "Name is required")
     .max(100, "Name must be less than 100 characters")
     .regex(/^[a-z0-9-]+$/, "Name must contain only lowercase letters, numbers, and hyphens"),
-  description: z.string().max(500).optional(),
+  description: z.string().max(255).optional(),
   targets: z
     .string()
     .min(1, "At least one target is required")

@@ -13,6 +13,10 @@ export enum LoginMethod {
   OIDC = "oidc"
 }
 
+export enum SuperAdminErrorCode {
+  AuthMethodLockout = "SUPER_ADMIN_AUTH_METHOD_LOCKOUT"
+}
+
 export type TPasswordPolicyRequirement = {
   code: string;
   message: string;
@@ -74,14 +78,13 @@ export type TServerConfig = {
   defaultAuthOrgId: string | null;
   defaultAuthOrgAuthMethod?: string | null;
   defaultAuthOrgAuthEnforced?: boolean | null;
-  enabledLoginMethods: LoginMethod[];
+  enabledLoginMethods: LoginMethod[] | null;
   passwordPolicy: TPasswordPolicy;
   authConsentContent?: string;
   pageFrameContent?: string;
   invalidatingCache: boolean;
   envOverrides?: Record<string, string>;
   isPublicSecretSharingDisabled?: boolean;
-  licenseServerV2Enabled?: boolean;
   isCrossProjectSecretSharingEnabled?: boolean;
   // populated on self-hosted instances when a newer release than the running version exists
   latestAvailableVersion?: string | null;
@@ -91,6 +94,7 @@ export type TServerConfig = {
   trustSamlEmails?: boolean;
   trustLdapEmails?: boolean;
   trustOidcEmails?: boolean;
+  onboardingCompleted?: boolean;
   isSecretScanningDisabled?: boolean;
   kubernetesAutoFetchServiceAccountToken?: boolean;
   isMigrationModeOn?: boolean;
@@ -118,6 +122,7 @@ export type TCreateAdminUserDTO = {
   password: string;
   firstName: string;
   lastName?: string;
+  organizationName?: string;
 };
 
 export type AdminGetOrganizationsFilters = {

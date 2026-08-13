@@ -11,7 +11,8 @@ import { Input } from "./Input";
  * Use the native `type` attribute for browser-native UX (email keyboards, password
  * masking, native date pickers, file selectors). For labels, helper text, and
  * validation errors, compose with `Field` / `FieldLabel` / `FieldDescription` /
- * `FieldError` from `../Field` rather than re-inventing the layout.
+ * `FieldError` from `../Field` rather than re-inventing the layout. Input helper
+ * text inherits `FieldDescription`'s default animated-collapse behavior.
  *
  * The component fills its parent's width by design — let the parent (`Field`,
  * `FieldGroup`, or a custom container) decide how wide the input should be.

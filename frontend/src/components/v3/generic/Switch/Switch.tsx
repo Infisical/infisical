@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 import * as SwitchPrimitive from "@radix-ui/react-switch";
 import { cva, VariantProps } from "cva";
@@ -12,8 +10,8 @@ const switchVariants = cva(
     "outline-none after:absolute after:-inset-x-3 after:-inset-y-2",
     "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
     "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
-    "data-[size=default]:h-[18.4px] data-[size=default]:w-[32px]",
-    "data-[size=sm]:h-[14px] data-[size=sm]:w-[24px]",
+    "data-[size=default]:h-5 data-[size=default]:w-9",
+    "data-[size=sm]:h-4 data-[size=sm]:w-7",
     "border-border bg-transparent hover:border-foreground/25",
     "aria-invalid:border-destructive aria-invalid:ring-[3px] aria-invalid:ring-destructive/20",
     "dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
@@ -22,22 +20,22 @@ const switchVariants = cva(
     variants: {
       variant: {
         outline:
-          "data-[state=checked]:border-border data-[state=checked]:bg-foreground/10 data-[state=checked]:hover:bg-foreground/15 data-[state=checked]:hover:border-foreground/30",
+          "data-[state=checked]:border-foreground/10 data-[state=checked]:bg-foreground/25 data-[state=checked]:hover:border-foreground/15 data-[state=checked]:hover:bg-foreground/30",
         neutral:
-          "data-[state=checked]:border-neutral/25 data-[state=checked]:bg-neutral/10 data-[state=checked]:hover:bg-neutral/15 data-[state=checked]:hover:border-neutral/30",
+          "data-[state=checked]:border-neutral/10 data-[state=checked]:bg-neutral/25 data-[state=checked]:hover:border-neutral/15 data-[state=checked]:hover:bg-neutral/30",
         project:
-          "data-[state=checked]:border-project/25 data-[state=checked]:bg-project/10 data-[state=checked]:hover:bg-project/15 data-[state=checked]:hover:border-project/30",
-        org: "data-[state=checked]:border-org/25 data-[state=checked]:bg-org/10 data-[state=checked]:hover:bg-org/15 data-[state=checked]:hover:border-org/30",
+          "data-[state=checked]:border-project/10 data-[state=checked]:bg-project/25 data-[state=checked]:hover:border-project/15 data-[state=checked]:hover:bg-project/30",
+        org: "data-[state=checked]:border-org/10 data-[state=checked]:bg-org/25 data-[state=checked]:hover:border-org/15 data-[state=checked]:hover:bg-org/30",
         "sub-org":
-          "data-[state=checked]:border-sub-org/25 data-[state=checked]:bg-sub-org/10 data-[state=checked]:hover:bg-sub-org/15 data-[state=checked]:hover:border-sub-org/30",
+          "data-[state=checked]:border-sub-org/10 data-[state=checked]:bg-sub-org/25 data-[state=checked]:hover:border-sub-org/15 data-[state=checked]:hover:bg-sub-org/30",
         success:
-          "data-[state=checked]:border-success/25 data-[state=checked]:bg-success/10 data-[state=checked]:hover:bg-success/15 data-[state=checked]:hover:border-success/30",
-        info: "data-[state=checked]:border-info/25 data-[state=checked]:bg-info/10 data-[state=checked]:hover:bg-info/15 data-[state=checked]:hover:border-info/30",
+          "data-[state=checked]:border-success/10 data-[state=checked]:bg-success/25 data-[state=checked]:hover:border-success/15 data-[state=checked]:hover:bg-success/30",
+        info: "data-[state=checked]:border-info/10 data-[state=checked]:bg-info/25 data-[state=checked]:hover:border-info/15 data-[state=checked]:hover:bg-info/30",
         warning:
-          "data-[state=checked]:border-warning/25 data-[state=checked]:bg-warning/10 data-[state=checked]:hover:bg-warning/15 data-[state=checked]:hover:border-warning/30",
+          "data-[state=checked]:border-warning/10 data-[state=checked]:bg-warning/25 data-[state=checked]:hover:border-warning/15 data-[state=checked]:hover:bg-warning/30",
         danger:
-          "data-[state=checked]:border-danger/25 data-[state=checked]:bg-danger/10 data-[state=checked]:hover:bg-danger/15 data-[state=checked]:hover:border-danger/30",
-        pam: "data-[state=checked]:border-product-pam/25 data-[state=checked]:bg-product-pam/25 data-[state=checked]:hover:bg-product-pam/30 data-[state=checked]:hover:border-product-pam/30"
+          "data-[state=checked]:border-danger/10 data-[state=checked]:bg-danger/25 data-[state=checked]:hover:border-danger/15 data-[state=checked]:hover:bg-danger/30",
+        pam: "data-[state=checked]:border-product-pam/10 data-[state=checked]:bg-product-pam/25 data-[state=checked]:hover:border-product-pam/15 data-[state=checked]:hover:bg-product-pam/30"
       }
     },
     defaultVariants: {
@@ -48,12 +46,12 @@ const switchVariants = cva(
 
 const switchThumbVariants = cva(
   cn(
-    "pointer-events-none block rounded-full ring-0 transition-all",
+    "pointer-events-none block rounded-full shadow-xs ring-0 transition-all",
     "ml-0.5 group-data-[size=default]/switch:size-3.5 group-data-[size=sm]/switch:size-2.5",
     "group-data-[size=default]/switch:data-[state=unchecked]:translate-x-0",
-    "group-data-[size=default]/switch:data-[state=checked]:translate-x-[calc(100%-2px)]",
+    "group-data-[size=default]/switch:data-[state=checked]:translate-x-4",
     "group-data-[size=sm]/switch:data-[state=unchecked]:translate-x-0",
-    "group-data-[size=sm]/switch:data-[state=checked]:translate-x-[calc(100%-2px)]",
+    "group-data-[size=sm]/switch:data-[state=checked]:translate-x-3",
     "data-[state=unchecked]:border-foreground/5 data-[state=unchecked]:bg-foreground/15",
     "data-[state=unchecked]:group-hover/switch:bg-foreground/35",
     "data-[state=checked]:border-foreground/5 data-[state=checked]:bg-foreground/65",

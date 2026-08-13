@@ -58,6 +58,7 @@ import {
 import {
   DEFAULT_CRL_VALIDITY_DAYS,
   GENERAL_NAME_TYPES_WITH_OTHER_NAME,
+  PKI_TEXT_COLUMN_MAX_LENGTH,
   SUPPORTED_GENERAL_NAME_TYPES
 } from "../../certificate-common/certificate-constants";
 import { validatePqcLicense } from "../../certificate-common/certificate-utils";
@@ -347,6 +348,14 @@ export const internalCertificateAuthorityServiceFactory = ({
       province,
       locality
     });
+
+    // The composed DN is persisted in a varchar(255) column, so bounding each subject attribute on its
+    // own is not enough — the escaped RFC 4514 string has to fit too.
+    if (dn.length > PKI_TEXT_COLUMN_MAX_LENGTH) {
+      throw new BadRequestError({
+        message: `The combined subject (${dn.length} characters) cannot exceed ${PKI_TEXT_COLUMN_MAX_LENGTH} characters. Shorten the commonName, organization, ou, country, province, or locality fields.`
+      });
+    }
 
     const alg = keyAlgorithmToAlgCfg(keyAlgorithm);
 
@@ -2680,11 +2689,22 @@ export const internalCertificateAuthorityServiceFactory = ({
       return newCert;
     };
 
+    // Everything above this point is reads, CA key access and signing, and deliberately runs with no
+    // transaction open. Only the writes below take a connection, so a caller can get atomic issuance
+    // without pinning one across the KMS/HSM round trips.
+    const persist = async (transaction: Knex) => {
+      const newCert = await createSignedCert(transaction);
+      if (dto.onPersisted) {
+        await dto.onPersisted(newCert, transaction);
+      }
+      return newCert;
+    };
+
     let cert;
     if (tx) {
-      cert = await createSignedCert(tx);
+      cert = await persist(tx);
     } else {
-      cert = await certificateDAL.transaction(createSignedCert);
+      cert = await certificateDAL.transaction(persist);
     }
 
     usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);

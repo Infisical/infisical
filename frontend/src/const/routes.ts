@@ -400,16 +400,6 @@ export const ROUTE_PATHS = Object.freeze({
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing"
     )
   },
-  Ssh: {
-    SshCaByIDPage: setRoute(
-      "/organizations/$orgId/projects/ssh/$projectId/ca/$caId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId/_ssh-layout/ca/$caId"
-    ),
-    SshHostGroupDetailsByIDPage: setRoute(
-      "/organizations/$orgId/projects/ssh/$projectId/ssh-host-groups/$sshHostGroupId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId/_ssh-layout/ssh-host-groups/$sshHostGroupId"
-    )
-  },
   SecretScanning: {
     DataSourceByIdPage: setRoute(
       "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources/$type/$dataSourceId",

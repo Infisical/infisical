@@ -1,10 +1,13 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
+
+const DIALOG_CONTENT_WIDTH_CLASSNAME = "w-[calc(100%-2rem)] max-w-lg";
+
+const isAllowedOutsideInteraction = (target: EventTarget | null) =>
+  Boolean((target as HTMLElement)?.closest?.("[data-sonner-toast], .react-select-menu-portal"));
 
 function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />;
@@ -43,6 +46,7 @@ function DialogContent({
   children,
   showCloseButton = true,
   onPointerDownOutside,
+  onInteractOutside,
   overlayClassName,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
@@ -55,16 +59,23 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border border-border bg-popover p-6 text-foreground shadow-lg duration-200 outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+          "fixed top-[50%] left-[50%] z-50 flex max-h-[calc(100dvh-2rem)] thin-scrollbar translate-x-[-50%] translate-y-[-50%] flex-col gap-4 overflow-y-auto rounded-lg border border-border bg-popover p-6 text-foreground shadow-lg duration-200 outline-none has-data-[slot=dialog-footer]:pb-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+          DIALOG_CONTENT_WIDTH_CLASSNAME,
           className
         )}
         onPointerDownOutside={(e) => {
-          // Keep the dialog open when a toast rendered above it is clicked.
-          if ((e.target as HTMLElement)?.closest?.("[data-sonner-toast]")) {
+          if (isAllowedOutsideInteraction(e.target)) {
             e.preventDefault();
             return;
           }
           onPointerDownOutside?.(e);
+        }}
+        onInteractOutside={(e) => {
+          if (isAllowedOutsideInteraction(e.target)) {
+            e.preventDefault();
+            return;
+          }
+          onInteractOutside?.(e);
         }}
         {...props}
       >
@@ -87,7 +98,17 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2 text-center sm:text-left", className)}
+      className={cn("flex shrink-0 flex-col gap-2 text-left", className)}
+      {...props}
+    />
+  );
+}
+
+function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="dialog-body"
+      className={cn("min-h-0 thin-scrollbar min-w-0 flex-1 overflow-y-auto", className)}
       {...props}
     />
   );
@@ -97,7 +118,10 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-footer"
-      className={cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end", className)}
+      className={cn(
+        "sticky bottom-0 z-10 -mx-6 flex shrink-0 flex-row flex-wrap justify-end gap-2 rounded-b-lg border-t border-border bg-container p-4",
+        className
+      )}
       {...props}
     />
   );
@@ -128,6 +152,8 @@ function DialogDescription({
 
 export {
   Dialog,
+  DIALOG_CONTENT_WIDTH_CLASSNAME,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,

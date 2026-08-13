@@ -31,6 +31,7 @@ export enum PkiApplicationResourceActions {
   SyncCertificates = "sync-certificates",
   ImportCertificates = "import-certificates",
   RemoveCertificates = "remove-certificates",
+  SetPostSyncCommand = "set-post-sync-command",
   RevealAcmeEabSecret = "reveal-acme-eab-secret",
   RotateAcmeEabSecret = "rotate-acme-eab-secret",
   GenerateScepChallenge = "generate-scep-challenge",

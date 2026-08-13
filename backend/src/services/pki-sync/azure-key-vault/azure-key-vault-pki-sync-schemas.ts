@@ -3,9 +3,10 @@ import { z } from "zod";
 import { isValidAzureKeyVaultUrl } from "@app/lib/validator";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import { PkiSyncSchema, PostSyncCommandSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { AZURE_KEY_VAULT_CERTIFICATE_NAMING } from "./azure-key-vault-pki-sync-constants";
 
@@ -20,6 +21,7 @@ export const AzureKeyVaultPkiSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
   includeRootCa: z.boolean().default(false),
   enableVersioning: z.boolean().default(true),
+  postSyncCommand: PostSyncCommandSchema,
   certificateNameSchema: z
     .string()
     .trim()
@@ -53,7 +55,7 @@ export const AzureKeyVaultPkiSyncSchema = PkiSyncSchema.extend({
 
 export const CreateAzureKeyVaultPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AzureKeyVaultPkiSyncConfigSchema,
   syncOptions: AzureKeyVaultPkiSyncOptionsSchema,
@@ -66,7 +68,7 @@ export const CreateAzureKeyVaultPkiSyncSchema = z.object({
 
 export const UpdateAzureKeyVaultPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: AzureKeyVaultPkiSyncConfigSchema.optional(),
   syncOptions: AzureKeyVaultPkiSyncOptionsSchema.optional(),

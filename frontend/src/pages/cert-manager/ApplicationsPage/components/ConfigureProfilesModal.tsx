@@ -91,7 +91,7 @@ export const ConfigureProfilesModal = ({ application, isOpen, onOpenChange }: Pr
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md overflow-visible">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Configure Profiles</DialogTitle>
           <DialogDescription>

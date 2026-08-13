@@ -4,6 +4,9 @@ sidebarTitle: "Windows Server"
 description: "Deploy certificates to Windows servers over WinRM."
 ---
 
+import PostSyncCommandVariables from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-variables.mdx";
+import PostSyncCommandFlow from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-flow.mdx";
+
 Deploy certificates from Infisical to a directory on a Windows server over WinRM. Files are written atomically so a reader never sees a partially written certificate or key.
 
 <Info>
@@ -13,7 +16,7 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
 ## Prerequisites
 
 - A [Windows (WinRM) Connection](/integrations/app-connections/winrm) with access to the target server
-- An [Infisical Gateway](/documentation/platform/gateways/overview) that can reach the server. Windows delivery always runs through the Gateway.
+- An [Infisical Gateway](/documentation/platform/gateways/overview) that can reach the server. Windows delivery always runs through the Gateway. A [post-sync command](#post-sync-commands) additionally needs the Gateway to be running Infisical CLI v0.43.120 or later.
 - The connection user must be able to write to the destination directory
 
 <Note>
@@ -44,13 +47,16 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
             - **Certificate Name Schema**: The base file name, using placeholders such as `{{commonName}}`, `{{certificateId}}`, or `{{shortCertificateId}}`. The export format adds the extension. A schema with no placeholder can be linked to only one certificate.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
-        5. Configure the **Details**:
+        5. Configure the **Post-Sync Command**, or leave it empty:
+            - **Command**: A PowerShell command run on the server after the sync delivers a certificate, so the service that uses it picks up the new file, for example `Restart-Service -Name "W3SVC"`. [Post-Sync Commands](#post-sync-commands) covers the available variables and what happens when the command fails.
+
+        6. Configure the **Details**:
             - **Name**: The name of your sync.
             - **Description**: Optional description.
 
-        6. Select which certificates should be synced.
+        7. Select which certificates should be synced.
 
-        7. Review and click **Create Sync**.
+        8. Review and click **Create Sync**.
     </Tab>
     <Tab title="API">
         To create a **Windows Server Certificate Sync**, make an API request to the [Create Windows Server PKI Sync](/api-reference/endpoints/pki/syncs/windows-server/create) endpoint.
@@ -74,7 +80,8 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
             "syncOptions": {
                 "exportFormat": "pkcs12",
                 "canRemoveCertificates": true,
-                "certificateNameSchema": "{{commonName}}"
+                "certificateNameSchema": "{{commonName}}",
+                "postSyncCommand": "Restart-Service -Name W3SVC"
             },
             "destinationConfig": {
                 "destinationPath": "C:\\certs"
@@ -112,6 +119,86 @@ When syncing certificates, Infisical asks the Gateway to open a WinRM session to
 
 When certificate removal is enabled and a certificate is removed from the sync, revoked, or expired, Infisical deletes exactly the files it delivered for that certificate.
 
+## Post-Sync Commands
+
+Delivering a `.pfx` to `C:\certs` does not make IIS or a service use it. A post-sync command is that last step, run for you right after the files land.
+
+Set one command on the sync. The Gateway runs it as PowerShell on the target server, once per sync run that delivers at least one file. Leaving the field empty means nothing runs, so there is no separate toggle. If a sync run does not complete, Infisical may attempt it again and the command runs with it, so prefer a command that is safe to run more than once.
+
+The field accepts a whole script, so several steps can run in one go: put each on its own line.
+
+Your Gateway runs the command, never Infisical. A WinRM Connection already requires a gateway, so nothing extra is needed here.
+
+<Note>
+  The Gateway must be running Infisical CLI **v0.43.120 or later**. An earlier Gateway has no PowerShell run-command endpoint and rejects the request. Run `infisical --version` on the Gateway host to check, and see [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for how to upgrade.
+</Note>
+
+<PostSyncCommandFlow />
+
+### Setting a Command
+
+<Steps>
+  <Step title="Open the sync's Post-Sync Command step">
+    Edit the sync and select **Post-Sync Command**.
+  </Step>
+  <Step title="Write the command">
+    Use a variable wherever you need a value from the run. Typing `{{` in the command field lists the ones available for this sync, so you can pick one instead of remembering the name:
+
+    ```powershell
+    Import-PfxCertificate -FilePath {{certificatePath}} -CertStoreLocation Cert:\LocalMachine\My -Password (ConvertTo-SecureString {{pkcs12Password}} -AsPlainText -Force)
+    ```
+  </Step>
+  <Step title="Save and trigger a sync">
+    Save the sync, then trigger it. If the command fails, the reason appears as the sync's last error.
+  </Step>
+</Steps>
+
+### Available Variables
+
+<PostSyncCommandVariables />
+
+### Length Limit
+
+A command is limited to 2048 characters. Windows caps a command line at 8191 characters and the command is sent to PowerShell encoded, which expands it, so the substituted values count against the same budget. If a long command combined with a sync that delivers many certificates does not fit, the sync reports it clearly. Move the logic into a script file on the server and call that script instead.
+
+### Post-Sync Command FAQ
+
+<AccordionGroup>
+  <Accordion title="When exactly does the command run?">
+    After every file in the run has been delivered and after any removals, so the server is in its final state before the service restarts. A run that delivers nothing runs nothing. Renewals, adding a certificate, and a manual trigger all deliver files, so all three run the command. Removing a certificate from the sync does not.
+  </Accordion>
+  <Accordion title="What happens if the command fails?">
+    The sync is marked failed and the reason appears as the sync's last error. The delivered files stay in place, because they were written before the command ran. A silent failure is reported as a failure: the script stops on the first error, and a native command's own non-zero exit code is passed through. A command that fails is reported, not repeated.
+
+    To fail the sync deliberately, use `throw "reason"`. Avoid `exit`: PowerShell stops the script there before it can report its result, so the sync is failed with a message saying the outcome could not be read rather than with your reason.
+  </Accordion>
+  <Accordion title="Can I run several commands, and what happens if one of them fails?">
+    Yes, write one per line.
+
+    A failing **cmdlet** (`Copy-Item`, `Restart-Service`, and so on) stops the script and fails the sync wherever it appears, because the script runs with `$ErrorActionPreference` set to `Stop`. A failing **external executable** is different: only the last statement decides the outcome, so an earlier `.exe` that fails is not noticed. That is deliberate, because a non-zero exit is routine for some tools (`findstr` returns 1 when nothing matched, `robocopy` returns 1 when it copied files) and those should not fail a sync. Check the ones you care about yourself:
+
+    ```powershell
+    netsh.exe http show sslcert
+    if ($LASTEXITCODE -ne 0) { throw "netsh failed with $LASTEXITCODE" }
+    Restart-Service -Name W3SVC
+    ```
+  </Accordion>
+  <Accordion title="Can the command run twice for the same certificate?">
+    Yes, in some cases. If a sync run does not complete, Infisical may attempt it again, and the command runs as part of that attempt. Prefer a command that is safe to run more than once. A service restart is.
+  </Accordion>
+  <Accordion title="Is there a time limit?">
+    Yes, 30 seconds, enforced by the Gateway. A command that needs longer should start the work in the background or live in a script on the server.
+  </Accordion>
+</AccordionGroup>
+
+### Least Privilege
+
+The command runs as the account the WinRM Connection authenticates with, so constraining that account bounds what any command can do. Restarting one service does not need an administrator. Grant the connection account start and stop rights on that single service instead of making it a local administrator.
+
+Binding a certificate to an HTTPS port in IIS is the exception: HTTP.sys requires a local administrator and the right cannot be delegated. Because a local administrator can do anything on the host, handle that case with a dedicated, clearly labeled sync rather than raising the privileges of a sync that only needs to deliver files and restart a service. Infisical does not block an administrator credential on a standard sync, so this is a recommendation you enforce with how you configure the connection.
+
+Anyone who can edit the sync can change the command, so treat edit access to these syncs as access to the target server.
+
 ## Security
 
 Delivery runs over the Gateway inside your network, so traffic never crosses the public internet, and the certificate stays encrypted in transit in both connection modes:
@@ -136,9 +223,11 @@ These are IIS requirements, configured once on the Windows host (the CCS feature
 
 ## FAQ
 
-<Accordion title="Can I import certificates from a Windows server back into Infisical?">
-  No. The Windows Server sync only delivers certificates to the server. It does not read certificates back into Infisical.
-</Accordion>
+<AccordionGroup>
+  <Accordion title="Can I import certificates from a Windows server back into Infisical?">
+    No. The Windows Server sync only delivers certificates to the server. It does not read certificates back into Infisical.
+  </Accordion>
+</AccordionGroup>
 
 ## What's Next?
 

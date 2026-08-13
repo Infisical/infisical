@@ -25,7 +25,6 @@ func TestBuildProjectPermissionRules_BuiltinRoles(t *testing.T) {
 		{"member", project.RoleMember, len(project.MemberPermissions)},
 		{"viewer", project.RoleViewer, len(project.ViewerPermissions)},
 		{"no-access", project.RoleNoAccess, 0},
-		{"ssh-host-bootstrapper", project.RoleSshHostBootstrapper, len(project.SshHostBootstrapPermissions)},
 		{"cryptographic-operator", project.RoleKmsCryptographicOperator, len(project.CryptographicOperatorPermissions)},
 	}
 
@@ -133,11 +132,11 @@ func TestBuildProjectPermissionRules_MultipleRolesMerge(t *testing.T) {
 
 	roles := []roleWithPermissions{
 		{Role: project.RoleViewer},
-		{Role: project.RoleSshHostBootstrapper},
+		{Role: project.RoleKmsCryptographicOperator},
 	}
 	rules, errs := buildProjectPermissionRules(roles)
 
-	expectedLen := len(project.ViewerPermissions) + len(project.SshHostBootstrapPermissions)
+	expectedLen := len(project.ViewerPermissions) + len(project.CryptographicOperatorPermissions)
 	assert.Len(t, rules, expectedLen, "rules from multiple roles must be merged")
 	assert.Empty(t, errs)
 }

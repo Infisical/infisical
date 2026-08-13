@@ -15,14 +15,15 @@ export const resolvePamSessionDistinctId = async ({
   session,
   userDAL
 }: {
-  session: { actorEmail: string; userId?: string | null };
+  session: { actorEmail: string; actorName?: string | null; userId?: string | null };
   userDAL: Pick<TUserDALFactory, "findById">;
 }) => {
   if (session.userId) {
     const user = await userDAL.findById(session.userId);
     if (user?.username) return user.username;
   }
-  return session.actorEmail;
+  // Machine identity sessions have no email; fall back to the identity name
+  return session.actorEmail || session.actorName || "unknown";
 };
 
 export const reportPamSessionEnded = async ({

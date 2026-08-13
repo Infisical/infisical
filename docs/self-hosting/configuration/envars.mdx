@@ -372,6 +372,9 @@ ClickHouse can be used as an alternative audit log storage backend for high-volu
 
 Redis is used for caching and background tasks. You can use either a standalone Redis instance, Redis Sentinel, or Redis Cluster setup.
 
+Redis is required: the instance will not start unless one of `REDIS_URL`, `REDIS_SENTINEL_HOSTS`, or
+`REDIS_CLUSTER_HOSTS` is set.
+
 <Info>
 An **active-passive** setup is recommended for Redis. Infisical has not been tested with an **active-active** Redis setup, which may result in undocumented behavior.
 </Info>
@@ -983,6 +986,89 @@ You can configure third-party app connections for re-use across Infisical Projec
   </ParamField>
 </Accordion>
 
+<Accordion title="Scan limits">
+  These bound the resources a single scan can consume. The defaults only trip on outliers — a
+  repository large enough to exhaust a worker — so most deployments never need to change them.
+
+<Note>
+  The limits apply from the release that introduces them, on existing instances too. A repository
+  above `SECRET_SCANNING_MAX_REPO_SIZE_MB` that scanned before the upgrade is now rejected — before
+  cloning when the provider reports a size, otherwise once the clone is measured on disk — and the
+  scanner runs under a memory ceiling it previously did not have. If you scan repositories larger
+  than the defaults, raise both values or set them to `0` for the previous unbounded behaviour.
+</Note>
+
+{" "}
+
+<ParamField
+  query="SECRET_SCANNING_SCAN_TIMEOUT_MS"
+  type="number"
+  default="600000"
+  optional
+>
+  How long, in milliseconds, a single scan may run before it is cancelled and
+  the scan is marked failed. Defaults to `600000` (10 minutes).
+</ParamField>
+
+{" "}
+
+<ParamField
+  query="SECRET_SCANNING_CLONE_TIMEOUT_MS"
+  type="number"
+  default="600000"
+  optional
+>
+  How long, in milliseconds, cloning a repository may take before it is
+  cancelled and the scan is marked failed. Defaults to `600000` (10 minutes).
+</ParamField>
+
+{" "}
+
+<ParamField
+  query="SECRET_SCANNING_MEMORY_LIMIT_MB"
+  type="number"
+  default="2048"
+  optional
+>
+  Soft memory ceiling for the scanner process, in MB. It collects garbage more
+  aggressively as it approaches this limit rather than growing. Defaults to
+  `2048` (2 GB). Set to `0` to disable.
+</ParamField>
+
+{" "}
+
+<ParamField
+  query="SECRET_SCANNING_CPU_THREADS"
+  type="number"
+  default="1"
+  optional
+>
+  Maximum CPU threads a scan may use, applied to both the scanner process and
+  the repository clone. Scans share the instance with the API, so raising this
+  makes scans faster at the cost of API responsiveness during a scan. Defaults
+  to `1`. Set to `0` to remove the cap.
+</ParamField>
+
+{" "}
+
+<ParamField
+  query="SECRET_SCANNING_MAX_REPO_SIZE_MB"
+  type="number"
+  default="5120"
+  optional
+>
+  Repositories larger than this many MB are rejected instead of scanned.
+  Defaults to `5120` (5 GB). Set to `0` to disable.
+</ParamField>
+
+  <ParamField query="SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS" type="number" default="3600000" optional>
+    How long, in milliseconds, a scan may stay in progress before it is assumed dead — its worker
+    was killed — and marked failed. Defaults to `3600000` (1 hour). Must exceed the clone and scan
+    timeouts plus the time a scan spends measuring the repository and writing its results; the
+    server refuses to start otherwise.
+  </ParamField>
+</Accordion>
+
 ## Observability
 
 You can configure Infisical to collect and expose telemetry data for analytics and monitoring.
@@ -1017,7 +1103,7 @@ If the export type is set to `otlp`, you will have to configure a value for `OTE
 </ParamField>
 
 <ParamField query="OTEL_DROP_HIGH_CARDINALITY_METERS" type="string" default="false" optional>
-  When set to `true`, the SDK discards all data points from the high-cardinality, per-actor `Infisical`, `API`, `SecretSyncs`, `PkiSyncs`, and `Integrations` meters before aggregation. The instruments still exist in code (no errors), but nothing is stored or exported. Only bounded-cardinality `InfisicalCore` metrics are emitted. Useful for large or multi-tenant deployments where per-actor label cardinality is too expensive. See [Monitoring & Telemetry](/self-hosting/guides/monitoring-telemetry#available-metrics) for details.
+  When set to `true`, Infisical stops recording the high-cardinality, per-actor `Infisical`, `API`, `SecretSyncs`, `PkiSyncs`, and `Integrations` meters. Nothing is measured, exported, or held in memory for them. Only bounded-cardinality `InfisicalCore` metrics are emitted. Recommended when those meters are enabled with `OTEL_EXPORT_TYPE=prometheus` and label combinations turn over often (many secret paths, source IPs, or clients), because memory then grows with uptime until the process restarts. See [Monitoring & Telemetry](/self-hosting/guides/monitoring-telemetry#available-metrics) for details.
 </ParamField>
 
 ## Identity Auth Method

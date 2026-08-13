@@ -84,6 +84,7 @@ export enum ProjectPermissionIdentityActions {
   AssignAdditionalPrivileges = "assign-additional-privileges",
   AssumePrivileges = "assume-privileges",
   RevokeAuth = "revoke-auth",
+  EditAuth = "edit-auth",
   CreateToken = "create-token",
   GetToken = "get-token",
   DeleteToken = "delete-token"
@@ -107,14 +108,6 @@ export enum ProjectPermissionGroupActions {
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
   AssignRole = "assign-role"
-}
-
-export enum ProjectPermissionSshHostActions {
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete",
-  IssueHostCert = "issue-host-cert"
 }
 
 export enum ProjectPermissionPkiTemplateActions {
@@ -176,7 +169,8 @@ export enum ProjectPermissionPkiSyncActions {
   Delete = "delete",
   SyncCertificates = "sync-certificates",
   ImportCertificates = "import-certificates",
-  RemoveCertificates = "remove-certificates"
+  RemoveCertificates = "remove-certificates",
+  SetPostSyncCommand = "set-post-sync-command"
 }
 
 export enum ProjectPermissionPkiDiscoveryActions {
@@ -273,14 +267,6 @@ export enum ProjectPermissionInsightsActions {
   DeleteReport = "delete-report"
 }
 
-export enum ProjectPermissionMcpEndpointActions {
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete",
-  Connect = "connect"
-}
-
 export enum ProjectPermissionHoneyTokenActions {
   Read = "read",
   ReadCredentials = "read-credentials",
@@ -348,11 +334,6 @@ export enum ProjectPermissionSub {
   CertificateAuthorities = "certificate-authorities",
   Certificates = "certificates",
   CertificateTemplates = "certificate-templates",
-  SshCertificateAuthorities = "ssh-certificate-authorities",
-  SshCertificates = "ssh-certificates",
-  SshCertificateTemplates = "ssh-certificate-templates",
-  SshHosts = "ssh-hosts",
-  SshHostGroups = "ssh-host-groups",
   PkiSubscribers = "pki-subscribers",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
@@ -377,9 +358,6 @@ export enum ProjectPermissionSub {
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   ProjectFolderGrant = "project-folder-grant",
-  McpEndpoints = "mcp-endpoints",
-  McpServers = "mcp-servers",
-  McpActivityLogs = "mcp-activity-logs",
   HoneyTokens = "honey-tokens",
   ProxiedServices = "proxied-services",
   Insights = "insights"
@@ -419,6 +397,7 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
     ],
     [ProjectPermissionIdentityActions.AssumePrivileges]: ["identityId"],
     [ProjectPermissionIdentityActions.RevokeAuth]: ["identityId"],
+    [ProjectPermissionIdentityActions.EditAuth]: ["identityId"],
     [ProjectPermissionIdentityActions.CreateToken]: ["identityId"],
     [ProjectPermissionIdentityActions.GetToken]: ["identityId"],
     [ProjectPermissionIdentityActions.DeleteToken]: ["identityId"]
@@ -503,10 +482,6 @@ export type GroupSubjectFields = {
   assignableRole?: string;
 };
 
-export type SshHostSubjectFields = {
-  hostname: string;
-};
-
 export type PkiTemplateSubjectFields = {
   name: string;
   // (dangtony98): consider adding [commonName] as a subject field in the future
@@ -544,10 +519,6 @@ export type CertificatePolicySubjectFields = {
 
 export type AppConnectionSubjectFields = {
   connectionId: string;
-};
-
-export type McpEndpointSubjectFields = {
-  name: string;
 };
 
 export type HoneyTokenSubjectFields = {
@@ -649,13 +620,6 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.CertificateTemplates> & PkiTemplateSubjectFields)
       )
     ]
-  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
-  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
-  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
-  | [
-      ProjectPermissionSshHostActions,
-      ProjectPermissionSub.SshHosts | (ForcedSubject<ProjectPermissionSub.SshHosts> & SshHostSubjectFields)
-    ]
   | [
       ProjectPermissionPkiSubscriberActions,
       (
@@ -663,7 +627,6 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.PkiSubscribers> & PkiSubscriberSubjectFields)
       )
     ]
-  | [ProjectPermissionActions, ProjectPermissionSub.SshHostGroups]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateInventoryViews]
@@ -697,10 +660,6 @@ export type ProjectPermissionSet =
     ]
   | [ProjectPermissionHsmConnectorActions, ProjectPermissionSub.HsmConnectors]
   | [
-      ProjectPermissionMcpEndpointActions,
-      ProjectPermissionSub.McpEndpoints | (ForcedSubject<ProjectPermissionSub.McpEndpoints> & McpEndpointSubjectFields)
-    ]
-  | [
       ProjectPermissionHoneyTokenActions,
       ProjectPermissionSub.HoneyTokens | (ForcedSubject<ProjectPermissionSub.HoneyTokens> & HoneyTokenSubjectFields)
     ]
@@ -711,8 +670,6 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.ProxiedServices> & ProxiedServiceSubjectFields)
       )
     ]
-  | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
-  | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs]
   | [
       ProjectPermissionCertificateProfileActions,
       (
@@ -1243,37 +1200,6 @@ const GroupConditionSchema = z
   })
   .partial();
 
-const SshHostConditionSchema = z
-  .object({
-    hostname: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
-        })
-        .partial()
-    ])
-  })
-  .partial();
-
-const McpEndpointConditionSchema = z
-  .object({
-    name: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
-        })
-        .partial()
-    ])
-  })
-  .partial();
-
 const PkiSubscriberConditionSchema = z
   .object({
     name: z.union([
@@ -1540,34 +1466,6 @@ const GeneralPermissionSchema = [
     )
   }),
   z.object({
-    subject: z
-      .literal(ProjectPermissionSub.SshCertificateAuthorities)
-      .describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.SshCertificates).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z
-      .literal(ProjectPermissionSub.SshCertificateTemplates)
-      .describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.SshHostGroups).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
     subject: z.literal(ProjectPermissionSub.PkiAlerts).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
@@ -1678,28 +1576,6 @@ const GeneralPermissionSchema = [
     )
   }),
   z.object({
-    subject: z.literal(ProjectPermissionSub.McpEndpoints).describe("The entity this permission pertains to."),
-    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionMcpEndpointActions).describe(
-      "Describe what action an entity can take."
-    ),
-    conditions: McpEndpointConditionSchema.describe(
-      "When specified, only matching conditions will be allowed to access given resource."
-    ).optional()
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.McpServers).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.McpActivityLogs).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    )
-  }),
-  z.object({
     subject: z.literal(ProjectPermissionSub.HoneyTokens).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionHoneyTokenActions).describe(
@@ -1783,6 +1659,38 @@ export const ProjectPermissionV1Schema = z.discriminatedUnion("subject", [
   ...GeneralPermissionSchema
 ]);
 
+// DEPRECATED, tolerated write vocabulary for removed products (SSH, Agent Sentinel).
+//
+// The products were removed in ENG-5432, but permission JSON stored in customer
+// databases (custom roles, user/identity additional privileges, project templates)
+// and enumerated in API/Terraform configs can still carry these subjects. This
+// schema validates every permission write, so rejecting them would 422 any
+// read-modify-write client that round-trips a stale rule (e.g. the Terraform
+// project-template resource re-sends server-read roles on unrelated edits).
+//
+// These entries accept the historical vocabulary and grant nothing: no enforcement
+// code checks these subjects anymore, so matching CASL rules are inert. Do not add
+// new consumers. Remove this block together with a data migration that scrubs the
+// subjects from stored permission JSON in a future breaking release.
+const DeprecatedRemovedSubjectActionSchema = z
+  .union([z.string().trim().min(1).max(64), z.string().trim().min(1).max(64).array().min(1)])
+  .transform((el) => (typeof el === "string" ? [el] : el));
+
+const buildDeprecatedRemovedSubjectSchema = <T extends string>(subject: T) =>
+  z.object({
+    subject: z
+      .literal(subject)
+      .describe("DEPRECATED. The entity belonged to a removed product; accepted for backwards compatibility."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: DeprecatedRemovedSubjectActionSchema.describe(
+      "DEPRECATED. Accepted for backwards compatibility; grants nothing."
+    ),
+    conditions: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .describe("DEPRECATED. Accepted for backwards compatibility; ignored.")
+  });
+
 export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.Secrets).describe("The entity this permission pertains to."),
@@ -1831,16 +1739,6 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "Describe what action an entity can take."
     ),
     conditions: IdentityManagementConditionSchema.describe(
-      "When specified, only matching conditions will be allowed to access given resource."
-    ).optional()
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.SshHosts).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSshHostActions).describe(
-      "Describe what action an entity can take."
-    ),
-    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    conditions: SshHostConditionSchema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),
@@ -1946,6 +1844,16 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),
+  // DEPRECATED removed-product subjects, accepted but inert (see comment on
+  // buildDeprecatedRemovedSubjectSchema above).
+  buildDeprecatedRemovedSubjectSchema("ssh-certificate-authorities"),
+  buildDeprecatedRemovedSubjectSchema("ssh-certificates"),
+  buildDeprecatedRemovedSubjectSchema("ssh-certificate-templates"),
+  buildDeprecatedRemovedSubjectSchema("ssh-hosts"),
+  buildDeprecatedRemovedSubjectSchema("ssh-host-groups"),
+  buildDeprecatedRemovedSubjectSchema("mcp-endpoints"),
+  buildDeprecatedRemovedSubjectSchema("mcp-servers"),
+  buildDeprecatedRemovedSubjectSchema("mcp-activity-logs"),
   ...GeneralPermissionSchema
 ]);
 
@@ -1980,7 +1888,8 @@ export const buildServiceTokenProjectPermission = (
             environment
           });
         }
-        if (canRead) {
+        // Folder read is implied-for-all, so it isn't granted explicitly for read-scoped tokens.
+        if (canRead && subject !== ProjectPermissionSub.SecretFolders) {
           if (!useLegacyRead && subject === ProjectPermissionSub.Secrets) {
             // @ts-expect-error CASL's per-action condition schema doesn't expose $glob, but the
             // conditionsMatcher resolves it at runtime; same pattern is used in the legacy branch.

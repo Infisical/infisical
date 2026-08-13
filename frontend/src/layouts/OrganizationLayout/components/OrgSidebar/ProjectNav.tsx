@@ -8,18 +8,15 @@ import { useOrganization, useProject } from "@app/context";
 import { hasIntermediateProjectsView, projectTypeToUrlSlug } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
-import { AINav } from "./AINav";
 import { CertManagerNav } from "./CertManagerNav";
 import { KmsNav } from "./KmsNav";
 import { PamNav } from "./PamNav";
 import { SecretManagerNav } from "./SecretManagerNav";
 import { SecretScanningNav } from "./SecretScanningNav";
-import { SshNav } from "./SshNav";
 import {
   CERT_APPROVALS_SUBMENU,
   CERT_CERTIFICATES_SUBMENU,
   CERT_INTEGRATIONS_SUBMENU,
-  MCP_SUBMENU,
   PROJECT_ACCESS_CONTROL_SUBMENU,
   SECRET_SCANNING_SETTINGS_SUBMENU,
   SM_SETTINGS_SUBMENU
@@ -35,9 +32,7 @@ const PROJECT_NAV_COMPONENT: Record<
   [ProjectType.SecretManager]: SecretManagerNav,
   [ProjectType.KMS]: KmsNav,
   [ProjectType.CertificateManager]: CertManagerNav,
-  [ProjectType.SSH]: SshNav,
   [ProjectType.PAM]: PamNav,
-  [ProjectType.AI]: AINav,
   [ProjectType.SecretScanning]: SecretScanningNav
 };
 
@@ -69,7 +64,6 @@ export const ProjectNav = () => {
     Boolean(pathname.match(/\/groups\/|\/identities\/|\/members\/|\/roles\//));
   const isOnIntegrations = pathname.includes("/integrations");
   const isOnProjectSettings = /\/settings(\/|\?|$)/.test(pathname);
-  const isOnMcpOverview = currentProject.type === ProjectType.AI && pathname.includes("/overview");
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
   const isOnCertPolicies = isCertManager && pathname.includes("/policies");
   const isOnCertApprovals = isCertManager && pathname.includes("/approvals");
@@ -88,7 +82,6 @@ export const ProjectNav = () => {
       return SM_SETTINGS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretScanning)
       return SECRET_SCANNING_SETTINGS_SUBMENU;
-    if (isOnMcpOverview) return MCP_SUBMENU;
     if (isOnCertPolicies) return CERT_CERTIFICATES_SUBMENU;
     if (isOnCertApprovals) return CERT_APPROVALS_SUBMENU;
     return null;

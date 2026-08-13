@@ -31,6 +31,7 @@ import {
   PkiSync,
   PkiSyncExportFormat,
   TPkiSync,
+  useCanSetPostSyncCommand,
   useCreatePkiSync,
   usePkiSyncOption
 } from "@app/hooks/api/pkiSyncs";
@@ -42,6 +43,7 @@ import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
 import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
+import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
 import { PkiSyncReviewFields } from "./PkiSyncReviewFields";
 
 type Props = {
@@ -77,6 +79,13 @@ const STEP_META: Record<
     rightDescription:
       "Map each certificate component (certificate, private key, and chain) to the field names used at the destination."
   },
+  postSyncCommand: {
+    short: "Command after sync",
+    subtitle: "Optionally run a command on the host after certificates are written.",
+    rightLabel: "POST-SYNC COMMAND",
+    rightDescription:
+      "The gateway runs your command on the destination host once the run's files are in place, so a service can reload and pick up the new certificate. It only runs when the sync delivers a file, and a failure marks the sync failed."
+  },
   details: {
     short: "Name and description",
     subtitle: "Give this sync a name and an optional description.",
@@ -101,7 +110,8 @@ const STEP_META: Record<
 };
 
 const getFormTabs = (
-  destination: PkiSync
+  destination: PkiSync,
+  canRunPostSyncCommand: boolean
 ): { name: string; key: string; fields: FieldPath<TPkiSyncForm>[] }[] => {
   const baseTabs = [
     {
@@ -121,6 +131,14 @@ const getFormTabs = (
       name: "Mappings",
       key: "mappings",
       fields: ["syncOptions"] as FieldPath<TPkiSyncForm>[]
+    });
+  }
+
+  if (canRunPostSyncCommand) {
+    baseTabs.push({
+      name: "Post-Sync Command",
+      key: "postSyncCommand",
+      fields: ["syncOptions.postSyncCommand"] as FieldPath<TPkiSyncForm>[]
     });
   }
 
@@ -154,9 +172,13 @@ export const CreatePkiSyncForm = ({
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const FORM_TABS = getFormTabs(destination);
 
   const { syncOption } = usePkiSyncOption(destination);
+  const canSetPostSyncCommand = useCanSetPostSyncCommand(applicationId);
+  const FORM_TABS = getFormTabs(
+    destination,
+    Boolean(syncOption?.canRunPostSyncCommand) && canSetPostSyncCommand
+  );
 
   const formMethods = useForm<TPkiSyncForm>({
     resolver: zodResolver(PkiSyncFormSchema),
@@ -352,6 +374,12 @@ export const CreatePkiSyncForm = ({
               </>
             )}
             {currentKey === "mappings" && <PkiSyncFieldMappingsFields destination={destination} />}
+            {currentKey === "postSyncCommand" && (
+              <PkiSyncPostSyncCommandFields
+                destination={destination}
+                canEditCommand={canSetPostSyncCommand}
+              />
+            )}
             {currentKey === "details" && <PkiSyncDetailsFields />}
             {currentKey === "certificates" && (
               <PkiSyncCertificatesFields applicationId={applicationId} />

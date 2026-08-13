@@ -503,7 +503,11 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
                 <div className="mt-2">
                   <h3 className="mb-3 text-sm font-medium text-foreground">Connection Details</h3>
                   <div className="flex flex-col gap-4">
-                    <ConnectionDetailsForm control={control} />
+                    <ConnectionDetailsForm
+                      control={control}
+                      setValue={setValue}
+                      clearErrors={clearErrors}
+                    />
                     {needsGateway && (
                       <Field>
                         <FieldLabel>

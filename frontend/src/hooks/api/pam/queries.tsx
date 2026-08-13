@@ -35,11 +35,13 @@ import {
   TPamDiscoverySource,
   TPamDiscoveryTypeOption,
   TPamFolderWithCount,
+  TPamIdentityMember,
   TPamMember,
   TPamMembersData,
   TPamResourceRole,
   TPamRotationCandidateGroup,
-  TPamSession
+  TPamSession,
+  TPamStaleAccount
 } from "./types";
 
 // Resolves the org's PAM project, creating it on first access (lazy bootstrap on the backend).
@@ -95,6 +97,10 @@ export const pamKeys = {
     sourceId: string,
     params?: { search?: string; offset?: number; limit?: number }
   ) => [...pamKeys.discovery(), "discovered", sourceId, params] as const,
+  listStaleAccounts: (
+    sourceId: string,
+    params?: { search?: string; offset?: number; limit?: number }
+  ) => [...pamKeys.discovery(), "stale", sourceId, params] as const,
   accountRotation: (accountId: string) => [...pamKeys.account(), "rotation", accountId] as const,
   accountDependencies: (accountId: string) =>
     [...pamKeys.account(), "dependencies", accountId] as const,
@@ -201,6 +207,8 @@ export type TPamAccountListItem = {
   recordingConnectionId: string | null;
   isAccessible: boolean;
   accessibilityIssues: PamAccountAccessibilityIssue[];
+  // the latest discovery scan didn't find it. Informational only, nothing about the account is blocked.
+  isStale: boolean;
   requiresApproval: boolean;
   requireReason: boolean;
   accessStatus: PamAccessStatus;
@@ -442,7 +450,7 @@ export const useListPamProductIdentities = () => {
   return useQuery({
     queryKey: pamKeys.productIdentities(),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ members: TPamMember[] }>(
+      const { data } = await apiRequest.get<{ members: TPamIdentityMember[] }>(
         "/api/v1/pam/memberships/identities"
       );
       return data.members;
@@ -555,6 +563,24 @@ export const useListPamDiscoveredAccounts = (
         discoveredAccounts: TPamDiscoveredAccount[];
         totalCount: number;
       }>(`/api/v1/pam/discovery-sources/${sourceId}/discovered-accounts`, { params });
+      return data;
+    },
+    enabled: Boolean(sourceId),
+    placeholderData: (prev) => prev
+  });
+};
+
+export const useListPamStaleAccounts = (
+  sourceId: string,
+  params?: { search?: string; offset?: number; limit?: number }
+) => {
+  return useQuery({
+    queryKey: pamKeys.listStaleAccounts(sourceId, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        accounts: TPamStaleAccount[];
+        totalCount: number;
+      }>(`/api/v1/pam/discovery-sources/${sourceId}/stale-accounts`, { params });
       return data;
     },
     enabled: Boolean(sourceId),

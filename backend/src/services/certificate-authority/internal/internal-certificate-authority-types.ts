@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 import { z } from "zod";
 
+import { TCertificates } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -277,6 +278,14 @@ export type TSignCertFromCaDTO =
       pathLength?: number | null;
       subjectOverride?: string;
       tx?: Knex;
+      /**
+       * Runs inside the same transaction that writes the certificate rows, after they are created
+       * but before it commits. Use this to record caller-side bookkeeping (profile linkage,
+       * certificate request status, metadata) atomically with the certificate itself, without
+       * having to hold a transaction open across the CA key access and signing that precede it.
+       * Throwing from here rolls the certificate back.
+       */
+      onPersisted?: (cert: TCertificates, tx: Knex) => Promise<void>;
     }
   | ({
       isInternal: false;
@@ -300,6 +309,8 @@ export type TSignCertFromCaDTO =
       pathLength?: number | null;
       subjectOverride?: string;
       tx?: Knex;
+      /** See the `onPersisted` note on the internal variant above. */
+      onPersisted?: (cert: TCertificates, tx: Knex) => Promise<void>;
     } & Omit<TProjectPermission, "projectId">);
 
 export type TGetCaCertificateTemplatesDTO = {

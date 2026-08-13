@@ -86,6 +86,7 @@ const identityPermissionSchema = z
       [OrgPermissionIdentityActions.Create]: z.boolean().optional(),
       [OrgPermissionIdentityActions.GrantPrivileges]: z.boolean().optional(),
       [OrgPermissionIdentityActions.RevokeAuth]: z.boolean().optional(),
+      [OrgPermissionIdentityActions.EditAuth]: z.boolean().optional(),
       [OrgPermissionIdentityActions.CreateToken]: z.boolean().optional(),
       [OrgPermissionIdentityActions.GetToken]: z.boolean().optional(),
       [OrgPermissionIdentityActions.DeleteToken]: z.boolean().optional()
@@ -630,6 +631,11 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         description: "Revoke authentication for a machine identity"
       },
       {
+        value: OrgPermissionIdentityActions.EditAuth,
+        label: "Configure Auth",
+        description: "Add or update authentication methods for a machine identity"
+      },
+      {
         value: OrgPermissionIdentityActions.CreateToken,
         label: "Create Token",
         description: "Generate access tokens for machine identities"
@@ -725,7 +731,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
   },
   [OrgPermissionSubjects.Gateway]: {
     title: "Gateways",
-    description: "Manage gateways used for private network access",
+    description: "Manage gateways that securely connect Infisical to your infrastructure",
     actions: [
       {
         value: OrgGatewayPermissionActions.ListGateways,
@@ -735,7 +741,8 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
       {
         value: OrgGatewayPermissionActions.CreateGateways,
         label: "Create Gateways",
-        description: "Register new gateways for private network access"
+        description:
+          "Register new gateways that securely proxy Infisical traffic into your infrastructure"
       },
       {
         value: OrgGatewayPermissionActions.EditGateways,

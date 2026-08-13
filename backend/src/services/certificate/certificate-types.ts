@@ -246,4 +246,6 @@ export type TParsedCertificateBody = {
   subject?: TCertificateSubject;
   fingerprints?: TCertificateFingerprints;
   basicConstraints?: TCertificateBasicConstraints;
+  keyUsages?: CertKeyUsage[];
+  extendedKeyUsages?: CertExtendedKeyUsage[];
 };

@@ -3,13 +3,22 @@ import { z } from "zod";
 
 import { buildCertificateNameSchemaTestName } from "./pki-sync-certificate-name-fns";
 import { PkiSync } from "./pki-sync-enums";
+import { POST_SYNC_COMMAND_MAX_LENGTH } from "./pki-sync-post-sync-command-fns";
+
+export const PostSyncCommandSchema = z
+  .string()
+  .trim()
+  .max(POST_SYNC_COMMAND_MAX_LENGTH, `Command must be at most ${POST_SYNC_COMMAND_MAX_LENGTH} characters`)
+  .nullable()
+  .optional();
 
 // Sync options shared by every destination. Destinations extend this with their own
 // certificateNameSchema and any extra options.
 export const BasePkiSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
   includeRootCa: z.boolean().default(false),
-  preserveItemOnRenewal: z.boolean().default(true)
+  preserveItemOnRenewal: z.boolean().default(true),
+  postSyncCommand: PostSyncCommandSchema
 });
 
 // Builds a destination's certificateNameSchema validator. The compiled name must match the

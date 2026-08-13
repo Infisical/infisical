@@ -16,13 +16,20 @@ import {
   Switch
 } from "@app/components/v3";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
-import { PkiSync, TPkiSync, useUpdatePkiSync } from "@app/hooks/api/pkiSyncs";
+import {
+  PkiSync,
+  TPkiSync,
+  useCanSetPostSyncCommand,
+  usePkiSyncOption,
+  useUpdatePkiSync
+} from "@app/hooks/api/pkiSyncs";
 
 import { TUpdatePkiSyncForm, UpdatePkiSyncFormSchema } from "./schemas/pki-sync-schema";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
 import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
+import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
 
 type Props = {
   onComplete: (pkiSync: TPkiSync) => void;
@@ -41,7 +48,7 @@ type FormStep = {
   rightDescription: string;
 };
 
-const getFormSteps = (destination: PkiSync): FormStep[] => {
+const getFormSteps = (destination: PkiSync, canRunPostSyncCommand: boolean): FormStep[] => {
   const steps: FormStep[] = [
     {
       key: "destination",
@@ -78,6 +85,19 @@ const getFormSteps = (destination: PkiSync): FormStep[] => {
     });
   }
 
+  if (canRunPostSyncCommand) {
+    steps.push({
+      key: "postSyncCommand",
+      name: "Post-Sync Command",
+      description: "Command after sync",
+      title: "Post-Sync Command",
+      subtitle: "Optionally run a command on the host after certificates are written.",
+      rightLabel: "POST-SYNC COMMAND",
+      rightDescription:
+        "The gateway runs your command on the destination host once the run's files are in place, so a service can reload and pick up the new certificate. It only runs when the sync delivers a file, and a failure marks the sync failed."
+    });
+  }
+
   steps.push({
     key: "details",
     name: "Details",
@@ -95,7 +115,9 @@ const getFormSteps = (destination: PkiSync): FormStep[] => {
 export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }: Props) => {
   const updatePkiSync = useUpdatePkiSync();
   const { name: destinationName } = PKI_SYNC_MAP[pkiSync.destination];
-  const steps = getFormSteps(pkiSync.destination);
+  const { syncOption } = usePkiSyncOption(pkiSync.destination);
+  const canSetPostSyncCommand = useCanSetPostSyncCommand(pkiSync.applicationId);
+  const steps = getFormSteps(pkiSync.destination, Boolean(syncOption?.canRunPostSyncCommand));
 
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
 
@@ -183,6 +205,13 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
         );
       case "mappings":
         return <PkiSyncFieldMappingsFields destination={pkiSync.destination} />;
+      case "postSyncCommand":
+        return (
+          <PkiSyncPostSyncCommandFields
+            destination={pkiSync.destination}
+            canEditCommand={canSetPostSyncCommand}
+          />
+        );
       case "details":
         return <PkiSyncDetailsFields />;
       default:

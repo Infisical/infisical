@@ -30,6 +30,7 @@ export type SubscriptionPlan = {
   rbac: boolean;
   secretVersioning: boolean;
   slug: SubscriptionPlanTypes;
+  isOffline?: boolean;
   secretApproval: boolean;
   secretRotation: boolean;
   tier: number;
@@ -37,7 +38,6 @@ export type SubscriptionPlan = {
   workspacesUsed: number;
   environmentLimit: number;
   samlSSO: boolean;
-  sshHostGroups: boolean;
   secretAccessInsights: boolean;
   auditReports: boolean;
   hsm: boolean;

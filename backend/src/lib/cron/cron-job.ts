@@ -44,6 +44,7 @@ export const CronJobName = {
   PamCredentialRotationQueueRotations: "pam-credential-rotation-queue-rotations",
   MonthlyNativeIntegrationDeprecationNotice: "monthly-native-integration-deprecation-notice",
   DailyAlertProcessing: "daily-alert-processing",
+  SecretScanningStuckScanReaper: "secret-scanning-stuck-scan-reaper",
   InstanceUpdateCheck: "instance-update-check"
 } as const;
 

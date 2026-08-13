@@ -38,7 +38,6 @@ export const getDefaultOnPremFeatures = () => {
     secretApproval: true,
     secretRotation: true,
     caCrl: false,
-    sshHostGroups: false,
     enterpriseSecretSyncs: false,
     enterpriseCertificateSyncs: false,
     enterpriseAppConnections: true,
@@ -51,8 +50,6 @@ export const getDefaultOnPremFeatures = () => {
     fips: true
   };
 };
-
-export const setupLicenseRequestWithStore = () => {};
 
 export const getLicenseKeyConfig = () => {
   return {

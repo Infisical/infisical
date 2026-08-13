@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
 import { z } from "zod";
 
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Field,
   FieldError,
@@ -18,6 +19,9 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
+import { OrgPermissionSubjects } from "@app/context";
+import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { ChefConnectionMethod, TChefConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -58,16 +62,63 @@ export const ChefConnectionForm = ({ appConnection, onSubmit }: Props) => {
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
       app: AppConnection.Chef,
-      method: ChefConnectionMethod.UserKey
+      method: ChefConnectionMethod.UserKey,
+      gatewayId: null,
+      gatewayPoolId: null
     }
   });
 
-  const { handleSubmit, control } = form;
+  const { handleSubmit, control, setValue, watch } = form;
+
+  const gatewayId = watch("gatewayId");
+  const gatewayPoolId = watch("gatewayPoolId");
 
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
         {!isUpdate && <GenericAppConnectionsFields />}
+        <OrgPermissionCan
+          I={OrgGatewayPermissionActions.AttachGateways}
+          a={OrgPermissionSubjects.Gateway}
+        >
+          {(isAllowed) => (
+            <Field className="mb-4">
+              <FieldLabel>Gateway</FieldLabel>
+              {isAllowed ? (
+                <GatewayPicker
+                  isDisabled={!isAllowed}
+                  value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
+                  onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                    setValue("gatewayId", newGwId, { shouldDirty: true });
+                    setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                  }}
+                />
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <GatewayPicker
+                        isDisabled={!isAllowed}
+                        value={{
+                          gatewayId: gatewayId ?? null,
+                          gatewayPoolId: gatewayPoolId ?? null
+                        }}
+                        onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                          setValue("gatewayId", newGwId, { shouldDirty: true });
+                          setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                        }}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Restricted access. You don&apos;t have permission to attach gateways to
+                    resources.
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </Field>
+          )}
+        </OrgPermissionCan>
         <Controller
           name="credentials.serverUrl"
           control={control}

@@ -105,7 +105,7 @@ const BulkDeleteDialogContent = ({
   };
 
   return (
-    <DialogContent className="max-w-7xl">
+    <DialogContent className="max-w-3xl [&>*]:min-w-0">
       <DialogHeader>
         <DialogTitle>{title}</DialogTitle>
         {subTitle && <DialogDescription>{subTitle}</DialogDescription>}
@@ -123,7 +123,7 @@ const BulkDeleteDialogContent = ({
               <TableHead className="sticky left-0 z-20 w-10 max-w-10 min-w-10 border-b-0 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                 Type
               </TableHead>
-              <TableHead className="sticky left-10 z-20 max-w-[30vw] min-w-[30vw] border-b-0 bg-container shadow-[inset_-1px_0_0_var(--color-border),inset_0_-1px_0_var(--color-border)]">
+              <TableHead className="sticky left-10 z-20 w-32 max-w-32 min-w-32 border-b-0 bg-container shadow-[inset_-1px_0_0_var(--color-border),inset_0_-1px_0_var(--color-border)] sm:w-72 sm:max-w-72 sm:min-w-72">
                 Name
               </TableHead>
               {visibleEnvs.map((env) => (
@@ -148,7 +148,7 @@ const BulkDeleteDialogContent = ({
                   )}
                 </TableCell>
                 <TableCell
-                  className="sticky left-10 z-10 max-w-80 bg-container shadow-[inset_-1px_0_0_var(--color-border)] transition-colors duration-75 group-hover:bg-container-hover"
+                  className="sticky left-10 z-10 w-32 max-w-32 min-w-32 bg-container shadow-[inset_-1px_0_0_var(--color-border)] transition-colors duration-75 group-hover:bg-container-hover sm:w-72 sm:max-w-72 sm:min-w-72"
                   isTruncatable
                 >
                   {item.name}

@@ -13,32 +13,15 @@ import {
   CertKeyUsageType,
   CertPolicyState,
   CertSubjectAlternativeNameType,
-  CertSubjectAttributeType
+  pkiDescriptionSchema
 } from "@app/services/certificate-common/certificate-constants";
-import { certificatePolicyResponseSchema } from "@app/services/certificate-policy/certificate-policy-schemas";
+import {
+  certificatePolicyResponseSchema,
+  policySubjectSchema
+} from "@app/services/certificate-policy/certificate-policy-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const attributeTypeSchema = z.nativeEnum(CertSubjectAttributeType);
 const sanTypeSchema = z.nativeEnum(CertSubjectAlternativeNameType);
-
-const policySubjectSchema = z
-  .object({
-    type: attributeTypeSchema,
-    allowed: z.array(z.string()).optional(),
-    required: z.array(z.string()).optional(),
-    denied: z.array(z.string()).optional()
-  })
-  .refine(
-    (data) => {
-      if (!data.allowed && !data.required && !data.denied) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message: "Subject attribute must have at least one allowed, required, or denied value"
-    }
-  );
 
 const policyKeyUsagesSchema = z
   .object({
@@ -179,7 +162,7 @@ const policyBasicConstraintsSchema = z
 const createCertificatePolicySchema = z.object({
   projectId: z.string().min(1).optional().describe(openApiHidden()),
   name: slugSchema({ min: 1, max: 255, field: "Name" }),
-  description: z.string().max(1000).optional(),
+  description: pkiDescriptionSchema.optional(),
   subject: z.array(policySubjectSchema).nullish(),
   sans: z.array(policySanSchema).nullish(),
   keyUsages: policyKeyUsagesSchema.nullish(),
@@ -191,7 +174,7 @@ const createCertificatePolicySchema = z.object({
 
 const updateCertificatePolicySchema = z.object({
   name: z.string().min(1).max(255, "Name must be between 1 and 255 characters").optional(),
-  description: z.string().max(1000).optional(),
+  description: pkiDescriptionSchema.optional(),
   subject: z.array(policySubjectSchema).nullish(),
   sans: z.array(policySanSchema).nullish(),
   keyUsages: policyKeyUsagesSchema.nullish(),

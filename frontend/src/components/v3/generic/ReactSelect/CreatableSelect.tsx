@@ -9,6 +9,8 @@ export const CreatableSelect = <T,>({
   closeMenuOnSelect,
   isError,
   components,
+  menuPortalTarget = typeof document === "undefined" ? undefined : document.body,
+  menuPosition = "fixed",
   ...props
 }: CreatableProps<T, boolean, GroupBase<T>> & { isError?: boolean }) => {
   return (
@@ -18,6 +20,8 @@ export const CreatableSelect = <T,>({
       hideSelectedOptions={false}
       unstyled
       data-slot="creatable-select"
+      menuPortalTarget={menuPortalTarget}
+      menuPosition={menuPosition}
       styles={selectStyles as any}
       components={{ DropdownIndicator, ClearIndicator, MultiValueRemove, Option, ...components }}
       classNames={(isError ? getSelectClassNames(isError) : selectClassNames) as any}

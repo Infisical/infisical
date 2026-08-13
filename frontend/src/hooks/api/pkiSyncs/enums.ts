@@ -23,6 +23,14 @@ export enum PemCertificateExtension {
   Crt = "crt"
 }
 
+export enum PostSyncCommandVariable {
+  CertificatePath = "certificatePath",
+  CertificateDirectory = "certificateDirectory",
+  CertificateFiles = "certificateFiles",
+  CommonName = "commonName",
+  Pkcs12Password = "pkcs12Password"
+}
+
 export enum WindowsFileAccess {
   Read = "read",
   Modify = "modify",

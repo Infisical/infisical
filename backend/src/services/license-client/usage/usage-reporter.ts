@@ -2,6 +2,7 @@ import { TEnvConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
 import { mintServiceToken } from "../license-client-backends";
+import { createSelfHostedTokenProvider } from "../license-token-provider";
 
 export type TUsageSnapshot = {
   dimension_key: string;
@@ -30,9 +31,9 @@ export class UsageReportError extends Error {
   }
 }
 
-// getBearerToken is called per request so a cloud reporter can mint a fresh short-lived JWT each time
-// (a self-hosted reporter just returns its static license key).
-export const usageReporterFactory = (serverUrl: string, getBearerToken: () => string): TUsageReporter => ({
+// getBearerToken is called per request so a cloud reporter can mint a fresh short-lived JWT each time,
+// while a self-hosted reporter exchanges its license key for a cached JWT at the token endpoint.
+export const usageReporterFactory = (serverUrl: string, getBearerToken: () => Promise<string>): TUsageReporter => ({
   reportSnapshots: async (orgId: string, snapshots: TUsageSnapshot[]) => {
     if (!snapshots.length) {
       return;
@@ -41,7 +42,7 @@ export const usageReporterFactory = (serverUrl: string, getBearerToken: () => st
     const url = new URL(`/v1/organizations/${encodeURIComponent(orgId)}/usage-snapshots`, serverUrl);
     const res = await fetch(url, {
       method: "POST",
-      headers: { Authorization: `Bearer ${getBearerToken()}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${await getBearerToken()}`, "Content-Type": "application/json" },
       body: JSON.stringify({ snapshots }),
       redirect: "manual"
     });
@@ -59,26 +60,17 @@ export const usageReporterFactory = (serverUrl: string, getBearerToken: () => st
   }
 });
 
-// Mirrors SELF_HOSTED_V2_LICENSE_KEY_PREFIX in ee/license-fns; inlined to avoid a services -> ee import.
-const SELF_HOSTED_V2_LICENSE_KEY_PREFIX = "infisical_lk_";
-
-// Returns null when the v2 license server is disabled or unconfigured, which keeps usage reporting
-// inert. A self-hosted v2 license reports with its own license key as the bearer; cloud mints a
-// short-lived RS256 service JWT signed with the service key (the same scheme the rest of the v2
-// client uses), so the raw signing key is never sent over the wire.
+// Returns null when the license server is unconfigured, which keeps usage reporting inert. A
+// self-hosted license exchanges its key for a short-lived JWT at the token endpoint and reports with
+// that bearer; cloud mints a short-lived RS256 service JWT signed with the service key (the same scheme
+// the rest of the license client uses). The raw key/signing key is never sent as the bearer.
 export const buildUsageReporter = (
-  envConfig: Pick<
-    TEnvConfig,
-    "LICENSE_SERVER_V2_MODE" | "LICENSE_SERVER_V2_URL" | "LICENSE_SERVER_V2_SERVICE_KEY" | "LICENSE_KEY"
-  >
+  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_SERVICE_KEY" | "LICENSE_SERVER_URL" | "LICENSE_KEY">
 ): TUsageReporter | null => {
-  if (envConfig.LICENSE_SERVER_V2_MODE === "off") {
-    return null;
-  }
-
-  const serverUrl = envConfig.LICENSE_SERVER_V2_URL;
+  // One host serves both the self-hosted token endpoint and the usage API.
+  const serverUrl = envConfig.LICENSE_SERVER_URL;
   if (!serverUrl) {
-    logger.warn("usage-reporter: enabled but LICENSE_SERVER_V2_URL is missing; usage reporting disabled");
+    logger.warn("usage-reporter: LICENSE_SERVER_URL is not set; usage reporting disabled");
     return null;
   }
 
@@ -87,18 +79,20 @@ export const buildUsageReporter = (
   try {
     parsedUrl = new URL(serverUrl);
   } catch {
-    logger.warn("usage-reporter: LICENSE_SERVER_V2_URL is not a valid URL; usage reporting disabled");
+    logger.warn("usage-reporter: license server URL is not a valid URL; usage reporting disabled");
     return null;
   }
   if (parsedUrl.protocol !== "https:" && process.env.NODE_ENV !== "development") {
-    logger.warn("usage-reporter: LICENSE_SERVER_V2_URL must use https; usage reporting disabled");
+    logger.warn("usage-reporter: license server URL must use https; usage reporting disabled");
     return null;
   }
 
-  // Self-hosted: authenticate with the raw license key as the bearer.
+  // Self-hosted (any license key format): exchange the key for a short-lived JWT at the token endpoint
+  // and use that. Cloud sets no LICENSE_KEY, so it falls through to the service-JWT path below.
   const licenseKey = envConfig.LICENSE_KEY;
-  if (licenseKey?.startsWith(SELF_HOSTED_V2_LICENSE_KEY_PREFIX)) {
-    return usageReporterFactory(serverUrl, () => licenseKey);
+  if (licenseKey) {
+    const tokenProvider = createSelfHostedTokenProvider(licenseKey, { serverUrl });
+    return usageReporterFactory(serverUrl, () => tokenProvider.getToken());
   }
 
   // Cloud: mint a fresh service JWT per request signed with the service key (an RSA private key).
@@ -109,5 +103,5 @@ export const buildUsageReporter = (
     );
     return null;
   }
-  return usageReporterFactory(serverUrl, () => mintServiceToken(serviceKey));
+  return usageReporterFactory(serverUrl, () => Promise.resolve(mintServiceToken(serviceKey)));
 };

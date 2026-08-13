@@ -1,4 +1,3 @@
-import opentelemetry from "@opentelemetry/api";
 import {
   Job,
   JobSchedulerJson,
@@ -36,7 +35,8 @@ import {
   queueJobDurationHistogram,
   queueJobFailureCounter,
   queueJobWaitHistogram,
-  queueStalledCounter
+  queueStalledCounter,
+  resolveCoreMeter
 } from "@app/lib/telemetry/metrics";
 import { QueueWorkerProfile } from "@app/lib/types";
 import {
@@ -472,6 +472,7 @@ export type TQueueJobTypes = {
       country?: string;
       state?: string;
       locality?: string;
+      basicConstraints?: { isCA: boolean; pathLength?: number | null } | null;
     };
   };
   [QueueName.PkiSubscriber]: {
@@ -672,7 +673,7 @@ export type TQueueServiceFactory = {
 
 export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFactory => {
   const isClusterMode = Boolean(redisCfg?.REDIS_CLUSTER_HOSTS);
-  const connection = buildRedisFromConfig(redisCfg);
+  const connection = buildRedisFromConfig(redisCfg, "queue");
   const queueContainer: Partial<Record<QueueName, Queue<TQueueJobTypes[QueueName]["payload"], void, string>>> = {};
 
   const workerContainer: Partial<
@@ -683,12 +684,10 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
   // push, on each scrape for Prometheus). Iterates only initialized queues in queueContainer; one
   // snapshot covers all ~30 named queues. Failures are swallowed because metrics must never crash the app.
   const QUEUE_DEPTH_STATES = ["waiting", "active", "delayed", "failed"] as const;
-  const queueDepthGauge = opentelemetry.metrics
-    .getMeter("InfisicalCore")
-    .createObservableGauge("infisical.queue.depth", {
-      description: "Number of jobs in each queue state (waiting, active, delayed, failed)",
-      unit: "{job}"
-    });
+  const queueDepthGauge = resolveCoreMeter().createObservableGauge("infisical.queue.depth", {
+    description: "Number of jobs in each queue state (waiting, active, delayed, failed)",
+    unit: "{job}"
+  });
 
   queueDepthGauge.addCallback(async (observableResult) => {
     if (!getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED) return;
@@ -792,16 +791,11 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
 
     if (!appCfg.QUEUE_WORKERS_ENABLED) return;
 
-    if (appCfg.QUEUE_WORKER_PROFILE === QueueWorkerProfile.Standard && NON_STANDARD_QUEUES.includes(name)) {
-      return;
-    }
-
-    if (appCfg.QUEUE_WORKER_PROFILE === QueueWorkerProfile.SecretScanning && !SECRET_SCANNING_QUEUES.includes(name)) {
-      return;
-    }
-
     const fipsSettings = crypto.isFipsModeEnabled() ? { settings: { repeatKeyHashAlgorithm: "sha256" as const } } : {};
 
+    // The Queue (producer) is created regardless of worker profile — only the Worker (consumer) is
+    // gated below. A pod that doesn't consume a queue must still be able to enqueue onto it, or
+    // splitting the fleet by profile silently drops every job destined for another profile's worker.
     queueContainer[name] = new Queue(name as string, {
       prefix: isClusterMode ? `{${name}}` : undefined,
       ...queueSettings,
@@ -809,7 +803,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       connection
     });
 
-    if (!appCfg.QUEUE_WORKERS_ENABLED || !isQueueEnabled(name)) {
+    if (!isQueueEnabled(name)) {
       return;
     }
 

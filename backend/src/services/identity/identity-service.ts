@@ -54,7 +54,7 @@ type TIdentityServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
-  alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource" | "deleteAlertsForDeletedResource">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
     "insertIdentityWideRevocationMarker" | "insertOrgMembershipRevocationMarker" | "bumpIdentityRevocationVersion"
@@ -213,8 +213,6 @@ export const identityServiceFactory = ({
     metadata,
     isActorSuperAdmin
   }: TUpdateIdentityDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
-
     const identityOrgMembership = await orgDAL.findEffectiveOrgMembership({
       actorType: ActorType.IDENTITY,
       actorId: id,
@@ -268,6 +266,8 @@ export const identityServiceFactory = ({
 
       if (isCustomRole) customRole = rolePermissionDetails?.role;
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
 
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
 
@@ -357,7 +357,6 @@ export const identityServiceFactory = ({
     id,
     isActorSuperAdmin
   }: TDeleteIdentityDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
     const identityOrgMembership = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -378,6 +377,8 @@ export const identityServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
 
+    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
+
     if (identityOrgMembership.identity.projectId) {
       throw new BadRequestError({ message: `Identity is managed by project` });
     }
@@ -387,15 +388,15 @@ export const identityServiceFactory = ({
         throw new BadRequestError({ message: "Identity has delete protection" });
 
       const deletedIdentity = await identityDAL.transaction(async (tx) => {
-        await alertService.deleteAlertsForResource(
+        await identityAccessTokenService.insertIdentityWideRevocationMarker({ identityId: id, tx });
+
+        await alertService.deleteAlertsForDeletedResource(
           {
-            orgId: identityOrgMembership.scopeOrgId,
             resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
             resourceId: id
           },
           tx
         );
-        await identityAccessTokenService.insertIdentityWideRevocationMarker({ identityId: id, tx });
         return identityDAL.deleteById(id, tx);
       });
       await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: id });
@@ -434,6 +435,15 @@ export const identityServiceFactory = ({
       const doc = await membershipIdentityDAL.delete({ actorIdentityId: id, scopeOrgId: actorOrgId }, tx);
 
       await identityAccessTokenService.insertOrgMembershipRevocationMarker({ identityId: id, orgId: actorOrgId, tx });
+
+      await alertService.deleteAlertsForResource(
+        {
+          orgId: actorOrgId,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: id
+        },
+        tx
+      );
 
       return doc;
     });

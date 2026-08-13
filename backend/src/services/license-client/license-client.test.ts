@@ -135,13 +135,13 @@ describe("featureReaderFactory", () => {
   });
 });
 
-// How a consumer uses the client. With the kill switch off, every feature resolves to its fallback.
+// How a consumer uses the client. With no credential configured, every feature resolves to its fallback.
 describe("licenseClientFactory (usage example)", () => {
   const licenseClient = licenseClientFactory({
     envConfig: {
-      LICENSE_SERVER_V2_MODE: "off",
-      LICENSE_SERVER_V2_URL: undefined,
       LICENSE_SERVER_V2_SERVICE_KEY: undefined,
+      LICENSE_SERVER_URL: "https://license.example.com",
+      LICENSE_KEY: undefined,
       INTERNAL_REGION: undefined
     },
     keyStore: createFakeKeyStore()

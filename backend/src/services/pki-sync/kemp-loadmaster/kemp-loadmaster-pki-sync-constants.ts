@@ -23,6 +23,7 @@ export const KEMP_LOADMASTER_PKI_SYNC_LIST_OPTION = {
   destination: PkiSync.KempLoadMaster,
   canImportCertificates: false,
   canRemoveCertificates: true,
+  canRunPostSyncCommand: false,
   defaultCertificateNameSchema: "Infisical-{{certificateId}}",
   forbiddenCharacters: KEMP_LOADMASTER_NAMING.FORBIDDEN_CHARACTERS,
   allowedCharacterPattern: KEMP_LOADMASTER_NAMING.ALLOWED_CHARACTER_PATTERN,

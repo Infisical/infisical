@@ -11,13 +11,16 @@ import {
   OrgRolesSchema
 } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { KeyStorePrefixes, KeyStoreTtls } from "@app/keystore/keystore";
 import { ApiDocsTags, AUDIT_LOGS, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { OrgWithSubOrgsSchema, sanitizedOrganizationSchema } from "@app/services/org/org-schema";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { integrationAuthPubSchema, SanitizedUserSchema } from "../sanitizedSchemas";
 
@@ -268,6 +271,27 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
             metadata: {}
           }
         });
+
+        const distinctId = getTelemetryDistinctId(req);
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.AuditLogsViewed,
+            distinctId,
+            organizationId: req.permission.orgId,
+            dedup: {
+              key: KeyStorePrefixes.TelemetryAuditLogsViewed(req.permission.orgId, distinctId),
+              ttlSeconds: KeyStoreTtls.TelemetryAuditLogsViewedInSeconds
+            },
+            properties: {
+              orgId: req.permission.orgId,
+              projectId: req.query.projectId,
+              resultCount: auditLogs.length,
+              dateRangeStart: req.query.startDate || getLastMidnightDateISO(),
+              dateRangeEnd: req.query.endDate || new Date().toISOString(),
+              actorType: req.permission.type
+            }
+          })
+          .catch(() => {});
       }
 
       return { auditLogs };
@@ -381,7 +405,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         secretsProductEnabled: z.boolean().optional(),
         pkiProductEnabled: z.boolean().optional(),
         kmsProductEnabled: z.boolean().optional(),
-        sshProductEnabled: z.boolean().optional(),
         scannerProductEnabled: z.boolean().optional(),
         shareSecretsProductEnabled: z.boolean().optional(),
         maxSharedSecretLifetime: z

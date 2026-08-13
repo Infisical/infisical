@@ -87,7 +87,8 @@ export const getPkiSyncProviderCapabilities = (destination: PkiSync) => {
 
   return {
     canImportCertificates: providerOption.canImportCertificates,
-    canRemoveCertificates: providerOption.canRemoveCertificates
+    canRemoveCertificates: providerOption.canRemoveCertificates,
+    canRunPostSyncCommand: providerOption.canRunPostSyncCommand
   };
 };
 
@@ -102,6 +103,11 @@ export const getPkiSyncMaxCertificates = (destination: PkiSync): number | undefi
 export const matchesSchema = <T extends ZodSchema>(schema: T, data: unknown): data is z.infer<T> => {
   return schema.safeParse(data).success;
 };
+
+const MAX_SYNC_MESSAGE_LENGTH = 255;
+
+export const truncateSyncMessage = (message: string): string =>
+  message.length > MAX_SYNC_MESSAGE_LENGTH ? `${message.slice(0, MAX_SYNC_MESSAGE_LENGTH - 3)}...` : message;
 
 export const parsePkiSyncErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
@@ -247,7 +253,9 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.Chef as PkiSync);
         const chefPkiSync = chefPkiSyncFactory({
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
         });
         return chefPkiSync.syncCertificates(pkiSync, certificateMap);
       }
@@ -390,7 +398,9 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.Chef as PkiSync);
         const chefPkiSync = chefPkiSyncFactory({
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
         });
         await chefPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,

@@ -37,6 +37,14 @@ const zodStrBool = z
   .optional()
   .transform((val) => val === "true");
 
+/**
+ * Everything a secret scan spends outside the clone and the scan itself: measuring the clone
+ * (30s ceiling), writing findings, notifications and audit logs, and queue/DB overhead. Used as
+ * headroom when validating the stuck-scan threshold so the reaper can't reach a healthy scan, and
+ * as the scan lock TTL headroom so the lock outlives any scan the reaper would consider healthy.
+ */
+export const SECRET_SCANNING_SCAN_OVERHEAD_MS = 5 * 60 * 1000;
+
 const databaseReadReplicaSchema = z
   .object({
     DB_CONNECTION_URI: z.string().describe("Postgres read replica database connection string"),
@@ -344,19 +352,54 @@ const envSchema = z
     SECRET_SCANNING_PRIVATE_KEY: zpStr(z.string().optional()),
     SECRET_SCANNING_ORG_WHITELIST: zpStr(z.string().optional()),
     SECRET_SCANNING_GIT_APP_SLUG: zpStr(z.string().default("infisical-radar")),
+    SECRET_SCANNING_SCAN_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10 * 60 * 1000)
+      .describe("Wall-clock ceiling for a single `infisical scan` invocation before its process group is killed"),
+    SECRET_SCANNING_CLONE_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10 * 60 * 1000)
+      .describe("Wall-clock ceiling for a single `git clone` invocation before its process group is killed"),
+    SECRET_SCANNING_MEMORY_LIMIT_MB: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(2048)
+      .describe(
+        "Soft memory ceiling (GOMEMLIMIT) handed to the Go scanner process. The runtime GCs harder as it approaches the limit rather than growing. Set to 0 to disable."
+      ),
+    SECRET_SCANNING_CPU_THREADS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(1)
+      .describe(
+        "CPU thread ceiling for scanning child processes, applied as GOMAXPROCS to the Go scanner and pack.threads to git clone. Both otherwise use every core on the host, so one full scan can saturate the instance. Set to 0 to remove the cap."
+      ),
+    SECRET_SCANNING_MAX_REPO_SIZE_MB: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(5120)
+      .describe("Repositories larger than this are rejected before/after cloning. Set to 0 to disable."),
+    SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(60 * 60 * 1000)
+      .describe(
+        "A scan left in the `scanning` state for longer than this is marked failed by the reaper. Must exceed clone + scan timeouts combined."
+      ),
     // LICENSE
+    // The License Server host. Serves both the self-hosted token endpoint and the entitlement API.
     LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
-    LICENSE_SERVER_KEY: zpStr(z.string().optional()),
     LICENSE_KEY: zpStr(z.string().optional()),
     LICENSE_KEY_OFFLINE: zpStr(z.string().optional()),
-    LICENSE_SERVER_V2_MODE: z.enum(["off", "read-compare", "on"]).default("off"),
-    LICENSE_SERVER_V2_URL: zpStr(z.string().optional()),
     LICENSE_SERVER_V2_SERVICE_KEY: zpStr(z.string().optional()),
-    // When true, new checkouts (adding a payment method) and trials on License Server v1 cloud are
-    // disallowed, pushing orgs onto License Server v2.
-    DISABLE_LICENSE_V1_CLOUD: zodStrBool.default("false"),
-    // CROSS-PROJECT SECRET SHARING
-    CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST: zpStr(z.string().optional()),
 
     // GENERIC
     STANDALONE_MODE: z
@@ -570,6 +613,16 @@ const envSchema = z
         });
       }
     });
+
+    const scanBudgetMs =
+      data.SECRET_SCANNING_CLONE_TIMEOUT_MS + data.SECRET_SCANNING_SCAN_TIMEOUT_MS + SECRET_SCANNING_SCAN_OVERHEAD_MS;
+    if (data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS <= scanBudgetMs) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS"],
+        message: `SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS (${data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS}ms) must exceed SECRET_SCANNING_CLONE_TIMEOUT_MS + SECRET_SCANNING_SCAN_TIMEOUT_MS plus ${SECRET_SCANNING_SCAN_OVERHEAD_MS}ms of measurement and bookkeeping (${scanBudgetMs}ms), otherwise healthy in-flight scans are reaped as stuck.`
+      });
+    }
   })
   .transform((data) => ({
     ...data,
@@ -579,9 +632,8 @@ const envSchema = z
     DB_READ_REPLICAS: data.DB_READ_REPLICAS
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,
-    // Inferred from the legacy license server key; needs a new signal once License Server v2 fully replaces it.
-    isCloud: Boolean(data.LICENSE_SERVER_KEY || data.LICENSE_SERVER_V2_SERVICE_KEY),
-    isLicenseDualReadEnabled: data.LICENSE_SERVER_V2_MODE === "read-compare",
+    // Only cloud holds the License Server service key; self-hosted authenticates with a license key.
+    isCloud: Boolean(data.LICENSE_SERVER_V2_SERVICE_KEY),
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS || data.REDIS_CLUSTER_HOSTS),
     isClickHouseConfigured: Boolean(data.CLICKHOUSE_URL),
@@ -629,7 +681,6 @@ const envSchema = z
       Boolean(data.HSM_LIB_PATH) && Boolean(data.HSM_PIN) && Boolean(data.HSM_KEY_LABEL) && data.HSM_SLOT !== undefined,
     samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
     SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(","),
-    CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST: data.CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST?.split(",") ?? [],
     PARAMS_FOLDER_SECRET_DETECTION_ENABLED: (data.PARAMS_FOLDER_SECRET_DETECTION_PATHS?.length ?? 0) > 0,
     INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID:
       data.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || data.INF_APP_CONNECTION_AZURE_CLIENT_ID,

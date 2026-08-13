@@ -6,7 +6,7 @@ import { RateLimitError } from "@app/lib/errors";
 
 export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
   const appCfg = getConfig();
-  const redis = appCfg.isRedisConfigured ? buildRedisFromConfig(appCfg) : null;
+  const redis = appCfg.isRedisConfigured ? buildRedisFromConfig(appCfg, "rate-limiter") : null;
 
   return {
     errorResponseBuilder: (_, context) => {
@@ -89,13 +89,6 @@ export const publicSecretShareCreationLimit: RateLimitOptions = {
 export const userEngagementLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   max: 5,
-  keyGenerator: (req) => req.realIp
-};
-
-export const publicSshCaLimit: RateLimitOptions = {
-  timeWindow: 60 * 1000,
-  hook: "preValidation",
-  max: 30, // conservative default
   keyGenerator: (req) => req.realIp
 };
 

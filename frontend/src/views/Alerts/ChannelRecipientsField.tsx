@@ -87,7 +87,7 @@ const RecipientSelect = ({
     <div ref={containerRef}>
       <FilterableSelect<RecipientOption>
         isMulti
-        placeholder="Select users or groups..."
+        placeholder="Add users or groups..."
         options={options}
         value={selected}
         isError={isError}

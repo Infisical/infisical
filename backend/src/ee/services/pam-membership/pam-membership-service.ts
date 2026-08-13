@@ -52,7 +52,7 @@ type TPamMembershipServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   groupDAL: Pick<TGroupDALFactory, "findById">;
-  identityDAL: Pick<TIdentityDALFactory, "findById">;
+  identityDAL: Pick<TIdentityDALFactory, "findById" | "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
 };
@@ -168,7 +168,8 @@ export const pamMembershipServiceFactory = ({
 
   const validateActorExists = async (
     dto: { userId?: string; groupId?: string; identityId?: string },
-    orgId: string
+    orgId: string,
+    projectId: string
   ) => {
     const { column, id, kind } = resolveActorColumn(dto);
 
@@ -192,8 +193,12 @@ export const pamMembershipServiceFactory = ({
     } else {
       const identity = await identityDAL.findById(id);
       if (!identity) throw new NotFoundError({ message: `Identity with ID '${id}' not found` });
-      if (identity.projectId) {
-        throw new BadRequestError({ message: "Project-scoped identities cannot be added as PAM members" });
+      // Identities scoped to the PAM project itself are first-class PAM members (created in-product);
+      // identities scoped to any other project stay rejected.
+      if (identity.projectId && identity.projectId !== projectId) {
+        throw new BadRequestError({
+          message: "Identities scoped to another project cannot be added as PAM members"
+        });
       }
 
       const orgMemberships = await membershipDAL.find({
@@ -271,6 +276,37 @@ export const pamMembershipServiceFactory = ({
     return resolveMemberships(memberships, PamProductRole.Member);
   };
 
+  // Identity members enriched with the identity's name and scope, so the PAM UI never has to
+  // join against org- or project-level identity endpoints (the org list excludes PAM-scoped identities).
+  const listProductIdentityMembers = async ({ projectId, ...ctx }: TListPamProductMembersDTO & TActorContext) => {
+    await permissionService.getProjectPermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
+    const identityMemberships = memberships.filter((m) => m.actorIdentityId);
+    const resolved = await resolveMemberships(identityMemberships, PamProductRole.Member);
+
+    const identityIds = identityMemberships.map((m) => m.actorIdentityId).filter((v): v is string => Boolean(v));
+    const identities = identityIds.length ? await identityDAL.find({ $in: { id: identityIds } }) : [];
+    const identityById = new Map(identities.map((i) => [i.id, i]));
+
+    return resolved.map((m) => {
+      const identity = m.identityId ? identityById.get(m.identityId) : undefined;
+      return {
+        ...m,
+        name: identity?.name ?? "",
+        identityProjectId: identity?.projectId ?? null,
+        identityOrgId: identity?.orgId ?? null
+      };
+    });
+  };
+
   const addProductMember = async ({ projectId, role, ...dto }: TAddPamProductMemberDTO & TActorContext) => {
     await checkProductAdmin(projectId, dto);
 
@@ -280,7 +316,7 @@ export const pamMembershipServiceFactory = ({
       });
     }
 
-    const { column, id, kind } = await validateActorExists(dto, dto.actorOrgId);
+    const { column, id, kind } = await validateActorExists(dto, dto.actorOrgId, projectId);
 
     const result = await membershipDAL.transaction(async (tx) => {
       const existing = await membershipDAL.find(
@@ -503,6 +539,17 @@ export const pamMembershipServiceFactory = ({
 
     const { column, id, kind } = resolveActorColumn(dto);
 
+    // A PAM-scoped identity's product membership IS its reason to exist; removing just the
+    // membership would orphan it. Delete the identity itself instead.
+    if (kind === PamMemberKind.Identity) {
+      const identity = await identityDAL.findById(id);
+      if (identity?.projectId === projectId) {
+        throw new BadRequestError({
+          message: "This identity is managed by PAM. Delete the identity instead of removing its membership."
+        });
+      }
+    }
+
     const result = await membershipDAL.transaction(async (tx) => {
       const [membership] = await membershipDAL.find(
         { scope: AccessScope.Project, scopeProjectId: projectId, [column]: id },
@@ -586,7 +633,7 @@ export const pamMembershipServiceFactory = ({
       throw new BadRequestError({ message: `Invalid expiry duration '${expiry}'` });
     }
 
-    const { column, id, kind } = await validateActorExists(dto, dto.actorOrgId);
+    const { column, id, kind } = await validateActorExists(dto, dto.actorOrgId, projectId);
     await validateProductMember(projectId, dto);
 
     return membershipDAL.transaction(async (tx) => {
@@ -908,6 +955,7 @@ export const pamMembershipServiceFactory = ({
 
   return {
     listProductMembers,
+    listProductIdentityMembers,
     addProductMember,
     addProductUserMembers,
     updateProductMemberRole,

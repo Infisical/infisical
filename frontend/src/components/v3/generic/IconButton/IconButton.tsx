@@ -23,6 +23,8 @@ const iconButtonVariants = cva(
           "text-foreground hover:bg-foreground/10 border-transparent data-[state=open]:bg-foreground/10",
         "ghost-muted":
           "text-muted hover:text-foreground hover:bg-foreground/10 border-transparent data-[state=open]:text-foreground data-[state=open]:bg-foreground/10",
+        neutral:
+          "border-neutral/25 bg-neutral/10 text-foreground hover:bg-neutral/15 hover:border-neutral/30 data-[state=open]:bg-neutral/15 data-[state=open]:border-neutral/30",
         project:
           "border-project/25 bg-project/10 text-foreground hover:bg-project/15 hover:border-project/30 data-[state=open]:bg-project/15 data-[state=open]:border-project/30",
         org: "border-org/25 bg-org/10 text-foreground hover:bg-org/15 hover:border-org/30 data-[state=open]:bg-org/15 data-[state=open]:border-org/30",

@@ -188,6 +188,11 @@ export const useAddUsersToOrg = () => {
         email: string;
         link: string;
       }[];
+      /** Product-access grants are best-effort; present only when at least one grant failed. */
+      grantFailures?: {
+        projectIds: string[];
+        pamAccess: boolean;
+      };
     };
   };
 

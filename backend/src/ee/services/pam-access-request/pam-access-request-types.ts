@@ -1,4 +1,5 @@
 import { ApprovalRequestApprovalDecision, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
+import { ActorType } from "@app/services/auth/auth-type";
 
 import { PamNotificationEvent } from "../pam/pam-enums";
 import { TActorContext } from "../pam/pam-permission";
@@ -61,12 +62,17 @@ export type TRevokeAccessRequestDTO = {
   projectId: string;
 } & TActorContext;
 
+// Requests and grants key their actor by user OR machine identity, never both
+export type TAccessRequestActor = {
+  actorId: string;
+  actor: ActorType;
+};
+
 export type TCheckGrantDTO = {
-  userId: string;
   accountId: string;
   accountFolderId?: string | null;
   projectId: string;
-};
+} & TAccessRequestActor;
 
 export type TPamAccessRequestData = {
   accountId: string;

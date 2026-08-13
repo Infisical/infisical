@@ -22,7 +22,6 @@ export const PgSqlLock = {
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
   CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`),
   CreateFolder: (envId: string, projectId: string) => pgAdvisoryLockHashText(`create-folder:${envId}-${projectId}`),
-  SshInit: (projectId: string) => pgAdvisoryLockHashText(`ssh-bootstrap:${projectId}`),
   InstanceRelayConfigInit: () => pgAdvisoryLockHashText("instance-relay-config-init"),
   OrgGatewayV2Init: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-v2-init:${orgId}`),
   OrgRelayConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-relay-config-init:${orgId}`),
@@ -51,6 +50,7 @@ export const KeyStorePrefixes = {
   WaitUntilReadyProjectEnvironmentOperation: (projectId: string) =>
     `wait-until-ready-project-environments-operation-${projectId}`,
   ProjectEnvironmentLock: (projectId: string) => `project-environment-lock-${projectId}` as const,
+  CreateFolderLock: (envId: string) => `create-folder-lock-${envId}` as const,
   SyncSecretIntegrationLock: (projectId: string, environmentSlug: string, secretPath: string) =>
     `sync-integration-mutex-${projectId}-${environmentSlug}-${secretPath}` as const,
   SyncSecretIntegrationLastRunTimestamp: (projectId: string, environmentSlug: string, secretPath: string) =>
@@ -77,6 +77,7 @@ export const KeyStorePrefixes = {
     `identity-trusted-ips:${identityId}:${authMethod}` as const,
   IdentityUaClientSecretUsageDebounce: (clientSecretId: string) =>
     `identity-ua-client-secret-usage-debounce:${clientSecretId}` as const,
+  IdentityLastLoginDebounce: (identityId: string) => `identity-last-login-debounce:${identityId}` as const,
   ProxiedServiceUsageDebounce: (serviceId: string) => `proxied-service-usage-debounce:${serviceId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
@@ -113,12 +114,6 @@ export const KeyStorePrefixes = {
   GitHubManifestNameLock: (orgId: string, projectId: string | null, name: string) =>
     `github-manifest-name-lock:${orgId}:${projectId ?? "org"}:${name}` as const,
 
-  AiMcpServerOAuth: (sessionId: string) => `ai-mcp-server-oauth:${sessionId}` as const,
-
-  // AI MCP Endpoint OAuth
-  AiMcpEndpointOAuthClient: (clientId: string) => `ai-mcp-endpoint-oauth-client:${clientId}` as const,
-  AiMcpEndpointOAuthCode: (clientId: string, code: string) => `ai-mcp-endpoint-oauth-code:${clientId}:${code}` as const,
-
   // OAuth 2.0 authorization server (Infisical as an OAuth provider)
   OauthAuthorizationCode: (code: string) => `oauth-authorization-code:${code}` as const,
 
@@ -132,6 +127,8 @@ export const KeyStorePrefixes = {
 
   TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const,
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
+  TelemetryAuditLogsViewed: (orgId: string, distinctId: string) =>
+    `telemetry-audit-logs-viewed:${orgId}:${distinctId}` as const,
   TelemetryIdentify: (distinctId: string) => `telemetry-identify:${distinctId}` as const,
   SecretEtag: (projectId: string, dayStamp: string) => `secret-etag:${projectId}:${dayStamp}` as const,
   SecretPermissionFingerprint: (projectId: string, actorType: string, actorId: string) =>
@@ -222,15 +219,14 @@ export const KeyStoreTtls = {
   // How often a billable org's usage is re-emitted for reconciliation (demand-driven from getPlan).
   LicenseUsageReconcileIntervalInSeconds: 21600, // 6 hours
   LicenseUsageLastReportedInSeconds: 604800, // 7 days
-  AiMcpEndpointOAuthFlowInSeconds: 300, // 5 minutes
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes
-  AiMcpServerOAuthSessionInSeconds: 600, // 10 minutes
   DashboardCacheInSeconds: 600, // 10 minutes
   ProjectEnvironmentOperationMarkerInSeconds: 10,
   UserMfaUnlockEmailSentInSeconds: 300, // 5 minutes
   StepUpMfaAttemptWindowInSeconds: 300, // 5 minutes - rolling window for counting failed step-up attempts
   StepUpMfaLockoutInSeconds: 300, // 5 minutes - temporary lockout after too many failed step-up attempts
   TelemetryGroupIdentifyInSeconds: 3600, // 1 hour
+  TelemetryAuditLogsViewedInSeconds: 3600, // 1 hour
   TelemetryAggregatedEventInSeconds: 1800, // 30 minutes
   SecretEtagInSeconds: 900, // 15 minutes
   PkiAcmeNonceInSeconds: 300, // 5 minutes
@@ -326,21 +322,23 @@ export const keyStoreFactory = (
   redisConfigKeys: TKeyStoreFactoryDTO,
   keyValueStoreDAL: TKeyValueStoreDALFactory
 ): TKeyStoreFactory => {
-  const primaryRedis = buildRedisFromConfig(redisConfigKeys);
+  const primaryRedis = buildRedisFromConfig(redisConfigKeys, "keystore");
 
   const redisReadReplicas = redisConfigKeys.REDIS_READ_REPLICAS?.map((el) => {
+    const replicaName = `keystore-replica:${el.host}:${el.port}`;
+
     if (redisConfigKeys.REDIS_URL) {
       const primaryNode = new URL(redisConfigKeys?.REDIS_URL);
       primaryNode.hostname = el.host;
       primaryNode.port = String(el.port);
-      return buildRedisFromConfig({ ...redisConfigKeys, REDIS_URL: primaryNode.toString() });
+      return buildRedisFromConfig({ ...redisConfigKeys, REDIS_URL: primaryNode.toString() }, replicaName);
     }
 
     if (redisConfigKeys.REDIS_SENTINEL_HOSTS) {
-      return buildRedisFromConfig({ ...redisConfigKeys, REDIS_SENTINEL_HOSTS: [el] });
+      return buildRedisFromConfig({ ...redisConfigKeys, REDIS_SENTINEL_HOSTS: [el] }, replicaName);
     }
 
-    return buildRedisFromConfig({ ...redisConfigKeys, REDIS_CLUSTER_HOSTS: [el] });
+    return buildRedisFromConfig({ ...redisConfigKeys, REDIS_CLUSTER_HOSTS: [el] }, replicaName);
   });
   const redisLock = new Redlock([primaryRedis], { retryCount: 2, retryDelay: 200 });
 

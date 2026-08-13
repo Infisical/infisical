@@ -3,6 +3,7 @@ import { useFormContext } from "react-hook-form";
 
 import {
   Badge,
+  CodeBlock,
   Table,
   TableBody,
   TableCell,
@@ -66,6 +67,8 @@ export const PkiSyncReviewFields = () => {
 
   const destinationName = PKI_SYNC_MAP[destination].name;
   const selectedCertificates = getSelectedCertificates(certificateIds);
+  const postSyncCommand =
+    syncOptions && "postSyncCommand" in syncOptions ? syncOptions.postSyncCommand : undefined;
 
   return (
     <div className="mb-4 flex flex-col gap-6">
@@ -176,6 +179,14 @@ export const PkiSyncReviewFields = () => {
           })}
         </div>
       </div>
+      {postSyncCommand && (
+        <div className="flex flex-col gap-3">
+          <div className="w-full border-b border-border">
+            <span className="text-sm text-muted">Post-Sync Command</span>
+          </div>
+          <CodeBlock value={postSyncCommand} className="max-h-48 whitespace-pre-wrap" />
+        </div>
+      )}
       <div className="flex flex-col gap-3">
         <div className="w-full border-b border-border">
           <span className="text-sm text-muted">Details</span>

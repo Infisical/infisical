@@ -170,6 +170,7 @@ export const registerSyncPkiEndpoints = ({
             destination,
             connectionId: pkiSync.connectionId,
             hasCredentials: Boolean(req.body.credentials?.exportPassword),
+            hasPostSyncCommand: Boolean(req.body.syncOptions?.postSyncCommand),
             ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
           }
         }
@@ -222,7 +223,8 @@ export const registerSyncPkiEndpoints = ({
           metadata: {
             pkiSyncId,
             name: pkiSync.name,
-            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId }),
+            hasPostSyncCommand: Boolean(pkiSync.syncOptions?.postSyncCommand)
           }
         }
       });

@@ -17,7 +17,9 @@ import {
   CertKeyUsageType,
   CertSignatureAlgorithm,
   CertSubjectAlternativeNameType,
-  domainComponentSchema
+  domainComponentsSchema,
+  pkiDescriptionSchema,
+  subjectAttributeSchema
 } from "@app/services/certificate-common/certificate-constants";
 import { ExternalConfigUnionSchema } from "@app/services/certificate-profile/certificate-profile-external-config-schemas";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
@@ -31,6 +33,33 @@ const SubjectAltNameDefaultsSchema = z
     })
   )
   .optional();
+
+// Subject defaults are stored as jsonb on the profile but are copied verbatim onto the certificate
+// request at issuance time, where each attribute lands in a varchar(255) column — so they carry the
+// same bound as an explicitly supplied subject attribute.
+const CertificateProfileDefaultsSchema = z
+  .object({
+    ttlDays: z.number().int().positive().optional(),
+    commonName: subjectAttributeSchema.optional(),
+    keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
+    signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
+    keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
+    extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
+    basicConstraints: z
+      .object({
+        isCA: z.boolean(),
+        pathLength: z.number().int().min(0).optional()
+      })
+      .optional(),
+    organization: subjectAttributeSchema.optional(),
+    organizationalUnit: subjectAttributeSchema.optional(),
+    country: subjectAttributeSchema.optional(),
+    state: subjectAttributeSchema.optional(),
+    locality: subjectAttributeSchema.optional(),
+    subjectAltNames: SubjectAltNameDefaultsSchema,
+    domainComponents: domainComponentsSchema.optional()
+  })
+  .nullish();
 
 const CertificateProfileDefaultsResponseSchema = z
   .object({
@@ -80,7 +109,7 @@ export const registerCertificateProfilesRouter = async (
             .min(1)
             .max(255)
             .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens"),
-          description: z.string().max(1000).optional(),
+          description: pkiDescriptionSchema.optional(),
           enrollmentType: z.nativeEnum(EnrollmentType).optional().describe(openApiHidden()),
           issuerType: z.nativeEnum(IssuerType).default(IssuerType.CA),
           estConfig: z
@@ -117,29 +146,7 @@ export const registerCertificateProfilesRouter = async (
             .optional()
             .describe(openApiHidden()),
           externalConfigs: ExternalConfigUnionSchema,
-          defaults: z
-            .object({
-              ttlDays: z.number().int().positive().optional(),
-              commonName: z.string().optional(),
-              keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
-              signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
-              keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
-              extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
-              basicConstraints: z
-                .object({
-                  isCA: z.boolean(),
-                  pathLength: z.number().int().min(0).optional()
-                })
-                .optional(),
-              organization: z.string().optional(),
-              organizationalUnit: z.string().optional(),
-              country: z.string().optional(),
-              state: z.string().optional(),
-              locality: z.string().optional(),
-              subjectAltNames: SubjectAltNameDefaultsSchema,
-              domainComponents: z.array(domainComponentSchema).optional()
-            })
-            .nullish()
+          defaults: CertificateProfileDefaultsSchema
         })
         .refine(
           (data) => {
@@ -565,7 +572,7 @@ export const registerCertificateProfilesRouter = async (
             .max(255)
             .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens")
             .optional(),
-          description: z.string().max(1000).nullable().optional(),
+          description: pkiDescriptionSchema.nullable().optional(),
           enrollmentType: z.nativeEnum(EnrollmentType).optional().describe(openApiHidden()),
           issuerType: z.nativeEnum(IssuerType).optional(),
           estConfig: z
@@ -602,29 +609,7 @@ export const registerCertificateProfilesRouter = async (
             .optional()
             .describe(openApiHidden()),
           externalConfigs: ExternalConfigUnionSchema,
-          defaults: z
-            .object({
-              ttlDays: z.number().int().positive().optional(),
-              commonName: z.string().optional(),
-              keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
-              signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
-              keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
-              extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
-              basicConstraints: z
-                .object({
-                  isCA: z.boolean(),
-                  pathLength: z.number().int().min(0).optional()
-                })
-                .optional(),
-              organization: z.string().optional(),
-              organizationalUnit: z.string().optional(),
-              country: z.string().optional(),
-              state: z.string().optional(),
-              locality: z.string().optional(),
-              subjectAltNames: SubjectAltNameDefaultsSchema,
-              domainComponents: z.array(domainComponentSchema).optional()
-            })
-            .nullish()
+          defaults: CertificateProfileDefaultsSchema
         })
         .refine(
           (data) => {

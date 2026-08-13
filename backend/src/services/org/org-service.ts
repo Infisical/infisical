@@ -122,7 +122,7 @@ type TOrgServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<
     TLicenseServiceFactory,
-    "getPlan" | "updateSubscriptionOrgMemberCount" | "generateOrgCustomerId" | "removeOrgCustomer"
+    "getPlan" | "updateSubscriptionOrgMemberCount" | "cancelOrgSubscription"
   >;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
@@ -444,7 +444,6 @@ export const orgServiceFactory = ({
       secretsProductEnabled,
       pkiProductEnabled,
       kmsProductEnabled,
-      sshProductEnabled,
       scannerProductEnabled,
       shareSecretsProductEnabled,
       maxSharedSecretLifetime,
@@ -650,7 +649,6 @@ export const orgServiceFactory = ({
       secretsProductEnabled,
       pkiProductEnabled,
       kmsProductEnabled,
-      sshProductEnabled,
       scannerProductEnabled,
       shareSecretsProductEnabled,
       maxSharedSecretLifetime,
@@ -674,23 +672,16 @@ export const orgServiceFactory = ({
   const createOrganization = async (
     {
       userId,
-      userEmail,
       orgName
     }: {
       userId?: string;
       orgName: string;
-      userEmail?: string | null;
     },
     trx?: Knex
   ) => {
-    const customerId = await licenseService.generateOrgCustomerId(orgName, userEmail);
-
     const createOrg = async (tx: Knex) => {
       // akhilmhdh: for now this is auto created. in future we can input from user and for previous users just modifiy
-      const org = await orgDAL.create(
-        { name: orgName, customerId, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) },
-        tx
-      );
+      const org = await orgDAL.create({ name: orgName, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) }, tx);
       if (userId) {
         const membership = await orgDAL.createMembership(
           {
@@ -806,10 +797,6 @@ export const orgServiceFactory = ({
 
       const deletedOrg = await orgDAL.deleteById(orgId, tx);
 
-      if (deletedOrg.customerId) {
-        await licenseService.removeOrgCustomer(deletedOrg.customerId);
-      }
-
       // Generate new tokens without the organization ID present
       const user = await userDAL.findById(userId, tx);
       const { access: accessToken, refresh: refreshToken } = await loginService.generateUserTokens(
@@ -832,6 +819,11 @@ export const orgServiceFactory = ({
         }
       };
     });
+
+    // if root org null = this is a root org then cancel the subscription.
+    if (!response.organization.rootOrgId) {
+      await licenseService.cancelOrgSubscription(orgId);
+    }
 
     return response;
   };
@@ -1109,14 +1101,14 @@ export const orgServiceFactory = ({
       });
     }
 
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-
     await tokenService.validateTokenForUser({
       type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
       userId: user.id,
       orgId: orgMembership.scopeOrgId,
       code
     });
+
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
 
     await userDAL.updateById(user.id, {
       isEmailVerified: true
@@ -1125,7 +1117,7 @@ export const orgServiceFactory = ({
     // If user already completed signup, they'll be promoted to Accepted
     // when they authenticate via selectOrganization or processProviderCallback
     if (user.isAccepted) {
-      return { user };
+      return { user, organizationName: organization.name };
     }
 
     const membershipRole = await membershipRoleDAL.findOne({ membershipId: orgMembership.id });
@@ -1133,7 +1125,7 @@ export const orgServiceFactory = ({
       organization.authEnforced &&
       !(organization.bypassOrgAuthEnabled && membershipRole.role === OrgMembershipRole.Admin)
     ) {
-      return { user };
+      return { user, organizationName: organization.name };
     }
 
     const appCfg = getConfig();
@@ -1148,7 +1140,7 @@ export const orgServiceFactory = ({
       }
     );
 
-    return { token, user };
+    return { token, user, organizationName: organization.name };
   };
 
   const getOrgMembership = async ({
