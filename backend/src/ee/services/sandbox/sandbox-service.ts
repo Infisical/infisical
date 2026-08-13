@@ -57,6 +57,7 @@ import {
   TExecInSandboxDTO,
   TRemoveSandboxIntegrationDTO,
   TSandbox,
+  TSandboxBootSink,
   TSandboxExecResult,
   TSandboxGrants,
   TSandboxIdDTO,
@@ -110,6 +111,7 @@ const toSandbox = (row: TSandboxes): TSandbox => ({
   memoryMb: row.memoryMb,
   grants: normalizeGrants(row.grants),
   agentType: (row.agentType as TSandbox["agentType"]) ?? null,
+  agentModel: row.agentModel ?? null,
   hasAgentToken: Boolean(row.encryptedAgentToken),
   commandsRun: row.commandsRun,
   slackChannelId: row.slackChannelId ?? null,
@@ -297,6 +299,7 @@ export const sandboxServiceFactory = ({
       ...(dto.vcpu !== undefined && { vcpu: dto.vcpu }),
       ...(dto.memoryMb !== undefined && { memoryMb: dto.memoryMb }),
       ...(dto.agentType !== undefined && { agentType: dto.agentType }),
+      ...(dto.agentModel !== undefined && { agentModel: dto.agentModel }),
       ...(dto.agentToken !== undefined && {
         encryptedAgentToken: await $encryptAgentToken(actor.orgId, dto.agentToken)
       }),
@@ -326,23 +329,40 @@ export const sandboxServiceFactory = ({
     return toSandbox(row);
   };
 
-  const startSandbox = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor): Promise<TSandbox> => {
+  const startSandbox = async (
+    { sandboxId, onProgress = () => {} }: TSandboxIdDTO & { onProgress?: TSandboxBootSink },
+    actor: OrgServiceActor
+  ): Promise<TSandbox> => {
+    // Reassigned when an identity has to be backfilled below.
     let row = await $resolve(sandboxId, actor, true);
 
     if (isSandboxBooted(sandboxId)) {
       throw new BadRequestError({ message: `Sandbox '${row.name}' is already running` });
     }
 
-    await bootSandbox(sandboxId, { vcpu: row.vcpu, memoryMb: row.memoryMb });
+    onProgress({
+      type: "step",
+      label: "container",
+      message: `Creating container (${row.vcpu} vCPU, ${row.memoryMb} MB)`
+    });
+    await bootSandbox(sandboxId, { vcpu: row.vcpu, memoryMb: row.memoryMb }, (line) =>
+      onProgress({ type: "log", message: line })
+    );
+    onProgress({ type: "step", label: "container", message: "Container running on the isolated network" });
 
     // Open a brokered proxy per granted account and tell the sandbox only the port. The identity
     // token and the database credential both stay in this process.
     const grants = normalizeGrants(row.grants);
+    if (grants.pamAccountIds.length) {
+      onProgress({ type: "step", label: "databases", message: "Opening brokered sessions" });
+    }
+
     // Sandboxes created before they were given their own identity have none, and the PAM block below
     // is guarded on it, so their grants would resolve to nothing with no indication why. Provision one
     // on the spot instead of making the user rebuild the sandbox.
     if (grants.pamAccountIds.length && !row.identityId) {
       logger.info(`Backfilling a machine identity so PAM can be brokered [sandboxId=${sandboxId}]`);
+      onProgress({ type: "log", message: "Provisioning this sandbox's machine identity" });
       const identity = await provisionSandboxIdentity({ identityService, identityUaService }, row.name, actor);
       row = await sandboxDAL.updateById(sandboxId, {
         identityId: identity.identityId,
@@ -379,6 +399,14 @@ export const sandboxServiceFactory = ({
         })
       : [];
 
+    proxies.forEach((proxy) =>
+      onProgress({ type: "log", message: `PAM session open: ${proxy.accountName} on port ${proxy.port}` })
+    );
+
+    if (grants.integrations.length) {
+      onProgress({ type: "step", label: "credentials", message: "Resolving brokered credentials" });
+    }
+
     // Resolve each integration's secret for the proxy. The sandbox only ever receives a placeholder.
     const integrationEnv: Record<string, string> = {};
     const resolved: (TSandboxIntegration & { secretValue: string })[] = [];
@@ -414,6 +442,14 @@ export const sandboxServiceFactory = ({
       }
     }
 
+    resolved.forEach((integration) =>
+      onProgress({
+        type: "log",
+        message: `${SANDBOX_INTEGRATIONS[integration.type].name}: placeholder issued, real value held by the proxy`
+      })
+    );
+
+    onProgress({ type: "step", label: "proxy", message: "Starting the egress proxy" });
     const { port: proxyPort, certificatePem } = await startSandboxProxy(sandboxId, resolved);
 
     // The sandbox is its own container, so the proxy and the brokered database ports are reached at
@@ -454,6 +490,9 @@ export const sandboxServiceFactory = ({
         ...(proxies[0].database && { PGDATABASE: proxies[0].database })
       })
     });
+
+    onProgress({ type: "log", message: `Egress proxy listening; ${resolved.length} host group(s) allowed` });
+    onProgress({ type: "step", label: "ready", message: "Sandbox ready" });
 
     return toSandbox(row);
   };
@@ -595,6 +634,7 @@ export const sandboxServiceFactory = ({
     return runAgentTurn({
       sandboxId,
       apiKey: await $decryptClientSecret(actor.orgId, row.encryptedAgentToken),
+      model: row.agentModel ?? undefined,
       systemPrompt: buildSystemPrompt(toSandbox(row), getPamProxies(sandboxId), await getProxyHostAddress()),
       messages,
       onEvent
@@ -696,6 +736,7 @@ export const sandboxServiceFactory = ({
       const turn = await runAgentTurn({
         sandboxId: sandbox.id,
         apiKey: await $decryptClientSecret(sandbox.orgId, sandbox.encryptedAgentToken),
+        model: sandbox.agentModel ?? undefined,
         systemPrompt: buildSystemPrompt(toSandbox(sandbox), getPamProxies(sandbox.id), await getProxyHostAddress()),
         messages: [{ role: "user", content: message.text }]
       });

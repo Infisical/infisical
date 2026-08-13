@@ -59,6 +59,7 @@ const SandboxSchema = z.object({
   memoryMb: z.number(),
   grants: GrantsSchema,
   agentType: z.nativeEnum(SandboxAgentType).nullable(),
+  agentModel: z.string().nullable(),
   hasAgentToken: z.boolean(),
   createdAt: z.string(),
   lastActivityAt: z.string().nullable(),
@@ -294,6 +295,7 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
         memoryMb: z.number().int().min(256).max(32768).optional(),
         pamAccountIds: z.string().uuid().array().max(25).optional(),
         agentType: z.nativeEnum(SandboxAgentType).optional(),
+        agentModel: z.string().trim().min(1).max(128).optional(),
         agentToken: z.string().trim().min(1).max(500).optional()
       }),
       response: { 200: z.object({ sandbox: SandboxSchema }) }
@@ -346,6 +348,44 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
         return { sandbox };
       }
     });
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:sandboxId/start/stream",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: true,
+      operationId: "startSandboxWithProgress",
+      description: "Start a sandbox, streaming boot progress as each stage completes.",
+      params: SandboxIdParamsSchema,
+      produces: ["text/event-stream"]
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req, reply) => {
+      // Fastify replies are thenable, so the hijack call reads as a floating promise without this.
+      void reply.hijack();
+      reply.raw.writeHead(200, {
+        "Cache-Control": "no-cache",
+        "Content-Type": "text/event-stream",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no"
+      });
+
+      const send = (event: unknown) => reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+
+      try {
+        await server.services.sandbox.startSandbox(
+          { sandboxId: req.params.sandboxId, onProgress: send },
+          req.permission
+        );
+        send({ type: "ready" });
+      } catch (error) {
+        send({ type: "error", message: error instanceof Error ? error.message : "The sandbox failed to start." });
+      } finally {
+        reply.raw.end();
+      }
+    }
   });
 
   server.route({

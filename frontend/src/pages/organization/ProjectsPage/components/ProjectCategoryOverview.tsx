@@ -208,6 +208,8 @@ export const ProjectCategoryOverview = () => {
           { label: "account templates", value: productStats.pam.accountTemplatesCount },
           { label: "folders", value: productStats.pam.foldersCount }
         ];
+      case ProjectType.Sandbox:
+        return [{ label: "sandboxes", value: productStats.sandbox.sandboxesCount }];
       default:
         return [];
     }

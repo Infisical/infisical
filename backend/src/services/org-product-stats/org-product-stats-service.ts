@@ -24,6 +24,7 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL }: TOrgProduc
       accountsCount,
       accountTemplatesCount,
       foldersCount,
+      sandboxesCount,
       projectCounts
     ] = await Promise.all([
       orgProductStatsDAL.countSecretsForOrg(actorOrgId),
@@ -38,6 +39,7 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL }: TOrgProduc
       orgProductStatsDAL.countPamAccountsForOrg(actorOrgId),
       orgProductStatsDAL.countPamAccountTemplatesForOrg(actorOrgId),
       orgProductStatsDAL.countPamFoldersForOrg(actorOrgId),
+      orgProductStatsDAL.countSandboxesForOrg(actorOrgId),
       orgProductStatsDAL.countProjectsByTypeForOrg(actorOrgId)
     ]);
 
@@ -66,6 +68,9 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL }: TOrgProduc
         accountsCount,
         accountTemplatesCount,
         foldersCount
+      },
+      sandbox: {
+        sandboxesCount
       }
     };
   };

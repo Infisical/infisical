@@ -92,6 +92,7 @@ export type TSandbox = {
   memoryMb: number;
   grants: TSandboxGrants;
   agentType: SandboxAgentType | null;
+  agentModel: string | null;
   hasAgentToken: boolean;
   createdAt: string;
   lastActivityAt: string | null;
@@ -134,6 +135,7 @@ export type TUpdateSandboxDTO = {
   memoryMb?: number;
   pamAccountIds?: string[];
   agentType?: SandboxAgentType;
+  agentModel?: string;
   agentToken?: string;
 };
 

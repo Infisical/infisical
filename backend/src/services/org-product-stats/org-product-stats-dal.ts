@@ -90,6 +90,20 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Sandboxes hang off the org directly rather than off a project, so there is nothing to join.
+  const countSandboxesForOrg = async (orgId: string, tx?: Knex) => {
+    try {
+      const result = (await (tx || db.replicaNode())(TableName.Sandbox)
+        .where({ orgId })
+        .count("id as count")
+        .first()) as { count: string } | undefined;
+
+      return parseInt(result?.count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountSandboxesForOrg" });
+    }
+  };
+
   const countPamAccountsForOrg = async (orgId: string, tx?: Knex) => {
     try {
       const result = (await (tx || db.replicaNode())(TableName.PamAccount)
@@ -239,6 +253,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     countKmipClientsForOrg,
     countDataSourcesForOrg,
     countSecretScanningResourcesForOrg,
+    countSandboxesForOrg,
     countPamAccountsForOrg,
     countPamAccountTemplatesForOrg,
     countPamFoldersForOrg,

@@ -100,9 +100,11 @@ const ProjectSelectInner = () => {
     window.location.assign(urlInstance);
   };
 
+  // Products without user-facing projects have nothing to switch between, so the chip is omitted.
   if (
     currentWorkspace.type === ProjectType.CertificateManager ||
-    currentWorkspace.type === ProjectType.PAM
+    currentWorkspace.type === ProjectType.PAM ||
+    currentWorkspace.type === ProjectType.Sandbox
   ) {
     return null;
   }
@@ -230,8 +232,9 @@ export const ProjectSelect = () => {
   const { pathname } = useLocation();
 
   const isPamRoute = pathname.includes("/pam/");
+  const isSandboxRoute = pathname.includes("/sandboxes");
 
-  if (!params.projectId && !isPamRoute) {
+  if (!params.projectId && !isPamRoute && !isSandboxRoute) {
     return null;
   }
 

@@ -56,14 +56,18 @@ const readDockerfile = () =>
     });
   });
 
-export const bootSandbox = async (sandboxId: string, resources: { vcpu: number; memoryMb: number }) => {
+export const bootSandbox = async (
+  sandboxId: string,
+  resources: { vcpu: number; memoryMb: number },
+  onLog: (line: string) => void = () => {}
+) => {
   assertSandboxRuntimeEnabled();
 
   const existing = states.get(sandboxId);
   if (existing) return existing;
 
-  await prepareDockerRuntime(await readDockerfile());
-  await startContainer(sandboxId, resources);
+  await prepareDockerRuntime(await readDockerfile(), onLog);
+  await startContainer(sandboxId, resources, onLog);
 
   const state: TSandboxProcessState = { cwd: SANDBOX_HOME, extraEnv: {} };
   states.set(sandboxId, state);

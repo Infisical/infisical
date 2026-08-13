@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useNavigate } from "@tanstack/react-router";
-import { BoxIcon, PlusIcon } from "lucide-react";
+import { BoxIcon, KeyRoundIcon, MemoryStickIcon, PlugIcon, PlusIcon } from "lucide-react";
 
 import {
   Alert,
@@ -9,6 +9,9 @@ import {
   AlertTitle,
   Badge,
   Button,
+  Card,
+  CardContent,
+  CardHeader,
   Empty,
   EmptyContent,
   EmptyDescription,
@@ -16,19 +19,14 @@ import {
   EmptyMedia,
   EmptyTitle,
   PageHeader,
-  Skeleton,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
+  Skeleton
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { SandboxStatus, useListSandboxes } from "@app/hooks/api/sandboxes";
 
-import { CreateSandboxSheet } from "./components/CreateSandboxSheet";
+import { AGENT_ICONS } from "../SandboxPage/components/agentIcons";
+import { CreateSandboxWizard } from "./components/CreateSandboxWizard";
 
 export const SandboxesPage = () => {
   const { currentOrg } = useOrganization();
@@ -91,63 +89,102 @@ export const SandboxesPage = () => {
               {sandboxes.length} sandbox{sandboxes.length === 1 ? "" : "es"} · {running} running
             </p>
 
-            <Table>
-              <TableHeader className="bg-container">
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Grants</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sandboxes.map((sandbox) => {
-                  const grantCount =
-                    sandbox.grants.integrations.length + sandbox.grants.pamAccountIds.length;
+            {/* Padded because the layout's scroll container clips on both axes with no padding of
+                its own, so a card on an edge loses the corner it grows into on hover. */}
+            <div className="grid grid-cols-1 gap-5 p-1 md:grid-cols-2 xl:grid-cols-3">
+              {sandboxes.map((sandbox) => {
+                const isRunning = sandbox.status === SandboxStatus.Running;
+                // The icon says what the sandbox is. A plain VM has no agent, so it keeps the box.
+                const Icon = sandbox.agentType ? AGENT_ICONS[sandbox.agentType] : BoxIcon;
+                const open = () =>
+                  navigate({
+                    to: "/organizations/$orgId/sandboxes/$sandboxId",
+                    params: { orgId: currentOrg.id, sandboxId: sandbox.id }
+                  });
 
-                  return (
-                    <TableRow
-                      key={sandbox.id}
-                      className="cursor-pointer"
-                      onClick={() =>
-                        navigate({
-                          to: "/organizations/$orgId/sandboxes/$sandboxId",
-                          params: { orgId: currentOrg.id, sandboxId: sandbox.id }
-                        })
-                      }
-                    >
-                      <TableCell>
-                        <p className="font-medium">{sandbox.name}</p>
-                        {sandbox.description && (
-                          <p className="truncate text-xs text-muted">{sandbox.description}</p>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted">
-                        {sandbox.vcpu} vCPU · {sandbox.memoryMb / 1024} GB
-                      </TableCell>
-                      <TableCell className="text-muted">
-                        {grantCount === 0 ? "None" : `${grantCount} granted`}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={sandbox.status === SandboxStatus.Running ? "success" : "neutral"}
-                        >
-                          {sandbox.status === SandboxStatus.Running ? "Running" : "Stopped"}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                const stats = [
+                  {
+                    icon: MemoryStickIcon,
+                    label: `${sandbox.vcpu} vCPU · ${sandbox.memoryMb / 1024} GB`
+                  },
+                  {
+                    icon: PlugIcon,
+                    label: `${sandbox.grants.integrations.length} integration${
+                      sandbox.grants.integrations.length === 1 ? "" : "s"
+                    }`
+                  },
+                  {
+                    icon: KeyRoundIcon,
+                    label: `${sandbox.grants.pamAccountIds.length} account${
+                      sandbox.grants.pamAccountIds.length === 1 ? "" : "s"
+                    }`
+                  }
+                ];
+
+                return (
+                  <Card
+                    key={sandbox.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={open}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") open();
+                    }}
+                    // Lifted on hover because the scale grows the card past its grid cell, and
+                    // without a stacking order the next card in the DOM paints over the new edge.
+                    className="group relative h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:z-10 hover:scale-[1.01] hover:bg-gradient-to-br hover:from-product-sandbox/[0.05] hover:to-transparent"
+                  >
+                    <CardHeader>
+                      <div className="flex items-start gap-3">
+                        <div className="shrink-0 rounded-sm border border-product-sandbox/25 bg-gradient-to-br from-product-sandbox/15 to-product-sandbox/5 p-1.5 transition-colors duration-200 group-hover:border-product-sandbox/45 group-hover:from-product-sandbox/25 group-hover:to-product-sandbox/10">
+                          <Icon className="h-4.5 w-4.5 sandbox-chrome-icon" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-base font-semibold text-foreground underline decoration-product-sandbox/60 decoration-[1.5px] underline-offset-4">
+                              {sandbox.name}
+                            </span>
+                            <Badge variant={isRunning ? "success" : "neutral"}>
+                              {isRunning ? "Running" : "Stopped"}
+                            </Badge>
+                          </div>
+                          <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
+                            {sandbox.description ||
+                              "No description. Open the sandbox to grant it access and talk to its agent."}
+                          </p>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-3">
+                      <div className="flex items-center gap-4 border-t border-border pt-3">
+                        {stats.map((stat, index) => (
+                          <div key={stat.label} className="flex items-center gap-4">
+                            <span className="flex items-center gap-1.5 text-xs text-muted">
+                              <stat.icon className="size-3.5" />
+                              {stat.label}
+                            </span>
+                            {index < stats.length - 1 && <div className="h-4 w-px bg-border" />}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
 
-      <CreateSandboxSheet
+      <CreateSandboxWizard
         isOpen={isCreateOpen}
         onOpenChange={setIsCreateOpen}
-        onCreated={() => setIsCreateOpen(false)}
+        onCreated={(sandboxId) =>
+          navigate({
+            to: "/organizations/$orgId/sandboxes/$sandboxId",
+            params: { orgId: currentOrg.id, sandboxId }
+          })
+        }
       />
     </>
   );

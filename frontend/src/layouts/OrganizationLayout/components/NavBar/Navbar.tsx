@@ -310,8 +310,10 @@ export const Navbar = () => {
   const isServerAdminPanel = location.pathname.startsWith("/admin");
 
   const isPamScope = location.pathname.startsWith(`/organizations/${currentOrg.id}/pam/`);
+  const isSandboxScope = location.pathname.startsWith(`/organizations/${currentOrg.id}/sandboxes`);
   const isProjectScope =
     isPamScope ||
+    isSandboxScope ||
     (location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&
       location.pathname !== `/organizations/${currentOrg.id}/projects`);
 
@@ -349,7 +351,8 @@ export const Navbar = () => {
         "z-10 flex min-h-12 items-center border-b border-border bg-gradient-to-br to-transparent",
         isServerAdminPanel && "from-admin/5",
         !isServerAdminPanel && isPamScope && "from-product-pam/5",
-        !isServerAdminPanel && isProjectScope && !isPamScope && "from-project/5",
+        !isServerAdminPanel && isSandboxScope && "from-product-sandbox/5",
+        !isServerAdminPanel && isProjectScope && !isPamScope && !isSandboxScope && "from-project/5",
         !isServerAdminPanel && !isProjectScope && isSubOrganization && "from-sub-org/5",
         !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
       )}

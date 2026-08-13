@@ -58,6 +58,8 @@ export type TSandbox = {
   memoryMb: number;
   grants: TSandboxGrants;
   agentType: SandboxAgentType | null;
+  /** Null means the agent's own default model. */
+  agentModel: string | null;
   /** The token itself is never returned, only whether one is configured. */
   hasAgentToken: boolean;
   createdAt: string;
@@ -101,6 +103,7 @@ export type TUpdateSandboxDTO = {
   memoryMb?: number;
   pamAccountIds?: string[];
   agentType?: SandboxAgentType;
+  agentModel?: string;
   agentToken?: string;
 };
 
@@ -120,3 +123,16 @@ export type TExecInSandboxDTO = {
   sandboxId: string;
   command: string;
 };
+
+/**
+ * Boot progress for the creation wizard's console. `step` marks a named phase the UI can tick off;
+ * `log` is a line of detail underneath it. Reported as the start actually happens rather than being
+ * a timed animation, so a slow pull or a failed grant is visible instead of hidden behind a spinner.
+ */
+export type TSandboxBootEvent =
+  | { type: "step"; label: string; message: string }
+  | { type: "log"; message: string }
+  | { type: "ready" }
+  | { type: "error"; message: string };
+
+export type TSandboxBootSink = (event: TSandboxBootEvent) => void;

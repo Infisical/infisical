@@ -573,6 +573,94 @@ input[type="number"]::-webkit-outer-spin-button {
   animation: sandbox-chrome-sweep 8s linear infinite;
 }
 
+/* One-shot chrome sweep played over the whole screen when a freshly created sandbox is opened.
+   Skewed and blurred so it reads as a reflection travelling across glass rather than a wipe. */
+@keyframes sandbox-shine-sweep {
+  from {
+    transform: translateX(-160%) skewX(-12deg);
+  }
+  to {
+    /* Percentages resolve against the band's own width, not the viewport, so clearing a 55%-wide
+       band off a 100%-wide screen needs ~200% rather than 100%. */
+    transform: translateX(220%) skewX(-12deg);
+  }
+}
+
+@utility sandbox-shine {
+  position: absolute;
+  inset-block: -25%;
+  width: 55%;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(228 228 231 / 0.05) 30%,
+    rgb(255 255 255 / 0.2) 50%,
+    rgb(228 228 231 / 0.05) 70%,
+    transparent 100%
+  );
+  filter: blur(8px);
+  animation: sandbox-shine-sweep 700ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes sandbox-chrome-ring-sweep {
+  to {
+    background-position:
+      0 0,
+      200% center;
+  }
+}
+
+/* The v3 Stepper marks the current step in warning yellow, which is the one colour the sandbox
+   product does not use. Scoped to the sandbox wizard rather than changed in the shared component,
+   because every other product's stepper still wants the yellow.
+
+   The ring is a chrome gradient painted into the border box with the fill painted over it in the
+   padding box, which is how a gradient border survives a border-radius. */
+@utility sandbox-stepper {
+  & [data-slot="stepper-indicator"][data-status="current"] {
+    border-color: transparent;
+    background-image:
+      linear-gradient(var(--color-card), var(--color-card)),
+      linear-gradient(
+        100deg,
+        #71717a 0%,
+        #a1a1aa 7%,
+        #e4e4e7 14%,
+        #ffffff 20%,
+        #b9c0cc 28%,
+        #97a2b0 35%,
+        #fafafa 44%,
+        #cfc5cd 51%,
+        #a9b3bd 58%,
+        #f4f4f5 68%,
+        #b4b0b8 78%,
+        #a1a1aa 88%,
+        #71717a 100%
+      );
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    background-size:
+      100% 100%,
+      200% auto;
+    animation: sandbox-chrome-ring-sweep 8s linear infinite;
+    color: #f4f4f5;
+    --tw-ring-color: rgb(228 228 231 / 0.16);
+  }
+
+  /* A finished step is silver too, not the default green. The check is a stroked SVG, so it takes a
+     flat metallic tone with a shimmer rather than the gradient sweep, which needs a fill to clip. */
+  & [data-slot="stepper-indicator"][data-status="complete"] {
+    border-color: rgb(212 212 216 / 0.55);
+    background-color: rgb(228 228 231 / 0.08);
+    color: #d4d4d8;
+    animation: sandbox-chrome-shimmer 4s ease-in-out infinite;
+  }
+
+  & [data-status="complete"] [data-slot="stepper-connector"] {
+    background-color: rgb(212 212 216 / 0.45);
+  }
+}
+
 /* Stroke icons can't carry a gradient without an SVG def, so this is a metallic tone with a slow
    shimmer rather than a sweep. Hue rotation read as rainbow, not chrome. */
 @utility sandbox-chrome-icon {
@@ -586,7 +674,8 @@ input[type="number"]::-webkit-outer-spin-button {
   .sandbox-chrome-text,
   .sandbox-chrome-icon,
   [class*="sandbox-chrome"],
-  [class*="sandbox-chrome"] svg {
+  [class*="sandbox-chrome"] svg,
+  .sandbox-stepper [data-slot="stepper-indicator"] {
     animation: none;
   }
 }

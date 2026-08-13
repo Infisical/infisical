@@ -31,7 +31,8 @@ const PRODUCT_TYPES: ProjectType[] = [
   ProjectType.CertificateManager,
   ProjectType.KMS,
   ProjectType.SecretScanning,
-  ProjectType.PAM
+  ProjectType.PAM,
+  ProjectType.Sandbox
 ];
 
 const TypeSelectInner = ({
@@ -90,6 +91,14 @@ const TypeSelectInner = ({
       return;
     }
 
+    if (type === ProjectType.Sandbox) {
+      navigate({
+        to: "/organizations/$orgId/sandboxes",
+        params: { orgId }
+      });
+      return;
+    }
+
     if (type === ProjectType.PAM) {
       navigate({
         to: "/organizations/$orgId/pam/access",
@@ -124,6 +133,11 @@ const TypeSelectInner = ({
                 to: "/organizations/$orgId/pam/access",
                 params: { orgId: currentOrg?.id || "" }
               });
+            } else if (currentType === ProjectType.Sandbox) {
+              navigate({
+                to: "/organizations/$orgId/sandboxes",
+                params: { orgId: currentOrg?.id || "" }
+              });
             } else {
               navigate({
                 to: "/organizations/$orgId/projects/$type",
@@ -133,7 +147,11 @@ const TypeSelectInner = ({
           }}
           className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-white"
         >
-          <ProductIcon className="h-[14px] w-[14px] shrink-0" />
+          <ProductIcon
+            className={`h-[14px] w-[14px] shrink-0 ${
+              currentType === ProjectType.Sandbox ? "sandbox-chrome-icon" : ""
+            }`}
+          />
           <span className="truncate">{pillLabel}</span>
         </button>
         <PopoverTrigger asChild>
@@ -199,6 +217,10 @@ export const TypeSelect = () => {
 
   if (!params.projectId && pathname.includes("/pam/")) {
     return <TypeSelectInner currentType={ProjectType.PAM} />;
+  }
+
+  if (!params.projectId && pathname.includes("/sandboxes")) {
+    return <TypeSelectInner currentType={ProjectType.Sandbox} />;
   }
 
   if (params.projectId) {

@@ -182,15 +182,23 @@ const reapOrphanedContainers = async () => {
   logger.info(`Removed sandbox containers left by a previous run [count=${ids.length}]`);
 };
 
-export const prepareDockerRuntime = async (dockerfile: string) => {
+export const prepareDockerRuntime = async (dockerfile: string, onLog: (line: string) => void = () => {}) => {
   await ensureDockerCli();
   await reapOrphanedContainers();
   await ensureNetwork();
+  onLog(`Network ${NETWORK} ready (internal: no route to the internet)`);
   await ensureApiOnNetwork();
+
+  if (!(await imageExists())) onLog(`Building ${IMAGE}; this only happens once`);
   await ensureSandboxImage(dockerfile);
+  onLog(`Image ${IMAGE} ready`);
 };
 
-export const startContainer = async (sandboxId: string, resources: { vcpu: number; memoryMb: number }) => {
+export const startContainer = async (
+  sandboxId: string,
+  resources: { vcpu: number; memoryMb: number },
+  onLog: (line: string) => void = () => {}
+) => {
   const name = containerNameFor(sandboxId);
 
   // A container left behind by a crash holds the name, so the next start would fail on the conflict.
@@ -219,6 +227,7 @@ export const startContainer = async (sandboxId: string, resources: { vcpu: numbe
     `Starting the container for sandbox ${sandboxId}`
   );
 
+  onLog(`Container ${name} started as user agent (non-root, no-new-privileges)`);
   logger.info(
     `Sandbox container started [sandboxId=${sandboxId}] [vcpu=${resources.vcpu}] [memoryMb=${resources.memoryMb}]`
   );

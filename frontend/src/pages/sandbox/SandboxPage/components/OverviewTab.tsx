@@ -6,14 +6,12 @@ import {
   Card,
   CardAction,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
   Separator
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { SandboxStatus, TSandbox } from "@app/hooks/api/sandboxes";
-
 
 type TStatVariant = "project" | "info" | "neutral";
 
@@ -117,7 +115,6 @@ export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
           footnoteVariant="neutral"
         />
       </div>
-
     </div>
   );
 };
