@@ -6,7 +6,7 @@ import { TSandbox } from "./sandbox-types";
  * The agent's system prompt. It describes every tool the sandbox has and how it is already
  * authenticated, so the agent never asks for a credential or tries to read one.
  */
-export const buildSystemPrompt = (sandbox: TSandbox, pamProxies: TPamProxy[]) => {
+export const buildSystemPrompt = (sandbox: TSandbox, pamProxies: TPamProxy[], proxyHost: string) => {
   const lines: string[] = [
     `You are an agent working inside the Infisical sandbox "${sandbox.name}".`,
     "",
@@ -23,7 +23,19 @@ export const buildSystemPrompt = (sandbox: TSandbox, pamProxies: TPamProxy[]) =>
     "- Use the fewest commands that settle the question. Prefer one precise command over several",
     "  exploratory ones, and do not re-check something you have already seen this turn.",
     "- Never run a command to look busy, to confirm a command you just ran worked, or to explore",
-    "  before you know what you are looking for."
+    "  before you know what you are looking for.",
+    "",
+    "## Stay inside the sandbox",
+    "This prompt lists everything you have. If the user asks for something that is not on it, that",
+    "thing is not connected to this sandbox. Say so in one sentence and stop.",
+    "",
+    "- Do the parts of a request you can, then name the part you could not and why. A request with",
+    "  a database step and a GitHub step is not blocked just because the database is not connected.",
+    "- Never go looking for another way in. Do not search the filesystem for credentials, connection",
+    "  strings, config files, or .env files, and do not read process environments.",
+    "- Everything outside your home directory belongs to the machine, not to the user. Do not read it.",
+    "- Never connect to a database that is not listed here, and never install software to reach one.",
+    "- If a command you need is missing, say which one. Do not work around it."
   ];
 
   if (sandbox.grants.integrations.length) {
@@ -45,23 +57,20 @@ export const buildSystemPrompt = (sandbox: TSandbox, pamProxies: TPamProxy[]) =>
     lines.push(
       "",
       "## Databases (Infisical PAM)",
-      "Each database below is already open on localhost through a brokered session. Connect straight",
-      "to the port, with no password: the connection is authenticated for you and recorded.",
+      `Each database below is already open at ${proxyHost} through a brokered session. Connect straight`,
+      "to the host and port, with no password: the connection is authenticated for you and recorded.",
       ""
     );
 
     pamProxies.forEach((proxy) => {
       lines.push(
-        `- **${proxy.accountName}** (${proxy.resourceName}) on \`127.0.0.1:${proxy.port}\`. ` +
-          `Example: \`psql -h 127.0.0.1 -p ${proxy.port} -c "select 1"\``
+        `- **${proxy.accountName}** (${proxy.resourceName}) on \`${proxyHost}:${proxy.port}\`, ` +
+          `database \`${proxy.database}\` as \`${proxy.username}\`. ` +
+          `Example: \`psql -h ${proxyHost} -p ${proxy.port} -U ${proxy.username} -d ${proxy.database} -c "select current_user"\``
       );
     });
 
-    lines.push(
-      "",
-      "The `infisical` CLI is installed if you need to inspect PAM directly, but the ports above are",
-      "already open, so you normally do not need it."
-    );
+    lines.push("", "`psql` is installed. The session is already open, so there is nothing to log in to.");
   }
 
   if (!sandbox.grants.integrations.length && !pamProxies.length) {

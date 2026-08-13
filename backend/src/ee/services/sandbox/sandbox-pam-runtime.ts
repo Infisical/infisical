@@ -1,19 +1,22 @@
-import { spawn } from "node:child_process";
-import { createServer } from "node:net";
+import { connect, createServer, Server } from "node:net";
 
-import { getConfig } from "@app/lib/config/env";
+import { GatewayProxyProtocol } from "@app/lib/gateway/types";
+import { setupRelayServer } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
+import { ActorType } from "@app/services/auth/auth-type";
+
+import { TPamSessionServiceFactory } from "../pam-session/pam-session-service";
 
 /**
- * Opens a PAM database proxy per granted account using `infisical pam db access`.
+ * Opens one brokered database session per granted PAM account.
  *
- * The CLI runs on the API host, not inside the sandbox, so the identity token and the database
- * credential both stay outside the sandbox: the sandbox only ever learns a localhost port. When the
- * sandbox becomes a container with its own network namespace, this moves inside it and authenticates
- * with a placeholder token that the egress proxy swaps, which is the same shape one level down.
+ * This deliberately does not shell out to `infisical pam db access`. That command resolves auth from
+ * the CLI's stored *interactive* login session and ignores INFISICAL_TOKEN, so a machine identity can
+ * never satisfy it. It calls the same service the CLI's endpoint calls instead, as the sandbox's own
+ * identity, so the Connector role, approval gates and session policies are all enforced rather than
+ * assumed. The relay authenticates upstream, so the database credential is never handed to the
+ * sandbox, which receives only a TCP port.
  */
-
-const PROXY_READY_TIMEOUT_MS = 20_000;
 
 export type TPamTarget = {
   accountId: string;
@@ -28,150 +31,166 @@ export type TPamProxy = {
   accountName: string;
   resourceName: string;
   port: number;
+  username?: string;
+  database?: string;
+};
+
+export type TSandboxPamDeps = {
+  pamSessionService: Pick<TPamSessionServiceFactory, "access" | "terminateSession">;
 };
 
 type TSandboxPamState = {
   proxies: TPamProxy[];
-  processes: ReturnType<typeof spawn>[];
+  relays: Awaited<ReturnType<typeof setupRelayServer>>[];
+  forwarders: Server[];
+  sessions: string[];
 };
 
 const states = new Map<string, TSandboxPamState>();
 
-const findFreePort = () =>
-  new Promise<number>((resolve, reject) => {
-    const server = createServer();
+/**
+ * The relay listens on the API's loopback, which a sandbox container cannot reach. This republishes
+ * it on the sandbox network. The credential still never leaves the API: the sandbox gets a port.
+ */
+const forwardToLoopback = (localPort: number) =>
+  new Promise<{ server: Server; port: number }>((resolve, reject) => {
+    const server = createServer((downstream) => {
+      const upstream = connect(localPort, "127.0.0.1");
+      downstream.on("error", () => upstream.destroy());
+      upstream.on("error", () => downstream.destroy());
+      downstream.pipe(upstream);
+      upstream.pipe(downstream);
+    });
+
     server.once("error", reject);
-    server.listen(0, "127.0.0.1", () => {
-      const { port } = server.address() as { port: number };
-      server.close(() => resolve(port));
-    });
-  });
-
-const resolveApiUrl = () => {
-  const appCfg = getConfig();
-  return appCfg.SANDBOX_INFISICAL_API_URL || `http://127.0.0.1:${appCfg.PORT}/api`;
-};
-
-/** Universal Auth login, printing the access token the proxy command then runs with. */
-const mintAccessToken = async (clientId: string, clientSecret: string): Promise<string> =>
-  new Promise<string>((resolve, reject) => {
-    const child = spawn(
-      "infisical",
-      [
-        "login",
-        "--method=universal-auth",
-        `--client-id=${clientId}`,
-        `--client-secret=${clientSecret}`,
-        "--plain",
-        "--silent",
-        `--domain=${resolveApiUrl()}`
-      ],
-      { stdio: ["ignore", "pipe", "pipe"] }
-    );
-
-    let stdout = "";
-    let stderr = "";
-    child.stdout.on("data", (c: Buffer) => {
-      stdout += c.toString("utf8");
-    });
-    child.stderr.on("data", (c: Buffer) => {
-      stderr += c.toString("utf8");
-    });
-
-    child.on("close", (code) => {
-      const token = stdout.trim().split("\n").pop()?.trim();
-      if (code === 0 && token) resolve(token);
-      else reject(new Error(`infisical login failed (exit ${code}): ${stderr.slice(0, 300)}`));
-    });
-    child.on("error", reject);
-  });
-
-const waitForPort = (port: number) =>
-  new Promise<void>((resolve, reject) => {
-    const deadline = Date.now() + PROXY_READY_TIMEOUT_MS;
-
-    const attempt = () => {
-      const socket = createServer();
-      // The port is taken once the proxy is listening, so a failed bind means it is ready.
-      socket.once("error", () => resolve());
-      socket.listen(port, "127.0.0.1", () => {
-        socket.close(() => {
-          if (Date.now() > deadline) reject(new Error("PAM proxy did not start in time"));
-          else setTimeout(attempt, 400);
-        });
-      });
-    };
-
-    attempt();
+    server.listen(0, "0.0.0.0", () => resolve({ server, port: (server.address() as { port: number }).port }));
   });
 
 export const startPamProxies = async (
+  { pamSessionService }: TSandboxPamDeps,
   sandboxId: string,
   targets: TPamTarget[],
-  identity: { clientId: string; clientSecret: string }
+  actor: { identityId: string; identityName: string; orgId: string }
 ): Promise<TPamProxy[]> => {
   if (!targets.length) return [];
 
-  const token = await mintAccessToken(identity.clientId, identity.clientSecret);
-  const apiUrl = resolveApiUrl();
-  const state: TSandboxPamState = { proxies: [], processes: [] };
+  const state: TSandboxPamState = { proxies: [], relays: [], forwarders: [], sessions: [] };
 
   for (const target of targets) {
-    // eslint-disable-next-line no-await-in-loop -- ports are assigned one at a time on purpose
-    const port = await findFreePort();
+    try {
+      // eslint-disable-next-line no-await-in-loop -- one gateway handshake at a time, by design
+      const access = await pamSessionService.access({
+        // The service addresses an account as 'folderName/accountName'.
+        path: `${target.resourceName}/${target.accountName}`,
+        projectId: target.projectId,
+        actor: {
+          actorId: actor.identityId,
+          actor: ActorType.IDENTITY,
+          actorOrgId: actor.orgId,
+          actorAuthMethod: null
+        },
+        actorEmail: "",
+        actorName: actor.identityName,
+        actorIp: "127.0.0.1",
+        actorUserAgent: "infisical-sandbox",
+        reason: `Infisical Sandbox ${sandboxId}`
+      });
 
-    const child = spawn(
-      "infisical",
-      [
-        "pam",
-        "db",
-        "access",
-        `--project-id=${target.projectId}`,
-        `--resource=${target.resourceName}`,
-        `--account=${target.accountName}`,
-        `--port=${port}`,
-        "--reason=Infisical Sandbox agent session",
-        "--silent",
-        `--domain=${apiUrl}`
-      ],
-      { env: { ...process.env, INFISICAL_TOKEN: token }, stdio: ["ignore", "pipe", "pipe"], detached: true }
-    );
+      if (
+        !access.relayHost ||
+        !access.relayClientCertificate ||
+        !access.relayClientPrivateKey ||
+        !access.relayServerCertificateChain ||
+        !access.gatewayClientCertificate ||
+        !access.gatewayClientPrivateKey ||
+        !access.gatewayServerCertificateChain
+      ) {
+        // Non-database account types return a session without relay certificates.
+        throw new Error("this account type does not expose a database connection");
+      }
 
-    child.stderr.on("data", (c: Buffer) => {
-      logger.warn(`PAM proxy stderr [sandboxId=${sandboxId}] [account=${target.accountName}]: ${c.toString("utf8")}`);
-    });
+      // eslint-disable-next-line no-await-in-loop
+      const relay = await setupRelayServer({
+        protocol: GatewayProxyProtocol.Pam,
+        relayHost: access.relayHost,
+        relay: {
+          clientCertificate: access.relayClientCertificate,
+          clientPrivateKey: access.relayClientPrivateKey,
+          serverCertificateChain: access.relayServerCertificateChain
+        },
+        gateway: {
+          clientCertificate: access.gatewayClientCertificate,
+          clientPrivateKey: access.gatewayClientPrivateKey,
+          serverCertificateChain: access.gatewayServerCertificateChain
+        },
+        longLived: true
+      });
+      state.relays.push(relay);
 
-    state.processes.push(child);
-    state.proxies.push({
-      accountId: target.accountId,
-      accountName: target.accountName,
-      resourceName: target.resourceName,
-      port
-    });
+      // eslint-disable-next-line no-await-in-loop
+      const forwarder = await forwardToLoopback(relay.port);
+      state.forwarders.push(forwarder.server);
+      state.sessions.push(access.sessionId);
 
-    // eslint-disable-next-line no-await-in-loop
-    await waitForPort(port).catch((error: Error) => {
-      logger.error(error, `PAM proxy failed to open [sandboxId=${sandboxId}] [account=${target.accountName}]`);
-    });
+      state.proxies.push({
+        accountId: target.accountId,
+        accountName: access.accountName,
+        resourceName: target.resourceName,
+        port: forwarder.port,
+        username: access.metadata?.username,
+        database: access.metadata?.database
+      });
+
+      logger.info(
+        `Sandbox PAM session open [sandboxId=${sandboxId}] [account=${access.accountName}] [port=${forwarder.port}]`
+      );
+    } catch (error) {
+      // One unreachable account must not cost the sandbox the others, and a half-open port would
+      // hand the agent something that hangs, so the failure is reported and the account left out.
+      logger.error(
+        error,
+        `Sandbox could not open a PAM session [sandboxId=${sandboxId}] [account=${target.accountName}]: ${
+          (error as Error).message
+        }`
+      );
+    }
   }
 
   states.set(sandboxId, state);
-  logger.info(`PAM proxies opened [sandboxId=${sandboxId}] [count=${state.proxies.length}]`);
+  logger.info(`PAM sessions opened [sandboxId=${sandboxId}] [count=${state.proxies.length}]`);
 
   return state.proxies;
 };
 
-export const stopPamProxies = (sandboxId: string) => {
+export const stopPamProxies = (
+  { pamSessionService }: TSandboxPamDeps,
+  sandboxId: string,
+  actor: { identityId: string; orgId: string }
+) => {
   const state = states.get(sandboxId);
   if (!state) return;
 
   states.delete(sandboxId);
-  state.processes.forEach((child) => {
-    try {
-      if (child.pid) process.kill(-child.pid, "SIGKILL");
-    } catch {
-      // already gone
-    }
+  state.forwarders.forEach((server) => server.close());
+  state.relays.forEach((relay) => {
+    void relay.cleanup().catch(() => {
+      // already torn down
+    });
+  });
+
+  // Without this the session stays Active in PAM until it expires, so the audit trail would show a
+  // sandbox holding a database open long after it stopped.
+  state.sessions.forEach((sessionId) => {
+    void pamSessionService
+      .terminateSession(sessionId, {
+        actorId: actor.identityId,
+        actor: ActorType.IDENTITY,
+        actorOrgId: actor.orgId,
+        actorAuthMethod: null
+      })
+      .catch((error: Error) =>
+        logger.error(error, `Could not end the sandbox PAM session [sandboxId=${sandboxId}] [sessionId=${sessionId}]`)
+      );
   });
 };
 
