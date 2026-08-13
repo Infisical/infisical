@@ -20,10 +20,9 @@ export const SandboxLayout = () => {
   }, []);
 
   return (
-    <div className="flex h-full w-full flex-col overflow-x-hidden">
-      <div className="flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800">
-        <Outlet />
-      </div>
-    </div>
+    // No scroll container of its own. Sandbox routes have no projectId, so the organization layout
+    // already scrolls the content area for them; a second one here captured the scroll and left the
+    // page itself unscrollable with the scrollbar in the wrong place.
+    <Outlet />
   );
 };

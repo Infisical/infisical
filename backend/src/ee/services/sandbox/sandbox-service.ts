@@ -277,91 +277,27 @@ export const sandboxServiceFactory = ({
     return toSandbox(row);
   };
 
-  const updateSandbox = async (dto: TUpdateSandboxDTO, actor: OrgServiceActor): Promise<TSandbox> => {
-    const existing = await $resolve(dto.sandboxId, actor, true);
-
-    const hasChange = [
-      dto.name,
-      dto.description,
-      dto.vcpu,
-      dto.memoryMb,
-      dto.pamAccountIds,
-      dto.agentType,
-      dto.agentToken
-    ].some((field) => field !== undefined);
-    if (!hasChange) {
-      throw new BadRequestError({
-        message:
-          "No fields to update. Supply at least one of name, description, vcpu, memoryMb, pamAccountIds, agentType or agentToken."
-      });
-    }
-
-    if (dto.name && dto.name !== existing.name) {
-      const clash = await sandboxDAL.findOne({ orgId: existing.orgId, name: dto.name });
-      if (clash) throw new BadRequestError({ message: `A sandbox named '${dto.name}' already exists` });
-    }
-
-    const row = await sandboxDAL.updateById(dto.sandboxId, {
-      ...(dto.name !== undefined && { name: dto.name }),
-      ...(dto.description !== undefined && { description: dto.description }),
-      ...(dto.vcpu !== undefined && { vcpu: dto.vcpu }),
-      ...(dto.memoryMb !== undefined && { memoryMb: dto.memoryMb }),
-      ...(dto.agentType !== undefined && { agentType: dto.agentType }),
-      ...(dto.agentModel !== undefined && { agentModel: dto.agentModel }),
-      ...(dto.agentToken !== undefined && {
-        encryptedAgentToken: await $encryptAgentToken(actor.orgId, dto.agentToken)
-      }),
-      ...(dto.pamAccountIds !== undefined && {
-        grants: { ...normalizeGrants(existing.grants), pamAccountIds: dto.pamAccountIds }
-      })
-    });
-
-    return toSandbox(row);
-  };
-
-  const deleteSandbox = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor): Promise<TSandbox> => {
-    const existing = await $resolve(sandboxId, actor, true);
-
-    // Reap the running processes before the row goes, or the runtime keeps a container nothing owns.
-    stopPamProxies({ pamSessionService }, sandboxId, { identityId: existing.identityId ?? "", orgId: actor.orgId });
-    stopSandboxProxy(sandboxId);
-    await shutdownSandbox(sandboxId);
-    const row = await sandboxDAL.deleteById(sandboxId);
-
-    if (row.identityId) {
-      await deprovisionSandboxIdentity({ identityService, identityUaService }, row.identityId, actor).catch(
-        (error: Error) => logger.error(error, `Failed to delete sandbox identity [sandboxId=${sandboxId}]`)
-      );
-    }
-
-    return toSandbox(row);
-  };
-
-  const startSandbox = async (
-    { sandboxId, onProgress = () => {} }: TSandboxIdDTO & { onProgress?: TSandboxBootSink },
-    actor: OrgServiceActor
-  ): Promise<TSandbox> => {
+  /**
+   * Resolves the sandbox's grants and applies them to the running container: opens a brokered
+   * session per database, points the egress proxy at the current integration list, and rewrites the
+   * environment the sandbox sees.
+   *
+   * Separate from starting because grants change while a sandbox runs. The proxy's allowlist and the
+   * sandbox's environment are both snapshots, so without re-applying them a newly granted
+   * integration is in the database and in the agent's prompt but unreachable in practice.
+   */
+  const $applyGrants = async (
+    sandboxId: string,
+    row: TSandboxes,
+    actor: OrgServiceActor,
+    onProgress: TSandboxBootSink = () => {}
+  ) => {
     // Reassigned when an identity has to be backfilled below.
-    let row = await $resolve(sandboxId, actor, true);
-
-    if (isSandboxBooted(sandboxId)) {
-      throw new BadRequestError({ message: `Sandbox '${row.name}' is already running` });
-    }
-
-    onProgress({
-      type: "step",
-      label: "container",
-      message: `Creating container (${row.vcpu} vCPU, ${row.memoryMb} MB)`
-    });
-    await bootSandbox(sandboxId, { vcpu: row.vcpu, memoryMb: row.memoryMb }, (line) =>
-      onProgress({ type: "log", message: line })
-    );
-    onProgress({ type: "step", label: "container", message: "Container running on the isolated network" });
-    startSandboxMetrics();
+    let current = row;
 
     // Open a brokered proxy per granted account and tell the sandbox only the port. The identity
     // token and the database credential both stay in this process.
-    const grants = normalizeGrants(row.grants);
+    const grants = normalizeGrants(current.grants);
     if (grants.pamAccountIds.length) {
       onProgress({ type: "step", label: "databases", message: "Opening brokered sessions" });
     }
@@ -369,11 +305,11 @@ export const sandboxServiceFactory = ({
     // Sandboxes created before they were given their own identity have none, and the PAM block below
     // is guarded on it, so their grants would resolve to nothing with no indication why. Provision one
     // on the spot instead of making the user rebuild the sandbox.
-    if (grants.pamAccountIds.length && !row.identityId) {
+    if (grants.pamAccountIds.length && !current.identityId) {
       logger.info(`Backfilling a machine identity so PAM can be brokered [sandboxId=${sandboxId}]`);
       onProgress({ type: "log", message: "Provisioning this sandbox's machine identity" });
-      const identity = await provisionSandboxIdentity({ identityService, identityUaService }, row.name, actor);
-      row = await sandboxDAL.updateById(sandboxId, {
+      const identity = await provisionSandboxIdentity({ identityService, identityUaService }, current.name, actor);
+      current = await sandboxDAL.updateById(sandboxId, {
         identityId: identity.identityId,
         identityClientId: identity.clientId,
         encryptedIdentityClientSecret: await $encryptAgentToken(actor.orgId, identity.clientSecret)
@@ -393,14 +329,14 @@ export const sandboxServiceFactory = ({
     // The sandbox identity is created with no access at all, so PAM would refuse its session. Give
     // it Connector on exactly the accounts this sandbox was granted, and nothing else. Done on every
     // start so a grant added before this ran still works, and so a revoked one is re-checked.
-    if (row.identityId && targets.length) {
-      await $grantPamAccess(row.identityId, targets, actor);
+    if (current.identityId && targets.length) {
+      await $grantPamAccess(current.identityId, targets, actor);
     }
 
-    const proxies = row.identityId
+    const proxies = current.identityId
       ? await startPamProxies({ pamSessionService }, sandboxId, targets, {
-          identityId: row.identityId,
-          identityName: `sandbox-${row.name}`,
+          identityId: current.identityId,
+          identityName: `sandbox-${current.name}`,
           orgId: actor.orgId
         }).catch((error: Error) => {
           logger.error(error, `Sandbox could not open PAM sessions [sandboxId=${sandboxId}]`);
@@ -500,10 +436,35 @@ export const sandboxServiceFactory = ({
       })
     });
 
-    onProgress({ type: "log", message: `Egress proxy listening; ${resolved.length} host group(s) allowed` });
-    onProgress({ type: "step", label: "ready", message: "Sandbox ready" });
+    onProgress({
+      type: "log",
+      message: `Egress proxy listening; ${resolved.length} host group(s) allowed`
+    });
 
-    return toSandbox(row);
+    return current;
+  };
+
+  /**
+   * Re-applies grants to a sandbox that is already running, so a change takes effect without a
+   * restart. A no-op when it is not running: the next start picks the change up anyway.
+   */
+  const $reapplyGrants = async (sandboxId: string, actor: OrgServiceActor) => {
+    if (!isSandboxBooted(sandboxId)) return;
+
+    const row = await sandboxDAL.findOne({ id: sandboxId, orgId: actor.orgId });
+    if (!row) return;
+
+    // Torn down first: the proxy holds the previous allowlist and the sessions belong to the
+    // previous grants, so both have to be rebuilt rather than added to.
+    stopPamProxies({ pamSessionService }, sandboxId, {
+      identityId: row.identityId ?? "",
+      orgId: actor.orgId
+    });
+    stopSandboxProxy(sandboxId);
+
+    await $applyGrants(sandboxId, row, actor).catch((error: Error) =>
+      logger.error(error, `Sandbox could not re-apply grants [sandboxId=${sandboxId}]`)
+    );
   };
 
   const setWorkload = async (
@@ -519,6 +480,101 @@ export const sandboxServiceFactory = ({
     await $resolve(sandboxId, actor, false);
     const metrics = getSandboxMetrics(sandboxId);
     return metrics && { ...metrics, isWorkloadRunning: isWorkloadRunning(sandboxId) };
+  };
+
+  const updateSandbox = async (dto: TUpdateSandboxDTO, actor: OrgServiceActor): Promise<TSandbox> => {
+    const existing = await $resolve(dto.sandboxId, actor, true);
+
+    const hasChange = [
+      dto.name,
+      dto.description,
+      dto.vcpu,
+      dto.memoryMb,
+      dto.pamAccountIds,
+      dto.agentType,
+      dto.agentToken
+    ].some((field) => field !== undefined);
+    if (!hasChange) {
+      throw new BadRequestError({
+        message:
+          "No fields to update. Supply at least one of name, description, vcpu, memoryMb, pamAccountIds, agentType or agentToken."
+      });
+    }
+
+    if (dto.name && dto.name !== existing.name) {
+      const clash = await sandboxDAL.findOne({ orgId: existing.orgId, name: dto.name });
+      if (clash) throw new BadRequestError({ message: `A sandbox named '${dto.name}' already exists` });
+    }
+
+    const row = await sandboxDAL.updateById(dto.sandboxId, {
+      ...(dto.name !== undefined && { name: dto.name }),
+      ...(dto.description !== undefined && { description: dto.description }),
+      ...(dto.vcpu !== undefined && { vcpu: dto.vcpu }),
+      ...(dto.memoryMb !== undefined && { memoryMb: dto.memoryMb }),
+      ...(dto.agentType !== undefined && { agentType: dto.agentType }),
+      ...(dto.agentModel !== undefined && { agentModel: dto.agentModel }),
+      ...(dto.agentToken !== undefined && {
+        encryptedAgentToken: await $encryptAgentToken(actor.orgId, dto.agentToken)
+      }),
+      ...(dto.pamAccountIds !== undefined && {
+        grants: { ...normalizeGrants(existing.grants), pamAccountIds: dto.pamAccountIds }
+      })
+    });
+
+    // A database granted while the sandbox runs has no session open and no port in its environment
+    // until this runs, so the agent is told about something it cannot reach.
+    if (dto.pamAccountIds !== undefined) await $reapplyGrants(dto.sandboxId, actor);
+
+    return toSandbox(row);
+  };
+
+  const deleteSandbox = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor): Promise<TSandbox> => {
+    const existing = await $resolve(sandboxId, actor, true);
+
+    // Reap the running processes before the row goes, or the runtime keeps a container nothing owns.
+    stopPamProxies({ pamSessionService }, sandboxId, { identityId: existing.identityId ?? "", orgId: actor.orgId });
+    stopSandboxProxy(sandboxId);
+    await shutdownSandbox(sandboxId);
+    const row = await sandboxDAL.deleteById(sandboxId);
+
+    if (row.identityId) {
+      await deprovisionSandboxIdentity({ identityService, identityUaService }, row.identityId, actor).catch(
+        (error: Error) => logger.error(error, `Failed to delete sandbox identity [sandboxId=${sandboxId}]`)
+      );
+    }
+
+    return toSandbox(row);
+  };
+
+  const startSandbox = async (
+    { sandboxId, onProgress = () => {} }: TSandboxIdDTO & { onProgress?: TSandboxBootSink },
+    actor: OrgServiceActor
+  ): Promise<TSandbox> => {
+    const row = await $resolve(sandboxId, actor, true);
+
+    if (isSandboxBooted(sandboxId)) {
+      throw new BadRequestError({ message: `Sandbox '${row.name}' is already running` });
+    }
+
+    onProgress({
+      type: "step",
+      label: "container",
+      message: `Creating container (${row.vcpu} vCPU, ${row.memoryMb} MB)`
+    });
+    await bootSandbox(sandboxId, { vcpu: row.vcpu, memoryMb: row.memoryMb }, (line) =>
+      onProgress({ type: "log", message: line })
+    );
+    onProgress({
+      type: "step",
+      label: "container",
+      message: "Container running on the isolated network"
+    });
+    startSandboxMetrics();
+
+    const configured = await $applyGrants(sandboxId, row, actor, onProgress);
+    onProgress({ type: "step", label: "ready", message: "Sandbox ready" });
+
+    return toSandbox(configured);
   };
 
   const stopSandbox = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor): Promise<TSandbox> => {
@@ -620,6 +676,7 @@ export const sandboxServiceFactory = ({
       grants: { ...grants, integrations: [...grants.integrations, added] }
     });
 
+    await $reapplyGrants(sandboxId, actor);
     return toSandbox(row);
   };
 
@@ -636,6 +693,8 @@ export const sandboxServiceFactory = ({
     }
 
     const row = await sandboxDAL.updateById(sandboxId, { grants: { ...grants, integrations: remaining } });
+
+    await $reapplyGrants(sandboxId, actor);
     return toSandbox(row);
   };
 

@@ -1,11 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Markdown from "react-markdown";
 import { BotIcon, Loader2Icon, SendIcon, UserIcon } from "lucide-react";
 
 import { Button, Input } from "@app/components/v3";
-import { streamAgentChat, TAgentMessage, TAgentToolCall, TSandbox } from "@app/hooks/api/sandboxes";
+import { TAgentToolCall, TSandbox } from "@app/hooks/api/sandboxes";
 
-type TTurn = TAgentMessage & { toolCalls?: TAgentToolCall[] };
+import {
+  getChatState,
+  sendChatMessage,
+  subscribeToChat,
+  TChatTurn
+} from "../../components/sandboxChatStore";
 
 /**
  * The agent answers in markdown, so tables, lists and code blocks are rendered rather than shown raw.
@@ -62,13 +67,6 @@ const MARKDOWN_COMPONENTS = {
   )
 };
 
-const resolveErrorMessage = (error: unknown) => {
-  const serverMessage = (error as { response?: { data?: { message?: string } } })?.response?.data
-    ?.message;
-  if (serverMessage) return serverMessage;
-  return error instanceof Error ? error.message : "The agent could not respond.";
-};
-
 /** One line per command, like a shell transcript. Output is behind the disclosure. */
 const ToolCall = ({ call }: { call: TAgentToolCall }) => (
   <details className="group/tool">
@@ -92,84 +90,26 @@ const ToolCall = ({ call }: { call: TAgentToolCall }) => (
 );
 
 export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunning: boolean }) => {
-  const [turns, setTurns] = useState<TTurn[]>([]);
+  // Subscribed rather than owned: the conversation lives outside React so switching tabs neither
+  // loses the history nor kills a reply that is still streaming.
+  const { turns, isStreaming } = useSyncExternalStore(
+    (listener) => subscribeToChat(sandbox.id, listener),
+    () => getChatState(sandbox.id)
+  );
   const [draft, setDraft] = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const abortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => () => abortRef.current?.abort(), []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [turns, isStreaming]);
 
-  const send = async () => {
+  const send = () => {
     const content = draft.trim();
     if (!content) return;
 
-    const history: TAgentMessage[] = [
-      // Drop any empty turn: the API requires non-empty content, and a failed turn leaves one behind.
-      ...turns
-        .filter((turn) => turn.content.trim())
-        .map(({ role, content: text }) => ({ role, content: text })),
-      { role: "user" as const, content }
-    ];
-
-    // The assistant turn is appended empty and filled in as events arrive.
-    setTurns((prev) => [...prev, { role: "user", content }, { role: "assistant", content: "" }]);
     setDraft("");
-    setIsStreaming(true);
-
-    const patchLast = (update: (turn: TTurn) => TTurn) =>
-      setTurns((prev) =>
-        prev.map((turn, index) => (index === prev.length - 1 ? update(turn) : turn))
-      );
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    try {
-      await streamAgentChat(
-        sandbox.id,
-        history,
-        (event) => {
-          if (event.type === "text") {
-            patchLast((turn) => ({ ...turn, content: turn.content + event.text }));
-          } else if (event.type === "tool_start") {
-            patchLast((turn) => ({
-              ...turn,
-              toolCalls: [
-                ...(turn.toolCalls ?? []),
-                { command: event.command, exitCode: null, output: "" }
-              ]
-            }));
-          } else if (event.type === "tool_end") {
-            patchLast((turn) => ({
-              ...turn,
-              toolCalls: (turn.toolCalls ?? []).map((call, index, all) =>
-                index === all.length - 1
-                  ? { command: event.command, exitCode: event.exitCode, output: event.output }
-                  : call
-              )
-            }));
-          } else if (event.type === "done") {
-            // A turn that ends without streaming any text (hitting the step limit, for one) carries
-            // its whole reply here. Without this the turn renders empty and looks like it hung.
-            patchLast((turn) => ({ ...turn, content: turn.content || event.reply }));
-          } else if (event.type === "error") {
-            patchLast((turn) => ({ ...turn, content: turn.content || event.message }));
-          }
-        },
-        controller.signal
-      );
-    } catch (error) {
-      patchLast((turn) => ({ ...turn, content: turn.content || resolveErrorMessage(error) }));
-    } finally {
-      setIsStreaming(false);
-      abortRef.current = null;
-    }
+    sendChatMessage(sandbox.id, content).catch(() => {});
   };
 
   const placeholder = (() => {
@@ -203,7 +143,7 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
           </div>
         )}
 
-        {turns.map((turn, index) => (
+        {turns.map((turn: TChatTurn, index: number) => (
           // eslint-disable-next-line react/no-array-index-key -- chat turns are append-only
           <div key={index} className="flex gap-2">
             <div className="mt-0.5 shrink-0">
@@ -254,17 +194,13 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
-              send().catch(() => {});
+              send();
             }
           }}
           placeholder={placeholder}
           disabled={isDisabled}
         />
-        <Button
-          variant="project"
-          onClick={() => send().catch(() => {})}
-          isDisabled={isDisabled || !draft.trim()}
-        >
+        <Button variant="project" onClick={send} isDisabled={isDisabled || !draft.trim()}>
           <SendIcon />
         </Button>
       </div>

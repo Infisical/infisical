@@ -323,7 +323,7 @@ export const ActivityTab = ({ sandbox }: { sandbox: TSandbox }) => {
       // Idempotent on id: every connection replays the backlog, so a reconnect, or the second mount
       // React does in development, would otherwise show each event twice.
       (entry) =>
-        setEntries((prev) => (prev.some((seen) => seen.id === entry.id) ? prev : [...prev, entry])),
+        setEntries((prev) => (prev.some((seen) => seen.id === entry.id) ? prev : [entry, ...prev])),
       controller.signal
     )
       .catch(() => {})
@@ -335,7 +335,7 @@ export const ActivityTab = ({ sandbox }: { sandbox: TSandbox }) => {
   }, [sandbox.id, isRunning]);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [entries.length]);
 
   const rows = useMemo(() => {
