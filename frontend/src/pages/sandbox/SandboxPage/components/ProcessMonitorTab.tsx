@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import {
   ActivityIcon,
   CpuIcon,
@@ -33,9 +34,39 @@ import {
 import {
   SandboxStatus,
   TSandbox,
+  useGetSandboxMetrics,
   useListSandboxProcesses,
   useTerminateSandboxProcess
 } from "@app/hooks/api/sandboxes";
+
+import { CountUp, Sparkline } from "../../components/charts";
+
+/** One card per number, with the series behind it where there is one worth showing. */
+const MetricPanel = ({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  children
+}: {
+  icon: typeof CpuIcon;
+  label: string;
+  value: ReactNode;
+  detail: string;
+  children?: ReactNode;
+}) => (
+  <div className="rounded-md border border-border bg-card p-3">
+    <div className="flex items-center gap-2">
+      <Icon className="size-3.5 text-muted" />
+      <span className="text-xs text-muted">{label}</span>
+    </div>
+
+    <p className="mt-1.5 font-mono text-lg text-foreground tabular-nums">{value}</p>
+    <p className="font-mono text-[11px] text-muted">{detail}</p>
+
+    {children && <div className="mt-2">{children}</div>}
+  </div>
+);
 
 /**
  * What is running inside the container. The image has no `ps`, so this is read straight from /proc,
@@ -52,44 +83,18 @@ const formatMemory = (kb: number) => {
 /** A kernel thread, which `ps` also shows in brackets. Dimmed: it is never what you came looking for. */
 const isThread = (command: string) => command.startsWith("[");
 
-const Meter = ({
-  icon: Icon,
-  label,
-  value,
-  detail,
-  percent,
-  tone
-}: {
-  icon: typeof CpuIcon;
-  label: string;
-  value: string;
-  detail?: string;
-  percent?: number;
-  tone: string;
-}) => (
-  <div className="flex-1 rounded-md border border-border bg-card p-3">
-    <div className="flex items-center gap-2">
-      <Icon className={`size-3.5 ${tone}`} />
-      <span className="text-xs text-muted">{label}</span>
-    </div>
-
-    <p className="mt-1.5 font-mono text-lg tabular-nums text-foreground">{value}</p>
-    {detail && <p className="font-mono text-[11px] text-muted">{detail}</p>}
-
-    {percent !== undefined && (
-      <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-border">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${tone.replace("text-", "bg-")}`}
-          style={{ width: `${Math.min(percent, 100)}%` }}
-        />
-      </div>
-    )}
-  </div>
-);
 
 export const ProcessMonitorTab = ({ sandbox }: { sandbox: TSandbox }) => {
   const isRunning = sandbox.status === SandboxStatus.Running;
   const { data } = useListSandboxProcesses(sandbox.id, isRunning);
+  // Metrics come from the sampler, which polls continuously and keeps history, rather than from a
+  // snapshot taken per request.
+  const { data: metrics } = useGetSandboxMetrics(sandbox.id, isRunning);
+
+  // The sampler keeps a rolling history, so the meters can show shape rather than just a number.
+  const cpuSeries = metrics?.samples.map((sample) => sample.cpuPercent) ?? [];
+  const memorySeries = metrics?.samples.map((sample) => sample.memoryMb) ?? [];
+  const memoryLimit = metrics?.memoryLimitMb || sandbox.memoryMb;
   const terminate = useTerminateSandboxProcess();
 
   const handleTerminate = async (pid: number) => {
@@ -98,7 +103,6 @@ export const ProcessMonitorTab = ({ sandbox }: { sandbox: TSandbox }) => {
   };
 
   const processes = data?.processes ?? [];
-  const stats = data?.stats;
   // Bars are relative to the heaviest process, so the shape of the list is readable whatever the
   // absolute numbers are.
   const heaviest = processes[0]?.memoryKb || 1;
@@ -133,36 +137,42 @@ export const ProcessMonitorTab = ({ sandbox }: { sandbox: TSandbox }) => {
           </Empty>
         ) : (
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Meter
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricPanel
                 icon={CpuIcon}
                 label="CPU"
-                value={`${(stats?.cpuPercent ?? 0).toFixed(1)}%`}
+                value={<><CountUp value={metrics?.cpuPercent ?? 0} decimals={1} />%</>}
                 detail={`${sandbox.vcpu} vCPU allocated`}
-                percent={stats?.cpuPercent}
-                tone="text-info"
-              />
-              <Meter
+              >
+                <Sparkline values={cpuSeries} max={100} gradientId="monitor-cpu" isEmphasised />
+              </MetricPanel>
+
+              <MetricPanel
                 icon={MemoryStickIcon}
                 label="Memory"
-                value={`${(stats?.memoryUsedMb ?? 0).toFixed(0)} MB`}
-                detail={`of ${(stats?.memoryLimitMb ?? sandbox.memoryMb).toFixed(0)} MB`}
-                percent={stats?.memoryPercent}
-                tone="text-success"
-              />
-              <Meter
+                value={<><CountUp value={metrics?.memoryMb ?? 0} decimals={1} /> MB</>}
+                detail={`of ${Math.round(memoryLimit)} MB`}
+              >
+                <Sparkline
+                  values={memorySeries}
+                  max={memoryLimit}
+                  gradientId="monitor-memory"
+                  isEmphasised
+                />
+              </MetricPanel>
+
+              <MetricPanel
                 icon={NetworkIcon}
                 label="Network"
-                value={stats?.networkIn ?? "0B"}
-                detail={`${stats?.networkOut ?? "0B"} out`}
-                tone="text-project"
+                value={<><CountUp value={metrics?.networkInKb ?? 0} /> KB</>}
+                detail={`${Math.round(metrics?.networkOutKb ?? 0)} KB out`}
               />
-              <Meter
+
+              <MetricPanel
                 icon={ScanIcon}
                 label="Processes"
-                value={String(stats?.processCount ?? processes.length)}
-                detail={`${processes.filter((p) => !isThread(p.command)).length} not kernel threads`}
-                tone="text-muted"
+                value={<CountUp value={metrics?.processes ?? processes.length} />}
+                detail={`${processes.filter((process) => !isThread(process.command)).length} not kernel threads`}
               />
             </div>
 

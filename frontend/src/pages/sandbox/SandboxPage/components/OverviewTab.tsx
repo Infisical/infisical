@@ -1,8 +1,20 @@
 import { ReactNode } from "react";
-import { ActivityIcon, BotIcon, CpuIcon, KeyRoundIcon } from "lucide-react";
+import {
+  ActivityIcon,
+  ArrowDownIcon,
+  ArrowUpIcon,
+  BotIcon,
+  CpuIcon,
+  KeyRoundIcon,
+  PlayIcon,
+  ShieldCheckIcon,
+  ShieldXIcon,
+  SquareIcon
+} from "lucide-react";
 
 import {
   Badge,
+  Button,
   Card,
   CardAction,
   CardContent,
@@ -11,7 +23,15 @@ import {
   Separator
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { SandboxStatus, TSandbox } from "@app/hooks/api/sandboxes";
+import {
+  SandboxStatus,
+  TSandbox,
+  useGetSandboxMetrics,
+  useGetSandboxProxyActivity,
+  useSetSandboxWorkload
+} from "@app/hooks/api/sandboxes";
+
+import { CountUp, Dial, MetricChart, Sparkline } from "../../components/charts";
 
 type TStatVariant = "project" | "info" | "neutral";
 
@@ -22,17 +42,19 @@ const StatCard = ({
   value,
   subtitle,
   footnote,
-  footnoteVariant
+  footnoteVariant,
+  spark
 }: {
   title: string;
   icon: ReactNode;
   iconVariant: TStatVariant;
-  value: string | number;
+  value: ReactNode;
   subtitle: string;
   footnote: string;
   footnoteVariant: "project" | "neutral" | "success";
+  spark?: ReactNode;
 }) => (
-  <Card className="flex-1 gap-4">
+  <Card className="flex-1 gap-4 transition-colors duration-300 hover:border-product-sandbox/30">
     {/* Force the two-column header: CardHeader only splits at its @xs container width, and four
         cards in a row are narrower than that, which drops the icon onto its own line. */}
     <CardHeader className="grid-cols-[1fr_auto]">
@@ -55,6 +77,7 @@ const StatCard = ({
         <span className="text-2xl font-semibold text-foreground">{value}</span>
         <span className="ml-2 text-sm text-muted">{subtitle}</span>
       </div>
+      {spark}
       <Separator />
       <Badge variant={footnoteVariant} className="no-underline">
         {footnote}
@@ -63,21 +86,94 @@ const StatCard = ({
   </Card>
 );
 
+const LiveDot = () => (
+  <span className="flex items-center gap-1.5 text-[10px] tracking-wider text-muted uppercase">
+    <span className="relative flex size-1.5">
+      <span className="absolute inline-flex size-full animate-ping rounded-full bg-product-sandbox opacity-70" />
+      <span className="relative inline-flex size-1.5 rounded-full bg-product-sandbox" />
+    </span>
+    Live
+  </span>
+);
+
 export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
   const isRunning = sandbox.status === SandboxStatus.Running;
   const { integrations, pamAccountIds } = sandbox.grants;
+
+  const { data: metrics } = useGetSandboxMetrics(sandbox.id, isRunning);
+  const { data: activity } = useGetSandboxProxyActivity(sandbox.id, isRunning);
+  const setWorkload = useSetSandboxWorkload();
+  // Read from the runtime, never held locally: the process outlives the page, so local state would
+  // offer to start a second one after a refresh and never offer to stop the first.
+  const isWorkloadOn = Boolean(metrics?.isWorkloadRunning);
+
+  const cpuSeries = metrics?.samples.map((sample) => sample.cpuPercent) ?? [];
+  const memSeries = metrics?.samples.map((sample) => sample.memoryMb) ?? [];
+  const memoryLimit = metrics?.memoryLimitMb || sandbox.memoryMb;
+
+  const brokered = activity?.filter((entry) => entry.decision === "brokered").length ?? 0;
+  const blocked = activity?.filter((entry) => entry.decision === "blocked").length ?? 0;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4 xl:flex-row">
         <StatCard
-          title="Resources"
+          title="CPU"
           icon={<CpuIcon />}
           iconVariant="neutral"
-          value={sandbox.vcpu}
-          subtitle={`vCPU · ${sandbox.memoryMb / 1024} GB memory`}
+          value={
+            isRunning && metrics ? (
+              <>
+                <CountUp value={metrics.cpuPercent} decimals={1} />%
+              </>
+            ) : (
+              "—"
+            )
+          }
+          subtitle={`of ${sandbox.vcpu} vCPU`}
           footnote={isRunning ? "Running" : "Stopped"}
           footnoteVariant={isRunning ? "success" : "neutral"}
+          spark={
+            isRunning ? (
+              <Sparkline
+                values={cpuSeries}
+                max={100}
+                gradientId="stat-cpu"
+                className="h-7 w-full"
+              />
+            ) : undefined
+          }
+        />
+        <StatCard
+          title="Memory"
+          icon={<ActivityIcon />}
+          iconVariant="neutral"
+          value={
+            isRunning && metrics ? (
+              <>
+                <CountUp value={metrics.memoryMb} decimals={1} /> MB
+              </>
+            ) : (
+              "—"
+            )
+          }
+          subtitle={`of ${Math.round(memoryLimit)} MB`}
+          footnote={
+            isRunning && metrics
+              ? `${metrics.processes} process${metrics.processes === 1 ? "" : "es"}`
+              : "No container"
+          }
+          footnoteVariant="neutral"
+          spark={
+            isRunning ? (
+              <Sparkline
+                values={memSeries}
+                max={memoryLimit}
+                gradientId="stat-mem"
+                className="h-7 w-full"
+              />
+            ) : undefined
+          }
         />
         <StatCard
           title="Granted Access"
@@ -88,7 +184,7 @@ export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
           footnote={
             integrations.length + pamAccountIds.length === 0
               ? "Nothing granted yet"
-              : `${integrations.length} integrations · ${pamAccountIds.length} PAM`
+              : `${integrations.length} endpoints · ${pamAccountIds.length} accounts`
           }
           footnoteVariant={integrations.length + pamAccountIds.length === 0 ? "neutral" : "project"}
         />
@@ -97,24 +193,138 @@ export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
           icon={<BotIcon />}
           iconVariant="info"
           value={sandbox.agentType ?? "None"}
-          subtitle={sandbox.agentType ? "configured" : "not configured"}
-          footnote={sandbox.hasAgentToken ? "API key stored" : "No API key"}
-          footnoteVariant={sandbox.hasAgentToken ? "success" : "neutral"}
-        />
-        <StatCard
-          title="Activity"
-          icon={<ActivityIcon />}
-          iconVariant="neutral"
-          value={sandbox.commandsRun}
-          subtitle="commands run"
-          footnote={
-            sandbox.lastActivityAt
-              ? `Last used ${new Date(sandbox.lastActivityAt).toLocaleDateString()}`
-              : "Never used"
-          }
+          subtitle={sandbox.agentModel ?? (sandbox.agentType ? "configured" : "not configured")}
+          footnote={`${sandbox.commandsRun} command${sandbox.commandsRun === 1 ? "" : "s"} run`}
           footnoteVariant="neutral"
         />
       </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2fr_1fr]">
+        <Card className="gap-4">
+          <CardHeader className="grid-cols-[1fr_auto]">
+            <CardTitle className="text-sm font-medium text-accent">CPU usage</CardTitle>
+            <CardAction className="flex items-center gap-3">
+              {isRunning && (
+                <Button
+                  variant="outline"
+                  size="xs"
+                  isPending={setWorkload.isPending}
+                  onClick={() =>
+                    setWorkload.mutate({ sandboxId: sandbox.id, isEnabled: !isWorkloadOn })
+                  }
+                >
+                  {isWorkloadOn ? <SquareIcon /> : <PlayIcon />}
+                  {isWorkloadOn ? "Stop workload" : "Run workload"}
+                </Button>
+              )}
+              {isRunning && <LiveDot />}
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            {isRunning ? (
+              <MetricChart values={cpuSeries} max={100} unit="%" gradientId="cpu-main" />
+            ) : (
+              <p className="py-10 text-center text-sm text-muted">
+                Start the sandbox to see live usage.
+              </p>
+            )}
+            <p className="mt-2 text-xs text-muted">
+              Sampled from the container every second · last 45 seconds
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="gap-4">
+          <CardHeader className="grid-cols-[1fr_auto]">
+            <CardTitle className="text-sm font-medium text-accent">Memory</CardTitle>
+            <CardAction>{isRunning && <LiveDot />}</CardAction>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center gap-4">
+            <Dial
+              value={metrics?.memoryMb ?? 0}
+              max={memoryLimit}
+              label={
+                isRunning && metrics
+                  ? `${Math.round((metrics.memoryMb / memoryLimit) * 100)}%`
+                  : "—"
+              }
+              sublabel={`${Math.round(metrics?.memoryMb ?? 0)} / ${Math.round(memoryLimit)} MB`}
+            />
+            <div className="flex w-full items-center justify-between gap-2 border-t border-border pt-3">
+              <span className="flex items-center gap-1.5 text-xs text-muted">
+                <ArrowDownIcon className="size-3.5" />
+                <CountUp value={metrics?.networkInKb ?? 0} /> KB in
+              </span>
+              <span className="flex items-center gap-1.5 text-xs text-muted">
+                <ArrowUpIcon className="size-3.5" />
+                <CountUp value={metrics?.networkOutKb ?? 0} /> KB out
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="gap-4">
+        <CardHeader className="grid-cols-[1fr_auto]">
+          <CardTitle className="text-sm font-medium text-accent">Brokered egress</CardTitle>
+          <CardAction>{isRunning && <LiveDot />}</CardAction>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 sm:flex-row">
+          <div className="flex flex-1 items-center gap-3 rounded-md border border-success/20 bg-success/5 p-4">
+            <ShieldCheckIcon className="size-5 shrink-0 text-success" />
+            <div>
+              <p className="text-2xl font-semibold text-foreground">
+                <CountUp value={brokered} />
+              </p>
+              <p className="text-xs text-muted">
+                requests brokered — a real credential was swapped in outside the sandbox
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-1 items-center gap-3 rounded-md border border-danger/20 bg-danger/5 p-4">
+            <ShieldXIcon className="size-5 shrink-0 text-danger" />
+            <div>
+              <p className="text-2xl font-semibold text-foreground">
+                <CountUp value={blocked} />
+              </p>
+              <p className="text-xs text-muted">
+                requests blocked — the host was not on this sandbox&apos;s grant list
+              </p>
+            </div>
+          </div>
+        </CardContent>
+
+        {Boolean(activity?.length) && (
+          <CardContent className="border-t border-border pt-4">
+            <p className="mb-2 text-[11px] font-medium tracking-wider text-muted uppercase">
+              Recent decisions
+            </p>
+            <ul className="flex flex-col">
+              {activity?.slice(0, 8).map((entry, index) => (
+                <li
+                  // eslint-disable-next-line react/no-array-index-key -- the log has no stable id
+                  key={`${entry.at}-${index}`}
+                  className="flex items-center gap-2.5 rounded px-1 py-1 transition-colors hover:bg-foreground/5"
+                >
+                  {entry.decision === "brokered" ? (
+                    <ShieldCheckIcon className="size-3.5 shrink-0 text-success" />
+                  ) : (
+                    <ShieldXIcon className="size-3.5 shrink-0 text-danger" />
+                  )}
+                  <span className="shrink-0 font-mono text-[10px] text-muted">{entry.method}</span>
+                  <span className="truncate font-mono text-[11px] text-foreground">
+                    {entry.host}
+                    <span className="text-muted">{entry.path}</span>
+                  </span>
+                  <span className="ml-auto shrink-0 font-mono text-[10px] text-muted">
+                    {entry.credential ? `${entry.credential} swapped` : (entry.status ?? "blocked")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        )}
+      </Card>
     </div>
   );
 };

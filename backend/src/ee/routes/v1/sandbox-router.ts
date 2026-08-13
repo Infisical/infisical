@@ -60,6 +60,7 @@ const SandboxSchema = z.object({
   grants: GrantsSchema,
   agentType: z.nativeEnum(SandboxAgentType).nullable(),
   agentModel: z.string().nullable(),
+  metrics: z.object({ cpuPercent: z.number(), memoryMb: z.number(), series: z.number().array() }).nullable(),
   hasAgentToken: z.boolean(),
   createdAt: z.string(),
   lastActivityAt: z.string().nullable(),
@@ -349,6 +350,102 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
         return { sandbox };
       }
     });
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:sandboxId/proxy-activity",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getSandboxProxyActivity",
+      description: "Recent egress decisions made by the sandbox's proxy.",
+      params: SandboxIdParamsSchema,
+      response: {
+        200: z.object({
+          activity: z
+            .object({
+              at: z.string(),
+              decision: z.enum(["brokered", "blocked", "error"]),
+              method: z.string(),
+              host: z.string(),
+              path: z.string(),
+              status: z.number().optional(),
+              integration: z.string().optional(),
+              credential: z.string().optional()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const activity = await server.services.sandbox.getProxyActivity(
+        { sandboxId: req.params.sandboxId },
+        req.permission
+      );
+      return { activity };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:sandboxId/workload",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "setSandboxDemoWorkload",
+      description:
+        "Start or stop a background CPU workload inside the sandbox. Intended for demonstrations: the load is real, so the reported metrics are real.",
+      params: SandboxIdParamsSchema,
+      body: z.object({ isEnabled: z.boolean() }),
+      response: { 200: z.object({ sandbox: SandboxSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const sandbox = await server.services.sandbox.setWorkload(
+        { sandboxId: req.params.sandboxId, isEnabled: req.body.isEnabled },
+        req.permission
+      );
+      return { sandbox };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:sandboxId/metrics",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getSandboxMetrics",
+      description: "Live CPU, memory, network and process usage for a running sandbox.",
+      params: SandboxIdParamsSchema,
+      response: {
+        200: z.object({
+          metrics: z
+            .object({
+              cpuPercent: z.number(),
+              memoryMb: z.number(),
+              memoryLimitMb: z.number(),
+              networkInKb: z.number(),
+              networkOutKb: z.number(),
+              processes: z.number(),
+              isWorkloadRunning: z.boolean(),
+              samples: z
+                .object({
+                  at: z.number(),
+                  cpuPercent: z.number(),
+                  memoryMb: z.number(),
+                  memoryLimitMb: z.number()
+                })
+                .array()
+            })
+            .nullable()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const metrics = await server.services.sandbox.getMetrics({ sandboxId: req.params.sandboxId }, req.permission);
+      return { metrics };
+    }
   });
 
   server.route({
@@ -669,18 +766,7 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           processes: z
             .object({ pid: z.number(), command: z.string(), memoryKb: z.number() })
-            .array(),
-          stats: z
-            .object({
-              cpuPercent: z.number(),
-              memoryUsedMb: z.number(),
-              memoryLimitMb: z.number(),
-              memoryPercent: z.number(),
-              networkIn: z.string(),
-              networkOut: z.string(),
-              processCount: z.number()
-            })
-            .nullable()
+            .array()
         })
       }
     },

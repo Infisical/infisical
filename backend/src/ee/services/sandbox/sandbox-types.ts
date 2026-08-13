@@ -60,6 +60,8 @@ export type TSandbox = {
   agentType: SandboxAgentType | null;
   /** Null means the agent's own default model. */
   agentModel: string | null;
+  /** Live from the container runtime; null until the first sample or when stopped. */
+  metrics: { cpuPercent: number; memoryMb: number; series: number[] } | null;
   /** The token itself is never returned, only whether one is configured. */
   hasAgentToken: boolean;
   createdAt: string;

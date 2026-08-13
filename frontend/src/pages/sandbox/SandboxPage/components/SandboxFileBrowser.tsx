@@ -10,7 +10,11 @@ import {
 } from "lucide-react";
 
 import { IconButton } from "@app/components/v3";
-import { TSandboxDirEntry, useListSandboxFiles, useReadSandboxFile } from "@app/hooks/api/sandboxes";
+import {
+  TSandboxDirEntry,
+  useListSandboxFiles,
+  useReadSandboxFile
+} from "@app/hooks/api/sandboxes";
 
 /**
  * The container's filesystem, beside the terminal it belongs to. Deliberately built from the same
@@ -53,7 +57,7 @@ const Row = ({
       <FileIcon className="size-3.5 shrink-0 text-white/30" />
     )}
     <span className="truncate">{entry.name}</span>
-    <span className="ml-auto shrink-0 tabular-nums text-white/25">{formatSize(entry.size)}</span>
+    <span className="ml-auto shrink-0 text-white/25 tabular-nums">{formatSize(entry.size)}</span>
   </button>
 );
 
@@ -113,7 +117,9 @@ export const SandboxFileBrowser = ({
           size="xs"
           aria-label="Refresh"
           className="ml-auto"
-          onClick={() => void refetch()}
+          onClick={() => {
+            refetch().catch(() => {});
+          }}
         >
           <RefreshCwIcon className={`size-3.5 text-white/40 ${isFetching ? "animate-spin" : ""}`} />
         </IconButton>

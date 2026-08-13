@@ -18,8 +18,10 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }));
 
-// The real helper resolves the hostname to check it isn't internal, which needs DNS.
-vi.mock("../audit-log-stream-fns", () => ({
+// Only the hostname check is stubbed, because the real one needs DNS. resolveEventTimestamp
+// stays real so the timestamp assertions exercise actual behaviour.
+vi.mock("../audit-log-stream-fns", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../audit-log-stream-fns")>()),
   blockAuditLogStreamInternalIps: vi.fn(async () => undefined)
 }));
 
@@ -79,7 +81,14 @@ const readConcatenatedJson = (raw: string): Record<string, unknown>[] => {
 
 const CREDENTIALS: TSplunkProviderCredentials = { hostname: "hec.example.com", token: "hec-token" };
 
-const buildLog = (idx: number) => ({ id: `log-${idx}`, event: { type: "get-secrets" } }) as unknown as TAuditLogs;
+// createdAt is a string, not a Date: the payload reaches a provider after a jsonb round trip
+// through the outbox, so that is the shape production actually delivers.
+const buildLog = (idx: number) =>
+  ({
+    id: `log-${idx}`,
+    event: { type: "get-secrets" },
+    createdAt: new Date(Date.UTC(2026, 5, 11, 22, 7, 30, 732) + idx * 1_000).toISOString()
+  }) as unknown as TAuditLogs;
 
 describe("SplunkProviderFactory batchStreamLog", () => {
   beforeEach(() => {
@@ -115,5 +124,50 @@ describe("SplunkProviderFactory batchStreamLog", () => {
       expect(entry).toMatchObject({ source: "infisical", sourcetype: "_json", host: "app.infisical.com" });
       expect(typeof entry.time).toBe("number");
     });
+  });
+
+  // HEC only reads the event timestamp from `time`, and wants UNIX `<sec>.<ms>` (its own
+  // example is 1433188255.500). 1781215650.732 is 2026-06-11T22:07:30.732Z, buildLog(0)'s
+  // createdAt. Both input shapes are covered because production produces both: a Date on the
+  // live path, an ISO string once the payload has been through the outbox's jsonb column.
+  test.each([
+    ["an ISO string", (idx: number) => buildLog(idx)],
+    [
+      "a Date",
+      (idx: number) =>
+        ({
+          ...buildLog(idx),
+          createdAt: new Date(buildLog(idx).createdAt as unknown as string)
+        }) as unknown as TAuditLogs
+    ]
+  ])("stamps HEC time from the event's createdAt (%s), not the time of delivery", async (_label, build) => {
+    const auditLogs = [build(0), build(1)];
+
+    await SplunkProviderFactory().batchStreamLog({ credentials: CREDENTIALS, auditLogs });
+
+    const events = readConcatenatedJson(sentRequests[0].body);
+    expect(events.map((entry) => entry.time)).toEqual([1781215650.732, 1781215651.732]);
+  });
+
+  test("ignores an unparseable createdAt rather than emitting a null timestamp", async () => {
+    const before = Date.now() / 1000;
+    const auditLog = { id: "log-x", event: {}, createdAt: "not-a-date" } as unknown as TAuditLogs;
+
+    await SplunkProviderFactory().batchStreamLog({ credentials: CREDENTIALS, auditLogs: [auditLog] });
+
+    const [entry] = readConcatenatedJson(sentRequests[0].body);
+    expect(typeof entry.time).toBe("number");
+    expect(entry.time as number).toBeGreaterThanOrEqual(before);
+  });
+
+  test("falls back to the current time when the log carries no createdAt", async () => {
+    const before = Date.now() / 1000;
+    const auditLog = { id: "log-x", event: { type: "get-secrets" } } as unknown as TAuditLogs;
+
+    await SplunkProviderFactory().batchStreamLog({ credentials: CREDENTIALS, auditLogs: [auditLog] });
+
+    const [entry] = readConcatenatedJson(sentRequests[0].body);
+    expect(entry.time as number).toBeGreaterThanOrEqual(before);
+    expect(entry.time as number).toBeLessThanOrEqual(Date.now() / 1000);
   });
 });

@@ -39,7 +39,12 @@ const TONE = {
     icon: GlobeIcon
   },
   pam: { ring: "border-info/40", glow: "bg-info/10", text: "text-info", icon: DatabaseIcon },
-  blocked: { ring: "border-danger/40", glow: "bg-danger/10", text: "text-danger", icon: KeyRoundIcon }
+  blocked: {
+    ring: "border-danger/40",
+    glow: "bg-danger/10",
+    text: "text-danger",
+    icon: KeyRoundIcon
+  }
 };
 
 export const TopologyNode = ({ data }: NodeProps & { data: TTopologyNodeData }) => {

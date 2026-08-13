@@ -108,6 +108,7 @@ export enum OrgPermissionIdentityActions {
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
   RevokeAuth = "revoke-auth",
+  EditAuth = "edit-auth",
   CreateToken = "create-token",
   GetToken = "get-token",
   DeleteToken = "delete-token"
@@ -503,6 +504,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.GrantPrivileges, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.RevokeAuth, OrgPermissionSubjects.Identity);
+  can(OrgPermissionIdentityActions.EditAuth, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.CreateToken, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.GetToken, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.DeleteToken, OrgPermissionSubjects.Identity);

@@ -5,7 +5,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 
 import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
-import { blockAuditLogStreamInternalIps } from "../audit-log-stream-fns";
+import { blockAuditLogStreamInternalIps, resolveEventTimestamp } from "../audit-log-stream-fns";
 import {
   TLogStreamFactoryBatchStreamLog,
   TLogStreamFactoryGetProviderBatchLimit,
@@ -13,11 +13,11 @@ import {
 } from "../audit-log-stream-types";
 import { TSplunkProviderCredentials } from "./splunk-provider-types";
 
-function createPayload(event: Record<string, unknown>) {
+function createPayload(event: Record<string, unknown> & { createdAt?: Date | string }) {
   const appCfg = getConfig();
 
   return {
-    time: Math.floor(Date.now() / 1000),
+    time: resolveEventTimestamp(event).getTime() / 1000,
     ...(appCfg.SITE_URL && { host: new URL(appCfg.SITE_URL).host }),
     source: "infisical",
     sourcetype: "_json",

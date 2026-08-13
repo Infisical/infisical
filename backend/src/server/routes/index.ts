@@ -2482,6 +2482,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     orgDAL,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2510,6 +2511,7 @@ export const registerRoutes = async (
     gatewayV2DAL,
     gatewayDAL,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     gatewayPoolService,
     gatewayPoolDAL,
@@ -2522,6 +2524,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     permissionService,
     licenseService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2533,6 +2536,7 @@ export const registerRoutes = async (
     identityAliCloudAuthDAL,
     licenseService,
     permissionService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2544,6 +2548,7 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     orgDAL,
     identityAccessTokenService
@@ -2556,6 +2561,7 @@ export const registerRoutes = async (
     identityAwsAuthDAL,
     licenseService,
     permissionService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2567,6 +2573,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     permissionService,
     licenseService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2578,6 +2585,7 @@ export const registerRoutes = async (
     identityOciAuthDAL,
     licenseService,
     permissionService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2605,6 +2613,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2617,6 +2626,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     licenseService,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2629,6 +2639,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     licenseService,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });

@@ -2,9 +2,9 @@ import { useLocation } from "@tanstack/react-router";
 import {
   Activity,
   Box,
-  KeyRound,
   LayoutDashboard,
   MessageSquare,
+  Puzzle,
   ScrollText,
   Settings,
   SquareTerminal
@@ -55,7 +55,7 @@ export const SandboxNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu
     buildTab(sandboxId, "Audit Log", ScrollText, "audit-log")
   ];
   const configureItems = [
-    buildTab(sandboxId, "Access", KeyRound, "access"),
+    buildTab(sandboxId, "Integrations", Puzzle, "integrations"),
     buildTab(sandboxId, "Settings", Settings, "settings")
   ];
 

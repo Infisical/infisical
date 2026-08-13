@@ -1,0 +1,429 @@
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+
+/**
+ * Small chart primitives for the sandbox surfaces, drawn as raw SVG.
+ *
+ * The app has no charting library, and these are shapes rather than plots: no axes, no legend, no
+ * tooltips. Everything shares one silver gradient so a sparkline on a card and the chart on the
+ * dashboard read as the same instrument at two sizes.
+ */
+
+const CHROME_STOPS = (
+  <>
+    <stop offset="0%" stopColor="#71717a" />
+    <stop offset="25%" stopColor="#e4e4e7" />
+    <stop offset="45%" stopColor="#ffffff" />
+    <stop offset="65%" stopColor="#a9b3bd" />
+    <stop offset="100%" stopColor="#f4f4f5" />
+  </>
+);
+
+/**
+ * Slots on the time axis, one per sample, so at the 1s sample rate these are seconds.
+ *
+ * Fixed rather than derived from the sample count, for two reasons: a derived axis stretches a
+ * half-full buffer across the full width and then visibly compresses it as history accumulates, and
+ * the whole 90-sample buffer is more points than these widths can resolve, which reads as noise.
+ */
+export const METRIC_WINDOW = 45;
+/** The card spark is a fraction of the width, so it shows a correspondingly shorter slice. */
+const SPARK_WINDOW = 24;
+/** Matches the API's sampling interval, so one slide finishes exactly as the next sample lands. */
+const SAMPLE_INTERVAL_MS = 1000;
+
+/**
+ * Slides a rendered trace one slot to the left, driven per frame from the clock.
+ *
+ * A CSS animation was the obvious approach and it does not work here: it keeps its own clock, so it
+ * drifts against the polling that supplies the data and the correction shows up as a jump once a
+ * sample. This computes the offset every frame as a pure function of "time since the newest sample
+ * arrived", so there is nothing to drift.
+ *
+ * The trace is rendered one sample wider than the window (see `buildPath`), which is the buffer: the
+ * newest sample is always sitting just off the right edge, and the slide walks it into view over the
+ * sampling interval. There is always a next point to move toward, so the line never runs out of data
+ * mid-travel. Data late? The offset clamps and the line rests instead of overshooting into a gap.
+ */
+const useSlide = (step: number, durationMs: number, sample: unknown) => {
+  const ref = useRef<SVGGElement>(null);
+  const startedAtRef = useRef(0);
+
+  const apply = (offset: number) => {
+    if (ref.current) ref.current.style.transform = `translateX(${offset}px)`;
+  };
+
+  // Before paint, so the frame that shows the shifted geometry also shows the reset offset. After
+  // paint the two land in different frames, which is a visible jump right and then back.
+  useLayoutEffect(() => {
+    startedAtRef.current = performance.now();
+    apply(0);
+  }, [sample]);
+
+  useEffect(() => {
+    if (!step) return undefined;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
+
+    let frame = 0;
+    const tick = () => {
+      const elapsed = (performance.now() - startedAtRef.current) / durationMs;
+      apply(-step * Math.min(Math.max(elapsed, 0), 1));
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [step, durationMs]);
+
+  return ref;
+};
+
+const buildPath = (
+  values: number[],
+  width: number,
+  height: number,
+  max: number,
+  /**
+   * Exponent applied to the normalised value. Below 1 it lifts the bottom of the range, so the
+   * single-digit CPU a mostly-idle sandbox actually reports still has visible shape instead of
+   * sitting flat on the baseline.
+   */
+  curve = 1,
+  windowSize = METRIC_WINDOW
+) => {
+  const slots = Math.max(windowSize, 2);
+  const step = width / (slots - 1);
+
+  // One sample beyond the window is drawn, past the right edge, so sliding left reveals real data
+  // rather than a gap. The viewBox clips it until the slide brings it into view.
+  const shown = values.slice(-(slots + 1));
+  if (shown.length < 2) return { line: "", area: "", step };
+
+  // Right-aligned with the newest one step past the edge, so a short history grows leftwards into
+  // empty space instead of being stretched to fill it.
+  const offset = width + step - (shown.length - 1) * step;
+  const y = (value: number) => height - (Math.min(value, max) / max) ** curve * height;
+
+  const points = shown.map((value, index) => `${offset + index * step},${y(value)}`);
+  const line = `M${points.join(" L")}`;
+  const last = offset + (shown.length - 1) * step;
+  const area = `${line} L${last},${height} L${offset},${height} Z`;
+
+  return { line, area, step };
+};
+
+/**
+ * A card-sized trend line. `max` is fixed by the caller rather than derived from the data, so a
+ * flat idle sandbox draws a flat line instead of noise magnified to full height.
+ */
+export const Sparkline = ({
+  values,
+  max = 100,
+  className = "",
+  gradientId,
+  isEmphasised = false
+}: {
+  values: number[];
+  max?: number;
+  className?: string;
+  gradientId: string;
+  /**
+   * Rescales to the series' own peak and lifts the low end. A card sparkline is a glance at whether
+   * anything is happening, not a reading, and against a fixed 0-100 axis a real workload is a flat
+   * line. The dashboard chart keeps a true axis, so the precise number is still available.
+   */
+  isEmphasised?: boolean;
+}) => {
+  const width = 120;
+  const height = 28;
+
+  // Floored so an idle sandbox does not amplify rounding noise into a mountain range.
+  const peak = Math.max(...values.slice(-SPARK_WINDOW), 0);
+  const effectiveMax = isEmphasised ? Math.max(peak * 1.15, 4) : max;
+  const { line, area, step } = buildPath(
+    values,
+    width,
+    height,
+    effectiveMax,
+    isEmphasised ? 0.6 : 1,
+    SPARK_WINDOW
+  );
+  const slideRef = useSlide(step, SAMPLE_INTERVAL_MS, values);
+
+  if (!line) {
+    return (
+      <svg viewBox={`0 0 ${width} ${height}`} className={className} preserveAspectRatio="none">
+        <line
+          x1="0"
+          y1={height - 1}
+          x2={width}
+          y2={height - 1}
+          stroke="currentColor"
+          strokeWidth="1"
+          className="text-border"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className={className} preserveAspectRatio="none">
+      <defs>
+        {/* userSpaceOnUse, not the default objectBoundingBox: a flat trace has a zero-height
+            bounding box, and a bounding-box gradient is not painted at all in that case, so an idle
+            sandbox rendered no line. */}
+        <linearGradient
+          id={`${gradientId}-stroke`}
+          gradientUnits="userSpaceOnUse"
+          x1="0"
+          y1="0"
+          x2={width}
+          y2="0"
+        >
+          {CHROME_STOPS}
+        </linearGradient>
+        <linearGradient
+          id={`${gradientId}-fill`}
+          gradientUnits="userSpaceOnUse"
+          x1="0"
+          y1="0"
+          x2="0"
+          y2={height}
+        >
+          <stop offset="0%" stopColor="#e4e4e7" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="#e4e4e7" stopOpacity="0" />
+        </linearGradient>
+
+        {/* Both ends are masked, so a reading fades in as it scrolls on and fades out as it leaves,
+            rather than being clipped mid-stroke at the edge. Applied to a wrapper that does not
+            slide, so the soft edges stay put while the trace travels through them. */}
+        <linearGradient
+          id={`${gradientId}-edge`}
+          gradientUnits="userSpaceOnUse"
+          x1="0"
+          y1="0"
+          x2={width}
+          y2="0"
+        >
+          <stop offset="0%" stopColor="#000000" />
+          <stop offset="14%" stopColor="#ffffff" />
+          <stop offset="86%" stopColor="#ffffff" />
+          <stop offset="100%" stopColor="#000000" />
+        </linearGradient>
+        <mask id={`${gradientId}-edge-mask`}>
+          <rect x="0" y="0" width={width} height={height} fill={`url(#${gradientId}-edge)`} />
+        </mask>
+      </defs>
+      <g mask={`url(#${gradientId}-edge-mask)`}>
+        <g ref={slideRef}>
+          {/* No fill in emphasised mode, and mitred joins rather than rounded: a trace reads as a
+            heartbeat when the peaks come to a point, and a filled area rounds them off. */}
+          {!isEmphasised && <path d={area} fill={`url(#${gradientId}-fill)`} />}
+          <path
+            d={line}
+            fill="none"
+            stroke={`url(#${gradientId}-stroke)`}
+            strokeWidth={isEmphasised ? 1.25 : 1.5}
+            strokeLinejoin={isEmphasised ? "miter" : "round"}
+            strokeLinecap={isEmphasised ? "butt" : "round"}
+            strokeMiterlimit={10}
+            vectorEffect="non-scaling-stroke"
+          />
+        </g>
+      </g>
+    </svg>
+  );
+};
+
+/** The dashboard's larger trend, with a gridline behind it and a pulsing head on the newest point. */
+export const MetricChart = ({
+  values,
+  max,
+  unit,
+  gradientId,
+  height = 120
+}: {
+  values: number[];
+  max: number;
+  unit: string;
+  gradientId: string;
+  height?: number;
+}) => {
+  const width = 600;
+  const { line, area, step } = buildPath(values, width, height, max);
+  const slideRef = useSlide(step, SAMPLE_INTERVAL_MS, values);
+  const last = values[values.length - 1] ?? 0;
+  const headY = height - (Math.min(last, max) / max) * height;
+  // One step past the edge, matching the newest point, so it travels in with the line.
+  const headX = values.length > 1 ? width + step : 0;
+
+  return (
+    <div className="relative w-full">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="w-full"
+        preserveAspectRatio="none"
+        style={{ height }}
+      >
+        <defs>
+          <linearGradient
+            id={`${gradientId}-stroke`}
+            gradientUnits="userSpaceOnUse"
+            x1="0"
+            y1="0"
+            x2={width}
+            y2="0"
+          >
+            {CHROME_STOPS}
+          </linearGradient>
+          <linearGradient
+            id={`${gradientId}-fill`}
+            gradientUnits="userSpaceOnUse"
+            x1="0"
+            y1="0"
+            x2="0"
+            y2={height}
+          >
+            <stop offset="0%" stopColor="#e4e4e7" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#e4e4e7" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        {[0.25, 0.5, 0.75].map((fraction) => (
+          <line
+            key={fraction}
+            x1="0"
+            y1={height * fraction}
+            x2={width}
+            y2={height * fraction}
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeDasharray="3 5"
+            className="text-border/60"
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
+
+        <g ref={slideRef}>
+          {line && <path d={area} fill={`url(#${gradientId}-fill)`} />}
+          {line && (
+            <path
+              d={line}
+              fill="none"
+              stroke={`url(#${gradientId}-stroke)`}
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+          {line && (
+            <circle cx={headX} cy={headY} r="2.5" fill="#f4f4f5" className="sandbox-pulse-dot" />
+          )}
+        </g>
+      </svg>
+
+      <div className="pointer-events-none absolute top-0 right-0 flex flex-col items-end">
+        <span className="font-mono text-[10px] text-muted">
+          {max}
+          {unit}
+        </span>
+      </div>
+      <div className="pointer-events-none absolute right-0 bottom-0">
+        <span className="font-mono text-[10px] text-muted">0{unit}</span>
+      </div>
+    </div>
+  );
+};
+
+/** A radial dial for a bounded reading, used for memory against the container's real limit. */
+export const Dial = ({
+  value,
+  max,
+  label,
+  sublabel
+}: {
+  value: number;
+  max: number;
+  label: string;
+  sublabel: string;
+}) => {
+  const size = 132;
+  const stroke = 9;
+  const radius = (size - stroke) / 2;
+  const circumference = Math.PI * radius * 1.5;
+  const fraction = max > 0 ? Math.min(value / max, 1) : 0;
+
+  return (
+    <div className="relative flex flex-col items-center">
+      <svg width={size} height={size * 0.78} viewBox={`0 0 ${size} ${size * 0.78}`}>
+        <defs>
+          <linearGradient id="dial-chrome" x1="0" y1="0" x2="1" y2="1">
+            {CHROME_STOPS}
+          </linearGradient>
+        </defs>
+        {/* Three quarters of a circle, rotated so the gap sits at the bottom. */}
+        <g transform={`rotate(135 ${size / 2} ${size / 2})`}>
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={`${circumference} ${circumference * 2}`}
+            className="text-border/70"
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="url(#dial-chrome)"
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={`${circumference * fraction} ${circumference * 3}`}
+            className="transition-[stroke-dasharray] duration-700 ease-out"
+          />
+        </g>
+      </svg>
+      <div className="pointer-events-none absolute inset-x-0 top-9 flex flex-col items-center">
+        <span className="sandbox-chrome-text text-2xl font-semibold">{label}</span>
+        <span className="text-[11px] text-muted">{sublabel}</span>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Counts to a new value rather than snapping, so a polled figure reads as a live instrument. Only
+ * animates changes, so the first paint shows the real number immediately.
+ */
+export const CountUp = ({ value, decimals = 0 }: { value: number; decimals?: number }) => {
+  const [shown, setShown] = useState(value);
+  const fromRef = useRef(value);
+  const frameRef = useRef<number>(0);
+
+  useEffect(() => {
+    const from = fromRef.current;
+    const delta = value - from;
+    if (delta === 0) return undefined;
+
+    const start = performance.now();
+    const duration = 500;
+
+    const tick = (now: number) => {
+      const progress = Math.min((now - start) / duration, 1);
+      // ease-out, so it decelerates into the new reading
+      const eased = 1 - (1 - progress) ** 3;
+      setShown(from + delta * eased);
+      if (progress < 1) frameRef.current = requestAnimationFrame(tick);
+      else fromRef.current = value;
+    };
+
+    frameRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameRef.current);
+  }, [value]);
+
+  return <>{shown.toFixed(decimals)}</>;
+};

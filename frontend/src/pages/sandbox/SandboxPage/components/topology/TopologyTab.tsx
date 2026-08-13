@@ -24,6 +24,7 @@ import {
   EmptyMedia,
   EmptyTitle
 } from "@app/components/v3";
+import { useListPamAccounts } from "@app/hooks/api/pam/queries";
 import {
   SandboxActivityType,
   SandboxCommandKind,
@@ -32,7 +33,6 @@ import {
   TSandbox,
   TSandboxActivityEntry
 } from "@app/hooks/api/sandboxes";
-import { useListPamAccounts } from "@app/hooks/api/pam/queries";
 
 import { NODE_TYPES, TTopologyNodeData } from "./nodes";
 

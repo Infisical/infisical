@@ -14,9 +14,11 @@ import { logger } from "@app/lib/logger";
 
 const IMAGE = "infisical-sandbox:1";
 const NETWORK = "infisical-sandbox-net";
-const DOCKER_BIN = "/usr/local/bin/docker";
+export const DOCKER_BIN = "/usr/local/bin/docker";
 const DOCKER_VERSION = "27.3.1";
 const CONTAINER_PREFIX = "infisical-sandbox-";
+/** Every sandbox container carries this, which is how they are found for stats and for reaping. */
+export const SANDBOX_LABEL = "infisical.sandbox";
 
 export const containerNameFor = (sandboxId: string) => `${CONTAINER_PREFIX}${sandboxId}`;
 
@@ -174,7 +176,7 @@ const reapOrphanedContainers = async () => {
   if (hasReapedOnBoot) return;
   hasReapedOnBoot = true;
 
-  const listed = await docker(["ps", "-aq", "--filter", "label=infisical.sandbox"]);
+  const listed = await docker(["ps", "-aq", "--filter", `label=${SANDBOX_LABEL}`]);
   const ids = listed.stdout.split("\n").filter(Boolean);
   if (!ids.length) return;
 
@@ -219,7 +221,7 @@ export const startContainer = async (
       "--pids-limit=512",
       "--security-opt=no-new-privileges",
       "--label",
-      `infisical.sandbox=${sandboxId}`,
+      `${SANDBOX_LABEL}=${sandboxId}`,
       IMAGE,
       "sleep",
       "infinity"
@@ -280,51 +282,4 @@ export const execInContainer = async (
     ],
     { timeoutMs: opts.timeoutMs + 10_000 }
   );
-};
-
-export type TContainerStats = {
-  cpuPercent: number;
-  memoryUsedMb: number;
-  memoryLimitMb: number;
-  memoryPercent: number;
-  networkIn: string;
-  networkOut: string;
-  processCount: number;
-};
-
-const toMb = (value: string) => {
-  const amount = parseFloat(value) || 0;
-  if (value.includes("GiB") || value.includes("GB")) return amount * 1024;
-  if (value.includes("KiB") || value.includes("kB")) return amount / 1024;
-  if (value.includes("B") && !value.includes("MiB") && !value.includes("MB")) return amount / 1024 / 1024;
-  return amount;
-};
-
-/** One shot rather than a stream: the UI polls, and a stream would outlive the request. */
-export const getContainerStats = async (sandboxId: string): Promise<TContainerStats | null> => {
-  const result = await docker([
-    "stats",
-    containerNameFor(sandboxId),
-    "--no-stream",
-    "--format",
-    "{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.PIDs}}"
-  ]);
-
-  if (result.exitCode !== 0) return null;
-
-  const [cpu, mem, memPct, net, pids] = result.stdout.trim().split("\t");
-  if (!cpu) return null;
-
-  const [used, limit] = (mem ?? "").split(" / ");
-  const [inbound, outbound] = (net ?? "").split(" / ");
-
-  return {
-    cpuPercent: parseFloat(cpu) || 0,
-    memoryUsedMb: toMb(used ?? ""),
-    memoryLimitMb: toMb(limit ?? ""),
-    memoryPercent: parseFloat(memPct ?? "") || 0,
-    networkIn: (inbound ?? "0B").trim(),
-    networkOut: (outbound ?? "0B").trim(),
-    processCount: Number(pids) || 0
-  };
 };
