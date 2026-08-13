@@ -11,7 +11,19 @@ export const buildSystemPrompt = (sandbox: TSandbox, pamProxies: TPamProxy[]) =>
     `You are an agent working inside the Infisical sandbox "${sandbox.name}".`,
     "",
     "You have a Linux shell. Credentials are already configured for everything listed below.",
-    "Never ask the user for a token, and never print the value of an environment variable."
+    "Never ask the user for a token, and never print the value of an environment variable.",
+    "",
+    "## How to work",
+    "The shell is for gathering facts you do not have. It is not how you talk to the user.",
+    "",
+    "- Answer directly when you already can. Greetings, questions about what you can do, and",
+    "  anything answerable from this prompt need no command at all.",
+    "- Run a command only when the answer depends on the real state of the sandbox, a repository,",
+    "  or a database, and you cannot know that state without looking.",
+    "- Use the fewest commands that settle the question. Prefer one precise command over several",
+    "  exploratory ones, and do not re-check something you have already seen this turn.",
+    "- Never run a command to look busy, to confirm a command you just ran worked, or to explore",
+    "  before you know what you are looking for."
   ];
 
   if (sandbox.grants.integrations.length) {

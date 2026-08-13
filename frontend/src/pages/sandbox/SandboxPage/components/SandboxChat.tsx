@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
-import { BotIcon, SendIcon, UserIcon } from "lucide-react";
+import { BotIcon, Loader2Icon, SendIcon, UserIcon } from "lucide-react";
 
 import { Button, Input } from "@app/components/v3";
 import { streamAgentChat, TAgentMessage, TAgentToolCall, TSandbox } from "@app/hooks/api/sandboxes";
@@ -73,19 +73,20 @@ const resolveErrorMessage = (error: unknown) => {
 const ToolCall = ({ call }: { call: TAgentToolCall }) => (
   <details className="group/tool">
     <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded px-1 py-px hover:bg-foreground/5">
-      <span className="shrink-0 font-mono text-[10px] text-muted">$</span>
+      {call.exitCode === null ? (
+        <Loader2Icon className="size-2.5 shrink-0 animate-spin text-project" />
+      ) : (
+        <span className="shrink-0 font-mono text-[10px] text-muted">$</span>
+      )}
       <span className="truncate font-mono text-[11px] leading-4 text-muted group-open/tool:text-foreground">
         {call.command}
       </span>
       {call.exitCode !== null && call.exitCode !== 0 && (
         <span className="shrink-0 font-mono text-[10px] text-danger">{call.exitCode}</span>
       )}
-      {call.exitCode === null && (
-        <span className="shrink-0 animate-pulse font-mono text-[10px] text-muted">running</span>
-      )}
     </summary>
     <pre className="mt-1 mb-1 max-h-40 thin-scrollbar overflow-auto border-l border-border py-0.5 pl-2 text-[10px] leading-4 whitespace-pre-wrap text-muted">
-      {call.output || "(no output)"}
+      {call.output || (call.exitCode === null ? "running..." : "(no output)")}
     </pre>
   </details>
 );
@@ -199,15 +200,6 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
               )}
             </div>
             <div className="min-w-0 flex-1 space-y-1.5">
-              {turn.role === "assistant" ? (
-                <div className="text-sm text-foreground">
-                  <Markdown components={MARKDOWN_COMPONENTS}>{turn.content}</Markdown>
-                </div>
-              ) : (
-                <p className="text-sm wrap-anywhere whitespace-pre-wrap text-foreground">
-                  {turn.content}
-                </p>
-              )}
               {Boolean(turn.toolCalls?.length) && (
                 <div className="rounded border border-border bg-bunker-800 px-1 py-1">
                   {turn.toolCalls?.map((call, callIndex) => (
@@ -216,16 +208,28 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
                   ))}
                 </div>
               )}
+
+              {turn.role === "assistant" ? (
+                Boolean(turn.content) && (
+                  <div className="text-sm text-foreground">
+                    <Markdown components={MARKDOWN_COMPONENTS}>{turn.content}</Markdown>
+                  </div>
+                )
+              ) : (
+                <p className="text-sm wrap-anywhere whitespace-pre-wrap text-foreground">
+                  {turn.content}
+                </p>
+              )}
+
+              {/* Inside the turn, so the bot icon is not drawn a second time. The running
+                  command already shows its own spinner. */}
+              {isStreaming &&
+                index === turns.length - 1 &&
+                !turn.content &&
+                !turn.toolCalls?.length && <span className="text-xs text-muted">Working...</span>}
             </div>
           </div>
         ))}
-
-        {isStreaming && (
-          <div className="flex items-center gap-2 text-xs text-muted">
-            <BotIcon className="size-4 animate-pulse text-project" />
-            Working...
-          </div>
-        )}
       </div>
 
       <div className="flex gap-2 border-t border-border p-2">
