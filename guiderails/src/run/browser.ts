@@ -1,6 +1,17 @@
 import type { Page } from "@playwright/test";
 
 import type { ResolvedLocator } from "../types.js";
+import {
+  CONTROL_SELECTOR,
+  describeDescriptor,
+  describeUnlabelled,
+  descriptorOf,
+  renderUnlabelled,
+  sameControl,
+  scanUnlabelled,
+  type UnlabelledControl,
+  type UnlabelledDescriptor
+} from "./unlabelled.js";
 
 /**
  * The browser surface the agent acts through.
@@ -15,11 +26,10 @@ import type { ResolvedLocator } from "../types.js";
  *  3. It is serializable. A resolved role/name pair replays as ordinary Playwright, which is
  *     what turns a successful agent run into a deterministic spec.
  *
- * Known limitation, visible in the app's own accessibility tree: several icon-only controls
- * have no accessible name at all (the environment chevron next to Add Secret, for one). Those
- * are unreachable by name, and folder.mdx step 1 asks the reader to click exactly one of them.
- * The tools report that honestly rather than guessing at a positional fallback, because a
- * confident wrong click produces a misleading finding.
+ * Not every control has an accessible name, though: several icon-only buttons have none at all,
+ * including the chevron beside Add Secret that folder.mdx step 1 asks the reader to click. Those
+ * are addressed instead by their icon and the text beside them, which is how the guides refer to
+ * them anyway. See `./unlabelled.ts` for why that is worth the weakening it represents.
  */
 
 export type ToolOutcome = {
@@ -54,12 +64,19 @@ export const createBrowserTools = (page: Page) => {
   /**
    * The accessibility tree as the agent's only view of the page. Two orders of magnitude
    * cheaper than a screenshot per step, and it yields the selector we can replay.
+   *
+   * The tree renders a control the app never named as a bare `- button:`, which tells the agent
+   * something is there but gives it no way to say which one it means. So the unlabelled controls
+   * are listed underneath, with the icon and neighbouring text that identify them.
    */
   const snapshot = async (): Promise<string> => {
     await settle();
     const tree = await page.locator("body").ariaSnapshot();
     // Long enough to include the page's controls, short enough to keep the step cheap.
-    return tree.length > 12_000 ? `${tree.slice(0, 12_000)}\n... (snapshot truncated)` : tree;
+    const trimmed =
+      tree.length > 12_000 ? `${tree.slice(0, 12_000)}\n... (snapshot truncated)` : tree;
+    // Appended after the truncation, or the listing would be the first thing cut from a big page.
+    return `${trimmed}${renderUnlabelled(await scanUnlabelled(page))}`;
   };
 
   const resolve = (role: string | null, name: string) => {
@@ -98,6 +115,90 @@ export const createBrowserTools = (page: Page) => {
       return {
         ok: false,
         detail: `found "${name}" but could not click it: ${
+          error instanceof Error ? error.message.split("\n")[0] : String(error)
+        }`
+      };
+    }
+  };
+
+  /**
+   * Clicks a control the app never named, chosen from the listing the last snapshot showed.
+   *
+   * The listing is recomputed rather than remembered, and the entry at that position has to still
+   * describe the same control. Anything else is a page that moved under the agent, and clicking
+   * whatever now sits third in the list would be exactly the confident wrong click this design has
+   * always refused.
+   */
+  const clickUnlabelled = async (index: number): Promise<ToolOutcome> => {
+    await settle();
+    const controls = await scanUnlabelled(page);
+
+    if (controls.length === 0) {
+      return { ok: false, detail: "There are no unlabelled controls on this page." };
+    }
+
+    const control = controls.find((candidate) => candidate.index === index);
+    if (!control) {
+      // The current list comes back with the refusal. Answering "take a new snapshot" alone costs
+      // the agent a second call out of a budget of eight, which a real run spent doing exactly that.
+      return {
+        ok: false,
+        detail:
+          `There is no unlabelled control ${index}. The page now lists ${controls.length}: ` +
+          controls.map((candidate) => describeUnlabelled(candidate)).join("; ")
+      };
+    }
+
+    return clickResolved(control, describeUnlabelled(control));
+  };
+
+  /** The replay path: same click, addressed by the recorded description instead of a position. */
+  const clickDescribed = async (descriptor: UnlabelledDescriptor): Promise<ToolOutcome> => {
+    await settle();
+    const controls = await scanUnlabelled(page);
+    const matches = controls.filter((candidate) => sameControl(descriptor, candidate));
+
+    if (matches.length === 0) {
+      return {
+        ok: false,
+        detail: `No ${describeDescriptor(descriptor)} on this page.`
+      };
+    }
+    // More than one identical description means the recording cannot distinguish them, so the
+    // first is as good an answer as exists. Said out loud rather than hidden.
+    const [control] = matches;
+    if (!control) return { ok: false, detail: `No ${describeDescriptor(descriptor)}.` };
+
+    return clickResolved(
+      control,
+      `${describeDescriptor(descriptor)}${matches.length > 1 ? ` (first of ${matches.length})` : ""}`
+    );
+  };
+
+  const clickResolved = async (
+    control: UnlabelledControl,
+    described: string
+  ): Promise<ToolOutcome> => {
+    const target = page.locator(CONTROL_SELECTOR).nth(control.domIndex);
+    try {
+      await target.click({ timeout: 8000 });
+      await settle();
+      return {
+        ok: true,
+        detail: `clicked ${described}`,
+        locator: {
+          action: "click",
+          role: control.role,
+          // Null is the whole point: this control has no name to record.
+          name: null,
+          value: null,
+          unlabelled: descriptorOf(control)
+        }
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        detail: `found ${described} but could not click it: ${
           error instanceof Error ? error.message.split("\n")[0] : String(error)
         }`
       };
@@ -200,7 +301,18 @@ export const createBrowserTools = (page: Page) => {
 
   const currentUrl = (): string => page.url();
 
-  return { snapshot, click, fill, select, expectVisible, screenshot, currentUrl, settle };
+  return {
+    snapshot,
+    click,
+    clickUnlabelled,
+    clickDescribed,
+    fill,
+    select,
+    expectVisible,
+    screenshot,
+    currentUrl,
+    settle
+  };
 };
 
 export type BrowserTools = ReturnType<typeof createBrowserTools>;

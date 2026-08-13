@@ -39,13 +39,28 @@ If the step cannot be completed as written, call report_finding once and then st
 - The page requires something the guide never mentions (a required field, a confirmation dialog, a prerequisite). That is a missing step.
 - The guide describes a step the page has no trace of. That is an extra step.
 
+## When the guide gives you nothing to do
+
+Some steps carry no instruction: the guide only shows a screenshot, or documents a form's fields without ever telling the reader to fill them. Those steps hand you the strings the guide names instead of a list of actions, and the question changes.
+
+Look at the page, then decide:
+
+- Every named string is already on screen. Call step_done: the step is descriptive and it is accurate.
+- Some are missing. Before concluding anything, open collapsed sections, accordions, and anything labelled "advanced", "more" or "show". Fields are routinely one disclosure away, and calling one missing when it is merely folded away is a false alarm.
+- Still missing, and reaching them needs an action no step in this guide ever gave the reader. That is the finding, and it is the most valuable thing you can report: MISSING_STEP naming the exact action the guide left out. "The guide never says to click Share a Secret to open this dialog" is the shape of it. Then take that action yourself and call step_done. Report the omission, but do not block on it: the reader's problem is the gap in the guide, and blocking would hide every later step behind something you have already diagnosed.
+- Still missing and you cannot work out what would reveal them: step_blocked with what you saw. Do not guess.
+
+Never report a label mismatch in this mode. You were not told to act on any control, so a difference in wording is not something this step claimed.
+
 ## Rules
 
 1. Do only what this step says. Do not perform the next step because it seems helpful, and do not clean up after yourself.
 2. Quote real strings. When you report a mismatch, "what the app shows" must be a label you actually saw in the snapshot, copied exactly. Never paraphrase it and never guess at one.
-3. Some controls in this app genuinely have no accessible name, usually icon-only buttons. If the step needs one of those, say so as the reason and block. Do not guess at a positional workaround: a confident wrong click produces a misleading finding, which is worse than an honest inability to proceed.
+3. Some controls in this app have no accessible name, usually icon-only buttons. The snapshot lists those at the end, with the icon they draw and the text beside them, which is normally how the guide refers to them anyway ("the chevron next to Add Secret"). Click one with click_unlabelled and its number. Block only when nothing in that list plausibly matches the control the step describes, and say which entries you ruled out. A number is meaningful only against the snapshot you just took, so take a fresh one if the page has changed.
 4. If a snapshot looks like a loading state, take one more snapshot before concluding anything is missing.
-5. You have a small budget of tool calls. Spend it on acting, not on re-reading an unchanged page.`;
+5. You have a small budget of tool calls. Spend it on acting, not on re-reading an unchanged page.
+
+6. Each action carries the guide text it came from. That is a pointer into the documentation, not a promise that those words appear in the product: it is often a section heading. Never report a mismatch because such a quote is absent from the screen. Report one only when the guide named a control you were told to act on and the page calls that control something else.`;
 
 export type StepAgentResult = {
   outcome: "passed" | "failed";
@@ -81,47 +96,88 @@ const findingSchema = z.object({
  * gave the agent an unresolvable string, so it improvised and clicked the wrong principal
  * entirely, and the six cascading blockers that followed looked like the guide's fault.
  */
+export type StepAgentMode =
+  /** The usual case: the plan has actions and the agent performs them. */
+  | { kind: "perform" }
+  /**
+   * The guide gave no action but did name UI strings. The question becomes whether the reader
+   * could be looking at them, and if not whether the guide ever said how to get there.
+   */
+  | { kind: "gap-check"; named: string[] };
+
+/**
+ * One action, with the guide text it came from on the line beneath it.
+ *
+ * The quote used to be listed separately under "Quotes from the guide, for reporting mismatches
+ * accurately", detached from any action. On a step whose only action was a screenshot, that left
+ * the agent holding a `<Step title="Configure Secret Share">` attribute and nothing else, so it
+ * compared the title against the dialog's own heading and filed a mismatch the guide never claimed.
+ * Attached to its action and labelled as provenance, the same string cannot be mistaken for a
+ * promise about what the screen says.
+ */
+const renderAction = (
+  action: PlanStep["actions"][number],
+  index: number,
+  fill: (text: string) => string
+): string => {
+  const body = (() => {
+    switch (action.kind) {
+      case "navigate":
+        return `Navigate: ${action.path.map(fill).join(" > ")}`;
+      case "click":
+        return `Click "${fill(action.target)}"${action.role ? ` (role ${action.role})` : ""}`;
+      case "fill":
+        return `Fill "${fill(action.field)}" with "${fill(action.value)}"`;
+      case "select":
+        return `In "${fill(action.field)}" choose "${fill(action.option)}"`;
+      case "expect_visible":
+        return `Confirm the page shows "${fill(action.text)}"`;
+      case "expect_screenshot":
+        return "(a screenshot is compared separately; no action needed)";
+      case "external":
+        return `(skipped, needs something outside this instance: ${action.reason})`;
+      default:
+        return "(unknown action)";
+    }
+  })();
+
+  return `${index + 1}. ${body}\n   from the guide: "${action.sourceQuote.text}"`;
+};
+
 const renderStep = (
   step: PlanStep,
   fixtureValues: Record<string, string>,
-  startingState: string[]
+  startingState: string[],
+  mode: StepAgentMode
 ): string => {
   const fill = (text: string): string => resolvePlaceholders(text, fixtureValues);
 
-  const actions = step.actions.map((action, index) => {
-    switch (action.kind) {
-      case "navigate":
-        return `${index + 1}. Navigate: ${action.path.map(fill).join(" > ")}`;
-      case "click":
-        return `${index + 1}. Click "${fill(action.target)}"${action.role ? ` (role ${action.role})` : ""}`;
-      case "fill":
-        return `${index + 1}. Fill "${fill(action.field)}" with "${fill(action.value)}"`;
-      case "select":
-        return `${index + 1}. In "${fill(action.field)}" choose "${fill(action.option)}"`;
-      case "expect_visible":
-        return `${index + 1}. Confirm the page shows "${fill(action.text)}"`;
-      case "expect_screenshot":
-        return `${index + 1}. (a screenshot is compared separately; no action needed)`;
-      case "external":
-        return `${index + 1}. (skipped, needs something outside this instance: ${action.reason})`;
-      default:
-        return `${index + 1}. (unknown action)`;
-    }
-  });
-
-  return [
+  const header = [
     `Step ${step.docStepIndex}: ${fill(step.instruction)}`,
     "",
     // Without this the agent cannot tell that the subject it is asked to act on is a machine
     // identity rather than a user, which in this app lives behind a different tab.
     "Starting state of this instance:",
     ...startingState.map((line) => `- ${line}`),
-    "",
+    ""
+  ];
+
+  if (mode.kind === "gap-check") {
+    return [
+      ...header,
+      "This step tells the reader to do nothing. It does name these strings:",
+      ...mode.named.map((name) => `- "${fill(name)}"`),
+      "",
+      "Answer the question in \"When the guide gives you nothing to do\" above."
+    ].join("\n");
+  }
+
+  const actions = step.actions.map((action, index) => renderAction(action, index, fill));
+
+  return [
+    ...header,
     "What the guide says to do:",
-    actions.length > 0 ? actions.join("\n") : "(nothing actionable)",
-    "",
-    "Quotes from the guide, for reporting mismatches accurately:",
-    ...step.actions.map((action) => `- "${action.sourceQuote.text}"`)
+    actions.length > 0 ? actions.join("\n") : "(nothing actionable)"
   ].join("\n");
 };
 
@@ -137,7 +193,8 @@ export const runStepAgent = async (
   fixtureValues: Record<string, string>,
   startingState: string[],
   usage: UsageTotals,
-  events: RunEvents
+  events: RunEvents,
+  mode: StepAgentMode = { kind: "perform" }
 ): Promise<StepAgentResult> => {
   const client = getClient();
 
@@ -223,6 +280,21 @@ export const runStepAgent = async (
         const lines = tree.split("\n").length;
         return { ok: true, detail: `${lines} line(s)`, reply: tree };
       })
+  });
+
+  const clickUnlabelledTool = betaZodTool({
+    name: "click_unlabelled",
+    description:
+      "Click a control that has no accessible name, using its number from the unlabelled list at " +
+      "the end of the snapshot.",
+    inputSchema: z.object({
+      number: z
+        .number()
+        .int()
+        .describe("The number shown beside the control in the snapshot's unlabelled list.")
+    }),
+    run: async (input) =>
+      acting("click_unlabelled", `#${input.number}`, () => tools.clickUnlabelled(input.number))
   });
 
   const clickTool = betaZodTool({
@@ -329,6 +401,7 @@ export const runStepAgent = async (
     tools: [
       snapshotTool,
       clickTool,
+      clickUnlabelledTool,
       fillTool,
       selectTool,
       expectVisibleTool,
@@ -336,7 +409,7 @@ export const runStepAgent = async (
       stepDoneTool,
       stepBlockedTool
     ],
-    messages: [{ role: "user", content: renderStep(step, fixtureValues, startingState) }],
+    messages: [{ role: "user", content: renderStep(step, fixtureValues, startingState, mode) }],
     max_iterations: MAX_TOOL_CALLS_PER_STEP + 4
   }, { signal: finish.signal });
 

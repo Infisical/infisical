@@ -247,6 +247,12 @@ export type ResolvedLocator = {
   role: string | null;
   name: string | null;
   value: string | null;
+  /**
+   * Set only when the control the agent clicked had no accessible name, in which case `name` is
+   * null and this description is the whole address. Optional so every recording written before it
+   * existed still parses.
+   */
+  unlabelled?: { role: string; icon: string | null; near: string | null };
 };
 
 export type RunResult = {

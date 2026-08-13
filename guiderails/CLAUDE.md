@@ -58,6 +58,77 @@ earning its price on a task that reads an accessibility tree and matches one lab
 Override per run without editing code: `GUIDERAILS_MODEL_NAVIGATE=claude-opus-5 ...`, likewise
 `_COMPILE`, `_SCREENSHOT`, `_BLAME`.
 
+## Two sources of false positives, and what fixes them
+
+Both were real, both were reproduced against a live instance, and neither was a documentation
+defect. They are worth knowing because the fixes constrain what the agent may be asked.
+
+### Controls the app never named
+
+`frontend/` renders roughly 628 `IconButton`s and about 258 carry an `aria-label`. One that does
+not is the chevron beside Add Secret (`AddResourceButtons.tsx:97`), which `folder.mdx` step 1 asks
+the reader to click. Addressing by accessible name alone therefore failed on a correct guide and a
+control that exists, and the whole procedure cascaded to "not reached".
+
+`src/run/unlabelled.ts` lists those controls under every snapshot, described the way a guide
+describes them — by icon and by the text beside them:
+
+```
+Unlabelled controls (no accessible name — reach these with click_unlabelled):
+  1. button "chevron-down" — after "Add Secret"
+  3. switch — before "Limit access to people within organization"
+```
+
+The icon comes from lucide's `class="lucide lucide-chevron-down"` or FontAwesome's `data-icon`.
+The neighbouring text is searched **in both directions**, because a Radix switch is labelled by the
+text that follows it. `click_unlabelled n` clicks one, and what gets recorded for replay is the
+description, never the number — a number means nothing against a later scan.
+
+Two things this deliberately keeps:
+
+- **The scan re-verifies before it clicks.** If entry 3 no longer describes the same control, it
+  refuses and returns the current list rather than clicking whatever is now third.
+- **`nameOf` errs toward listing.** A wrongly listed control costs one line the agent can ignore
+  and is still reachable by name; a wrongly omitted one is the failure this exists to fix. A
+  wrapping `<label>`, `label[for=]` and an input's `value` were all tried as naming sources and all
+  removed, because they named controls the accessibility tree still shows as anonymous.
+
+### Steps that ask the reader to do nothing
+
+`secret-sharing` procedure 1 step 3 compiles to a single `expect_screenshot` whose `sourceQuote` is
+the `<Step title="Configure Secret Share">` attribute. Handed that string and no action, the agent
+compared it against the dialog's own heading ("Share a Secret") and filed a MISMATCH the guide never
+claimed. 23 of the 101 compiled actions carry a step title as their quote, so this was structural.
+
+`stepWork` in `src/run/index.ts` splits such a step on whether the guide **names** any part of the
+UI — `fields[]` labels or `boldTargets` — rather than guessing at the step's genre:
+
+- **Names nothing** (docker 1.1 and 2.4, pr-workflows 1.2): informational. Never reaches the agent,
+  so there is no model call and no opportunity to invent anything.
+- **Names UI strings** (secret-sharing 1.3 and 2.4): gap-check mode. The agent is asked whether
+  those strings are on screen and, if not, whether any step told the reader how to reveal them.
+
+Gap-check is where the checker earns its keep. Neither secret-sharing procedure ever tells the
+reader to click **Share Secret** to open the dialog, and neither says that Max Views, Emails and
+Allow external recipients sit behind **Advanced Settings**. Step 1.3 now reports exactly that as a
+MISSING_STEP, and **passes anyway** — the reader's problem is the omission, and blocking would hide
+every later step behind a gap already diagnosed. A gap-check that passes records its named strings
+as `expect_visible` locators, so later runs verify the same fields with no model at all.
+
+The prompt rule about expanding accordions and anything labelled "advanced" or "more" before
+declaring a string missing is load-bearing, not a nicety. Without it the disclosure-hidden fields
+come back as false positives.
+
+### The backstop, and its own failure mode
+
+`isTitleEcho` drops a MISMATCH whose `docSays` is the step's heading when the step never asked the
+agent to look for it. Its first version compared the title to each action target by **equality**,
+which suppressed a genuine finding: "Navigate to the Secret Sharing tab" compiles to
+`navigate ["Secret Sharing"]`, so equality said the guide never asked for it, and the report went
+silent about the app having moved Secret Sharing out of the project sidebar. It now matches by
+containment either way. Suppressing real drift is worse than the noise the guard removes, so when
+in doubt it keeps the finding.
+
 ## Known coverage hole: label drift is under-reported
 
 The agent is asked to navigate *and* report label mismatches in the same step. When it can find a
@@ -212,7 +283,12 @@ Any of them silently breaks a run if reintroduced.
   broken path and blame the guide for it.
 - **Warn-only.** Guides start `critical: false` and earn gating.
 - **Prompt caching depends on frozen system prompts.** Interpolating anything per-step into a
-  system prompt silently throws the cache away. Per-step content belongs in the user message.
+  system prompt silently throws the cache away. Per-step content belongs in the user message. Both
+  agent modes therefore share one system prompt and differ only in the user message.
+- **A `sourceQuote` is provenance, never a claim about the UI.** It says where in the guide an
+  action came from, and for 23 of the 101 compiled actions it is a `<Step title>`. Rendering quotes
+  as a loose list under "for reporting mismatches accurately" is what made the agent compare a
+  section heading against a dialog heading. They belong attached to the action they justify.
 - **`docStepIndex` is never an identity on its own.** It is 1-based *within a procedure*
   (`GuideStep.index`), so folder.mdx has five steps under three distinct indices and secret-sharing
   has eleven under six. Keying on it alone has already caused three bugs: a rail that rendered three

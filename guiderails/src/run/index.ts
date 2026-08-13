@@ -4,6 +4,7 @@ import path from "node:path";
 import { chromium, type Browser, type BrowserContext, type Page } from "@playwright/test";
 
 import { checkPlanDrift } from "../compile/index.js";
+import { normalizeForMatch, quoteAppearsIn } from "../compile/quote.js";
 import { loadInstanceState, type InstanceState } from "../env/bootstrap.js";
 import { setupFixture, type FixtureResult } from "../env/fixtures.js";
 import { createBrowserSession } from "../env/session.js";
@@ -15,6 +16,7 @@ import type {
   Finding,
   GuideDoc,
   GuidePlan,
+  GuideStep,
   GuideRegistryEntry,
   PlanStep,
   RunResult,
@@ -23,7 +25,7 @@ import type {
 } from "../types.js";
 import { findFrontendAnchor } from "../verify/anchor.js";
 import { classifyBlame, compareScreenshots, mediaTypeFor } from "../verify/judge.js";
-import { runStepAgent } from "./agent.js";
+import { runStepAgent, type StepAgentMode } from "./agent.js";
 import { createBrowserTools } from "./browser.js";
 import { RunEvents } from "./events.js";
 import {
@@ -93,6 +95,92 @@ export const planOutline = (plan: GuidePlan, doc: GuideDoc): PlanOutlineProcedur
     return procedure ? [procedure] : [];
   });
 };
+
+/**
+ * What a step actually gives the agent to do.
+ *
+ * A step with no compiled action is not automatically anything. Of the four in the registry today,
+ * one documents an eight-field form, one documents a three-field form, one describes behaviour the
+ * app performs by itself, and one says "repeat these steps for each key-value pair". The only
+ * property that decides how to treat them is whether the guide **names** any part of the UI, so
+ * that is what this splits on rather than guessing at a step's genre.
+ *
+ * Handing such a step to the agent unchanged is what produced the false positives: with no action
+ * to perform it fell back to comparing a `<Step title>` against a dialog heading.
+ */
+export const stepWork = (
+  step: PlanStep,
+  docStep: GuideStep | undefined
+): StepAgentMode | { kind: "informational" } => {
+  const actionable = step.actions.some(
+    (action) => action.kind !== "expect_screenshot" && action.kind !== "external"
+  );
+  if (actionable) return { kind: "perform" };
+
+  const named = [
+    ...(docStep?.fields.map((field) => field.label) ?? []),
+    ...(docStep?.boldTargets ?? [])
+  ]
+    .map((label) => label.trim())
+    .filter((label) => label.length > 0);
+
+  const unique = [...new Set(named)];
+  return unique.length > 0 ? { kind: "gap-check", named: unique } : { kind: "informational" };
+};
+
+/**
+ * Rejects a finding that compares the step's own heading against the UI.
+ *
+ * `<Step title="Configure Secret Share">` is a section label. The guide never claimed the dialog is
+ * called that, so a MISMATCH citing it is not a documentation defect — and it was the single most
+ * common false positive, because 23 of the 101 compiled actions carry a step title as their quote.
+ *
+ * Attaching quotes to their actions and adding a prompt rule addresses the cause; this is the
+ * mechanical backstop, in the same spirit as the compiler dropping any action whose quote is not
+ * verbatim in the step. Model output gets verified rather than trusted.
+ *
+ * A title that the guide *does* ask the reader to act on is left alone: several steps are titled
+ * with their own imperative ("Navigate to the Secret Sharing tab"), and that is a real target.
+ */
+export const isTitleEcho = (
+  finding: Pick<Finding, "severity" | "docSays">,
+  step: PlanStep,
+  docStep: GuideStep | undefined
+): boolean => {
+  if (finding.severity !== "MISMATCH") return false;
+  if (!docStep?.title) return false;
+  if (normalizeForMatch(finding.docSays) !== normalizeForMatch(docStep.title)) return false;
+
+  const askedFor = step.actions.some((action) => {
+    switch (action.kind) {
+      case "click":
+        return asksFor(action.target, docStep.title);
+      case "fill":
+      case "select":
+        return asksFor(action.field, docStep.title);
+      case "expect_visible":
+        return asksFor(action.text, docStep.title);
+      case "navigate":
+        return action.path.some((segment) => asksFor(segment, docStep.title));
+      default:
+        return false;
+    }
+  });
+
+  return !askedFor;
+};
+
+/**
+ * Containment, not equality.
+ *
+ * A step titled "Navigate to the Secret Sharing tab" compiles to `navigate ["Secret Sharing"]`, so
+ * an equality test says the guide never asked for the title and suppresses the finding. That is how
+ * this guard first suppressed a genuine one: the app really had moved Secret Sharing out of the
+ * project sidebar, and the report went silent about it. Suppressing real drift is a worse failure
+ * than the false positive the guard exists to stop, so it errs toward keeping the finding.
+ */
+const asksFor = (target: string, title: string | null): boolean =>
+  title !== null && (quoteAppearsIn(target, title) || quoteAppearsIn(title, target));
 
 const findDocImage = (docImage: string, guideFile: string): string | null => {
   const candidate = docImage.startsWith("/")
@@ -187,6 +275,12 @@ export const runGuide = async (options: RunOptions): Promise<RunOutput> => {
      */
     const blockedProcedures = new Map<number, number>();
 
+    /**
+     * Findings the backstop refused. Kept and reported rather than discarded silently: a guard on
+     * model output that nobody can see is a guard nobody can tell has started misfiring.
+     */
+    const droppedFindings: string[] = [];
+
     for (const step of plan.steps) {
       const blockedBy = blockedProcedures.get(step.procedureIndex);
       if (blockedBy !== undefined) {
@@ -212,6 +306,20 @@ export const runGuide = async (options: RunOptions): Promise<RunOutput> => {
         steps.push(emptyStepResult(step, "unverified", reason));
         unverified.push({ reason, tab: doc.tab, line: step.actions[0]?.sourceQuote.line ?? 0 });
         events.stepResult(step.procedureIndex, step.docStepIndex, "unverified", reason);
+        continue;
+      }
+
+      const docStep = doc.procedures
+        .find((procedure) => procedure.index === step.procedureIndex)
+        ?.steps.find((candidate) => candidate.index === step.docStepIndex);
+      const work = stepWork(step, docStep);
+
+      if (work.kind === "informational") {
+        // Nothing to do and nothing named, so there is nothing this checker can be right or wrong
+        // about. Saying so costs no model call and removes the only opportunity to invent a finding.
+        const reason = "the guide asks for no action here and names no part of the UI";
+        steps.push(emptyStepResult(step, "skipped", reason));
+        events.stepResult(step.procedureIndex, step.docStepIndex, "skipped", reason);
         continue;
       }
 
@@ -254,7 +362,8 @@ export const runGuide = async (options: RunOptions): Promise<RunOutput> => {
           fixture.values,
           fixture.describe,
           usage,
-          events
+          events,
+          work
         );
         toolCalls = agent.toolCalls;
         outcome = agent.outcome;
@@ -262,7 +371,31 @@ export const runGuide = async (options: RunOptions): Promise<RunOutput> => {
         detail = agent.notes.join(" ");
         locators = agent.resolvedLocators;
 
+        // A gap-check that passed means every string the guide named was on screen. Recording that
+        // as assertions turns a model judgement into a deterministic check on every later run, and
+        // they go after the agent's own clicks so a disclosure it had to expand is expanded again.
+        if (work.kind === "gap-check" && agent.outcome === "passed") {
+          locators = [
+            ...locators,
+            ...work.named.map((name) => ({
+              action: "expect_visible" as const,
+              role: null,
+              name,
+              value: null
+            }))
+          ];
+        }
+
         for (const partial of agent.findings) {
+          if (isTitleEcho(partial, step, docStep)) {
+            const note =
+              `dropped a ${partial.severity} on step ${step.procedureIndex}.${step.docStepIndex}: ` +
+              `"${partial.docSays}" is this step's heading, not something the guide asked for`;
+            events.log(note);
+            droppedFindings.push(note);
+            continue;
+          }
+
           const quote = step.actions[0]?.sourceQuote ?? {
             text: step.instruction,
             file: repoRelative(guideFile),
@@ -335,6 +468,13 @@ export const runGuide = async (options: RunOptions): Promise<RunOutput> => {
     }
 
     await stopScreencast();
+
+    if (droppedFindings.length > 0) {
+      events.log(
+        `${droppedFindings.length} finding(s) dropped: the agent compared a step heading against ` +
+          `the UI, which the guide never claimed`
+      );
+    }
 
     const prefix = recordablePrefix(steps).map((recorded) => ({
       ...recorded,

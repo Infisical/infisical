@@ -1,7 +1,7 @@
 {
   "guide": "docs/integrations/platforms/docker.mdx",
   "guideDocHash": "b336728c9c4d3cc6ce761ec43dc52aad5675765b8d34aaeff3cb2919c84c7cfc",
-  "recordedAt": "2026-08-12T22:57:32.187Z",
+  "recordedAt": "2026-08-13T01:31:10.866Z",
   "steps": [
     {
       "docStepIndex": 1,
@@ -82,6 +82,106 @@
           "action": "click",
           "role": "tab",
           "name": "Create New",
+          "value": null
+        }
+      ]
+    },
+    {
+      "docStepIndex": 3,
+      "procedureIndex": 3,
+      "instruction": "Configure the machine identity's name and role, then create it.",
+      "locators": [
+        {
+          "action": "fill",
+          "role": "textbox",
+          "name": "Machine 1",
+          "value": "orders-service-docker"
+        },
+        {
+          "action": "click",
+          "role": "combobox",
+          "name": null,
+          "value": null,
+          "unlabelled": {
+            "role": "combobox",
+            "icon": null,
+            "near": "No Access"
+          }
+        },
+        {
+          "action": "click",
+          "role": "option",
+          "name": "Viewer Only read role in a project",
+          "value": null
+        },
+        {
+          "action": "click",
+          "role": "button",
+          "name": "Create",
+          "value": null
+        }
+      ]
+    },
+    {
+      "docStepIndex": 1,
+      "procedureIndex": 4,
+      "instruction": "Open the Authentication section and select Universal Auth for the machine identity.",
+      "locators": [
+        {
+          "action": "click",
+          "role": null,
+          "name": "Universal Auth",
+          "value": null
+        }
+      ]
+    },
+    {
+      "docStepIndex": 2,
+      "procedureIndex": 4,
+      "instruction": "Copy the Client ID for later use.",
+      "locators": [
+        {
+          "action": "click",
+          "role": "button",
+          "name": "Copy Client ID",
+          "value": null
+        }
+      ]
+    },
+    {
+      "docStepIndex": 3,
+      "procedureIndex": 4,
+      "instruction": "Create a new client secret with a description.",
+      "locators": [
+        {
+          "action": "click",
+          "role": null,
+          "name": "Add Client Secret",
+          "value": null
+        },
+        {
+          "action": "fill",
+          "role": "textbox",
+          "name": "Description",
+          "value": "docker-quickstart"
+        },
+        {
+          "action": "click",
+          "role": "button",
+          "name": "Create",
+          "value": null
+        }
+      ]
+    },
+    {
+      "docStepIndex": 4,
+      "procedureIndex": 4,
+      "instruction": "Copy the generated Client Secret since it cannot be viewed again.",
+      "locators": [
+        {
+          "action": "click",
+          "role": "button",
+          "name": "Copy to clipboard",
           "value": null
         }
       ]

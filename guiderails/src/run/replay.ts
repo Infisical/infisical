@@ -5,6 +5,11 @@ import { RESOLVED_DIR } from "../paths.js";
 import type { ResolvedLocator, StepOutcome } from "../types.js";
 import type { BrowserTools } from "./browser.js";
 import { planSlug } from "../compile/index.js";
+import { describeDescriptor } from "./unlabelled.js";
+
+/** How a locator reads in a failure message, named or not. */
+const describeLocator = (locator: ResolvedLocator): string =>
+  locator.unlabelled ? describeDescriptor(locator.unlabelled) : `"${locator.name ?? ""}"`;
 
 /**
  * L3: the ratchet.
@@ -144,7 +149,12 @@ export const parameterizeLocators = (
   return locators.map((locator) => ({
     ...locator,
     name: applyPairs(locator.name, pairs),
-    value: applyPairs(locator.value, pairs)
+    value: applyPairs(locator.value, pairs),
+    // `near` is page text, so it carries this run's random project or secret name exactly as a
+    // recorded `name` would, and has to be parameterized alongside it.
+    ...(locator.unlabelled
+      ? { unlabelled: { ...locator.unlabelled, near: applyPairs(locator.unlabelled.near, pairs) } }
+      : {})
   }));
 };
 
@@ -164,7 +174,10 @@ export const resolveLocators = (
   return locators.map((locator) => ({
     ...locator,
     name: replace(locator.name),
-    value: replace(locator.value)
+    value: replace(locator.value),
+    ...(locator.unlabelled
+      ? { unlabelled: { ...locator.unlabelled, near: replace(locator.unlabelled.near) } }
+      : {})
   }));
 };
 
@@ -204,7 +217,10 @@ export const replayStep = async (
     const outcome = await (async () => {
       switch (locator.action) {
         case "click":
-          return tools.click(locator.name ?? "", locator.role);
+          // A null name means the control never had one; the description is the whole address.
+          return locator.unlabelled
+            ? tools.clickDescribed(locator.unlabelled)
+            : tools.click(locator.name ?? "", locator.role);
         case "fill":
           return tools.fill(locator.name ?? "", locator.value ?? "");
         case "select":
@@ -219,7 +235,7 @@ export const replayStep = async (
     if (!outcome.ok) {
       return {
         ok: false,
-        detail: `locator ${index + 1}/${locators.length} (${locator.action} "${locator.name ?? ""}") no longer resolves: ${outcome.detail}`,
+        detail: `locator ${index + 1}/${locators.length} (${locator.action} ${describeLocator(locator)}) no longer resolves: ${outcome.detail}`,
         failedAt: index
       };
     }
