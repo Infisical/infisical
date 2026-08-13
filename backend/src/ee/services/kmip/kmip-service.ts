@@ -80,6 +80,29 @@ type TKmipServiceFactoryDep = {
 
 export type TKmipServiceFactory = ReturnType<typeof kmipServiceFactory>;
 
+export const MIN_SERVER_CERT_TTL = "1h";
+
+// Throws rather than clamping: a clamp leaves the stored value wrong and the operator never learns
+// the certificate they get is not the one they configured.
+export const assertTtlAtLeastFloor = (ttl: string) => {
+  let parsed: number | undefined;
+  try {
+    parsed = ms(ttl);
+  } catch {
+    parsed = undefined;
+  }
+  // ms() returns undefined for unparseable input rather than throwing, and NaN comparisons are
+  // always false, so an explicit finiteness check is what stops garbage reaching certificate issuance.
+  if (!Number.isFinite(parsed)) {
+    throw new BadRequestError({ message: `KMIP server certificate TTL '${ttl}' is not a valid duration.` });
+  }
+  if ((parsed as number) < ms(MIN_SERVER_CERT_TTL)) {
+    throw new BadRequestError({
+      message: `KMIP server certificate TTL '${ttl}' is below the 1 hour minimum. Update the server's TTL before connecting.`
+    });
+  }
+};
+
 export const kmipServiceFactory = ({
   kmipClientDAL,
   permissionService,
@@ -827,6 +850,11 @@ export const kmipServiceFactory = ({
     keyAlgorithm,
     hostnamesOrIps
   }: TRegisterServerDTO) => {
+    // Both callers (the enrollment /connect flow and the legacy registration route) land here, so
+    // the floor is enforced at issuance rather than per route. Sub-hour certificates expire faster
+    // than the daemon can replace them, which is the "1m" typo for one month.
+    assertTtlAtLeastFloor(ttl);
+
     // KMIP servers authenticate via their enrollment-based access token, which is itself the
     // authorization — no org-level permission needed. The legacy machine-identity path still
     // requires the (deprecated) KMIP proxy permission.

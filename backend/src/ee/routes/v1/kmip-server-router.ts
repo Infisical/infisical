@@ -2,6 +2,7 @@ import z from "zod";
 
 import { KmipServersSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { MIN_SERVER_CERT_TTL } from "@app/ee/services/kmip/kmip-service";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { ApiDocsTags } from "@app/lib/api-docs";
@@ -33,7 +34,7 @@ const SanitizedKmipServerSchema = KmipServersSchema.pick({
 // ms() throws on unparseable input (including ""), so guard it to return a clean 400.
 // The 1h floor catches accidents like "1m" (ms reads it as one minute, not one month) that
 // would otherwise have the server reissuing its certificate every few seconds forever.
-const MIN_TTL_MS = ms("1h");
+const MIN_TTL_MS = ms(MIN_SERVER_CERT_TTL);
 const isTtlAtLeastFloor = (val: string) => {
   try {
     return ms(val) >= MIN_TTL_MS;
@@ -591,14 +592,6 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
       // the server CN), so it's derived from the server name rather than being separately configurable.
       const resolvedCommonName = kmipServer.name;
       const resolvedTtl = kmipServer.ttl ?? "1y";
-      // The floor is only enforced on input, so a server configured before it existed can still
-      // hold a sub-hour TTL. Refuse here rather than hand the daemon a certificate it would spend
-      // the rest of its life reissuing.
-      if (!isTtlAtLeastFloor(resolvedTtl)) {
-        throw new BadRequestError({
-          message: `KMIP server certificate TTL '${resolvedTtl}' is below the 1 hour minimum. Update the server's TTL before connecting.`
-        });
-      }
       const resolvedKeyAlgorithm = (kmipServer.keyAlgorithm as CertKeyAlgorithm) ?? undefined;
 
       const configs = await server.services.kmip.registerServer({
