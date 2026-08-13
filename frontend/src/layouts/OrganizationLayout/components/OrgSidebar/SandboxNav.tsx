@@ -5,6 +5,7 @@ import {
   MessageSquare,
   Puzzle,
   ScrollText,
+  Settings,
   SquareTerminal
 } from "lucide-react";
 
@@ -53,7 +54,7 @@ export const SandboxNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu
   ];
   const configureItems = [
     buildTab(sandboxId, "Integrations", Puzzle, "integrations"),
-    buildTab(sandboxId, "Agent", Box, "agent")
+    buildTab(sandboxId, "Settings", Settings, "settings")
   ];
 
   return (

@@ -155,7 +155,7 @@ export const SandboxBootConsole = ({ sandbox, boot, onSettled }: Props) => {
   const progress = Math.round((completed / steps.length) * 100);
 
   return (
-    <div className="flex h-[380px] flex-col overflow-hidden rounded-md border border-border bg-[#111417]">
+    <div className="flex h-[calc(100vh-24rem)] min-h-[320px] flex-col overflow-hidden rounded-md border border-border bg-[#111417]">
       <div ref={scrollRef} className="thin-scrollbar flex-1 overflow-y-auto p-3">
         <p className="mb-2 font-mono text-xs text-white/30">
           Booting <span className="text-white/60">{sandbox.name}</span>

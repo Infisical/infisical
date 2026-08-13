@@ -229,6 +229,7 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
               accountId: z.string(),
               accountName: z.string(),
               resourceName: z.string(),
+              resourceType: z.string(),
               port: z.number()
             })
             .array()
@@ -697,5 +698,59 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
         unsubscribe?.();
       });
     }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:sandboxId/files",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "listSandboxFiles",
+      description: "List a directory inside the sandbox.",
+      params: SandboxIdParamsSchema,
+      querystring: z.object({
+        path: z.string().trim().max(1024).default("").describe("Absolute path, defaults to the sandbox home.")
+      }),
+      response: {
+        200: z.object({
+          path: z.string(),
+          entries: z
+            .object({
+              name: z.string(),
+              path: z.string(),
+              isDirectory: z.boolean(),
+              size: z.number().nullable()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) =>
+      server.services.sandbox.listFiles(
+        { sandboxId: req.params.sandboxId, path: req.query.path },
+        req.permission
+      )
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:sandboxId/files/content",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "readSandboxFile",
+      description: "Read one file inside the sandbox, capped for preview.",
+      params: SandboxIdParamsSchema,
+      querystring: z.object({ path: z.string().trim().min(1).max(1024) }),
+      response: {
+        200: z.object({ path: z.string(), content: z.string(), wasTruncated: z.boolean() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) =>
+      server.services.sandbox.readFile(
+        { sandboxId: req.params.sandboxId, path: req.query.path },
+        req.permission
+      )
   });
 };

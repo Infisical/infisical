@@ -26,11 +26,11 @@ import {
 import { SandboxShine } from "../components/SandboxShine";
 import { SandboxBootDock, TBootLine } from "./components/SandboxBootDock";
 import {
-  AgentTab,
   AuditLogTab,
+  ChatTab,
   IntegrationsTab,
   OverviewTab,
-  SandboxChat,
+  SettingsTab,
   TerminalTab
 } from "./components";
 
@@ -40,7 +40,7 @@ export enum SandboxTab {
   Terminal = "terminal",
   AuditLog = "audit-log",
   Integrations = "integrations",
-  Agent = "agent"
+  Settings = "settings"
 }
 
 export const SandboxPage = () => {
@@ -208,13 +208,13 @@ export const SandboxPage = () => {
           </PageHeader>
 
           <div className="mt-4">
-            {tab === SandboxTab.Chat && <SandboxChat sandbox={sandbox} isRunning={isRunning} />}
+            {tab === SandboxTab.Chat && <ChatTab sandbox={sandbox} />}
             {tab === SandboxTab.Terminal && (
               <TerminalTab sandbox={sandbox} boot={boot} onBootSettled={() => setBoot(null)} />
             )}
             {tab === SandboxTab.AuditLog && <AuditLogTab sandbox={sandbox} />}
             {tab === SandboxTab.Integrations && <IntegrationsTab sandbox={sandbox} />}
-            {tab === SandboxTab.Agent && <AgentTab sandbox={sandbox} />}
+            {tab === SandboxTab.Settings && <SettingsTab sandbox={sandbox} />}
             {tab === SandboxTab.Overview && <OverviewTab sandbox={sandbox} />}
           </div>
         </div>

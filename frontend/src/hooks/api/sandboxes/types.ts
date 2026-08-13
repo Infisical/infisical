@@ -223,3 +223,29 @@ export type TSandboxProxyActivity = {
   integration?: string;
   credential?: string;
 };
+
+export type TSandboxDirEntry = {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  size: number | null;
+};
+
+export type TSandboxDirListing = {
+  path: string;
+  entries: TSandboxDirEntry[];
+};
+
+export type TSandboxFileContent = {
+  path: string;
+  content: string;
+  wasTruncated: boolean;
+};
+
+export type TSandboxPamProxy = {
+  accountId: string;
+  accountName: string;
+  resourceName: string;
+  resourceType: string;
+  port: number;
+};

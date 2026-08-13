@@ -39,6 +39,15 @@ type TSandboxProcessState = {
 
 const states = new Map<string, TSandboxProcessState>();
 
+/**
+ * Which sandboxes have a workload running. Held here rather than on the row because it is runtime
+ * state like the container itself: it cannot outlive the container, and a stopped sandbox has none.
+ * Without it the UI could only guess, and a page refresh would offer to start a second one.
+ */
+const workloads = new Set<string>();
+
+export const isWorkloadRunning = (sandboxId: string) => workloads.has(sandboxId);
+
 export const assertSandboxRuntimeEnabled = () => {
   const appCfg = getConfig();
   if (appCfg.isProductionMode) {
@@ -187,15 +196,6 @@ export const execInSandbox = async (
  */
 const WORKLOAD_MARKER = "INFISICAL_SANDBOX_DEMO_WORKLOAD";
 
-/**
- * Which sandboxes have a workload running. Held here rather than on the row because it is runtime
- * state like the container itself: it cannot outlive the container, and a stopped sandbox has none.
- * Without it the UI could only guess, and a page refresh would offer to start a second one.
- */
-const workloads = new Set<string>();
-
-export const isWorkloadRunning = (sandboxId: string) => workloads.has(sandboxId);
-
 export const setDemoWorkload = async (sandboxId: string, isEnabled: boolean) => {
   const state = states.get(sandboxId);
   if (!state) {
@@ -227,4 +227,103 @@ export const setDemoWorkload = async (sandboxId: string, isEnabled: boolean) => 
 
   await execInContainer(sandboxId, script, { cwd: SANDBOX_HOME, env: {}, timeoutMs: 10_000 });
   workloads.add(sandboxId);
+};
+
+export type TSandboxDirEntry = {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  /** Bytes, and null for directories where the number would be meaningless. */
+  size: number | null;
+};
+
+/** Only ever below the sandbox's own home, so browsing cannot wander into the image's system dirs. */
+const withinHome = (path: string) =>
+  path === SANDBOX_HOME || path.startsWith(`${SANDBOX_HOME}/`) ? path : SANDBOX_HOME;
+
+/**
+ * Reads a directory straight from the container rather than through `execInSandbox`, so opening a
+ * folder is not recorded as something the sandbox did. The audit log is for the sandbox's own work,
+ * and filling it with the file browser's listings would bury that.
+ */
+export const listSandboxDirectory = async (
+  sandboxId: string,
+  requestedPath: string
+): Promise<{ path: string; entries: TSandboxDirEntry[] }> => {
+  assertSandboxRuntimeEnabled();
+
+  if (!states.has(sandboxId)) {
+    throw new BadRequestError({ message: "Sandbox is not running. Start it to browse its files." });
+  }
+
+  const path = withinHome(requestedPath || SANDBOX_HOME);
+
+  // A tab separated record per entry: name, type, size. Parsing `ls -l` would be worse, and this
+  // survives spaces in names, which `ls` output does not.
+  const script = `cd ${shellQuote(path)} 2>/dev/null || exit 3
+for f in * .*; do
+  [ "$f" = "." ] && continue
+  [ "$f" = ".." ] && continue
+  [ -e "$f" ] || continue
+  if [ -d "$f" ]; then printf 'd\t%s\t0\n' "$f"; else printf 'f\t%s\t%s\n' "$f" "$(wc -c < "$f" 2>/dev/null || echo 0)"; fi
+done`;
+
+  const result = await execInContainer(sandboxId, script, {
+    cwd: path,
+    env: {},
+    timeoutMs: 10_000
+  });
+
+  if (result.exitCode === 3) {
+    throw new BadRequestError({ message: `'${path}' is not a directory in this sandbox.` });
+  }
+
+  const entries = result.stdout
+    .split("\n")
+    .map((line) => line.split("\t"))
+    .filter((parts) => parts.length === 3 && parts[1])
+    .map(([type, name, size]) => ({
+      name,
+      path: `${path === "/" ? "" : path}/${name}`,
+      isDirectory: type === "d",
+      size: type === "d" ? null : Number(size) || 0
+    }))
+    // Directories first, then alphabetical, which is what a file browser is expected to do.
+    .sort((a, b) => {
+      if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+
+  return { path, entries };
+};
+
+const MAX_FILE_PREVIEW_BYTES = 100_000;
+
+/** Reads one file for preview. Capped, because the browser has to render whatever comes back. */
+export const readSandboxFile = async (sandboxId: string, requestedPath: string) => {
+  assertSandboxRuntimeEnabled();
+
+  if (!states.has(sandboxId)) {
+    throw new BadRequestError({ message: "Sandbox is not running. Start it to read its files." });
+  }
+
+  const path = withinHome(requestedPath);
+  const script = `[ -f ${shellQuote(path)} ] || exit 3
+head -c ${MAX_FILE_PREVIEW_BYTES} ${shellQuote(path)}`;
+
+  const result = await execInContainer(sandboxId, script, {
+    cwd: SANDBOX_HOME,
+    env: {},
+    timeoutMs: 10_000
+  });
+
+  if (result.exitCode === 3) {
+    throw new BadRequestError({ message: `'${path}' is not a readable file in this sandbox.` });
+  }
+
+  return {
+    path,
+    content: result.stdout,
+    wasTruncated: result.stdout.length >= MAX_FILE_PREVIEW_BYTES
+  };
 };

@@ -2,7 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TSandbox, TSandboxCatalog, TSandboxMetrics, TSandboxProxyActivity } from "./types";
+import {
+  TSandbox,
+  TSandboxCatalog,
+  TSandboxDirListing,
+  TSandboxFileContent,
+  TSandboxMetrics,
+  TSandboxPamProxy,
+  TSandboxProxyActivity
+} from "./types";
 
 // Mirrors PAM: the sandbox project is hidden, resolved (and bootstrapped) on first visit so the
 // Project and ProjectPermission contexts have something to hang off.
@@ -17,7 +25,13 @@ export const sandboxKeys = {
   list: () => [...sandboxKeys.all(), "list"] as const,
   byId: (sandboxId: string) => [...sandboxKeys.all(), "detail", sandboxId] as const,
   metrics: (sandboxId: string) => [...sandboxKeys.all(), "metrics", sandboxId] as const,
-  proxyActivity: (sandboxId: string) => [...sandboxKeys.all(), "proxy-activity", sandboxId] as const
+  proxyActivity: (sandboxId: string) =>
+    [...sandboxKeys.all(), "proxy-activity", sandboxId] as const,
+  files: (sandboxId: string, path: string) =>
+    [...sandboxKeys.all(), "files", sandboxId, path] as const,
+  fileContent: (sandboxId: string, path: string) =>
+    [...sandboxKeys.all(), "file-content", sandboxId, path] as const,
+  runtime: (sandboxId: string) => [...sandboxKeys.all(), "runtime", sandboxId] as const
 };
 
 export const useListSandboxes = () =>
@@ -91,4 +105,47 @@ export const useGetSandboxCatalog = () =>
       const { data } = await apiRequest.get<TSandboxCatalog>("/api/v1/sandboxes/catalog");
       return data;
     }
+  });
+
+export const useListSandboxFiles = (sandboxId: string, path: string, isEnabled: boolean) =>
+  useQuery({
+    queryKey: sandboxKeys.files(sandboxId, path),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TSandboxDirListing>(
+        `/api/v1/sandboxes/${sandboxId}/files`,
+        { params: { path } }
+      );
+      return data;
+    },
+    enabled: isEnabled,
+    // The container's filesystem changes under us as the agent works, so this is never fresh.
+    staleTime: 0
+  });
+
+export const useReadSandboxFile = (sandboxId: string, path: string | null) =>
+  useQuery({
+    queryKey: sandboxKeys.fileContent(sandboxId, path ?? ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TSandboxFileContent>(
+        `/api/v1/sandboxes/${sandboxId}/files/content`,
+        { params: { path } }
+      );
+      return data;
+    },
+    enabled: Boolean(path),
+    staleTime: 0
+  });
+
+/** The brokered PAM ports the sandbox currently holds, which only exist while it is running. */
+export const useGetSandboxRuntime = (sandboxId: string, isEnabled: boolean) =>
+  useQuery({
+    queryKey: sandboxKeys.runtime(sandboxId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ pamProxies: TSandboxPamProxy[] }>(
+        `/api/v1/sandboxes/${sandboxId}/system-prompt`
+      );
+      return data.pamProxies;
+    },
+    enabled: isEnabled,
+    staleTime: 0
   });
