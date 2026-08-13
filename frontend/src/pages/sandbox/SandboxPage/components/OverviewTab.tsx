@@ -1,13 +1,13 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import {
-  ActivityIcon,
   ArrowDownIcon,
   ArrowUpIcon,
   BotIcon,
   CpuIcon,
   KeyRoundIcon,
   ShieldCheckIcon,
-  ShieldXIcon
+  ShieldXIcon,
+  TerminalIcon
 } from "lucide-react";
 
 import {
@@ -22,7 +22,9 @@ import {
 import { cn } from "@app/components/v3/utils";
 import {
   SandboxStatus,
+  streamSandboxCommands,
   TSandbox,
+  TSandboxActivityEntry,
   useGetSandboxMetrics,
   useGetSandboxProxyActivity
 } from "@app/hooks/api/sandboxes";
@@ -92,6 +94,66 @@ const LiveDot = () => (
   </span>
 );
 
+/**
+ * The newest few commands, live. The full feed has its own page; this is the glance that answers
+ * "what is it doing right now" without leaving the dashboard.
+ */
+const RecentActivity = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunning: boolean }) => {
+  const [entries, setEntries] = useState<TSandboxActivityEntry[]>([]);
+
+  useEffect(() => {
+    if (!isRunning) {
+      setEntries([]);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    streamSandboxCommands(
+      sandbox.id,
+      // Idempotent on id: every connection replays the backlog, so a reconnect (or the second mount
+      // React does in development) would otherwise show each entry twice.
+      (entry) =>
+        setEntries((prev) =>
+          prev.some((seen) => seen.id === entry.id) ? prev : [entry, ...prev].slice(0, 6)
+        ),
+      controller.signal
+    ).catch(() => {});
+
+    return () => controller.abort();
+  }, [sandbox.id, isRunning]);
+
+  if (!entries.length) {
+    return (
+      <p className="py-6 text-center text-sm text-muted">
+        {isRunning ? "Nothing has run yet." : "Start the sandbox to see what it does."}
+      </p>
+    );
+  }
+
+  return (
+    <ul className="flex flex-col">
+      {entries.map((entry) => (
+        <li
+          key={entry.id}
+          className="flex items-center gap-2.5 rounded px-1 py-1 transition-colors hover:bg-foreground/5"
+        >
+          <TerminalIcon className="size-3.5 shrink-0 text-muted" />
+          <span className="truncate font-mono text-[11px] text-foreground">
+            {"command" in entry ? entry.command : entry.host}
+          </span>
+          <span className="ml-auto shrink-0 font-mono text-[10px] text-muted">
+            {"exitCode" in entry && entry.exitCode !== null && entry.exitCode !== 0 ? (
+              <span className="text-danger">exit {entry.exitCode}</span>
+            ) : (
+              new Date(entry.at).toLocaleTimeString()
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
 export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
   const isRunning = sandbox.status === SandboxStatus.Running;
   const { integrations, pamAccountIds } = sandbox.grants;
@@ -136,27 +198,6 @@ export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
           }
         />
         <StatCard
-          title="Memory"
-          icon={<ActivityIcon />}
-          iconVariant="neutral"
-          value={
-            isRunning && metrics ? (
-              <>
-                <CountUp value={metrics.memoryMb} decimals={1} /> MB
-              </>
-            ) : (
-              "—"
-            )
-          }
-          subtitle={`of ${Math.round(memoryLimit)} MB`}
-          footnote={
-            isRunning && metrics
-              ? `${metrics.processes} process${metrics.processes === 1 ? "" : "es"}`
-              : "No container"
-          }
-          footnoteVariant="neutral"
-        />
-        <StatCard
           title="Granted Access"
           icon={<KeyRoundIcon />}
           iconVariant="project"
@@ -179,6 +220,16 @@ export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
           footnoteVariant="neutral"
         />
       </div>
+
+      <Card className="gap-4">
+        <CardHeader className="grid-cols-[1fr_auto]">
+          <CardTitle className="text-sm font-medium text-accent">Recent activity</CardTitle>
+          <CardAction>{isRunning && <LiveDot />}</CardAction>
+        </CardHeader>
+        <CardContent>
+          <RecentActivity sandbox={sandbox} isRunning={isRunning} />
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_2fr]">
         <Card className="gap-4">

@@ -52,7 +52,7 @@ export const SandboxNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu
     buildTab(sandboxId, "Chat", MessageSquare, "chat"),
     buildTab(sandboxId, "Terminal", SquareTerminal, "terminal"),
     buildTab(sandboxId, "Process Monitor", Activity, "process-monitor"),
-    buildTab(sandboxId, "Audit Log", ScrollText, "audit-log")
+    buildTab(sandboxId, "Activity", ScrollText, "activity")
   ];
   const configureItems = [
     buildTab(sandboxId, "Integrations", Puzzle, "integrations"),

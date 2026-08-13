@@ -301,7 +301,7 @@ const TimelineRow = ({
   );
 };
 
-export const AuditLogTab = ({ sandbox }: { sandbox: TSandbox }) => {
+export const ActivityTab = ({ sandbox }: { sandbox: TSandbox }) => {
   const [entries, setEntries] = useState<TSandboxActivityEntry[]>([]);
   const [isLive, setIsLive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);

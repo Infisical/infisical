@@ -1,6 +1,6 @@
+export * from "./ActivityTab";
 export * from "./agentIcons";
 export * from "./AgentTab";
-export * from "./AuditLogTab";
 export * from "./ChatTab";
 export * from "./IntegrationsTab";
 export * from "./OverviewTab";
