@@ -1,32 +1,12 @@
-import { MessageSquareIcon } from "lucide-react";
-
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "@app/components/v3";
 import { SandboxStatus, TSandbox } from "@app/hooks/api/sandboxes";
 
 import { SandboxChat } from "./SandboxChat";
 
+/**
+ * The chat gets no card. A conversation is the whole page here, and wrapping it in a titled panel
+ * with its own border and description nested a scrolling column inside a box inside the page frame,
+ * which is three sets of edges for one thing. It sits directly under the page header instead.
+ */
 export const ChatTab = ({ sandbox }: { sandbox: TSandbox }) => (
-  <Card className="min-w-0">
-    <CardHeader>
-      <CardTitle>Agent</CardTitle>
-      <CardDescription>
-        Talk to the agent. It can use every CLI and database granted to this sandbox.
-      </CardDescription>
-      <CardAction>
-        <div className="flex size-9 items-center justify-center rounded-md border border-info/15 bg-info/10 text-info [&>svg]:size-5">
-          <MessageSquareIcon />
-        </div>
-      </CardAction>
-    </CardHeader>
-    <CardContent>
-      <SandboxChat sandbox={sandbox} isRunning={sandbox.status === SandboxStatus.Running} />
-    </CardContent>
-  </Card>
+  <SandboxChat sandbox={sandbox} isRunning={sandbox.status === SandboxStatus.Running} />
 );

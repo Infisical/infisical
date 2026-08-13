@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Markdown from "react-markdown";
-import { BotIcon, ChevronDownIcon, Loader2Icon, SendIcon, UserIcon } from "lucide-react";
+import { BotIcon, ChevronDownIcon, Loader2Icon, SendIcon } from "lucide-react";
 
-import { IconButton, Input } from "@app/components/v3";
+import { IconButton, TextArea } from "@app/components/v3";
 import { TAgentToolCall, TSandbox } from "@app/hooks/api/sandboxes";
 
 import {
@@ -159,12 +159,22 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
     () => getChatState(sandbox.id)
   );
   const [draft, setDraft] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [turns, isStreaming]);
+
+  // A textarea does not grow on its own. Reset to auto first, or the height only ever ratchets up
+  // and deleting a line leaves the box tall. The cap comes from max-h, which turns on its scrollbar.
+  useEffect(() => {
+    const node = inputRef.current;
+    if (!node) return;
+
+    node.style.height = "auto";
+    node.style.height = `${node.scrollHeight}px`;
+  }, [draft]);
 
   const send = () => {
     const content = draft.trim();
@@ -189,117 +199,142 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
     if (!isDisabled) inputRef.current?.focus();
   }, [isDisabled]);
 
-  return (
-    // Sized to match the terminal exactly: both sit under the same card chrome, so the offset that
-    // covers the org header, the page title and that chrome is the same for each.
-    <div className="flex h-[calc(100vh-24rem)] min-h-[320px] flex-col rounded-md border border-border bg-bunker-800">
-      <div ref={scrollRef} className="thin-scrollbar flex-1 space-y-2.5 overflow-y-auto p-3">
-        {turns.length === 0 && (
-          <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
-            <span className="flex size-11 items-center justify-center rounded-full border border-product-sandbox/25 bg-gradient-to-br from-product-sandbox/15 to-transparent">
-              <BotIcon className="size-5 sandbox-chrome-icon" />
-            </span>
+  // A composer rather than a form field: rounded, growing with the message, with send as a round
+  // button in the corner. A full-width single-line input reads as a search bar, which is not what a
+  // conversation looks like. Shared by both layouts below so the two states cannot drift apart.
+  const composer = (
+    <div className="w-full rounded-2xl border border-border bg-card p-2.5 transition-colors focus-within:border-product-sandbox/40">
+      <TextArea
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            send();
+          }
+        }}
+        placeholder={placeholder}
+        disabled={isDisabled}
+        rows={1}
+        // Grows to the content and then scrolls, so a long instruction is readable while it is
+        // being written instead of scrolling inside one line.
+        className="max-h-40 min-h-0 resize-none border-0 bg-transparent px-0 py-1 text-sm shadow-none focus-visible:ring-0"
+      />
 
-            {sandbox.agentType ? (
-              <>
-                <p className="text-sm text-muted">Try one of these to see it work.</p>
-                {/* Starters rather than a description: an empty chat should show what it can do,
-                    not restate the panel subtitle directly above it. */}
-                <div className="flex flex-wrap justify-center gap-2">
-                  {STARTERS.map((starter) => (
-                    <button
-                      key={starter}
-                      type="button"
-                      disabled={isDisabled}
-                      onClick={() => sendChatMessage(sandbox.id, starter).catch(() => {})}
-                      className="cursor-pointer rounded-full border border-border bg-card px-3 py-1.5 text-xs text-accent transition-colors hover:border-product-sandbox/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {starter}
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-muted">
-                No agent configured yet. Add one under Settings to start chatting.
-              </p>
-            )}
-          </div>
+      <div className="flex items-center justify-between gap-2 pt-1">
+        <span className="text-[10px] text-muted">
+          {isDisabled ? "\u00a0" : "Enter to send, Shift+Enter for a new line"}
+        </span>
+        <IconButton
+          variant="project"
+          size="xs"
+          aria-label="Send message"
+          onClick={send}
+          isDisabled={isDisabled || !draft.trim()}
+          className="size-7 rounded-full"
+        >
+          <SendIcon className="size-3.5" />
+        </IconButton>
+      </div>
+    </div>
+  );
+
+  // Before the first message the composer sits in the middle of the page with the starters, the way
+  // an assistant opens; once there is a conversation it drops to the bottom and stays there.
+  if (turns.length === 0) {
+    return (
+      <div className="flex h-[calc(100vh-16rem)] min-h-[320px] flex-col items-center justify-center gap-5 px-4">
+        <span className="flex size-11 items-center justify-center rounded-full border border-product-sandbox/25 bg-gradient-to-br from-product-sandbox/15 to-transparent">
+          <BotIcon className="size-5 sandbox-chrome-icon" />
+        </span>
+
+        {sandbox.agentType ? (
+          <>
+            <p className="text-sm text-muted">Try one of these to see it work.</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {STARTERS.map((starter) => (
+                <button
+                  key={starter}
+                  type="button"
+                  disabled={isDisabled}
+                  onClick={() => sendChatMessage(sandbox.id, starter).catch(() => {})}
+                  className="cursor-pointer rounded-full border border-border bg-card px-3 py-1.5 text-xs text-accent transition-colors hover:border-product-sandbox/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {starter}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-muted">
+            No agent configured yet. Add one under Settings to start chatting.
+          </p>
         )}
 
-        {turns.map((turn: TChatTurn, index: number) => (
-          // eslint-disable-next-line react/no-array-index-key -- chat turns are append-only
-          <div key={index} className="flex gap-2">
-            <div className="mt-0.5 shrink-0">
-              {turn.role === "user" ? (
-                <UserIcon className="size-4 text-muted" />
-              ) : (
-                <BotIcon className="size-4 text-project" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1 space-y-1.5">
-              {Boolean(turn.toolCalls?.length) && (
-                <div className="flex flex-col gap-1.5">
-                  {groupToolCalls(turn.toolCalls ?? []).map((group, groupIndex) => (
-                    // eslint-disable-next-line react/no-array-index-key -- groups repeat and are ordered
-                    <ToolGroup key={groupIndex} calls={group} />
-                  ))}
-                </div>
-              )}
+        <div className="w-full max-w-3xl">{composer}</div>
+      </div>
+    );
+  }
 
-              {turn.role === "assistant" ? (
-                Boolean(turn.content) && (
-                  <div className="text-sm text-foreground">
+  return (
+    // No panel chrome: this fills the page under the header, so the only frame is the viewport. The
+    // offset covers the org header and the page title, and the composer is pinned to the bottom of
+    // that box rather than scrolling with the messages.
+    <div className="flex h-[calc(100vh-16rem)] min-h-[320px] flex-col">
+      {/* The scroll container stays full width so the scrollbar sits on the panel edge; the column
+          inside is what is constrained, the same way a full-screen chat reads. */}
+      <div ref={scrollRef} className="thin-scrollbar flex-1 overflow-y-auto px-4 py-2">
+        <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-4 pb-16">
+          {turns.map((turn: TChatTurn, index: number) =>
+            // The two roles are shaped differently on purpose. What you said is a short aside, so it
+            // is a bubble that hugs its text and sits on the right. What the agent said is the
+            // document you came for, so it runs the full width with no container competing with it.
+            turn.role === "user" ? (
+              // eslint-disable-next-line react/no-array-index-key -- chat turns are append-only
+              <div key={index} className="flex justify-end">
+                <div className="max-w-[80%] rounded-2xl rounded-br-md border border-border bg-card px-3.5 py-2">
+                  <p className="text-sm wrap-anywhere whitespace-pre-wrap text-foreground">
+                    {turn.content}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              // eslint-disable-next-line react/no-array-index-key -- chat turns are append-only
+              <div key={index} className="flex flex-col gap-1.5">
+                {Boolean(turn.toolCalls?.length) && (
+                  <div className="flex flex-col gap-1.5">
+                    {groupToolCalls(turn.toolCalls ?? []).map((group, groupIndex) => (
+                      // eslint-disable-next-line react/no-array-index-key -- groups repeat and are ordered
+                      <ToolGroup key={groupIndex} calls={group} />
+                    ))}
+                  </div>
+                )}
+
+                {Boolean(turn.content) && (
+                  <div className="text-sm leading-relaxed text-foreground">
                     <Markdown components={MARKDOWN_COMPONENTS}>{turn.content}</Markdown>
                   </div>
-                )
-              ) : (
-                <p className="text-sm wrap-anywhere whitespace-pre-wrap text-foreground">
-                  {turn.content}
-                </p>
-              )}
+                )}
 
-              {/* Inside the turn, so the bot icon is not drawn a second time. The running
-                  command already shows its own spinner. */}
-              {isStreaming &&
-                index === turns.length - 1 &&
-                !turn.content &&
-                !turn.toolCalls?.length && <span className="text-xs text-muted">Working...</span>}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="border-t border-border p-2">
-        {/* Send sits inside the field rather than beside it: a detached button reads as unrelated
-            chrome, and the pair never lines up at every width. */}
-        <div className="relative">
-          <Input
-            ref={inputRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send();
-              }
-            }}
-            placeholder={placeholder}
-            disabled={isDisabled}
-            className="pr-11"
-          />
-          <IconButton
-            variant="ghost"
-            size="xs"
-            aria-label="Send message"
-            onClick={send}
-            isDisabled={isDisabled || !draft.trim()}
-            className="absolute top-1/2 right-1.5 -translate-y-1/2"
-          >
-            <SendIcon className="size-3.5" />
-          </IconButton>
+                {/* The reply is still empty and nothing is running yet, so say so rather than
+                    leaving a blank turn that reads as a hang. */}
+                {isStreaming &&
+                  index === turns.length - 1 &&
+                  !turn.content &&
+                  !turn.toolCalls?.length && (
+                    <span className="flex items-center gap-2 text-xs text-muted">
+                      <Loader2Icon className="size-3 animate-spin" />
+                      Working...
+                    </span>
+                  )}
+              </div>
+            )
+          )}
         </div>
       </div>
+
+      <div className="mx-auto w-full max-w-3xl shrink-0 px-4 pb-2">{composer}</div>
     </div>
   );
 };

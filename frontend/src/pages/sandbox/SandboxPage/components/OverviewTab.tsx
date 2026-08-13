@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import {
+  ActivityIcon,
   ArrowDownIcon,
   ArrowUpIcon,
   BotIcon,
@@ -88,9 +89,21 @@ const RecentActivity = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunning: 
 
   if (!entries.length) {
     return (
-      <p className="py-6 text-center text-sm text-muted">
-        {isRunning ? "Nothing has run yet." : "Start the sandbox to see what it does."}
-      </p>
+      // Fills its container rather than sitting at the top of it: the feed has a fixed height, so a
+      // short paragraph with padding read as misaligned against the panels either side.
+      <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+        <span className="flex size-9 items-center justify-center rounded-full border border-border bg-container">
+          <ActivityIcon className="size-4 text-muted" />
+        </span>
+        <p className="text-sm text-foreground">
+          {isRunning ? "Waiting for activity" : "Sandbox is stopped"}
+        </p>
+        <p className="text-xs text-muted">
+          {isRunning
+            ? "Commands and brokered requests appear here live."
+            : "Start it to watch live."}
+        </p>
+      </div>
     );
   }
 

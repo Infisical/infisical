@@ -163,13 +163,15 @@ export const SandboxesPage = () => {
                               />
                             )}
                           </div>
-                          {/* Omitted rather than filled: "No description." repeated across every
-                              card is placeholder text pretending to be content. */}
-                          {sandbox.description && (
-                            <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
-                              {sandbox.description}
-                            </p>
-                          )}
+                          {/* Dimmed when absent rather than omitted: without a line here the card
+                              collapses and the grid rows stop lining up. */}
+                          <p
+                            className={`mt-1 line-clamp-2 text-sm leading-relaxed ${
+                              sandbox.description ? "text-accent" : "text-muted/60 italic"
+                            }`}
+                          >
+                            {sandbox.description || "No description"}
+                          </p>
                         </div>
                       </div>
                     </CardHeader>

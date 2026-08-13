@@ -421,13 +421,11 @@ export const Dial = ({
             strokeWidth={stroke}
             // Butt, not round: rounded caps add half a stroke width at each end, which on a small
             // reading is most of the arc's length and turns it into a dot rather than a short arc.
-            strokeLinecap="round"
-            // Floored at a minimum sweep rather than a length: below about a tenth of the arc a
-            // reading is shorter than the stroke is thick and reads as a nub. The number under the
-            // dial carries the precision, so the arc only has to say "a little".
-            strokeDasharray={`${
-              fraction > 0 ? Math.max(circumference * fraction, circumference * 0.1) : 0
-            } ${circumference * 3}`}
+            // No minimum sweep, and butt caps. A floor made the arc lie: 1 MB of 2048 drew a tenth
+            // of the dial. A gauge that overstates a reading to stay visible is worse than one that
+            // shows nothing, and the figure in the middle already carries the precision.
+            strokeLinecap="butt"
+            strokeDasharray={`${circumference * fraction} ${circumference * 3}`}
             className="transition-[stroke-dasharray] duration-700 ease-out"
           />
         </g>
