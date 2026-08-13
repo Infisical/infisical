@@ -249,3 +249,10 @@ export type TSandboxPamProxy = {
   resourceType: string;
   port: number;
 };
+
+export type TSandboxProcess = {
+  pid: number;
+  command: string;
+  memoryKb: number;
+};
+

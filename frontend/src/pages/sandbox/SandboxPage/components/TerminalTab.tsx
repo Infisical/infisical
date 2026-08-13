@@ -10,19 +10,10 @@ import {
 } from "@app/components/v3";
 import { SandboxStatus, TSandbox } from "@app/hooks/api/sandboxes";
 
-import { TSandboxBoot } from "./SandboxBootConsole";
 import { SandboxFileBrowser } from "./SandboxFileBrowser";
 import { SandboxTerminal } from "./SandboxTerminal";
 
-export const TerminalTab = ({
-  sandbox,
-  boot,
-  onBootSettled
-}: {
-  sandbox: TSandbox;
-  boot: TSandboxBoot | null;
-  onBootSettled: () => void;
-}) => (
+export const TerminalTab = ({ sandbox }: { sandbox: TSandbox }) => (
   <Card className="min-w-0">
     <CardHeader>
       <CardTitle>Terminal</CardTitle>
@@ -46,9 +37,6 @@ export const TerminalTab = ({
           sandboxId={sandbox.id}
           sandboxName={sandbox.name}
           isRunning={sandbox.status === SandboxStatus.Running}
-          boot={boot}
-          onBootSettled={onBootSettled}
-          sandbox={sandbox}
         />
       </div>
     </CardContent>

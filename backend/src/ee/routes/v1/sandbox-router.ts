@@ -753,4 +753,45 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
         req.permission
       )
   });
+
+  server.route({
+    method: "GET",
+    url: "/:sandboxId/processes",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "listSandboxProcesses",
+      description: "What is running inside the sandbox, with its container's resource use.",
+      params: SandboxIdParamsSchema,
+      response: {
+        200: z.object({
+          processes: z
+            .object({ pid: z.number(), command: z.string(), memoryKb: z.number() })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) =>
+      server.services.sandbox.listProcesses({ sandboxId: req.params.sandboxId }, req.permission)
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:sandboxId/processes/:pid/terminate",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "terminateSandboxProcess",
+      description: "Kill one process inside the sandbox.",
+      params: SandboxIdParamsSchema.extend({ pid: z.coerce.number().int().min(1) }),
+      response: { 200: z.object({ pid: z.number() }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      await server.services.sandbox.killProcess(
+        { sandboxId: req.params.sandboxId, pid: req.params.pid },
+        req.permission
+      );
+      return { pid: req.params.pid };
+    }
+  });
 };

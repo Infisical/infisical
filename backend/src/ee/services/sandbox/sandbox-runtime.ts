@@ -225,7 +225,7 @@ export const setDemoWorkload = async (sandboxId: string, isEnabled: boolean) => 
     "  n=$(( (RANDOM % 1200000) + 200000 ))",
     "  for ((i=0;i<n;i++)); do :; done",
     "  mb=$(( (RANDOM % 90) + 20 ))",
-    "  blob=$(head -c $(( mb * 1048576 )) /dev/zero | tr \"\\0\" \"x\")",
+    '  blob=$(head -c $(( mb * 1048576 )) /dev/zero | tr "\\0" "x")',
     "  sleep 0.$(( RANDOM % 6 + 1 ))",
     "  unset blob",
     "  sleep 0.$(( RANDOM % 4 + 1 ))",
@@ -334,4 +334,82 @@ head -c ${MAX_FILE_PREVIEW_BYTES} ${shellQuote(path)}`;
     content: result.stdout,
     wasTruncated: result.stdout.length >= MAX_FILE_PREVIEW_BYTES
   };
+};
+
+export type TSandboxProcess = {
+  pid: number;
+  command: string;
+  memoryKb: number;
+};
+
+/**
+ * The image has neither `ps` nor `top`, so this reads /proc directly. Kernel threads have an empty
+ * cmdline and are reported by their comm name in brackets, the same way ps would show them.
+ */
+export const listSandboxProcesses = async (sandboxId: string) => {
+  assertSandboxRuntimeEnabled();
+
+  if (!states.has(sandboxId)) {
+    throw new BadRequestError({ message: "Sandbox is not running." });
+  }
+
+  const script = `for d in /proc/[0-9]*; do
+  pid=\${d##*/}
+  cmd=$(tr '\\0' ' ' < "$d/cmdline" 2>/dev/null)
+  [ -z "$cmd" ] && cmd="[$(cat "$d/comm" 2>/dev/null)]"
+  rss=$(grep VmRSS "$d/status" 2>/dev/null | tr -dc '0-9')
+  printf '%s\\t%s\\t%s\\n' "$pid" "\${rss:-0}" "$cmd"
+done`;
+
+  const result = await execInContainer(sandboxId, script, {
+    cwd: SANDBOX_HOME,
+    env: {},
+    timeoutMs: 10_000
+  });
+
+  const processes = result.stdout
+    .split("\n")
+    .map((line) => line.split("\t"))
+    .filter((parts) => parts.length === 3 && parts[0])
+    .map(([pid, rss, command]) => ({
+      pid: Number(pid),
+      memoryKb: Number(rss) || 0,
+      command: command.trim()
+    }))
+    .filter((process) => process.pid && process.command)
+    // Heaviest first: the reason to open a task manager is to find what is using the machine.
+    .sort((a, b) => b.memoryKb - a.memoryKb);
+
+  return { processes };
+};
+
+/**
+ * Kills one process inside the sandbox. PID 1 is refused: it is the container's init, so killing it
+ * stops the sandbox rather than the thing the user was pointing at.
+ */
+export const killSandboxProcess = async (sandboxId: string, pid: number) => {
+  assertSandboxRuntimeEnabled();
+
+  if (!states.has(sandboxId)) {
+    throw new BadRequestError({ message: "Sandbox is not running." });
+  }
+
+  if (pid === 1) {
+    throw new BadRequestError({
+      message: "Process 1 is the sandbox itself. Stop the sandbox instead of terminating it."
+    });
+  }
+
+  const result = await execInContainer(sandboxId, `kill -9 ${pid}`, {
+    cwd: SANDBOX_HOME,
+    env: {},
+    timeoutMs: 10_000
+  });
+
+  // Already gone is the outcome the caller wanted, so it is not worth an error.
+  if (result.exitCode !== 0 && !result.stderr.includes("No such process")) {
+    throw new BadRequestError({
+      message: `Could not terminate process ${pid}: ${result.stderr.trim().slice(0, 200)}`
+    });
+  }
 };

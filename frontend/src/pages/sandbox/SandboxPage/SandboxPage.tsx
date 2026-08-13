@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useSearch } from "@tanstack/react-router";
@@ -36,6 +36,7 @@ import {
   ChatTab,
   IntegrationsTab,
   OverviewTab,
+  ProcessMonitorTab,
   SettingsTab,
   TerminalTab
 } from "./components";
@@ -44,6 +45,7 @@ export enum SandboxTab {
   Overview = "overview",
   Chat = "chat",
   Terminal = "terminal",
+  ProcessMonitor = "process-monitor",
   AuditLog = "audit-log",
   Integrations = "integrations",
   Settings = "settings"
@@ -68,30 +70,6 @@ export const SandboxPage = () => {
   const { data: headerMetrics } = useGetSandboxMetrics(sandboxId, isRunning);
   const isWorkloadOn = Boolean(headerMetrics?.isWorkloadRunning);
 
-  // Only starting gets the boot console; stopping is immediate and does not need narrating.
-  const [boot, setBoot] = useState<{
-    outcome: "success" | "error" | null;
-    errorMessage?: string;
-  } | null>(null);
-
-  /**
-   * The boot console is a fiction, so it must never outlive the thing it is narrating. Two ways it
-   * could: a failed start leaves it with nowhere to go, and any path that sets it without settling
-   * would strand it. This clears it whenever no start is in flight, which is the only condition
-   * under which it is ever allowed on screen.
-   */
-  useEffect(() => {
-    if (!boot || setPower.isPending || boot.outcome === null) return undefined;
-
-    const timer = setTimeout(() => setBoot(null), boot.outcome === "error" ? 4_000 : 1_200);
-    return () => clearTimeout(timer);
-  }, [boot, setPower.isPending]);
-
-  // Leaving the tab abandons the narration; it must not be waiting when the user comes back.
-  useEffect(() => {
-    if (tab !== SandboxTab.Terminal) setBoot(null);
-  }, [tab]);
-
   const handlePower = async () => {
     if (!sandbox) return;
 
@@ -103,12 +81,9 @@ export const SandboxPage = () => {
 
     // Streamed rather than a plain POST: a start takes tens of seconds, and a bare spinner for that
     // long reads as a hang. The same events drive the dock and the button label.
-    setBoot({ outcome: null });
     setDockLines([]);
     setDockStep("Starting sandbox");
     setIsBooting(true);
-
-    let hasFailed = false;
 
     try {
       await streamSandboxStart(sandbox.id, (event) => {
@@ -118,19 +93,16 @@ export const SandboxPage = () => {
         } else if (event.type === "log") {
           setDockLines((prev) => [...(prev ?? []), { text: event.message }]);
         } else if (event.type === "error") {
-          hasFailed = true;
           setDockStep("Start failed");
           setDockLines((prev) => [...(prev ?? []), { text: event.message, isError: true }]);
         }
       });
     } catch (error) {
-      hasFailed = true;
       const message = error instanceof Error ? error.message : "The sandbox failed to start.";
       setDockStep("Start failed");
       setDockLines((prev) => [...(prev ?? []), { text: message, isError: true }]);
     } finally {
       setIsBooting(false);
-      setBoot({ outcome: hasFailed ? "error" : "success" });
       // The charts read `status` and the metrics endpoint, neither of which knows the start
       // finished, so nothing repaints until these are refetched.
       await queryClient.invalidateQueries({ queryKey: sandboxKeys.byId(sandbox.id) });
@@ -243,9 +215,8 @@ export const SandboxPage = () => {
 
           <div className="mt-4">
             {tab === SandboxTab.Chat && <ChatTab sandbox={sandbox} />}
-            {tab === SandboxTab.Terminal && (
-              <TerminalTab sandbox={sandbox} boot={boot} onBootSettled={() => setBoot(null)} />
-            )}
+            {tab === SandboxTab.Terminal && <TerminalTab sandbox={sandbox} />}
+            {tab === SandboxTab.ProcessMonitor && <ProcessMonitorTab sandbox={sandbox} />}
             {tab === SandboxTab.AuditLog && <AuditLogTab sandbox={sandbox} />}
             {tab === SandboxTab.Integrations && <IntegrationsTab sandbox={sandbox} />}
             {tab === SandboxTab.Settings && <SettingsTab sandbox={sandbox} />}

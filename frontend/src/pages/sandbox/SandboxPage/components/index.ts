@@ -4,7 +4,7 @@ export * from "./AuditLogTab";
 export * from "./ChatTab";
 export * from "./IntegrationsTab";
 export * from "./OverviewTab";
-export * from "./SandboxBootConsole";
+export * from "./ProcessMonitorTab";
 export * from "./SandboxChat";
 export * from "./SandboxFileBrowser";
 export * from "./SandboxTerminal";

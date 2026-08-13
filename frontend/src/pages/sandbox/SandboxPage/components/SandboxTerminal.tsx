@@ -5,9 +5,7 @@ import { Terminal } from "@xterm/xterm";
 import { TerminalIcon } from "lucide-react";
 import { Readline } from "xterm-readline";
 
-import { execInSandbox, TSandbox } from "@app/hooks/api/sandboxes";
-
-import { SandboxBootConsole, TSandboxBoot } from "./SandboxBootConsole";
+import { execInSandbox } from "@app/hooks/api/sandboxes";
 
 import "@xterm/xterm/css/xterm.css";
 
@@ -15,10 +13,6 @@ type Props = {
   sandboxId: string;
   sandboxName: string;
   isRunning: boolean;
-  /** Set while a start is in flight, so the boot log takes this panel until the shell is up. */
-  boot: TSandboxBoot | null;
-  onBootSettled: () => void;
-  sandbox: TSandbox;
 };
 
 const THEME = {
@@ -48,22 +42,11 @@ const resolveErrorMessage = (error: unknown) => {
 const isSandboxStoppedError = (error: unknown) =>
   Boolean(resolveErrorMessage(error).includes("not running"));
 
-export const SandboxTerminal = ({
-  sandboxId,
-  sandboxName,
-  isRunning,
-  boot,
-  onBootSettled,
-  sandbox
-}: Props) => {
+export const SandboxTerminal = ({ sandboxId, sandboxName, isRunning }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  // The boot log owns the panel first, so the terminal's container does not exist yet. isRunning
-  // usually flips to true while it is still showing, which means it cannot be the only trigger:
-  // the effect has to re-run when the log clears, or it mounts into nothing.
-  const isBooting = Boolean(boot);
 
   useEffect(() => {
-    if (!containerRef.current || !isRunning || isBooting) return undefined;
+    if (!containerRef.current || !isRunning) return undefined;
 
     // Scoped to this effect run, not a shared ref: a loop parked on an in-flight exec must not see a
     // later mount's flag and resume writing into a terminal that has already been disposed.
@@ -153,14 +136,7 @@ export const SandboxTerminal = ({
       resizeObserver.disconnect();
       terminal.dispose();
     };
-  }, [sandboxId, sandboxName, isRunning, isBooting]);
-
-  // The boot log owns this panel until the sequence settles, so starting reads as one console
-  // coming up rather than a separate surface appearing over the page. The page clears it as soon as
-  // no start is in flight, which is what keeps a fiction from outliving what it narrates.
-  if (boot) {
-    return <SandboxBootConsole sandbox={sandbox} boot={boot} onSettled={onBootSettled} />;
-  }
+  }, [sandboxId, sandboxName, isRunning]);
 
   // Terminal black is for a console that exists. An empty panel takes the same surface as the agent
   // panel beside it, otherwise it reads as a hole in the card rather than something not started yet.

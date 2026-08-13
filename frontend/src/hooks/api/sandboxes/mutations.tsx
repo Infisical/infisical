@@ -346,3 +346,16 @@ export const streamSandboxCommands = async (
     });
   }
 };
+
+export const useTerminateSandboxProcess = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ sandboxId, pid }: { sandboxId: string; pid: number }) => {
+      await apiRequest.post(`/api/v1/sandboxes/${sandboxId}/processes/${pid}/terminate`);
+    },
+    onSuccess: (_, { sandboxId }) => {
+      queryClient.invalidateQueries({ queryKey: sandboxKeys.processes(sandboxId) });
+    }
+  });
+};
