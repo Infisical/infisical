@@ -19,10 +19,10 @@ import { SandboxStatus, useGetSandboxById, useSetSandboxPower } from "@app/hooks
 import {
   AgentTab,
   AuditLogTab,
+  ChatTab,
   IntegrationsTab,
   OverviewTab,
   PamAccountsTab,
-  SandboxChat,
   TerminalTab
 } from "./components";
 
@@ -159,7 +159,7 @@ export const SandboxPage = () => {
           </PageHeader>
 
           <div className="mt-4">
-            {tab === SandboxTab.Chat && <SandboxChat sandbox={sandbox} isRunning={isRunning} />}
+            {tab === SandboxTab.Chat && <ChatTab sandbox={sandbox} />}
             {tab === SandboxTab.Terminal && (
               <TerminalTab sandbox={sandbox} boot={boot} onBootSettled={() => setBoot(null)} />
             )}

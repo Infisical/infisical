@@ -3,6 +3,7 @@ export * from "./AddPamAccountsSheet";
 export * from "./agentIcons";
 export * from "./AgentTab";
 export * from "./AuditLogTab";
+export * from "./ChatTab";
 export * from "./IntegrationsTab";
 export * from "./OverviewTab";
 export * from "./PamAccountsTab";

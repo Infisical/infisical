@@ -166,7 +166,7 @@ export const SandboxTerminal = ({
   // panel beside it, otherwise it reads as a hole in the card rather than something not started yet.
   if (!isRunning) {
     return (
-      <div className="flex h-[380px] flex-col items-center justify-center gap-2 rounded-md border border-border bg-bunker-800 text-center">
+      <div className="flex h-[calc(100vh-24rem)] min-h-[320px] flex-col items-center justify-center gap-2 rounded-md border border-border bg-bunker-800 text-center">
         <TerminalIcon className="size-6 text-muted" />
         <p className="text-xs text-muted">Start the sandbox to open a shell.</p>
       </div>
@@ -177,7 +177,7 @@ export const SandboxTerminal = ({
     <div className="w-full min-w-0 overflow-hidden rounded-md border border-border bg-[#111417] p-2">
       <div
         ref={containerRef}
-        className="h-[380px] [&_.xterm-viewport]:thin-scrollbar"
+        className="h-[calc(100vh-24rem)] min-h-[320px] [&_.xterm-viewport]:thin-scrollbar"
         style={{ minHeight: 0 }}
       />
     </div>
