@@ -1,8 +1,7 @@
-import { useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { Link, useParams } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
-import { KeyRound, MonitorIcon, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { LaptopIcon, MonitorIcon, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
@@ -30,50 +29,19 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TableRow
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   EndpointDeviceStatus,
-  EndpointSecretFindingStatus,
   TEndpointDevice,
-  useListEndpointDevices,
-  useListEndpointDeviceScans,
-  useListEndpointSecretFindings
+  useListEndpointDevices
 } from "@app/hooks/api/endpoint";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { DeleteDeviceModal } from "./components/DeleteDeviceModal";
 import { RegisterDeviceModal } from "./components/RegisterDeviceModal";
-
-const SecretsCell = ({ openCount }: { openCount?: number }) => {
-  if (openCount === undefined) {
-    return <span className="text-muted">—</span>;
-  }
-
-  if (openCount === 0) {
-    return <Badge variant="success">Clean</Badge>;
-  }
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Badge variant="danger" className="cursor-default">
-          <KeyRound className="size-3" />
-          {openCount}
-        </Badge>
-      </TooltipTrigger>
-      <TooltipContent>
-        {openCount} credential{openCount === 1 ? "" : "s"} found in files on this device. Open the
-        device to see where.
-      </TooltipContent>
-    </Tooltip>
-  );
-};
 
 const DeviceStatusBadge = ({ device }: { device: TEndpointDevice }) => {
   if (device.status === EndpointDeviceStatus.Inactive) {
@@ -87,52 +55,30 @@ const DeviceStatusBadge = ({ device }: { device: TEndpointDevice }) => {
   );
 };
 
-const BlockedAddressesCell = ({ device }: { device: TEndpointDevice }) => {
-  if (device.blockedAddresses.length === 0) {
-    return <span className="text-xs text-muted">None reported</span>;
+// The registered name is whatever an admin typed; the hostname and the hardware are what the machine
+// says it is. Leading with both is what makes a row read as someone's laptop rather than a record.
+const MachineCell = ({ device }: { device: TEndpointDevice }) => {
+  const os = [device.osName, device.osVersion].filter(Boolean).join(" ");
+
+  if (!os && !device.cpuModel) {
+    return <span className="text-sm text-muted">Not reported yet</span>;
   }
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Badge variant="danger" className="cursor-default">
-          {device.blockedAddresses.length} blocked
-        </Badge>
-      </TooltipTrigger>
-      <TooltipContent className="max-w-xs">
-        <p className="mb-1 font-medium">Enforced by this device</p>
-        <ul className="flex flex-col gap-0.5 font-mono">
-          {device.blockedAddresses.map((address) => (
-            <li key={address}>{address}</li>
-          ))}
-        </ul>
-      </TooltipContent>
-    </Tooltip>
+    <div>
+      <div className="text-sm text-foreground">{os || "Unknown OS"}</div>
+      {device.cpuModel && <div className="text-xs text-muted">{device.cpuModel}</div>}
+    </div>
   );
 };
 
 export const EndpointDevicesPage = () => {
   const { orgId } = useParams({ strict: false }) as { orgId: string };
   const { data: devices, isPending } = useListEndpointDevices();
-  const { data: findings } = useListEndpointSecretFindings();
-  const { data: deviceScans } = useListEndpointDeviceScans();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "registerDevice",
     "deleteDevice"
   ] as const);
-
-  const openFindingsByDevice = useMemo(() => {
-    const counts = new Map<string, number>();
-
-    (deviceScans ?? []).forEach((scan) => counts.set(scan.deviceId, 0));
-    (findings ?? [])
-      .filter((finding) => finding.status === EndpointSecretFindingStatus.Open)
-      .forEach((finding) =>
-        counts.set(finding.deviceId, (counts.get(finding.deviceId) ?? 0) + 1)
-      );
-
-    return counts;
-  }, [findings, deviceScans]);
 
   return (
     <>
@@ -143,7 +89,7 @@ export const EndpointDevicesPage = () => {
         <PageHeader
           scope={ProjectType.Endpoint}
           title="Devices"
-          description="The fleet of devices running the Endpoint agent for this organization."
+          description="The laptops and desktops your people work on, each running the Endpoint agent."
         />
 
         <Card>
@@ -202,12 +148,9 @@ export const EndpointDevicesPage = () => {
                 <TableRow>
                   <TableHead>Device</TableHead>
                   <TableHead>Assigned To</TableHead>
+                  <TableHead>Machine</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Agent Version</TableHead>
-                  <TableHead>Config Version</TableHead>
                   <TableHead>Last Seen</TableHead>
-                  <TableHead>Secrets</TableHead>
-                  <TableHead>Enforcing</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
@@ -215,13 +158,23 @@ export const EndpointDevicesPage = () => {
                 {devices.map((device) => (
                   <TableRow key={device.id}>
                     <TableCell className="font-medium">
-                      <Link
-                        to="/organizations/$orgId/endpoint/devices/$deviceId"
-                        params={{ orgId, deviceId: device.id }}
-                        className="text-foreground hover:text-primary hover:underline"
-                      >
-                        {device.name}
-                      </Link>
+                      <div className="flex items-center gap-2.5">
+                        <LaptopIcon className="size-4 shrink-0 text-muted" />
+                        <div className="min-w-0">
+                          <Link
+                            to="/organizations/$orgId/endpoint/devices/$deviceId"
+                            params={{ orgId, deviceId: device.id }}
+                            className="text-foreground hover:text-primary hover:underline"
+                          >
+                            {device.name}
+                          </Link>
+                          {device.hostname && (
+                            <div className="truncate font-mono text-xs font-normal text-muted">
+                              {device.hostname}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="text-foreground">{device.owner.name}</div>
@@ -230,22 +183,15 @@ export const EndpointDevicesPage = () => {
                       )}
                     </TableCell>
                     <TableCell>
+                      <MachineCell device={device} />
+                    </TableCell>
+                    <TableCell>
                       <DeviceStatusBadge device={device} />
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-muted">
-                      {device.agentVersion ?? "Unknown"}
-                    </TableCell>
-                    <TableCell className="text-muted">{device.configVersion}</TableCell>
                     <TableCell className="text-muted">
                       {device.lastSeenAt
                         ? formatDistanceToNow(new Date(device.lastSeenAt), { addSuffix: true })
                         : "Never"}
-                    </TableCell>
-                    <TableCell>
-                      <SecretsCell openCount={openFindingsByDevice.get(device.id)} />
-                    </TableCell>
-                    <TableCell>
-                      <BlockedAddressesCell device={device} />
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>

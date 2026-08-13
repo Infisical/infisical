@@ -1,17 +1,30 @@
 export {
+  useCancelEndpointCommand,
   useCreateEndpointNetworkRule,
+  useCreateEndpointTarget,
   useDeleteEndpointDevice,
   useDeleteEndpointNetworkRule,
+  useDeleteEndpointTarget,
+  useExecuteEndpointCommand,
+  useGrantDeviceTargetAccess,
   useRegisterEndpointDevice,
-  useUpdateEndpointNetworkRule
+  useRevokeDeviceTargetAccess,
+  useUpdateEndpointNetworkRule,
+  useUpdateEndpointTarget
 } from "./mutations";
 export {
   endpointKeys,
   fetchEndpointProjectId,
+  isEndpointCommandInFlight,
+  useEndpointProjectId,
+  useListEndpointCommands,
   useListEndpointCounters,
+  useListEndpointDeviceApps,
   useListEndpointDevices,
   useListEndpointEvents,
-  useListEndpointNetworkRules
+  useListEndpointNetworkRules,
+  useListEndpointTargets,
+  useListEndpointTransfers
 } from "./queries";
 export { useRequestEndpointScan, useUpdateEndpointScanPolicy } from "./scan-mutations";
 export {

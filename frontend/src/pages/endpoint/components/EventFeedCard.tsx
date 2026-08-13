@@ -36,7 +36,9 @@ const EVENT_LABEL: Record<EndpointEventType, string> = {
   [EndpointEventType.NetworkDestinationBlocked]: "Destination Blocked",
   [EndpointEventType.NetworkTransferThresholdTripped]: "Volume Threshold Tripped",
   [EndpointEventType.PrivateAccessTunnelUp]: "Private Access Tunnel Up",
-  [EndpointEventType.PrivateAccessTunnelDown]: "Private Access Tunnel Down"
+  [EndpointEventType.PrivateAccessTunnelDown]: "Private Access Tunnel Down",
+  [EndpointEventType.ScanStarted]: "Scan Started",
+  [EndpointEventType.ScanCompleted]: "Scan Completed"
 };
 
 const EVENT_BADGE_VARIANT: Record<
@@ -49,8 +51,19 @@ const EVENT_BADGE_VARIANT: Record<
   [EndpointEventType.NetworkDestinationBlocked]: "danger",
   [EndpointEventType.NetworkTransferThresholdTripped]: "warning",
   [EndpointEventType.PrivateAccessTunnelUp]: "success",
-  [EndpointEventType.PrivateAccessTunnelDown]: "neutral"
+  [EndpointEventType.PrivateAccessTunnelDown]: "neutral",
+  [EndpointEventType.ScanStarted]: "info",
+  [EndpointEventType.ScanCompleted]: "success"
 };
+
+// The maps above are exhaustive over the enum, so a new event type fails the build until it is
+// labelled — but the backend's enum can be ahead of this one, and an unlabelled type used to render
+// as an empty badge that looked like a broken checkbox. Showing the raw type is worse-looking and
+// far more honest: the row still says what happened.
+const describeEvent = (eventType: EndpointEventType) => ({
+  label: EVENT_LABEL[eventType] ?? eventType,
+  variant: EVENT_BADGE_VARIANT[eventType] ?? ("neutral" as const)
+});
 
 const PAGE_SIZE = 25;
 
@@ -93,6 +106,44 @@ const EventDetail = ({ event }: { event: TEndpointEvent }) => {
       <Badge key="ruleCount" variant="neutral">
         {detail.ruleCount} rule{detail.ruleCount === 1 ? "" : "s"}
       </Badge>
+    );
+  }
+
+  if (typeof detail.filesScanned === "number") {
+    badges.push(
+      <Badge key="filesScanned" variant="neutral">
+        {detail.filesScanned.toLocaleString()} files
+      </Badge>
+    );
+  }
+
+  if (typeof detail.findingCount === "number") {
+    badges.push(
+      <Badge key="findingCount" variant={detail.findingCount > 0 ? "danger" : "success"}>
+        {detail.findingCount} finding{detail.findingCount === 1 ? "" : "s"}
+      </Badge>
+    );
+  }
+
+  // A scan that could not read a folder found nothing there, which is not the same as there being
+  // nothing there. Saying so on the row is what keeps the finding count from reading as complete.
+  if (Array.isArray(detail.inaccessibleRoots) && detail.inaccessibleRoots.length > 0) {
+    const roots = detail.inaccessibleRoots as string[];
+    badges.push(
+      <Tooltip key="inaccessibleRoots">
+        <TooltipTrigger asChild>
+          <Badge variant="warning" className="cursor-default">
+            {roots.length} folder{roots.length === 1 ? "" : "s"} unreadable
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs">
+          <ul className="flex flex-col gap-0.5 font-mono">
+            {roots.map((root) => (
+              <li key={root}>{root}</li>
+            ))}
+          </ul>
+        </TooltipContent>
+      </Tooltip>
     );
   }
 
@@ -179,29 +230,31 @@ export const EventFeedCard = ({ deviceId, title = "Event Feed", description }: P
               </TableRow>
             </TableHeader>
             <TableBody>
-              {events.map((event) => (
-                <TableRow key={event.id}>
-                  {!deviceId && (
-                    <TableCell className="font-medium text-foreground">
-                      {event.deviceName}
+              {events.map((event) => {
+                const { label, variant } = describeEvent(event.eventType);
+
+                return (
+                  <TableRow key={event.id}>
+                    {!deviceId && (
+                      <TableCell className="font-medium text-foreground">
+                        {event.deviceName}
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      <Badge variant={variant}>{label}</Badge>
                     </TableCell>
-                  )}
-                  <TableCell>
-                    <Badge variant={EVENT_BADGE_VARIANT[event.eventType]}>
-                      {EVENT_LABEL[event.eventType]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted">
-                    {event.destination ?? "-"}
-                  </TableCell>
-                  <TableCell>
-                    <EventDetail event={event} />
-                  </TableCell>
-                  <TableCell className="text-muted">
-                    {formatDistanceToNow(new Date(event.occurredAt), { addSuffix: true })}
-                  </TableCell>
-                </TableRow>
-              ))}
+                    <TableCell className="font-mono text-xs text-muted">
+                      {event.destination ?? "-"}
+                    </TableCell>
+                    <TableCell>
+                      <EventDetail event={event} />
+                    </TableCell>
+                    <TableCell className="text-muted">
+                      {formatDistanceToNow(new Date(event.occurredAt), { addSuffix: true })}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
           {data?.nextCursor && (

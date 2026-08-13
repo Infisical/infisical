@@ -6,7 +6,7 @@ export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/endpoint/_endpoint-layout/targets"
 )({
   beforeLoad: ({ context }) => ({
-    breadcrumbs: [...context.breadcrumbs, { label: "Targets" }]
+    breadcrumbs: [...context.breadcrumbs, { label: "Private Access" }]
   }),
   component: EndpointTargetsPage
 });

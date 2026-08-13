@@ -19,7 +19,22 @@ export const EndpointDevicesSchema = z.object({
   pfEnabled: z.boolean().nullable().optional(),
   blockedAddresses: z.unknown().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  hostname: z.string().nullable().optional(),
+  platform: z.string().nullable().optional(),
+  arch: z.string().nullable().optional(),
+  osName: z.string().nullable().optional(),
+  osVersion: z.string().nullable().optional(),
+  osBuild: z.string().nullable().optional(),
+  modelIdentifier: z.string().nullable().optional(),
+  cpuModel: z.string().nullable().optional(),
+  serialNumber: z.string().nullable().optional(),
+  ipAddress: z.string().nullable().optional(),
+  cpuCores: z.number().nullable().optional(),
+  memoryBytes: z.coerce.number().nullable().optional(),
+  bootedAt: z.date().nullable().optional(),
+  systemInfoReportedAt: z.date().nullable().optional(),
+  appsReportedAt: z.date().nullable().optional()
 });
 
 export type TEndpointDevices = z.infer<typeof EndpointDevicesSchema>;

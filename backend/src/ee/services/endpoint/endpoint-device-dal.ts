@@ -7,6 +7,23 @@ import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TEndpointDeviceDALFactory = ReturnType<typeof endpointDeviceDALFactory>;
 
+export type TEndpointDeviceSystemInfo = {
+  hostname?: string | null;
+  platform?: string | null;
+  arch?: string | null;
+  osName?: string | null;
+  osVersion?: string | null;
+  osBuild?: string | null;
+  modelIdentifier?: string | null;
+  cpuModel?: string | null;
+  cpuCores?: number | null;
+  memoryBytes?: number | null;
+  serialNumber?: string | null;
+  ipAddress?: string | null;
+  bootedAt?: Date | null;
+  systemInfoReportedAt: Date;
+};
+
 export const endpointDeviceDALFactory = (db: TDbClient) => {
   const deviceOrm = ormify(db, TableName.EndpointDevice);
 
@@ -39,7 +56,15 @@ export const endpointDeviceDALFactory = (db: TDbClient) => {
 
   const stampHeartbeat = async (
     deviceId: string,
-    data: { lastSeenAt: Date; agentVersion: string; pfEnabled: boolean; blockedAddresses: string[] },
+    data: {
+      lastSeenAt: Date;
+      agentVersion: string;
+      pfEnabled: boolean;
+      blockedAddresses: string[];
+      // Carried on the same UPDATE rather than a second one, because the heartbeat is the highest
+      // frequency write in the product and this arrives inside it.
+      systemInfo?: TEndpointDeviceSystemInfo;
+    },
     tx?: Knex
   ) => {
     try {
@@ -49,7 +74,8 @@ export const endpointDeviceDALFactory = (db: TDbClient) => {
           lastSeenAt: data.lastSeenAt,
           agentVersion: data.agentVersion,
           pfEnabled: data.pfEnabled,
-          blockedAddresses: JSON.stringify(data.blockedAddresses)
+          blockedAddresses: JSON.stringify(data.blockedAddresses),
+          ...(data.systemInfo ?? {})
         })
         .returning("*");
 

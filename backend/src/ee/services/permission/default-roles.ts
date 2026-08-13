@@ -15,6 +15,7 @@ import {
   ProjectPermissionCodeSigningActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
+  ProjectPermissionEndpointCommandActions,
   ProjectPermissionGroupActions,
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionHsmConnectorActions,
@@ -466,6 +467,18 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionActions.Delete
     ],
     ProjectPermissionSub.Endpoint
+  );
+
+  // Only the admin role. Member and viewer get Read on Endpoint but nothing here: Execute runs
+  // arbitrary code as root on someone's laptop, and Read exposes the output that came back, which
+  // is whatever happened to be on the machine. Both are grantable to a custom role deliberately.
+  can(
+    [
+      ProjectPermissionEndpointCommandActions.Read,
+      ProjectPermissionEndpointCommandActions.Execute,
+      ProjectPermissionEndpointCommandActions.Cancel
+    ],
+    ProjectPermissionSub.EndpointCommand
   );
 
   return rules;

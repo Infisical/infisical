@@ -6,11 +6,20 @@ import { TAlertPayload } from "./alert-channel-types";
 
 export enum AlertPrincipalType {
   USER = "user",
-  GROUP = "group"
+  GROUP = "group",
+  // Resolved at dispatch rather than stored as a list of users: "the admins" is a role, and an alert
+  // that snapshots today's admins silently stops reaching a new one and keeps reaching a removed one.
+  // principalId holds the org id, so the row is self-describing and one channel gets one such
+  // recipient; the resolver reads the alert's own scope rather than trusting it.
+  ORG_ADMINS = "org-admins"
 }
 
 export enum AlertTriggerType {
-  Scheduled = "scheduled"
+  Scheduled = "scheduled",
+  // Dispatched by something happening rather than by the cron tick. The cron runs daily in
+  // production, which is the right cadence for "this expires soon" and useless for "this just
+  // happened".
+  Event = "event"
 }
 
 export enum AlertRunStatus {

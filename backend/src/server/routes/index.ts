@@ -47,11 +47,17 @@ import { dynamicSecretLeaseQueueServiceFactory } from "@app/ee/services/dynamic-
 import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-service";
 import { emailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { emailDomainServiceFactory } from "@app/ee/services/email-domain/email-domain-service";
+import { endpointCommandDALFactory } from "@app/ee/services/endpoint/endpoint-command-dal";
+import { endpointCommandServiceFactory } from "@app/ee/services/endpoint/endpoint-command-service";
 import { endpointCounterDALFactory } from "@app/ee/services/endpoint/endpoint-counter-dal";
+import { endpointDeviceAppDALFactory } from "@app/ee/services/endpoint/endpoint-device-app-dal";
 import { endpointDeviceDALFactory } from "@app/ee/services/endpoint/endpoint-device-dal";
 import { endpointEventDALFactory } from "@app/ee/services/endpoint/endpoint-event-dal";
 import { endpointNetworkRuleDALFactory } from "@app/ee/services/endpoint/endpoint-network-rule-dal";
 import { endpointProjectResolverFactory } from "@app/ee/services/endpoint/endpoint-project-resolver";
+import { endpointTargetAssignmentDALFactory } from "@app/ee/services/endpoint/endpoint-target-assignment-dal";
+import { endpointTargetDALFactory } from "@app/ee/services/endpoint/endpoint-target-dal";
+import { endpointTransferDALFactory } from "@app/ee/services/endpoint/endpoint-transfer-dal";
 import {
   endpointDeviceScanDALFactory,
   endpointScanPolicyDALFactory,
@@ -229,6 +235,8 @@ import { alertProviderRegistryFactory } from "@app/services/alert/alert-provider
 import { alertQueueServiceFactory } from "@app/services/alert/alert-queue";
 import { alertRecipientResolverFactory } from "@app/services/alert/alert-recipient-resolver";
 import { alertServiceFactory } from "@app/services/alert/alert-service";
+import { endpointTransferViolationAlertDALFactory } from "@app/services/alert/providers/endpoint-transfer-violation-alert-dal";
+import { endpointTransferViolationAlertProviderFactory } from "@app/services/alert/providers/endpoint-transfer-violation-alert-provider";
 import { identityCredentialAlertDALFactory } from "@app/services/alert/providers/identity-credential-alert-dal";
 import { identityCredentialAlertProviderFactory } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
@@ -992,6 +1000,12 @@ export const registerRoutes = async (
       permissionService
     })
   );
+  alertProviderRegistry.register(
+    endpointTransferViolationAlertProviderFactory({
+      endpointTransferViolationAlertDAL: endpointTransferViolationAlertDALFactory(db),
+      permissionService
+    })
+  );
   const alertRecipientResolver = alertRecipientResolverFactory({
     userDAL,
     userGroupMembershipDAL,
@@ -1731,7 +1745,11 @@ export const registerRoutes = async (
   const endpointDeviceDAL = endpointDeviceDALFactory(db);
   const endpointNetworkRuleDAL = endpointNetworkRuleDALFactory(db);
   const endpointCounterDAL = endpointCounterDALFactory(db);
+  const endpointTransferDAL = endpointTransferDALFactory(db);
+  const endpointDeviceAppDAL = endpointDeviceAppDALFactory(db);
   const endpointEventDAL = endpointEventDALFactory(db);
+  const endpointTargetDAL = endpointTargetDALFactory(db);
+  const endpointTargetAssignmentDAL = endpointTargetAssignmentDALFactory(db);
 
   const endpointProjectResolver = endpointProjectResolverFactory({
     db,
@@ -1739,17 +1757,6 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     keyStore
-  });
-
-  const endpointService = endpointServiceFactory({
-    endpointDeviceDAL,
-    endpointNetworkRuleDAL,
-    endpointCounterDAL,
-    endpointEventDAL,
-    endpointProjectResolver,
-    userDAL,
-    membershipDAL,
-    permissionService
   });
 
   const endpointScanPolicyDAL = endpointScanPolicyDALFactory(db);
@@ -1762,6 +1769,17 @@ export const registerRoutes = async (
     endpointSecretFindingDAL,
     endpointDeviceDAL,
     endpointProjectResolver,
+    permissionService
+  });
+
+  const endpointCommandDAL = endpointCommandDALFactory(db);
+
+  const endpointCommandService = endpointCommandServiceFactory({
+    endpointCommandDAL,
+    endpointDeviceDAL,
+    endpointEventDAL,
+    endpointProjectResolver,
+    userDAL,
     permissionService
   });
 
@@ -1866,6 +1884,26 @@ export const registerRoutes = async (
     identityKubernetesAuthDAL,
     pkiDiscoveryConfigDAL,
     resourceAuthMethodService
+  });
+
+  // Constructed here rather than with the other endpoint wiring above because it needs
+  // gatewayV2Service to mint a client certificate for a private-access target, and that service does
+  // not exist yet at that point. Nothing between the two references endpointService.
+  const endpointService = endpointServiceFactory({
+    endpointDeviceDAL,
+    endpointNetworkRuleDAL,
+    endpointCounterDAL,
+    endpointTransferDAL,
+    endpointDeviceAppDAL,
+    endpointEventDAL,
+    endpointTargetDAL,
+    endpointTargetAssignmentDAL,
+    endpointProjectResolver,
+    userDAL,
+    membershipDAL,
+    permissionService,
+    gatewayV2Service,
+    alertQueue
   });
 
   const gatewayPoolService = gatewayPoolServiceFactory({
@@ -3983,6 +4021,7 @@ export const registerRoutes = async (
     pamProjectResolver,
     endpoint: endpointService,
     endpointScan: endpointScanService,
+    endpointCommand: endpointCommandService,
     pamAccountTemplate: pamAccountTemplateService,
     pamFolder: pamFolderService,
     pamAccount: pamAccountService,

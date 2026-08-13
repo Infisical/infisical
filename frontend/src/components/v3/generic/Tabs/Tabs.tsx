@@ -32,7 +32,9 @@ const tabsListVariants = cva(
           "bg-transparent group-data-[orientation=horizontal]/tabs:h-11 group-data-[orientation=horizontal]/tabs:w-full group-data-[orientation=horizontal]/tabs:justify-start group-data-[orientation=horizontal]/tabs:border-b group-data-[orientation=horizontal]/tabs:border-border group-data-[orientation=vertical]/tabs:gap-2",
         admin:
           "bg-transparent group-data-[orientation=horizontal]/tabs:h-11 group-data-[orientation=horizontal]/tabs:w-full group-data-[orientation=horizontal]/tabs:justify-start group-data-[orientation=horizontal]/tabs:border-b group-data-[orientation=horizontal]/tabs:border-border group-data-[orientation=vertical]/tabs:gap-2",
-        pam: "bg-transparent group-data-[orientation=horizontal]/tabs:h-11 group-data-[orientation=horizontal]/tabs:w-full group-data-[orientation=horizontal]/tabs:justify-start group-data-[orientation=horizontal]/tabs:border-b group-data-[orientation=horizontal]/tabs:border-border group-data-[orientation=vertical]/tabs:gap-2"
+        pam: "bg-transparent group-data-[orientation=horizontal]/tabs:h-11 group-data-[orientation=horizontal]/tabs:w-full group-data-[orientation=horizontal]/tabs:justify-start group-data-[orientation=horizontal]/tabs:border-b group-data-[orientation=horizontal]/tabs:border-border group-data-[orientation=vertical]/tabs:gap-2",
+        endpoint:
+          "bg-transparent group-data-[orientation=horizontal]/tabs:h-11 group-data-[orientation=horizontal]/tabs:w-full group-data-[orientation=horizontal]/tabs:justify-start group-data-[orientation=horizontal]/tabs:border-b group-data-[orientation=horizontal]/tabs:border-border group-data-[orientation=vertical]/tabs:gap-2"
       }
     },
     defaultVariants: {
@@ -47,7 +49,8 @@ const STYLE_BY_VARIANT = {
   org: "underline",
   "sub-org": "underline",
   admin: "underline",
-  pam: "underline"
+  pam: "underline",
+  endpoint: "underline"
 } as const;
 
 function TabsList({
@@ -93,6 +96,7 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
         "group-data-[variant=sub-org]/tabs-list:after:bg-sub-org",
         "group-data-[variant=admin]/tabs-list:after:bg-admin",
         "group-data-[variant=pam]/tabs-list:after:bg-product-pam",
+        "group-data-[variant=endpoint]/tabs-list:after:bg-product-endpoint",
         className
       )}
       {...props}

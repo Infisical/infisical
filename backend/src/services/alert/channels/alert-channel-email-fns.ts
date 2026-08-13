@@ -14,6 +14,7 @@ const buildSubstitutions = (payload: TAlertPayload) => ({
   resourceKind: payload.resourceKind,
   resourceOwnerKind: payload.resourceOwnerKind,
   summary: payload.summary,
+  ...(payload.detailLine ? { detailLine: payload.detailLine } : {}),
   severity: payload.severity,
   viewUrl: payload.alert.viewUrl,
   items: payload.items.map((item) => ({

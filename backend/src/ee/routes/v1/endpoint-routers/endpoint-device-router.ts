@@ -2,7 +2,8 @@ import { z } from "zod";
 
 import {
   EndpointDeviceWithLivenessSchema,
-  SanitizedEndpointDeviceSchema
+  SanitizedEndpointDeviceSchema,
+  SanitizedEndpointTargetSchema
 } from "@app/ee/services/endpoint/endpoint-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -77,6 +78,56 @@ export const registerEndpointDeviceRouter = async (server: FastifyZodProvider) =
     handler: async (req) => {
       const device = await server.services.endpoint.deleteDevice(req.params, req.permission);
       return { device };
+    }
+  });
+
+  // Access is granted from the device rather than through the target's whole device list, because
+  // the console manages it from the device. PUT and DELETE rather than a POST action pair: both are
+  // idempotent, which is what "this device can reach that target" being a state rather than an event
+  // means in practice.
+  server.route({
+    method: "PUT",
+    url: "/:deviceId/targets/:targetId",
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.Endpoint],
+      description: "Let an Infisical Endpoint device reach a private access target",
+      params: z.object({
+        deviceId: z.string().uuid().describe("The ID of the device being granted access."),
+        targetId: z.string().uuid().describe("The ID of the target it should be able to reach.")
+      }),
+      response: {
+        200: z.object({ target: SanitizedEndpointTargetSchema })
+      }
+    },
+    handler: async (req) => {
+      const target = await server.services.endpoint.grantDeviceTargetAccess(req.params, req.permission);
+      return { target };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:deviceId/targets/:targetId",
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.Endpoint],
+      description: "Stop an Infisical Endpoint device from reaching a private access target",
+      params: z.object({
+        deviceId: z.string().uuid().describe("The ID of the device losing access."),
+        targetId: z.string().uuid().describe("The ID of the target it should no longer reach.")
+      }),
+      response: {
+        200: z.object({ target: SanitizedEndpointTargetSchema })
+      }
+    },
+    handler: async (req) => {
+      const target = await server.services.endpoint.revokeDeviceTargetAccess(req.params, req.permission);
+      return { target };
     }
   });
 };

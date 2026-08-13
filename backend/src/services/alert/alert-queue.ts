@@ -55,6 +55,35 @@ export const alertQueueServiceFactory = ({
     }
   };
 
+  // Dispatch driven by something happening rather than by the cron tick. The cron is daily in
+  // production, which is right for "this expires soon" and useless for "this just happened".
+  //
+  // The jobId deliberately carries no timestamp: several violations landing in the same second
+  // collapse onto one dispatch, and that dispatch reads every due target anyway. Dedup inside the
+  // engine is what stops a target being mailed about twice.
+  const enqueueAlertsForEvent = async ({ resourceType, orgId }: { resourceType: string; orgId: string }) => {
+    const alerts = await alertDAL.findEnabledByResourceType(resourceType);
+    const scoped = alerts.filter((alert) => alert.orgId === orgId);
+    if (!scoped.length) return;
+
+    const scheduledAt = new Date().toISOString();
+    await Promise.all(
+      scoped.map((alert) =>
+        queueService.queue(
+          QueueName.AlertDispatch,
+          QueueJobs.AlertDispatch,
+          { alertId: alert.id, scheduledAt },
+          {
+            jobId: `alert-dispatch-event-${alert.id}`,
+            removeOnComplete: true,
+            removeOnFail: true,
+            attempts: 1
+          }
+        )
+      )
+    );
+  };
+
   const pruneExpiredHistory = async () => {
     const before = new Date(Date.now() - ALERT_HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000);
     const { deleted, hasMore } = await alertHistoryDAL.deleteExpiredHistory({ before });
@@ -112,5 +141,5 @@ export const alertQueueServiceFactory = ({
     });
   };
 
-  return { init };
+  return { init, enqueueAlertsForEvent };
 };

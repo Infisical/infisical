@@ -31,7 +31,10 @@ export const registerEndpointAgentScanRouter = async (server: FastifyZodProvider
             intervalHours: z.number(),
             // Empty when no scan has ever been requested for this device. A changed value is what tells
             // the agent to scan now.
-            scanRequestId: z.string()
+            scanRequestId: z.string(),
+            // False until the device has completed one scan. The agent uses it to hold off the
+            // scheduled scan on a freshly enrolled machine.
+            hasEverScanned: z.boolean()
           })
         })
       }

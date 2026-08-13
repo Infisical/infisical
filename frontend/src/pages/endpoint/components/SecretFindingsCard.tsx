@@ -203,7 +203,6 @@ export const SecretFindingsCard = ({ deviceId }: { deviceId: string }) => {
             <TableRow>
               <TableHead>Type</TableHead>
               <TableHead>File</TableHead>
-              <TableHead>Match</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>First seen</TableHead>
             </TableRow>
@@ -223,7 +222,7 @@ export const SecretFindingsCard = ({ deviceId }: { deviceId: string }) => {
                     finding.ruleId
                   )}
                 </TableCell>
-                <TableCell className="max-w-md truncate font-mono text-xs text-muted">
+                <TableCell className="max-w-2xl truncate font-mono text-xs text-muted">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="cursor-default">
@@ -234,9 +233,6 @@ export const SecretFindingsCard = ({ deviceId }: { deviceId: string }) => {
                       {finding.file}:{finding.startLine}
                     </TooltipContent>
                   </Tooltip>
-                </TableCell>
-                <TableCell className="max-w-xs truncate font-mono text-xs text-muted">
-                  {finding.redactedMatch}
                 </TableCell>
                 <TableCell>
                   {finding.status === EndpointSecretFindingStatus.Open ? (

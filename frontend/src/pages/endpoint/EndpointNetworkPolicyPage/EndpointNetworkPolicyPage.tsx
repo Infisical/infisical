@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Helmet } from "react-helmet";
-import { format } from "date-fns";
+import { useParams } from "@tanstack/react-router";
 import { MoreHorizontal, Plus, ShieldBanIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -44,6 +44,7 @@ import {
   EndpointNetworkRuleAction,
   EndpointNetworkRuleType,
   TEndpointNetworkRule,
+  useEndpointProjectId,
   useListEndpointNetworkRules,
   useUpdateEndpointNetworkRule
 } from "@app/hooks/api/endpoint";
@@ -51,6 +52,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { DeleteNetworkRuleModal } from "./components/DeleteNetworkRuleModal";
 import { NetworkRuleModal } from "./components/NetworkRuleModal";
+import { RuleAlertToggle } from "./components/RuleAlertToggle";
 
 const KIND_LABEL: Record<EndpointDestinationKind, string> = {
   ip: "IP Address",
@@ -101,6 +103,8 @@ const EnforcementCell = ({ rule }: { rule: TEndpointNetworkRule }) => {
 };
 
 export const EndpointNetworkPolicyPage = () => {
+  const { orgId } = useParams({ strict: false }) as { orgId: string };
+  const { data: projectId } = useEndpointProjectId();
   const { data: rules, isPending } = useListEndpointNetworkRules();
   const updateRule = useUpdateEndpointNetworkRule();
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -204,7 +208,7 @@ export const EndpointNetworkPolicyPage = () => {
                   <TableHead>Destination</TableHead>
                   <TableHead>Enforcement</TableHead>
                   <TableHead>Enabled</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead>Email Admins</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
@@ -251,8 +255,26 @@ export const EndpointNetworkPolicyPage = () => {
                         )}
                       </ProjectPermissionCan>
                     </TableCell>
-                    <TableCell className="text-muted">
-                      {format(new Date(rule.createdAt), "yyyy-MM-dd")}
+                    <TableCell>
+                      {/* Only a transfer limit can be exceeded, so a destination rule has nothing to
+                          alert on and shows a dash rather than a switch that could never mean anything. */}
+                      {rule.ruleType === EndpointNetworkRuleType.Volume && projectId ? (
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Edit}
+                          a={ProjectPermissionSub.Endpoint}
+                        >
+                          {(isAllowed) => (
+                            <RuleAlertToggle
+                              rule={rule}
+                              orgId={orgId}
+                              projectId={projectId}
+                              isAllowed={isAllowed}
+                            />
+                          )}
+                        </ProjectPermissionCan>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>

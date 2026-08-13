@@ -16,7 +16,7 @@ import {
   TEndpointScanPolicyDALFactory,
   TEndpointSecretFindingDALFactory
 } from "./endpoint-scan-dal";
-import { EndpointSecretFindingStatus } from "./endpoint-scan-enums";
+import { EndpointScanTrigger, EndpointSecretFindingStatus } from "./endpoint-scan-enums";
 import {
   TListEndpointSecretFindingsDTO,
   TReportEndpointScanResultDTO,
@@ -186,7 +186,11 @@ export const endpointScanServiceFactory = ({
         excludePatterns: policy.excludePatterns,
         maxFileMegabytes: policy.maxFileMegabytes ?? 0,
         intervalHours: policy.intervalHours,
-        scanRequestId: deviceScan?.scanRequestId ?? ""
+        scanRequestId: deviceScan?.scanRequestId ?? "",
+        // Whether this device has ever finished a scan. The agent will not start one on the schedule
+        // until it has: a machine that just enrolled should show nothing until someone asks it to
+        // look, so the first scan is always a deliberate act rather than a surprise.
+        hasEverScanned: Boolean(deviceScan?.lastScanFinishedAt)
       }
     };
   };
@@ -248,6 +252,11 @@ export const endpointScanServiceFactory = ({
           lastScanStartedAt: scanStartedAt,
           lastScanFinishedAt: new Date(result.finishedAt),
           lastTrigger: result.trigger,
+          // A satisfied request is cleared, so it cannot be replayed. The agent tracks the last
+          // request id in memory only, so a restarted agent would otherwise see a months-old id it
+          // has never seen, read it as new, and scan a machine nobody asked it to scan. Only a
+          // requested scan clears it, so a scheduled scan finishing mid-request does not swallow it.
+          ...(result.trigger === EndpointScanTrigger.Requested ? { scanRequestId: null } : {}),
           filesScanned: result.filesScanned,
           findingCount: result.findings.length,
           rootsScanned: JSON.stringify(result.rootsScanned),
@@ -261,6 +270,7 @@ export const endpointScanServiceFactory = ({
         "lastScanStartedAt",
         "lastScanFinishedAt",
         "lastTrigger",
+        ...(result.trigger === EndpointScanTrigger.Requested ? ["scanRequestId" as const] : []),
         "filesScanned",
         "findingCount",
         "rootsScanned",

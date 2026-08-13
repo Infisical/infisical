@@ -1,5 +1,6 @@
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { logger } from "@app/lib/logger";
+import { OrgMembershipRole } from "@app/db/schemas";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -11,7 +12,7 @@ import { AlertPrincipalType } from "./alert-types";
 type TAlertRecipientResolverDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgMembersByRole">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
 };
 
@@ -38,6 +39,22 @@ export const alertRecipientResolverFactory = ({
         if (recipient.principalType === AlertPrincipalType.GROUP) allGroupIds.add(recipient.principalId);
         else if (recipient.principalType === AlertPrincipalType.USER) allUserIds.add(recipient.principalId);
       }
+    }
+
+    // Resolved once for the whole call: every channel asking for the admins wants the same answer,
+    // and it is a join we should not repeat per channel. Skipped entirely when nobody asked.
+    const wantsOrgAdmins = [...rowsByChannel.values()].some((rows) =>
+      rows.some((recipient) => recipient.principalType === AlertPrincipalType.ORG_ADMINS)
+    );
+    const orgAdminUserIds: string[] = [];
+    if (wantsOrgAdmins) {
+      const admins = await orgDAL.findOrgMembersByRole(scope.orgId, OrgMembershipRole.Admin);
+      admins.forEach((admin) => {
+        if (admin.user?.id) {
+          orgAdminUserIds.push(admin.user.id);
+          allUserIds.add(admin.user.id);
+        }
+      });
     }
 
     const groupMembers = new Map<string, string[]>();
@@ -74,6 +91,9 @@ export const alertRecipientResolverFactory = ({
             if (inScopeGroupIds.has(recipient.principalId)) {
               (groupMembers.get(recipient.principalId) ?? []).forEach((userId) => userIds.add(userId));
             }
+            break;
+          case AlertPrincipalType.ORG_ADMINS:
+            orgAdminUserIds.forEach((userId) => userIds.add(userId));
             break;
           default:
             logger.warn(`Unknown alert recipient principal type '${recipient.principalType}'`);

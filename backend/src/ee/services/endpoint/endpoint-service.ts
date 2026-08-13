@@ -1,22 +1,37 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, ActionProjectType } from "@app/db/schemas";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
+import { TAlertQueueServiceFactory } from "@app/services/alert/alert-queue";
+import { ENDPOINT_TRANSFER_VIOLATION_RESOURCE_TYPE } from "@app/services/alert/providers/endpoint-transfer-violation-alert-provider";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { ENDPOINT_AGENT_POLL_INTERVAL_SECONDS, ENDPOINT_DEFAULT_TRANSFER_WINDOW_SECONDS } from "./endpoint-constants";
+import {
+  ENDPOINT_AGENT_POLL_INTERVAL_SECONDS,
+  ENDPOINT_DEFAULT_TRANSFER_WINDOW_SECONDS,
+  ENDPOINT_LOOPBACK_FIRST_OCTET,
+  ENDPOINT_LOOPBACK_LAST_OCTET,
+  ENDPOINT_LOOPBACK_PREFIX,
+  ENDPOINT_TRANSFER_BUCKET_SECONDS
+} from "./endpoint-constants";
 import { TEndpointCounterDALFactory } from "./endpoint-counter-dal";
+import { TEndpointDeviceAppDALFactory } from "./endpoint-device-app-dal";
 import { TEndpointDeviceDALFactory } from "./endpoint-device-dal";
 import {
   EndpointDestinationKind,
+  EndpointDeviceAppSource,
   EndpointDeviceStatus,
+  EndpointEventType,
   EndpointNetworkRuleAction,
-  EndpointNetworkRuleType
+  EndpointNetworkRuleType,
+  EndpointTargetKind
 } from "./endpoint-enums";
 import { TEndpointEventDALFactory } from "./endpoint-event-dal";
 import {
@@ -30,27 +45,43 @@ import {
 } from "./endpoint-fns";
 import { TEndpointNetworkRuleDALFactory } from "./endpoint-network-rule-dal";
 import { TEndpointProjectResolverFactory } from "./endpoint-project-resolver";
+import { TEndpointTargetAssignmentDALFactory } from "./endpoint-target-assignment-dal";
+import { TEndpointTargetDALFactory } from "./endpoint-target-dal";
+import { TEndpointTransferDALFactory } from "./endpoint-transfer-dal";
 import {
+  TConnectEndpointTargetDTO,
   TCreateEndpointNetworkRuleDTO,
+  TCreateEndpointTargetDTO,
   TDeleteEndpointDeviceDTO,
   TDeleteEndpointNetworkRuleDTO,
+  TDeleteEndpointTargetDTO,
   TEndpointHeartbeatDTO,
   TListEndpointCountersDTO,
+  TListEndpointDeviceAppsDTO,
   TListEndpointEventsDTO,
+  TListEndpointTransferHistoryDTO,
   TRegisterEndpointDeviceDTO,
+  TReportEndpointDeviceAppsDTO,
   TReportEndpointEventsDTO,
-  TUpdateEndpointNetworkRuleDTO
+  TUpdateEndpointNetworkRuleDTO,
+  TUpdateEndpointTargetDTO
 } from "./endpoint-types";
 
 type TEndpointServiceFactoryDep = {
   endpointDeviceDAL: TEndpointDeviceDALFactory;
   endpointNetworkRuleDAL: TEndpointNetworkRuleDALFactory;
   endpointCounterDAL: TEndpointCounterDALFactory;
+  endpointTransferDAL: TEndpointTransferDALFactory;
+  endpointDeviceAppDAL: TEndpointDeviceAppDALFactory;
   endpointEventDAL: TEndpointEventDALFactory;
+  endpointTargetDAL: TEndpointTargetDALFactory;
+  endpointTargetAssignmentDAL: TEndpointTargetAssignmentDALFactory;
   endpointProjectResolver: TEndpointProjectResolverFactory;
   userDAL: Pick<TUserDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
+  alertQueue: Pick<TAlertQueueServiceFactory, "enqueueAlertsForEvent">;
 };
 
 export type TEndpointServiceFactory = ReturnType<typeof endpointServiceFactory>;
@@ -59,11 +90,17 @@ export const endpointServiceFactory = ({
   endpointDeviceDAL,
   endpointNetworkRuleDAL,
   endpointCounterDAL,
+  endpointTransferDAL,
+  endpointDeviceAppDAL,
   endpointEventDAL,
+  endpointTargetDAL,
+  endpointTargetAssignmentDAL,
   endpointProjectResolver,
   userDAL,
   membershipDAL,
-  permissionService
+  permissionService,
+  gatewayV2Service,
+  alertQueue
 }: TEndpointServiceFactoryDep) => {
   // There is one Endpoint project per organization, created on first use, so console callers never
   // pass a projectId and the product needs no create-project flow.
@@ -247,6 +284,32 @@ export const endpointServiceFactory = ({
     return endpointCounterDAL.findByProject({ projectId, deviceId });
   };
 
+  // Where the device's traffic actually went, kept after the live counter has cleared. A counter only
+  // exists while a destination is close to tripping a rule and disappears the moment the transfer
+  // stops, which leaves the console unable to answer the question an admin asks afterwards: who did
+  // this machine talk to, and how much did it send.
+  const listTransferHistory = async (
+    { deviceId, lookbackHours, limit }: TListEndpointTransferHistoryDTO,
+    actor: OrgServiceActor
+  ) => {
+    const projectId = await $authorizeProject(actor, ProjectPermissionActions.Read);
+
+    const since = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
+
+    const history = await endpointTransferDAL.findHistoryByDevice({ projectId, deviceId, since, limit });
+
+    return {
+      transfers: history.map(({ activeBuckets, ...entry }) => ({
+        ...entry,
+        // A peak is only a rate if the span it was measured over travels with it, and the console
+        // should not have to know how wide a bucket is to say "per minute".
+        bucketSeconds: ENDPOINT_TRANSFER_BUCKET_SECONDS,
+        activeSeconds: activeBuckets * ENDPOINT_TRANSFER_BUCKET_SECONDS
+      })),
+      lookbackHours
+    };
+  };
+
   const listNetworkRules = async (actor: OrgServiceActor) => {
     const projectId = await $authorizeProject(actor, ProjectPermissionActions.Read);
 
@@ -323,6 +386,357 @@ export const endpointServiceFactory = ({
     });
   };
 
+  // A gateway is an organization-level resource and a target names one by id, so the id has to be
+  // checked against the caller's own organization. Without this an id from another organization
+  // would be stored and only fail much later, on the device, as a tunnel that never connects.
+  const $assertGatewayInOrg = async (gatewayId: string, orgId: string) => {
+    const gateway = await gatewayV2Service.getGatewayById({ gatewayId });
+    if (gateway.orgId !== orgId) {
+      throw new NotFoundError({ message: `Gateway with ID '${gatewayId}' not found.` });
+    }
+  };
+
+  // A domain target is reached through an address the device claims on its loopback interface and
+  // maps the domain onto. The address is allocated per destination rather than per target, so a host
+  // published on two ports gets one /etc/hosts entry instead of two that contradict each other.
+  const $resolveLoopbackIp = async ({
+    projectId,
+    kind,
+    destination,
+    tx
+  }: {
+    projectId: string;
+    kind: EndpointTargetKind;
+    destination: string;
+    tx?: Parameters<Parameters<typeof endpointTargetDAL.transaction>[0]>[0];
+  }) => {
+    // An IP target claims the destination address itself, so there is nothing to allocate.
+    if (kind !== EndpointTargetKind.Domain) return null;
+
+    const targets = await endpointTargetDAL.find({ projectId }, { tx });
+
+    const sharing = targets.find((target) => target.destination === destination && target.loopbackIp);
+    if (sharing) return sharing.loopbackIp;
+
+    const taken = new Set(targets.map((target) => target.loopbackIp).filter(Boolean));
+    for (let octet = ENDPOINT_LOOPBACK_FIRST_OCTET; octet <= ENDPOINT_LOOPBACK_LAST_OCTET; octet += 1) {
+      const candidate = `${ENDPOINT_LOOPBACK_PREFIX}${octet}`;
+      if (!taken.has(candidate)) return candidate;
+    }
+
+    throw new BadRequestError({
+      message: `This project already uses every available loopback address (${ENDPOINT_LOOPBACK_PREFIX}${ENDPOINT_LOOPBACK_FIRST_OCTET}-${ENDPOINT_LOOPBACK_PREFIX}${ENDPOINT_LOOPBACK_LAST_OCTET}). Delete a target you no longer need.`
+    });
+  };
+
+  // Assignments are replaced wholesale rather than diffed: the console edits them as a set, and a
+  // partial update would leave a device granted access it was just removed from.
+  const $replaceAssignments = async ({
+    targetId,
+    deviceIds,
+    projectId,
+    tx
+  }: {
+    targetId: string;
+    deviceIds: string[];
+    projectId: string;
+    tx: Parameters<Parameters<typeof endpointTargetDAL.transaction>[0]>[0];
+  }) => {
+    const unique = [...new Set(deviceIds)];
+
+    if (unique.length) {
+      const devices = await endpointDeviceDAL.find({ projectId }, { tx });
+      const known = new Set(devices.map((device) => device.id));
+
+      const unknown = unique.find((deviceId) => !known.has(deviceId));
+      if (unknown) {
+        throw new NotFoundError({ message: `Endpoint device with ID '${unknown}' not found.` });
+      }
+    }
+
+    await endpointTargetAssignmentDAL.delete({ targetId }, tx);
+
+    if (unique.length) {
+      await endpointTargetAssignmentDAL.insertMany(
+        unique.map((deviceId) => ({ targetId, deviceId })),
+        tx
+      );
+    }
+  };
+
+  const $attachAssignments = async (targets: Awaited<ReturnType<typeof endpointTargetDAL.findByProjectWithGateway>>) => {
+    const assignments = await endpointTargetAssignmentDAL.findByTargetIdsWithDevice(
+      targets.map((target) => target.id)
+    );
+
+    return targets.map((target) => ({
+      ...target,
+      kind: target.kind as EndpointTargetKind,
+      assignments: assignments
+        .filter((assignment) => assignment.targetId === target.id)
+        .map((assignment) => ({ deviceId: assignment.deviceId, deviceName: assignment.deviceName }))
+    }));
+  };
+
+  const listTargets = async (actor: OrgServiceActor) => {
+    const projectId = await $authorizeProject(actor, ProjectPermissionActions.Read);
+
+    const targets = await endpointTargetDAL.findByProjectWithGateway(projectId);
+
+    return $attachAssignments(targets);
+  };
+
+  const $targetResponse = async (targetId: string, projectId: string) => {
+    const targets = await endpointTargetDAL.findByProjectWithGateway(projectId);
+    const [response] = await $attachAssignments(targets.filter((candidate) => candidate.id === targetId));
+
+    return response;
+  };
+
+  // Both ends are re-read against the project rather than trusted from the path, so a device or a
+  // target from another org reads as missing instead of being quietly linked across a tenant.
+  const $resolveGrantPair = async ({
+    deviceId,
+    targetId,
+    projectId
+  }: {
+    deviceId: string;
+    targetId: string;
+    projectId: string;
+  }) => {
+    const device = await endpointDeviceDAL.findOne({ id: deviceId, projectId });
+    if (!device) {
+      throw new NotFoundError({ message: `Endpoint device with ID '${deviceId}' not found.` });
+    }
+
+    const target = await endpointTargetDAL.findOne({ id: targetId, projectId });
+    if (!target) {
+      throw new NotFoundError({ message: `Endpoint target with ID '${targetId}' not found.` });
+    }
+
+    return { device, target };
+  };
+
+  // Granting one device at a time, rather than through the target's whole device list. The console
+  // manages access from the device, so a read-modify-write of every other device's grant would be
+  // both unnecessary and a race between two admins editing different devices.
+  const grantDeviceTargetAccess = async (
+    { deviceId, targetId }: { deviceId: string; targetId: string },
+    actor: OrgServiceActor
+  ) => {
+    const projectId = await $authorizeProject(actor, ProjectPermissionActions.Edit);
+    await $resolveGrantPair({ deviceId, targetId, projectId });
+
+    await endpointTargetDAL.transaction(async (tx) => {
+      await endpointTargetAssignmentDAL.grantIfAbsent({ targetId, deviceId }, tx);
+
+      // What a device may reach is part of the config it polls, so the grant does not reach the
+      // agent until this moves.
+      await endpointDeviceDAL.bumpConfigVersionForProject(projectId, tx);
+    });
+
+    return $targetResponse(targetId, projectId);
+  };
+
+  const revokeDeviceTargetAccess = async (
+    { deviceId, targetId }: { deviceId: string; targetId: string },
+    actor: OrgServiceActor
+  ) => {
+    const projectId = await $authorizeProject(actor, ProjectPermissionActions.Edit);
+    await $resolveGrantPair({ deviceId, targetId, projectId });
+
+    await endpointTargetDAL.transaction(async (tx) => {
+      // Also idempotent: revoking a grant that is already gone leaves the caller where they wanted
+      // to be, so it is not an error.
+      await endpointTargetAssignmentDAL.delete({ targetId, deviceId }, tx);
+      await endpointDeviceDAL.bumpConfigVersionForProject(projectId, tx);
+    });
+
+    return $targetResponse(targetId, projectId);
+  };
+
+  // The table rejects a duplicate address and port too, but a raw constraint violation reaches the
+  // console as a 500 with nothing an admin can act on. This says which target already has it.
+  const $assertAddressIsFree = async ({
+    projectId,
+    destination,
+    port,
+    excludeTargetId
+  }: {
+    projectId: string;
+    destination: string;
+    port: number;
+    excludeTargetId?: string;
+  }) => {
+    const clashing = await endpointTargetDAL.findOne({ projectId, destination, port });
+    if (clashing && clashing.id !== excludeTargetId) {
+      throw new BadRequestError({
+        message: `The target '${clashing.name}' already publishes ${destination}:${port}. Two targets cannot share one address and port.`
+      });
+    }
+  };
+
+  const createTarget = async (dto: TCreateEndpointTargetDTO, actor: OrgServiceActor) => {
+    const projectId = await $authorizeProject(actor, ProjectPermissionActions.Create);
+
+    await $assertGatewayInOrg(dto.gatewayId, actor.orgId);
+    await $assertAddressIsFree({ projectId, destination: dto.destination, port: dto.port });
+
+    const target = await endpointTargetDAL.transaction(async (tx) => {
+      const loopbackIp = await $resolveLoopbackIp({ projectId, kind: dto.kind, destination: dto.destination, tx });
+
+      const created = await endpointTargetDAL.create(
+        {
+          projectId,
+          name: dto.name,
+          kind: dto.kind,
+          destination: dto.destination,
+          ip: dto.ip ?? null,
+          port: dto.port,
+          loopbackIp,
+          gatewayId: dto.gatewayId,
+          isEnabled: dto.isEnabled ?? true
+        },
+        tx
+      );
+
+      await $replaceAssignments({ targetId: created.id, deviceIds: dto.deviceIds ?? [], projectId, tx });
+
+      // Both the target and its assignments are part of what a device is allowed to reach, so both
+      // have to bump the version the agent polls, or the grant never leaves the console.
+      await endpointDeviceDAL.bumpConfigVersionForProject(projectId, tx);
+
+      return created;
+    });
+
+    const [withGateway] = await endpointTargetDAL.findByProjectWithGateway(projectId).then((targets) =>
+      targets.filter((candidate) => candidate.id === target.id)
+    );
+
+    const [response] = await $attachAssignments([withGateway]);
+    return response;
+  };
+
+  const updateTarget = async ({ targetId, ...dto }: TUpdateEndpointTargetDTO, actor: OrgServiceActor) => {
+    const projectId = await $authorizeProject(actor, ProjectPermissionActions.Edit);
+
+    const target = await endpointTargetDAL.findOne({ id: targetId, projectId });
+    if (!target) {
+      throw new NotFoundError({ message: `Endpoint target with ID '${targetId}' not found.` });
+    }
+
+    if (dto.gatewayId) {
+      await $assertGatewayInOrg(dto.gatewayId, actor.orgId);
+    }
+
+    if (dto.destination !== undefined || dto.port !== undefined) {
+      await $assertAddressIsFree({
+        projectId,
+        destination: dto.destination ?? target.destination,
+        port: dto.port ?? target.port,
+        excludeTargetId: targetId
+      });
+    }
+
+    await endpointTargetDAL.transaction(async (tx) => {
+      const kind = (dto.kind ?? target.kind) as EndpointTargetKind;
+      const destination = dto.destination ?? target.destination;
+
+      // The address the device listens on follows the destination, so a change to either has to
+      // re-allocate it. Leaving a stale loopback address behind would point /etc/hosts at a listener
+      // for a different service.
+      const loopbackIp =
+        kind === target.kind && destination === target.destination
+          ? target.loopbackIp
+          : await $resolveLoopbackIp({ projectId, kind, destination, tx });
+
+      await endpointTargetDAL.updateById(
+        targetId,
+        {
+          name: dto.name,
+          kind: dto.kind,
+          destination: dto.destination,
+          ip: dto.ip === undefined ? undefined : dto.ip,
+          port: dto.port,
+          gatewayId: dto.gatewayId,
+          isEnabled: dto.isEnabled,
+          loopbackIp
+        },
+        tx
+      );
+
+      if (dto.deviceIds) {
+        await $replaceAssignments({ targetId, deviceIds: dto.deviceIds, projectId, tx });
+      }
+
+      await endpointDeviceDAL.bumpConfigVersionForProject(projectId, tx);
+    });
+
+    const updated = await endpointTargetDAL
+      .findByProjectWithGateway(projectId)
+      .then((targets) => targets.filter((candidate) => candidate.id === targetId));
+
+    const [response] = await $attachAssignments(updated);
+    return response;
+  };
+
+  const deleteTarget = async ({ targetId }: TDeleteEndpointTargetDTO, actor: OrgServiceActor) => {
+    const projectId = await $authorizeProject(actor, ProjectPermissionActions.Delete);
+
+    const target = await endpointTargetDAL.findOne({ id: targetId, projectId });
+    if (!target) {
+      throw new NotFoundError({ message: `Endpoint target with ID '${targetId}' not found.` });
+    }
+
+    return endpointTargetDAL.transaction(async (tx) => {
+      await endpointTargetDAL.deleteById(targetId, tx);
+      await endpointDeviceDAL.bumpConfigVersionForProject(projectId, tx);
+
+      return { ...target, kind: target.kind as EndpointTargetKind, assignments: [] };
+    });
+  };
+
+  // What the agent calls each time something on the device opens a connection to a private target.
+  // It mints a client certificate stamped with where the gateway should dial; the certificate lives
+  // five minutes, which is why this is per connection rather than per target.
+  const connectTarget = async ({ targetId }: TConnectEndpointTargetDTO, actor: OrgServiceActor) => {
+    const device = await $resolveDeviceForAgent(actor);
+
+    const target = await endpointTargetDAL.findAssignedToDeviceById({ deviceId: device.id, targetId });
+
+    // Not assigned and does not exist are the same answer on purpose: a device must not be able to
+    // discover which targets exist by probing ids.
+    if (!target) {
+      throw new NotFoundError({ message: `Endpoint target with ID '${targetId}' is not assigned to this device.` });
+    }
+
+    if (!target.isEnabled) {
+      throw new BadRequestError({ message: `Endpoint target '${target.name}' is disabled.` });
+    }
+
+    if (!target.gatewayId) {
+      throw new BadRequestError({
+        message: `Endpoint target '${target.name}' has no gateway, so there is nothing to reach it through.`
+      });
+    }
+
+    // A domain target's 'ip' is where the gateway dials when its own DNS cannot resolve the name the
+    // device uses. An IP target is already an address.
+    const targetHost = target.kind === EndpointTargetKind.Ip ? target.destination : target.ip || target.destination;
+
+    const connectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId: target.gatewayId,
+      targetHost,
+      targetPort: target.port
+    });
+
+    if (!connectionDetails) {
+      throw new NotFoundError({ message: `Gateway for target '${target.name}' not found.` });
+    }
+
+    return connectionDetails;
+  };
+
   const listEvents = async ({ limit, cursor, deviceId }: TListEndpointEventsDTO, actor: OrgServiceActor) => {
     const projectId = await $authorizeProject(actor, ProjectPermissionActions.Read);
 
@@ -343,6 +757,19 @@ export const endpointServiceFactory = ({
     const device = await $resolveDeviceForAgent(actor);
 
     const rules = await endpointNetworkRuleDAL.find({ projectId: device.projectId, isEnabled: true });
+    const targets = await endpointTargetDAL.findAssignedToDevice(device.id);
+
+    // One entry per target, each naming the address the device listens on for it. A domain target
+    // also carries the name to map onto that address; an IP target claims its own address, so it has
+    // no domain and needs no /etc/hosts entry.
+    const hostEntries = targets.map((target) => ({
+      targetId: target.id,
+      name: target.name,
+      kind: target.kind as EndpointTargetKind,
+      domain: target.kind === EndpointTargetKind.Domain ? target.destination : "",
+      ip: (target.kind === EndpointTargetKind.Domain ? target.loopbackIp : target.destination) as string,
+      port: target.port
+    }));
 
     return {
       config: {
@@ -378,9 +805,12 @@ export const endpointServiceFactory = ({
             }))
         },
         privateAccess: {
-          enabled: false,
+          enabled: hostEntries.length > 0,
+          // A CIDR target needs a TUN device, split-tunnel routing and DNS interception on the
+          // agent. All three are roadmap, so this stays empty rather than promising a grant the
+          // device cannot honour.
           assignedCidrs: [] as string[],
-          hostEntries: [] as { domain: string; ip: string }[],
+          hostEntries,
           gateway: null
         }
       }
@@ -392,7 +822,19 @@ export const endpointServiceFactory = ({
   const heartbeat = async (dto: TEndpointHeartbeatDTO, actor: OrgServiceActor) => {
     const device = await $resolveDeviceForAgent(actor);
 
+    // Only written when the agent actually sent it. Spreading an undefined field would blank a fact
+    // the device reported earlier, so the machine would appear to forget its own serial number
+    // between heartbeats.
+    const systemInfo = dto.device
+      ? {
+          ...dto.device,
+          bootedAt: dto.device.bootedAt ? new Date(dto.device.bootedAt) : null,
+          systemInfoReportedAt: new Date()
+        }
+      : undefined;
+
     const stampedDevice = await endpointDeviceDAL.stampHeartbeat(device.id, {
+      systemInfo,
       lastSeenAt: new Date(),
       agentVersion: dto.agentVersion,
       pfEnabled: dto.enforcement.pfEnabled,
@@ -429,7 +871,73 @@ export const endpointServiceFactory = ({
     // no longer being measured, so the console should stop showing it rather than freeze a stale bar.
     await endpointCounterDAL.deleteReportedBefore({ deviceId: device.id, reportedAt });
 
+    if (dto.transfers?.length) {
+      // Which destinations were cut off is only known from the counters, so the flag is carried over
+      // rather than re-derived: history is where an admin looks to find out that a transfer was
+      // stopped, long after the counter that stopped it has gone.
+      const blockedDestinations = new Set(
+        dto.counters.filter((counter) => counter.tripped).map((counter) => counter.destination)
+      );
+
+      // Banked against the minute the report landed in, not the minute the transfer began. The agent
+      // reports every second or two, so the difference is bounded by that, and using the report time
+      // keeps a device with a skewed clock from writing into a bucket that has already been read.
+      const bucketMs = ENDPOINT_TRANSFER_BUCKET_SECONDS * 1000;
+      const bucketStartedAt = new Date(Math.floor(reportedAt.getTime() / bucketMs) * bucketMs);
+
+      await endpointTransferDAL.recordTransfers(
+        dto.transfers.map((transfer) => ({
+          deviceId: device.id,
+          destination: transfer.destination,
+          bucketStartedAt,
+          bytesOut: transfer.bytesOut,
+          seenAt: reportedAt,
+          blocked: blockedDestinations.has(transfer.destination)
+        }))
+      );
+    }
+
     return { device: { configVersion: stampedDevice.configVersion } };
+  };
+
+  // What is installed on the machine, replaced wholesale on each report. Deliberately not on the
+  // heartbeat: an inventory is a few hundred rows that change on the order of days, and the heartbeat
+  // is the highest-frequency call in the product.
+  const reportDeviceApps = async (dto: TReportEndpointDeviceAppsDTO, actor: OrgServiceActor) => {
+    const device = await $resolveDeviceForAgent(actor);
+
+    const reportedAt = new Date();
+
+    // Two bundles cannot share an install path, but an agent that walked overlapping roots can still
+    // report one twice, and the upsert would then fail on its own conflict key mid-statement.
+    const byPath = new Map(dto.apps.map((app) => [app.path, app]));
+
+    await endpointDeviceAppDAL.replaceForDevice(device.id, [...byPath.values()], reportedAt);
+
+    // Stamped after the replace, so a failed write does not leave the console claiming an inventory
+    // it does not have. An empty list is still a report: it means nothing is installed, which reads
+    // very differently from never having run.
+    await endpointDeviceDAL.updateById(device.id, { appsReportedAt: reportedAt });
+
+    return { acceptedCount: byPath.size };
+  };
+
+  const listDeviceApps = async ({ deviceId }: TListEndpointDeviceAppsDTO, actor: OrgServiceActor) => {
+    const projectId = await $authorizeProject(actor, ProjectPermissionActions.Read);
+
+    const device = await endpointDeviceDAL.findOne({ id: deviceId, projectId });
+    if (!device) {
+      throw new NotFoundError({ message: `Endpoint device with ID '${deviceId}' not found.` });
+    }
+
+    const apps = await endpointDeviceAppDAL.findByDevice({ projectId, deviceId });
+
+    return {
+      apps: apps.map((app) => ({ ...app, source: app.source as EndpointDeviceAppSource })),
+      // Null until the agent has reported once. The console needs to tell "nothing installed" apart
+      // from "this device has never sent an inventory", and an empty array says both.
+      reportedAt: device.appsReportedAt ?? null
+    };
   };
 
   const reportEvents = async (dto: TReportEndpointEventsDTO, actor: OrgServiceActor) => {
@@ -454,6 +962,29 @@ export const endpointServiceFactory = ({
       }))
     );
 
+    // Only the rows that actually landed: a replayed batch inserts nothing, and re-alerting on it
+    // would mail an admin again about a violation they have already been told about.
+    const trippedCount = inserted.filter(
+      (event) => event.eventType === EndpointEventType.NetworkTransferThresholdTripped
+    ).length;
+
+    if (trippedCount) {
+      // After the insert, never inside it, and deliberately not awaited into the response: the agent
+      // is waiting on this call, and a slow queue must not hold up the report. A failure here loses
+      // the immediate mail, not the violation — the daily sweep still finds the event.
+      alertQueue
+        .enqueueAlertsForEvent({
+          resourceType: ENDPOINT_TRANSFER_VIOLATION_RESOURCE_TYPE,
+          orgId: actor.orgId
+        })
+        .catch((err) =>
+          logger.error(
+            err,
+            `Could not enqueue transfer violation alerts [deviceId=${device.id}] [orgId=${actor.orgId}]`
+          )
+        );
+    }
+
     return { acceptedCount: inserted.length };
   };
 
@@ -461,15 +992,25 @@ export const endpointServiceFactory = ({
     getProjectId,
     listDevices,
     listCounters,
+    listTransferHistory,
     registerDevice,
     deleteDevice,
     listNetworkRules,
     createNetworkRule,
     updateNetworkRule,
     deleteNetworkRule,
+    listTargets,
+    createTarget,
+    updateTarget,
+    deleteTarget,
+    grantDeviceTargetAccess,
+    revokeDeviceTargetAccess,
+    connectTarget,
     listEvents,
     getAgentConfig,
     heartbeat,
-    reportEvents
+    reportEvents,
+    reportDeviceApps,
+    listDeviceApps
   };
 };

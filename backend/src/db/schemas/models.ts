@@ -340,7 +340,14 @@ export enum TableName {
   EndpointDevice = "endpoint_devices",
   EndpointNetworkRule = "endpoint_network_rules",
   EndpointCounter = "endpoint_counters",
+  EndpointTransferBucket = "endpoint_transfer_buckets",
+  EndpointDeviceCommand = "endpoint_device_commands",
+  EndpointDeviceApp = "endpoint_device_apps",
   EndpointEvent = "endpoint_events",
+
+  // Infisical Endpoint (private access to gated resources)
+  EndpointTarget = "endpoint_targets",
+  EndpointTargetAssignment = "endpoint_target_assignments",
 
   // Infisical Endpoint (device secret scanning)
   EndpointScanPolicy = "endpoint_scan_policies",

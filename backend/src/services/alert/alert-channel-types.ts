@@ -43,6 +43,9 @@ export type TAlertPayload = {
   resourceOwnerKind: string; // display noun of the entity the alert is configured on, e.g. "Machine Identity"
   severity: TAlertSeverity;
   summary: string; // one-line human summary
+  // Optional replacement for the email body's default sentence, which is phrased for something about
+  // to happen ("take action before X"). A provider whose event has already occurred supplies its own.
+  detailLine?: string;
   items: TAlertItem[];
 };
 

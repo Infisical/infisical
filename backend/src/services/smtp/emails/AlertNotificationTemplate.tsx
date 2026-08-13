@@ -6,6 +6,9 @@ import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 interface AlertNotificationTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   alertName: string;
   eventLabel: string;
+  // Overrides the default sentence, which is phrased for something that is about to happen. An
+  // event that already happened needs the opposite tense.
+  detailLine?: string;
   resourceKind: string;
   resourceOwnerKind: string;
   summary: string;
@@ -24,6 +27,7 @@ const SEVERITY_STYLES: Record<string, { label: string; color: string; background
 export const AlertNotificationTemplate = ({
   alertName,
   eventLabel,
+  detailLine,
   resourceKind,
   resourceOwnerKind,
   summary,
@@ -61,8 +65,7 @@ export const AlertNotificationTemplate = ({
       <Heading className="text-black text-[20px] leading-[28px] text-center font-semibold p-0 mx-0">{title}</Heading>
 
       <Text className="text-gray-600 text-[14px] leading-[22px] mt-[16px] mb-[0px]">
-        {summary}. Review the {resourceLabel} below and take action before {eventLabel.toLowerCase()} to avoid
-        disruption.
+        {detailLine ?? `${summary}. Review the ${resourceLabel} below and take action before ${eventLabel.toLowerCase()} to avoid disruption.`}
       </Text>
 
       <Section className="mt-[28px] mb-[8px]">

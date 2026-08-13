@@ -31,6 +31,8 @@ const getZodPrimitiveType = (type: string) => {
       return "z.date()";
     case "integer":
       return "z.number()";
+    case "real":
+      return "z.number()";
     case "bigint":
       return "z.coerce.number()";
     case "text":

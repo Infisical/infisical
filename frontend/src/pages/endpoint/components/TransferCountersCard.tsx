@@ -67,7 +67,12 @@ export const TransferCountersCard = ({ deviceId }: Props) => {
   const rules = useMemo(() => {
     const byRule = new Map<
       string,
-      { name: string; threshold: number; windowSeconds?: number | null; counters: TEndpointCounter[] }
+      {
+        name: string;
+        threshold: number;
+        windowSeconds?: number | null;
+        counters: TEndpointCounter[];
+      }
     >();
 
     (counters ?? []).forEach((counter) => {
@@ -91,10 +96,11 @@ export const TransferCountersCard = ({ deviceId }: Props) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Live Transfer</CardTitle>
+        <CardTitle>Live Traffic</CardTitle>
         <CardDescription>
-          How much this device is currently sending to each destination, measured on the device itself
-          over the rule's window. Nobody configures these: they appear as the device starts sending.
+          How much this device is currently sending to each destination, measured on the device
+          itself over the rule's window. Nobody configures these: they appear as the device starts
+          sending.
         </CardDescription>
       </CardHeader>
 

@@ -1,19 +1,31 @@
+import { registerEndpointAgentAppRouter } from "./endpoint-agent-app-router";
+import { registerEndpointAgentCommandRouter } from "./endpoint-agent-command-router";
 import { registerEndpointAgentRouter } from "./endpoint-agent-router";
 import { registerEndpointAgentScanRouter } from "./endpoint-agent-scan-router";
+import { registerEndpointAppRouter } from "./endpoint-app-router";
+import { registerEndpointCommandRouter } from "./endpoint-command-router";
 import { registerEndpointCounterRouter } from "./endpoint-counter-router";
 import { registerEndpointDeviceRouter } from "./endpoint-device-router";
 import { registerEndpointEventRouter } from "./endpoint-event-router";
 import { registerEndpointNetworkRuleRouter } from "./endpoint-network-rule-router";
 import { registerEndpointProjectRouter } from "./endpoint-project-router";
 import { registerEndpointScanRouter } from "./endpoint-scan-router";
+import { registerEndpointTargetRouter } from "./endpoint-target-router";
+import { registerEndpointTransferRouter } from "./endpoint-transfer-router";
 
 export const registerEndpointRouters = async (server: FastifyZodProvider) => {
   await server.register(registerEndpointProjectRouter);
   await server.register(registerEndpointDeviceRouter, { prefix: "/devices" });
   await server.register(registerEndpointNetworkRuleRouter, { prefix: "/network-rules" });
+  await server.register(registerEndpointTargetRouter, { prefix: "/targets" });
   await server.register(registerEndpointEventRouter, { prefix: "/events" });
   await server.register(registerEndpointCounterRouter, { prefix: "/counters" });
+  await server.register(registerEndpointTransferRouter, { prefix: "/transfers" });
+  await server.register(registerEndpointAppRouter, { prefix: "/apps" });
+  await server.register(registerEndpointCommandRouter, { prefix: "/commands" });
   await server.register(registerEndpointAgentRouter, { prefix: "/agent" });
   await server.register(registerEndpointScanRouter, { prefix: "/scan" });
   await server.register(registerEndpointAgentScanRouter, { prefix: "/agent" });
+  await server.register(registerEndpointAgentCommandRouter, { prefix: "/agent" });
+  await server.register(registerEndpointAgentAppRouter, { prefix: "/agent" });
 };

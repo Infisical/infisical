@@ -17,7 +17,10 @@ export enum AlertChannelType {
 
 export enum AlertPrincipalType {
   User = "user",
-  Group = "group"
+  Group = "group",
+  // Resolved to the org's current admins at send time rather than stored as a user list, so the
+  // recipients follow role changes.
+  OrgAdmins = "org-admins"
 }
 
 export const MIN_ALERT_BEFORE_DAYS = 1;

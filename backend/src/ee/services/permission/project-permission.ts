@@ -266,6 +266,17 @@ export enum ProjectPermissionInsightsActions {
   DeleteReport = "delete-report"
 }
 
+// Deliberately its own subject rather than an action on Endpoint. The agent runs as root, so
+// Execute is the right to run arbitrary code as root on an employee's laptop — a different
+// privilege in kind from editing a network rule, and one that has to be grantable on its own.
+// Read is separated from Execute for the same reason: command output routinely contains whatever
+// was on the machine, so reviewing the log is not the same right as issuing a command.
+export enum ProjectPermissionEndpointCommandActions {
+  Read = "read",
+  Execute = "execute",
+  Cancel = "cancel"
+}
+
 export enum ProjectPermissionHoneyTokenActions {
   Read = "read",
   ReadCredentials = "read-credentials",
@@ -360,7 +371,8 @@ export enum ProjectPermissionSub {
   HoneyTokens = "honey-tokens",
   ProxiedServices = "proxied-services",
   Insights = "insights",
-  Endpoint = "endpoint"
+  Endpoint = "endpoint",
+  EndpointCommand = "endpoint-command"
 }
 
 // Structure: { [subject]: { [action]: allowedConditionKeys[] } }
@@ -688,6 +700,7 @@ export type ProjectPermissionSet =
       )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.Endpoint]
+  | [ProjectPermissionEndpointCommandActions, ProjectPermissionSub.EndpointCommand]
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
@@ -1599,6 +1612,13 @@ const GeneralPermissionSchema = [
     subject: z.literal(ProjectPermissionSub.Endpoint).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.EndpointCommand).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionEndpointCommandActions).describe(
       "Describe what action an entity can take."
     )
   }),
