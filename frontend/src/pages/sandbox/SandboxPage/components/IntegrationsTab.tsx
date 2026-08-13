@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { KeyRoundIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { KeyRoundIcon, MessageSquareIcon, PlusIcon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -19,6 +19,7 @@ import {
   IconButton
 } from "@app/components/v3";
 import {
+  SandboxIntegrationType,
   TSandbox,
   useGetSandboxCatalog,
   useRemoveSandboxIntegration
@@ -26,11 +27,13 @@ import {
 
 import { AddIntegrationSheet } from "./AddIntegrationSheet";
 import { INTEGRATION_ICONS } from "./integrationIcons";
+import { SlackConversationSheet } from "./SlackConversationSheet";
 
 export const IntegrationsTab = ({ sandbox }: { sandbox: TSandbox }) => {
   const { data: catalog } = useGetSandboxCatalog();
   const removeIntegration = useRemoveSandboxIntegration();
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isSlackOpen, setIsSlackOpen] = useState(false);
 
   const handleRemove = async (integrationId: string) => {
     await removeIntegration.mutateAsync({ sandboxId: sandbox.id, integrationId });
@@ -96,6 +99,18 @@ export const IntegrationsTab = ({ sandbox }: { sandbox: TSandbox }) => {
                       <p className="mt-0.5 truncate font-mono text-[11px] text-muted">
                         {integration.secret.secretKey}
                       </p>
+                      {integration.type === SandboxIntegrationType.Slack && (
+                        <button
+                          type="button"
+                          onClick={() => setIsSlackOpen(true)}
+                          className="mt-1.5 flex items-center gap-1.5 text-[11px] text-accent hover:text-foreground"
+                        >
+                          <MessageSquareIcon className="size-3" />
+                          {sandbox.slackChannelId
+                            ? `Listening on ${sandbox.slackChannelId}${sandbox.slackThreadTs ? " (thread)" : ""}`
+                            : "Connect a channel to talk to the agent"}
+                        </button>
+                      )}
                     </div>
                   </div>
                   <IconButton
@@ -116,6 +131,11 @@ export const IntegrationsTab = ({ sandbox }: { sandbox: TSandbox }) => {
           sandboxId={sandbox.id}
           isOpen={isAddOpen}
           onOpenChange={setIsAddOpen}
+        />
+        <SlackConversationSheet
+          sandbox={sandbox}
+          isOpen={isSlackOpen}
+          onOpenChange={setIsSlackOpen}
         />
       </CardContent>
     </Card>

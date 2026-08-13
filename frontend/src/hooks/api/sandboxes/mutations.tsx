@@ -9,6 +9,7 @@ import {
   TAgentMessage,
   TAgentTurn,
   TCreateSandboxDTO,
+  TLinkSandboxSlackDTO,
   TSandbox,
   TSandboxCredentialConfig,
   TSandboxExecResult,
@@ -208,4 +209,22 @@ export const streamAgentChat = async (
       }
     });
   }
+};
+
+export const useLinkSandboxSlack = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ sandboxId, ...body }: TLinkSandboxSlackDTO) => {
+      const { data } = await apiRequest.post<{ sandbox: TSandbox }>(
+        `/api/v1/sandboxes/${sandboxId}/slack-link`,
+        body
+      );
+      return data.sandbox;
+    },
+    onSuccess: (_, { sandboxId }) => {
+      queryClient.invalidateQueries({ queryKey: sandboxKeys.list() });
+      queryClient.invalidateQueries({ queryKey: sandboxKeys.byId(sandboxId) });
+    }
+  });
 };

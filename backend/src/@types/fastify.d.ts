@@ -241,6 +241,10 @@ declare module "fastify" {
 
   interface FastifyRequest {
     realIp: string;
+    // Raw JSON body, kept only for routes that verify a third-party signature over the exact
+    // bytes sent (Slack). Re-serializing the parsed object changes unicode escaping and
+    // whitespace, so the MAC would not match.
+    rawJsonBody?: string;
     // used for mfa session authentication
     mfa: {
       userId: string;

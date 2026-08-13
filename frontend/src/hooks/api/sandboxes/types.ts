@@ -94,6 +94,16 @@ export type TSandbox = {
   createdAt: string;
   lastActivityAt: string | null;
   commandsRun: number;
+  slackChannelId: string | null;
+  slackThreadTs: string | null;
+};
+
+export type TLinkSandboxSlackDTO = {
+  sandboxId: string;
+  /** Null unlinks the sandbox from Slack. */
+  channelId: string | null;
+  /** Scopes the link to one thread in that channel. Null means the whole channel. */
+  threadTs: string | null;
 };
 
 export type TSandboxExecResult = {

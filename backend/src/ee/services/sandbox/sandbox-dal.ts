@@ -27,5 +27,20 @@ export const sandboxDALFactory = (db: TDbClient) => {
       );
   };
 
-  return { ...sandboxOrm, findByOrg, findPamAccountTargets };
+  const findBySlackConversation = async (
+    channelId: string,
+    threadTs: string | null
+  ): Promise<TSandboxes | undefined> => {
+    if (threadTs) {
+      const threaded = await db
+        .replicaNode()(TableName.Sandbox)
+        .where({ slackChannelId: channelId, slackThreadTs: threadTs })
+        .first();
+      if (threaded) return threaded;
+    }
+
+    return db.replicaNode()(TableName.Sandbox).where({ slackChannelId: channelId }).whereNull("slackThreadTs").first();
+  };
+
+  return { ...sandboxOrm, findByOrg, findPamAccountTargets, findBySlackConversation };
 };

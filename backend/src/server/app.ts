@@ -90,6 +90,22 @@ export const main = async ({
 
   // @ts-expect-error akhilmhdh: even on setting it fastify as Redis | Cluster it's throwing error
   server.decorate("redis", redis);
+  // Parse JSON as normal but keep the original text on the request. Signature-verifying routes
+  // (Slack events) hash the exact bytes the caller sent; a re-serialized body will not match.
+  server.addContentTypeParser("application/json", { parseAs: "string" }, (req, body: string | Buffer, done) => {
+    const strBody = body instanceof Buffer ? body.toString() : body;
+    req.rawJsonBody = strBody;
+    if (!strBody) {
+      done(null, undefined);
+      return;
+    }
+    try {
+      done(null, JSON.parse(strBody) as unknown);
+    } catch (err) {
+      done(err as Error, undefined);
+    }
+  });
+
   server.addContentTypeParser("application/scim+json", { parseAs: "string" }, (_, body: string | Buffer, done) => {
     try {
       const strBody = body instanceof Buffer ? body.toString() : body;

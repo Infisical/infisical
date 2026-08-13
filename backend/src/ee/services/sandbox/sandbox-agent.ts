@@ -92,6 +92,9 @@ const streamGemini = async (
 
   const parts: TGeminiPart[] = [];
   let buffer = "";
+  // Kept so a stream that yields no parts can say why. An error frame and an empty answer are
+  // otherwise indistinguishable, and both surface as a chat window that never responds.
+  let lastFrame = "";
 
   await new Promise<void>((resolve, reject) => {
     response.data.on("data", (chunk: Buffer) => {
@@ -103,6 +106,7 @@ const streamGemini = async (
       buffer = frames.pop() ?? "";
 
       frames.forEach((frame) => {
+        if (frame.trim()) lastFrame = frame;
         const line = frame.split(/\r?\n/).find((l) => l.startsWith("data:"));
         if (!line) return;
 
@@ -136,6 +140,16 @@ const streamGemini = async (
     });
     response.data.on("error", reject);
   });
+
+  if (!parts.length) {
+    logger.error(
+      { model: GEMINI_MODEL, lastFrame: lastFrame.slice(0, 500) },
+      `Agent model returned nothing [model=${GEMINI_MODEL}]`
+    );
+    throw new BadRequestError({
+      message: `The agent model '${GEMINI_MODEL}' returned no response. ${lastFrame.slice(0, 200) || "The stream was empty."}`
+    });
+  }
 
   return parts;
 };

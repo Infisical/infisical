@@ -1,4 +1,5 @@
 import { OrganizationActionScope, SecretType, TSandboxes } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
@@ -18,6 +19,20 @@ import { TSandboxProjectResolverFactory } from "./sandbox-project-resolver";
 import { buildSystemPrompt } from "./sandbox-prompt";
 import { getSandboxProxyLog, startSandboxProxy, stopSandboxProxy } from "./sandbox-proxy";
 import { bootSandbox, execInSandbox, isSandboxBooted, setSandboxEnv, shutdownSandbox } from "./sandbox-runtime";
+import {
+  assertSlackConfigured,
+  buildAddReactionCommand,
+  buildInboxDeliveryCommand,
+  buildPostMessageCommand,
+  isDuplicateSlackMessage,
+  logSlackRelay,
+  parseSlackMessage,
+  SLACK_ACK_REACTION,
+  SLACK_DONE_REACTION,
+  TSandboxSlackMessage,
+  TSlackEventEnvelope,
+  verifySlackSignature
+} from "./sandbox-slack";
 import {
   SandboxStatus,
   TAddSandboxIntegrationDTO,
@@ -45,7 +60,22 @@ const EMPTY_GRANTS: TSandboxGrants = { integrations: [], pamAccountIds: [] };
 const normalizeGrants = (value: unknown): TSandboxGrants => {
   const grants = (value ?? {}) as Partial<TSandboxGrants>;
   return {
-    integrations: grants.integrations ?? [],
+    // Integrations stored before the credential config existed carry only a secret reference.
+    // The catalog already describes how each type authenticates, so the config is derived rather
+    // than guessed, and the row is read the same way whenever it was written.
+    integrations: (grants.integrations ?? []).map((integration) => {
+      if (integration.credential) return integration;
+
+      const definition = SANDBOX_INTEGRATIONS[integration.type];
+      return {
+        ...integration,
+        credential: {
+          role: definition?.role ?? SandboxCredentialRole.HeaderRewrite,
+          headerName: definition?.headerName ?? "Authorization",
+          headerPrefix: definition?.headerPrefix ?? "Bearer"
+        }
+      };
+    }),
     pamAccountIds: grants.pamAccountIds ?? []
   };
 };
@@ -63,6 +93,8 @@ const toSandbox = (row: TSandboxes): TSandbox => ({
   agentType: (row.agentType as TSandbox["agentType"]) ?? null,
   hasAgentToken: Boolean(row.encryptedAgentToken),
   commandsRun: row.commandsRun,
+  slackChannelId: row.slackChannelId ?? null,
+  slackThreadTs: row.slackThreadTs ?? null,
   lastActivityAt: row.lastActivityAt ? new Date(row.lastActivityAt).toISOString() : null,
   createdAt: new Date(row.createdAt).toISOString()
 });
@@ -478,8 +510,151 @@ export const sandboxServiceFactory = ({
     return sandboxProjectResolver.resolve(actor);
   };
 
+  const linkSlackConversation = async (
+    { sandboxId, channelId, threadTs }: { sandboxId: string; channelId: string | null; threadTs: string | null },
+    actor: OrgServiceActor
+  ) => {
+    await $resolve(sandboxId, actor, true);
+    // A thread without a channel would never match an inbound message, so it is cleared with it.
+    const updated = await sandboxDAL.updateById(sandboxId, {
+      slackChannelId: channelId,
+      slackThreadTs: channelId ? threadTs : null
+    });
+    return toSandbox(updated);
+  };
+
+  /**
+   * Answers a Slack mention. The agent runs here rather than in the sandbox, so its reply comes back
+   * as a string and only the delivery has to happen inside: the API holds no Slack token, and the
+   * integration brokers it on the wire.
+   */
+  const $answerSlackMessage = async (sandbox: TSandboxes, message: TSandboxSlackMessage) => {
+    const replyTo = message.threadTs ?? message.ts;
+
+    // An agent turn takes tens of seconds, and silence that long reads as broken. The reaction needs
+    // a scope the app may not have, so a failure falls back to saying so on the thread.
+    const ack = await execInSandbox(
+      sandbox.id,
+      buildAddReactionCommand({ channelId: message.channelId, messageTs: message.ts, name: SLACK_ACK_REACTION })
+    );
+    const acked = ack.stdout.includes('"ok":true');
+    if (!acked) {
+      // Usually a missing reactions:write scope, but log what Slack said so it is not a guess.
+      logger.info(
+        { sandboxId: sandbox.id, response: ack.stdout.slice(-200), stderr: ack.stderr.slice(-200) },
+        `Slack reaction unavailable, falling back to a message [sandboxId=${sandbox.id}]`
+      );
+      const fallback = await execInSandbox(
+        sandbox.id,
+        buildPostMessageCommand({ channelId: message.channelId, threadTs: replyTo, text: "On it..." })
+      );
+      if (!fallback.stdout.includes('"ok":true')) {
+        logger.warn(
+          { sandboxId: sandbox.id, response: fallback.stdout.slice(-200) },
+          `Could not acknowledge the Slack message at all [sandboxId=${sandbox.id}]`
+        );
+      }
+    }
+
+    try {
+      if (!sandbox.encryptedAgentToken) {
+        throw new BadRequestError({ message: "This sandbox has no agent API key." });
+      }
+
+      const turn = await runAgentTurn({
+        sandboxId: sandbox.id,
+        apiKey: await $decryptClientSecret(sandbox.orgId, sandbox.encryptedAgentToken),
+        systemPrompt: buildSystemPrompt(toSandbox(sandbox), getPamProxies(sandbox.id)),
+        messages: [{ role: "user", content: message.text }]
+      });
+
+      const posted = await execInSandbox(
+        sandbox.id,
+        buildPostMessageCommand({ channelId: message.channelId, threadTs: replyTo, text: turn.reply })
+      );
+      // The exec succeeding only means curl ran. Slack reports its own failures in the body, so a
+      // delivery that never reached the channel would otherwise be logged as an answer.
+      if (!posted.stdout.includes('"ok":true')) {
+        logger.error(
+          { sandboxId: sandbox.id, response: posted.stdout.slice(-300), stderr: posted.stderr.slice(-300) },
+          `Slack rejected the agent's reply [sandboxId=${sandbox.id}]`
+        );
+        return;
+      }
+
+      if (acked) {
+        const done = await execInSandbox(
+          sandbox.id,
+          buildAddReactionCommand({ channelId: message.channelId, messageTs: message.ts, name: SLACK_DONE_REACTION })
+        );
+        if (!done.stdout.includes('"ok":true')) {
+          logger.info(
+            { sandboxId: sandbox.id, response: done.stdout.slice(-200) },
+            `Could not mark the Slack message done [sandboxId=${sandbox.id}]`
+          );
+        }
+      }
+
+      logger.info(`Agent answered a Slack message [sandboxId=${sandbox.id}] [channelId=${message.channelId}]`);
+    } catch (err) {
+      logger.error({ sandboxId: sandbox.id, err }, `Agent failed to answer Slack [sandboxId=${sandbox.id}]`);
+      await execInSandbox(
+        sandbox.id,
+        buildPostMessageCommand({
+          channelId: message.channelId,
+          threadTs: replyTo,
+          text: "I could not answer that. Check the sandbox's agent configuration."
+        })
+      ).catch(() => {});
+    }
+  };
+
+  const handleSlackEvent = async ({
+    rawBody,
+    timestamp,
+    signature
+  }: {
+    rawBody: string;
+    timestamp: string;
+    signature: string;
+  }): Promise<string | null> => {
+    const signingSecret = assertSlackConfigured(getConfig().SANDBOX_SLACK_SIGNING_SECRET);
+    verifySlackSignature({ signingSecret, rawBody, timestamp, signature });
+
+    const envelope = JSON.parse(rawBody) as TSlackEventEnvelope;
+    if (envelope.type === "url_verification") return envelope.challenge ?? null;
+
+    const message = parseSlackMessage(envelope);
+    if (!message) return null;
+
+    if (isDuplicateSlackMessage(message)) {
+      logger.info(`Ignored a repeat Slack delivery [channelId=${message.channelId}] [ts=${message.ts}]`);
+      return null;
+    }
+
+    const sandbox = await sandboxDAL.findBySlackConversation(message.channelId, message.threadTs);
+    if (!sandbox) return null;
+
+    if (!isSandboxBooted(sandbox.id)) {
+      logger.info(`Dropped Slack message for a stopped sandbox [sandboxId=${sandbox.id}]`);
+      return null;
+    }
+
+    await execInSandbox(sandbox.id, buildInboxDeliveryCommand(message));
+    await sandboxDAL.updateById(sandbox.id, { lastActivityAt: new Date() });
+    logSlackRelay(sandbox.id, message);
+
+    // Slack retries anything it does not get a 2xx for within three seconds, and an agent turn is far
+    // slower than that, so the answer is deliberately not awaited.
+    void $answerSlackMessage(sandbox, message);
+
+    return null;
+  };
+
   return {
     chatWithAgent,
+    linkSlackConversation,
+    handleSlackEvent,
     getProxyActivity,
     getSystemPrompt,
     listPamProxies,

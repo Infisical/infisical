@@ -62,7 +62,9 @@ const SandboxSchema = z.object({
   hasAgentToken: z.boolean(),
   createdAt: z.string(),
   lastActivityAt: z.string().nullable(),
-  commandsRun: z.number()
+  commandsRun: z.number(),
+  slackChannelId: z.string().nullable(),
+  slackThreadTs: z.string().nullable()
 });
 
 const ExecResultSchema = z.object({
@@ -449,6 +451,68 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
         req.permission
       );
       return { result };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:sandboxId/slack-link",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "linkSandboxSlackConversation",
+      description:
+        "Point a Slack channel or thread at this sandbox. Messages there are relayed to the agent. Pass a null channel to unlink.",
+      params: SandboxIdParamsSchema,
+      body: z.object({
+        channelId: z
+          .string()
+          .trim()
+          .max(64)
+          .nullable()
+          .describe("Slack channel ID, e.g. C0123456789. Null unlinks the sandbox."),
+        threadTs: z
+          .string()
+          .trim()
+          .max(64)
+          .nullable()
+          .default(null)
+          .describe("Optional thread timestamp, to scope the link to one thread in that channel.")
+      }),
+      response: { 200: z.object({ sandbox: SandboxSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const sandbox = await server.services.sandbox.linkSlackConversation(
+        {
+          sandboxId: req.params.sandboxId,
+          channelId: req.body.channelId,
+          threadTs: req.body.threadTs
+        },
+        req.permission
+      );
+      return { sandbox };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/slack/events",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: true,
+      body: z.unknown(),
+      response: { 200: z.union([z.string(), z.object({ ok: z.literal(true) })]) }
+    },
+    handler: async (req, res) => {
+      const challenge = await server.services.sandbox.handleSlackEvent({
+        rawBody: req.rawJsonBody ?? "",
+        timestamp: String(req.headers["x-slack-request-timestamp"] ?? ""),
+        signature: String(req.headers["x-slack-signature"] ?? "")
+      });
+
+      // Slack's endpoint registration expects the challenge echoed back as plain text.
+      if (challenge) return res.type("text/plain").send(challenge);
+      return { ok: true as const };
     }
   });
 };

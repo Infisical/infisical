@@ -439,6 +439,9 @@ const envSchema = z
     ),
     WORKFLOW_SLACK_CLIENT_ID: zpStr(z.string().optional()),
     WORKFLOW_SLACK_CLIENT_SECRET: zpStr(z.string().optional()),
+    // Verifies inbound Slack events for two-way agent sandboxes. Without it the endpoint refuses
+    // every request, since the signature is the only thing authenticating Slack as the caller.
+    SANDBOX_SLACK_SIGNING_SECRET: zpStr(z.string().optional()),
     ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT: zodStrBool.default("true"),
 
     // Special Detection Feature

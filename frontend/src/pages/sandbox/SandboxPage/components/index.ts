@@ -7,3 +7,4 @@ export * from "./OverviewTab";
 export * from "./PamAccountsTab";
 export * from "./SandboxChat";
 export * from "./SandboxTerminal";
+export * from "./SlackConversationSheet";

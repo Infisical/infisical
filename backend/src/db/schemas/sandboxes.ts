@@ -25,7 +25,9 @@ export const SandboxesSchema = z.object({
   encryptedAgentToken: zodBuffer.nullable().optional(),
   identityId: z.string().uuid().nullable().optional(),
   identityClientId: z.string().nullable().optional(),
-  encryptedIdentityClientSecret: zodBuffer.nullable().optional()
+  encryptedIdentityClientSecret: zodBuffer.nullable().optional(),
+  slackChannelId: z.string().nullable().optional(),
+  slackThreadTs: z.string().nullable().optional()
 });
 
 export type TSandboxes = z.infer<typeof SandboxesSchema>;

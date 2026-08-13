@@ -63,6 +63,8 @@ export type TSandbox = {
   createdAt: string;
   lastActivityAt: string | null;
   commandsRun: number;
+  slackChannelId: string | null;
+  slackThreadTs: string | null;
 };
 
 export type TSandboxExecResult = {
