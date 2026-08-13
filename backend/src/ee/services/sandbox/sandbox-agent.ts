@@ -11,7 +11,8 @@ import { execInSandbox } from "./sandbox-runtime";
  * itself needs no credential handling.
  */
 
-const GEMINI_MODEL = "gemini-3.6-flash";
+/** Used when a sandbox has not picked a model, and for sandboxes created before it was selectable. */
+export const DEFAULT_GEMINI_MODEL = "gemini-3.6-flash";
 const GEMINI_TIMEOUT_MS = 60_000;
 const MAX_TOOL_ROUNDS = 30;
 
@@ -75,13 +76,14 @@ const RUN_COMMAND_TOOL = {
  * caller can see whether the model asked for a tool.
  */
 const streamGemini = async (
+  model: string,
   apiKey: string,
   systemPrompt: string,
   contents: TGeminiContent[],
   onText: (text: string) => void
 ): Promise<TGeminiPart[]> => {
   const response = await request.post<NodeJS.ReadableStream>(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent`,
     {
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents,
@@ -144,11 +146,11 @@ const streamGemini = async (
 
   if (!parts.length) {
     logger.error(
-      { model: GEMINI_MODEL, lastFrame: lastFrame.slice(0, 500) },
-      `Agent model returned nothing [model=${GEMINI_MODEL}]`
+      { model, lastFrame: lastFrame.slice(0, 500) },
+      `Agent model returned nothing [model=${model}]`
     );
     throw new BadRequestError({
-      message: `The agent model '${GEMINI_MODEL}' returned no response. ${lastFrame.slice(0, 200) || "The stream was empty."}`
+      message: `The agent model '${model}' returned no response. ${lastFrame.slice(0, 200) || "The stream was empty."}`
     });
   }
 
@@ -158,12 +160,14 @@ const streamGemini = async (
 export const runAgentTurn = async ({
   sandboxId,
   apiKey,
+  model = DEFAULT_GEMINI_MODEL,
   systemPrompt,
   messages,
   onEvent = () => {}
 }: {
   sandboxId: string;
   apiKey: string;
+  model?: string;
   systemPrompt: string;
   messages: TAgentMessage[];
   onEvent?: TAgentEventSink;
@@ -183,7 +187,7 @@ export const runAgentTurn = async ({
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
     // eslint-disable-next-line no-await-in-loop -- the model decides each step from the last result
-    const parts = await streamGemini(apiKey, systemPrompt, contents, (text) => onEvent({ type: "text", text }));
+    const parts = await streamGemini(model, apiKey, systemPrompt, contents, (text) => onEvent({ type: "text", text }));
     const calls = parts.filter((part) => part.functionCall);
 
     if (!calls.length) {

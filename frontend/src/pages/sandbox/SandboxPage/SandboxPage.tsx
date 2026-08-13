@@ -16,21 +16,14 @@ import {
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { SandboxStatus, useGetSandboxById, useSetSandboxPower } from "@app/hooks/api/sandboxes";
 
-import {
-  AgentTab,
-  AuditLogTab,
-  IntegrationsTab,
-  OverviewTab,
-  PamAccountsTab,
-  SandboxChat
-} from "./components";
+import { SandboxShine } from "../components/SandboxShine";
+import { AccessTab, AgentTab, AuditLogTab, OverviewTab, SandboxChat } from "./components";
 
 export enum SandboxTab {
   Overview = "overview",
   Chat = "chat",
   AuditLog = "audit-log",
-  Integrations = "integrations",
-  Pam = "pam",
+  Access = "access",
   Agent = "agent"
 }
 
@@ -105,6 +98,8 @@ export const SandboxPage = () => {
         <title>{sandbox.name}</title>
       </Helmet>
 
+      <SandboxShine sandboxId={sandbox.id} />
+
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <div>
           <PageHeader
@@ -141,8 +136,7 @@ export const SandboxPage = () => {
           <div className="mt-4">
             {tab === SandboxTab.Chat && <SandboxChat sandbox={sandbox} isRunning={isRunning} />}
             {tab === SandboxTab.AuditLog && <AuditLogTab sandbox={sandbox} />}
-            {tab === SandboxTab.Integrations && <IntegrationsTab sandbox={sandbox} />}
-            {tab === SandboxTab.Pam && <PamAccountsTab sandbox={sandbox} />}
+            {tab === SandboxTab.Access && <AccessTab sandbox={sandbox} />}
             {tab === SandboxTab.Agent && <AgentTab sandbox={sandbox} />}
             {tab === SandboxTab.Overview && (
               <OverviewTab sandbox={sandbox} boot={boot} onBootSettled={() => setBoot(null)} />

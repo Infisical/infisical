@@ -1,33 +1,15 @@
 import { useLocation } from "@tanstack/react-router";
-import {
-  Box,
-  FileText,
-  KeyRound,
-  LayoutDashboard,
-  MessageSquare,
-  ScrollText,
-  Server,
-  Shield
-} from "lucide-react";
+import { Box, KeyRound, LayoutDashboard, MessageSquare, ScrollText } from "lucide-react";
 
 import { SidebarCollapsibleGroup } from "@app/components/v3";
 
 import { ProjectNavList } from "./ProjectNavLink";
-import { PROJECT_ACCESS_CONTROL_SUBMENU } from "./submenus";
 import type { NavItem, Submenu } from "./types";
 
 const SANDBOX_ID_RE = /\/sandboxes\/([0-9a-f-]{36})/;
 
 const PRODUCT_ITEMS: NavItem[] = [
-  { label: "Sandboxes", icon: Box, pathSuffix: "", activeMatch: /\/sandboxes(\/|$)/ },
-  {
-    label: "Access Control",
-    icon: Shield,
-    pathSuffix: "access-management",
-    activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//,
-    submenu: PROJECT_ACCESS_CONTROL_SUBMENU
-  },
-  { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" }
+  { label: "Sandboxes", icon: Box, pathSuffix: "", activeMatch: /\/sandboxes(\/|$)/ }
 ];
 
 /**
@@ -62,8 +44,7 @@ export const SandboxNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu
     buildTab(sandboxId, "Audit Log", ScrollText, "audit-log")
   ];
   const configureItems = [
-    buildTab(sandboxId, "Integrations", KeyRound, "integrations"),
-    buildTab(sandboxId, "PAM Accounts", Server, "pam"),
+    buildTab(sandboxId, "Access", KeyRound, "access"),
     buildTab(sandboxId, "Agent", Box, "agent")
   ];
 

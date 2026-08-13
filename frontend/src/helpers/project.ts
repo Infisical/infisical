@@ -1,4 +1,12 @@
-import { FileKeyIcon, KeyIcon, LockIcon, LucideIcon, RadarIcon, UsersIcon } from "lucide-react";
+import {
+  BoxIcon,
+  FileKeyIcon,
+  KeyIcon,
+  LockIcon,
+  LucideIcon,
+  RadarIcon,
+  UsersIcon
+} from "lucide-react";
 
 import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/projects/queries";
@@ -210,7 +218,8 @@ export const getProjectLucideIcon = (type: ProjectType): LucideIcon => {
     [ProjectType.KMS]: LockIcon,
     [ProjectType.CertificateManager]: FileKeyIcon,
     [ProjectType.SecretScanning]: RadarIcon,
-    [ProjectType.PAM]: UsersIcon
+    [ProjectType.PAM]: UsersIcon,
+    [ProjectType.Sandbox]: BoxIcon
   };
   return iconConvert[type] || KeyIcon;
 };
