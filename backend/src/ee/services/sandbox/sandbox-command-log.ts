@@ -26,7 +26,13 @@ export enum SandboxCommandSource {
   Slack = "slack"
 }
 
+export enum SandboxActivityType {
+  Command = "command",
+  Proxy = "proxy"
+}
+
 export type TSandboxCommandEntry = {
+  type: SandboxActivityType.Command;
   id: string;
   at: string;
   source: SandboxCommandSource;
@@ -36,7 +42,29 @@ export type TSandboxCommandEntry = {
   durationMs: number;
   /** What earned the classification: the PAM account, or the host that matched. */
   target: string | null;
+  /** Set for PAM only, so the UI can show the resource's own logo and link to the account. */
+  accountId: string | null;
+  resourceType: string | null;
 };
+
+/**
+ * One request the broker handled. This is the detail a command line cannot carry: which host was
+ * actually reached, whether it was allowed, and which secret was attached on the way out.
+ */
+export type TSandboxProxyEntry = {
+  type: SandboxActivityType.Proxy;
+  id: string;
+  at: string;
+  decision: string;
+  method: string;
+  host: string;
+  path: string;
+  status?: number;
+  integration?: string;
+  credential?: string;
+};
+
+export type TSandboxActivityEntry = TSandboxCommandEntry | TSandboxProxyEntry;
 
 type TCommandContext = {
   pamProxies: TPamProxy[];
@@ -44,9 +72,9 @@ type TCommandContext = {
 };
 
 type TCommandLogState = {
-  entries: TSandboxCommandEntry[];
+  entries: TSandboxActivityEntry[];
   context: TCommandContext;
-  subscribers: Set<(entry: TSandboxCommandEntry) => void>;
+  subscribers: Set<(entry: TSandboxActivityEntry) => void>;
 };
 
 const MAX_ENTRIES = 500;
@@ -77,19 +105,43 @@ export const clearSandboxCommandLog = (sandboxId: string) => {
   states.delete(sandboxId);
 };
 
-const classify = (command: string, context: TCommandContext): Pick<TSandboxCommandEntry, "kind" | "target"> => {
+const classify = (
+  command: string,
+  context: TCommandContext
+): Pick<TSandboxCommandEntry, "kind" | "target" | "accountId" | "resourceType"> => {
   // A PAM account is only ever reachable as a port on loopback, so the port is the whole signal.
   const pamProxy = context.pamProxies.find(
     (proxy) => command.includes(`:${proxy.port}`) || command.includes(`-p ${proxy.port}`)
   );
   if (pamProxy) {
-    return { kind: SandboxCommandKind.Pam, target: `${pamProxy.accountName} on ${pamProxy.resourceName}` };
+    return {
+      kind: SandboxCommandKind.Pam,
+      target: pamProxy.accountName,
+      accountId: pamProxy.accountId,
+      resourceType: pamProxy.resourceType ?? null
+    };
   }
 
   const host = context.hostnames.find((hostname) => command.includes(hostname.replace("*.", "")));
-  if (host) return { kind: SandboxCommandKind.Integration, target: host };
+  if (host) {
+    return { kind: SandboxCommandKind.Integration, target: host, accountId: null, resourceType: null };
+  }
 
-  return { kind: SandboxCommandKind.Shell, target: null };
+  return { kind: SandboxCommandKind.Shell, target: null, accountId: null, resourceType: null };
+};
+
+const $append = (state: TCommandLogState, recorded: TSandboxActivityEntry) => {
+  state.entries.push(recorded);
+  if (state.entries.length > MAX_ENTRIES) state.entries.shift();
+
+  // A slow or broken subscriber must not take down the command that is being recorded.
+  state.subscribers.forEach((notify) => {
+    try {
+      notify(recorded);
+    } catch {
+      state.subscribers.delete(notify);
+    }
+  });
 };
 
 export const recordSandboxCommand = (
@@ -104,31 +156,28 @@ export const recordSandboxCommand = (
   const state = stateFor(sandboxId);
 
   const recorded: TSandboxCommandEntry = {
+    type: SandboxActivityType.Command,
     id: crypto.randomUUID(),
     at: new Date().toISOString(),
     ...classify(entry.command, state.context),
     ...entry
   };
 
-  state.entries.push(recorded);
-  if (state.entries.length > MAX_ENTRIES) state.entries.shift();
-
-  // A slow or broken subscriber must not take down the command that is being recorded.
-  state.subscribers.forEach((notify) => {
-    try {
-      notify(recorded);
-    } catch {
-      state.subscribers.delete(notify);
-    }
-  });
+  $append(state, recorded);
 };
 
-export const getSandboxCommandLog = (sandboxId: string): TSandboxCommandEntry[] => [
+/** Called by the broker for every request it handles, so both streams share one timeline. */
+export const recordSandboxProxyEvent = (sandboxId: string, entry: Omit<TSandboxProxyEntry, "type" | "id">) => {
+  const state = stateFor(sandboxId);
+  $append(state, { type: SandboxActivityType.Proxy, id: crypto.randomUUID(), ...entry });
+};
+
+export const getSandboxCommandLog = (sandboxId: string): TSandboxActivityEntry[] => [
   ...(states.get(sandboxId)?.entries ?? [])
 ];
 
 /** Returns an unsubscribe, which the route must call so a closed connection frees its listener. */
-export const subscribeToSandboxCommands = (sandboxId: string, onEntry: (entry: TSandboxCommandEntry) => void) => {
+export const subscribeToSandboxCommands = (sandboxId: string, onEntry: (entry: TSandboxActivityEntry) => void) => {
   const state = stateFor(sandboxId);
   state.subscribers.add(onEntry);
   return () => state.subscribers.delete(onEntry);

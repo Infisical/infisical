@@ -17,7 +17,7 @@ import {
   SandboxCommandSource,
   setSandboxCommandContext,
   subscribeToSandboxCommands,
-  TSandboxCommandEntry
+  TSandboxActivityEntry
 } from "./sandbox-command-log";
 import { TSandboxDALFactory } from "./sandbox-dal";
 import { getProxyHostAddress } from "./sandbox-docker";
@@ -327,7 +327,7 @@ export const sandboxServiceFactory = ({
   };
 
   const startSandbox = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor): Promise<TSandbox> => {
-    const row = await $resolve(sandboxId, actor, true);
+    let row = await $resolve(sandboxId, actor, true);
 
     if (isSandboxBooted(sandboxId)) {
       throw new BadRequestError({ message: `Sandbox '${row.name}' is already running` });
@@ -338,6 +338,19 @@ export const sandboxServiceFactory = ({
     // Open a brokered proxy per granted account and tell the sandbox only the port. The identity
     // token and the database credential both stay in this process.
     const grants = normalizeGrants(row.grants);
+    // Sandboxes created before they were given their own identity have none, and the PAM block below
+    // is guarded on it, so their grants would resolve to nothing with no indication why. Provision one
+    // on the spot instead of making the user rebuild the sandbox.
+    if (grants.pamAccountIds.length && !row.identityId) {
+      logger.info(`Backfilling a machine identity so PAM can be brokered [sandboxId=${sandboxId}]`);
+      const identity = await provisionSandboxIdentity({ identityService, identityUaService }, row.name, actor);
+      row = await sandboxDAL.updateById(sandboxId, {
+        identityId: identity.identityId,
+        identityClientId: identity.clientId,
+        encryptedIdentityClientSecret: await $encryptAgentToken(actor.orgId, identity.clientSecret)
+      });
+    }
+
     const targets = await sandboxDAL.findPamAccountTargets(grants.pamAccountIds);
 
     // A granted account that no longer exists resolves to nothing, so the sandbox would start with a
@@ -598,7 +611,7 @@ export const sandboxServiceFactory = ({
    * mid-run sees the whole session rather than only what happens after it arrived.
    */
   const streamCommandLog = async (
-    { sandboxId, onEntry }: TSandboxIdDTO & { onEntry: (entry: TSandboxCommandEntry) => void },
+    { sandboxId, onEntry }: TSandboxIdDTO & { onEntry: (entry: TSandboxActivityEntry) => void },
     actor: OrgServiceActor
   ) => {
     await $resolve(sandboxId, actor, false);

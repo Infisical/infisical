@@ -35,7 +35,7 @@ type TBootStep = {
 };
 
 /** Ceiling for the whole sequence, so a fully configured sandbox still finishes promptly. */
-const BOOT_BUDGET_MS = 9_000;
+const BOOT_BUDGET_MS = 4_500;
 /** Each step varies a little so the cadence does not look metronomic. */
 const JITTER = 0.18;
 
@@ -55,16 +55,16 @@ const buildSteps = (sandbox: TSandbox): TBootStep[] => {
     {
       label: "Allocating compute",
       detail: `${sandbox.vcpu} vCPU · ${(sandbox.memoryMb / 1024).toFixed(0)} GB memory`,
-      durationMs: 700
+      durationMs: 350
     },
-    { label: "Mounting workspace", detail: "/workspace · overlayfs", durationMs: 400 },
-    { label: "Starting credential broker", detail: "MITM proxy on 127.0.0.1", durationMs: 950 }
+    { label: "Mounting workspace", detail: "/workspace · overlayfs", durationMs: 200 },
+    { label: "Starting credential broker", detail: "MITM proxy on 127.0.0.1", durationMs: 475 }
   ];
 
   steps.push({
     label: "Issuing proxy certificate authority",
     detail: "ECDSA P-256 · trust installed",
-    durationMs: 1400
+    durationMs: 700
   });
 
   if (integrations.length) {
@@ -74,7 +74,7 @@ const buildSteps = (sandbox: TSandbox): TBootStep[] => {
         .flatMap((integration) => integration.hostnames)
         .slice(0, 3)
         .join(", "),
-      durationMs: 850
+      durationMs: 425
     });
   }
 
@@ -82,7 +82,7 @@ const buildSteps = (sandbox: TSandbox): TBootStep[] => {
     steps.push({
       label: "Installing gh CLI",
       detail: "into the sandbox's own bin/",
-      durationMs: 2200
+      durationMs: 1100
     });
   }
 
@@ -90,15 +90,15 @@ const buildSteps = (sandbox: TSandbox): TBootStep[] => {
     steps.push({
       label: "Opening PAM tunnels",
       detail: `${pamCount} account${pamCount === 1 ? "" : "s"} · credentials stay outside`,
-      durationMs: 500 + pamCount * 450
+      durationMs: 250 + pamCount * 225
     });
   }
 
   if (agent) {
-    steps.push({ label: `Bringing up ${agent}`, detail: "tools registered", durationMs: 1600 });
+    steps.push({ label: `Bringing up ${agent}`, detail: "tools registered", durationMs: 800 });
   }
 
-  steps.push({ label: "Sandbox ready", detail: "accepting commands", durationMs: 350 });
+  steps.push({ label: "Sandbox ready", detail: "accepting commands", durationMs: 175 });
 
   // A sandbox with every option on would otherwise run past the point where the wait stops reading
   // as progress, so the whole sequence is compressed to fit rather than any one step being cut.

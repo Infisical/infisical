@@ -11,7 +11,7 @@ import {
   TCreateSandboxDTO,
   TLinkSandboxSlackDTO,
   TSandbox,
-  TSandboxCommandEntry,
+  TSandboxActivityEntry,
   TSandboxCredentialConfig,
   TSandboxExecResult,
   TSandboxSecretRef,
@@ -236,7 +236,7 @@ export const useLinkSandboxSlack = () => {
  */
 export const streamSandboxCommands = async (
   sandboxId: string,
-  onEntry: (entry: TSandboxCommandEntry) => void,
+  onEntry: (entry: TSandboxActivityEntry) => void,
   signal?: AbortSignal
 ) => {
   const response = await fetch(`/api/v1/sandboxes/${sandboxId}/commands/stream`, {
@@ -267,7 +267,7 @@ export const streamSandboxCommands = async (
       if (!line) return;
 
       try {
-        onEntry(JSON.parse(line.slice(5).trim()) as TSandboxCommandEntry);
+        onEntry(JSON.parse(line.slice(5).trim()) as TSandboxActivityEntry);
       } catch {
         // a partial frame; the next chunk completes it
       }

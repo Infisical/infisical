@@ -30,6 +30,8 @@ export type TPamProxy = {
   accountId: string;
   accountName: string;
   resourceName: string;
+  /** The template's type, so the UI can show the resource's own logo rather than a generic one. */
+  resourceType: string;
   port: number;
   username?: string;
   database?: string;
@@ -136,6 +138,7 @@ export const startPamProxies = async (
         accountId: target.accountId,
         accountName: access.accountName,
         resourceName: target.resourceName,
+        resourceType: target.resourceType,
         port: forwarder.port,
         username: access.metadata?.username,
         database: access.metadata?.database

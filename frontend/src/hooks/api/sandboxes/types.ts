@@ -165,7 +165,13 @@ export enum SandboxCommandSource {
   Slack = "slack"
 }
 
+export enum SandboxActivityType {
+  Command = "command",
+  Proxy = "proxy"
+}
+
 export type TSandboxCommandEntry = {
+  type: SandboxActivityType.Command;
   id: string;
   at: string;
   source: SandboxCommandSource;
@@ -174,4 +180,21 @@ export type TSandboxCommandEntry = {
   exitCode: number | null;
   durationMs: number;
   target: string | null;
+  accountId: string | null;
+  resourceType: string | null;
 };
+
+export type TSandboxProxyEntry = {
+  type: SandboxActivityType.Proxy;
+  id: string;
+  at: string;
+  decision: string;
+  method: string;
+  host: string;
+  path: string;
+  status?: number;
+  integration?: string;
+  credential?: string;
+};
+
+export type TSandboxActivityEntry = TSandboxCommandEntry | TSandboxProxyEntry;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useParams, useSearch } from "@tanstack/react-router";
 import { PlayIcon, SquareIcon } from "lucide-react";
@@ -48,6 +48,24 @@ export const SandboxPage = () => {
     outcome: "success" | "error" | null;
     errorMessage?: string;
   } | null>(null);
+
+  /**
+   * The boot console is a fiction, so it must never outlive the thing it is narrating. Two ways it
+   * could: a failed start leaves it with nowhere to go, and any path that sets it without settling
+   * would strand it. This clears it whenever no start is in flight, which is the only condition
+   * under which it is ever allowed on screen.
+   */
+  useEffect(() => {
+    if (!boot || setPower.isPending || boot.outcome === null) return undefined;
+
+    const timer = setTimeout(() => setBoot(null), boot.outcome === "error" ? 4_000 : 1_200);
+    return () => clearTimeout(timer);
+  }, [boot, setPower.isPending]);
+
+  // Leaving the tab abandons the narration; it must not be waiting when the user comes back.
+  useEffect(() => {
+    if (tab !== SandboxTab.Overview) setBoot(null);
+  }, [tab]);
 
   const handlePower = async () => {
     if (!sandbox) return;
