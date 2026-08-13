@@ -3,6 +3,7 @@ import {
   ChevronLeftIcon,
   FileIcon,
   FolderIcon,
+  FolderTreeIcon,
   Loader2Icon,
   RefreshCwIcon,
   SearchIcon,
@@ -48,16 +49,16 @@ const Row = ({
     type="button"
     onClick={onOpen}
     className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left font-mono text-xs transition-colors ${
-      isSelected ? "bg-white/10 text-[#c8ccd0]" : "text-[#c8ccd0]/80 hover:bg-white/5"
+      isSelected ? "bg-foreground/10 text-foreground" : "text-accent hover:bg-foreground/5"
     }`}
   >
     {entry.isDirectory ? (
-      <FolderIcon className="size-3.5 shrink-0 text-[#00a2c7]" />
+      <FolderIcon className="size-3.5 shrink-0 text-info" />
     ) : (
-      <FileIcon className="size-3.5 shrink-0 text-white/30" />
+      <FileIcon className="size-3.5 shrink-0 text-muted" />
     )}
     <span className="truncate">{entry.name}</span>
-    <span className="ml-auto shrink-0 text-white/25 tabular-nums">{formatSize(entry.size)}</span>
+    <span className="ml-auto shrink-0 text-muted tabular-nums">{formatSize(entry.size)}</span>
   </button>
 );
 
@@ -94,8 +95,11 @@ export const SandboxFileBrowser = ({
   };
 
   return (
-    <div className="flex h-[calc(100vh-24rem)] min-h-[320px] flex-col overflow-hidden rounded-md border border-border bg-[#111417]">
-      <div className="flex items-center gap-1.5 border-b border-white/10 px-2 py-1.5">
+    // Drawn on the card rather than on a panel of its own. A nested surface with its own border and
+    // fill read as a widget dropped onto the page; the tree is the card's content, so it sits
+    // directly on it and the only rules left are the ones separating its own controls.
+    <div className="flex h-[calc(100vh-24rem)] min-h-[300px] min-w-0 flex-col">
+      <div className="flex items-center gap-1 border-b border-border pb-1.5">
         <IconButton
           variant="ghost"
           size="xs"
@@ -107,10 +111,10 @@ export const SandboxFileBrowser = ({
             setPath(path.slice(0, path.lastIndexOf("/")) || SANDBOX_HOME);
           }}
         >
-          <ChevronLeftIcon className="size-3.5 text-white/50" />
+          <ChevronLeftIcon className="size-3.5 text-muted" />
         </IconButton>
 
-        <span className="truncate font-mono text-xs text-white/50">{displayPath(path)}</span>
+        <span className="truncate font-mono text-xs text-accent">{displayPath(path)}</span>
 
         <IconButton
           variant="ghost"
@@ -121,18 +125,20 @@ export const SandboxFileBrowser = ({
             refetch().catch(() => {});
           }}
         >
-          <RefreshCwIcon className={`size-3.5 text-white/40 ${isFetching ? "animate-spin" : ""}`} />
+          <RefreshCwIcon className={`size-3.5 text-muted ${isFetching ? "animate-spin" : ""}`} />
         </IconButton>
       </div>
 
       {isRunning && (
-        <div className="flex items-center gap-2 border-b border-white/10 px-2 py-1.5">
-          <SearchIcon className="size-3.5 shrink-0 text-white/30" />
+        // Fixed height: the clear button only exists once there is a query and is taller than the
+        // input line, so the row grew the moment you typed and the whole tree shifted down.
+        <div className="flex h-9 shrink-0 items-center gap-2 border-b border-border">
+          <SearchIcon className="size-3.5 shrink-0 text-muted" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter this folder..."
-            className="w-full bg-transparent font-mono text-xs text-[#c8ccd0] placeholder:text-white/25 focus:outline-none"
+            className="w-full bg-transparent font-mono text-xs text-foreground placeholder:text-muted focus:outline-none"
           />
           {query && (
             <IconButton
@@ -141,20 +147,26 @@ export const SandboxFileBrowser = ({
               aria-label="Clear filter"
               onClick={() => setQuery("")}
             >
-              <XIcon className="size-3 text-white/40" />
+              <XIcon className="size-3 text-muted" />
             </IconButton>
           )}
         </div>
       )}
 
       {!isRunning ? (
-        <div className="flex flex-1 items-center justify-center px-4 text-center">
-          <p className="text-xs text-white/40">Start the sandbox to browse its files.</p>
+        // Same shape as the dashboard's activity placeholder: a ringed glyph, a heading, then one
+        // muted line. Consistent enough that an off sandbox looks the same wherever you meet it.
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
+          <span className="flex size-9 items-center justify-center rounded-full border border-border bg-container">
+            <FolderTreeIcon className="size-4 text-muted" />
+          </span>
+          <p className="text-sm text-foreground">Sandbox is stopped</p>
+          <p className="text-xs text-muted">Start it to browse the container.</p>
         </div>
       ) : (
         <div className="thin-scrollbar flex-1 overflow-y-auto p-1.5">
           {visible.length === 0 && (
-            <p className="px-2 py-1 font-mono text-xs text-white/30">
+            <p className="px-2 py-1 font-mono text-xs text-muted">
               {query ? `nothing matching "${query}"` : "empty"}
             </p>
           )}
@@ -171,9 +183,9 @@ export const SandboxFileBrowser = ({
 
       {/* The preview takes the lower half rather than a dialog, so the tree stays navigable. */}
       {openFile && (
-        <div className="flex h-1/2 flex-col border-t border-white/10">
+        <div className="flex h-1/2 flex-col border-t border-border">
           <div className="flex items-center gap-2 px-2 py-1.5">
-            <span className="truncate font-mono text-[11px] text-white/50">
+            <span className="truncate font-mono text-[11px] text-accent">
               {displayPath(openFile)}
             </span>
             {file?.wasTruncated && (
@@ -186,17 +198,17 @@ export const SandboxFileBrowser = ({
               className="ml-auto"
               onClick={() => setOpenFile(null)}
             >
-              <XIcon className="size-3.5 text-white/40" />
+              <XIcon className="size-3.5 text-muted" />
             </IconButton>
           </div>
 
           <div className="thin-scrollbar flex-1 overflow-auto px-2 pb-2">
             {isFilePending ? (
-              <Loader2Icon className="mt-2 size-4 animate-spin text-white/30" />
+              <Loader2Icon className="mt-2 size-4 animate-spin text-muted" />
             ) : (
               // pre-wrap, not pre: long lines were clipped mid-word at the pane edge with no way
               // to reach the rest of them.
-              <pre className="font-mono text-[11px] leading-relaxed break-words whitespace-pre-wrap text-[#c8ccd0]">
+              <pre className="font-mono text-[11px] leading-relaxed break-words whitespace-pre-wrap text-accent">
                 {file?.content || "(empty file)"}
               </pre>
             )}

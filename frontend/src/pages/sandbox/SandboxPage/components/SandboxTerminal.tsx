@@ -16,10 +16,11 @@ type Props = {
 };
 
 const THEME = {
-  background: "#111417",
+  // Matches the panel it sits in. A different shade here draws a visible rectangle inside the panel.
+  background: "#0e1114",
   foreground: "#c8ccd0",
   cursor: "#c8ccd0",
-  black: "#111417",
+  black: "#0e1114",
   red: "#e5484d",
   green: "#30a46c",
   yellow: "#f5d90a",
@@ -138,22 +139,25 @@ export const SandboxTerminal = ({ sandboxId, sandboxName, isRunning }: Props) =>
     };
   }, [sandboxId, sandboxName, isRunning]);
 
-  // Terminal black is for a console that exists. An empty panel takes the same surface as the agent
-  // panel beside it, otherwise it reads as a hole in the card rather than something not started yet.
   if (!isRunning) {
     return (
-      <div className="flex h-[calc(100vh-24rem)] min-h-[320px] flex-col items-center justify-center gap-2 rounded-md border border-border bg-bunker-800 text-center">
-        <TerminalIcon className="size-6 text-muted" />
-        <p className="text-xs text-muted">Start the sandbox to open a shell.</p>
+      // No panel of its own: matches the file tree beside it, which now draws on the card. Same
+      // ringed glyph and two-line shape as the dashboard's activity placeholder.
+      <div className="flex h-[calc(100vh-24rem)] min-h-[300px] flex-col items-center justify-center gap-2 text-center">
+        <span className="flex size-9 items-center justify-center rounded-full border border-border bg-container">
+          <TerminalIcon className="size-4 text-muted" />
+        </span>
+        <p className="text-sm text-foreground">Sandbox is stopped</p>
+        <p className="text-xs text-muted">Start it to open a shell.</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full min-w-0 overflow-hidden rounded-md border border-border bg-[#111417] p-2">
+    <div className="w-full min-w-0 overflow-hidden rounded-lg bg-[#0e1114] p-2.5">
       <div
         ref={containerRef}
-        className="h-[calc(100vh-24rem)] min-h-[320px] [&_.xterm-viewport]:thin-scrollbar"
+        className="h-[calc(100vh-24rem)] min-h-[300px] [&_.xterm-viewport]:thin-scrollbar"
         style={{ minHeight: 0 }}
       />
     </div>
