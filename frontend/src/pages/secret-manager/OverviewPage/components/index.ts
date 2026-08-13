@@ -6,7 +6,6 @@ export * from "./EnvironmentSelect";
 export * from "./FolderBreadcrumb";
 export * from "./FolderTableRow";
 export * from "./HoneyTokenTableRow";
-export * from "./ProxiedServiceTableRow";
 export * from "./ResourceCount";
 export * from "./ResourceFilter";
 export * from "./ResourceSearchInput";

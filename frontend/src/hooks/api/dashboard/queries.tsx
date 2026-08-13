@@ -211,7 +211,6 @@ export const useGetProjectSecretsOverview = (
     includeDynamicSecrets,
     includeSecretRotations,
     includeHoneyTokens,
-    includeProxiedServices,
     environments
   }: TGetDashboardProjectSecretsOverviewDTO,
   options?: Omit<
@@ -245,7 +244,6 @@ export const useGetProjectSecretsOverview = (
       includeDynamicSecrets,
       includeSecretRotations,
       includeHoneyTokens,
-      includeProxiedServices,
       environments
     }),
     queryFn: async () => {
@@ -264,7 +262,6 @@ export const useGetProjectSecretsOverview = (
         includeDynamicSecrets,
         includeSecretRotations,
         includeHoneyTokens,
-        includeProxiedServices,
         environments
       });
 
@@ -287,10 +284,6 @@ export const useGetProjectSecretsOverview = (
       const uniqueSecretImports = select.imports ? unique(select.imports, (i) => i.id) : [];
       const uniqueSecretRotations = secretRotations ? unique(secretRotations, (i) => i.name) : [];
       const uniqueHoneyTokens = honeyTokens ? unique(honeyTokens, (i) => i.name) : [];
-      const uniqueProxiedServices = select.proxiedServices
-        ? unique(select.proxiedServices, (i) => i.name)
-        : [];
-
       return {
         ...select,
         secrets: secrets ? mergePersonalSecrets(secrets) : undefined,
@@ -306,8 +299,7 @@ export const useGetProjectSecretsOverview = (
         totalUniqueFoldersInPage: uniqueFolders.length,
         totalUniqueSecretImportsInPage: uniqueSecretImports.length,
         totalUniqueSecretRotationsInPage: uniqueSecretRotations.length,
-        totalUniqueHoneyTokensInPage: uniqueHoneyTokens.length,
-        totalUniqueProxiedServicesInPage: uniqueProxiedServices.length
+        totalUniqueHoneyTokensInPage: uniqueHoneyTokens.length
       };
     }, []),
     placeholderData: (previousData) => previousData
@@ -330,7 +322,6 @@ export const useGetProjectSecretsDetails = (
     includeDynamicSecrets,
     includeSecretRotations,
     includeHoneyTokens,
-    includeProxiedServices,
     tags
   }: TGetDashboardProjectSecretsDetailsDTO,
   options?: Omit<
@@ -370,7 +361,6 @@ export const useGetProjectSecretsDetails = (
       includeDynamicSecrets,
       includeSecretRotations,
       includeHoneyTokens,
-      includeProxiedServices,
       tags
     }),
     queryFn: async () => {
@@ -389,7 +379,6 @@ export const useGetProjectSecretsDetails = (
         includeDynamicSecrets,
         includeSecretRotations,
         includeHoneyTokens,
-        includeProxiedServices,
         tags
       });
 

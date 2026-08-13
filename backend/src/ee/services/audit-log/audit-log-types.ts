@@ -774,6 +774,17 @@ export enum EventType {
   CREATE_PROXIED_SERVICE = "create-proxied-service",
   UPDATE_PROXIED_SERVICE = "update-proxied-service",
   DELETE_PROXIED_SERVICE = "delete-proxied-service",
+  CREATE_AGENT_GATEWAY = "create-agent-gateway",
+  UPDATE_AGENT_GATEWAY = "update-agent-gateway",
+  DELETE_AGENT_GATEWAY = "delete-agent-gateway",
+  ATTACH_AGENT_GATEWAY_SERVICE = "attach-agent-gateway-service",
+  DETACH_AGENT_GATEWAY_SERVICE = "detach-agent-gateway-service",
+  GRANT_AGENT_GATEWAY_ACCESS = "grant-agent-gateway-access",
+  REVOKE_AGENT_GATEWAY_ACCESS = "revoke-agent-gateway-access",
+  AGENT_GATEWAY_SESSION_START = "agent-gateway-session-start",
+  AGENT_GATEWAY_SESSION_END = "agent-gateway-session-end",
+  AGENT_GATEWAY_SESSION_TERMINATE = "agent-gateway-session-terminate",
+  AGENT_GATEWAY_BROKER_RESOLVE = "agent-gateway-broker-resolve",
   SIGN_AGENT_PROXY_INTERMEDIATE_CA = "sign-agent-proxy-intermediate-ca",
 
   // Dynamic Secret Leases
@@ -6485,17 +6496,22 @@ interface ListDynamicSecretsEvent {
   };
 }
 
+// A credential reference, recorded so an investigation can see which secrets a service was wired to.
+// Names and locations only; never a placeholder, secret or lease value.
+type TProxiedServiceSecretRef = {
+  environment: string;
+  secretPath: string;
+  secretKey?: string;
+  dynamicSecretName?: string;
+};
+
 interface CreateProxiedServiceEvent {
   type: EventType.CREATE_PROXIED_SERVICE;
   metadata: {
     proxiedServiceId: string;
     name: string;
     hostPattern: string;
-    // secret / dynamic secret names only; never placeholder/secret/lease values
-    secretKeys: string[];
-    dynamicSecretNames: string[];
-    environment: string;
-    secretPath: string;
+    secretRefs: TProxiedServiceSecretRef[];
   };
 }
 
@@ -6506,10 +6522,7 @@ interface UpdateProxiedServiceEvent {
     name: string;
     hostPattern: string;
     updatedFields: string[];
-    secretKeys: string[];
-    dynamicSecretNames: string[];
-    environment: string;
-    secretPath: string;
+    secretRefs: TProxiedServiceSecretRef[];
   };
 }
 
@@ -6518,8 +6531,124 @@ interface DeleteProxiedServiceEvent {
   metadata: {
     proxiedServiceId: string;
     name: string;
-    environment: string;
-    secretPath: string;
+  };
+}
+
+interface CreateAgentGatewayEvent {
+  type: EventType.CREATE_AGENT_GATEWAY;
+  metadata: {
+    agentGatewayId: string;
+    name: string;
+    gatewayId?: string;
+    gatewayPoolId?: string;
+  };
+}
+
+interface UpdateAgentGatewayEvent {
+  type: EventType.UPDATE_AGENT_GATEWAY;
+  metadata: {
+    agentGatewayId: string;
+    name: string;
+    updatedFields: string[];
+    gatewayId?: string;
+    gatewayPoolId?: string;
+  };
+}
+
+interface DeleteAgentGatewayEvent {
+  type: EventType.DELETE_AGENT_GATEWAY;
+  metadata: {
+    agentGatewayId: string;
+    name: string;
+  };
+}
+
+// Linking is the act that decides which credentials a broker may apply, so both sides are recorded by
+// name as well as id: an investigation starts from "which broker got the Stripe key", not from a UUID.
+interface AttachAgentGatewayServiceEvent {
+  type: EventType.ATTACH_AGENT_GATEWAY_SERVICE;
+  metadata: {
+    agentGatewayId: string;
+    agentGatewayName: string;
+    proxiedServiceId: string;
+    proxiedServiceName: string;
+  };
+}
+
+interface DetachAgentGatewayServiceEvent {
+  type: EventType.DETACH_AGENT_GATEWAY_SERVICE;
+  metadata: {
+    agentGatewayId: string;
+    agentGatewayName: string;
+    proxiedServiceId: string;
+    proxiedServiceName?: string;
+  };
+}
+
+interface GrantAgentGatewayAccessEvent {
+  type: EventType.GRANT_AGENT_GATEWAY_ACCESS;
+  metadata: {
+    agentGatewayId: string;
+    agentGatewayName: string;
+    principalKind: string;
+    principalId: string;
+  };
+}
+
+interface RevokeAgentGatewayAccessEvent {
+  type: EventType.REVOKE_AGENT_GATEWAY_ACCESS;
+  metadata: {
+    agentGatewayId: string;
+    agentGatewayName: string;
+    principalKind: string;
+    principalId: string;
+  };
+}
+
+interface AgentGatewaySessionStartEvent {
+  type: EventType.AGENT_GATEWAY_SESSION_START;
+  metadata: {
+    sessionId: string;
+    agentGatewayId: string;
+    agentGatewayName: string;
+    mode: string;
+    gatewayId?: string;
+  };
+}
+
+interface AgentGatewaySessionEndEvent {
+  type: EventType.AGENT_GATEWAY_SESSION_END;
+  metadata: {
+    sessionId: string;
+    agentGatewayId: string;
+    mode: string;
+  };
+}
+
+interface AgentGatewaySessionTerminateEvent {
+  type: EventType.AGENT_GATEWAY_SESSION_TERMINATE;
+  metadata: {
+    sessionId: string;
+    agentGatewayId: string;
+    agentGatewayName: string;
+    terminatedActorName: string;
+  };
+}
+
+// Replaces the per-secret read audit row that existed while the broker fetched values itself. Records the
+// secret *locations* and never a value, and carries both halves of the delegation: on whose authority the
+// values were resolved, and for whom.
+interface AgentGatewayBrokerResolveEvent {
+  type: EventType.AGENT_GATEWAY_BROKER_RESOLVE;
+  metadata: {
+    sessionId: string;
+    agentGatewayId: string;
+    gatewayId?: string;
+    mode: string;
+    secretRefs: { environment: string; secretPath: string; secretKey?: string; dynamicSecretName?: string }[];
+    requestingActorType: string;
+    requestingActorId: string;
+    unavailableCount: number;
   };
 }
 
@@ -7570,6 +7699,17 @@ export type Event =
   | CreateProxiedServiceEvent
   | UpdateProxiedServiceEvent
   | DeleteProxiedServiceEvent
+  | CreateAgentGatewayEvent
+  | UpdateAgentGatewayEvent
+  | DeleteAgentGatewayEvent
+  | AttachAgentGatewayServiceEvent
+  | DetachAgentGatewayServiceEvent
+  | GrantAgentGatewayAccessEvent
+  | RevokeAgentGatewayAccessEvent
+  | AgentGatewaySessionStartEvent
+  | AgentGatewaySessionEndEvent
+  | AgentGatewaySessionTerminateEvent
+  | AgentGatewayBrokerResolveEvent
   | SignAgentProxyIntermediateCaEvent
   | ListDynamicSecretLeasesEvent
   | CreateDynamicSecretLeaseEvent

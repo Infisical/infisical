@@ -12,6 +12,7 @@ import {
 } from "@app/context";
 import {
   PermissionConditionOperators,
+  ProjectPermissionAgentGatewayActions,
   ProjectPermissionAppConnectionActions,
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionApprovalRequestGrantActions,
@@ -77,9 +78,16 @@ const ProxiedServicePolicyActionSchema = z.object({
   [ProjectPermissionProxiedServiceActions.Read]: z.boolean().optional(),
   [ProjectPermissionProxiedServiceActions.Create]: z.boolean().optional(),
   [ProjectPermissionProxiedServiceActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionProxiedServiceActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionProxiedServiceActions.Proxy]: z.boolean().optional(),
-  [ProjectPermissionProxiedServiceActions.ReportUsage]: z.boolean().optional()
+  [ProjectPermissionProxiedServiceActions.Delete]: z.boolean().optional()
+});
+
+const AgentGatewayPolicyActionSchema = z.object({
+  [ProjectPermissionAgentGatewayActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAgentGatewayActions.Create]: z.boolean().optional(),
+  [ProjectPermissionAgentGatewayActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionAgentGatewayActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionAgentGatewayActions.ManageServices]: z.boolean().optional(),
+  [ProjectPermissionAgentGatewayActions.ManageAccess]: z.boolean().optional()
 });
 
 const CertificatePolicyActionSchema = z.object({
@@ -685,12 +693,8 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
-      [ProjectPermissionSub.ProxiedServices]: ProxiedServicePolicyActionSchema.extend({
-        inverted: z.boolean().optional(),
-        conditions: ConditionSchema
-      })
-        .array()
-        .default([]),
+      [ProjectPermissionSub.ProxiedServices]: ProxiedServicePolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.AgentGateways]: AgentGatewayPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Settings]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Environments]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AuditLogs]: AuditLogsPolicyActionSchema.array().default([]),
@@ -852,7 +856,6 @@ type TConditionalFields =
   | ProjectPermissionSub.Groups
   | ProjectPermissionSub.Commits
   | ProjectPermissionSub.HoneyTokens
-  | ProjectPermissionSub.ProxiedServices
   | ProjectPermissionSub.ProjectFolderGrant;
 
 export const isConditionalSubjects = (
@@ -878,7 +881,6 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.Groups ||
   subject === ProjectPermissionSub.Commits ||
   subject === ProjectPermissionSub.HoneyTokens ||
-  subject === ProjectPermissionSub.ProxiedServices ||
   subject === ProjectPermissionSub.ProjectFolderGrant;
 
 const CONDITION_DISPLAY_ORDER = [
@@ -999,7 +1001,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.Webhooks,
         ProjectPermissionSub.ServiceTokens,
         ProjectPermissionSub.HoneyTokens,
-        ProjectPermissionSub.ProxiedServices,
         ProjectPermissionSub.Settings,
         ProjectPermissionSub.Environments,
         ProjectPermissionSub.AuditLogs,
@@ -1366,32 +1367,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           return;
         }
 
-        if (subject === ProjectPermissionSub.ProxiedServices) {
-          formVal[subject]!.push({
-            [ProjectPermissionProxiedServiceActions.Read]: action.includes(
-              ProjectPermissionProxiedServiceActions.Read
-            ),
-            [ProjectPermissionProxiedServiceActions.Create]: action.includes(
-              ProjectPermissionProxiedServiceActions.Create
-            ),
-            [ProjectPermissionProxiedServiceActions.Edit]: action.includes(
-              ProjectPermissionProxiedServiceActions.Edit
-            ),
-            [ProjectPermissionProxiedServiceActions.Delete]: action.includes(
-              ProjectPermissionProxiedServiceActions.Delete
-            ),
-            [ProjectPermissionProxiedServiceActions.Proxy]: action.includes(
-              ProjectPermissionProxiedServiceActions.Proxy
-            ),
-            [ProjectPermissionProxiedServiceActions.ReportUsage]: action.includes(
-              ProjectPermissionProxiedServiceActions.ReportUsage
-            ),
-            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
-            inverted
-          });
-          return;
-        }
-
         if (subject === ProjectPermissionSub.ProjectFolderGrant) {
           formVal[subject]!.push({
             [ProjectPermissionProjectFolderGrantActions.ReadGrant]: action.includes(
@@ -1450,6 +1425,48 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canEdit) formVal[subject as ProjectPermissionSub.Role]![0].edit = true;
       if (canCreate) formVal[subject as ProjectPermissionSub.Role]![0].create = true;
       if (canDelete) formVal[subject as ProjectPermissionSub.Role]![0].delete = true;
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.ProxiedServices) {
+      formVal[subject]!.push({
+        [ProjectPermissionProxiedServiceActions.Read]: action.includes(
+          ProjectPermissionProxiedServiceActions.Read
+        ),
+        [ProjectPermissionProxiedServiceActions.Create]: action.includes(
+          ProjectPermissionProxiedServiceActions.Create
+        ),
+        [ProjectPermissionProxiedServiceActions.Edit]: action.includes(
+          ProjectPermissionProxiedServiceActions.Edit
+        ),
+        [ProjectPermissionProxiedServiceActions.Delete]: action.includes(
+          ProjectPermissionProxiedServiceActions.Delete
+        )
+      });
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.AgentGateways) {
+      formVal[subject]!.push({
+        [ProjectPermissionAgentGatewayActions.Read]: action.includes(
+          ProjectPermissionAgentGatewayActions.Read
+        ),
+        [ProjectPermissionAgentGatewayActions.Create]: action.includes(
+          ProjectPermissionAgentGatewayActions.Create
+        ),
+        [ProjectPermissionAgentGatewayActions.Edit]: action.includes(
+          ProjectPermissionAgentGatewayActions.Edit
+        ),
+        [ProjectPermissionAgentGatewayActions.Delete]: action.includes(
+          ProjectPermissionAgentGatewayActions.Delete
+        ),
+        [ProjectPermissionAgentGatewayActions.ManageServices]: action.includes(
+          ProjectPermissionAgentGatewayActions.ManageServices
+        ),
+        [ProjectPermissionAgentGatewayActions.ManageAccess]: action.includes(
+          ProjectPermissionAgentGatewayActions.ManageAccess
+        )
+      });
       return;
     }
 
@@ -2407,16 +2424,42 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Remove",
         value: ProjectPermissionProxiedServiceActions.Delete,
         description: "Delete proxied services"
+      }
+    ]
+  },
+  [ProjectPermissionSub.AgentGateways]: {
+    title: "Agent Gateways",
+    description: "Manage agent gateways, the services they broker, and who may use them",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionAgentGatewayActions.Read,
+        description: "View agent gateways"
       },
       {
-        label: "Proxy",
-        value: ProjectPermissionProxiedServiceActions.Proxy,
-        description: "Route traffic through proxied services (for agent identities)"
+        label: "Create",
+        value: ProjectPermissionAgentGatewayActions.Create,
+        description: "Create agent gateways"
       },
       {
-        label: "Report Usage",
-        value: ProjectPermissionProxiedServiceActions.ReportUsage,
-        description: "Record last-used timestamps for proxied services (for the agent proxy)"
+        label: "Modify",
+        value: ProjectPermissionAgentGatewayActions.Edit,
+        description: "Update agent gateway configuration"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionAgentGatewayActions.Delete,
+        description: "Delete agent gateways"
+      },
+      {
+        label: "Connect Services",
+        value: ProjectPermissionAgentGatewayActions.ManageServices,
+        description: "Choose which proxied services an agent gateway may broker"
+      },
+      {
+        label: "Grant Access",
+        value: ProjectPermissionAgentGatewayActions.ManageAccess,
+        description: "Choose which users, machine identities and groups may use an agent gateway"
       }
     ]
   },
@@ -3213,6 +3256,7 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.ServiceTokens]: enabled,
   [ProjectPermissionSub.HoneyTokens]: enabled,
   [ProjectPermissionSub.ProxiedServices]: enabled,
+  [ProjectPermissionSub.AgentGateways]: enabled,
   [ProjectPermissionSub.Commits]: enabled,
   [ProjectPermissionSub.Insights]: enabled,
   [ProjectPermissionSub.SecretEventSubscriptions]: enabled,
@@ -3676,43 +3720,14 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         actions: Object.values(ProjectPermissionProxiedServiceActions)
       },
       {
+        subject: ProjectPermissionSub.AgentGateways,
+        actions: Object.values(ProjectPermissionAgentGatewayActions)
+      },
+      {
         subject: ProjectPermissionSub.Webhooks,
         actions: Object.values(ProjectPermissionActions)
       }
-    ]),
-    {
-      id: "agent-proxy",
-      name: "Agent Proxy Policies",
-      description: "Reads secret values, mints dynamic secret leases, and reports service usage",
-      permissions: [
-        {
-          subject: ProjectPermissionSub.Secrets,
-          actions: [
-            ProjectPermissionSecretActions.DescribeSecret,
-            ProjectPermissionSecretActions.ReadValue
-          ]
-        },
-        {
-          subject: ProjectPermissionSub.DynamicSecrets,
-          actions: [ProjectPermissionDynamicSecretActions.Lease]
-        },
-        {
-          subject: ProjectPermissionSub.ProxiedServices,
-          actions: [ProjectPermissionProxiedServiceActions.ReportUsage]
-        }
-      ]
-    },
-    {
-      id: "agent",
-      name: "Agent Policies",
-      description: "Routes traffic through proxied services",
-      permissions: [
-        {
-          subject: ProjectPermissionSub.ProxiedServices,
-          actions: [ProjectPermissionProxiedServiceActions.Proxy]
-        }
-      ]
-    }
+    ])
   ],
   [ProjectType.PAM]: [projectManagerTemplate()]
 };

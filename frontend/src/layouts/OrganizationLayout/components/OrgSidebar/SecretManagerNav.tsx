@@ -1,4 +1,13 @@
-import { ActivityIcon, Blocks, BookCheck, FileText, Settings, Shield } from "lucide-react";
+import {
+  ActivityIcon,
+  ArrowLeftRight,
+  Blocks,
+  BookCheck,
+  FileText,
+  Settings,
+  Shield,
+  Waypoints
+} from "lucide-react";
 
 import { ProjectIcon, SidebarCollapsibleGroup } from "@app/components/v3";
 
@@ -41,6 +50,20 @@ export const SecretManagerNav = ({
     }
   ];
 
+  const agenticItems: NavItem[] = [
+    {
+      label: "Agent Gateways",
+      icon: Waypoints,
+      pathSuffix: "agent-gateways",
+      activeMatch: /\/agent-gateways\//
+    },
+    {
+      label: "Proxied Services",
+      icon: ArrowLeftRight,
+      pathSuffix: "proxied-services"
+    }
+  ];
+
   const administrationItems: NavItem[] = [
     {
       label: "Access Control",
@@ -55,6 +78,9 @@ export const SecretManagerNav = ({
   return (
     <>
       <ProjectNavList items={generalItems} onSubmenuOpen={onSubmenuOpen} />
+      <SidebarCollapsibleGroup label="Agentic">
+        <ProjectNavList items={agenticItems} onSubmenuOpen={onSubmenuOpen} />
+      </SidebarCollapsibleGroup>
       <SidebarCollapsibleGroup label="Administration">
         <ProjectNavList items={administrationItems} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>

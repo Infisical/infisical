@@ -10,7 +10,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
-import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { createGatewayConnection, createRelayConnection, withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -39,13 +39,15 @@ import { TRelayServiceFactory } from "../relay/relay-service";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
 import { TAwsAuthMethodConfig } from "../resource-auth-method/resource-auth-method-types";
 import {
+  AGENT_GATEWAY_INFO_OID,
+  AGENT_GATEWAY_ROUTING_SENTINEL,
   DEFAULT_HEARTBEAT_TTL,
   GATEWAY_ACTOR_OID,
   GATEWAY_ROUTING_INFO_OID,
   PAM_INFO_OID
 } from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
-import { TGatewayV2ConnectionDetails } from "./gateway-v2-types";
+import { TGatewayCapabilities, TGatewayV2ConnectionDetails } from "./gateway-v2-types";
 import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
 
 // Temporary limit until gateway limiting is implemented at the relay level
@@ -330,14 +332,23 @@ export const gatewayV2ServiceFactory = ({
     }));
   };
 
-  const getPlatformConnectionDetailsByGatewayId = async ({
+  // The single place a caller-facing gateway client certificate is minted. Every consumer (platform
+  // dial-out, PAM, agent gateways) differs only in the certificate lifetime, the routing target, the
+  // actor pinned into the cert, and any consumer-specific extension appended after the shared ones.
+  // Authorization travels inside the certificate, so these extensions are the security boundary: the
+  // gateway trusts them and ignores anything the client says in band.
+  const $issueGatewayClientCredentials = async ({
     gatewayId,
-    targetHost,
-    targetPort
+    routingInfo,
+    actorMetadata,
+    durationMs,
+    extraExtensions = []
   }: {
     gatewayId: string;
-    targetHost: string;
-    targetPort: number;
+    routingInfo: { targetHost: string; targetPort: number };
+    actorMetadata: { type: ActorType; id?: string; name?: string };
+    durationMs?: number;
+    extraExtensions?: x509.Extension[];
   }): Promise<TGatewayV2ConnectionDetails | undefined> => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
     if (!gateway) {
@@ -399,180 +410,14 @@ export const gatewayV2ServiceFactory = ({
     );
 
     const clientCertIssuedAt = new Date();
-    const clientCertExpiration = new Date(new Date().getTime() + 5 * 60 * 1000);
+    const clientCertExpiration = new Date(new Date().getTime() + (durationMs ?? 5 * 60 * 1000));
     const clientKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const clientCertSerialNumber = createSerialNumber();
-
-    const routingInfo = {
-      targetHost,
-      targetPort
-    };
 
     const routingExtension = new x509.Extension(
       GATEWAY_ROUTING_INFO_OID,
       false,
       Buffer.from(JSON.stringify(routingInfo))
-    );
-
-    const actorExtension = new x509.Extension(
-      GATEWAY_ACTOR_OID,
-      false,
-      Buffer.from(JSON.stringify({ type: ActorType.PLATFORM }))
-    );
-
-    const clientCert = await x509.X509CertificateGenerator.create({
-      serialNumber: clientCertSerialNumber,
-      subject: `O=${orgGatewayConfig.orgId},OU=gateway-client,CN=${ActorType.PLATFORM}:${gatewayId}`,
-      issuer: gatewayClientCaCert.subject,
-      notAfter: clientCertExpiration,
-      notBefore: clientCertIssuedAt,
-      signingKey: importedGatewayClientCaPrivateKey,
-      publicKey: clientKeys.publicKey,
-      signingAlgorithm: alg,
-      extensions: [
-        new x509.BasicConstraintsExtension(false),
-        await x509.AuthorityKeyIdentifierExtension.create(gatewayClientCaCert, false),
-        await x509.SubjectKeyIdentifierExtension.create(clientKeys.publicKey),
-        new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
-        new x509.KeyUsagesExtension(
-          // eslint-disable-next-line no-bitwise
-          x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] |
-            x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT] |
-            x509.KeyUsageFlags[CertKeyUsage.KEY_AGREEMENT],
-          true
-        ),
-        new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.CLIENT_AUTH]], true),
-        routingExtension,
-        actorExtension
-      ]
-    });
-
-    const gatewayClientCertPrivateKey = crypto.nativeCrypto.KeyObject.from(clientKeys.privateKey);
-
-    const relayCredentials = await relayService.getCredentialsForClient({
-      relayId: gateway.relayId,
-      orgId: gateway.orgId,
-      orgName: gateway.orgName,
-      gatewayId,
-      gatewayName: gateway.name
-    });
-
-    return {
-      relayHost: relayCredentials.relayHost,
-      gateway: {
-        clientCertificate: clientCert.toString("pem"),
-        clientPrivateKey: gatewayClientCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
-        serverCertificateChain: constructPemChainFromCerts([gatewayServerCaCert, rootGatewayCaCert])
-      },
-      relay: {
-        clientCertificate: relayCredentials.clientCertificate,
-        clientPrivateKey: relayCredentials.clientPrivateKey,
-        serverCertificateChain: relayCredentials.serverCertificateChain
-      }
-    };
-  };
-
-  const getPAMConnectionDetails = async ({
-    gatewayId,
-    sessionId,
-    duration,
-    accountType,
-    host,
-    port,
-    actorMetadata
-  }: {
-    gatewayId: string;
-    sessionId: string;
-    accountType: PamAccountType;
-    duration?: number;
-    host: string;
-    port?: number;
-    actorMetadata: { id: string; type: ActorType; name: string };
-  }) => {
-    const gateway = await gatewayV2DAL.findById(gatewayId);
-    if (!gateway) {
-      return;
-    }
-
-    const orgGatewayConfig = await orgGatewayConfigV2DAL.findOne({ orgId: gateway.orgId });
-    if (!orgGatewayConfig) {
-      throw new NotFoundError({ message: `Gateway Config for org ${gateway.orgId} not found.` });
-    }
-
-    if (!gateway.relayId) {
-      throw new BadRequestError({
-        message: "Gateway is not associated with a relay"
-      });
-    }
-
-    const { decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: orgGatewayConfig.orgId
-    });
-
-    const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
-
-    const rootGatewayCaCert = new x509.X509Certificate(
-      orgKmsDecryptor({
-        cipherTextBlob: orgGatewayConfig.encryptedRootGatewayCaCertificate
-      })
-    );
-
-    const gatewayClientCaCert = new x509.X509Certificate(
-      orgKmsDecryptor({
-        cipherTextBlob: orgGatewayConfig.encryptedGatewayClientCaCertificate
-      })
-    );
-
-    const gatewayServerCaCert = new x509.X509Certificate(
-      orgKmsDecryptor({
-        cipherTextBlob: orgGatewayConfig.encryptedGatewayServerCaCertificate
-      })
-    );
-
-    const gatewayClientCaPrivateKey = orgKmsDecryptor({
-      cipherTextBlob: orgGatewayConfig.encryptedGatewayClientCaPrivateKey
-    });
-
-    const gatewayClientCaSkObj = crypto.nativeCrypto.createPrivateKey({
-      key: gatewayClientCaPrivateKey,
-      format: "der",
-      type: "pkcs8"
-    });
-
-    const importedGatewayClientCaPrivateKey = await crypto.nativeCrypto.subtle.importKey(
-      "pkcs8",
-      gatewayClientCaSkObj.export({ format: "der", type: "pkcs8" }),
-      alg,
-      true,
-      ["sign"]
-    );
-
-    const clientCertIssuedAt = new Date();
-    const clientCertExpiration = new Date(new Date().getTime() + (duration ?? 5 * 60 * 1000));
-    const clientKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const clientCertSerialNumber = createSerialNumber();
-
-    const routingInfo = {
-      targetHost: host,
-      targetPort: port ?? 0
-    };
-
-    const routingExtension = new x509.Extension(
-      GATEWAY_ROUTING_INFO_OID,
-      false,
-      Buffer.from(JSON.stringify(routingInfo))
-    );
-
-    const pamInfoExtension = new x509.Extension(
-      PAM_INFO_OID,
-      false,
-      Buffer.from(
-        JSON.stringify({
-          sessionId,
-          resourceType: accountType // "resourceType" name needed to support current CLI version
-        })
-      )
     );
 
     const actorExtension = new x509.Extension(
@@ -605,7 +450,7 @@ export const gatewayV2ServiceFactory = ({
         new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.CLIENT_AUTH]], true),
         routingExtension,
         actorExtension,
-        pamInfoExtension
+        ...extraExtensions
       ]
     });
 
@@ -617,7 +462,7 @@ export const gatewayV2ServiceFactory = ({
       orgName: gateway.orgName,
       gatewayId,
       gatewayName: gateway.name,
-      duration
+      duration: durationMs
     });
 
     return {
@@ -634,6 +479,141 @@ export const gatewayV2ServiceFactory = ({
       }
     };
   };
+
+  // Issues the caller the mTLS material to reach one agent gateway session through the relay. The session
+  // id rides in the certificate rather than in the request, so the gateway cannot be talked into serving a
+  // different session's credentials, and the certificate's short lifetime is what bounds revocation: the
+  // CLI has to come back for a new one, and that renewal re-checks the access list.
+  const getAgentGatewayConnectionDetails = async ({
+    gatewayId,
+    agentGatewayId,
+    agentGatewayName,
+    sessionId,
+    unmatchedHostPolicy,
+    allowedHosts,
+    duration,
+    actorMetadata
+  }: {
+    gatewayId: string;
+    agentGatewayId: string;
+    agentGatewayName: string;
+    sessionId: string;
+    // Carried in the certificate rather than asked for by the broker: the policy has to arrive on the same
+    // channel as the session identity, so an agent cannot negotiate a looser one.
+    unmatchedHostPolicy?: string;
+    allowedHosts?: string[];
+    duration?: number;
+    actorMetadata: { id: string; type: ActorType; name: string };
+  }) =>
+    $issueGatewayClientCredentials({
+      gatewayId,
+      routingInfo: { targetHost: AGENT_GATEWAY_ROUTING_SENTINEL, targetPort: 0 },
+      actorMetadata,
+      durationMs: duration,
+      extraExtensions: [
+        new x509.Extension(
+          AGENT_GATEWAY_INFO_OID,
+          false,
+          Buffer.from(JSON.stringify({ sessionId, agentGatewayId, agentGatewayName, unmatchedHostPolicy, allowedHosts }))
+        )
+      ]
+    });
+
+  // Best effort, and deliberately fire-and-forget at the call site: it turns "the credentials stop resolving
+  // on the next refresh" into "the tunnel is gone now". A gateway that has already dropped the session, or is
+  // unreachable, needs no signal, because a session it is not serving cannot broker anything.
+  const signalAgentGatewaySessionCancellation = async ({
+    gatewayId,
+    agentGatewayId,
+    agentGatewayName,
+    sessionId
+  }: {
+    gatewayId: string;
+    agentGatewayId: string;
+    agentGatewayName: string;
+    sessionId: string;
+  }) => {
+    const details = await getAgentGatewayConnectionDetails({
+      gatewayId,
+      agentGatewayId,
+      agentGatewayName,
+      sessionId,
+      actorMetadata: { type: ActorType.PLATFORM, id: sessionId, name: "session-cancellation" }
+    });
+    if (!details) return;
+
+    // The connection carries no payload: the session id is in the certificate, so opening and closing it is
+    // the whole message. Dialled directly rather than through withGatewayV2Proxy, which exists to front a
+    // local listener for a protocol that then exchanges bytes.
+    let relayConn: net.Socket | null = null;
+    try {
+      relayConn = await createRelayConnection({
+        relayHost: details.relayHost,
+        clientCertificate: details.relay.clientCertificate,
+        clientPrivateKey: details.relay.clientPrivateKey,
+        serverCertificateChain: details.relay.serverCertificateChain
+      });
+      const cancelConn = await createGatewayConnection(
+        relayConn,
+        details.gateway,
+        GatewayProxyProtocol.AgentGatewaySessionCancellation
+      );
+      cancelConn.end();
+    } finally {
+      relayConn?.destroy();
+    }
+  };
+
+  const getPlatformConnectionDetailsByGatewayId = async ({
+    gatewayId,
+    targetHost,
+    targetPort
+  }: {
+    gatewayId: string;
+    targetHost: string;
+    targetPort: number;
+  }): Promise<TGatewayV2ConnectionDetails | undefined> =>
+    $issueGatewayClientCredentials({
+      gatewayId,
+      routingInfo: { targetHost, targetPort },
+      actorMetadata: { type: ActorType.PLATFORM }
+    });
+
+  const getPAMConnectionDetails = async ({
+    gatewayId,
+    sessionId,
+    duration,
+    accountType,
+    host,
+    port,
+    actorMetadata
+  }: {
+    gatewayId: string;
+    sessionId: string;
+    accountType: PamAccountType;
+    duration?: number;
+    host: string;
+    port?: number;
+    actorMetadata: { id: string; type: ActorType; name: string };
+  }) =>
+    $issueGatewayClientCredentials({
+      gatewayId,
+      routingInfo: { targetHost: host, targetPort: port ?? 0 },
+      actorMetadata,
+      durationMs: duration,
+      extraExtensions: [
+        new x509.Extension(
+          PAM_INFO_OID,
+          false,
+          Buffer.from(
+            JSON.stringify({
+              sessionId,
+              resourceType: accountType // "resourceType" name needed to support current CLI version
+            })
+          )
+        )
+      ]
+    });
 
   const $issueGatewayCerts = async ({
     orgId,
@@ -951,7 +931,7 @@ export const gatewayV2ServiceFactory = ({
     capabilities
   }: {
     orgPermission: OrgServiceActor;
-    capabilities?: { pkcs11?: boolean };
+    capabilities?: TGatewayCapabilities;
   }) => {
     const nextCapabilities = capabilities ?? {};
 
@@ -1285,6 +1265,8 @@ export const gatewayV2ServiceFactory = ({
     registerGateway,
     getPlatformConnectionDetailsByGatewayId,
     getPAMConnectionDetails,
+    getAgentGatewayConnectionDetails,
+    signalAgentGatewaySessionCancellation,
     deleteGatewayById,
     heartbeat,
     triggerHeartbeat,

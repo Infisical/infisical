@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { ProxiedServiceCredentialsSchema, ProxiedServicesSchema } from "@app/db/schemas";
 import { PROXIED_SERVICES } from "@app/lib/api-docs";
+import { slugSchema } from "@app/server/lib/schemas";
 
 import {
   ProxiedServiceCredentialRole,
@@ -75,6 +76,10 @@ export const hostPatternSchema = z
 
 const CredentialInputSchema = z
   .object({
+    environment: slugSchema({ max: 64, field: "Credential environment" }).describe(
+      PROXIED_SERVICES.CREDENTIAL.environment
+    ),
+    secretPath: z.string().trim().min(1).max(1000).default("/").describe(PROXIED_SERVICES.CREDENTIAL.secretPath),
     secretKey: z.string().trim().min(1).max(255).optional().describe(PROXIED_SERVICES.CREDENTIAL.secretKey),
     dynamicSecretName: z
       .string()
@@ -224,9 +229,12 @@ export const CredentialsArraySchema = CredentialInputSchema.array()
     }
   });
 
+// envId is deliberately not exposed: the API speaks environment slugs, and the id is an internal
+// detail the DAL resolves on read.
 export const SanitizedProxiedServiceCredentialSchema = ProxiedServiceCredentialsSchema.pick({
   id: true,
   serviceId: true,
+  secretPath: true,
   secretKey: true,
   role: true,
   headerName: true,
@@ -237,10 +245,8 @@ export const SanitizedProxiedServiceCredentialSchema = ProxiedServiceCredentials
   substitutionSurfaces: true,
   dynamicSecretName: true,
   dynamicSecretField: true
-});
-
-export const SanitizedProxiedServiceCredentialWithLeaseAccessSchema = SanitizedProxiedServiceCredentialSchema.extend({
-  callerCanLease: z.boolean().optional()
+}).extend({
+  environment: z.string()
 });
 
 export const SanitizedProxiedServiceBaseSchema = ProxiedServicesSchema.pick({
@@ -248,7 +254,9 @@ export const SanitizedProxiedServiceBaseSchema = ProxiedServicesSchema.pick({
   name: true,
   hostPattern: true,
   isEnabled: true,
-  folderId: true,
+  projectId: true,
+  configuredByLabel: true,
+  configuredAt: true,
   createdAt: true,
   updatedAt: true,
   lastUsedAt: true
@@ -256,9 +264,4 @@ export const SanitizedProxiedServiceBaseSchema = ProxiedServicesSchema.pick({
 
 export const ProxiedServiceWithCredentialsSchema = SanitizedProxiedServiceBaseSchema.extend({
   credentials: SanitizedProxiedServiceCredentialSchema.array()
-});
-
-export const ProxiedServiceWithCanProxyAndLeaseAccessSchema = SanitizedProxiedServiceBaseSchema.extend({
-  credentials: SanitizedProxiedServiceCredentialWithLeaseAccessSchema.array(),
-  canProxy: z.boolean()
 });

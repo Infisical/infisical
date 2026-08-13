@@ -21,6 +21,15 @@ import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-appr
 import { accessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
 import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-reviewer-dal";
 import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
+import { agentGatewayAccessServiceFactory } from "@app/ee/services/agent-gateway/agent-gateway-access-service";
+import { agentGatewayDALFactory } from "@app/ee/services/agent-gateway/agent-gateway-dal";
+import { agentGatewayServiceFactory } from "@app/ee/services/agent-gateway/agent-gateway-service";
+import { agentGatewayServiceLinkDALFactory } from "@app/ee/services/agent-gateway/agent-gateway-service-link-dal";
+import { agentGatewaySessionDALFactory } from "@app/ee/services/agent-gateway/agent-gateway-session-dal";
+import { agentGatewaySessionLeaseDALFactory } from "@app/ee/services/agent-gateway/agent-gateway-session-lease-dal";
+import { agentGatewaySessionRequestDALFactory } from "@app/ee/services/agent-gateway/agent-gateway-session-request-dal";
+import { agentGatewaySessionQueueFactory } from "@app/ee/services/agent-gateway/agent-gateway-session-queue";
+import { agentGatewaySessionServiceFactory } from "@app/ee/services/agent-gateway/agent-gateway-session-service";
 import { agentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
 import { orgAgentProxyConfigDALFactory } from "@app/ee/services/agent-proxy-ca/org-agent-proxy-config-dal";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
@@ -729,6 +738,11 @@ export const registerRoutes = async (
 
   const proxiedServiceDAL = proxiedServiceDALFactory(db);
   const proxiedServiceCredentialDAL = proxiedServiceCredentialDALFactory(db);
+  const agentGatewayDAL = agentGatewayDALFactory(db);
+  const agentGatewayServiceLinkDAL = agentGatewayServiceLinkDALFactory(db);
+  const agentGatewaySessionDAL = agentGatewaySessionDALFactory(db);
+  const agentGatewaySessionLeaseDAL = agentGatewaySessionLeaseDALFactory(db);
+  const agentGatewaySessionRequestDAL = agentGatewaySessionRequestDALFactory(db);
   const orgAgentProxyConfigDAL = orgAgentProxyConfigDALFactory(db);
 
   const secretRotationV2DAL = secretRotationV2DALFactory(db, folderDAL);
@@ -2988,20 +3002,79 @@ export const registerRoutes = async (
   const proxiedServiceService = proxiedServiceServiceFactory({
     proxiedServiceDAL,
     proxiedServiceCredentialDAL,
+    agentGatewayServiceLinkDAL,
+    projectEnvDAL,
     folderDAL,
     secretV2BridgeService,
     permissionService,
     licenseService,
     dynamicSecretDAL,
     projectDAL,
+    userDAL,
+    identityDAL,
     keyStore
+  });
+
+  const agentGatewayAccessService = agentGatewayAccessServiceFactory({
+    agentGatewayDAL,
+    membershipDAL,
+    userDAL,
+    identityDAL,
+    groupDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL,
+    permissionService,
+    licenseService
+  });
+
+  const agentGatewayService = agentGatewayServiceFactory({
+    agentGatewayDAL,
+    agentGatewayServiceLinkDAL,
+    proxiedServiceDAL,
+    gatewayV2DAL,
+    gatewayPoolService,
+    membershipDAL,
+    agentGatewayAccessService,
+    permissionService,
+    licenseService,
+    projectDAL
   });
 
   const agentProxyCaService = agentProxyCaServiceFactory({
     orgAgentProxyConfigDAL,
+    agentGatewaySessionDAL,
+    membershipDAL,
     kmsService,
     licenseService,
     permissionService
+  });
+
+  const agentGatewaySessionService = agentGatewaySessionServiceFactory({
+    agentGatewayDAL,
+    agentGatewayServiceLinkDAL,
+    agentGatewaySessionDAL,
+    agentGatewaySessionLeaseDAL,
+    agentGatewayAccessService,
+    proxiedServiceCredentialDAL,
+    proxiedServiceService,
+    agentGatewaySessionRequestDAL,
+    secretV2BridgeService,
+    dynamicSecretLeaseService,
+    dynamicSecretLeaseQueueService: dynamicSecretQueueService,
+    gatewayPoolService,
+    gatewayV2Service,
+    agentProxyCaService,
+    kmsService,
+    projectDAL,
+    userDAL,
+    identityDAL,
+    permissionService,
+    licenseService
+  });
+
+  const agentGatewaySessionQueue = agentGatewaySessionQueueFactory({
+    cronJob,
+    agentGatewaySessionService
   });
 
   const webhookService = webhookServiceFactory({
@@ -3814,6 +3887,7 @@ export const registerRoutes = async (
   telemetryQueue.startAggregatedEventsJob();
   updateCheckService.init();
   dailyResourceCleanUp.init();
+  agentGatewaySessionQueue.init();
   projectEnvQueue.init();
   projectCleanupQueue.init();
   usageEventQueue.init();
@@ -3994,6 +4068,9 @@ export const registerRoutes = async (
     honeyTokenConfig: honeyTokenConfigService,
     honeyToken: honeyTokenService,
     proxiedService: proxiedServiceService,
+    agentGateway: agentGatewayService,
+    agentGatewayAccess: agentGatewayAccessService,
+    agentGatewaySession: agentGatewaySessionService,
     agentProxyCa: agentProxyCaService,
     folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service,

@@ -55,6 +55,7 @@ export enum ApiDocsTags {
   SecretImports = "Secret Imports",
   SecretRotations = "Secret Rotations",
   ProxiedServices = "Proxied Services",
+  AgentGateways = "Agent Gateways",
   IdentitySpecificPrivilegesV1 = "Identity Specific Privileges",
   IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
   AppConnections = "App Connections",
@@ -1442,7 +1443,6 @@ export const DASHBOARD = {
     includeFolders: "Whether to include project folders in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
     includeHoneyTokens: "Whether to include honey tokens in the response.",
-    includeProxiedServices: "Whether to include proxied services in the response.",
     includeImports: "Whether to include project secret imports in the response.",
     includeSecretRotations: "Whether to include project secret rotations in the response."
   },
@@ -1461,8 +1461,7 @@ export const DASHBOARD = {
     includeImports: "Whether to include project secret imports in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
     includeSecretRotations: "Whether to include secret rotations in the response.",
-    includeHoneyTokens: "Whether to include honey tokens in the response.",
-    includeProxiedServices: "Whether to include proxied services in the response."
+    includeHoneyTokens: "Whether to include honey tokens in the response."
   }
 } as const;
 
@@ -1577,34 +1576,90 @@ export const DYNAMIC_SECRET_LEASES = {
   }
 } as const;
 
+export const AGENT_GATEWAYS = {
+  CREATE: {
+    projectId: "The ID of the project to create the Agent Gateway in.",
+    name: "The name of the Agent Gateway. Agents reference it by this name.",
+    description: "An optional description of what this Agent Gateway is for.",
+    gatewayId:
+      "The ID of the Infisical Gateway that brokers this Agent Gateway's traffic. Required for remote use; omit for local-only. Mutually exclusive with gatewayPoolId.",
+    gatewayPoolId:
+      "The ID of the Infisical Gateway Pool that brokers this Agent Gateway's traffic. Mutually exclusive with gatewayId.",
+    isLocalModeEnabled: "Whether agents may run against this Agent Gateway in local mode.",
+    unmatchedHostPolicy:
+      "What happens to a request whose host no connected proxied service matches: 'allow' forwards it with no credential applied, 'block' refuses it with a 403.",
+    allowedHosts:
+      "Hostnames that pass through uncredentialed even when unmatched hosts are blocked. Matched exactly and case-insensitively."
+  },
+  LIST: {
+    projectId: "The ID of the project to list Agent Gateways from.",
+    search: "Filter the results to Agent Gateways whose name contains this value.",
+    orderDirection: "The direction to sort the results by name in.",
+    limit: "The number of Agent Gateways to return.",
+    offset: "The number of Agent Gateways to skip before returning results."
+  },
+  GET: {
+    agentGatewayId: "The ID of the Agent Gateway.",
+    name: "The name of the Agent Gateway.",
+    projectId: "The ID of the project the Agent Gateway is in."
+  },
+  UPDATE: {
+    agentGatewayId: "The ID of the Agent Gateway to update.",
+    name: "The new name of the Agent Gateway.",
+    description: "The new description of the Agent Gateway.",
+    gatewayId: "The Infisical Gateway to broker this Agent Gateway's traffic through. Null clears it.",
+    gatewayPoolId: "The Infisical Gateway Pool to broker this Agent Gateway's traffic through. Null clears it.",
+    isLocalModeEnabled: "Whether agents may run against this Agent Gateway in local mode.",
+    unmatchedHostPolicy:
+      "What happens to a request whose host no connected proxied service matches: 'allow' forwards it with no credential applied, 'block' refuses it with a 403.",
+    allowedHosts:
+      "Hostnames that pass through uncredentialed even when unmatched hosts are blocked. Matched exactly and case-insensitively."
+  },
+  DELETE: {
+    agentGatewayId: "The ID of the Agent Gateway to delete."
+  },
+  ACCESS: {
+    agentGatewayId: "The ID of the Agent Gateway.",
+    principalId: "The ID of the user, machine identity, or group."
+  },
+  SESSIONS: {
+    agentGatewayId: "The ID of the Agent Gateway to open a session against.",
+    sessionId: "The ID of the Agent Gateway session.",
+    mode: "Where the broker runs: 'remote' brokers through the Agent Gateway's Infisical Gateway, 'local' runs it in the caller's own process.",
+    ttlSeconds: "How long the session may last before it has to be renewed."
+  },
+  SERVICES: {
+    agentGatewayId: "The ID of the Agent Gateway.",
+    serviceId: "The ID of the proxied service.",
+    serviceIds:
+      "Every proxied service currently connected to this Agent Gateway, in the order they should be matched. When two services match the same host, the earlier one wins."
+  }
+} as const;
+
 export const PROXIED_SERVICES = {
   CREATE: {
     projectId: "The ID of the project to create the proxied service in.",
-    environment: "The slug of the environment to create the proxied service in.",
-    secretPath: "The secret path (folder) to create the proxied service in.",
     name: "The name of the proxied service.",
     hostPattern:
       "One or more comma-separated host patterns the service applies to, e.g. 'api.stripe.com, *.stripe.com'. Each pattern is host[:port][/path]; a '*.' wildcard matches exactly one label.",
-    isEnabled: "Whether the proxied service is enabled. The agent proxy skips disabled services.",
-    credentials: "The credentials the agent proxy applies to requests matching the host pattern."
+    isEnabled: "Whether the proxied service is enabled. An agent gateway skips disabled services.",
+    credentials: "The credentials the agent gateway applies to requests matching the host pattern."
   },
   LIST: {
     projectId: "The ID of the project to list proxied services from.",
-    environment: "The slug of the environment to list proxied services from.",
-    secretPath: "The secret path (folder) to list proxied services from."
+    search: "Filter the results to services whose name contains this value.",
+    orderDirection: "The direction to sort the results by name in.",
+    limit: "The number of services to return.",
+    offset: "The number of services to skip before returning results."
   },
   GET: {
-    serviceId: "The ID of the proxied service.",
-    name: "The name of the proxied service.",
-    projectId: "The ID of the project the proxied service is in.",
-    environment: "The slug of the environment the proxied service is in.",
-    secretPath: "The secret path (folder) the proxied service is in."
+    serviceId: "The ID of the proxied service."
   },
   UPDATE: {
     serviceId: "The ID of the proxied service to update.",
     name: "The new name of the proxied service.",
     hostPattern: "The new comma-separated host patterns.",
-    isEnabled: "Whether the proxied service is enabled. The agent proxy skips disabled services.",
+    isEnabled: "Whether the proxied service is enabled. An agent gateway skips disabled services.",
     credentials:
       "The new credentials. When provided, the entire credentials collection is replaced; when omitted, existing credentials are left unchanged."
   },
@@ -1612,10 +1667,12 @@ export const PROXIED_SERVICES = {
     serviceId: "The ID of the proxied service to delete."
   },
   CREDENTIAL: {
+    environment: "The slug of the environment the referenced secret lives in.",
+    secretPath: "The secret path (folder) the referenced secret lives in.",
     secretKey:
-      "The key name of the referenced static secret. The secret must live in the same folder as the service. Provide exactly one of secretKey or dynamicSecretName.",
+      "The key name of the referenced static secret, resolved at the credential's own environment and secret path. Provide exactly one of secretKey or dynamicSecretName.",
     dynamicSecretName:
-      "The name of the referenced dynamic secret. The dynamic secret must live in the same folder as the service; the agent proxy mints a lease and injects a field from its output. Provide exactly one of secretKey or dynamicSecretName. Referenced by name (like secretKey), so a deleted-then-recreated dynamic secret with the same name re-links automatically.",
+      "The name of the referenced dynamic secret, resolved at the credential's own environment and secret path; the agent gateway mints a lease and injects a field from its output. Provide exactly one of secretKey or dynamicSecretName. Referenced by name (like secretKey), so a deleted-then-recreated dynamic secret with the same name re-links automatically.",
     dynamicSecretField:
       "For a dynamic secret credential: which lease output field to inject (e.g. 'DB_PASSWORD', 'TOKEN'). Must be a valid output field for the dynamic secret's provider type.",
     role: "How the credential is applied: 'header-rewrite' sets an HTTP header on the outbound request; 'credential-substitution' replaces a placeholder value in the request.",

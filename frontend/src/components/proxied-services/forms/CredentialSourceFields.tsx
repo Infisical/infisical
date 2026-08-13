@@ -20,6 +20,12 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  SecretPathInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -49,8 +55,11 @@ export type TCredentialSource = {
 
 type Props = {
   projectId: string;
+  // Where this credential's secret lives. Chosen inside the picker rather than on the service, because a
+  // proxied service is project-scoped: each credential can point wherever its secret happens to be.
   environment: string;
   secretPath: string;
+  onLocationChange: (location: { environment: string; secretPath: string }) => void;
   value: TCredentialSource;
   onChange: (value: TCredentialSource) => void;
   isSecretError?: boolean;
@@ -107,6 +116,7 @@ export const CredentialSourceFields = ({
   projectId,
   environment,
   secretPath,
+  onLocationChange,
   value,
   onChange,
   isSecretError,
@@ -311,46 +321,62 @@ export const CredentialSourceFields = ({
             <ChevronDownIcon className="size-4 shrink-0 text-muted" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="start"
-          className="max-h-80 w-(--radix-dropdown-menu-trigger-width) p-0"
-        >
-          <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-popover px-2.5 py-2.5">
-            <SearchIcon className="size-3.5 shrink-0 text-muted" />
-            <input
-              ref={searchRef}
-              className="w-full bg-transparent text-sm text-foreground placeholder:text-muted focus:outline-none"
-              placeholder="Search secrets..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.stopPropagation()}
-            />
+        <DropdownMenuContent align="start" className="w-(--radix-dropdown-menu-trigger-width) p-0">
+          <div className="sticky top-0 z-10 bg-popover">
+            {/* Environment and path read as one control, because together they are a single answer: where
+                this credential's secret lives. */}
+            <div className="p-2">
+              <div className="flex items-stretch overflow-hidden rounded-md border border-border">
+                {/* The divider lives on the wrapper and the controls carry transparent borders: overriding
+                    border widths would depend on Tailwind's ordering and the two halves would stop aligning. */}
+                <div className="shrink-0 border-r border-border">
+                  <Select
+                    value={environment}
+                    onValueChange={(next) => onLocationChange({ environment: next, secretPath })}
+                  >
+                    <SelectTrigger className="h-9 w-36 rounded-none border-transparent bg-transparent px-3 text-sm shadow-none focus-visible:ring-0">
+                      <SelectValue placeholder="Environment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currentProject.environments.map((env) => (
+                        <SelectItem key={env.slug} value={env.slug}>
+                          {env.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* Radix treats typing inside a menu as navigation, so the path input keeps its keystrokes. */}
+                <div
+                  className="min-w-0 flex-1"
+                  onKeyDown={(e) => e.stopPropagation()}
+                  role="presentation"
+                >
+                  <SecretPathInput
+                    projectId={projectId}
+                    environment={environment}
+                    value={secretPath}
+                    onChange={(next) => onLocationChange({ environment, secretPath: next })}
+                    containerClassName="h-9 w-full rounded-none border-transparent bg-transparent text-sm shadow-none focus-visible:ring-0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 border-b border-border px-4 pb-3">
+              <SearchIcon className="size-4 shrink-0 text-muted" />
+              <input
+                ref={searchRef}
+                className="w-full bg-transparent text-sm text-foreground placeholder:text-muted focus:outline-none"
+                placeholder="Search secrets..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+            </div>
           </div>
 
-          <div className="p-1">
-            {canCreateSecret && (
-              <>
-                {isProtectedBranch ? (
-                  <GreyedRow
-                    icon={<PlusIcon className="size-4 shrink-0 text-muted" />}
-                    label="Create new secret"
-                    reason="This path requires approval, so a new secret would go to review before you could use it here."
-                  />
-                ) : (
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setOpen(false);
-                      handlePopUpOpen("createSecret");
-                    }}
-                  >
-                    <PlusIcon className="size-4 shrink-0 text-muted" />
-                    <span className="truncate">Create new secret</span>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-              </>
-            )}
-
+          <div className="max-h-56 overflow-y-auto p-1">
             {hasSelection && !query && (
               <>
                 <DropdownMenuItem className="text-muted" onSelect={() => commit({})}>
@@ -427,6 +453,28 @@ export const CredentialSourceFields = ({
               );
             })}
           </div>
+
+          {canCreateSecret && (
+            <div className="border-t border-border p-1">
+              {isProtectedBranch ? (
+                <GreyedRow
+                  icon={<PlusIcon className="size-4 shrink-0 text-muted" />}
+                  label="Create new secret"
+                  reason="This path requires approval, so a new secret would go to review before you could use it here."
+                />
+              ) : (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setOpen(false);
+                    handlePopUpOpen("createSecret");
+                  }}
+                >
+                  <PlusIcon className="size-4 shrink-0 text-muted" />
+                  <span className="truncate">Create new secret</span>
+                </DropdownMenuItem>
+              )}
+            </div>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

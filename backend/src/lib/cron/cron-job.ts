@@ -44,7 +44,8 @@ export const CronJobName = {
   PamCredentialRotationQueueRotations: "pam-credential-rotation-queue-rotations",
   DailyAlertProcessing: "daily-alert-processing",
   SecretScanningStuckScanReaper: "secret-scanning-stuck-scan-reaper",
-  InstanceUpdateCheck: "instance-update-check"
+  InstanceUpdateCheck: "instance-update-check",
+  AgentGatewaySessionExpiry: "agent-gateway-session-expiry"
 } as const;
 
 // ── tuning constants ──────────────────────────────────────────────────────────

@@ -331,10 +331,15 @@ export enum TableName {
   // Audit Reports (exportable compliance reports)
   AuditReport = "audit_reports",
 
-  // Secrets Brokering (Agent Proxy)
+  // Secrets Brokering (Agent Gateways)
   OrgAgentProxyConfig = "org_agent_proxy_config",
   ProxiedService = "proxied_services",
   ProxiedServiceCredential = "proxied_service_credentials",
+  AgentGateway = "agent_gateways",
+  AgentGatewayService = "agent_gateway_services",
+  AgentGatewaySession = "agent_gateway_sessions",
+  AgentGatewaySessionLease = "agent_gateway_session_leases",
+  AgentGatewaySessionRequest = "agent_gateway_session_requests",
 
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",
@@ -395,7 +400,10 @@ export enum ResourceType {
   CertificateApplication = "certificate-application",
   Signer = "pki-signer",
   PamFolder = "pam-folder",
-  PamAccount = "pam-account"
+  PamAccount = "pam-account",
+  // Roleless: a resource membership on an agent gateway carries no role, because presence in the
+  // list is the entire grant. No membership_roles row is written for one.
+  AgentGateway = "agent-gateway"
 }
 
 export enum SecretEncryptionAlgo {

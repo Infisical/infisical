@@ -5,7 +5,7 @@ import {
   ProxiedServiceSubstitutionSurface
 } from "@app/hooks/api/proxiedServices/enums";
 import {
-  TDashboardProxiedService,
+  TProxiedService,
   TProxiedServiceCredentialInput
 } from "@app/hooks/api/proxiedServices/types";
 
@@ -18,47 +18,68 @@ export const genPlaceholder = () =>
   ).join("")}`;
 
 const emptySource = (): TCredentialSourceForm => ({
+  environment: "",
+  secretPath: "",
   secretKey: "",
   dynamicSecretName: "",
   dynamicSecretField: ""
 });
 
-const toSource = (c: TDashboardProxiedService["credentials"][number]): TCredentialSourceForm =>
-  c.dynamicSecretName
+// Round-trips the credential's own location so an edit does not silently relocate a secret to the
+// service's default.
+const toSource = (c: TProxiedService["credentials"][number]): TCredentialSourceForm => {
+  const location = { environment: c.environment, secretPath: c.secretPath };
+  return c.dynamicSecretName
     ? {
+        ...location,
         secretKey: "",
         dynamicSecretName: c.dynamicSecretName,
         dynamicSecretField: c.dynamicSecretField ?? ""
       }
-    : { secretKey: c.secretKey ?? "", dynamicSecretName: "", dynamicSecretField: "" };
+    : { ...location, secretKey: c.secretKey ?? "", dynamicSecretName: "", dynamicSecretField: "" };
+};
 
 const hasSource = (src: TCredentialSourceForm) => Boolean(src.secretKey || src.dynamicSecretName);
 
 // Emits the source half of a credential input: either a static secretKey or a dynamic
 // secret + output field. (Lease config, e.g. k8s namespace, is intentionally not collected.)
 const sourceToInput = (
-  src: TCredentialSourceForm
+  src: TCredentialSourceForm,
+  fallback: { environment: string; secretPath: string }
 ): Pick<
   TProxiedServiceCredentialInput,
-  "secretKey" | "dynamicSecretName" | "dynamicSecretField"
-> =>
-  src.dynamicSecretName
-    ? { dynamicSecretName: src.dynamicSecretName, dynamicSecretField: src.dynamicSecretField }
-    : { secretKey: src.secretKey };
+  "environment" | "secretPath" | "secretKey" | "dynamicSecretName" | "dynamicSecretField"
+> => {
+  const location = {
+    environment: src.environment || fallback.environment,
+    secretPath: src.secretPath || fallback.secretPath
+  };
+  return src.dynamicSecretName
+    ? {
+        ...location,
+        dynamicSecretName: src.dynamicSecretName,
+        dynamicSecretField: src.dynamicSecretField
+      }
+    : { ...location, secretKey: src.secretKey };
+};
 
 // The legacy blank-slate defaults, used for "Custom" and as the base for new services.
-export const emptyFormValues = (): TProxiedServiceForm => ({
+export const emptyFormValues = (defaultEnvironment = ""): TProxiedServiceForm => ({
   name: "",
   hostPattern: "",
   isEnabled: true,
+  defaultEnvironment,
   headerMode: HeaderRewritingMode.Headers,
   headers: [{ ...emptySource(), headerName: "Authorization", headerPrefix: "Bearer" }],
   basicAuth: { username: emptySource(), password: emptySource() },
   substitutions: []
 });
 
-export const toDefaultValues = (svc?: TDashboardProxiedService): TProxiedServiceForm => {
-  if (!svc) return emptyFormValues();
+export const toDefaultValues = (
+  svc?: TProxiedService,
+  defaultEnvironment = ""
+): TProxiedServiceForm => {
+  if (!svc) return emptyFormValues(defaultEnvironment);
 
   const headerCreds = svc.credentials.filter(
     (c) => c.role === ProxiedServiceCredentialRole.HeaderRewrite
@@ -74,10 +95,14 @@ export const toDefaultValues = (svc?: TDashboardProxiedService): TProxiedService
     (c) => c.role === ProxiedServiceCredentialRole.CredentialSubstitution
   );
 
+  // The default is taken from the first credential so an unchanged edit round-trips to the same rows.
+  const firstCredential = svc.credentials[0];
+
   return {
     name: svc.name,
     hostPattern: svc.hostPattern,
     isEnabled: svc.isEnabled,
+    defaultEnvironment: firstCredential?.environment ?? defaultEnvironment,
     headerMode: isBasicAuth ? HeaderRewritingMode.BasicAuth : HeaderRewritingMode.Headers,
     headers: isBasicAuth
       ? []
@@ -101,18 +126,21 @@ export const toDefaultValues = (svc?: TDashboardProxiedService): TProxiedService
 
 export const toCredentials = (form: TProxiedServiceForm): TProxiedServiceCredentialInput[] => {
   const credentials: TProxiedServiceCredentialInput[] = [];
+  // A row that has not been touched still needs a location, so the seed environment and the project root
+  // stand in. Every row the author actually edited carries its own.
+  const fallback = { environment: form.defaultEnvironment, secretPath: "/" };
 
   if (form.headerMode === HeaderRewritingMode.BasicAuth) {
     if (form.basicAuth && hasSource(form.basicAuth.username)) {
       credentials.push({
-        ...sourceToInput(form.basicAuth.username),
+        ...sourceToInput(form.basicAuth.username, fallback),
         role: ProxiedServiceCredentialRole.HeaderRewrite,
         headerPurpose: ProxiedServiceHeaderPurpose.Username
       });
     }
     if (form.basicAuth && hasSource(form.basicAuth.password)) {
       credentials.push({
-        ...sourceToInput(form.basicAuth.password),
+        ...sourceToInput(form.basicAuth.password, fallback),
         role: ProxiedServiceCredentialRole.HeaderRewrite,
         headerPurpose: ProxiedServiceHeaderPurpose.Password
       });
@@ -120,7 +148,7 @@ export const toCredentials = (form: TProxiedServiceForm): TProxiedServiceCredent
   } else {
     form.headers.forEach((h) => {
       credentials.push({
-        ...sourceToInput(h),
+        ...sourceToInput(h, fallback),
         role: ProxiedServiceCredentialRole.HeaderRewrite,
         headerName: h.headerName,
         // omit rather than send null: the API field is optional and rejects null
@@ -131,7 +159,7 @@ export const toCredentials = (form: TProxiedServiceForm): TProxiedServiceCredent
 
   form.substitutions.forEach((s) => {
     credentials.push({
-      ...sourceToInput(s),
+      ...sourceToInput(s, fallback),
       role: ProxiedServiceCredentialRole.CredentialSubstitution,
       placeholderKey: s.placeholderKey,
       placeholderValue: s.placeholderValue,
@@ -155,7 +183,8 @@ export const uniqueServiceName = (base: string, existingNames: string[]) => {
 // Placeholders are generated once here so re-renders don't churn the value.
 export const buildTemplateFormValues = (
   template: ProxiedServiceTemplate,
-  existingNames: string[]
+  existingNames: string[],
+  defaultEnvironment = ""
 ): TProxiedServiceForm => {
   const isBasicAuth = Boolean(template.seed.basicAuth);
 
@@ -163,6 +192,7 @@ export const buildTemplateFormValues = (
     name: uniqueServiceName(template.defaultName ?? template.key, existingNames),
     hostPattern: template.hostPattern,
     isEnabled: true,
+    defaultEnvironment,
     headerMode: isBasicAuth ? HeaderRewritingMode.BasicAuth : HeaderRewritingMode.Headers,
     // Substitution-only templates omit `headers`, which becomes an empty list here so the
     // legacy Authorization row is dropped and the Header Rewrites step is genuinely empty.

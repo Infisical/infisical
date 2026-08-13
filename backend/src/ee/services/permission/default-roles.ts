@@ -2,6 +2,7 @@ import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability"
 
 import {
   ProjectPermissionActions,
+  ProjectPermissionAgentGatewayActions,
   ProjectPermissionAppConnectionActions,
   ProjectPermissionApplicationActions,
   ProjectPermissionApprovalRequestActions,
@@ -451,11 +452,23 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionProxiedServiceActions.Read,
       ProjectPermissionProxiedServiceActions.Create,
       ProjectPermissionProxiedServiceActions.Edit,
-      ProjectPermissionProxiedServiceActions.Delete,
-      ProjectPermissionProxiedServiceActions.Proxy,
-      ProjectPermissionProxiedServiceActions.ReportUsage
+      ProjectPermissionProxiedServiceActions.Delete
     ],
     ProjectPermissionSub.ProxiedServices
+  );
+
+  // ManageServices and ManageAccess stay admin-only: adding either to the default member role would
+  // widen every existing member in every project.
+  can(
+    [
+      ProjectPermissionAgentGatewayActions.Read,
+      ProjectPermissionAgentGatewayActions.Create,
+      ProjectPermissionAgentGatewayActions.Edit,
+      ProjectPermissionAgentGatewayActions.Delete,
+      ProjectPermissionAgentGatewayActions.ManageServices,
+      ProjectPermissionAgentGatewayActions.ManageAccess
+    ],
+    ProjectPermissionSub.AgentGateways
   );
 
   return rules;
@@ -555,10 +568,8 @@ const buildMemberPermissionRules = () => {
 
   can([ProjectPermissionHoneyTokenActions.Read], ProjectPermissionSub.HoneyTokens);
 
-  can(
-    [ProjectPermissionProxiedServiceActions.Read, ProjectPermissionProxiedServiceActions.ReportUsage],
-    ProjectPermissionSub.ProxiedServices
-  );
+  can([ProjectPermissionProxiedServiceActions.Read], ProjectPermissionSub.ProxiedServices);
+  can([ProjectPermissionAgentGatewayActions.Read], ProjectPermissionSub.AgentGateways);
 
   can(
     [
@@ -693,10 +704,8 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
   can(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens);
-  can(
-    [ProjectPermissionProxiedServiceActions.Read, ProjectPermissionProxiedServiceActions.ReportUsage],
-    ProjectPermissionSub.ProxiedServices
-  );
+  can([ProjectPermissionProxiedServiceActions.Read], ProjectPermissionSub.ProxiedServices);
+  can([ProjectPermissionAgentGatewayActions.Read], ProjectPermissionSub.AgentGateways);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);

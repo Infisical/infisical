@@ -127,7 +127,10 @@ describe("hostPatternSchema", () => {
 });
 
 describe("CredentialsArraySchema credential source (static vs dynamic)", () => {
+  // environment is required on every credential: a service is project-scoped, so each credential names
+  // the location its secret resolves at.
   const bearerHeader = {
+    environment: "dev",
     role: ProxiedServiceCredentialRole.HeaderRewrite,
     headerName: "Authorization",
     headerPrefix: "Bearer"
@@ -140,6 +143,47 @@ describe("CredentialsArraySchema credential source (static vs dynamic)", () => {
 
   it("accepts a static secretKey credential", () => {
     expect(parseArray([{ ...bearerHeader, secretKey: "STRIPE_API_KEY" }]).success).toBe(true);
+  });
+
+  it("rejects a credential with no environment", () => {
+    const { environment, ...withoutEnvironment } = bearerHeader;
+    expect(parseArray([{ ...withoutEnvironment, secretKey: "STRIPE_API_KEY" }]).success).toBe(false);
+  });
+
+  it("defaults secretPath to the project root", () => {
+    const result = parseArray([{ ...bearerHeader, secretKey: "STRIPE_API_KEY" }]);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data[0].secretPath).toBe("/");
+    }
+  });
+
+  it("keeps an explicit secretPath", () => {
+    const result = parseArray([{ ...bearerHeader, secretKey: "STRIPE_API_KEY", secretPath: "/payments" }]);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data[0].secretPath).toBe("/payments");
+    }
+  });
+
+  it("accepts credentials resolving in different environments", () => {
+    expect(
+      parseArray([
+        { ...bearerHeader, environment: "dev", secretKey: "STRIPE_API_KEY" },
+        { ...bearerHeader, environment: "prod", headerName: "x-tenant", secretKey: "TENANT_ID" }
+      ]).success
+    ).toBe(true);
+  });
+
+  // One outbound request carries one value per header, so the environment a credential resolves in does
+  // not make a second writer of the same header unambiguous.
+  it("still rejects two credentials setting the same header, even in different environments", () => {
+    expect(
+      errorsOf([
+        { ...bearerHeader, environment: "dev", secretKey: "STRIPE_API_KEY" },
+        { ...bearerHeader, environment: "prod", secretKey: "STRIPE_API_KEY_PROD" }
+      ]).join(" ")
+    ).toContain("is set by more than one credential");
   });
 
   it("accepts a dynamic credential with a field", () => {
@@ -176,12 +220,14 @@ describe("CredentialsArraySchema credential source (static vs dynamic)", () => {
     expect(
       parseArray([
         {
+          environment: "dev",
           role: ProxiedServiceCredentialRole.HeaderRewrite,
           headerPurpose: ProxiedServiceHeaderPurpose.Username,
           dynamicSecretName: "my-postgres",
           dynamicSecretField: "DB_USERNAME"
         },
         {
+          environment: "dev",
           role: ProxiedServiceCredentialRole.HeaderRewrite,
           headerPurpose: ProxiedServiceHeaderPurpose.Password,
           dynamicSecretName: "my-postgres",
@@ -195,6 +241,7 @@ describe("CredentialsArraySchema credential source (static vs dynamic)", () => {
     expect(
       parseArray([
         {
+          environment: "dev",
           role: ProxiedServiceCredentialRole.CredentialSubstitution,
           placeholderKey: "TOKEN",
           placeholderValue: "placeholder_token",
@@ -209,11 +256,13 @@ describe("CredentialsArraySchema credential source (static vs dynamic)", () => {
 
 describe("CredentialsArraySchema basic auth", () => {
   const username = {
+    environment: "dev",
     secretKey: "API_KEY",
     role: ProxiedServiceCredentialRole.HeaderRewrite,
     headerPurpose: ProxiedServiceHeaderPurpose.Username
   };
   const password = {
+    environment: "dev",
     secretKey: "API_SECRET",
     role: ProxiedServiceCredentialRole.HeaderRewrite,
     headerPurpose: ProxiedServiceHeaderPurpose.Password

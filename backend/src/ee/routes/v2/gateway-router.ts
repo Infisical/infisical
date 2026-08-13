@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { GatewaysV2Schema } from "@app/db/schemas";
+import { GatewayCapabilitiesSchema } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { zodBuffer } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -71,11 +72,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       operationId: "gatewayHeartbeat",
       body: z
         .object({
-          capabilities: z
-            .object({
-              pkcs11: z.boolean().optional()
-            })
-            .optional()
+          capabilities: GatewayCapabilitiesSchema.optional()
         })
         .nullish(),
       response: {

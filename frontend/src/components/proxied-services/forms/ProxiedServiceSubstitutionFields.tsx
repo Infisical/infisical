@@ -21,16 +21,15 @@ import { genPlaceholder } from "./utils";
 
 type Props = {
   projectId: string;
-  environment: string;
-  secretPath: string;
+  // Where a newly added credential starts looking. Each row then owns its own location.
+  defaultEnvironment: string;
   showCredentialError?: boolean;
   onClearCredentialError?: () => void;
 };
 
 export const ProxiedServiceSubstitutionFields = ({
   projectId,
-  environment,
-  secretPath,
+  defaultEnvironment,
   showCredentialError,
   onClearCredentialError
 }: Props) => {
@@ -49,6 +48,17 @@ export const ProxiedServiceSubstitutionFields = ({
     setValue(`substitutions.${i}.secretKey`, v.secretKey ?? "");
     setValue(`substitutions.${i}.dynamicSecretName`, v.dynamicSecretName ?? "");
     setValue(`substitutions.${i}.dynamicSecretField`, v.dynamicSecretField ?? "");
+  };
+
+  // A key from the old folder almost certainly does not exist in the new one, so moving the location
+  // clears the selection rather than leaving a reference that fails at request time.
+  const setSubstitutionLocation = (
+    i: number,
+    location: { environment: string; secretPath: string }
+  ) => {
+    setValue(`substitutions.${i}.environment`, location.environment);
+    setValue(`substitutions.${i}.secretPath`, location.secretPath);
+    setSubstitutionSource(i, {});
   };
 
   return (
@@ -149,8 +159,9 @@ export const ProxiedServiceSubstitutionFields = ({
               <div className="flex-1">
                 <CredentialSourceFields
                   projectId={projectId}
-                  environment={environment}
-                  secretPath={secretPath}
+                  environment={watchedSubstitutions?.[i]?.environment || defaultEnvironment}
+                  secretPath={watchedSubstitutions?.[i]?.secretPath || "/"}
+                  onLocationChange={(location) => setSubstitutionLocation(i, location)}
                   value={{
                     secretKey: watchedSubstitutions?.[i]?.secretKey,
                     dynamicSecretName: watchedSubstitutions?.[i]?.dynamicSecretName,
@@ -179,6 +190,8 @@ export const ProxiedServiceSubstitutionFields = ({
           type="button"
           onClick={() => {
             substitutionFields.append({
+              environment: "",
+              secretPath: "",
               secretKey: "",
               dynamicSecretName: "",
               dynamicSecretField: "",

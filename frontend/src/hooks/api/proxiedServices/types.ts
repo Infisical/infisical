@@ -4,9 +4,13 @@ import {
   ProxiedServiceSubstitutionSurface
 } from "./enums";
 
+// A service is project-scoped, so each credential names the environment and path its secret resolves at.
+// That is what lets one service reference secrets across folders without a secret import.
 export type TProxiedServiceCredential = {
   id: string;
   serviceId: string;
+  environment: string;
+  secretPath: string;
   secretKey?: string | null;
   role: ProxiedServiceCredentialRole;
   headerName?: string | null;
@@ -17,7 +21,6 @@ export type TProxiedServiceCredential = {
   substitutionSurfaces?: ProxiedServiceSubstitutionSurface[] | null;
   dynamicSecretName?: string | null;
   dynamicSecretField?: string | null;
-  callerCanLease?: boolean;
 };
 
 export type TProxiedServiceBase = {
@@ -25,7 +28,9 @@ export type TProxiedServiceBase = {
   name: string;
   hostPattern: string;
   isEnabled: boolean;
-  folderId: string;
+  projectId: string;
+  configuredByLabel: string;
+  configuredAt: string;
   createdAt: string;
   updatedAt: string;
   lastUsedAt?: string | null;
@@ -35,18 +40,9 @@ export type TProxiedService = TProxiedServiceBase & {
   credentials: TProxiedServiceCredential[];
 };
 
-export type TDashboardProxiedService = TProxiedService & {
-  environment: {
-    id: string;
-    name: string;
-    slug: string;
-  };
-  folder: {
-    path: string;
-  };
-};
-
 export type TProxiedServiceCredentialInput = {
+  environment: string;
+  secretPath: string;
   secretKey?: string;
   role: ProxiedServiceCredentialRole;
   headerName?: string | null;
@@ -61,8 +57,6 @@ export type TProxiedServiceCredentialInput = {
 
 export type TCreateProxiedServiceDTO = {
   projectId: string;
-  environment: string;
-  secretPath: string;
   name: string;
   hostPattern: string;
   isEnabled?: boolean;
@@ -79,4 +73,9 @@ export type TUpdateProxiedServiceDTO = {
 
 export type TDeleteProxiedServiceDTO = {
   serviceId: string;
+};
+
+export type TListProxiedServicesDTO = {
+  projectId: string;
+  search?: string;
 };

@@ -275,13 +275,26 @@ export enum ProjectPermissionHoneyTokenActions {
   Revoke = "revoke"
 }
 
+// A proxied service is project-scoped and unconditioned. There is no Proxy action: whether a principal
+// may broker through a service is decided by membership of the agent gateway the service is linked to,
+// not by a grant on the service. ReportUsage is gone too; the broker stamps usage through its session.
 export enum ProjectPermissionProxiedServiceActions {
   Read = "read",
   Create = "create",
   Edit = "edit",
+  Delete = "delete"
+}
+
+// ManageServices and ManageAccess are separate on purpose: wiring credentials into a broker and handing
+// out permission to use that broker are different decisions, and should be holdable by different people.
+// There is deliberately no "use" action — membership of the agent gateway's access list is that grant.
+export enum ProjectPermissionAgentGatewayActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
   Delete = "delete",
-  Proxy = "proxy",
-  ReportUsage = "report-usage"
+  ManageServices = "manage-services",
+  ManageAccess = "manage-access"
 }
 
 export enum ProjectPermissionApprovalRequestActions {
@@ -359,6 +372,7 @@ export enum ProjectPermissionSub {
   ProjectFolderGrant = "project-folder-grant",
   HoneyTokens = "honey-tokens",
   ProxiedServices = "proxied-services",
+  AgentGateways = "agent-gateways",
   Insights = "insights"
 }
 
@@ -524,11 +538,6 @@ export type HoneyTokenSubjectFields = {
   secretPath: string;
 };
 
-export type ProxiedServiceSubjectFields = {
-  environment: string;
-  secretPath: string;
-};
-
 export type ProjectFolderGrantSubjectFields = {
   environment: string;
   secretPath: string;
@@ -661,13 +670,8 @@ export type ProjectPermissionSet =
       ProjectPermissionHoneyTokenActions,
       ProjectPermissionSub.HoneyTokens | (ForcedSubject<ProjectPermissionSub.HoneyTokens> & HoneyTokenSubjectFields)
     ]
-  | [
-      ProjectPermissionProxiedServiceActions,
-      (
-        | ProjectPermissionSub.ProxiedServices
-        | (ForcedSubject<ProjectPermissionSub.ProxiedServices> & ProxiedServiceSubjectFields)
-      )
-    ]
+  | [ProjectPermissionProxiedServiceActions, ProjectPermissionSub.ProxiedServices]
+  | [ProjectPermissionAgentGatewayActions, ProjectPermissionSub.AgentGateways]
   | [
       ProjectPermissionCertificateProfileActions,
       (
@@ -878,23 +882,6 @@ const SecretImportConditionSchema = z
   .partial();
 
 const HoneyTokenConditionSchema = z
-  .object({
-    environment: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-        })
-        .partial()
-    ]),
-    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
-  })
-  .partial();
-
-const ProxiedServiceConditionSchema = z
   .object({
     environment: z.union([
       z.string(),
@@ -1588,10 +1575,14 @@ const GeneralPermissionSchema = [
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionProxiedServiceActions).describe(
       "Describe what action an entity can take."
-    ),
-    conditions: ProxiedServiceConditionSchema.describe(
-      "When specified, only matching conditions will be allowed to access given resource."
-    ).optional()
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.AgentGateways).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentGatewayActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.ApprovalRequests).describe("The entity this permission pertains to."),

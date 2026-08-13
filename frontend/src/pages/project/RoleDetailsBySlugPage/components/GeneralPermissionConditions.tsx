@@ -10,7 +10,6 @@ type Props = {
     | ProjectPermissionSub.SecretImports
     | ProjectPermissionSub.Commits
     | ProjectPermissionSub.HoneyTokens
-    | ProjectPermissionSub.ProxiedServices
     | ProjectPermissionSub.ProjectFolderGrant;
 };
 

@@ -41,7 +41,9 @@ export const ProxiedServiceDetailsFields = ({ isDuplicateName }: Props) => {
           <FieldDescription>Lowercase letters, numbers, and hyphens only.</FieldDescription>
           <FieldError errors={[errors.name]} />
           {isDuplicateName && !errors.name && (
-            <FieldError>A proxied service with this name already exists in this folder.</FieldError>
+            <FieldError>
+              A proxied service with this name already exists in this project.
+            </FieldError>
           )}
         </FieldContent>
       </Field>

@@ -1,0 +1,171 @@
+---
+title: "Configuring an Agent Gateway"
+sidebarTitle: "Configuration"
+description: "Create an Agent Gateway, choose what it brokers, and decide who may use it."
+---
+
+An Agent Gateway is one object holding three decisions: where the broker runs, which
+[proxied services](/documentation/platform/agent-gateways/proxied-services) it may broker, and which principals
+may use it. This page is the reference for all three.
+
+Everything here lives under **Secrets Management → Agentic → Agent Gateways**.
+
+## Creating one
+
+<ParamField path="Name" type="string" required>
+  A slug (lowercase letters, numbers, hyphens) such as `prod-agents`. This is the name your agents pass to
+  `--name`, so pick something a person will type. Names are unique within a project.
+</ParamField>
+
+<ParamField path="Description" type="string" optional>
+  What this Agent Gateway is for, up to 500 characters. Useful once a project has several.
+</ParamField>
+
+<ParamField path="Gateway" type="string" optional>
+  The [Gateway](/documentation/platform/gateways/overview) or gateway pool that hosts the broker for remote use.
+  Leave it as **None (local only)** to skip remote mode entirely.
+</ParamField>
+
+<ParamField path="Allow local mode" type="boolean" optional default="true">
+  Whether `infisical secrets agent gateway run` may broker this Agent Gateway's services on a caller's own
+  machine. Turn it off for credentials that should only ever be applied on a host you control; `run` then
+  refuses with an explanation.
+</ParamField>
+
+<Note>
+  Attaching a Gateway needs the **Attach Gateways** organization permission, the same one every other resource
+  that references a Gateway uses. Everything else on this page is project-scoped.
+</Note>
+
+## Deployment
+
+The **Deployment** card on the detail page has a **Local** and a **Remote** tab, and shows the exact command
+for each. Which one applies is a property of where your agent runs, not of the Agent Gateway, so both are always
+shown and the same object serves both.
+
+<Tabs>
+  <Tab title="Local">
+    Nothing to deploy. The broker runs inside your CLI process and stops when your agent exits:
+
+    ```bash
+    infisical secrets agent gateway run --name prod-agents -- claude
+    ```
+
+    Credentials resolve under your own permissions, and the agent runs in an OS sandbox that keeps it away from
+    them. See [Local mode](#local-mode) below.
+  </Tab>
+  <Tab title="Remote">
+    The broker runs inside the attached Gateway, so there is no port to publish and no proxy host to place:
+
+    ```bash
+    infisical secrets agent gateway connect --name prod-agents -- claude
+    ```
+
+    Your machine holds one outbound connection to the Gateway through Infisical's relay. The agent's requests
+    travel over it, and credentials are applied on the Gateway, on the last hop out.
+  </Tab>
+</Tabs>
+
+If no Gateway is attached, the Remote tab says so and `connect` fails with a message naming `run` as the
+alternative. If local mode is off, the Local tab says so and `run` fails naming `connect`.
+
+<Warning>
+  For agentic use, stand up a Gateway dedicated to it rather than reusing one that already serves
+  [PAM](/documentation/platform/pam/overview) or PKI. One Gateway can serve all of them at once, but a broker
+  holds live credentials in memory, so a Gateway that only brokers is a smaller thing to reason about.
+</Warning>
+
+### Gateway health
+
+The Gateway column on the list page carries a health dot, and Infisical actively probes each Gateway rather than
+waiting for it to stop checking in. An unhealthy Gateway means `connect` cannot open a session; `run` is
+unaffected, since it never touches the Gateway.
+
+A Gateway running a CLI too old to broker is shown as unavailable, and opening a session against it fails with
+`Gateway '<name>' is running a CLI version without Agent Gateway support. Upgrade the gateway and restart it.`
+The check happens when the session opens, not only in the picker, so downgrading a Gateway after attaching it
+still fails safely.
+
+## Connected services
+
+The **Proxied Services** card is the list of services this Agent Gateway may broker. Use **Connect Proxied
+Services** to add them, and the drag handle to reorder.
+
+Order matters when two connected services have overlapping host patterns, for example one covering
+`api.github.com` and another covering `*.github.com`. Matching still prefers the more specific pattern first
+(exact host over wildcard, specific port over any port, longest path prefix); order is the final tiebreaker, so
+the higher service in the list wins. Without it the tie would be settled alphabetically, which is not a decision
+anyone made.
+
+Connecting a service checks the **Connect Services** permission and nothing else. It deliberately does not check
+whether you can read the secrets that service references: that check happens where the service is configured,
+which is the only place it means anything. See [Permissions](#permissions).
+
+<Note>
+  A proxied service cannot be deleted while an Agent Gateway still brokers it. The error names the Agent
+  Gateways holding it, so disconnect it there first.
+</Note>
+
+## Access control
+
+The **Access Control** card is the list of principals allowed to use this Agent Gateway. Use **Grant Access** to
+add users, machine identities, or groups. A group grants access to everyone in it, including machine identities.
+
+Access is binary. There is no admin, member, or viewer on an Agent Gateway; presence on the list means you may
+open a session through it, and absence means you cannot. Managing the list needs the **Grant Access**
+permission, which is separate from **Connect Services** so that wiring up credentials and handing out access can
+be held by different people.
+
+<Note>
+  A principal has to already be a member of the project before it can be granted access, which keeps the access
+  list from becoming a second way into a project.
+</Note>
+
+Removing someone takes effect within 30 minutes on a session that is already running, because renewal is where
+the access list is re-checked. To cut a specific run off immediately, end its
+[session](/documentation/platform/agent-gateways/sessions).
+
+## Local mode
+
+`run` starts the broker in your own CLI process and launches your agent in an OS sandbox next to it. There is no
+boundary between you and the plaintext, so credentials resolve under your own permissions: you need
+`Read Value` on the secrets a connected service references, and `Lease` on any dynamic secret it brokers. A
+credential you cannot resolve is skipped once, with a warning naming it, rather than failing every request.
+
+The sandbox is what keeps the *agent* away from those credentials. It denies the agent your keyring, your
+credential files (`~/.aws`, `~/.ssh`, `~/.infisical`, and the rest), and any route to the network except the
+broker. It requires macOS, or Linux with [bubblewrap](https://github.com/containers/bubblewrap) installed. See
+the [CLI reference](/cli/commands/agent-gateway) for what it allows, how to re-open a single path, and the flags
+that control it.
+
+## Permissions
+
+Two project permission subjects, and the split between them is the whole model.
+
+| Subject | Actions | What it decides |
+| --- | --- | --- |
+| **Proxied Services** | Read, Create, Modify, Remove | Who may define a service. Create and Modify additionally require that you can read the secrets you attach. |
+| **Agent Gateways** | Read, Create, Modify, Remove, Connect Services, Grant Access | Who may create an Agent Gateway, choose what it brokers, and choose who may use it. |
+
+Default roles: an **Admin** has everything. **Member** and **Viewer** get `Read` on both. Connect Services and
+Grant Access are admin-only by default, since adding either to the member role would widen every existing member
+of every project.
+
+Neither subject takes conditions, because both objects are project-scoped rather than living in a folder. Use a
+[custom role](/documentation/platform/access-controls/role-based-access-controls) to grant a subset.
+
+<Note>
+  Using an Agent Gateway is not a permission. It is membership in the access list, deliberately, so that "may
+  use this broker" has exactly one answer in exactly one place.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Proxied Services" icon="right-left" href="/documentation/platform/agent-gateways/proxied-services">
+    Host patterns, header rewrites, and secret substitution in depth.
+  </Card>
+  <Card title="Sessions & Revocation" icon="clock-rotate-left" href="/documentation/platform/agent-gateways/sessions">
+    What a session is, and how quickly each change takes effect.
+  </Card>
+</CardGroup>

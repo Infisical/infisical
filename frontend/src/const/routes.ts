@@ -139,6 +139,18 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/projects/secret-management/$projectId/insights",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/insights"
     ),
+    ProxiedServicesPage: setRoute(
+      "/organizations/$orgId/projects/secret-management/$projectId/proxied-services",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/proxied-services"
+    ),
+    AgentGatewaysPage: setRoute(
+      "/organizations/$orgId/projects/secret-management/$projectId/agent-gateways",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/agent-gateways/"
+    ),
+    AgentGatewayDetailsByIDPage: setRoute(
+      "/organizations/$orgId/projects/secret-management/$projectId/agent-gateways/$agentGatewayId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/agent-gateways/$agentGatewayId"
+    ),
     IntegrationDetailsByIDPage: setRoute(
       "/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId"

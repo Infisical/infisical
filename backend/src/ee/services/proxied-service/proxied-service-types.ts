@@ -6,7 +6,11 @@ import {
   ProxiedServiceSubstitutionSurface
 } from "./proxied-service-enums";
 
+// A service is project-scoped, so each credential carries its own location. That is what lets one
+// service reference secrets across environments and folders without a secret import or a ${} reference.
 export type TProxiedServiceCredentialInput = {
+  environment: string;
+  secretPath: string;
   secretKey?: string | null;
   dynamicSecretName?: string | null;
   dynamicSecretField?: string | null;
@@ -21,8 +25,6 @@ export type TProxiedServiceCredentialInput = {
 
 export type TCreateProxiedServiceDTO = {
   projectId: string;
-  environment: string;
-  secretPath: string;
   name: string;
   hostPattern: string;
   isEnabled?: boolean;
@@ -41,42 +43,14 @@ export type TGetProxiedServiceByIdDTO = {
   serviceId: string;
 };
 
-export type TGetProxiedServiceByNameDTO = {
-  projectId: string;
-  environment: string;
-  secretPath: string;
-  name: string;
-};
-
 export type TDeleteProxiedServiceDTO = {
-  serviceId: string;
-};
-
-export type TReportProxiedServiceUsageDTO = {
   serviceId: string;
 };
 
 export type TListProxiedServicesDTO = {
   projectId: string;
-  environment: string;
-  secretPath: string;
-};
-
-export type TProxiedServiceDashboardListDTO = {
-  projectId: string;
-  environments: string[];
-  secretPath: string;
   search?: string;
-  // accepted for parity with the dashboard router's query param; the DAL always orders by name
-  orderBy?: "name";
   orderDirection?: OrderByDirection;
   limit?: number;
   offset?: number;
-};
-
-export type TProxiedServiceDashboardCountDTO = {
-  projectId: string;
-  environments: string[];
-  secretPath: string;
-  search?: string;
 };

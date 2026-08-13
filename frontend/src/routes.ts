@@ -26,6 +26,11 @@ const secretManagerRoutes = route("/organizations/$orgId/projects/secret-managem
     route("/approval", "secret-manager/SecretApprovalsPage/route.tsx"),
     route("/insights", "secret-manager/InsightsPage/route.tsx"),
     route("/settings", "secret-manager/SettingsPage/route.tsx"),
+    route("/proxied-services", "secret-manager/ProxiedServicesPage/route.tsx"),
+    route("/agent-gateways", [
+      index("secret-manager/AgentGatewaysPage/route.tsx"),
+      route("/$agentGatewayId", "secret-manager/AgentGatewayDetailsByIDPage/route.tsx")
+    ]),
     route("/commits/$environment/$folderId", [
       index("secret-manager/CommitsPage/route.tsx"),
       route("/$commitId", [

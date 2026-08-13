@@ -12,7 +12,7 @@ import {
   StepperStep
 } from "@app/components/v3";
 import { useUpdateProxiedService } from "@app/hooks/api/proxiedServices/mutations";
-import { TDashboardProxiedService } from "@app/hooks/api/proxiedServices/types";
+import { TProxiedService } from "@app/hooks/api/proxiedServices/types";
 
 import { ProxiedServiceDetailsFields } from "./ProxiedServiceDetailsFields";
 import { ProxiedServiceHeaderFields } from "./ProxiedServiceHeaderFields";
@@ -31,10 +31,8 @@ import { toCredentials, toDefaultValues } from "./utils";
 const REVIEW = PROXIED_SERVICE_STEPS.length - 1;
 
 type Props = {
-  proxiedService: TDashboardProxiedService;
+  proxiedService: TProxiedService;
   projectId: string;
-  environment: string;
-  secretPath: string;
   existingNames: string[];
   onComplete: () => void;
 };
@@ -42,8 +40,6 @@ type Props = {
 export const EditProxiedServiceForm = ({
   proxiedService,
   projectId,
-  environment,
-  secretPath,
   existingNames,
   onComplete
 }: Props) => {
@@ -150,15 +146,13 @@ export const EditProxiedServiceForm = ({
             {stepIndex === 1 && (
               <ProxiedServiceHeaderFields
                 projectId={projectId}
-                environment={environment}
-                secretPath={secretPath}
+                defaultEnvironment={watch("defaultEnvironment")}
               />
             )}
             {stepIndex === 2 && (
               <ProxiedServiceSubstitutionFields
                 projectId={projectId}
-                environment={environment}
-                secretPath={secretPath}
+                defaultEnvironment={watch("defaultEnvironment")}
                 showCredentialError={credentialError}
                 onClearCredentialError={() => setCredentialError(false)}
               />

@@ -27,8 +27,6 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   projectId: string;
-  environment: string;
-  secretPath: string;
   existingNames?: string[];
 };
 
@@ -39,8 +37,6 @@ export const CreateProxiedServiceModal = ({
   isOpen,
   onOpenChange,
   projectId,
-  environment,
-  secretPath,
   existingNames = []
 }: Props) => {
   const [selection, setSelection] = useState<Selection>(undefined);
@@ -95,8 +91,6 @@ export const CreateProxiedServiceModal = ({
             <div className="flex min-h-0 flex-1 flex-col">
               <CreateProxiedServiceForm
                 projectId={projectId}
-                environment={environment}
-                secretPath={secretPath}
                 template={selection ?? undefined}
                 existingNames={existingNames}
                 onComplete={close}

@@ -1,20 +1,21 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
+import { agentGatewayKeys } from "@app/hooks/api/agentGateways/queries";
 
 import { proxiedServiceKeys } from "./queries";
 import {
   TCreateProxiedServiceDTO,
   TDeleteProxiedServiceDTO,
   TProxiedService,
-  TProxiedServiceBase,
   TUpdateProxiedServiceDTO
 } from "./types";
 
+// Agent gateway queries embed their linked services, so a service edit has to invalidate those too or a
+// detail page keeps showing a stale host pattern for a service it brokers.
 const invalidate = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries({ queryKey: proxiedServiceKeys.all });
-  queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });
+  queryClient.invalidateQueries({ queryKey: agentGatewayKeys.all });
 };
 
 export const useCreateProxiedService = () => {
@@ -50,12 +51,9 @@ export const useUpdateProxiedService = () => {
 export const useDeleteProxiedService = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<TProxiedServiceBase, object, TDeleteProxiedServiceDTO>({
+  return useMutation<void, object, TDeleteProxiedServiceDTO>({
     mutationFn: async ({ serviceId }) => {
-      const { data } = await apiRequest.delete<{ service: TProxiedServiceBase }>(
-        `/api/v1/proxied-services/${serviceId}`
-      );
-      return data.service;
+      await apiRequest.delete(`/api/v1/proxied-services/${serviceId}`);
     },
     onSuccess: () => invalidate(queryClient)
   });

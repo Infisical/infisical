@@ -276,9 +276,19 @@ export enum ProjectPermissionProxiedServiceActions {
   Read = "read",
   Create = "create",
   Edit = "edit",
+  Delete = "delete"
+}
+
+// ManageServices and ManageAccess are separate so wiring credentials into a broker and handing out
+// permission to use that broker can be held by different people. There is no "use" action: membership of
+// the agent gateway's access list is that grant.
+export enum ProjectPermissionAgentGatewayActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
   Delete = "delete",
-  Proxy = "proxy",
-  ReportUsage = "report-usage"
+  ManageServices = "manage-services",
+  ManageAccess = "manage-access"
 }
 
 export enum ProjectPermissionApprovalRequestActions {
@@ -340,7 +350,6 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.Groups
   | ProjectPermissionSub.Commits
   | ProjectPermissionSub.HoneyTokens
-  | ProjectPermissionSub.ProxiedServices
   | ProjectPermissionSub.ProjectFolderGrant;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
@@ -428,6 +437,7 @@ export enum ProjectPermissionSub {
   HsmConnectors = "hsm-connectors",
   HoneyTokens = "honey-tokens",
   ProxiedServices = "proxied-services",
+  AgentGateways = "agent-gateways",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   ProjectFolderGrant = "project-folder-grant",
@@ -466,11 +476,6 @@ export type SecretImportSubjectFields = {
 };
 
 export type HoneyTokenSubjectFields = {
-  environment: string;
-  secretPath: string;
-};
-
-export type ProxiedServiceSubjectFields = {
   environment: string;
   secretPath: string;
 };
@@ -693,13 +698,8 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.HoneyTokens> & HoneyTokenSubjectFields)
       )
     ]
-  | [
-      ProjectPermissionProxiedServiceActions,
-      (
-        | ProjectPermissionSub.ProxiedServices
-        | (ForcedSubject<ProjectPermissionSub.ProxiedServices> & ProxiedServiceSubjectFields)
-      )
-    ]
+  | [ProjectPermissionProxiedServiceActions, ProjectPermissionSub.ProxiedServices]
+  | [ProjectPermissionAgentGatewayActions, ProjectPermissionSub.AgentGateways]
   | [
       ProjectPermissionProjectFolderGrantActions,
       (

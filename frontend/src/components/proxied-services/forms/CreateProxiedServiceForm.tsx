@@ -21,6 +21,7 @@ import {
   StepperList,
   StepperStep
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { ProxiedServiceTemplate } from "@app/helpers/proxiedServiceTemplates";
 import { useCreateProxiedService } from "@app/hooks/api/proxiedServices/mutations";
 
@@ -47,8 +48,6 @@ const REVIEW = PROXIED_SERVICE_STEPS.length - 1;
 
 type Props = {
   projectId: string;
-  environment: string;
-  secretPath: string;
   template?: ProxiedServiceTemplate;
   existingNames: string[];
   onComplete: () => void;
@@ -57,17 +56,20 @@ type Props = {
 
 export const CreateProxiedServiceForm = ({
   projectId,
-  environment,
-  secretPath,
   template,
   existingNames,
   onComplete,
   onBackToTemplates
 }: Props) => {
   const createProxiedService = useCreateProxiedService();
+  const { currentProject } = useProject();
+  const firstEnvironment = currentProject.environments[0]?.slug ?? "";
 
   const defaultValues = useMemo(
-    () => (template ? buildTemplateFormValues(template, existingNames) : emptyFormValues()),
+    () =>
+      template
+        ? buildTemplateFormValues(template, existingNames, firstEnvironment)
+        : emptyFormValues(firstEnvironment),
     // seed once on mount; regenerating would churn the placeholder values
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
@@ -110,8 +112,6 @@ export const CreateProxiedServiceForm = ({
     try {
       await createProxiedService.mutateAsync({
         projectId,
-        environment,
-        secretPath,
         name: form.name,
         hostPattern: form.hostPattern,
         isEnabled: form.isEnabled,
@@ -241,15 +241,13 @@ export const CreateProxiedServiceForm = ({
             {stepIndex === HEADERS && (
               <ProxiedServiceHeaderFields
                 projectId={projectId}
-                environment={environment}
-                secretPath={secretPath}
+                defaultEnvironment={watch("defaultEnvironment")}
               />
             )}
             {stepIndex === SUBSTITUTION && (
               <ProxiedServiceSubstitutionFields
                 projectId={projectId}
-                environment={environment}
-                secretPath={secretPath}
+                defaultEnvironment={watch("defaultEnvironment")}
                 showCredentialError={credentialError}
                 onClearCredentialError={() => setCredentialError(false)}
               />

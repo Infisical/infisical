@@ -21,11 +21,11 @@ import { HeaderRewritingMode, TProxiedServiceForm } from "./schema";
 
 type Props = {
   projectId: string;
-  environment: string;
-  secretPath: string;
+  // Where a newly added credential starts looking. Each row then owns its own location.
+  defaultEnvironment: string;
 };
 
-export const ProxiedServiceHeaderFields = ({ projectId, environment, secretPath }: Props) => {
+export const ProxiedServiceHeaderFields = ({ projectId, defaultEnvironment }: Props) => {
   const {
     control,
     register,
@@ -46,10 +46,27 @@ export const ProxiedServiceHeaderFields = ({ projectId, environment, secretPath 
     setValue(`headers.${i}.dynamicSecretField`, v.dynamicSecretField ?? "");
   };
 
+  // Changing where a credential looks clears what was selected there: a key from the old folder almost
+  // certainly does not exist in the new one, and a silently dangling reference fails at request time.
+  const setHeaderLocation = (i: number, location: { environment: string; secretPath: string }) => {
+    setValue(`headers.${i}.environment`, location.environment);
+    setValue(`headers.${i}.secretPath`, location.secretPath);
+    setHeaderSource(i, {});
+  };
+
   const setBasicAuthSource = (which: "username" | "password", v: TCredentialSource) => {
     setValue(`basicAuth.${which}.secretKey`, v.secretKey ?? "");
     setValue(`basicAuth.${which}.dynamicSecretName`, v.dynamicSecretName ?? "");
     setValue(`basicAuth.${which}.dynamicSecretField`, v.dynamicSecretField ?? "");
+  };
+
+  const setBasicAuthLocation = (
+    which: "username" | "password",
+    location: { environment: string; secretPath: string }
+  ) => {
+    setValue(`basicAuth.${which}.environment`, location.environment);
+    setValue(`basicAuth.${which}.secretPath`, location.secretPath);
+    setBasicAuthSource(which, {});
   };
 
   const handleModeChange = (value: string) => {
@@ -104,8 +121,9 @@ export const ProxiedServiceHeaderFields = ({ projectId, environment, secretPath 
                   <FieldContent>
                     <CredentialSourceFields
                       projectId={projectId}
-                      environment={environment}
-                      secretPath={secretPath}
+                      environment={watchedHeaders?.[i]?.environment || defaultEnvironment}
+                      secretPath={watchedHeaders?.[i]?.secretPath || "/"}
+                      onLocationChange={(location) => setHeaderLocation(i, location)}
                       value={{
                         secretKey: watchedHeaders?.[i]?.secretKey,
                         dynamicSecretName: watchedHeaders?.[i]?.dynamicSecretName,
@@ -146,6 +164,8 @@ export const ProxiedServiceHeaderFields = ({ projectId, environment, secretPath 
               type="button"
               onClick={() =>
                 headerFields.append({
+                  environment: "",
+                  secretPath: "",
                   secretKey: "",
                   dynamicSecretName: "",
                   dynamicSecretField: "",
@@ -167,8 +187,9 @@ export const ProxiedServiceHeaderFields = ({ projectId, environment, secretPath 
               <FieldContent>
                 <CredentialSourceFields
                   projectId={projectId}
-                  environment={environment}
-                  secretPath={secretPath}
+                  environment={watchedBasicAuth?.username?.environment || defaultEnvironment}
+                  secretPath={watchedBasicAuth?.username?.secretPath || "/"}
+                  onLocationChange={(location) => setBasicAuthLocation("username", location)}
                   value={{
                     secretKey: watchedBasicAuth?.username?.secretKey,
                     dynamicSecretName: watchedBasicAuth?.username?.dynamicSecretName,
@@ -194,8 +215,9 @@ export const ProxiedServiceHeaderFields = ({ projectId, environment, secretPath 
               <FieldContent>
                 <CredentialSourceFields
                   projectId={projectId}
-                  environment={environment}
-                  secretPath={secretPath}
+                  environment={watchedBasicAuth?.password?.environment || defaultEnvironment}
+                  secretPath={watchedBasicAuth?.password?.secretPath || "/"}
+                  onLocationChange={(location) => setBasicAuthLocation("password", location)}
                   value={{
                     secretKey: watchedBasicAuth?.password?.secretKey,
                     dynamicSecretName: watchedBasicAuth?.password?.dynamicSecretName,

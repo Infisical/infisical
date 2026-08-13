@@ -10,7 +10,11 @@ import { TImmutableDBKeys } from "./models";
 export const ProxiedServiceCredentialsSchema = z.object({
   id: z.string().uuid(),
   serviceId: z.string().uuid(),
+  envId: z.string().uuid(),
+  secretPath: z.string().default("/"),
   secretKey: z.string().nullable().optional(),
+  dynamicSecretName: z.string().nullable().optional(),
+  dynamicSecretField: z.string().nullable().optional(),
   role: z.string(),
   headerName: z.string().nullable().optional(),
   headerPrefix: z.string().nullable().optional(),
@@ -19,9 +23,7 @@ export const ProxiedServiceCredentialsSchema = z.object({
   placeholderValue: z.string().nullable().optional(),
   substitutionSurfaces: z.string().array().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  dynamicSecretName: z.string().nullable().optional(),
-  dynamicSecretField: z.string().nullable().optional()
+  updatedAt: z.date()
 });
 
 export type TProxiedServiceCredentials = z.infer<typeof ProxiedServiceCredentialsSchema>;

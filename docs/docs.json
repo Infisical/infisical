@@ -645,24 +645,24 @@
                     ]
                   },
                   {
-                    "group": "Agent Proxy",
+                    "group": "Agent Gateways",
                     "pages": [
-                      "documentation/platform/agent-proxy/overview",
+                      "documentation/platform/agent-gateways/overview",
                       {
                         "group": "Quickstart",
                         "pages": [
-                          "documentation/platform/agent-proxy/quickstart/credentials",
-                          "documentation/platform/agent-proxy/quickstart/local-proxy",
-                          "documentation/platform/agent-proxy/quickstart/standalone-proxy"
+                          "documentation/platform/agent-gateways/quickstart/credentials",
+                          "documentation/platform/agent-gateways/quickstart/local",
+                          "documentation/platform/agent-gateways/quickstart/remote"
                         ]
                       },
                       {
                         "group": "Reference",
                         "pages": [
-                          "documentation/platform/agent-proxy/proxied-services",
-                          "documentation/platform/agent-proxy/local-agent-proxy",
-                          "documentation/platform/agent-proxy/standalone-agent-proxy",
-                          "documentation/platform/agent-proxy/activity-logs"
+                          "documentation/platform/agent-gateways/proxied-services",
+                          "documentation/platform/agent-gateways/configuration",
+                          "documentation/platform/agent-gateways/sessions",
+                          "documentation/platform/agent-gateways/activity-logs"
                         ]
                       }
                     ]
@@ -4515,20 +4515,36 @@
       "destination": "/integrations/platforms/docker"
     },
     {
-      "source": "/documentation/platform/agent-proxy/quickstart",
-      "destination": "/documentation/platform/agent-proxy/quickstart/credentials"
+      "source": "/documentation/platform/agent-proxy/quickstart/local-proxy",
+      "destination": "/documentation/platform/agent-gateways/quickstart/local"
     },
     {
-      "source": "/documentation/platform/agent-proxy/security",
-      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy"
+      "source": "/documentation/platform/agent-proxy/quickstart/standalone-proxy",
+      "destination": "/documentation/platform/agent-gateways/quickstart/remote"
     },
     {
-      "source": "/documentation/platform/agent-proxy/deployment",
-      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy#deployment"
+      "source": "/documentation/platform/agent-proxy/quickstart/:slug*",
+      "destination": "/documentation/platform/agent-gateways/quickstart/credentials"
     },
     {
-      "source": "/documentation/platform/agent-proxy/connecting-agents",
-      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy#the-two-commands"
+      "source": "/documentation/platform/agent-proxy/local-agent-proxy",
+      "destination": "/documentation/platform/agent-gateways/configuration#local-mode"
+    },
+    {
+      "source": "/documentation/platform/agent-proxy/standalone-agent-proxy",
+      "destination": "/documentation/platform/agent-gateways/configuration#deployment"
+    },
+    {
+      "source": "/documentation/platform/agent-proxy/proxied-services",
+      "destination": "/documentation/platform/agent-gateways/proxied-services"
+    },
+    {
+      "source": "/documentation/platform/agent-proxy/activity-logs",
+      "destination": "/documentation/platform/agent-gateways/activity-logs"
+    },
+    {
+      "source": "/documentation/platform/agent-proxy/:slug*",
+      "destination": "/documentation/platform/agent-gateways/overview"
     },
     {
       "source": "/documentation/platform/ssh",

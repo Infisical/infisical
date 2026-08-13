@@ -1,1 +1,0 @@
-export { ProxiedServiceTableRow } from "./ProxiedServiceTableRow";

@@ -1,0 +1,125 @@
+---
+title: "Sessions and revocation"
+sidebarTitle: "Sessions & Revocation"
+description: "How long a brokering session lasts, and how quickly each kind of change takes effect."
+---
+
+Each `infisical secrets agent gateway run` or `connect` opens a **session**, and that session is what the
+broker's credentials belong to. It exists so that a dynamic secret is leased once per agent run rather than once
+per request, so a pool member stays pinned for the run's lifetime, and so a run can be cut off.
+
+A session is not a recording. Infisical does not capture an Agent Gateway session's traffic, keystrokes, or
+output. If you need session recording, that is [PAM](/documentation/platform/pam/overview).
+
+## Lifetime
+
+| Clock | Value | What happens |
+| --- | --- | --- |
+| Session TTL | 1 hour | An unrenewed session expires, and its credentials stop resolving. |
+| Renewal | every 30 minutes | The CLI extends the session while your agent runs, and renewal re-checks the access list. |
+| Credential refresh | 60 seconds | The broker re-fetches resolved credentials at most this often, and fails closed. |
+
+Renewal is the point where authorization is re-established, so a principal removed from the access list stops
+being able to renew and the session dies with its current hour. A failed renewal is logged with
+`the agent's brokered requests will start failing. Restart the command`, so a long agent run that has lost
+access says so rather than going quiet.
+
+When your agent exits, the CLI ends the session, and dynamic-secret leases it minted are revoked. That is
+best effort by design: a `SIGKILL`ed CLI or a crashed Gateway never gets the chance, so Infisical also sweeps
+expired sessions itself and revokes their leases. The backend is the authority on revocation, not the client.
+
+## How quickly a change takes effect
+
+<AccordionGroup>
+  <Accordion title="Within 60 seconds: rotations, disabling, disconnecting, permission loss">
+    The broker re-fetches resolved credentials at least once a minute, and that fetch is the authorization
+    check. Anything that changes the answer lands on the next one:
+
+    - A rotated or edited secret value.
+    - A proxied service disabled, edited, or disconnected from the Agent Gateway.
+    - The person who last saved a proxied service losing `Read Value` on a secret it references, or leaving the
+      organization. The credential becomes unavailable rather than stale, and the request is forwarded without
+      it rather than with an old value.
+    - The session no longer being active, whichever way it ended.
+  </Accordion>
+
+  <Accordion title="Within 30 minutes: removal from the access list">
+    Removing a user, machine identity, or group from an Agent Gateway's access list stops any new session
+    immediately. A session already running keeps working until its next renewal, at most 30 minutes later, at
+    which point the re-check fails and the session is not extended. To cut a specific run off sooner, terminate
+    its session.
+  </Accordion>
+
+  <Accordion title="Immediately: ending or terminating a session">
+    Ending your own session, or terminating someone else's, drops the credentials at once.
+
+    In remote mode the Gateway is signalled and tears the tunnel down, so in-flight and subsequent requests
+    fail immediately. In local mode the broker is the caller's own process, so it stops brokering on its next
+    credential refresh, within 60 seconds.
+  </Accordion>
+</AccordionGroup>
+
+## Ending a session
+
+Both operations are API-only today.
+
+```bash
+# End your own session. Idempotent, and returns 204 whether or not it was still running.
+curl -X DELETE https://app.infisical.com/api/v1/agent-gateways/sessions/<session-id> \
+  -H "Authorization: Bearer <your-access-token>"
+
+# Terminate somebody else's. Requires Modify on the Agent Gateway.
+curl -X POST https://app.infisical.com/api/v1/agent-gateways/sessions/<session-id>/terminate \
+  -H "Authorization: Bearer <your-access-token>"
+```
+
+Revoking the Gateway itself is the blunter instrument, and it is immediate: a revoked Gateway can no longer
+fetch credentials for any session it is brokering.
+
+## Dynamic secrets
+
+A credential can reference a [dynamic secret](/documentation/platform/agent-gateways/proxied-services#using-dynamic-secrets)
+instead of a static one. Leases follow the session:
+
+- **One lease per credential, per session**, minted when the session opens. Every request in that run reuses
+  it, and so does every credential refresh, so a 60-second poll does not mint a new lease every minute.
+- **Revoked when the session ends or expires**, so an agent run cannot leave leases behind. This matters more
+  than it sounds: dynamic secrets have a maximum lease count, and leaked leases eventually fail the dynamic
+  secret outright.
+- **Resolved under the same authority as any other credential**: the service's configurer in remote mode, and
+  your own `Lease` permission in local mode.
+
+<Warning>
+  Give a brokered dynamic secret a TTL of at least a few minutes. The session holds its lease for the length of
+  the agent run, but a very short TTL means the lease expires mid-run and has to be replaced.
+</Warning>
+
+## Audit trail
+
+Every session and every credential resolution is recorded in [audit logs](/documentation/platform/audit-logs):
+
+| Event | Recorded when |
+| --- | --- |
+| `agent-gateway-session-start` | A session opens, with its mode and the Agent Gateway. |
+| `agent-gateway-session-end` | A session ends, however it ended. |
+| `agent-gateway-session-terminate` | Somebody terminates another principal's session. |
+| `agent-gateway-broker-resolve` | Credentials are resolved, carrying which secrets were read, who requested the brokering, and whose permissions resolved each value. |
+
+`agent-gateway-broker-resolve` is the one worth knowing about. It carries **both** actors, because "who was
+brokered for" and "whose access made it possible" are different questions and an investigation needs both. It
+records secret keys, paths, and environments, never values. Repeated resolutions of an unchanged credential set
+are collapsed, but a resolution whose set of referenced secrets changed is always recorded.
+
+Configuration changes, such as connecting a service or granting access, are recorded separately, as with any
+other Infisical resource.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Activity Logs" icon="list" href="/documentation/platform/agent-gateways/activity-logs">
+    The per-request decision trail the broker writes.
+  </Card>
+  <Card title="CLI reference" icon="terminal" href="/cli/commands/agent-gateway">
+    Every flag for `run`, `connect`, and `list`.
+  </Card>
+</CardGroup>

@@ -5,17 +5,32 @@ import { ProxiedServiceCredentialRole } from "@app/ee/services/proxied-service/p
 import {
   CredentialsArraySchema,
   hostPatternSchema,
-  ProxiedServiceWithCanProxyAndLeaseAccessSchema,
-  ProxiedServiceWithCredentialsSchema,
-  SanitizedProxiedServiceBaseSchema
+  ProxiedServiceWithCredentialsSchema
 } from "@app/ee/services/proxied-service/proxied-service-schemas";
 import { ApiDocsTags, PROXIED_SERVICES } from "@app/lib/api-docs";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+// Takes the minimal shape rather than a DTO, so it serves both the request body and a persisted row.
+const toSecretRefs = (
+  credentials: {
+    environment: string;
+    secretPath: string;
+    secretKey?: string | null;
+    dynamicSecretName?: string | null;
+  }[]
+) =>
+  credentials.map((credential) => ({
+    environment: credential.environment,
+    secretPath: credential.secretPath,
+    ...(credential.secretKey ? { secretKey: credential.secretKey } : {}),
+    ...(credential.dynamicSecretName ? { dynamicSecretName: credential.dynamicSecretName } : {})
+  }));
 
 export const registerProxiedServiceRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -27,11 +42,10 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       hide: false,
       tags: [ApiDocsTags.ProxiedServices],
       description: "Create a proxied service",
+      operationId: "createProxiedService",
       body: z.object({
-        projectId: z.string().trim().min(1).describe(PROXIED_SERVICES.CREATE.projectId),
-        environment: z.string().trim().min(1).describe(PROXIED_SERVICES.CREATE.environment),
-        secretPath: z.string().trim().default("/").describe(PROXIED_SERVICES.CREATE.secretPath),
-        name: slugSchema({ field: "name" }).describe(PROXIED_SERVICES.CREATE.name),
+        projectId: z.string().trim().min(1).max(36).describe(PROXIED_SERVICES.CREATE.projectId),
+        name: slugSchema({ max: 64, field: "name" }).describe(PROXIED_SERVICES.CREATE.name),
         hostPattern: hostPatternSchema.describe(PROXIED_SERVICES.CREATE.hostPattern),
         isEnabled: z.boolean().optional().describe(PROXIED_SERVICES.CREATE.isEnabled),
         credentials: CredentialsArraySchema.describe(PROXIED_SERVICES.CREATE.credentials)
@@ -51,14 +65,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
             proxiedServiceId: service.id,
             name: service.name,
             hostPattern: service.hostPattern,
-            secretKeys: [
-              ...new Set(req.body.credentials.map((c) => c.secretKey).filter((k): k is string => Boolean(k)))
-            ],
-            dynamicSecretNames: [
-              ...new Set(req.body.credentials.map((c) => c.dynamicSecretName).filter((n): n is string => Boolean(n)))
-            ],
-            environment: req.body.environment,
-            secretPath: req.body.secretPath
+            secretRefs: toSecretRefs(req.body.credentials)
           }
         }
       });
@@ -103,23 +110,23 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProxiedServices],
-      description:
-        "List proxied services in a folder. Returns the services the caller can read or proxy through; the canProxy field indicates whether the caller can route traffic through each service.",
+      description: "List the proxied services in a project",
+      operationId: "listProxiedServices",
       querystring: z.object({
-        projectId: z.string().trim().min(1).describe(PROXIED_SERVICES.LIST.projectId),
-        environment: z.string().trim().min(1).describe(PROXIED_SERVICES.LIST.environment),
-        secretPath: z.string().trim().default("/").describe(PROXIED_SERVICES.LIST.secretPath)
+        projectId: z.string().trim().min(1).max(36).describe(PROXIED_SERVICES.LIST.projectId),
+        search: z.string().trim().max(255).optional().describe(PROXIED_SERVICES.LIST.search),
+        orderDirection: z.nativeEnum(OrderByDirection).optional().describe(PROXIED_SERVICES.LIST.orderDirection),
+        limit: z.coerce.number().int().min(1).max(100).default(100).describe(PROXIED_SERVICES.LIST.limit),
+        offset: z.coerce.number().int().min(0).default(0).describe(PROXIED_SERVICES.LIST.offset)
       }),
       response: {
         200: z.object({
-          projectSlug: z.string(),
-          services: ProxiedServiceWithCanProxyAndLeaseAccessSchema.array()
+          services: ProxiedServiceWithCredentialsSchema.array(),
+          totalCount: z.number()
         })
       }
     },
-    handler: async (req) => {
-      return server.services.proxiedService.list(req.query, req.permission);
-    }
+    handler: async (req) => server.services.proxiedService.list(req.query, req.permission)
   });
 
   server.route({
@@ -131,54 +138,16 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       hide: false,
       tags: [ApiDocsTags.ProxiedServices],
       description: "Get a proxied service by ID",
+      operationId: "getProxiedServiceById",
       params: z.object({
         serviceId: z.string().uuid().describe(PROXIED_SERVICES.GET.serviceId)
       }),
       response: {
-        200: z.object({
-          service: ProxiedServiceWithCanProxyAndLeaseAccessSchema
-        })
+        200: z.object({ service: ProxiedServiceWithCredentialsSchema })
       }
     },
     handler: async (req) => {
-      const service = await server.services.proxiedService.getById({ serviceId: req.params.serviceId }, req.permission);
-      return { service };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/slug/:name",
-    config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    schema: {
-      hide: false,
-      tags: [ApiDocsTags.ProxiedServices],
-      description: "Get a proxied service by name",
-      params: z.object({
-        name: slugSchema({ field: "name" }).describe(PROXIED_SERVICES.GET.name)
-      }),
-      querystring: z.object({
-        projectId: z.string().trim().min(1).describe(PROXIED_SERVICES.GET.projectId),
-        environment: z.string().trim().min(1).describe(PROXIED_SERVICES.GET.environment),
-        secretPath: z.string().trim().default("/").describe(PROXIED_SERVICES.GET.secretPath)
-      }),
-      response: {
-        200: z.object({
-          service: ProxiedServiceWithCanProxyAndLeaseAccessSchema
-        })
-      }
-    },
-    handler: async (req) => {
-      const service = await server.services.proxiedService.getByName(
-        {
-          projectId: req.query.projectId,
-          environment: req.query.environment,
-          secretPath: req.query.secretPath,
-          name: req.params.name
-        },
-        req.permission
-      );
+      const service = await server.services.proxiedService.getById(req.params, req.permission);
       return { service };
     }
   });
@@ -192,9 +161,12 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       hide: false,
       tags: [ApiDocsTags.ProxiedServices],
       description: "Update a proxied service",
-      params: z.object({ serviceId: z.string().uuid().describe(PROXIED_SERVICES.UPDATE.serviceId) }),
+      operationId: "updateProxiedService",
+      params: z.object({
+        serviceId: z.string().uuid().describe(PROXIED_SERVICES.UPDATE.serviceId)
+      }),
       body: z.object({
-        name: slugSchema({ field: "name" }).optional().describe(PROXIED_SERVICES.UPDATE.name),
+        name: slugSchema({ max: 64, field: "name" }).optional().describe(PROXIED_SERVICES.UPDATE.name),
         hostPattern: hostPatternSchema.optional().describe(PROXIED_SERVICES.UPDATE.hostPattern),
         isEnabled: z.boolean().optional().describe(PROXIED_SERVICES.UPDATE.isEnabled),
         credentials: CredentialsArraySchema.optional().describe(PROXIED_SERVICES.UPDATE.credentials)
@@ -208,6 +180,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
         { serviceId: req.params.serviceId, ...req.body },
         req.permission
       );
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: service.projectId,
@@ -218,38 +191,12 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
             name: service.name,
             hostPattern: service.hostPattern,
             updatedFields: Object.keys(req.body),
-            secretKeys: [
-              ...new Set(service.credentials.map((c) => c.secretKey).filter((k): k is string => Boolean(k)))
-            ],
-            dynamicSecretNames: [
-              ...new Set(service.credentials.map((c) => c.dynamicSecretName).filter((n): n is string => Boolean(n)))
-            ],
-            environment: service.environment,
-            secretPath: service.secretPath
+            secretRefs: toSecretRefs(service.credentials)
           }
         }
       });
-      return { service };
-    }
-  });
 
-  server.route({
-    method: "POST",
-    url: "/:serviceId/report-usage",
-    config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    schema: {
-      hide: true,
-      tags: [ApiDocsTags.ProxiedServices],
-      description: "Report that the agent proxy brokered a request for this service",
-      params: z.object({ serviceId: z.string().uuid() }),
-      response: {
-        200: z.object({ success: z.boolean() })
-      }
-    },
-    handler: async (req) => {
-      await server.services.proxiedService.reportUsage({ serviceId: req.params.serviceId }, req.permission);
-      return { success: true };
+      return { service };
     }
   });
 
@@ -262,16 +209,17 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       hide: false,
       tags: [ApiDocsTags.ProxiedServices],
       description: "Delete a proxied service",
-      params: z.object({ serviceId: z.string().uuid().describe(PROXIED_SERVICES.DELETE.serviceId) }),
+      operationId: "deleteProxiedService",
+      params: z.object({
+        serviceId: z.string().uuid().describe(PROXIED_SERVICES.DELETE.serviceId)
+      }),
       response: {
-        200: z.object({ service: SanitizedProxiedServiceBaseSchema })
+        204: z.void()
       }
     },
-    handler: async (req) => {
-      const service = await server.services.proxiedService.deleteById(
-        { serviceId: req.params.serviceId },
-        req.permission
-      );
+    handler: async (req, res) => {
+      const service = await server.services.proxiedService.deleteById(req.params, req.permission);
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: service.projectId,
@@ -279,13 +227,33 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
           type: EventType.DELETE_PROXIED_SERVICE,
           metadata: {
             proxiedServiceId: service.id,
-            name: service.name,
-            environment: service.environment,
-            secretPath: service.secretPath
+            name: service.name
           }
         }
       });
-      return { service };
+
+      return res.status(204).send();
+    }
+  });
+
+  // The standalone Agent Proxy reported usage per service with its own machine identity. That flow is gone:
+  // usage is now reported through an agent gateway session, by the broker. A shipped CLI still calls this, so
+  // it gets an explanation rather than a 404. Remove once those versions are out of support.
+  server.route({
+    method: "POST",
+    url: "/:serviceId/report-usage",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: true
+    },
+    handler: async (req, res) => {
+      void res.status(410).send({
+        reqId: req.id,
+        statusCode: 410,
+        error: "Gone",
+        message:
+          "The standalone Agent Proxy has been replaced by Agent Gateways. Upgrade the Infisical CLI and run 'infisical secrets agent gateway connect' or 'run' instead (https://infisical.com/docs/documentation/platform/agent-gateways/overview)."
+      });
     }
   });
 };

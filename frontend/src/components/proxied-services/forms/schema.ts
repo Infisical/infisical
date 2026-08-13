@@ -52,7 +52,12 @@ const hostPatternField = z
       });
   });
 
+// environment and secretPath are per-credential overrides. Most services reference one folder, so leaving
+// them empty inherits the service's default location; setting them is how one service reaches a secret in
+// another environment or folder without a secret import.
 const credentialSourceSchema = z.object({
+  environment: z.string().trim().default(""),
+  secretPath: z.string().trim().default(""),
   secretKey: z.string().trim().default(""),
   dynamicSecretName: z.string().trim().default(""),
   dynamicSecretField: z.string().trim().default("")
@@ -120,6 +125,10 @@ export const proxiedServiceFormSchema = z
       .regex(slugRegex, "Lowercase letters, numbers, and hyphens only"),
     hostPattern: hostPatternField,
     isEnabled: z.boolean().default(true),
+    // Seeds the location of a newly added credential. Not shown: each credential picks where its secret
+    // lives inside the secret picker, because a proxied service is project-scoped and its credentials can
+    // come from anywhere the author can read.
+    defaultEnvironment: z.string().trim().min(1, "Environment is required"),
     headerMode: z.nativeEnum(HeaderRewritingMode).default(HeaderRewritingMode.Headers),
     headers: z.array(headerCredentialSchema).default([]),
     basicAuth: basicAuthSchema.optional(),

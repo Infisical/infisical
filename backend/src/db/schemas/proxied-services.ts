@@ -12,10 +12,15 @@ export const ProxiedServicesSchema = z.object({
   name: z.string(),
   hostPattern: z.string(),
   isEnabled: z.boolean().default(true),
-  folderId: z.string().uuid(),
+  projectId: z.string(),
+  configuredByActorType: z.string(),
+  configuredByUserId: z.string().uuid().nullable().optional(),
+  configuredByIdentityId: z.string().uuid().nullable().optional(),
+  configuredByLabel: z.string(),
+  configuredAt: z.date(),
+  lastUsedAt: z.date().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  lastUsedAt: z.date().nullable().optional()
+  updatedAt: z.date()
 });
 
 export type TProxiedServices = z.infer<typeof ProxiedServicesSchema>;

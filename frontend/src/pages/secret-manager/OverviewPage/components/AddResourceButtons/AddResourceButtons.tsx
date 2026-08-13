@@ -1,6 +1,5 @@
 import {
   ChevronDown,
-  ChevronsLeftRightEllipsisIcon,
   ClipboardPasteIcon,
   FingerprintIcon,
   FolderIcon,
@@ -27,7 +26,6 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
-import { ProjectPermissionProxiedServiceActions } from "@app/context/ProjectPermissionContext/types";
 
 type Props = {
   onAddSecret: () => void;
@@ -35,7 +33,6 @@ type Props = {
   onAddDyanamicSecret: () => void;
   onAddSecretRotation: () => void;
   onAddHoneyToken: () => void;
-  onAddProxiedService: () => void;
   onAddSecretImport: () => void;
   onImportSecrets: () => void;
   onReplicateSecrets: () => void;
@@ -57,7 +54,6 @@ export function AddResourceButtons({
   onAddDyanamicSecret,
   onAddSecretRotation,
   onAddHoneyToken,
-  onAddProxiedService,
   onAddSecretImport,
   onImportSecrets,
   onReplicateSecrets,
@@ -157,29 +153,6 @@ export function AddResourceButtons({
                 </TooltipTrigger>
                 <TooltipContent side="left">
                   {!isAllowed ? "Access Restricted" : "Access restricted"}
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </ProjectPermissionCan>
-          <ProjectPermissionCan
-            I={ProjectPermissionProxiedServiceActions.Create}
-            a={ProjectPermissionSub.ProxiedServices}
-          >
-            {(isAllowed) => (
-              <Tooltip open={!isSingleEnvSelected || !isAllowed ? undefined : false}>
-                <TooltipTrigger className="block w-full">
-                  <DropdownMenuItem
-                    onClick={onAddProxiedService}
-                    isDisabled={!isSingleEnvSelected || !isAllowed}
-                  >
-                    <ChevronsLeftRightEllipsisIcon className="text-proxied-service" />
-                    Add Proxied Service
-                  </DropdownMenuItem>
-                </TooltipTrigger>
-                <TooltipContent side="left">
-                  {!isAllowed
-                    ? "Access Restricted"
-                    : "Select a single environment to add a proxied service"}
                 </TooltipContent>
               </Tooltip>
             )}

@@ -96,6 +96,7 @@ export const createGatewayConnection = async (
     [GatewayProxyProtocol.Pam]: ["infisical-pam-proxy"],
     [GatewayProxyProtocol.PamRdpBrowser]: ["infisical-pam-rdp-browser"],
     [GatewayProxyProtocol.PamSessionCancellation]: ["infisical-pam-session-cancellation"],
+    [GatewayProxyProtocol.AgentGatewaySessionCancellation]: ["infisical-agent-gateway-cancellation"],
     [GatewayProxyProtocol.Pkcs11]: ["infisical-pkcs11"],
     [GatewayProxyProtocol.Adcs]: ["infisical-adcs"],
     [GatewayProxyProtocol.Discovery]: ["infisical-discovery"],

@@ -54,8 +54,15 @@ const getZodDefaultValue = (type: unknown, value: string | number | boolean | Ob
       }
       return `.default(${value})`;
     }
-    case "ARRAY":
-      return `.default(${value})`;
+    case "ARRAY": {
+      // Postgres reports array defaults as `'{}'::text[]`, which is not valid TypeScript. Only the empty
+      // default is common enough to be worth translating; anything else is left out rather than emitted
+      // broken, so a column with a populated default simply becomes required on insert.
+      if (typeof value === "string" && value.replace(/\s/g, "").startsWith("'{}'")) {
+        return `.default([])`;
+      }
+      return;
+    }
     case "boolean":
       return `.default(${value})`;
     case "jsonb":

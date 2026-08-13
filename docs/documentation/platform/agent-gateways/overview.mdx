@@ -1,0 +1,136 @@
+---
+title: "Agent Gateways"
+sidebarTitle: "Overview"
+description: "Give AI agents and untrusted code execution environments access without handing over your secrets."
+---
+
+An **Agent Gateway** is a credential broker for AI agents and untrusted code execution environments. It sits
+between your agents and the APIs they call: LLM providers, GitHub, Slack, and anything else.
+
+Agents like Claude Code or Codex route their HTTP requests through it, and it swaps dummy credentials for real
+ones (or replaces the auth header entirely) before forwarding each request to the target service.
+
+```text
+            Your private network                                Public internet
+
++----------+                 +---------------+                +------------------+
+| AI agent | --------------> | Agent Gateway | -------------> |  api.slack.com   |
++----------+  request with a +---------------+ request with   |  api.github.com  |
+             placeholder key         |        the real         |  ...             |
+                                     |        credential      +------------------+
+                                     |  fetches the resolved
+                                     |  credentials
+                                     v
+                              +-------------+
+                              |  Infisical  |
+                              +-------------+
+```
+
+## Why Agent Gateways
+
+Traditional secrets management hands credentials back to the application that needs them.
+
+That is not suitable for AI agents, because they are vulnerable to credential exfiltration via
+[prompt injection](https://en.wikipedia.org/wiki/Prompt_injection). An attacker who can craft a prompt or a
+payload the agent reads can talk the agent into sending its credentials somewhere else.
+
+An Agent Gateway removes the credential from the agent entirely. It is applied at the network boundary instead,
+so the agent can make authenticated calls it could never make on its own, and has nothing to leak.
+
+## What you set up
+
+Three things, all under **Secrets Management → Agentic** in the dashboard:
+
+<Steps>
+  <Step title="Store the credential">
+    Add it as a regular Infisical secret, static or a
+    [dynamic secret](/documentation/platform/dynamic-secrets/overview).
+  </Step>
+  <Step title="Create a proxied service">
+    A [proxied service](/documentation/platform/agent-gateways/proxied-services) names the external service
+    (`api.anthropic.com`, `api.github.com`, `slack.com`) and how the credential is applied to requests bound
+    for it.
+  </Step>
+  <Step title="Create an Agent Gateway">
+    [Connect](/documentation/platform/agent-gateways/configuration#connected-services) the proxied services it
+    may broker, then [grant](/documentation/platform/agent-gateways/configuration#access-control) the users,
+    machine identities, and groups allowed to use it.
+  </Step>
+</Steps>
+
+There is no proxy identity and no agent identity to create, and no RBAC to author. Connecting a service is what
+authorizes the credential; being on the access list is what authorizes an agent to use it.
+
+## Where the broker runs
+
+Where the broker runs follows from where your agent runs. The same Agent Gateway serves both, and you can use
+whichever fits each machine.
+
+| Mode | Command | What runs where |
+| --- | --- | --- |
+| **Local** | `infisical secrets agent gateway run --name <name> -- <command>` | The broker runs inside your CLI process, sandboxed away from the agent. Nothing to deploy. |
+| **Remote** | `infisical secrets agent gateway connect --name <name> -- <command>` | The broker runs inside an [Infisical Gateway](/documentation/platform/gateways/overview) you already have. No port to expose. |
+
+Remote mode needs a Gateway attached to the Agent Gateway. Local mode needs nothing.
+
+## Who can read what
+
+The two modes differ deliberately, and the difference is worth understanding before you pick one.
+
+- **Remote mode delegates.** Credentials resolve under the permissions of whoever last saved each proxied
+  service. Someone on the access list can have a credential applied to their agent's traffic that they could
+  not read themselves. That is safe because the broker is a separate process on a separate host: the credential
+  goes out onto the wire and never into the agent's environment.
+
+- **Local mode does not.** `run` starts the broker inside your own CLI process, so there is no boundary between
+  you and the plaintext. Credentials resolve under **your own** `Read Value` permission, and one you cannot
+  read is skipped with a warning naming it. The sandbox is what keeps the *agent* away from them.
+
+<Warning>
+  Host patterns are the allowlist that stops an agent being pointed at a collector someone else controls. Keep
+  them as narrow as the API allows, and prefer `--unmatched-host=block` on an Agent Gateway that brokers
+  sensitive credentials.
+</Warning>
+
+## How quickly access is revoked
+
+Three clocks, and you get all three. [Sessions and revocation](/documentation/platform/agent-gateways/sessions)
+covers each in detail.
+
+| Change | Takes effect within |
+| --- | --- |
+| A secret is rotated, a service is disabled or disconnected, the configurer loses access | **60 seconds** (the broker re-fetches on that interval and fails closed) |
+| A principal is removed from the access list | **30 minutes** (the session renews on that interval, and renewal re-checks the list) |
+| You end a session from the dashboard or the API | **Immediately** |
+
+## What you work with
+
+| Object | What it is |
+| --- | --- |
+| **Proxied service** | Maps hosts to the secrets applied to traffic bound for them, static or [dynamic](/documentation/platform/agent-gateways/proxied-services#using-dynamic-secrets). Project-scoped, and each credential names its own environment and path. |
+| **Agent Gateway** | The broker. Holds the services it may broker and the principals allowed to use it. Runs inside an Infisical Gateway, or locally in your CLI. |
+| **Agent** | Any program that honors `HTTPS_PROXY`: Claude Code, Codex, or any other untrusted workload. |
+
+<Warning>
+  An **Agent Gateway** is not the same thing as a **Gateway**. A
+  [Gateway](/documentation/platform/gateways/overview) lets Infisical reach into a private network. An Agent
+  Gateway brokers credentials onto an agent's outbound traffic, and uses a Gateway to do it remotely.
+
+  Also distinct: the [Infisical Agent](/integrations/platforms/infisical-agent) fetches secrets to disk for
+  applications, and the [Infisical Proxy](/integrations/platforms/infisical-proxy) caches the Infisical API.
+</Warning>
+
+## Limitations
+
+- Only HTTP and HTTPS are brokered. SSH cannot be, so use HTTPS with a brokered token, which is how `git` and
+  `gh` work anyway.
+- WebSockets are not brokered. `Upgrade` and `Connection` are hop-by-hop headers and are stripped, so a
+  WebSocket handshake through the broker does not complete.
+- A tool that ignores the proxy environment variables is not brokered. In local mode the sandbox makes that
+  fail loudly; in remote mode its traffic simply leaves unbrokered.
+
+## Next steps
+
+<Card title="Set Up Credentials" icon="rocket" href="/documentation/platform/agent-gateways/quickstart/credentials">
+  Start the quickstart: the secret, the proxied service, and the Agent Gateway.
+</Card>

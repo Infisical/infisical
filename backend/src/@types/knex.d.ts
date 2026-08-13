@@ -20,6 +20,21 @@ import {
   TAdditionalPrivileges,
   TAdditionalPrivilegesInsert,
   TAdditionalPrivilegesUpdate,
+  TAgentGateways,
+  TAgentGatewayServices,
+  TAgentGatewayServicesInsert,
+  TAgentGatewayServicesUpdate,
+  TAgentGatewaySessionLeases,
+  TAgentGatewaySessionLeasesInsert,
+  TAgentGatewaySessionLeasesUpdate,
+  TAgentGatewaySessionRequests,
+  TAgentGatewaySessionRequestsInsert,
+  TAgentGatewaySessionRequestsUpdate,
+  TAgentGatewaySessions,
+  TAgentGatewaySessionsInsert,
+  TAgentGatewaySessionsUpdate,
+  TAgentGatewaysInsert,
+  TAgentGatewaysUpdate,
   TAlertChannelMemberships,
   TAlertChannelMembershipsInsert,
   TAlertChannelMembershipsUpdate,
@@ -1555,6 +1570,31 @@ declare module "knex/types/tables" {
       TProxiedServiceCredentials,
       TProxiedServiceCredentialsInsert,
       TProxiedServiceCredentialsUpdate
+    >;
+    [TableName.AgentGateway]: KnexOriginal.CompositeTableType<
+      TAgentGateways,
+      TAgentGatewaysInsert,
+      TAgentGatewaysUpdate
+    >;
+    [TableName.AgentGatewayService]: KnexOriginal.CompositeTableType<
+      TAgentGatewayServices,
+      TAgentGatewayServicesInsert,
+      TAgentGatewayServicesUpdate
+    >;
+    [TableName.AgentGatewaySession]: KnexOriginal.CompositeTableType<
+      TAgentGatewaySessions,
+      TAgentGatewaySessionsInsert,
+      TAgentGatewaySessionsUpdate
+    >;
+    [TableName.AgentGatewaySessionLease]: KnexOriginal.CompositeTableType<
+      TAgentGatewaySessionLeases,
+      TAgentGatewaySessionLeasesInsert,
+      TAgentGatewaySessionLeasesUpdate
+    >;
+    [TableName.AgentGatewaySessionRequest]: KnexOriginal.CompositeTableType<
+      TAgentGatewaySessionRequests,
+      TAgentGatewaySessionRequestsInsert,
+      TAgentGatewaySessionRequestsUpdate
     >;
     [TableName.SecretRotationV2]: KnexOriginal.CompositeTableType<
       TSecretRotationsV2,

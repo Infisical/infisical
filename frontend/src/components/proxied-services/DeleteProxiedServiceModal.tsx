@@ -18,10 +18,10 @@ import {
   Input
 } from "@app/components/v3";
 import { useDeleteProxiedService } from "@app/hooks/api/proxiedServices/mutations";
-import { TDashboardProxiedService } from "@app/hooks/api/proxiedServices/types";
+import { TProxiedService } from "@app/hooks/api/proxiedServices/types";
 
 type Props = {
-  proxiedService?: TDashboardProxiedService;
+  proxiedService?: TProxiedService;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 };

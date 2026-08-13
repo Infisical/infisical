@@ -1,11 +1,11 @@
 import { Sheet, SheetContent, SheetHeader } from "@app/components/v3";
-import { TDashboardProxiedService } from "@app/hooks/api/proxiedServices/types";
+import { TProxiedService } from "@app/hooks/api/proxiedServices/types";
 
 import { EditProxiedServiceForm } from "./forms";
 import { ProxiedServiceModalHeader } from "./ProxiedServiceModalHeader";
 
 type Props = {
-  proxiedService?: TDashboardProxiedService;
+  proxiedService?: TProxiedService;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   projectId: string;
@@ -29,15 +29,13 @@ export const EditProxiedServiceModal = ({
         <SheetHeader className="border-b">
           <ProxiedServiceModalHeader
             title={proxiedService.name}
-            subtitle="Update how the agent proxy brokers this service."
+            subtitle="Update how an agent gateway brokers this service."
           />
         </SheetHeader>
         <div className="flex min-h-0 flex-1 flex-col">
           <EditProxiedServiceForm
             proxiedService={proxiedService}
             projectId={projectId}
-            environment={proxiedService.environment.slug}
-            secretPath={proxiedService.folder.path}
             existingNames={otherNames}
             onComplete={() => onOpenChange(false)}
           />
