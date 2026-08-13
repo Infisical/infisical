@@ -208,4 +208,7 @@ export type TOrgProductStats = {
     accountTemplatesCount: number;
     foldersCount: number;
   };
+  sandbox: {
+    sandboxesCount: number;
+  };
 };
