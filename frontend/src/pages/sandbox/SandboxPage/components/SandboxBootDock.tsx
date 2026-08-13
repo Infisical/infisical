@@ -30,13 +30,20 @@ export const SandboxBootDock = ({ lines, step, isDone, hasFailed, onDismiss }: P
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [lines]);
 
-  // A successful boot clears itself; a failed one stays so the reason can be read.
-  useEffect(() => {
-    if (!lines || !isDone || hasFailed) return undefined;
+  // Held in a ref so the countdown does not depend on the callback's identity. The page re-renders
+  // every second from the metrics poll, and a fresh inline callback in the deps restarted the timer
+  // each time, so it never reached the end.
+  const dismissRef = useRef(onDismiss);
+  dismissRef.current = onDismiss;
 
-    const timer = window.setTimeout(onDismiss, 4_000);
+  // A successful boot clears itself; a failed one stays so the reason can be read. `lines` is not a
+  // dependency either: a new line arriving would otherwise push the dismissal back.
+  useEffect(() => {
+    if (!isDone || hasFailed) return undefined;
+
+    const timer = window.setTimeout(() => dismissRef.current(), 3_000);
     return () => window.clearTimeout(timer);
-  }, [lines, isDone, hasFailed, onDismiss]);
+  }, [isDone, hasFailed]);
 
   if (!lines) return null;
 

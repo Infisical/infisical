@@ -104,13 +104,25 @@ const buildPath = (
   const step = width / (slots - 1);
 
   // Drawn past the right edge and clipped by the viewBox until the slide brings each one into view.
-  const shown = values.slice(-(slots + OVERSCAN));
+  const recent = values.slice(-(slots + OVERSCAN));
+  if (!recent.length) return { line: "", area: "", step };
+
+  // Back-filled with zero so the trace spans the full width from the very first sample, instead of
+  // starting partway across with a visible cut. Not an invention: before the container existed it
+  // was using no CPU and no memory, so zero is what was actually true for that stretch.
+  const missing = slots + OVERSCAN - recent.length;
+  const shown = missing > 0 ? [...(new Array(missing).fill(0) as number[]), ...recent] : recent;
   if (shown.length < 2) return { line: "", area: "", step };
 
   // Right-aligned with the newest OVERSCAN steps past the edge, so a short history grows leftwards
   // into empty space instead of being stretched to fill it.
   const offset = width + step * OVERSCAN - (shown.length - 1) * step;
-  const y = (value: number) => height - (Math.min(value, max) / max) ** curve * height;
+  // The plot is inset by half a stroke top and bottom. Without it a reading of zero lands exactly on
+  // the viewBox edge and half the stroke is clipped away, so an idle sandbox drew nothing at all
+  // rather than the flatline it should.
+  const inset = 1.5;
+  const usable = height - inset * 2;
+  const y = (value: number) => height - inset - (Math.min(value, max) / max) ** curve * usable;
 
   const points = shown.map((value, index) => `${offset + index * step},${y(value)}`);
   const line = `M${points.join(" L")}`;
