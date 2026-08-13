@@ -1,0 +1,21 @@
+FROM debian:13-slim
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    bash ca-certificates curl git jq less openssh-client postgresql-client \
+  && rm -rf /var/lib/apt/lists/*
+
+# Pinned so a sandbox start never picks up a surprise release.
+ARG GH_VERSION=2.63.2
+RUN set -eux; \
+  arch="$(dpkg --print-architecture)"; \
+  name="gh_${GH_VERSION}_linux_${arch}"; \
+  curl -fsSL -o /tmp/gh.tar.gz "https://github.com/cli/cli/releases/download/v${GH_VERSION}/${name}.tar.gz"; \
+  tar -xzf /tmp/gh.tar.gz -C /usr/local/bin "${name}/bin/gh" --strip-components=2; \
+  rm /tmp/gh.tar.gz; \
+  gh --version
+
+# The agent is not root, so it cannot install packages or write outside its home.
+RUN useradd --create-home --shell /bin/bash agent
+USER agent
+WORKDIR /home/agent

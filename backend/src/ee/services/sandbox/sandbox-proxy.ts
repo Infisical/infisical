@@ -193,9 +193,11 @@ export const startSandboxProxy = async (
   const port = await new Promise<number>((resolve, reject) => {
     const probe = createNetServer();
     probe.once("error", reject);
-    probe.listen(0, "127.0.0.1", () => {
+    // Bound to every interface, not loopback: the sandbox is a separate container now, so it reaches
+    // the proxy over the sandbox network rather than through the API's own localhost.
+    probe.listen(0, "0.0.0.0", () => {
       const assigned = (probe.address() as { port: number }).port;
-      probe.close(() => server.listen(assigned, "127.0.0.1", () => resolve(assigned)));
+      probe.close(() => server.listen(assigned, "0.0.0.0", () => resolve(assigned)));
     });
   });
 

@@ -2976,7 +2976,9 @@ export const registerRoutes = async (
     identityUaService,
     sandboxProjectResolver,
     permissionService,
-    kmsService
+    kmsService,
+    pamMembershipService,
+    pamSessionService
   });
 
   const honeyTokenService = honeyTokenServiceFactory({

@@ -10,20 +10,31 @@ export const sandboxDALFactory = (db: TDbClient) => {
   const findByOrg = async (orgId: string): Promise<TSandboxes[]> =>
     db.replicaNode()(TableName.Sandbox).where({ orgId }).orderBy("createdAt", "desc").select("*");
 
-  /** Everything `infisical pam db access` needs: it addresses accounts by name, not by id. */
+  /**
+   * Everything `infisical pam db access` needs: it addresses accounts by name, not by id.
+   *
+   * An account groups under a folder and takes its database type from a template. `pam_resources`
+   * is the pre-revamp shape and is empty, so joining it dropped every account and the sandbox
+   * started believing no database was granted.
+   */
   const findPamAccountTargets = async (accountIds: string[]) => {
     if (!accountIds.length) return [];
 
     return db
       .replicaNode()(TableName.PamAccount)
-      .join(TableName.PamResource, `${TableName.PamResource}.id`, `${TableName.PamAccount}.resourceId`)
+      .leftJoin(TableName.PamFolder, `${TableName.PamFolder}.id`, `${TableName.PamAccount}.folderId`)
+      .leftJoin(
+        TableName.PamAccountTemplate,
+        `${TableName.PamAccountTemplate}.id`,
+        `${TableName.PamAccount}.templateId`
+      )
       .whereIn(`${TableName.PamAccount}.id`, accountIds)
       .select(
         db.ref("id").withSchema(TableName.PamAccount).as("accountId"),
         db.ref("name").withSchema(TableName.PamAccount).as("accountName"),
         db.ref("projectId").withSchema(TableName.PamAccount).as("projectId"),
-        db.ref("name").withSchema(TableName.PamResource).as("resourceName"),
-        db.ref("resourceType").withSchema(TableName.PamResource).as("resourceType")
+        db.ref("name").withSchema(TableName.PamFolder).as("resourceName"),
+        db.ref("type").withSchema(TableName.PamAccountTemplate).as("resourceType")
       );
   };
 

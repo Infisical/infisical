@@ -1,33 +1,37 @@
-import { spawn } from "node:child_process";
 import crypto from "node:crypto";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join, sep } from "node:path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { clearSandboxCommandLog, recordSandboxCommand, SandboxCommandSource } from "./sandbox-command-log";
+import {
+  execInContainer,
+  isContainerRunning,
+  prepareDockerRuntime,
+  removeContainer,
+  startContainer,
+  writeFileInContainer
+} from "./sandbox-docker";
 import { TSandboxExecResult } from "./sandbox-types";
 
 /**
- * Stands in for real sandbox isolation. Each sandbox is a working directory on the API host and
- * every command is a short-lived `bash` child process, which is enough to demonstrate the product
- * without a VM supervisor. A real implementation runs a Firecracker microVM (or at minimum a
- * container) per sandbox so the workload cannot see the host at all.
+ * Each sandbox is a container of its own, so a command cannot see the API host, its processes, or
+ * anything else on the compose network. `sandbox-docker.ts` owns the container; this module owns the
+ * shell semantics on top of it: a persistent working directory, output limits, and timeouts.
  *
- * Because of that, this module is a remote code execution surface by design and is refused outside
- * development. Do not lift it into production as-is.
+ * It still drives the host's Docker daemon through a mounted socket, so it is refused outside
+ * development.
  */
 
 const COMMAND_TIMEOUT_MS = 30_000;
 const MAX_OUTPUT_BYTES = 200_000;
-const STDIO_DRAIN_MS = 150;
 const CWD_MARKER = "__INFISICAL_SANDBOX_CWD__";
+const SANDBOX_HOME = "/home/agent";
 
 type TSandboxProcessState = {
-  rootDir: string;
   cwd: string;
   /** Non-secret handles the sandbox is allowed to see, such as brokered PAM ports. */
   extraEnv: Record<string, string>;
@@ -40,20 +44,28 @@ export const assertSandboxRuntimeEnabled = () => {
   if (appCfg.isProductionMode) {
     throw new BadRequestError({
       message:
-        "Sandbox command execution is disabled in production. This prototype runs commands on the API host and requires real VM isolation before it can be enabled."
+        "Sandbox command execution is disabled in production. This prototype drives the host's Docker daemon and is not hardened for multi-tenant use."
     });
   }
 };
 
-export const bootSandbox = async (sandboxId: string) => {
+const readDockerfile = () =>
+  readFile(join(__dirname, "Dockerfile.sandbox"), "utf8").catch(() => {
+    throw new BadRequestError({
+      message: "The sandbox image definition is missing from this build, so no sandbox can be started."
+    });
+  });
+
+export const bootSandbox = async (sandboxId: string, resources: { vcpu: number; memoryMb: number }) => {
   assertSandboxRuntimeEnabled();
 
   const existing = states.get(sandboxId);
   if (existing) return existing;
 
-  const rootDir = await mkdtemp(join(tmpdir(), `infisical-sandbox-${sandboxId}-`));
+  await prepareDockerRuntime(await readDockerfile());
+  await startContainer(sandboxId, resources);
 
-  const state: TSandboxProcessState = { rootDir, cwd: rootDir, extraEnv: {} };
+  const state: TSandboxProcessState = { cwd: SANDBOX_HOME, extraEnv: {} };
   states.set(sandboxId, state);
 
   logger.info(`Sandbox booted [sandboxId=${sandboxId}]`);
@@ -61,13 +73,12 @@ export const bootSandbox = async (sandboxId: string) => {
 };
 
 export const shutdownSandbox = async (sandboxId: string) => {
-  const state = states.get(sandboxId);
-  if (!state) return;
+  clearSandboxCommandLog(sandboxId);
+  if (!states.has(sandboxId)) return;
 
   states.delete(sandboxId);
-  clearSandboxCommandLog(sandboxId);
-  await rm(state.rootDir, { recursive: true, force: true }).catch((error) => {
-    logger.error(error, `Failed to clean up sandbox directory [sandboxId=${sandboxId}]`);
+  await removeContainer(sandboxId).catch((error: Error) => {
+    logger.error(error, `Failed to remove sandbox container [sandboxId=${sandboxId}]`);
   });
 };
 
@@ -78,25 +89,12 @@ export const setSandboxEnv = (sandboxId: string, extraEnv: Record<string, string
   if (state) state.extraEnv = { ...state.extraEnv, ...extraEnv };
 };
 
-/**
- * The environment is allowlisted rather than inherited, so the org's credentials are not handed to
- * the command directly. This is hygiene, not a boundary: the child runs as the same OS user as the
- * API process, so anything that can read /proc can still reach them. Real isolation is the VM.
- */
-const buildSandboxEnv = (sandboxId: string, rootDir: string, extraEnv: Record<string, string>) => ({
-  PATH: process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin",
-  HOME: rootDir,
-  TERM: "xterm-256color",
-  LANG: "C.UTF-8",
-  INFISICAL_SANDBOX_ID: sandboxId,
-  ...extraEnv
-});
+export const writeSandboxFile = (sandboxId: string, relativePath: string, content: string) =>
+  writeFileInContainer(sandboxId, `${SANDBOX_HOME}/${relativePath}`, content);
+
+export const sandboxHomePath = (relativePath: string) => `${SANDBOX_HOME}/${relativePath}`;
 
 const truncate = (value: string) => (value.length > MAX_OUTPUT_BYTES ? value.slice(0, MAX_OUTPUT_BYTES) : value);
-
-// The sandbox root is a host temp path. Rewriting it to `~` keeps the host layout out of command
-// output, so `pwd` reads like a real machine instead of exposing /var/folders/....
-const redactRoot = (value: string, rootDir: string) => value.split(rootDir).join("~");
 
 // Single-quoted, because the cwd is interpolated into the wrapper script. JSON.stringify escapes
 // quotes and backslashes but leaves `$` and backticks live inside a double-quoted word, which made a
@@ -117,106 +115,59 @@ export const execInSandbox = async (
     throw new BadRequestError({ message: "Sandbox is not running. Start it before running commands." });
   }
 
+  if (!(await isContainerRunning(sandboxId))) {
+    states.delete(sandboxId);
+    throw new BadRequestError({
+      message: "This sandbox's container is no longer running. Start the sandbox again."
+    });
+  }
+
   const startedAt = Date.now();
 
   // Echoing pwd through a marker is what lets `cd` persist between commands even though each one is
-  // its own process. The marker carries a per-exec nonce because the user's command runs *before* the
+  // its own exec. The marker carries a per-exec nonce because the user's command runs *before* the
   // trailing printf and would otherwise be able to emit a marker of its own and choose the next cwd.
   const marker = `${CWD_MARKER}${crypto.randomBytes(12).toString("hex")}:`;
-  // `bash -l` sources /etc/profile, which resets PATH, so the sandbox's own bin/ has to be put back
-  // after that rather than passed in the environment.
-  const wrapped = [
-    `export PATH=${shellQuote(`${state.rootDir}/bin`)}:"$PATH"`,
-    `cd ${shellQuote(state.cwd)} || exit 1`,
-    command,
-    `printf '\\n${marker}%s' "$(pwd)"`
-  ].join("\n");
+  const script = [`cd ${shellQuote(state.cwd)} || exit 1`, command, `printf '\\n${marker}%s' "$(pwd)"`].join("\n");
 
-  return new Promise<TSandboxExecResult>((resolve) => {
-    const child = spawn("bash", ["-lc", wrapped], {
-      cwd: state.rootDir,
-      env: buildSandboxEnv(sandboxId, state.rootDir, state.extraEnv),
-      stdio: ["ignore", "pipe", "pipe"],
-      // Own process group, so the timeout can kill descendants rather than just bash.
-      detached: true
-    });
-
-    let stdout = "";
-    let stderr = "";
-    let timedOut = false;
-
-    const killTree = () => {
-      try {
-        if (child.pid) process.kill(-child.pid, "SIGKILL");
-      } catch {
-        // already gone
-      }
-    };
-
-    const timer = setTimeout(() => {
-      timedOut = true;
-      killTree();
-    }, COMMAND_TIMEOUT_MS);
-
-    child.stdout.on("data", (chunk: Buffer) => {
-      if (stdout.length < MAX_OUTPUT_BYTES) stdout += chunk.toString("utf8");
-    });
-    child.stderr.on("data", (chunk: Buffer) => {
-      if (stderr.length < MAX_OUTPUT_BYTES) stderr += chunk.toString("utf8");
-    });
-
-    let isSettled = false;
-
-    const finish = (exitCode: number | null) => {
-      if (isSettled) return;
-      isSettled = true;
-
-      clearTimeout(timer);
-      killTree();
-
-      let cleanStdout = stdout;
-      const markerAt = stdout.lastIndexOf(marker);
-      if (markerAt !== -1) {
-        const reportedCwd = stdout.slice(markerAt + marker.length).trim();
-        // Must be the root itself or a path beneath it. A bare startsWith would also accept a
-        // sibling like `<rootDir>-evil`.
-        if (reportedCwd === state.rootDir || reportedCwd.startsWith(`${state.rootDir}${sep}`)) {
-          state.cwd = reportedCwd;
-        }
-        cleanStdout = stdout.slice(0, markerAt).replace(/\n$/, "");
-      }
-
-      recordSandboxCommand(sandboxId, {
-        source,
-        command,
-        exitCode,
-        durationMs: Date.now() - startedAt
-      });
-
-      resolve({
-        command,
-        stdout: truncate(redactRoot(cleanStdout, state.rootDir)),
-        stderr: truncate(redactRoot(stderr, state.rootDir)),
-        exitCode,
-        durationMs: Date.now() - startedAt,
-        cwd: state.cwd === state.rootDir ? "~" : `~${state.cwd.slice(state.rootDir.length)}`,
-        wasTruncated: stdout.length > MAX_OUTPUT_BYTES || stderr.length > MAX_OUTPUT_BYTES,
-        timedOut
-      });
-    };
-
-    child.on("error", (error) => {
-      logger.error(error, `Sandbox command failed to spawn [sandboxId=${sandboxId}]`);
-      stderr += error.message;
-      finish(null);
-    });
-
-    // `close` waits for every stdio pipe to shut, which a backgrounded grandchild holds open for as
-    // long as it lives. Settle on `exit` instead, after a short grace period for the pipes to drain,
-    // or the request hangs for the lifetime of whatever the command spawned.
-    child.on("exit", (code) => {
-      setTimeout(() => finish(code), STDIO_DRAIN_MS);
-    });
-    child.on("close", (code) => finish(code));
+  const result = await execInContainer(sandboxId, script, {
+    // The container is started fresh, so the working directory always exists on the first command.
+    cwd: SANDBOX_HOME,
+    env: { ...state.extraEnv, INFISICAL_SANDBOX_ID: sandboxId },
+    timeoutMs: COMMAND_TIMEOUT_MS
   });
+
+  let cleanStdout = result.stdout;
+  const markerAt = result.stdout.lastIndexOf(marker);
+  if (markerAt !== -1) {
+    const reportedCwd = result.stdout.slice(markerAt + marker.length).trim();
+    // Must be home itself or a path beneath it. A bare startsWith would also accept a sibling like
+    // `/home/agent-evil`.
+    if (reportedCwd === SANDBOX_HOME || reportedCwd.startsWith(`${SANDBOX_HOME}/`)) {
+      state.cwd = reportedCwd;
+    }
+    cleanStdout = result.stdout.slice(0, markerAt).replace(/\n$/, "");
+  }
+
+  // `timeout` reports 137 for a SIGKILL it sent, which is how a command that ran too long is told
+  // apart from one that merely exited non-zero.
+  const timedOut = result.exitCode === 137;
+
+  recordSandboxCommand(sandboxId, {
+    source,
+    command,
+    exitCode: result.exitCode,
+    durationMs: Date.now() - startedAt
+  });
+
+  return {
+    command,
+    stdout: truncate(cleanStdout),
+    stderr: truncate(result.stderr),
+    exitCode: result.exitCode,
+    durationMs: Date.now() - startedAt,
+    cwd: state.cwd === SANDBOX_HOME ? "~" : `~${state.cwd.slice(SANDBOX_HOME.length)}`,
+    wasTruncated: result.stdout.length > MAX_OUTPUT_BYTES || result.stderr.length > MAX_OUTPUT_BYTES,
+    timedOut
+  };
 };

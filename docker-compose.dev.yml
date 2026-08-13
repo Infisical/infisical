@@ -120,6 +120,9 @@ services:
     volumes:
       - ./backend/src:/app/src
       - softhsm_tokens:/etc/softhsm2/tokens # SoftHSM tokens are stored in a volume to persist across container restarts
+      # Infisical Sandbox runs each sandbox as its own container, so the API needs the Docker socket.
+      # Dev only: this grants the backend control of the host's Docker daemon.
+      - /var/run/docker.sock:/var/run/docker.sock
     extra_hosts:
       - "host.docker.internal:host-gateway"
       - "pf.local:host-gateway" # PingFederate dev container — resolves the same on host and inside compose

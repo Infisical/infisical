@@ -154,6 +154,10 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
                   : call
               )
             }));
+          } else if (event.type === "done") {
+            // A turn that ends without streaming any text (hitting the step limit, for one) carries
+            // its whole reply here. Without this the turn renders empty and looks like it hung.
+            patchLast((turn) => ({ ...turn, content: turn.content || event.reply }));
           } else if (event.type === "error") {
             patchLast((turn) => ({ ...turn, content: turn.content || event.message }));
           }

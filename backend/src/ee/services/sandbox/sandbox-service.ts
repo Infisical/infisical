@@ -7,10 +7,11 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
 
+import { PamProductRole, PamResourceRole } from "../pam/pam-enums";
+import { TPamMembershipServiceFactory } from "../pam-membership/pam-membership-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { runAgentTurn, TAgentEventSink, TAgentMessage } from "./sandbox-agent";
-import { installGithubCli, writeSandboxCaCertificate } from "./sandbox-cli-runtime";
 import {
   getSandboxCommandLog,
   SandboxCommandSource,
@@ -19,13 +20,22 @@ import {
   TSandboxCommandEntry
 } from "./sandbox-command-log";
 import { TSandboxDALFactory } from "./sandbox-dal";
+import { getProxyHostAddress } from "./sandbox-docker";
 import { deprovisionSandboxIdentity, provisionSandboxIdentity, TSandboxIdentityDeps } from "./sandbox-identity";
 import { SANDBOX_INTEGRATIONS, SandboxCredentialRole, SandboxIntegrationType } from "./sandbox-integrations";
-import { getPamProxies, startPamProxies, stopPamProxies } from "./sandbox-pam-runtime";
+import { getPamProxies, startPamProxies, stopPamProxies, TPamTarget, TSandboxPamDeps } from "./sandbox-pam-runtime";
 import { TSandboxProjectResolverFactory } from "./sandbox-project-resolver";
 import { buildSystemPrompt } from "./sandbox-prompt";
 import { getSandboxProxyLog, startSandboxProxy, stopSandboxProxy } from "./sandbox-proxy";
-import { bootSandbox, execInSandbox, isSandboxBooted, setSandboxEnv, shutdownSandbox } from "./sandbox-runtime";
+import {
+  bootSandbox,
+  execInSandbox,
+  isSandboxBooted,
+  sandboxHomePath,
+  setSandboxEnv,
+  shutdownSandbox,
+  writeSandboxFile
+} from "./sandbox-runtime";
 import {
   assertSlackConfigured,
   buildAddReactionCommand,
@@ -60,7 +70,9 @@ type TSandboxServiceFactoryDep = {
   sandboxProjectResolver: TSandboxProjectResolverFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-} & TSandboxIdentityDeps;
+  pamMembershipService: Pick<TPamMembershipServiceFactory, "addProductMember" | "addAccountMember">;
+} & TSandboxPamDeps &
+  TSandboxIdentityDeps;
 
 const EMPTY_GRANTS: TSandboxGrants = { integrations: [], pamAccountIds: [] };
 
@@ -112,6 +124,8 @@ export const sandboxServiceFactory = ({
   sandboxProjectResolver,
   permissionService,
   kmsService,
+  pamMembershipService,
+  pamSessionService,
   identityService,
   identityUaService
 }: TSandboxServiceFactoryDep) => {
@@ -129,6 +143,59 @@ export const sandboxServiceFactory = ({
       orgId
     });
     return decryptor({ cipherTextBlob: blob }).toString();
+  };
+
+  /**
+   * PAM needs two things before an identity can open a session: membership in the PAM project, and
+   * a role on the account itself. Both are granted with the requesting user's permissions, so a user
+   * can only ever hand a sandbox access they already have.
+   */
+  const $grantPamAccess = async (identityId: string, targets: TPamTarget[], actor: OrgServiceActor) => {
+    const actorContext = {
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    };
+
+    // Re-granting an existing membership throws, and on the second start of a sandbox that is the
+    // normal case, so a failure here is logged rather than fatal. It is still logged: a permission
+    // failure and an already-a-member failure look nothing alike in the message.
+    const grant = async (what: string, accountId: string, run: () => Promise<unknown>) => {
+      try {
+        await run();
+      } catch (error) {
+        logger.info(
+          `Sandbox PAM ${what} not granted [identityId=${identityId}] [accountId=${accountId}]: ${
+            (error as Error).message
+          }`
+        );
+      }
+    };
+
+    for (const target of targets) {
+      // Member, not Admin: everything the sandbox is entitled to comes from the account role below.
+      // eslint-disable-next-line no-await-in-loop -- a handful of accounts, granted once at start
+      await grant("project membership", target.accountId, () =>
+        pamMembershipService.addProductMember({
+          ...actorContext,
+          projectId: target.projectId,
+          identityId,
+          role: PamProductRole.Member
+        })
+      );
+
+      // eslint-disable-next-line no-await-in-loop
+      await grant("connector role", target.accountId, () =>
+        pamMembershipService.addAccountMember({
+          ...actorContext,
+          projectId: target.projectId,
+          accountId: target.accountId,
+          identityId,
+          role: PamResourceRole.Connector
+        })
+      );
+    }
   };
 
   /**
@@ -242,10 +309,10 @@ export const sandboxServiceFactory = ({
   };
 
   const deleteSandbox = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor): Promise<TSandbox> => {
-    await $resolve(sandboxId, actor, true);
+    const existing = await $resolve(sandboxId, actor, true);
 
-    // Reap the running processes before the row goes, or the runtime keeps a directory nothing owns.
-    stopPamProxies(sandboxId);
+    // Reap the running processes before the row goes, or the runtime keeps a container nothing owns.
+    stopPamProxies({ pamSessionService }, sandboxId, { identityId: existing.identityId ?? "", orgId: actor.orgId });
     stopSandboxProxy(sandboxId);
     await shutdownSandbox(sandboxId);
     const row = await sandboxDAL.deleteById(sandboxId);
@@ -266,22 +333,38 @@ export const sandboxServiceFactory = ({
       throw new BadRequestError({ message: `Sandbox '${row.name}' is already running` });
     }
 
-    const { rootDir } = await bootSandbox(sandboxId);
+    await bootSandbox(sandboxId, { vcpu: row.vcpu, memoryMb: row.memoryMb });
 
     // Open a brokered proxy per granted account and tell the sandbox only the port. The identity
     // token and the database credential both stay in this process.
     const grants = normalizeGrants(row.grants);
     const targets = await sandboxDAL.findPamAccountTargets(grants.pamAccountIds);
-    const proxies =
-      row.identityClientId && row.encryptedIdentityClientSecret
-        ? await startPamProxies(sandboxId, targets, {
-            clientId: row.identityClientId,
-            clientSecret: await $decryptClientSecret(actor.orgId, row.encryptedIdentityClientSecret)
-          }).catch((error: Error) => {
-            logger.error(error, `Sandbox could not open PAM proxies [sandboxId=${sandboxId}]`);
-            return [];
-          })
-        : [];
+
+    // A granted account that no longer exists resolves to nothing, so the sandbox would start with a
+    // database the user believes is connected and the agent cannot see. Say so instead.
+    if (targets.length < grants.pamAccountIds.length) {
+      const missing = grants.pamAccountIds.filter((id) => !targets.some((target) => target.accountId === id));
+      logger.warn(
+        `Sandbox grants reference PAM accounts that no longer exist [sandboxId=${sandboxId}] [accountIds=${missing.join(",")}]`
+      );
+    }
+    // The sandbox identity is created with no access at all, so PAM would refuse its session. Give
+    // it Connector on exactly the accounts this sandbox was granted, and nothing else. Done on every
+    // start so a grant added before this ran still works, and so a revoked one is re-checked.
+    if (row.identityId && targets.length) {
+      await $grantPamAccess(row.identityId, targets, actor);
+    }
+
+    const proxies = row.identityId
+      ? await startPamProxies({ pamSessionService }, sandboxId, targets, {
+          identityId: row.identityId,
+          identityName: `sandbox-${row.name}`,
+          orgId: actor.orgId
+        }).catch((error: Error) => {
+          logger.error(error, `Sandbox could not open PAM sessions [sandboxId=${sandboxId}]`);
+          return [];
+        })
+      : [];
 
     // Resolve each integration's secret for the proxy. The sandbox only ever receives a placeholder.
     const integrationEnv: Record<string, string> = {};
@@ -316,18 +399,16 @@ export const sandboxServiceFactory = ({
           `Sandbox could not resolve integration secret [sandboxId=${sandboxId}] [key=${integration.secret.secretKey}]`
         );
       }
-
-      if (definition.cli?.name === "gh") {
-        // eslint-disable-next-line no-await-in-loop
-        await installGithubCli(rootDir).catch((error: Error) =>
-          logger.error(error, `Failed to install gh [sandboxId=${sandboxId}]`)
-        );
-      }
     }
 
     const { port: proxyPort, certificatePem } = await startSandboxProxy(sandboxId, resolved);
-    const caPath = await writeSandboxCaCertificate(rootDir, certificatePem);
-    const proxyUrl = `http://127.0.0.1:${proxyPort}`;
+
+    // The sandbox is its own container, so the proxy and the brokered database ports are reached at
+    // the API's address on the sandbox network rather than on the sandbox's own loopback.
+    const proxyHost = await getProxyHostAddress();
+    const caPath = sandboxHomePath("infisical-proxy-ca.crt");
+    await writeSandboxFile(sandboxId, "infisical-proxy-ca.crt", certificatePem);
+    const proxyUrl = `http://${proxyHost}:${proxyPort}`;
 
     setSandboxCommandContext(sandboxId, {
       pamProxies: proxies,
@@ -352,7 +433,13 @@ export const sandboxServiceFactory = ({
           String(proxy.port)
         ])
       ),
-      ...(proxies[0] && { PGHOST: "127.0.0.1", PGPORT: String(proxies[0].port) })
+      // psql picks these up with no flags, and the relay supplies the password upstream.
+      ...(proxies[0] && {
+        PGHOST: proxyHost,
+        PGPORT: String(proxies[0].port),
+        ...(proxies[0].username && { PGUSER: proxies[0].username }),
+        ...(proxies[0].database && { PGDATABASE: proxies[0].database })
+      })
     });
 
     return toSandbox(row);
@@ -365,7 +452,7 @@ export const sandboxServiceFactory = ({
       throw new BadRequestError({ message: `Sandbox '${row.name}' is not running` });
     }
 
-    stopPamProxies(sandboxId);
+    stopPamProxies({ pamSessionService }, sandboxId, { identityId: row.identityId ?? "", orgId: actor.orgId });
     stopSandboxProxy(sandboxId);
     await shutdownSandbox(sandboxId);
     return toSandbox(row);
@@ -495,7 +582,7 @@ export const sandboxServiceFactory = ({
     return runAgentTurn({
       sandboxId,
       apiKey: await $decryptClientSecret(actor.orgId, row.encryptedAgentToken),
-      systemPrompt: buildSystemPrompt(toSandbox(row), getPamProxies(sandboxId)),
+      systemPrompt: buildSystemPrompt(toSandbox(row), getPamProxies(sandboxId), await getProxyHostAddress()),
       messages,
       onEvent
     });
@@ -532,7 +619,7 @@ export const sandboxServiceFactory = ({
   /** The agent's system prompt, describing every tool the sandbox has and how it is authenticated. */
   const getSystemPrompt = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor) => {
     const row = await $resolve(sandboxId, actor, false);
-    return buildSystemPrompt(toSandbox(row), getPamProxies(sandboxId));
+    return buildSystemPrompt(toSandbox(row), getPamProxies(sandboxId), await getProxyHostAddress());
   };
 
   const resolveProjectId = async (actor: OrgServiceActor) => {
@@ -596,7 +683,7 @@ export const sandboxServiceFactory = ({
       const turn = await runAgentTurn({
         sandboxId: sandbox.id,
         apiKey: await $decryptClientSecret(sandbox.orgId, sandbox.encryptedAgentToken),
-        systemPrompt: buildSystemPrompt(toSandbox(sandbox), getPamProxies(sandbox.id)),
+        systemPrompt: buildSystemPrompt(toSandbox(sandbox), getPamProxies(sandbox.id), await getProxyHostAddress()),
         messages: [{ role: "user", content: message.text }]
       });
 
