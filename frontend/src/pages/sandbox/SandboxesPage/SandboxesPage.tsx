@@ -136,7 +136,7 @@ export const SandboxesPage = () => {
                     }}
                     // Lifted on hover because the scale grows the card past its grid cell, and
                     // without a stacking order the next card in the DOM paints over the new edge.
-                    className="group relative h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:z-10 hover:scale-[1.01] hover:bg-gradient-to-br hover:from-product-sandbox/[0.05] hover:to-transparent"
+                    className="group relative h-full cursor-pointer rounded-md transition-all duration-200 ease-out hover:z-10 hover:scale-[1.01] hover:bg-gradient-to-br hover:from-product-sandbox/[0.05] hover:to-transparent"
                   >
                     <CardHeader>
                       <div className="flex items-start gap-3">
@@ -175,7 +175,7 @@ export const SandboxesPage = () => {
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="flex flex-col gap-3">
+                    <CardContent className="mt-auto flex flex-col gap-3">
                       <div className="flex items-center gap-4 border-t border-border pt-3">
                         {stats.map((stat, index) => (
                           <div key={stat.label} className="flex items-center gap-4">

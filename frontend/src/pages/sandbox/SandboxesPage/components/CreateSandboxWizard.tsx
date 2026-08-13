@@ -56,11 +56,11 @@ const STEPS = [
     subtitle: "The sandbox can run an AI agent, or stay a plain machine you drive yourself."
   },
   {
-    name: "Access",
+    name: "Integrations",
     short: "What it can reach",
-    title: "Grant access",
+    title: "Add integrations",
     subtitle:
-      "Pick the services and databases this sandbox may reach. It never holds the credentials."
+      "Pick the endpoints and accounts this sandbox may reach. It never holds the credentials."
   },
   {
     name: "Details",
