@@ -79,7 +79,7 @@ const RecentActivity = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunning: 
       // React does in development) would otherwise show each entry twice.
       (entry) =>
         setEntries((prev) =>
-          prev.some((seen) => seen.id === entry.id) ? prev : [entry, ...prev].slice(0, 6)
+          prev.some((seen) => seen.id === entry.id) ? prev : [entry, ...prev].slice(0, 10)
         ),
       controller.signal
     ).catch(() => {});
@@ -91,7 +91,9 @@ const RecentActivity = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunning: 
     return (
       // Fills its container rather than sitting at the top of it: the feed has a fixed height, so a
       // short paragraph with padding read as misaligned against the panels either side.
-      <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+      // Its own minimum now that the feed is unscrolled: without the container's fixed height this
+      // would collapse to the text.
+      <div className="flex min-h-36 flex-col items-center justify-center gap-2 text-center">
         <span className="flex size-9 items-center justify-center rounded-full border border-border bg-container">
           <ActivityIcon className="size-4 text-muted" />
         </span>
@@ -296,7 +298,7 @@ export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
           <CardAction>{isRunning && <LiveDot />}</CardAction>
         </CardHeader>
         <CardContent>
-          <div className="h-44 thin-scrollbar overflow-y-auto">
+          <div>
             <RecentActivity sandbox={sandbox} isRunning={isRunning} />
           </div>
         </CardContent>

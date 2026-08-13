@@ -406,7 +406,14 @@ export const sandboxServiceFactory = ({
 
     setSandboxCommandContext(sandboxId, {
       pamProxies: proxies,
-      hostnames: grants.integrations.flatMap((integration) => integration.hostnames)
+      hostnames: grants.integrations.flatMap((integration) => integration.hostnames),
+      // The CLI stands in for the integration's primary host, which is the name worth showing: a gh
+      // call reads as "api.github.com", not as "gh".
+      clis: grants.integrations.flatMap((integration) => {
+        const definition = SANDBOX_INTEGRATIONS[integration.type];
+        if (!definition.cli) return [];
+        return [{ binary: definition.cli.binary, target: integration.hostnames[0] ?? definition.name }];
+      })
     });
 
     setSandboxEnv(sandboxId, {

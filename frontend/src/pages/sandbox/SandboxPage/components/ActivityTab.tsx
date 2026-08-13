@@ -416,8 +416,10 @@ export const ActivityTab = ({ sandbox }: { sandbox: TSandbox }) => {
     // Anything the broker handled outside a command's window still deserves a row of its own.
     const orphans = proxies.filter((proxy) => !claimed.has(proxy.id)).map(toRow);
 
+    // Newest first. Inverting the arrival order alone was not enough: this sort ran afterwards and
+    // put it back, so the latest event sat at the bottom and had to be scrolled to.
     return [...commandRows, ...orphans].sort(
-      (a, b) => new Date(a.at).getTime() - new Date(b.at).getTime()
+      (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
     );
   }, [entries]);
   // Same metadata the PAM pages use, so a Postgres row carries the Postgres mark rather than a

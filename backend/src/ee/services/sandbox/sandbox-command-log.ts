@@ -69,6 +69,14 @@ export type TSandboxActivityEntry = TSandboxCommandEntry | TSandboxProxyEntry;
 type TCommandContext = {
   pamProxies: TPamProxy[];
   hostnames: string[];
+  /**
+   * CLIs a granted integration installs, and the host they stand for.
+   *
+   * A CLI hides the host it talks to: `gh api /repos/owner/name` never contains api.github.com, so
+   * matching on hostname alone filed every gh call as plain shell while the broker's own record of
+   * the same request showed the credential being swapped. The binary is the signal in that case.
+   */
+  clis: { binary: string; target: string }[];
 };
 
 type TCommandLogState = {
@@ -86,7 +94,7 @@ const stateFor = (sandboxId: string): TCommandLogState => {
 
   const created: TCommandLogState = {
     entries: [],
-    context: { pamProxies: [], hostnames: [] },
+    context: { pamProxies: [], hostnames: [], clis: [] },
     subscribers: new Set()
   };
   states.set(sandboxId, created);
@@ -125,6 +133,18 @@ const classify = (
   const host = context.hostnames.find((hostname) => command.includes(hostname.replace("*.", "")));
   if (host) {
     return { kind: SandboxCommandKind.Integration, target: host, accountId: null, resourceType: null };
+  }
+
+  // Anchored to a command position: start of the line, or after a pipe, semicolon or &&. Matching
+  // the bare word anywhere would file `cd gh-pages` as a GitHub call.
+  const cli = context.clis.find((entry) => new RegExp(String.raw`(^|[|;&]\s*|\n\s*)${entry.binary}\b`).test(command));
+  if (cli) {
+    return {
+      kind: SandboxCommandKind.Integration,
+      target: cli.target,
+      accountId: null,
+      resourceType: null
+    };
   }
 
   return { kind: SandboxCommandKind.Shell, target: null, accountId: null, resourceType: null };
