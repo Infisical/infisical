@@ -272,9 +272,14 @@ export const reviewServiceAccountToken = async ({
     throw new UnauthorizedError({ message, detail: { reasonCode, ...errorContext } });
   }
 
-  if (!review?.status) {
+  // A rejected review comes back as a Status object, where `status` is the string "Failure" rather
+  // than the TokenReview result. Anything that is not an object fails the same way, and treating it
+  // as one turns a denied login into a 500.
+  if (!review?.status || typeof review.status !== "object") {
+    const reason =
+      (review as unknown as { message?: string })?.message ?? "the response did not contain a review result";
     throw new UnauthorizedError({
-      message: "The Kubernetes API server returned an unexpected token review response.",
+      message: `The Kubernetes API server did not return a token review: ${reason}`,
       detail: { reasonCode: ResourceAuthLoginFailureReason.TokenReviewMalformedResponse, ...errorContext }
     });
   }
