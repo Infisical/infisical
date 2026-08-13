@@ -22,6 +22,7 @@ import {
   AuditLogTab,
   ChatTab,
   OverviewTab,
+  ProcessMonitorTab,
   SettingsTab,
   TerminalTab
 } from "./components";
@@ -30,6 +31,7 @@ export enum SandboxTab {
   Overview = "overview",
   Chat = "chat",
   Terminal = "terminal",
+  ProcessMonitor = "process-monitor",
   AuditLog = "audit-log",
   Access = "access",
   Settings = "settings"
@@ -164,6 +166,7 @@ export const SandboxPage = () => {
             {tab === SandboxTab.Terminal && (
               <TerminalTab sandbox={sandbox} boot={boot} onBootSettled={() => setBoot(null)} />
             )}
+            {tab === SandboxTab.ProcessMonitor && <ProcessMonitorTab sandbox={sandbox} />}
             {tab === SandboxTab.AuditLog && <AuditLogTab sandbox={sandbox} />}
             {tab === SandboxTab.Access && <AccessTab sandbox={sandbox} />}
             {tab === SandboxTab.Settings && <SettingsTab sandbox={sandbox} />}

@@ -281,3 +281,50 @@ export const execInContainer = async (
     { timeoutMs: opts.timeoutMs + 10_000 }
   );
 };
+
+export type TContainerStats = {
+  cpuPercent: number;
+  memoryUsedMb: number;
+  memoryLimitMb: number;
+  memoryPercent: number;
+  networkIn: string;
+  networkOut: string;
+  processCount: number;
+};
+
+const toMb = (value: string) => {
+  const amount = parseFloat(value) || 0;
+  if (value.includes("GiB") || value.includes("GB")) return amount * 1024;
+  if (value.includes("KiB") || value.includes("kB")) return amount / 1024;
+  if (value.includes("B") && !value.includes("MiB") && !value.includes("MB")) return amount / 1024 / 1024;
+  return amount;
+};
+
+/** One shot rather than a stream: the UI polls, and a stream would outlive the request. */
+export const getContainerStats = async (sandboxId: string): Promise<TContainerStats | null> => {
+  const result = await docker([
+    "stats",
+    containerNameFor(sandboxId),
+    "--no-stream",
+    "--format",
+    "{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.PIDs}}"
+  ]);
+
+  if (result.exitCode !== 0) return null;
+
+  const [cpu, mem, memPct, net, pids] = result.stdout.trim().split("\t");
+  if (!cpu) return null;
+
+  const [used, limit] = (mem ?? "").split(" / ");
+  const [inbound, outbound] = (net ?? "").split(" / ");
+
+  return {
+    cpuPercent: parseFloat(cpu) || 0,
+    memoryUsedMb: toMb(used ?? ""),
+    memoryLimitMb: toMb(limit ?? ""),
+    memoryPercent: parseFloat(memPct ?? "") || 0,
+    networkIn: (inbound ?? "0B").trim(),
+    networkOut: (outbound ?? "0B").trim(),
+    processCount: Number(pids) || 0
+  };
+};

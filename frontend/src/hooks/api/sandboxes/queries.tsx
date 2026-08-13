@@ -7,7 +7,9 @@ import {
   TSandboxCatalog,
   TSandboxDirListing,
   TSandboxFileContent,
-  TSandboxPamProxy
+  TSandboxContainerStats,
+  TSandboxPamProxy,
+  TSandboxProcess
 } from "./types";
 
 // Mirrors PAM: the sandbox project is hidden, resolved (and bootstrapped) on first visit so the
@@ -26,7 +28,8 @@ export const sandboxKeys = {
     [...sandboxKeys.all(), "files", sandboxId, path] as const,
   fileContent: (sandboxId: string, path: string) =>
     [...sandboxKeys.all(), "file-content", sandboxId, path] as const,
-  runtime: (sandboxId: string) => [...sandboxKeys.all(), "runtime", sandboxId] as const
+  runtime: (sandboxId: string) => [...sandboxKeys.all(), "runtime", sandboxId] as const,
+  processes: (sandboxId: string) => [...sandboxKeys.all(), "processes", sandboxId] as const
 };
 
 export const useListSandboxes = () =>
@@ -105,5 +108,21 @@ export const useGetSandboxRuntime = (sandboxId: string, isEnabled: boolean) =>
       return data.pamProxies;
     },
     enabled: isEnabled,
+    staleTime: 0
+  });
+
+/** Polled rather than streamed: a task manager is a periodic snapshot, not an event feed. */
+export const useListSandboxProcesses = (sandboxId: string, isEnabled: boolean) =>
+  useQuery({
+    queryKey: sandboxKeys.processes(sandboxId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        processes: TSandboxProcess[];
+        stats: TSandboxContainerStats | null;
+      }>(`/api/v1/sandboxes/${sandboxId}/processes`);
+      return data;
+    },
+    enabled: isEnabled,
+    refetchInterval: 3000,
     staleTime: 0
   });

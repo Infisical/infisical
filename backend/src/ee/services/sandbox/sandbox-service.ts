@@ -32,6 +32,8 @@ import {
   execInSandbox,
   isSandboxBooted,
   listSandboxDirectory,
+  killSandboxProcess,
+  listSandboxProcesses,
   readSandboxFile,
   sandboxHomePath,
   setSandboxEnv,
@@ -659,6 +661,19 @@ export const sandboxServiceFactory = ({
     return readSandboxFile(sandboxId, path);
   };
 
+  const listProcesses = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor) => {
+    await $resolve(sandboxId, actor, false);
+    return listSandboxProcesses(sandboxId);
+  };
+
+  const killProcess = async (
+    { sandboxId, pid }: TSandboxIdDTO & { pid: number },
+    actor: OrgServiceActor
+  ) => {
+    await $resolve(sandboxId, actor, true);
+    await killSandboxProcess(sandboxId, pid);
+  };
+
   const getCommandLog = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor) => {
     await $resolve(sandboxId, actor, false);
     return getSandboxCommandLog(sandboxId);
@@ -848,6 +863,8 @@ export const sandboxServiceFactory = ({
     chatWithAgent,
     getCommandLog,
     listFiles,
+    listProcesses,
+    killProcess,
     readFile,
     streamCommandLog,
     linkSlackConversation,

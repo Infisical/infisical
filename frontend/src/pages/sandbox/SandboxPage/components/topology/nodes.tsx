@@ -48,7 +48,7 @@ export const TopologyNode = ({ data }: NodeProps & { data: TTopologyNodeData }) 
 
   return (
     <div
-      className={`flex h-[58px] min-w-[190px] items-center gap-3 rounded-lg border ${tone.ring} bg-[#111419] px-3 shadow-lg`}
+      className={`flex h-[58px] min-w-[190px] items-center gap-3 rounded-lg border ${tone.ring} bg-card px-3 shadow-lg`}
     >
       {/* Both handles on every node, so an edge can enter or leave without a per-node special case. */}
       <Handle type="target" position={Position.Left} className="!size-1.5 !border-0 !bg-border" />
@@ -82,7 +82,7 @@ export const TopologyNode = ({ data }: NodeProps & { data: TTopologyNodeData }) 
  * taller node would bend the edge leaving it. It reads as the origin through width and weight.
  */
 export const SandboxNode = ({ data }: NodeProps & { data: TTopologyNodeData }) => (
-  <div className="flex h-[58px] min-w-[210px] items-center gap-3 rounded-lg border border-info/40 bg-[#111419] px-4 shadow-lg">
+  <div className="flex h-[58px] min-w-[210px] items-center gap-3 rounded-lg border border-info/40 bg-card px-4 shadow-lg">
     <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-info/10 text-info">
       <TerminalIcon className="size-4" />
     </span>

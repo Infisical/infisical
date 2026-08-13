@@ -49,8 +49,20 @@ const ROW_HEIGHT = 78;
 /** Breathing room between one category's block of leaves and the next. */
 const CATEGORY_GAP = 40;
 
+/**
+ * React Flow styles SVG strokes and its canvas with raw colour values, not classes, so the design
+ * tokens are mirrored here. These must track src/index.css if the palette moves.
+ */
+const COLOUR = {
+  info: "#63b0bd",
+  success: "#2ecc71",
+  border: "#2b2c30",
+  canvas: "#0e1014",
+  dots: "#2b2c30"
+};
+
 const edgeStyle = (isActive: boolean, colour: string) => ({
-  stroke: isActive ? colour : "#3a3d42",
+  stroke: isActive ? colour : COLOUR.border,
   strokeWidth: isActive ? 2 : 1.25
 });
 
@@ -234,7 +246,7 @@ export const TopologyTab = ({ sandbox }: { sandbox: TSandbox }) => {
         style: edgeStyle(isActive, colour),
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: isActive ? colour : "#3a3d42",
+          color: isActive ? colour : COLOUR.border,
           width: 18,
           height: 18
         }
@@ -242,14 +254,14 @@ export const TopologyTab = ({ sandbox }: { sandbox: TSandbox }) => {
     };
 
     const flowEdges: Edge[] = [
-      link("sandbox-broker", "sandbox", "broker", entries.length, "#3b82f6"),
+      link("sandbox-broker", "sandbox", "broker", entries.length, COLOUR.info),
       ...categories.map((category) =>
         link(
           `broker-${category.id}`,
           "broker",
           category.id,
           category.data.count ?? 0,
-          category.id === "pam" ? "#3b82f6" : "#22c55e"
+          category.id === "pam" ? COLOUR.info : COLOUR.success
         )
       ),
       ...leaves.map((leaf) =>
@@ -258,7 +270,7 @@ export const TopologyTab = ({ sandbox }: { sandbox: TSandbox }) => {
           leaf.parent,
           leaf.id,
           leaf.data.count ?? 0,
-          leaf.parent === "pam" ? "#3b82f6" : "#22c55e"
+          leaf.parent === "pam" ? COLOUR.info : COLOUR.success
         )
       )
     ];
@@ -313,7 +325,7 @@ export const TopologyTab = ({ sandbox }: { sandbox: TSandbox }) => {
                 fitViewOptions={{ padding: 0.25 }}
                 proOptions={{ hideAttribution: true }}
               >
-                <Background color="#5d5f64" bgColor="#111419" variant={BackgroundVariant.Dots} />
+                <Background color={COLOUR.dots} bgColor={COLOUR.canvas} variant={BackgroundVariant.Dots} />
               </ReactFlow>
             </ReactFlowProvider>
           </div>
