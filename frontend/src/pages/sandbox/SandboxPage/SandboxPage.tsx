@@ -19,10 +19,10 @@ import { SandboxStatus, useGetSandboxById, useSetSandboxPower } from "@app/hooks
 import { SandboxShine } from "../components/SandboxShine";
 import {
   AccessTab,
-  AgentTab,
   AuditLogTab,
   ChatTab,
   OverviewTab,
+  SettingsTab,
   TerminalTab
 } from "./components";
 
@@ -32,7 +32,7 @@ export enum SandboxTab {
   Terminal = "terminal",
   AuditLog = "audit-log",
   Access = "access",
-  Agent = "agent"
+  Settings = "settings"
 }
 
 export const SandboxPage = () => {
@@ -166,7 +166,7 @@ export const SandboxPage = () => {
             )}
             {tab === SandboxTab.AuditLog && <AuditLogTab sandbox={sandbox} />}
             {tab === SandboxTab.Access && <AccessTab sandbox={sandbox} />}
-            {tab === SandboxTab.Agent && <AgentTab sandbox={sandbox} />}
+            {tab === SandboxTab.Settings && <SettingsTab sandbox={sandbox} />}
             {tab === SandboxTab.Overview && <OverviewTab sandbox={sandbox} />}
           </div>
         </div>

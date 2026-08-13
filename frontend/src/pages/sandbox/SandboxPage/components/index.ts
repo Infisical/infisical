@@ -8,5 +8,7 @@ export * from "./SandboxBootConsole";
 export * from "./SandboxChat";
 export * from "./SandboxFileBrowser";
 export * from "./SandboxTerminal";
+export * from "./SettingsTab";
 export * from "./SlackConversationSheet";
 export * from "./TerminalTab";
+export * from "./topology";

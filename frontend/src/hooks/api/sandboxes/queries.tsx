@@ -6,7 +6,8 @@ import {
   TSandbox,
   TSandboxCatalog,
   TSandboxDirListing,
-  TSandboxFileContent
+  TSandboxFileContent,
+  TSandboxPamProxy
 } from "./types";
 
 // Mirrors PAM: the sandbox project is hidden, resolved (and bootstrapped) on first visit so the
@@ -24,7 +25,8 @@ export const sandboxKeys = {
   files: (sandboxId: string, path: string) =>
     [...sandboxKeys.all(), "files", sandboxId, path] as const,
   fileContent: (sandboxId: string, path: string) =>
-    [...sandboxKeys.all(), "file-content", sandboxId, path] as const
+    [...sandboxKeys.all(), "file-content", sandboxId, path] as const,
+  runtime: (sandboxId: string) => [...sandboxKeys.all(), "runtime", sandboxId] as const
 };
 
 export const useListSandboxes = () =>
@@ -89,5 +91,19 @@ export const useReadSandboxFile = (sandboxId: string, path: string | null) =>
       return data;
     },
     enabled: Boolean(path),
+    staleTime: 0
+  });
+
+/** The brokered PAM ports the sandbox currently holds, which only exist while it is running. */
+export const useGetSandboxRuntime = (sandboxId: string, isEnabled: boolean) =>
+  useQuery({
+    queryKey: sandboxKeys.runtime(sandboxId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ pamProxies: TSandboxPamProxy[] }>(
+        `/api/v1/sandboxes/${sandboxId}/system-prompt`
+      );
+      return data.pamProxies;
+    },
+    enabled: isEnabled,
     staleTime: 0
   });

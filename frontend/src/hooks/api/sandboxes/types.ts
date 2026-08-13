@@ -218,3 +218,11 @@ export type TSandboxFileContent = {
   content: string;
   wasTruncated: boolean;
 };
+
+export type TSandboxPamProxy = {
+  accountId: string;
+  accountName: string;
+  resourceName: string;
+  resourceType: string;
+  port: number;
+};

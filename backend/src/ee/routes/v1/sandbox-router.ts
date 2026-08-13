@@ -228,6 +228,7 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
               accountId: z.string(),
               accountName: z.string(),
               resourceName: z.string(),
+              resourceType: z.string(),
               port: z.number()
             })
             .array()
