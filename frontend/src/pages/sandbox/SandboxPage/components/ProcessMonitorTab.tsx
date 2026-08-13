@@ -28,7 +28,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   SandboxStatus,
@@ -181,8 +184,12 @@ export const ProcessMonitorTab = ({ sandbox }: { sandbox: TSandbox }) => {
               <MetricPanel
                 icon={ScanIcon}
                 label="Processes"
-                value={<CountUp value={metrics?.processes ?? processes.length} />}
-                detail={`${processes.filter((process) => !isThread(process.command)).length} not kernel threads`}
+                // Counted from the same list the table renders. The daemon's PID figure counts
+                // differently, so showing it here made the card contradict the rows beneath it.
+                value={<CountUp value={processes.length} />}
+                detail={`${
+                  processes.filter((process) => isThread(process.command)).length
+                } kernel threads`}
               />
             </div>
 
@@ -219,7 +226,12 @@ export const ProcessMonitorTab = ({ sandbox }: { sandbox: TSandbox }) => {
                           <div className="h-1 w-20 overflow-hidden rounded-full bg-border">
                             <div
                               className="h-full rounded-full bg-info transition-all duration-500"
-                              style={{ width: `${(process.memoryKb / heaviest) * 100}%` }}
+                              // Floored at 10%: the track is 80px wide, so the previous 3% floor was
+                              // itself the couple of pixels it was meant to avoid, and rounded-full
+                              // then drew it as a dot.
+                              style={{
+                                width: `${Math.max((process.memoryKb / heaviest) * 100, 10)}%`
+                              }}
                             />
                           </div>
                           <span className="w-16 text-right font-mono text-xs text-muted tabular-nums">
@@ -231,15 +243,26 @@ export const ProcessMonitorTab = ({ sandbox }: { sandbox: TSandbox }) => {
                       <TableCell className="py-2">
                         {/* PID 1 is the container's init: killing it stops the sandbox, so it is not
                             offered as a row action. */}
-                        <IconButton
-                          variant="ghost"
-                          size="xs"
-                          aria-label={`Terminate process ${process.pid}`}
-                          isDisabled={process.pid === 1 || terminate.isPending}
-                          onClick={() => handleTerminate(process.pid)}
-                        >
-                          <XCircleIcon className="size-3.5 text-danger" />
-                        </IconButton>
+                        {/* Tooltipped: an unlabelled red icon beside a process list is a
+                            destructive action with no indication of what it will destroy. */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <IconButton
+                              variant="ghost"
+                              size="xs"
+                              aria-label={`Terminate process ${process.pid}`}
+                              isDisabled={process.pid === 1 || terminate.isPending}
+                              onClick={() => handleTerminate(process.pid)}
+                            >
+                              <XCircleIcon className="size-3.5 text-danger" />
+                            </IconButton>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {process.pid === 1
+                              ? "PID 1 is the container's init and cannot be terminated"
+                              : `Terminate PID ${process.pid} — ${process.command.slice(0, 60)}`}
+                          </TooltipContent>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))}

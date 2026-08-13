@@ -40,6 +40,8 @@ import {
   TSandboxProxyEntry
 } from "@app/hooks/api/sandboxes";
 
+import { BLOCKED_TONE, TOOL_TONES } from "../../components/toolActivity";
+
 /**
  * A timeline rather than a table, because the interesting question is not what the columns are but
  * what this sandbox touched and whether it used something it was granted. The categories get their
@@ -53,43 +55,61 @@ type TCategory = {
   tone: string;
   ring: string;
   chip: string;
+  /** Tint for the row body, so a glance separates real tool use from shell noise. */
+  surface: string;
+  rail: string;
 };
 
+/**
+ * Labels and icons are this view's own; the colours come from the shared palette so a PAM call is
+ * the same blue here, in the dashboard preview, and in the chat. Two tables drifted apart once
+ * already, which defeated the whole point of colour-coding.
+ */
 const CATEGORY = {
   pam: {
     label: "PAM",
     icon: DatabaseIcon,
-    tone: "text-info",
-    ring: "border-info/30 bg-info/10",
-    chip: "border-info/20 bg-info/10 text-info"
+    tone: TOOL_TONES.pam.text,
+    ring: TOOL_TONES.pam.chip,
+    chip: TOOL_TONES.pam.chip,
+    surface: `${TOOL_TONES.pam.surface} hover:border-info/40`,
+    rail: TOOL_TONES.pam.rail
   },
   brokered: {
     label: "Brokered",
     icon: KeyRoundIcon,
-    tone: "text-success",
-    ring: "border-success/30 bg-success/10",
-    chip: "border-success/20 bg-success/10 text-success"
+    tone: TOOL_TONES.integration.text,
+    ring: TOOL_TONES.integration.chip,
+    chip: TOOL_TONES.integration.chip,
+    surface: `${TOOL_TONES.integration.surface} hover:border-success/40`,
+    rail: TOOL_TONES.integration.rail
   },
   request: {
     label: "Request",
     icon: GlobeIcon,
-    tone: "text-success",
-    ring: "border-success/30 bg-success/10",
-    chip: "border-success/20 bg-success/10 text-success"
+    tone: TOOL_TONES.integration.text,
+    ring: TOOL_TONES.integration.chip,
+    chip: TOOL_TONES.integration.chip,
+    surface: `${TOOL_TONES.integration.surface} hover:border-success/40`,
+    rail: TOOL_TONES.integration.rail
   },
   blocked: {
     label: "Blocked",
     icon: GlobeIcon,
-    tone: "text-danger",
-    ring: "border-danger/30 bg-danger/10",
-    chip: "border-danger/20 bg-danger/10 text-danger"
+    tone: BLOCKED_TONE.text,
+    ring: BLOCKED_TONE.chip,
+    chip: BLOCKED_TONE.chip,
+    surface: `${BLOCKED_TONE.surface} hover:border-danger/40`,
+    rail: BLOCKED_TONE.rail
   },
   shell: {
     label: "Shell",
     icon: TerminalIcon,
-    tone: "text-muted",
-    ring: "border-border bg-container",
-    chip: "border-border bg-container text-muted"
+    tone: TOOL_TONES.shell.text,
+    ring: TOOL_TONES.shell.chip,
+    chip: TOOL_TONES.shell.chip,
+    surface: "border-border bg-card hover:border-mineshaft-500",
+    rail: TOOL_TONES.shell.rail
   }
 } satisfies Record<string, TCategory>;
 
@@ -217,7 +237,7 @@ const TimelineRow = ({
   }
 
   return (
-    <li className="relative flex gap-3 pb-3">
+    <li className="relative flex sandbox-enter gap-3 pb-3">
       {/* The spine runs behind the nodes and stops at the last, so the feed reads as one thread. */}
       {!isLast && <span className="absolute top-8 bottom-0 left-[15px] w-px bg-border" />}
 
@@ -227,7 +247,12 @@ const TimelineRow = ({
         {nodeGlyph}
       </span>
 
-      <div className="min-w-0 flex-1 rounded-md border border-border bg-card px-3 py-2 transition-colors hover:border-mineshaft-500">
+      <div
+        className={`relative min-w-0 flex-1 overflow-hidden rounded-md border py-2 pr-3 pl-3.5 transition-colors ${row.category.surface}`}
+      >
+        {/* Accent rule rather than a heavier fill: enough to read the kind at a glance without the
+            feed turning into stripes of colour. */}
+        <span className={`absolute inset-y-0 left-0 w-0.5 ${row.category.rail}`} />
         <div className="flex items-center gap-2">
           {row.accountId ? (
             <Link
@@ -255,6 +280,7 @@ const TimelineRow = ({
 
           <span className="ml-auto flex items-center gap-2 text-[11px] text-muted tabular-nums">
             <span className={row.failed ? "text-danger" : undefined}>{row.result}</span>
+            <span className="text-muted/40">·</span>
             <span className="text-muted/60">{new Date(row.at).toLocaleTimeString()}</span>
           </span>
         </div>
@@ -272,28 +298,43 @@ const TimelineRow = ({
 
         {/* What the broker actually did while this command ran, which the command line cannot show. */}
         {row.requests.length > 0 && (
-          <ul className="mt-2 flex flex-col gap-1 border-l border-success/30 pl-2.5">
-            {row.requests.map((request) => (
-              <li key={request.id} className="flex items-center gap-2 text-[11px]">
-                <ArrowUpRightIcon className="size-3 shrink-0 text-success" />
-                <span className="truncate font-mono text-muted">
-                  {request.method} {request.host}
-                  {request.path}
-                </span>
-                {request.credential && (
-                  <span className="shrink-0 rounded border border-success/20 bg-success/10 px-1.5 py-px font-mono text-[10px] text-success">
-                    Credential proxied
+          <ul className="mt-2 flex flex-col gap-1 border-l border-border pl-2.5">
+            {row.requests.map((request) => {
+              const wasBlocked = request.decision === "blocked";
+              const tone = wasBlocked ? BLOCKED_TONE : TOOL_TONES.integration;
+
+              return (
+                <li key={request.id} className="flex items-center gap-2 text-[11px]">
+                  <ArrowUpRightIcon className={`size-3 shrink-0 ${tone.text}`} />
+                  <span className="truncate font-mono text-muted">
+                    {request.method} {request.host}
+                    {request.path}
                   </span>
-                )}
-                <span
-                  className={`ml-auto shrink-0 tabular-nums ${
-                    (request.status ?? 0) >= 400 ? "text-danger" : "text-muted/60"
-                  }`}
-                >
-                  {request.status ?? request.decision}
-                </span>
-              </li>
-            ))}
+                  {wasBlocked ? (
+                    <span
+                      className={`shrink-0 rounded border px-1.5 py-px font-mono text-[10px] ${tone.chip}`}
+                    >
+                      Blocked
+                    </span>
+                  ) : (
+                    request.credential && (
+                      <span
+                        className={`shrink-0 rounded border px-1.5 py-px font-mono text-[10px] ${tone.chip}`}
+                      >
+                        Credential proxied
+                      </span>
+                    )
+                  )}
+                  <span
+                    className={`ml-auto shrink-0 tabular-nums ${
+                      (request.status ?? 0) >= 400 ? "text-danger" : "text-muted/60"
+                    }`}
+                  >
+                    {request.status ?? request.decision}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
@@ -362,6 +403,13 @@ export const ActivityTab = ({ sandbox }: { sandbox: TSandbox }) => {
           return true;
         });
 
+        // Recoloured once its requests are known: a command whose brokered request was refused is a
+        // refusal whatever its exit code. Colouring it green because the shell exited zero
+        // contradicted the same event shown red in the dashboard feed.
+        if (row.requests.some((request) => request.decision === "blocked")) {
+          row.category = CATEGORY.blocked;
+        }
+
         return row;
       });
 
@@ -375,18 +423,39 @@ export const ActivityTab = ({ sandbox }: { sandbox: TSandbox }) => {
   // Same metadata the PAM pages use, so a Postgres row carries the Postgres mark rather than a
   // generic database glyph.
   const { map: accountTypeMap } = usePamAccountTypeMap();
-  const granted = useMemo(
-    () => rows.filter((row) => row.category !== CATEGORY.shell).length,
-    [rows]
-  );
+  /**
+   * Counted over requests, not rows, because that is what the dashboard counts.
+   *
+   * Per row it disagreed with itself: one command held a proxied request and a blocked one, the row
+   * recoloured to blocked, and the footer then printed "0 brokered" directly beneath a green
+   * "Credential proxied" badge. Brokered credentials are the whole claim, so the one number that
+   * must never read zero while the badge is on screen is that one.
+   */
+  const { brokered, blockedCount } = useMemo(() => {
+    const decisionsFor = (row: TRow): string[] => {
+      if (row.requests.length) return row.requests.map((request) => request.decision);
+      // A row with no child requests is a proxy event in its own right, unless it is a plain shell
+      // command, which reached nothing and counts as neither.
+      if (row.category === CATEGORY.blocked) return ["blocked"];
+      if (row.category === CATEGORY.request) return ["brokered"];
+      return [];
+    };
+
+    const decisions = rows.flatMap(decisionsFor);
+
+    return {
+      brokered: decisions.filter((decision) => decision === "brokered").length,
+      blockedCount: decisions.filter((decision) => decision === "blocked").length
+    };
+  }, [rows]);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Activity</CardTitle>
         <CardDescription>
-          Everything this sandbox did, as it happens. Coloured entries used something it was
-          granted, brokered on the wire so the sandbox never held the credential.
+          Live since this sandbox started. Colored entries reached outside the sandbox, brokered on
+          the wire so the sandbox never held the credential.
         </CardDescription>
         <CardAction>
           <Badge variant={isLive ? "success" : "neutral"}>
@@ -437,7 +506,8 @@ export const ActivityTab = ({ sandbox }: { sandbox: TSandbox }) => {
             </div>
 
             <p className="mt-1 text-xs text-muted">
-              {rows.length} events, {granted} of which used a granted resource.
+              {rows.length} {rows.length === 1 ? "event" : "events"} · {brokered} brokered ·{" "}
+              {blockedCount} blocked
             </p>
           </>
         )}

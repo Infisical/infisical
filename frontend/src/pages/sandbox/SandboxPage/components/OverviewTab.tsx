@@ -22,7 +22,8 @@ import {
   useGetSandboxProxyActivity
 } from "@app/hooks/api/sandboxes";
 
-import { CountUp, Dial, Sparkline } from "../../components/charts";
+import { CountUp, Dial, niceCeiling, Sparkline } from "../../components/charts";
+import { BLOCKED_TONE, TOOL_TONES, toToolKind } from "../../components/toolActivity";
 
 /** One figure in the reference strip: a glyph, the number, and what it counts. */
 const StripStat = ({
@@ -94,25 +95,34 @@ const RecentActivity = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunning: 
   }
 
   return (
-    <ul className="flex flex-col">
-      {entries.map((entry) => (
-        <li
-          key={entry.id}
-          className="flex items-center gap-2.5 rounded px-1 py-1 transition-colors hover:bg-foreground/5"
-        >
-          <TerminalIcon className="size-3.5 shrink-0 text-muted" />
-          <span className="truncate font-mono text-[11px] text-foreground">
-            {"command" in entry ? entry.command : entry.host}
-          </span>
-          <span className="ml-auto shrink-0 font-mono text-[10px] text-muted">
-            {"exitCode" in entry && entry.exitCode !== null && entry.exitCode !== 0 ? (
-              <span className="text-danger">exit {entry.exitCode}</span>
-            ) : (
-              new Date(entry.at).toLocaleTimeString()
-            )}
-          </span>
-        </li>
-      ))}
+    <ul className="flex flex-col gap-1">
+      {entries.map((entry) => {
+        const isProxy = "host" in entry;
+        const blocked = isProxy && entry.decision === "blocked";
+        const kind = isProxy ? "integration" : toToolKind(entry.kind);
+        const tone = blocked ? BLOCKED_TONE : TOOL_TONES[kind];
+        const Icon = tone.icon;
+
+        return (
+          <li
+            key={entry.id}
+            className={`relative flex sandbox-enter items-center gap-2.5 overflow-hidden rounded-md border py-1.5 pr-2.5 pl-3 ${tone.surface}`}
+          >
+            <span className={`absolute inset-y-0 left-0 w-0.5 ${tone.rail}`} />
+            <Icon className={`size-3.5 shrink-0 ${tone.text}`} />
+            <span className="truncate font-mono text-[11px] text-foreground">
+              {isProxy ? `${entry.host}${entry.path}` : entry.command}
+            </span>
+            <span className="ml-auto shrink-0 font-mono text-[10px] text-muted">
+              {"exitCode" in entry && entry.exitCode !== null && entry.exitCode !== 0 ? (
+                <span className="text-danger">exit {entry.exitCode}</span>
+              ) : (
+                new Date(entry.at).toLocaleTimeString()
+              )}
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 };
@@ -143,8 +153,10 @@ export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2fr_1fr]">
         <Card className="h-full gap-4">
           <CardHeader className="grid-cols-[1fr_auto]">
-            <CardTitle className="flex items-baseline gap-2 text-sm font-medium text-accent">
-              <CpuIcon className="size-4 translate-y-0.5" />
+            {/* Fixed row height on both panel headers, or the inline reading on this one pushes
+                its baseline below the other's. */}
+            <CardTitle className="flex h-6 items-center gap-2 text-sm font-medium text-accent">
+              <CpuIcon className="size-4" />
               CPU
               <span className="text-2xl font-semibold text-foreground">
                 {isRunning && metrics ? (
@@ -171,14 +183,35 @@ export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
             </CardAction>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col justify-end">
-            <Sparkline values={cpuSeries} max={100} gradientId="cpu-hero" className="h-28 w-full" />
+            {/* Flexes to fill: the memory card sets the row height, and a fixed-height plot left a
+                third of the widest panel as empty air above the trace. */}
+            <div className="relative flex min-h-28 flex-1 flex-col">
+              <Sparkline
+                values={cpuSeries}
+                scaleToData
+                gradientId="cpu-hero"
+                className="w-full flex-1"
+              />
+              {/* The axis refits to the data, so without a ceiling label an 11% peak and a 54% peak
+                  draw the same mountain and the shape carries no magnitude. */}
+              {isRunning && (
+                <>
+                  <span className="pointer-events-none absolute top-0 right-0 font-mono text-[10px] text-muted">
+                    {niceCeiling(Math.max(...cpuSeries, 0))}%
+                  </span>
+                  <span className="pointer-events-none absolute right-0 bottom-0 font-mono text-[10px] text-muted">
+                    0%
+                  </span>
+                </>
+              )}
+            </div>
           </CardContent>
         </Card>
 
         <Card className="h-full gap-4">
           <CardHeader className="grid-cols-[1fr_auto]">
-            <CardTitle className="flex items-baseline gap-2 text-sm font-medium text-accent">
-              <MemoryStickIcon className="size-4 translate-y-0.5" />
+            <CardTitle className="flex h-6 items-center gap-2 text-sm font-medium text-accent">
+              <MemoryStickIcon className="size-4" />
               Memory
             </CardTitle>
             <CardAction>{isRunning && <LiveDot />}</CardAction>
@@ -231,7 +264,7 @@ export const OverviewTab = ({ sandbox }: { sandbox: TSandbox }) => {
           </StripStat>
           <Divider />
           <StripStat icon={<TerminalIcon />} value={sandbox.commandsRun}>
-            commands run
+            commands run, all time
           </StripStat>
           <Divider />
           <StripStat icon={<ShieldCheckIcon className="text-success" />} value={brokered}>

@@ -2,7 +2,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { SandboxCommandSource } from "./sandbox-command-log";
+import { classifySandboxCommand, SandboxCommandSource } from "./sandbox-command-log";
 import { execInSandbox } from "./sandbox-runtime";
 
 /**
@@ -35,7 +35,7 @@ export type TAgentTurn = {
 /** Emitted as the turn runs so the UI can show work in progress rather than a spinner. */
 export type TAgentEvent =
   | { type: "text"; text: string }
-  | { type: "tool_start"; command: string }
+  | { type: "tool_start"; command: string; kind: string; target: string | null }
   | { type: "tool_end"; command: string; exitCode: number | null; output: string }
   | { type: "done"; reply: string }
   | { type: "error"; message: string };
@@ -203,7 +203,10 @@ export const runAgentTurn = async ({
     const responseParts: TGeminiPart[] = [];
     for (const part of calls) {
       const command = String(part.functionCall?.args?.command ?? "");
-      onEvent({ type: "tool_start", command });
+      // Labelled by the same classifier the activity log uses, so a psql call reads as the account
+      // it reached and a brokered request as the service, rather than as raw shell.
+      const { kind, target } = classifySandboxCommand(sandboxId, command);
+      onEvent({ type: "tool_start", command, kind, target });
 
       // eslint-disable-next-line no-await-in-loop
       const result = await execInSandbox(sandboxId, command, SandboxCommandSource.Agent).catch((error: Error) => ({

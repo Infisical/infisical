@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Markdown from "react-markdown";
-import { BotIcon, Loader2Icon, SendIcon, UserIcon } from "lucide-react";
+import { BotIcon, ChevronDownIcon, Loader2Icon, SendIcon, UserIcon } from "lucide-react";
 
-import { Button, Input } from "@app/components/v3";
+import { IconButton, Input } from "@app/components/v3";
 import { TAgentToolCall, TSandbox } from "@app/hooks/api/sandboxes";
 
 import {
@@ -11,11 +11,19 @@ import {
   subscribeToChat,
   TChatTurn
 } from "../../components/sandboxChatStore";
+import { describeToolRun, TOOL_TONES, toToolKind } from "../../components/toolActivity";
 
 /**
  * The agent answers in markdown, so tables, lists and code blocks are rendered rather than shown raw.
  * Styling is explicit per element because the app has no prose defaults.
  */
+/** Concrete, and each one exercises a different granted resource. */
+const STARTERS = [
+  "What can you reach from here?",
+  "How many users are in the database?",
+  "List my GitHub repos"
+];
+
 const MARKDOWN_COMPONENTS = {
   p: ({ children }: { children?: React.ReactNode }) => (
     <p className="mb-2 wrap-anywhere last:mb-0">{children}</p>
@@ -67,27 +75,81 @@ const MARKDOWN_COMPONENTS = {
   )
 };
 
-/** One line per command, like a shell transcript. Output is behind the disclosure. */
-const ToolCall = ({ call }: { call: TAgentToolCall }) => (
-  <details className="group/tool">
-    <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded px-1 py-px hover:bg-foreground/5">
-      {call.exitCode === null ? (
-        <Loader2Icon className="size-2.5 shrink-0 animate-spin text-project" />
-      ) : (
-        <span className="shrink-0 font-mono text-[10px] text-muted">$</span>
-      )}
-      <span className="truncate font-mono text-[11px] leading-4 text-muted group-open/tool:text-foreground">
-        {call.command}
-      </span>
-      {call.exitCode !== null && call.exitCode !== 0 && (
-        <span className="shrink-0 font-mono text-[10px] text-danger">{call.exitCode}</span>
-      )}
-    </summary>
-    <pre className="mt-1 mb-1 max-h-40 thin-scrollbar overflow-auto border-l border-border py-0.5 pl-2 text-[10px] leading-4 whitespace-pre-wrap text-muted">
-      {call.output || (call.exitCode === null ? "running..." : "(no output)")}
-    </pre>
-  </details>
-);
+/**
+ * Consecutive tool calls of the same kind, shown as one block.
+ *
+ * A reply can be a dozen commands, and listed raw they read as a wall of shell with no sense of what
+ * the agent was actually doing. Grouped and coloured, the same run says "Accessing pg through PAM"
+ * in database blue — the commands are still there, one click away, for anyone who wants them.
+ */
+const ToolGroup = ({ calls }: { calls: TAgentToolCall[] }) => {
+  const kind = toToolKind(calls[0]?.kind);
+  const tone = TOOL_TONES[kind];
+  const Icon = tone.icon;
+
+  const isRunning = calls.some((call) => call.exitCode === null);
+  const failed = calls.filter((call) => call.exitCode !== null && call.exitCode !== 0).length;
+  const target = calls.find((call) => call.target)?.target ?? null;
+
+  return (
+    <details className={`group/tool overflow-hidden rounded-md border ${tone.surface}`}>
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-2.5 py-2">
+        {isRunning ? (
+          <Loader2Icon className={`size-3.5 shrink-0 animate-spin ${tone.text}`} />
+        ) : (
+          <Icon className={`size-3.5 shrink-0 ${tone.text}`} />
+        )}
+
+        <span className={`text-xs font-medium ${isRunning ? tone.text : "text-foreground"}`}>
+          {describeToolRun(kind, target, !isRunning)}
+        </span>
+
+        <span className="ml-auto flex shrink-0 items-center gap-2">
+          {failed > 0 && <span className="font-mono text-[10px] text-danger">{failed} failed</span>}
+          <span className="font-mono text-[10px] text-muted">
+            {calls.length} {calls.length === 1 ? "step" : "steps"}
+          </span>
+          <ChevronDownIcon className="size-3 text-muted transition-transform group-open/tool:rotate-180" />
+        </span>
+      </summary>
+
+      <div className="border-t border-border/50 px-2.5 py-2">
+        {calls.map((call, index) => (
+          // eslint-disable-next-line react/no-array-index-key -- commands repeat and are ordered
+          <div key={index} className="flex gap-2 py-1">
+            <span className={`shrink-0 font-mono text-[10px] leading-4 ${tone.text}`}>$</span>
+            <div className="min-w-0 flex-1">
+              <p className="font-mono text-[11px] leading-4 wrap-anywhere text-foreground">
+                {call.command}
+              </p>
+              {Boolean(call.output) && (
+                <pre className="mt-1 max-h-32 thin-scrollbar overflow-auto text-[10px] leading-4 whitespace-pre-wrap text-muted">
+                  {call.output}
+                </pre>
+              )}
+            </div>
+            {call.exitCode !== null && call.exitCode !== 0 && (
+              <span className="shrink-0 font-mono text-[10px] text-danger">
+                exit {call.exitCode}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+};
+
+/** Runs of the same kind collapse together; a change of kind starts a new block. */
+const groupToolCalls = (calls: TAgentToolCall[]): TAgentToolCall[][] =>
+  calls.reduce<TAgentToolCall[][]>((groups, call) => {
+    const last = groups[groups.length - 1];
+    if (last && toToolKind(last[0].kind) === toToolKind(call.kind)) {
+      last.push(call);
+      return groups;
+    }
+    return [...groups, [call]];
+  }, []);
 
 export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunning: boolean }) => {
   // Subscribed rather than owned: the conversation lives outside React so switching tabs neither
@@ -133,13 +195,35 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
     <div className="flex h-[calc(100vh-24rem)] min-h-[320px] flex-col rounded-md border border-border bg-bunker-800">
       <div ref={scrollRef} className="thin-scrollbar flex-1 space-y-2.5 overflow-y-auto p-3">
         {turns.length === 0 && (
-          <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-            <BotIcon className="size-6 text-muted" />
-            <p className="text-xs text-muted">
-              {sandbox.agentType
-                ? "The agent can use every CLI and database granted to this sandbox."
-                : "No agent configured yet."}
-            </p>
+          <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
+            <span className="flex size-11 items-center justify-center rounded-full border border-product-sandbox/25 bg-gradient-to-br from-product-sandbox/15 to-transparent">
+              <BotIcon className="size-5 sandbox-chrome-icon" />
+            </span>
+
+            {sandbox.agentType ? (
+              <>
+                <p className="text-sm text-muted">Try one of these to see it work.</p>
+                {/* Starters rather than a description: an empty chat should show what it can do,
+                    not restate the panel subtitle directly above it. */}
+                <div className="flex flex-wrap justify-center gap-2">
+                  {STARTERS.map((starter) => (
+                    <button
+                      key={starter}
+                      type="button"
+                      disabled={isDisabled}
+                      onClick={() => sendChatMessage(sandbox.id, starter).catch(() => {})}
+                      className="cursor-pointer rounded-full border border-border bg-card px-3 py-1.5 text-xs text-accent transition-colors hover:border-product-sandbox/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {starter}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted">
+                No agent configured yet. Add one under Settings to start chatting.
+              </p>
+            )}
           </div>
         )}
 
@@ -155,10 +239,10 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
             </div>
             <div className="min-w-0 flex-1 space-y-1.5">
               {Boolean(turn.toolCalls?.length) && (
-                <div className="rounded border border-border bg-bunker-800 px-1 py-1">
-                  {turn.toolCalls?.map((call, callIndex) => (
-                    // eslint-disable-next-line react/no-array-index-key -- commands repeat and are ordered
-                    <ToolCall key={callIndex} call={call} />
+                <div className="flex flex-col gap-1.5">
+                  {groupToolCalls(turn.toolCalls ?? []).map((group, groupIndex) => (
+                    // eslint-disable-next-line react/no-array-index-key -- groups repeat and are ordered
+                    <ToolGroup key={groupIndex} calls={group} />
                   ))}
                 </div>
               )}
@@ -186,23 +270,35 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
         ))}
       </div>
 
-      <div className="flex gap-2 border-t border-border p-2">
-        <Input
-          ref={inputRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              send();
-            }
-          }}
-          placeholder={placeholder}
-          disabled={isDisabled}
-        />
-        <Button variant="project" onClick={send} isDisabled={isDisabled || !draft.trim()}>
-          <SendIcon />
-        </Button>
+      <div className="border-t border-border p-2">
+        {/* Send sits inside the field rather than beside it: a detached button reads as unrelated
+            chrome, and the pair never lines up at every width. */}
+        <div className="relative">
+          <Input
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
+            }}
+            placeholder={placeholder}
+            disabled={isDisabled}
+            className="pr-11"
+          />
+          <IconButton
+            variant="ghost"
+            size="xs"
+            aria-label="Send message"
+            onClick={send}
+            isDisabled={isDisabled || !draft.trim()}
+            className="absolute top-1/2 right-1.5 -translate-y-1/2"
+          >
+            <SendIcon className="size-3.5" />
+          </IconButton>
+        </div>
       </div>
     </div>
   );

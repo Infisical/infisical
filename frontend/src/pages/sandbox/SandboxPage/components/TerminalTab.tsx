@@ -28,7 +28,7 @@ export const TerminalTab = ({ sandbox }: { sandbox: TSandbox }) => (
     </CardHeader>
     <CardContent>
       {/* Files left, shell right. min-w-0 on both, or the terminal canvas widens its own column. */}
-      <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
+      <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)]">
         <SandboxFileBrowser
           sandboxId={sandbox.id}
           isRunning={sandbox.status === SandboxStatus.Running}

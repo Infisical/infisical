@@ -149,6 +149,9 @@ export type TAgentToolCall = {
   command: string;
   exitCode: number | null;
   output: string;
+  /** Classified by the API as it runs, so the chat can label it without re-deriving the rules. */
+  kind?: string;
+  target?: string | null;
 };
 
 export type TAgentTurn = {

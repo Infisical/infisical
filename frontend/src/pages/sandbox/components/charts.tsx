@@ -25,6 +25,14 @@ const CHROME_STOPS = (
  * half-full buffer across the full width and then visibly compresses it as history accumulates, and
  * the whole 90-sample buffer is more points than these widths can resolve, which reads as noise.
  */
+/**
+ * Rounds an axis ceiling up to a readable step. `peak * 1.25` produced labels like "106%", which
+ * reads as a rendering fault beside a headline of "46.7%". Steps run past 100 deliberately: CPU is
+ * reported per container, so a two-vCPU sandbox can legitimately exceed 100%.
+ */
+export const niceCeiling = (peak: number) =>
+  [5, 10, 25, 50, 100, 200, 400].find((step) => step >= peak * 1.15) ?? 400;
+
 export const METRIC_WINDOW = 45;
 /** The card spark is a fraction of the width, so it shows a correspondingly shorter slice. */
 const SPARK_WINDOW = 24;
@@ -141,12 +149,19 @@ export const Sparkline = ({
   max = 100,
   className = "",
   gradientId,
-  isEmphasised = false
+  isEmphasised = false,
+  scaleToData = false
 }: {
   values: number[];
   max?: number;
   className?: string;
   gradientId: string;
+  /**
+   * Fits the axis to the data instead of a fixed ceiling. Real CPU sits in single digits against a
+   * 0-100 axis, so the trace hugs the floor and the panel is mostly dead space — and the headline
+   * reading then looks like it disagrees with the chart.
+   */
+  scaleToData?: boolean;
   /**
    * Rescales to the series' own peak and lifts the low end. A card sparkline is a glance at whether
    * anything is happening, not a reading, and against a fixed 0-100 axis a real workload is a flat
@@ -159,7 +174,9 @@ export const Sparkline = ({
 
   // Floored so an idle sandbox does not amplify rounding noise into a mountain range.
   const peak = Math.max(...values.slice(-SPARK_WINDOW), 0);
-  const effectiveMax = isEmphasised ? Math.max(peak * 1.15, 4) : max;
+  const isFitted = isEmphasised || scaleToData;
+  // Floored so an idle sandbox does not amplify rounding noise into a mountain range.
+  const effectiveMax = isFitted ? niceCeiling(peak) : max;
   const { line, area, step } = buildPath(
     values,
     width,
@@ -393,7 +410,7 @@ export const Dial = ({
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={`${circumference} ${circumference * 2}`}
-            className="text-border/70"
+            className="text-mineshaft-600"
           />
           <circle
             cx={size / 2}
@@ -402,8 +419,15 @@ export const Dial = ({
             fill="none"
             stroke="url(#dial-chrome)"
             strokeWidth={stroke}
+            // Butt, not round: rounded caps add half a stroke width at each end, which on a small
+            // reading is most of the arc's length and turns it into a dot rather than a short arc.
             strokeLinecap="round"
-            strokeDasharray={`${circumference * fraction} ${circumference * 3}`}
+            // Floored at a minimum sweep rather than a length: below about a tenth of the arc a
+            // reading is shorter than the stroke is thick and reads as a nub. The number under the
+            // dial carries the precision, so the arc only has to say "a little".
+            strokeDasharray={`${
+              fraction > 0 ? Math.max(circumference * fraction, circumference * 0.1) : 0
+            } ${circumference * 3}`}
             className="transition-[stroke-dasharray] duration-700 ease-out"
           />
         </g>

@@ -144,6 +144,14 @@ const $append = (state: TCommandLogState, recorded: TSandboxActivityEntry) => {
   });
 };
 
+/**
+ * How a command would be classified, without recording it. The agent loop uses this to label a tool
+ * call as it starts, so the chat can say "Querying pg" instead of showing raw psql plumbing, using
+ * exactly the same rules the activity log uses rather than a second set of guesses in the frontend.
+ */
+export const classifySandboxCommand = (sandboxId: string, command: string) =>
+  classify(command, stateFor(sandboxId).context);
+
 export const recordSandboxCommand = (
   sandboxId: string,
   entry: {

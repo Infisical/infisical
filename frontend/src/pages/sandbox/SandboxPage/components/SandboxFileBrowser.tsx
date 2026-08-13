@@ -194,7 +194,9 @@ export const SandboxFileBrowser = ({
             {isFilePending ? (
               <Loader2Icon className="mt-2 size-4 animate-spin text-white/30" />
             ) : (
-              <pre className="font-mono text-[11px] leading-relaxed whitespace-pre text-[#c8ccd0]">
+              // pre-wrap, not pre: long lines were clipped mid-word at the pane edge with no way
+              // to reach the rest of them.
+              <pre className="font-mono text-[11px] leading-relaxed break-words whitespace-pre-wrap text-[#c8ccd0]">
                 {file?.content || "(empty file)"}
               </pre>
             )}

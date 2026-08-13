@@ -91,7 +91,13 @@ export const sendChatMessage = async (sandboxId: string, content: string) => {
             ...turn,
             toolCalls: [
               ...(turn.toolCalls ?? []),
-              { command: event.command, exitCode: null, output: "" }
+              {
+                command: event.command,
+                exitCode: null,
+                output: "",
+                kind: event.kind,
+                target: event.target
+              }
             ]
           }));
         } else if (event.type === "tool_end") {
@@ -99,7 +105,7 @@ export const sendChatMessage = async (sandboxId: string, content: string) => {
             ...turn,
             toolCalls: (turn.toolCalls ?? []).map((call, index, all) =>
               index === all.length - 1
-                ? { command: event.command, exitCode: event.exitCode, output: event.output }
+                ? { ...call, exitCode: event.exitCode, output: event.output }
                 : call
             )
           }));

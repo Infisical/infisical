@@ -113,7 +113,7 @@ export const SandboxesPage = () => {
                   },
                   {
                     icon: PlugIcon,
-                    label: `${sandbox.grants.integrations.length} integration${
+                    label: `${sandbox.grants.integrations.length} endpoint${
                       sandbox.grants.integrations.length === 1 ? "" : "s"
                     }`
                   },
@@ -163,9 +163,13 @@ export const SandboxesPage = () => {
                               />
                             )}
                           </div>
-                          <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
-                            {sandbox.description || "No description."}
-                          </p>
+                          {/* Omitted rather than filled: "No description." repeated across every
+                              card is placeholder text pretending to be content. */}
+                          {sandbox.description && (
+                            <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
+                              {sandbox.description}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </CardHeader>
@@ -173,8 +177,10 @@ export const SandboxesPage = () => {
                       <div className="flex items-center gap-4 border-t border-border pt-3">
                         {stats.map((stat, index) => (
                           <div key={stat.label} className="flex items-center gap-4">
-                            <span className="flex items-center gap-1.5 text-xs text-muted">
-                              <stat.icon className="size-3.5" />
+                            {/* nowrap: the wider plural labels broke onto a second line on some
+                                cards and not others, which knocked the three stats out of line. */}
+                            <span className="flex items-center gap-1.5 text-xs whitespace-nowrap text-muted">
+                              <stat.icon className="size-3.5 shrink-0" />
                               {stat.label}
                             </span>
                             {index < stats.length - 1 && <div className="h-4 w-px bg-border" />}

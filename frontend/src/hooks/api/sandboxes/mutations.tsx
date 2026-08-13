@@ -177,7 +177,7 @@ export const useChatWithAgent = () =>
 
 export type TAgentStreamEvent =
   | { type: "text"; text: string }
-  | { type: "tool_start"; command: string }
+  | { type: "tool_start"; command: string; kind: string; target: string | null }
   | { type: "tool_end"; command: string; exitCode: number | null; output: string }
   | { type: "done"; reply: string }
   | { type: "error"; message: string };
