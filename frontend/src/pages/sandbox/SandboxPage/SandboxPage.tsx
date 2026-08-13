@@ -17,11 +17,19 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { SandboxStatus, useGetSandboxById, useSetSandboxPower } from "@app/hooks/api/sandboxes";
 
 import { SandboxShine } from "../components/SandboxShine";
-import { AccessTab, AgentTab, AuditLogTab, OverviewTab, SandboxChat } from "./components";
+import {
+  AccessTab,
+  AgentTab,
+  AuditLogTab,
+  OverviewTab,
+  SandboxChat,
+  TerminalTab
+} from "./components";
 
 export enum SandboxTab {
   Overview = "overview",
   Chat = "chat",
+  Terminal = "terminal",
   AuditLog = "audit-log",
   Access = "access",
   Agent = "agent"
@@ -57,7 +65,7 @@ export const SandboxPage = () => {
 
   // Leaving the tab abandons the narration; it must not be waiting when the user comes back.
   useEffect(() => {
-    if (tab !== SandboxTab.Overview) setBoot(null);
+    if (tab !== SandboxTab.Terminal) setBoot(null);
   }, [tab]);
 
   const handlePower = async () => {
@@ -153,12 +161,13 @@ export const SandboxPage = () => {
 
           <div className="mt-4">
             {tab === SandboxTab.Chat && <SandboxChat sandbox={sandbox} isRunning={isRunning} />}
+            {tab === SandboxTab.Terminal && (
+              <TerminalTab sandbox={sandbox} boot={boot} onBootSettled={() => setBoot(null)} />
+            )}
             {tab === SandboxTab.AuditLog && <AuditLogTab sandbox={sandbox} />}
             {tab === SandboxTab.Access && <AccessTab sandbox={sandbox} />}
             {tab === SandboxTab.Agent && <AgentTab sandbox={sandbox} />}
-            {tab === SandboxTab.Overview && (
-              <OverviewTab sandbox={sandbox} boot={boot} onBootSettled={() => setBoot(null)} />
-            )}
+            {tab === SandboxTab.Overview && <OverviewTab sandbox={sandbox} />}
           </div>
         </div>
       </div>

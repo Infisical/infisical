@@ -27,6 +27,8 @@ import {
   EmptyMedia,
   EmptyTitle
 } from "@app/components/v3";
+import { PamAccountType } from "@app/hooks/api/pam/enums";
+import { usePamAccountTypeMap } from "@app/hooks/api/pam/queries";
 import {
   SandboxActivityType,
   SandboxCommandKind,
@@ -37,8 +39,6 @@ import {
   TSandboxActivityEntry,
   TSandboxProxyEntry
 } from "@app/hooks/api/sandboxes";
-import { PamAccountType } from "@app/hooks/api/pam/enums";
-import { usePamAccountTypeMap } from "@app/hooks/api/pam/queries";
 
 /**
  * A timeline rather than a table, because the interesting question is not what the columns are but
@@ -201,6 +201,21 @@ const TimelineRow = ({
   const Icon = row.category.icon;
   const SourceIcon = row.sourceIcon;
 
+  // A brokered request without a known resource gets the shield; otherwise prefer the resource's own
+  // mark and fall back to the category icon.
+  let nodeGlyph = <Icon className="size-4" />;
+  if (resourceIcon) {
+    nodeGlyph = (
+      <img
+        src={`/images/integrations/${resourceIcon}`}
+        alt={resourceName ?? "resource"}
+        className="size-4 rounded-sm"
+      />
+    );
+  } else if (row.requests.length > 0) {
+    nodeGlyph = <ShieldCheckIcon className="size-4" />;
+  }
+
   return (
     <li className="relative flex gap-3 pb-3">
       {/* The spine runs behind the nodes and stops at the last, so the feed reads as one thread. */}
@@ -209,17 +224,7 @@ const TimelineRow = ({
       <span
         className={`relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full border ${row.category.ring} ${row.category.tone}`}
       >
-        {row.requests.length > 0 && !resourceIcon ? (
-          <ShieldCheckIcon className="size-4" />
-        ) : resourceIcon ? (
-          <img
-            src={`/images/integrations/${resourceIcon}`}
-            alt={resourceName ?? "resource"}
-            className="size-4 rounded-sm"
-          />
-        ) : (
-          <Icon className="size-4" />
-        )}
+        {nodeGlyph}
       </span>
 
       <div className="min-w-0 flex-1 rounded-md border border-border bg-card px-3 py-2 transition-colors hover:border-mineshaft-500">

@@ -7,3 +7,4 @@ export * from "./SandboxBootConsole";
 export * from "./SandboxChat";
 export * from "./SandboxTerminal";
 export * from "./SlackConversationSheet";
+export * from "./TerminalTab";
