@@ -10,6 +10,7 @@ import {
   TSandboxMetrics,
   TSandboxPamProxy,
   TSandboxProcess,
+  TSandboxPreview,
   TSandboxProxyActivity
 } from "./types";
 
@@ -33,7 +34,9 @@ export const sandboxKeys = {
   fileContent: (sandboxId: string, path: string) =>
     [...sandboxKeys.all(), "file-content", sandboxId, path] as const,
   runtime: (sandboxId: string) => [...sandboxKeys.all(), "runtime", sandboxId] as const,
-  processes: (sandboxId: string) => [...sandboxKeys.all(), "processes", sandboxId] as const
+  processes: (sandboxId: string) => [...sandboxKeys.all(), "processes", sandboxId] as const,
+  preview: (sandboxId: string, port: number) =>
+    [...sandboxKeys.all(), "preview", sandboxId, port] as const
 };
 
 export const useListSandboxes = () =>
@@ -164,5 +167,21 @@ export const useListSandboxProcesses = (sandboxId: string, isEnabled: boolean) =
     },
     enabled: isEnabled,
     refetchInterval: 3000,
+    staleTime: 0
+  });
+
+/** Polled so a page the agent is still writing appears without the user reaching for refresh. */
+export const useGetSandboxPreview = (sandboxId: string, port: number, isEnabled: boolean) =>
+  useQuery({
+    queryKey: sandboxKeys.preview(sandboxId, port),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TSandboxPreview>(
+        `/api/v1/sandboxes/${sandboxId}/preview`,
+        { params: { port } }
+      );
+      return data;
+    },
+    enabled: isEnabled,
+    refetchInterval: 4000,
     staleTime: 0
   });

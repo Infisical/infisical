@@ -36,6 +36,7 @@ import {
   ChatTab,
   IntegrationsTab,
   OverviewTab,
+  PreviewTab,
   ProcessMonitorTab,
   SettingsTab,
   TerminalTab
@@ -45,6 +46,7 @@ export enum SandboxTab {
   Overview = "overview",
   Chat = "chat",
   Terminal = "terminal",
+  Preview = "preview",
   ProcessMonitor = "process-monitor",
   Activity = "activity",
   Integrations = "integrations",
@@ -216,6 +218,7 @@ export const SandboxPage = () => {
           <div className="mt-4">
             {tab === SandboxTab.Chat && <ChatTab sandbox={sandbox} />}
             {tab === SandboxTab.Terminal && <TerminalTab sandbox={sandbox} />}
+            {tab === SandboxTab.Preview && <PreviewTab sandbox={sandbox} />}
             {tab === SandboxTab.ProcessMonitor && <ProcessMonitorTab sandbox={sandbox} />}
             {tab === SandboxTab.Activity && <ActivityTab sandbox={sandbox} />}
             {tab === SandboxTab.Integrations && <IntegrationsTab sandbox={sandbox} />}

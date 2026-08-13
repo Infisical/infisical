@@ -35,6 +35,7 @@ import {
   isWorkloadRunning,
   killSandboxProcess,
   listSandboxDirectory,
+  fetchSandboxPreview,
   listSandboxProcesses,
   readSandboxFile,
   sandboxHomePath,
@@ -743,6 +744,14 @@ export const sandboxServiceFactory = ({
     return readSandboxFile(sandboxId, path);
   };
 
+  const getPreview = async (
+    { sandboxId, port, path }: TSandboxIdDTO & { port: number; path: string },
+    actor: OrgServiceActor
+  ) => {
+    await $resolve(sandboxId, actor, false);
+    return fetchSandboxPreview(sandboxId, port, path);
+  };
+
   const listProcesses = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor) => {
     await $resolve(sandboxId, actor, false);
     return listSandboxProcesses(sandboxId);
@@ -942,6 +951,7 @@ export const sandboxServiceFactory = ({
     chatWithAgent,
     getCommandLog,
     listFiles,
+    getPreview,
     listProcesses,
     killProcess,
     readFile,

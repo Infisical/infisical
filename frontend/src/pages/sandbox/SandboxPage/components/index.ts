@@ -4,6 +4,7 @@ export * from "./AgentTab";
 export * from "./ChatTab";
 export * from "./IntegrationsTab";
 export * from "./OverviewTab";
+export * from "./PreviewTab";
 export * from "./ProcessMonitorTab";
 export * from "./SandboxChat";
 export * from "./SandboxFileBrowser";

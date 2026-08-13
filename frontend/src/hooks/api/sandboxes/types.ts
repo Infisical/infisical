@@ -259,3 +259,9 @@ export type TSandboxProcess = {
   memoryKb: number;
 };
 
+
+export type TSandboxPreview = {
+  status: number;
+  contentType: string;
+  body: string;
+};

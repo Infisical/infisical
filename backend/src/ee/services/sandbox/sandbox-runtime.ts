@@ -7,7 +7,10 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { clearSandboxCommandLog, recordSandboxCommand, SandboxCommandSource } from "./sandbox-command-log";
+import http from "node:http";
+
 import {
+  containerNameFor,
   execInContainer,
   isContainerRunning,
   prepareDockerRuntime,
@@ -412,4 +415,74 @@ export const killSandboxProcess = async (sandboxId: string, pid: number) => {
       message: `Could not terminate process ${pid}: ${result.stderr.trim().slice(0, 200)}`
     });
   }
+};
+
+const PREVIEW_TIMEOUT_MS = 5_000;
+const MAX_PREVIEW_BYTES = 2_000_000;
+
+export type TSandboxPreview = {
+  status: number;
+  contentType: string;
+  body: string;
+};
+
+/**
+ * Fetches a page the sandbox is serving. The API and the sandbox share a docker network, so the
+ * container is reachable by name and nothing has to be published on the host: no port collisions
+ * between sandboxes, and nothing exposed beyond the two containers.
+ */
+export const fetchSandboxPreview = async (
+  sandboxId: string,
+  port: number,
+  path: string
+): Promise<TSandboxPreview> => {
+  assertSandboxRuntimeEnabled();
+
+  // Asks docker rather than this process's memory: a dev reload empties `states` while the
+  // container carries on serving, and the preview should follow the container, not the API.
+  if (!(await isContainerRunning(sandboxId))) {
+    throw new BadRequestError({ message: "Sandbox is not running. Start it to preview its app." });
+  }
+
+  return new Promise<TSandboxPreview>((resolve, reject) => {
+    const request = http.request(
+      {
+        host: containerNameFor(sandboxId),
+        port,
+        path: path.startsWith("/") ? path : `/${path}`,
+        method: "GET",
+        timeout: PREVIEW_TIMEOUT_MS
+      },
+      (response) => {
+        let body = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk: string) => {
+          if (body.length < MAX_PREVIEW_BYTES) body += chunk;
+        });
+        response.on("end", () =>
+          resolve({
+            status: response.statusCode ?? 502,
+            contentType: response.headers["content-type"] ?? "text/html",
+            body
+          })
+        );
+      }
+    );
+
+    // Nothing listening is the normal case before the agent has started a server, so it is reported
+    // as an empty preview rather than an error the UI has to special case. Logged all the same:
+    // "nothing there" and "could not reach it" look identical to the user otherwise.
+    request.on("error", (error: NodeJS.ErrnoException) => {
+      logger.info(
+        `Sandbox preview unavailable [sandboxId=${sandboxId}] [port=${port}] [code=${error.code ?? error.message}]`
+      );
+      resolve({ status: 0, contentType: "text/plain", body: "" });
+    });
+    request.on("timeout", () => {
+      request.destroy();
+      logger.info(`Sandbox preview timed out [sandboxId=${sandboxId}] [port=${port}]`);
+      resolve({ status: 0, contentType: "text/plain", body: "" });
+    });
+    request.end();
+  });
 };

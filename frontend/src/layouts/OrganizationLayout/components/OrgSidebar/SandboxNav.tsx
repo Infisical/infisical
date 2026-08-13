@@ -2,6 +2,7 @@ import { useLocation } from "@tanstack/react-router";
 import {
   Activity,
   Box,
+  Globe,
   LayoutDashboard,
   MessageSquare,
   Puzzle,
@@ -51,6 +52,7 @@ export const SandboxNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu
     buildTab(sandboxId, "Overview", LayoutDashboard, "overview", true),
     buildTab(sandboxId, "Chat", MessageSquare, "chat"),
     buildTab(sandboxId, "Terminal", SquareTerminal, "terminal"),
+    buildTab(sandboxId, "Preview", Globe, "preview"),
     buildTab(sandboxId, "Process Monitor", Activity, "process-monitor"),
     buildTab(sandboxId, "Activity", ScrollText, "activity")
   ];

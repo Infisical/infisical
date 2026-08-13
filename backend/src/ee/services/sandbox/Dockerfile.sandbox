@@ -3,6 +3,7 @@ FROM debian:13-slim
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     bash ca-certificates curl git jq less openssh-client postgresql-client \
+    python3 \
   && rm -rf /var/lib/apt/lists/*
 
 # Pinned so a sandbox start never picks up a surprise release.

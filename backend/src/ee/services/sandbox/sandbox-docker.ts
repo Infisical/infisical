@@ -12,7 +12,7 @@ import { logger } from "@app/lib/logger";
  * still refused outside development.
  */
 
-const IMAGE = "infisical-sandbox:1";
+const IMAGE = "infisical-sandbox:2";
 const NETWORK = "infisical-sandbox-net";
 export const DOCKER_BIN = "/usr/local/bin/docker";
 const DOCKER_VERSION = "27.3.1";

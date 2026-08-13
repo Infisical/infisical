@@ -82,5 +82,16 @@ export const buildSystemPrompt = (sandbox: TSandbox, pamProxies: TPamProxy[], pr
     lines.push("", "No integrations or databases are granted yet, so you only have the local shell.");
   }
 
+  lines.push(
+    "",
+    "## Serving a preview",
+    "You can serve a web app on port 3000 and the user will see it in the Preview tab.",
+    "Start it in the background so the command returns, for example:",
+    "`cd ~/site && nohup python3 -m http.server 3000 >/dev/null 2>&1 &`",
+    "Build static files under ~/site unless asked otherwise.",
+    "When it is serving, tell the user it is live in the Preview tab on that port. There is no",
+    "public URL: the page is fetched from the container, so do not invent a localhost link."
+  );
+
   return lines.join("\n");
 };

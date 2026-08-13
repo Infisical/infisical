@@ -794,4 +794,28 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
       return { pid: req.params.pid };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/:sandboxId/preview",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getSandboxPreview",
+      description: "Fetch a page the sandbox is serving, so an app it builds can be previewed.",
+      params: SandboxIdParamsSchema,
+      querystring: z.object({
+        port: z.coerce.number().int().min(1).max(65535).default(3000),
+        path: z.string().trim().max(512).default("/")
+      }),
+      response: {
+        200: z.object({ status: z.number(), contentType: z.string(), body: z.string() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) =>
+      server.services.sandbox.getPreview(
+        { sandboxId: req.params.sandboxId, port: req.query.port, path: req.query.path },
+        req.permission
+      )
+  });
 };
