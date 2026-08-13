@@ -6,6 +6,7 @@ export * from "./ChatTab";
 export * from "./OverviewTab";
 export * from "./SandboxBootConsole";
 export * from "./SandboxChat";
+export * from "./SandboxFileBrowser";
 export * from "./SandboxTerminal";
 export * from "./SlackConversationSheet";
 export * from "./TerminalTab";

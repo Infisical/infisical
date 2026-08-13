@@ -200,3 +200,21 @@ export type TSandboxProxyEntry = {
 };
 
 export type TSandboxActivityEntry = TSandboxCommandEntry | TSandboxProxyEntry;
+
+export type TSandboxDirEntry = {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  size: number | null;
+};
+
+export type TSandboxDirListing = {
+  path: string;
+  entries: TSandboxDirEntry[];
+};
+
+export type TSandboxFileContent = {
+  path: string;
+  content: string;
+  wasTruncated: boolean;
+};

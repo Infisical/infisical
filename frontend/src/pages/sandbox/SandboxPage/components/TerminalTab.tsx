@@ -11,6 +11,7 @@ import {
 import { SandboxStatus, TSandbox } from "@app/hooks/api/sandboxes";
 
 import { TSandboxBoot } from "./SandboxBootConsole";
+import { SandboxFileBrowser } from "./SandboxFileBrowser";
 import { SandboxTerminal } from "./SandboxTerminal";
 
 export const TerminalTab = ({
@@ -35,14 +36,21 @@ export const TerminalTab = ({
       </CardAction>
     </CardHeader>
     <CardContent>
-      <SandboxTerminal
-        sandboxId={sandbox.id}
-        sandboxName={sandbox.name}
-        isRunning={sandbox.status === SandboxStatus.Running}
-        boot={boot}
-        onBootSettled={onBootSettled}
-        sandbox={sandbox}
-      />
+      {/* Files left, shell right. min-w-0 on both, or the terminal canvas widens its own column. */}
+      <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
+        <SandboxFileBrowser
+          sandboxId={sandbox.id}
+          isRunning={sandbox.status === SandboxStatus.Running}
+        />
+        <SandboxTerminal
+          sandboxId={sandbox.id}
+          sandboxName={sandbox.name}
+          isRunning={sandbox.status === SandboxStatus.Running}
+          boot={boot}
+          onBootSettled={onBootSettled}
+          sandbox={sandbox}
+        />
+      </div>
     </CardContent>
   </Card>
 );
