@@ -371,9 +371,11 @@ Invariants worth knowing before extending it:
   asked for the fast legs only). Scoring the remainder would publish a number that changes per viewer.
 - **The score describes the secret, not the current view.** It is computed before filtering and paging, so
   a filter never moves it.
-- **Drivers carry their own points, and the points are the real term weights.** `exposure.drivers` is
-  `{ label, points, tone }[]` (top 4, largest first) taken straight from the scoring terms, because the UI
-  shows `+15` next to each driver and those numbers have to add up to the score. `tone` is derived from
+- **Drivers carry their own points, they are exhaustive, and they sum to exactly the score.**
+  `exposure.drivers` is `{ label, points, tone }[]` — *every* contributing term, largest first, never a top
+  slice, because the UI prints `+15` beside each one and a truncated list visibly fails to add up. Whole
+  points are allotted by largest remainder rather than rounding each term independently, so the displayed
+  contributions total the displayed score instead of missing it by a point or two. `tone` is derived from
   what the driver *is*, not from its magnitude: one failing sync is worth colouring red even though it
   scores fewer points than breadth of access.
 - **Rotation simulation returns four lists, and ghost readers belong to `reasonsToRotate`.** They cannot

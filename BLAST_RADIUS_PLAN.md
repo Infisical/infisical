@@ -563,7 +563,10 @@ Real projects are big, so this is not optional.
 
 ### Seed story
 
-The demo is the deliverable, so the data has to tell a story:
+The demo is the deliverable, so the data has to tell a story. What shipped is described under
+[Running it locally](#9a-running-it-locally): five secrets, one per band. The original sketch below is kept
+for the pieces it lists that the shipped seed does not yet stage (a group with a `$GLOB` ABAC condition, a
+Kubernetes-auth identity, a cross-environment import).
 
 - `prod` and `staging` environments, with `/prod/db/PASSWORD` as the hero secret
 - a group `SRE` with 8 members holding a custom role whose ABAC condition is `secretPath $GLOB /prod/**`, granting far more than whoever wrote it intended
@@ -631,9 +634,30 @@ docker exec -i monorepo-db-1 psql -U infisical -d infisical \
 #      ?secretKey=SLACK_WEBHOOK&environment=prod&secretPath=/webhooks
 ```
 
-The seed leaves one sync failing, one sync manual, three ghost readers (one still in the org with access
-revoked, two deleted), and a value 412 days old, which is enough for the red rotation verdict and both
-halves of the simulation.
+The seed stages **one secret per exposure band**, so the Insights ranking reads as a spread rather than a
+pile, and every state the UI can render has something to render:
+
+| Band | Secret | Story |
+| --- | --- | --- |
+| Critical 87 | `/webhooks/SLACK_WEBHOOK` | nobody with access has read it; three ghost readers have. 412 days old, 7 destinations, one failing, one manual, one stale, two cross-project grants |
+| High 70 | `/platform/GH_APP_JWT` | two readers (one exact, one folder-precision), three unused, two ghosts, two broken destinations |
+| Elevated 33 | `/billing/STRIPE_SECRET_KEY` | some unused access, one stale mirror, a few months old |
+| Low 27 | `/notify/SENDGRID_API_KEY` | almost all access used, one healthy sync |
+| Low 22 | `/web/SEGMENT_WRITE_KEY` | all access used, one healthy sync, changed recently |
+
+Three things about the seed are non-obvious enough to be worth stating, because each one had to be
+discovered by watching the ranking come out wrong:
+
+- **Each target needs its own folder.** Syncs, folder grants and destination health are folder-scoped, so a
+  secret sharing a folder with the critical target inherits its broken syncs and cross-project reach and
+  scores High by association. The script moves siblings into a `shared` folder to isolate the five.
+- **The rest of the project has to be quieted.** Unused access is worth 15 points, so *every* secret nobody
+  reads floats near Elevated and outranks the intended Lows — including secrets in other environments, since
+  the ranking is project-wide. One bulk read per folder per principal fixes that cheaply, because a folder
+  fetch is matched on the path rather than the key.
+- **The critical secret deliberately has zero current readers.** That is both the strongest line in the demo
+  ("the only principals that have used this value are ones who can no longer read it") and the only way the
+  unused-access term reaches its ceiling, which is what carries the score past 85.
 
 ## 10. Implementation notes
 
@@ -694,6 +718,12 @@ triggered it is exactly the condition under which every principal qualifies: on 
 the whole column collapsed into one box and the graph showed nothing. Every entitled principal is drawn
 now; the drawing cap is the only thing that keeps a node off the canvas, and it reports itself in the
 legend.
+
+**The rotation simulation states facts and does not render a verdict.** A tinted `Not safe to rotate. 3
+things will break.` banner led the dialog, which made the call for the reader off one weighted heuristic, and
+gated nothing: there is no rotate action here. What remains is the dry-run disclosure, the four lists, and a
+factual footer (`Rotation would create v2.`) instead of `Fix the 3 blocking items to enable rotation.` The
+verdict still ships in the payload for callers that want it.
 
 **The Explain panel became a popover on the node.** A drawer inside a drawer competed with the graph for
 the width it needed, and it put the explanation across the panel from the node being explained. Detail now

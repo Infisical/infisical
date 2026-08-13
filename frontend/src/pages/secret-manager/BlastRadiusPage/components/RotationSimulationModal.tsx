@@ -9,11 +9,7 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import {
-  RotationVerdict,
-  TRotationSimulation,
-  TRotationSimulationItem
-} from "@app/hooks/api/blastRadius";
+import { TRotationSimulation, TRotationSimulationItem } from "@app/hooks/api/blastRadius";
 
 type Props = {
   isOpen: boolean;
@@ -22,12 +18,6 @@ type Props = {
   isPending: boolean;
   // Only used for the footer's "rotation creates vN"; the simulation itself is version-agnostic.
   currentVersion?: number;
-};
-
-const VERDICT_BANNER: Record<RotationVerdict, string> = {
-  [RotationVerdict.Red]: "border-danger/40 bg-danger/10 text-danger",
-  [RotationVerdict.Amber]: "border-warning/40 bg-warning/10 text-warning",
-  [RotationVerdict.Green]: "border-success/40 bg-success/10 text-success"
 };
 
 const Section = ({
@@ -84,12 +74,9 @@ export const RotationSimulationModal = ({
   const hasGhostReason = simulation?.reasonsToRotate.some((item) => item.code === "ghost-readers");
   const blockingCount = simulation?.impacts.length ?? 0;
 
-  let footerNote: string | undefined;
-  if (blockingCount) {
-    footerNote = `Fix the ${blockingCount} blocking ${blockingCount === 1 ? "item" : "items"} to enable rotation.`;
-  } else if (currentVersion) {
-    footerNote = `Rotation creates v${currentVersion + 1}.`;
-  }
+  // Purely factual: "fix these N things first" told the reader what to do, and gated an action this dialog
+  // does not offer.
+  const footerNote = currentVersion ? `Rotation would create v${currentVersion + 1}.` : undefined;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -112,17 +99,12 @@ export const RotationSimulationModal = ({
             </div>
           ) : (
             <>
-              <div className="flex flex-col gap-2.5 px-4 pb-3">
-                <div
-                  className={cn(
-                    "rounded-md border px-3 py-2.5 text-sm font-medium",
-                    VERDICT_BANNER[simulation.verdict]
-                  )}
-                >
-                  {simulation.headline}
-                </div>
-                <p className="text-xs leading-relaxed text-accent">{simulation.subheadline}</p>
-              </div>
+              {/* No verdict banner. The dialog reports what depends on this value and lets the reader decide;
+                  a red "not safe to rotate" headline made a judgement call on their behalf, and there is no
+                  rotate action here for it to gate. */}
+              <p className="px-4 pb-3 text-xs leading-relaxed text-accent">
+                {simulation.subheadline}
+              </p>
 
               <Section
                 title="Why it is overdue anyway"

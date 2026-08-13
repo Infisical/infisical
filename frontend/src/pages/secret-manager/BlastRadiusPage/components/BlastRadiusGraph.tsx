@@ -17,12 +17,12 @@ import { MaximizeIcon, MinusIcon, PlusIcon } from "lucide-react";
 import { IconButton } from "@app/components/v3";
 import { TBlastRadius, TBlastRadiusPrincipal } from "@app/hooks/api/blastRadius";
 
+import { buildBlastRadiusGraph, principalNodeId, SECRET_NODE_ID } from "../utils/buildGraph";
 import {
-  buildBlastRadiusGraph,
-  principalNodeId,
-  SECRET_NODE_ID,
-  TPrincipalNodeData
-} from "../utils/buildGraph";
+  PrincipalActionsContext,
+  SelectedPrincipalContext,
+  TPrincipalActions
+} from "../utils/selection";
 import { BandLabelNode } from "./nodes/BandLabelNode";
 import { DestinationNode } from "./nodes/DestinationNode";
 import { GhostNode } from "./nodes/GhostNode";
@@ -43,7 +43,7 @@ type Props = {
   blastRadius: TBlastRadius;
   hideHealthyDestinations: boolean;
   selectedPrincipalId?: string;
-  popover: TPrincipalNodeData["popover"];
+  actions: TPrincipalActions;
   onSelectPrincipal: (principal: TBlastRadiusPrincipal | undefined) => void;
 };
 
@@ -51,7 +51,7 @@ const BlastRadiusGraphContent = ({
   blastRadius,
   hideHealthyDestinations,
   selectedPrincipalId,
-  popover,
+  actions,
   onSelectPrincipal
 }: Props) => {
   const {
@@ -60,8 +60,8 @@ const BlastRadiusGraphContent = ({
     contentHeight,
     contentWidth
   } = useMemo(
-    () => buildBlastRadiusGraph(blastRadius, { hideHealthyDestinations, popover }),
-    [blastRadius, hideHealthyDestinations, popover]
+    () => buildBlastRadiusGraph(blastRadius, { hideHealthyDestinations }),
+    [blastRadius, hideHealthyDestinations]
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(builtNodes);
@@ -78,11 +78,9 @@ const BlastRadiusGraphContent = ({
       nodes.map((node) => {
         if (!selectedPrincipalId) return { ...node, style: { ...node.style, opacity: 1 } };
         const onPath = node.id === selectedPrincipalId || node.id === SECRET_NODE_ID;
-        return {
-          ...node,
-          selected: node.id === selectedPrincipalId,
-          style: { ...node.style, opacity: onPath ? 1 : DIMMED_OPACITY }
-        };
+        // Only opacity here. Which node is open is read from context by the node itself, because React Flow
+        // keeps its own selection state and ignores a `selected: false` handed to it in the nodes array.
+        return { ...node, style: { ...node.style, opacity: onPath ? 1 : DIMMED_OPACITY } };
       }),
     [nodes, selectedPrincipalId]
   );
@@ -116,40 +114,46 @@ const BlastRadiusGraphContent = ({
   );
 
   return (
-    <div
-      className="flex flex-1 flex-col"
-      style={{ minHeight: contentHeight, minWidth: contentWidth }}
-    >
-      <ReactFlow
-        nodes={displayedNodes}
-        edges={displayedEdges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeClick={onNodeClick}
-        onPaneClick={() => onSelectPrincipal(undefined)}
-        nodeTypes={NODE_TYPES}
-        connectionLineType={ConnectionLineType.SmoothStep}
-        defaultEdgeOptions={{ type: "smoothstep" }}
-        proOptions={{ hideAttribution: true }}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        edgesFocusable={false}
-        // The canvas is embedded in a scrolling page, so the wheel belongs to the page. Zoom stays on
-        // the controls and pinch, otherwise scrolling past the graph traps the reader inside it.
-        zoomOnScroll={false}
-        preventScrolling={false}
-        minZoom={0.4}
-        maxZoom={1.6}
-        className="h-full flex-1 bg-background"
-      >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={16}
-          size={1}
-          color="var(--color-border)"
-        />
-      </ReactFlow>
-    </div>
+    <SelectedPrincipalContext.Provider value={selectedPrincipalId}>
+      <PrincipalActionsContext.Provider value={actions}>
+        <div
+          className="flex flex-1 flex-col"
+          style={{ minHeight: contentHeight, minWidth: contentWidth }}
+        >
+          <ReactFlow
+            nodes={displayedNodes}
+            edges={displayedEdges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeClick={onNodeClick}
+            onPaneClick={() => onSelectPrincipal(undefined)}
+            nodeTypes={NODE_TYPES}
+            connectionLineType={ConnectionLineType.SmoothStep}
+            defaultEdgeOptions={{ type: "smoothstep" }}
+            proOptions={{ hideAttribution: true }}
+            nodesDraggable={false}
+            nodesConnectable={false}
+            edgesFocusable={false}
+            // The panel owns selection, so React Flow has no reason to track its own.
+            elementsSelectable={false}
+            // The canvas is embedded in a scrolling page, so the wheel belongs to the page. Zoom stays on
+            // the controls and pinch, otherwise scrolling past the graph traps the reader inside it.
+            zoomOnScroll={false}
+            preventScrolling={false}
+            minZoom={0.4}
+            maxZoom={1.6}
+            className="h-full flex-1 bg-background"
+          >
+            <Background
+              variant={BackgroundVariant.Dots}
+              gap={16}
+              size={1}
+              color="var(--color-border)"
+            />
+          </ReactFlow>
+        </div>
+      </PrincipalActionsContext.Provider>
+    </SelectedPrincipalContext.Provider>
   );
 };
 

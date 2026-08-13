@@ -141,6 +141,22 @@ Conventions the blast radius view depends on, worth preserving if you touch it:
 - **The popover navigates, it does not mutate.** Revoking access from a read-only graph would put a
   destructive action two clicks from a hover, so the actions link to the role editor and access page, which
   own those flows and their guards.
+- **A popover inside a React Flow node needs two things, or its close button silently does nothing.** Both
+  were real bugs, and both look identical from the outside:
+  1. **Stop propagation on the content.** `PopoverContent` is portalled out of the canvas in the DOM, but a
+     React portal still propagates events through the *React* tree — so a click inside it reached React
+     Flow's node handler and re-selected the node in the same tick that the close button cleared it. A DOM
+     listener on `.react-flow` sees nothing, which makes this very hard to spot; the tell is that the state
+     setter runs and the selected id never changes.
+  2. **Mount the content only while open** (`{isSelected && <PopoverContent …>}`). Radix's `Presence`
+     unmounts on `animationend`, and the exit animation here never completes, so a popover with
+     `data-state="closed"` stayed on screen indefinitely.
+- **Selection lives in `SelectedPrincipalContext`, not in React Flow.** React Flow keeps selection in its own
+  store and ignores a `selected: false` handed to it in the `nodes` array, so the panel's state has to reach
+  the node another way. `elementsSelectable={false}` keeps React Flow out of it entirely.
+- **Handlers reach nodes through context, never through node `data`.** React Flow holds on to the node
+  objects it was first given, so a callback in `data` stays bound to a component instance that may no longer
+  exist and calling it sets state on nothing. `data` is for values that describe the node.
 
 ### Layouts
 

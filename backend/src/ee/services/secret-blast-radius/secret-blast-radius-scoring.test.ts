@@ -138,10 +138,11 @@ describe("exposure score", () => {
 
     expect(exposure.score).toBeGreaterThanOrEqual(60);
     expect([ExposureBand.High, ExposureBand.Critical]).toContain(exposure.band);
-    expect(exposure.drivers).toHaveLength(4);
-    // Every displayed contribution is a whole number, and they are ordered largest first so the header
-    // reads top-down as "the reasons that matter most".
+    // The displayed contributions have to add up to the displayed score, or the panel reads as broken.
+    const total = exposure.drivers.reduce((sum, driver) => sum + driver.points, 0);
+    expect(total).toBe(exposure.score);
     exposure.drivers.forEach((driver) => expect(Number.isInteger(driver.points)).toBe(true));
+    // Ordered largest first, so the header reads top-down as "the reasons that matter most".
     expect(exposure.drivers.map((driver) => driver.points)).toEqual(
       [...exposure.drivers.map((driver) => driver.points)].sort((a, b) => b - a)
     );

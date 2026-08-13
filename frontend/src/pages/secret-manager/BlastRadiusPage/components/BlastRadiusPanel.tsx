@@ -111,8 +111,8 @@ export const BlastRadiusPanel = ({
     [orgId, projectId]
   );
 
-  // Memoised because it travels inside node data: a fresh object each render would rebuild the graph.
-  const popover = useMemo(
+  // Memoised so the context value is stable across renders.
+  const principalActions = useMemo(
     () => ({
       accessHref,
       roleHref,
@@ -194,7 +194,7 @@ export const BlastRadiusPanel = ({
             blastRadius={blastRadius}
             hideHealthyDestinations={filters.syncStatus === SyncStatusFilter.Unhealthy}
             selectedPrincipalId={selectedPrincipal ? principalNodeId(selectedPrincipal) : undefined}
-            popover={popover}
+            actions={principalActions}
             onSelectPrincipal={setSelectedPrincipal}
           />
 

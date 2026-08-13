@@ -39,13 +39,6 @@ export type TPrincipalNodeData = {
   principal: TBlastRadiusPrincipal;
   windowDays: number;
   consumptionAvailable: boolean;
-  // React Flow only hands `data` to a node, so the popover's navigation targets and dismissal travel
-  // with the node rather than through props.
-  popover: {
-    accessHref: string;
-    roleHref: (roleSlug: string) => string;
-    onClose: () => void;
-  };
 };
 
 export type TSecretNodeData = {
@@ -116,7 +109,6 @@ export const buildBlastRadiusGraph = (
   blastRadius: TBlastRadius,
   options: {
     hideHealthyDestinations?: boolean;
-    popover: TPrincipalNodeData["popover"];
   }
 ) => {
   const { secret, window } = blastRadius;
@@ -184,8 +176,7 @@ export const buildBlastRadiusGraph = (
       data: {
         principal,
         windowDays: window.effectiveDays,
-        consumptionAvailable: window.consumptionAvailable,
-        popover: options.popover
+        consumptionAvailable: window.consumptionAvailable
       } satisfies TPrincipalNodeData
     });
 

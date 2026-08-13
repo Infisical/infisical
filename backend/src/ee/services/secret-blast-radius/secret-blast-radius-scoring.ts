@@ -70,9 +70,6 @@ export const summarizeCounts = (input: TScoringInput) => {
   };
 };
 
-// How many drivers the header can show without turning into a list nobody reads.
-const MAX_DRIVERS = 4;
-
 export const calculateExposure = (input: TScoringInput) => {
   if (!input.consumptionAvailable) {
     return {
@@ -146,13 +143,30 @@ export const calculateExposure = (input: TScoringInput) => {
   ];
 
   const score = Math.round(terms.reduce((total, term) => total + term.points, 0));
-  const drivers: TExposureDriver[] = terms
-    .filter((term) => term.points > 0)
-    .sort((a, b) => b.points - a.points)
-    .slice(0, MAX_DRIVERS)
-    // Rounded per driver, so the displayed contributions are whole numbers that read against the score
-    // rather than decimals nobody can add up.
-    .map((term) => ({ label: term.label, points: Math.round(term.points), tone: term.tone }));
+
+  // Every contributing term is returned, not a top slice: the UI shows the points beside each driver, so a
+  // truncated list is a list that visibly does not add up to the score.
+  const contributing = [...terms].filter((term) => term.points > 0).sort((a, b) => b.points - a.points);
+
+  // Whole numbers that sum to exactly `score`, by largest remainder. Rounding each term independently is off
+  // by a point or two against the total often enough to look like a bug.
+  const floors = contributing.map((term) => Math.floor(term.points));
+  const points = [...floors];
+  let remainder = score - floors.reduce((total, value) => total + value, 0);
+  contributing
+    .map((term, index) => ({ index, fraction: term.points - floors[index] }))
+    .sort((a, b) => b.fraction - a.fraction)
+    .forEach(({ index }) => {
+      if (remainder <= 0) return;
+      points[index] += 1;
+      remainder -= 1;
+    });
+
+  const drivers: TExposureDriver[] = contributing
+    .map((term, index) => ({ label: term.label, points: points[index], tone: term.tone }))
+    // A term worth a fraction of a point rounds to nothing; dropping it keeps the sum exact and avoids a
+    // driver that reads "+0".
+    .filter((driver) => driver.points > 0);
 
   let band = ExposureBand.Low;
   if (score >= 85) band = ExposureBand.Critical;
