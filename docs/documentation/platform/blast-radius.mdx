@@ -20,10 +20,10 @@ Everything on the page is computed from data Infisical already collects. There i
 
 From a Secrets Management project:
 
-- Open the **Secrets** overview, then choose **View Blast Radius** from a secret's row menu, or
-- Open the **Insights** tab and click any row in **Most Exposed Secrets**
+- Open the **Secrets** overview, then choose **View Blast Radius** from a secret's row menu.
+- Or open the **Insights** tab and click any row in **Most Exposed Secrets**.
 
-The view is fully addressable, so the URL is shareable. During an incident, pasting the link gives everyone the same picture of one secret.
+Either way it opens as a wide panel over the page you were on, so you keep your place and can look at several secrets in a row. The view also has its own address, so the URL is shareable: during an incident, pasting the link gives everyone the same picture of one secret.
 
 ## Reading the graph
 
@@ -31,13 +31,13 @@ Two conventions carry the whole view.
 
 **Solid edges are observed. Dashed edges are entitled but unused.** A solid line means that principal actually read the secret inside the activity window, and its thickness reflects how often. A dashed line means the access exists but nothing has exercised it. A screen full of dashed lines is a picture of over-provisioning.
 
-**Ghost readers sit apart, with no edge to the secret.** These are principals that read the value inside the window and **cannot read it today**: removed from a group, expired access, removed from the project, or deleted outright. They still hold the value. They have no edge because they have no current path, and they are the strongest argument for rotating.
+**Ghost readers sit at the bottom of the left column, with no edge to the secret.** These are principals that read the value inside the window and **cannot read it today**: removed from a group, expired access, removed from the project, or deleted outright. They still hold the value. They have no edge because they have no current path, and they are the strongest argument for rotating.
 
-Click any principal to focus its path and open an explanation of it.
+Click any principal to focus its path. Its details open in a popover next to the node, so the explanation sits beside the thing it explains rather than across the panel.
 
 ### Why a principal has access
 
-The side panel renders the chain that grants access, ending in the rule that actually matched:
+**Show access path** in the popover renders the chain that grants access, ending in the rule that actually matched:
 
 ```
 maya@acme.io  can read the value
@@ -54,8 +54,8 @@ If access arrives by more than one route, every route is listed, because removin
 
 Activity comes from audit logs, and it is reported precisely:
 
-- **`this secret`** means a client asked for this key by name, so the reads are attributed exactly.
-- **`folder-level`** means the reads came from a bulk fetch of the folder. A bulk read records the folder it covered, not the keys it returned, so those counts are shown with a leading `~` and cannot be attributed to one key.
+- **`this secret`** means the read named this secret, so it is attributed exactly. That covers a client asking for the key by name, and a person revealing the value in the web UI.
+- **`folder-level`** means the reads came from a bulk fetch of the folder that did not record which secrets it returned. Those counts are shown with a leading `~` and cannot be attributed to one key. Bulk reads now record what they returned, so `folder-level` applies to history from before that and fades out as your retention window rolls forward.
 
 Two absences are different findings and are labelled differently. **No reads in 30d** means nothing was recorded in the window. **Last read 46 days ago, outside the window** means the principal did read it, before the window began, which usually means it is holding a stale value.
 
@@ -97,8 +97,8 @@ The **Insights** page ranks the most exposed secrets in the project using the sa
 
 On a project with hundreds of principals the view stays readable without hiding anything from the numbers:
 
-- Principals with no reads collapse into a single expandable cluster. Clustered principals are still counted in every total.
-- If the graph reaches its drawing limit, a banner states how many are drawn, how many are not, and how the remainder splits between those with and without reads. Nothing is hidden from the counts, only from the canvas.
+- Every entitled principal is drawn. The graph never folds them into a summary node, because on a secret nobody has read that would collapse the whole column into one box and show you nothing.
+- If the graph reaches its drawing limit, the legend states how many are not drawn and how that remainder splits between those with and without reads, with a **Draw more** control. Nothing is hidden from the counts, only from the canvas.
 - Filters apply to the whole set before the page is drawn, so paging through a filtered graph walks the filtered set.
 
 Switch to **Table** mode for a dense, sortable list with the same information, including the precision and client columns.

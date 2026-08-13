@@ -442,6 +442,7 @@ export const secretBlastRadiusServiceFactory = ({
     actorOrgId,
     environment,
     secretPath,
+    secretId,
     secretKey,
     windowDays,
     retentionDays,
@@ -451,6 +452,7 @@ export const secretBlastRadiusServiceFactory = ({
     actorOrgId: string;
     environment: string;
     secretPath: string;
+    secretId: string;
     secretKey: string;
     windowDays: number;
     retentionDays: number;
@@ -463,6 +465,7 @@ export const secretBlastRadiusServiceFactory = ({
       projectId,
       environment,
       secretPath,
+      secretId,
       secretKey
     };
 
@@ -614,6 +617,7 @@ export const secretBlastRadiusServiceFactory = ({
         actorOrgId,
         environment,
         secretPath,
+        secretId: secret.id,
         secretKey: secret.key,
         windowDays,
         retentionDays: plan.auditLogsRetentionDays ?? 0,
@@ -839,6 +843,7 @@ export const secretBlastRadiusServiceFactory = ({
               actorOrgId,
               environment: candidate.envSlug,
               secretPath,
+              secretId: candidate.secretId,
               secretKey: candidate.key,
               windowDays,
               retentionDays: plan.auditLogsRetentionDays ?? 0,

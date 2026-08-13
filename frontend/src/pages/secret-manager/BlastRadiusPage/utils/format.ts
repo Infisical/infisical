@@ -5,6 +5,7 @@ import {
   ExposureBand,
   ReadPrecision,
   SecretActionName,
+  TBlastRadius,
   TObservedActivity
 } from "@app/hooks/api/blastRadius";
 
@@ -112,4 +113,51 @@ export const describeObserved = (
   }
 
   return `No reads in ${windowDays}d`;
+};
+
+/**
+ * The whole header in one sentence. Every clause is load-bearing: what nobody uses, where the value
+ * went, who holds it without access, and whether anything rotates it. Clauses that would read as
+ * padding (no ghosts, nothing truncated) are dropped rather than shown as zeroes.
+ */
+export const summarizeBlastRadius = (blastRadius: TBlastRadius) => {
+  const { principals, destinations, ghostReaders, secret, truncated, window } = blastRadius;
+  const clauses: string[] = [];
+
+  const entitled = truncated.principals.total;
+  const observed = principals.filter(
+    (principal) => (principal.observed?.readCount ?? 0) > 0
+  ).length;
+  const noReads = Math.max(0, principals.length - observed);
+
+  if (!window.consumptionAvailable) {
+    clauses.push(`${entitled} entitled ${entitled === 1 ? "principal" : "principals"}`);
+    clauses.push("read activity hidden for your role");
+  } else if (noReads) {
+    clauses.push(
+      `${noReads} of ${entitled} entitled principals have no reads in ${window.effectiveDays}d`
+    );
+  } else {
+    clauses.push(
+      `all ${entitled} entitled ${entitled === 1 ? "principal has" : "principals have"} read it in ${window.effectiveDays}d`
+    );
+  }
+
+  clauses.push(
+    `${destinations.length} ${destinations.length === 1 ? "destination" : "destinations"}`
+  );
+
+  if (window.consumptionAvailable && ghostReaders.length) {
+    clauses.push(
+      `${ghostReaders.length} ghost ${ghostReaders.length === 1 ? "reader" : "readers"}`
+    );
+  }
+
+  clauses.push(secret.isRotationManaged ? "automatic rotation" : "no automatic rotation");
+
+  if (truncated.principals.drawn < truncated.principals.total) {
+    clauses.push(`${truncated.principals.drawn} of ${truncated.principals.total} drawn`);
+  }
+
+  return clauses.join(" · ");
 };

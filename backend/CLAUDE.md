@@ -343,9 +343,26 @@ Invariants worth knowing before extending it:
   attribution calls `getProjectPermissionSources` (see the permission section above). Do not build CASL
   rules inside this module.
 - **Consumption fidelity is a product fact, not an implementation detail.** `GET_SECRETS` (the bulk read
-  every CLI and SDK performs) records the folder and environment but **not which keys it returned**, so a
-  consumer carries `precision: "secret" | "folder"` and the UI renders folder counts with a leading `~`.
-  Never present a folder-precision count as a per-key count.
+  every CLI and SDK performs) now records `secretIds`, so new bulk reads attribute exactly. Rows written
+  before that field existed prove only that the read covered the folder, so a consumer still carries
+  `precision: "secret" | "folder"` and the UI renders folder counts with a leading `~`. **Precision is a
+  property of the row, not of the event type** (`FOLDER_PRECISION_SQL`), and it stays until every
+  deployment's retention window has rolled past the change. Never present a folder-precision count as a
+  per-key count.
+- **`GET_SECRETS.secretIds` is unbounded, and it is on the highest-volume event in the product.** Roughly
+  39 bytes per secret per read, multiplied by every CLI/SDK/agent poll and by audit-log-stream egress to
+  customer SIEMs. If audit log growth becomes a problem, cap the array and set a truncated flag rather than
+  dropping the field: a truncated row simply falls back to the folder-precision branch the read side
+  already has.
+- **A value read is any of four events, and missing one is a silent false negative.**
+  `applySecretReadFilters` covers `GET_SECRETS`, `GET_SECRET`, `DASHBOARD_GET_SECRET_VALUE` and
+  `DASHBOARD_GET_SECRET_VERSION_VALUE`. The two dashboard events are how a person revealing a value in the
+  web UI shows up at all; omitting them reported "No reads in 30d" for someone who read it that morning,
+  and that false negative fed the exposure score. Add any new value-returning event type to that list.
+- **Exact reads are attributed by `secretId`, with `secretKey` only as a fallback for rows that carry no
+  id.** The id survives a rename, and a version-value read has no path to match on. The key branch is
+  guarded on `secretId IS NULL` rather than OR'd in freely, because keys get reused: a secret created with
+  a name some earlier secret used would otherwise inherit that secret's read history.
 - **A negative claim is bounded by retention.** `auditLogsRetentionDays` is a plan feature, so "no reads"
   means "none inside a plan-bounded window". The window is clamped and returned (`window.effectiveDays`,
   `boundByRetention`), and the copy is "No reads in 30d", never "never used".

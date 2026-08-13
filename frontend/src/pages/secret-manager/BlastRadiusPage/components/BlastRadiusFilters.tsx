@@ -1,14 +1,4 @@
-import { FilterIcon } from "lucide-react";
-
-import {
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Switch
-} from "@app/components/v3";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@app/components/v3";
 import {
   PrincipalAccessFilter,
   PrincipalUsageFilter,
@@ -19,7 +9,6 @@ export type TBlastRadiusFilterState = {
   access: PrincipalAccessFilter;
   usage: PrincipalUsageFilter;
   syncStatus: SyncStatusFilter;
-  clusterUnusedAccess: boolean;
 };
 
 type Props = {
@@ -36,41 +25,39 @@ const ACCESS_LABEL: Record<PrincipalAccessFilter, string> = {
 
 const USAGE_LABEL: Record<PrincipalUsageFilter, string> = {
   [PrincipalUsageFilter.All]: "All",
-  [PrincipalUsageFilter.NoReads]: "No reads in window",
-  [PrincipalUsageFilter.Observed]: "Observed readers"
+  [PrincipalUsageFilter.NoReads]: "No reads",
+  [PrincipalUsageFilter.Observed]: "Observed"
 };
 
 const SYNC_LABEL: Record<SyncStatusFilter, string> = {
   [SyncStatusFilter.All]: "All",
-  [SyncStatusFilter.Unhealthy]: "Stale, failing, or manual"
+  [SyncStatusFilter.Unhealthy]: "Needs attention"
 };
 
 const FilterSelect = <T extends string>({
-  label,
+  prefix,
   value,
   options,
   onValueChange
 }: {
-  label: string;
+  prefix: string;
   value: T;
   options: Record<T, string>;
   onValueChange: (value: T) => void;
 }) => (
-  <div className="flex items-center gap-1.5">
-    <Label className="text-xs text-accent">{label}</Label>
-    <Select value={value} onValueChange={(next) => onValueChange(next as T)}>
-      <SelectTrigger size="sm" className="w-44">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent position="popper">
-        {(Object.keys(options) as T[]).map((option) => (
-          <SelectItem key={option} value={option}>
-            {options[option]}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  </div>
+  <Select value={value} onValueChange={(next) => onValueChange(next as T)}>
+    <SelectTrigger size="sm" className="w-auto gap-1.5 text-xs">
+      <span className="text-muted">{prefix}:</span>
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent position="popper">
+      {(Object.keys(options) as T[]).map((option) => (
+        <SelectItem key={option} value={option}>
+          {options[option]}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
 );
 
 /**
@@ -79,42 +66,24 @@ const FilterSelect = <T extends string>({
  * because destinations are never paged.
  */
 export const BlastRadiusFilters = ({ filters, onChange }: Props) => (
-  <div className="flex flex-wrap items-center gap-4 rounded-sm border border-border bg-container px-3 py-2">
-    <span className="flex items-center gap-1.5 text-xs tracking-wide text-muted uppercase">
-      <FilterIcon />
-      Filter
-    </span>
-
+  <div className="flex flex-wrap items-center gap-2">
     <FilterSelect
-      label="Access"
+      prefix="Access"
       value={filters.access}
       options={ACCESS_LABEL}
       onValueChange={(access) => onChange({ ...filters, access })}
     />
     <FilterSelect
-      label="Usage"
+      prefix="Usage"
       value={filters.usage}
       options={USAGE_LABEL}
       onValueChange={(usage) => onChange({ ...filters, usage })}
     />
     <FilterSelect
-      label="Sync status"
+      prefix="Sync"
       value={filters.syncStatus}
       options={SYNC_LABEL}
       onValueChange={(syncStatus) => onChange({ ...filters, syncStatus })}
     />
-
-    <div className="flex items-center gap-2">
-      <Switch
-        id="cluster-unused"
-        variant="project"
-        size="sm"
-        checked={filters.clusterUnusedAccess}
-        onCheckedChange={(clusterUnusedAccess) => onChange({ ...filters, clusterUnusedAccess })}
-      />
-      <Label htmlFor="cluster-unused" className="text-xs text-accent">
-        Cluster unused access
-      </Label>
-    </div>
   </div>
 );

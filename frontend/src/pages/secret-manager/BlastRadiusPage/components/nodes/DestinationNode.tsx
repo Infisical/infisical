@@ -1,38 +1,21 @@
 import { Handle, NodeProps, Position } from "@xyflow/react";
-import {
-  ArrowUpRightIcon,
-  CopyIcon,
-  FolderInputIcon,
-  LinkIcon,
-  Share2Icon,
-  UploadCloudIcon
-} from "lucide-react";
 
-import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { DestinationKind, DestinationStatus } from "@app/hooks/api/blastRadius";
+import { DestinationStatus } from "@app/hooks/api/blastRadius";
 
 import { TDestinationNodeData } from "../../utils/buildGraph";
 import { DESTINATION_STATUS_LABEL, relativeTime } from "../../utils/format";
 
-const KIND_ICON: Record<DestinationKind, typeof UploadCloudIcon> = {
-  [DestinationKind.Sync]: UploadCloudIcon,
-  [DestinationKind.Import]: FolderInputIcon,
-  [DestinationKind.Replication]: CopyIcon,
-  [DestinationKind.Reference]: LinkIcon,
-  [DestinationKind.FolderGrant]: Share2Icon
-};
-
-const STATUS_DOT: Record<DestinationStatus, string> = {
-  [DestinationStatus.Healthy]: "bg-success",
-  [DestinationStatus.Stale]: "bg-warning",
-  [DestinationStatus.Failed]: "bg-danger",
-  [DestinationStatus.Unknown]: "bg-neutral"
+const STATUS_TONE: Record<DestinationStatus, string> = {
+  [DestinationStatus.Healthy]: "text-success",
+  [DestinationStatus.Stale]: "text-warning",
+  [DestinationStatus.Failed]: "text-danger",
+  [DestinationStatus.Unknown]: "text-muted"
 };
 
 export const DestinationNode = ({ data, selected }: NodeProps & { data: TDestinationNodeData }) => {
   const { destination } = data;
-  const Icon = KIND_ICON[destination.kind];
 
   const statusLine =
     destination.autoSync === false
@@ -40,45 +23,38 @@ export const DestinationNode = ({ data, selected }: NodeProps & { data: TDestina
       : `${DESTINATION_STATUS_LABEL[destination.status].toLowerCase()}${
           destination.lastSyncedAt ? ` ${relativeTime(destination.lastSyncedAt)}` : ""
         }`;
+  const tone = destination.autoSync === false ? "text-warning" : STATUS_TONE[destination.status];
 
   return (
     <div
       className={cn(
-        "flex h-full w-full flex-col justify-center gap-1 rounded-sm border bg-card px-2.5 py-2",
+        "flex h-full w-full flex-col justify-center gap-1 rounded-md border bg-card px-2.5 py-2",
         selected ? "border-foreground" : "border-border"
       )}
     >
-      <div className="flex items-center gap-1.5">
-        <Icon size={13} className="shrink-0 text-accent" />
-        <p className="truncate text-xs font-medium text-foreground">{destination.label}</p>
-      </div>
+      <p className="truncate text-xs text-foreground">{destination.label}</p>
 
-      {destination.target && (
-        <p className="truncate font-mono text-xs text-accent">{destination.target}</p>
-      )}
-
-      <div className="flex flex-wrap items-center gap-1">
-        <span className="flex items-center gap-1 text-xs text-accent">
-          <span className={cn("size-1.5 rounded-full", STATUS_DOT[destination.status])} />
-          {destination.statusMessage ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="cursor-default underline decoration-dotted underline-offset-2">
-                  {statusLine}
-                </span>
-              </TooltipTrigger>
-              {/* The provider's own error, verbatim: we never invent a diagnosis. */}
-              <TooltipContent className="max-w-80">{destination.statusMessage}</TooltipContent>
-            </Tooltip>
-          ) : (
-            statusLine
-          )}
-        </span>
+      <div className="flex items-baseline justify-between gap-2">
+        {destination.statusMessage ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className={cn(
+                  "cursor-default truncate text-xs underline decoration-dotted underline-offset-2",
+                  tone
+                )}
+              >
+                {statusLine}
+              </span>
+            </TooltipTrigger>
+            {/* The provider's own error, verbatim: we never invent a diagnosis. */}
+            <TooltipContent className="max-w-80">{destination.statusMessage}</TooltipContent>
+          </Tooltip>
+        ) : (
+          <span className={cn("truncate text-xs", tone)}>{statusLine}</span>
+        )}
         {destination.crossProject && (
-          <Badge variant="warning">
-            <ArrowUpRightIcon />
-            cross-project
-          </Badge>
+          <span className="shrink-0 text-xs text-warning">cross-project</span>
         )}
       </div>
 

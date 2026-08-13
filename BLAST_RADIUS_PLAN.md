@@ -674,7 +674,36 @@ age, the project-wide permission pass is fetched once and reused, and only the t
 aggregate. A secret with no syncs and a fresh value cannot appear, which is the secret that would not have
 ranked anyway.
 
-**The Explain panel navigates rather than mutates.** Revoking access from a read-only graph would put a
+**Bulk reads now record which secrets they returned.** `GET_SECRETS.secretIds` was added at all three emit
+sites, following the `DASHBOARD_LIST_SECRETS` precedent, so a folder fetch attributes exactly instead of
+only proving it covered the folder. Two consequences: **precision is a property of the row, not of the
+event type** (a bulk read from before the field existed is still folder precision, and the `~` stays until
+every retention window has rolled past the change), and the array is unbounded on the highest-volume event
+in the product, so if audit log growth bites, cap it and set a truncated flag rather than removing the
+field — a truncated row falls back to the folder-precision branch the read side already has.
+
+**Four event types are value reads, and two of them were being dropped.**
+`DASHBOARD_GET_SECRET_VALUE` and `DASHBOARD_GET_SECRET_VERSION_VALUE` are how a person revealing a value in
+the web UI appears at all. Without them the graph reported "No reads in 30d" for someone who read the value
+that morning, and that false negative fed the unused-entitlement term in the exposure score. Exact reads
+are now attributed by `secretId` (rename-safe) with `secretKey` as a fallback guarded on a missing id,
+because keys get reused and a freely OR'd key match would let a new secret inherit an old one's history.
+
+**Clustering was removed.** A `+N principals` node folded principals with no reads, but the condition that
+triggered it is exactly the condition under which every principal qualifies: on a secret nobody had read,
+the whole column collapsed into one box and the graph showed nothing. Every entitled principal is drawn
+now; the drawing cap is the only thing that keeps a node off the canvas, and it reports itself in the
+legend.
+
+**The Explain panel became a popover on the node.** A drawer inside a drawer competed with the graph for
+the width it needed, and it put the explanation across the panel from the node being explained. Detail now
+opens in `PrincipalPopover` anchored to the right of the node: the sentence, the read count with its
+precision, and the grant chain, which is always rendered: the chain is the answer to "why does this
+principal have access", so putting it behind a toggle made the popover's main point the thing you had to
+ask for. One consequence worth keeping: a table row switches to Graph mode and selects, rather than opening
+a second, differently-shaped detail surface.
+
+**The popover navigates rather than mutates.** Revoking access from a read-only graph would put a
 destructive action two clicks from a hover, and the role editor and access page already own those flows
 with their guards and approval paths, so the actions deep-link there.
 
@@ -684,6 +713,25 @@ which is what makes `e2e-test/routes/v1/secret-blast-radius.spec.ts` able to ass
 of only asserting the gate. That spec has not been run locally: the e2e environment drops and reseeds the
 `public` schema, so it must never be pointed at a dev database, and the QUIC native binding it loads is
 missing on darwin-arm64. CI runs it inside the FIPS image.
+
+**The UI is a drawer, and the graph does not auto-fit.** The primary surface is a wide right drawer over
+the secrets list (`BlastRadiusSheet`), with the standalone route rendering the same `BlastRadiusPanel`.
+The header collapsed from a score card plus five stat tiles into one sentence plus a band badge, and
+`fitView` was removed entirely: the canvas is sized from known column heights instead, because fitting
+raced node measurement and repeatedly settled on a zoom that clipped the tallest column.
+
+**Ghost readers are nodes at the bottom of the entitled column, still with no edges.** They spent a while
+in a strip beneath the canvas, on the theory that a band with no connections would squeeze the graph. On
+the canvas they read better: that column is where a reader is already looking for people, and a
+`bandLabel` node plus a wider gap does the separating that edges otherwise would. They are excluded from
+the vertical centring so the secret stays aligned with the principals that connect to it, and
+`contentHeight` takes the max of the centred columns and the ghost stack's bottom.
+
+**The zoom controls are ours, and they live outside the scrolling element.** React Flow's `<Controls>`
+positions itself against the canvas, which is content-sized here, so as soon as the ghost band pushed the
+content past the viewport the controls sat below the fold and scrolled out of reach. `BlastRadiusGraph` now
+owns the scroll container and renders its own cluster beside it via `useReactFlow`; reset returns to 1:1
+rather than calling `fitView`.
 
 **Index follow-up before this ships to a large tenant.** Both audit-log queries filter on
 `eventMetadata->>'environment'` and `eventMetadata->>'secretPath'` after `projectId` + `eventType` +

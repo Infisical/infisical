@@ -26,6 +26,8 @@ export type TSecretReadActivityQuery = {
   projectId: string;
   environment: string;
   secretPath: string;
+  secretId: string;
+  // Only used to attribute rows written before the secret id was recorded; see applySecretReadFilters.
   secretKey: string;
   startDate: string;
   endDate: string;
@@ -431,21 +433,69 @@ export const auditLogDALFactory = (db: TDbClient) => {
     "${TableName.AuditLog}"."actorMetadata"->>'serviceId'
   )`;
 
+  // Every way the value of one secret can leave the API. Only the bulk read is folder-precision; the
+  // rest name the secret they returned, including the two dashboard events, which are how a person
+  // reading a value in the web UI shows up at all.
+  const SECRET_READ_EVENT_TYPES = [
+    EventType.GET_SECRETS,
+    EventType.GET_SECRET,
+    EventType.DASHBOARD_GET_SECRET_VALUE,
+    EventType.DASHBOARD_GET_SECRET_VERSION_VALUE
+  ];
+
+  // Precision is a property of the row, not of the event type: a bulk read that recorded `secretIds`
+  // names this secret exactly, while one written before that field existed can only prove it covered the
+  // folder. So only the second kind is folder precision, and everything else is exact.
+  const FOLDER_PRECISION_SQL = `("${TableName.AuditLog}"."eventType" = ?
+    AND "${TableName.AuditLog}"."eventMetadata"->'secretIds' IS NULL)`;
+
   const applySecretReadFilters = (
     qb: knex.Knex.QueryBuilder,
-    { orgId, projectId, environment, secretPath, secretKey }: Omit<TSecretReadActivityQuery, "startDate" | "endDate">
+    {
+      orgId,
+      projectId,
+      environment,
+      secretPath,
+      secretId,
+      secretKey
+    }: Omit<TSecretReadActivityQuery, "startDate" | "endDate">
   ) =>
     qb
       .where(`${TableName.AuditLog}.orgId`, orgId)
       .where(`${TableName.AuditLog}.projectId`, projectId)
-      .whereIn(`${TableName.AuditLog}.eventType`, [EventType.GET_SECRET, EventType.GET_SECRETS])
-      .whereRaw(`"${TableName.AuditLog}"."eventMetadata"->>'environment' = ?`, [environment])
-      .whereRaw(`"${TableName.AuditLog}"."eventMetadata"->>'secretPath' = ?`, [secretPath])
-      // Bulk reads are kept because they cover this folder. Single-key reads are kept only when they
-      // named this key, otherwise a sibling secret's read would be counted against this one.
+      .whereIn(`${TableName.AuditLog}.eventType`, SECRET_READ_EVENT_TYPES)
+      // Four branches, in order of what the row can prove about itself:
+      //   1. A single read that names the secret by id. Matching on the id rather than the key survives
+      //      a rename, and a version-value read carries no path to match on anyway.
+      //   2. A bulk read that recorded which secrets it returned, so it names this one exactly.
+      //   3. A bulk read from before `secretIds` was recorded: it only proves it covered the folder, so
+      //      it matches on the path and is counted as folder precision.
+      //   4. A single read from before `secretId` was recorded, falling back to path + key so that
+      //      history is attributed rather than silently dropped. A fallback rather than an extra match:
+      //      keys get reused, so a row that can identify itself by id must not also be matched by a key
+      //      it no longer has.
       .whereRaw(
-        `("${TableName.AuditLog}"."eventType" = ? OR "${TableName.AuditLog}"."eventMetadata"->>'secretKey' = ?)`,
-        [EventType.GET_SECRETS, secretKey]
+        `(
+           "${TableName.AuditLog}"."eventMetadata"->>'secretId' = ?
+           OR "${TableName.AuditLog}"."eventMetadata"->'secretIds' @> ?::jsonb
+           OR (${FOLDER_PRECISION_SQL}
+             AND "${TableName.AuditLog}"."eventMetadata"->>'environment' = ?
+             AND "${TableName.AuditLog}"."eventMetadata"->>'secretPath' = ?)
+           OR ("${TableName.AuditLog}"."eventMetadata"->>'secretId' IS NULL
+             AND "${TableName.AuditLog}"."eventMetadata"->>'secretKey' = ?
+             AND "${TableName.AuditLog}"."eventMetadata"->>'environment' = ?
+             AND "${TableName.AuditLog}"."eventMetadata"->>'secretPath' = ?)
+         )`,
+        [
+          secretId,
+          JSON.stringify([secretId]),
+          EventType.GET_SECRETS,
+          environment,
+          secretPath,
+          secretKey,
+          environment,
+          secretPath
+        ]
       );
 
   const aggregateSecretReadActivity: TAuditLogDALFactory["aggregateSecretReadActivity"] = async (
@@ -458,12 +508,10 @@ export const auditLogDALFactory = (db: TDbClient) => {
       .select(
         `${TableName.AuditLog}.actor`,
         db.raw(`${ACTOR_ID_SQL} as "actorId"`),
-        db.raw(`COUNT(*) FILTER (WHERE "${TableName.AuditLog}"."eventType" = ?)::int as "exactReadCount"`, [
-          EventType.GET_SECRET
-        ]),
-        db.raw(`COUNT(*) FILTER (WHERE "${TableName.AuditLog}"."eventType" = ?)::int as "folderReadCount"`, [
+        db.raw(`COUNT(*) FILTER (WHERE NOT ${FOLDER_PRECISION_SQL})::int as "exactReadCount"`, [
           EventType.GET_SECRETS
         ]),
+        db.raw(`COUNT(*) FILTER (WHERE ${FOLDER_PRECISION_SQL})::int as "folderReadCount"`, [EventType.GET_SECRETS]),
         db.raw(`MAX("${TableName.AuditLog}"."createdAt") as "lastReadAt"`),
         db.raw(`ARRAY_REMOVE(ARRAY_AGG(DISTINCT "${TableName.AuditLog}"."userAgentType"), NULL) as "clients"`),
         // The newest metadata blob wins: a renamed user or a re-authenticated identity should read

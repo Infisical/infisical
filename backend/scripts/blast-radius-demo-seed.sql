@@ -36,7 +36,16 @@ SELECT
     WHERE s."folderId" = f.id
     ORDER BY s."createdAt"
     LIMIT 1
-  ) AS secret_key
+  ) AS secret_key,
+  -- Single-key read events are attributed by `secretId`, not by key, so a demo row has to carry the
+  -- real id. A fabricated one silently matches nothing and the reader vanishes from the graph.
+  (
+    SELECT s.id
+    FROM secrets_v2 s
+    WHERE s."folderId" = f.id
+    ORDER BY s."createdAt"
+    LIMIT 1
+  ) AS secret_id
 FROM projects p
 JOIN project_environments e ON e."projectId" = p.id
 JOIN secret_folders f ON f."envId" = e.id
@@ -50,6 +59,23 @@ BEGIN
     RAISE EXCEPTION 'No secret found for the requested project/environment/folder. Check the -v values.';
   END IF;
 END $$;
+
+-- 0. Repair demo sync rows whose destination does not match their connection or config.
+--
+-- An earlier seeder created rows claiming `github`/`vercel` destinations while pointing at an AWS app
+-- connection and carrying a placeholder `destinationConfig`. The secret-syncs list endpoint validates its
+-- response against a discriminated union keyed on destination, so those rows made that whole page fail
+-- with a 500. Only rows tagged by the demo seeder and still missing a real config are touched; a sync
+-- someone configured properly is left alone.
+UPDATE secret_syncs
+SET destination = 'aws-secrets-manager',
+    "destinationConfig" = jsonb_build_object(
+      'region', 'us-east-1',
+      'mappingBehavior', 'one-to-one',
+      'seedTag', 'risk-graph-demo'
+    )
+WHERE "destinationConfig"->>'seedTag' = 'risk-graph-demo'
+  AND "destinationConfig"->>'region' IS NULL;
 
 -- 1. Break the distribution leg in three different ways, so the simulation has one of each.
 UPDATE secret_syncs
@@ -108,7 +134,7 @@ SELECT
     'environment', t.env_slug,
     'secretPath', t.secret_path,
     'secretKey', t.secret_key,
-    'secretId', gen_random_uuid(),
+    'secretId', t.secret_id,
     'secretVersion', 1,
     'blastRadiusDemo', 'true'
   ),
@@ -214,7 +240,46 @@ SELECT
   now()
 FROM demo_target t, generate_series(1, 12) AS gs;
 
--- 5. Age the current value so the "overdue anyway" side of the simulation has something to say.
+-- 5. A bulk read that recorded which secrets it returned, so it attributes exactly despite being a
+-- folder fetch. Paired with the folder-precision readers above, the demo shows both precisions, which is
+-- the real state of any project whose retention window straddles the change that added `secretIds`.
+INSERT INTO audit_logs (
+  id, actor, "actorMetadata", "ipAddress", "eventType", "eventMetadata",
+  "userAgent", "userAgentType", "orgId", "projectId", "createdAt", "updatedAt"
+)
+SELECT
+  gen_random_uuid(),
+  'identity',
+  jsonb_build_object('identityId', i.id, 'name', i.name, 'authMethod', 'token-auth'),
+  '198.51.100.90',
+  'get-secrets',
+  jsonb_build_object(
+    'environment', t.env_slug,
+    'secretPath', t.secret_path,
+    'numberOfSecrets', 3,
+    'secretIds', jsonb_build_array(t.secret_id),
+    'blastRadiusDemo', 'true'
+  ),
+  'cli',
+  'cli',
+  t.org_id,
+  t.project_id,
+  now() - (gs || ' hours')::interval,
+  now()
+FROM demo_target t
+JOIN memberships m ON m."scopeProjectId" = t.project_id AND m."actorIdentityId" IS NOT NULL
+JOIN identities i ON i.id = m."actorIdentityId"
+CROSS JOIN generate_series(1, 5) AS gs
+WHERE i.name = (
+  SELECT i2.name
+  FROM memberships m2
+  JOIN identities i2 ON i2.id = m2."actorIdentityId"
+  WHERE m2."scopeProjectId" = t.project_id AND m2."actorIdentityId" IS NOT NULL
+  ORDER BY i2.name DESC
+  LIMIT 1
+);
+
+-- 6. Age the current value so the "overdue anyway" side of the simulation has something to say.
 -- `secrets_v2` carries an on-update trigger that rewrites `updatedAt`, so ageing the secret row is not
 -- possible. The age is read from the current version row instead, which is created here when the
 -- seeded data has no version history.

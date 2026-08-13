@@ -1066,6 +1066,9 @@ interface GetSecretsEvent {
     environment: string;
     secretPath: string;
     numberOfSecrets: number;
+    // Which secrets the bulk read actually returned. Without it a bulk read can only be attributed to
+    // the folder it covered, which is why read counts predating this field are folder-precision.
+    secretIds: string[];
   };
 }
 

@@ -1,5 +1,3 @@
-import { GhostIcon } from "lucide-react";
-
 import {
   Badge,
   Card,
@@ -19,6 +17,7 @@ import {
   describeObserved,
   DESTINATION_STATUS_LABEL,
   DESTINATION_STATUS_VARIANT,
+  formatReadCount,
   PRECISION_LABEL,
   relativeTime,
   strongestActionLabel
@@ -118,10 +117,7 @@ export const BlastRadiusTable = ({ blastRadius, onSelectPrincipal }: Props) => {
       {Boolean(ghostReaders.length) && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-1.5">
-              <GhostIcon size={14} className="text-warning" />
-              Ghost readers · {ghostReaders.length}
-            </CardTitle>
+            <CardTitle>Ghost readers · {ghostReaders.length}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
@@ -142,7 +138,11 @@ export const BlastRadiusTable = ({ blastRadius, onSelectPrincipal }: Props) => {
                         {ghost.principalExists ? "Access revoked" : "Deleted"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs text-accent">{ghost.readCount}</TableCell>
+                    {/* This table has no precision column for ghosts, so the `~` is the only thing
+                        saying the count came from a bulk read and is not per-key. */}
+                    <TableCell className="text-xs text-accent">
+                      {formatReadCount(ghost.readCount, ghost.precision)}
+                    </TableCell>
                     <TableCell className="text-xs text-accent">
                       {relativeTime(ghost.lastReadAt)}
                     </TableCell>

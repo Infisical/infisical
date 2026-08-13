@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { useNavigate } from "@tanstack/react-router";
 import {
   BanIcon,
   BellIcon,
@@ -79,7 +78,6 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -97,6 +95,7 @@ import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
+import { BlastRadiusSheet } from "@app/pages/secret-manager/BlastRadiusPage/components/BlastRadiusSheet";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
@@ -222,7 +221,6 @@ export const SecretEditTableRow = ({
 
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
-  const navigate = useNavigate();
   const { subscription } = useSubscription();
   const batchStore = useBatchStoreApi();
 
@@ -345,6 +343,7 @@ export const SecretEditTableRow = ({
   >(null);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const [isAccessInsightsOpen, setIsAccessInsightsOpen] = useState(false);
+  const [isBlastRadiusOpen, setIsBlastRadiusOpen] = useState(false);
   const [isSecretReferenceOpen, setIsSecretReferenceOpen] = useState(false);
 
   const toggleModal = useCallback(() => {
@@ -1659,11 +1658,10 @@ export const SecretEditTableRow = ({
                         return;
                       }
 
-                      navigate({
-                        to: ROUTE_PATHS.SecretManager.BlastRadiusPage.path,
-                        params: { orgId: currentOrg.id, projectId: currentProject.id },
-                        search: { secretKey: secretName, environment, secretPath }
-                      });
+                      // The dropdown closes in the same tick it selects, and Radix treats that
+                      // teardown as an outside-press on anything opened synchronously. Defer a tick so
+                      // the drawer opens after the menu has finished dismissing.
+                      setTimeout(() => setIsBlastRadiusOpen(true), 0);
                     }}
                     isDisabled={
                       isPendingBatchChange || !secretId || isCreatable || isImportedSecret
@@ -1964,6 +1962,15 @@ export const SecretEditTableRow = ({
           )}
         </SheetContent>
       </Sheet>
+      <BlastRadiusSheet
+        isOpen={isBlastRadiusOpen}
+        onOpenChange={setIsBlastRadiusOpen}
+        projectId={currentProject.id}
+        orgId={currentOrg.id}
+        secretKey={secretName}
+        environment={environment}
+        secretPath={secretPath}
+      />
       <UpgradePlanModal
         isOpen={popUp.accessInsightsUpgrade.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("accessInsightsUpgrade", isOpen)}
