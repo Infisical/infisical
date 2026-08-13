@@ -8,10 +8,8 @@ import { BaseLink } from "./BaseLink";
 
 const MIGRATION_DOC_URL = "https://infisical.com/docs/integrations/secret-syncs/native-integrations-migration";
 
-interface NativeIntegrationDeprecationOrgAdminTemplateProps extends Omit<
-  BaseEmailWrapperProps,
-  "title" | "preview" | "children"
-> {
+interface NativeIntegrationDeprecationOrgAdminTemplateProps
+  extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   orgName: string;
   projectCount: number;
 }

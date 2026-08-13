@@ -25,7 +25,7 @@ supported a different subset of options depending on when it was written. That m
 to predict: whether Infisical would delete a secret in your destination, or whether you could
 prefix your keys, depended on which provider you had picked.
 
-The three differences that matter most in day-to-day use:
+The differences that matter most in day-to-day use:
 
 **Key Schemas.** Native Integrations let you add a prefix or a suffix to your secret names, and
 nothing more. A [Key Schema](/integrations/secret-syncs/overview#key-schemas) is a full template, so
@@ -45,14 +45,12 @@ destination. Secret Syncs can remove secrets from every destination: turn **Disa
 deletion** off to let deletions through, and leave it on when you manage some destination secrets by
 hand.
 
-**Private networks.** Native Integrations could only reach destinations Infisical
-could contact directly. Secret Syncs can route through an Infisical
-[Gateway](/documentation/platform/gateways/overview): a lightweight service you
-deploy inside your network that opens an outbound tunnel. Syncs can
-then reach self-hosted or private destinations—such as GitHub Enterprise Server,
-HashiCorp Vault, or a private Azure Key Vault endpoint—without opening inbound
-firewall rules.
-
+**Private networks.** Native Integrations could only reach destinations Infisical could contact
+directly. Secret Syncs can route through an Infisical
+[Gateway](/documentation/platform/gateways/overview), a lightweight service you deploy inside your
+network that opens an outbound tunnel. Syncs can then reach self-hosted or private destinations,
+such as GitHub Enterprise Server, HashiCorp Vault, or a private Azure Key Vault endpoint, without
+opening inbound firewall rules.
 
 ## How to migrate
 
@@ -143,9 +141,6 @@ The walkthrough below uses GitHub as the example. The same approach applies to e
         Confirm the sync reports a successful status, then open your repository's secrets in GitHub
         and check that the values are present and current. Change a secret in Infisical and confirm
         the change reaches GitHub.
-
-        Leave both the sync and the Native Integration running for as long as you want to watch
-        them. They write the same values, so there is no conflict.
     </Step>
 
     <Step title="Remove the Native Integration">

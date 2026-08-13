@@ -29,7 +29,7 @@ export const NativeIntegrationsDeprecationAlert = () => {
         </Link>{" "}
         are the new, recommended way to sync Infisical secrets to third-party services, offering
         more features and supporting all the same services. Your existing integrations will keep
-        syncing until the retirement date.
+        syncing until the retirement date.{" "}
         <a
           href="https://infisical.com/docs/integrations/secret-syncs/native-integrations-migration"
           target="_blank"
