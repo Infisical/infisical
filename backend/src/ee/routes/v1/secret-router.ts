@@ -7,6 +7,7 @@ import {
   DestinationKind,
   DestinationStatus,
   ExposureBand,
+  ExposureDriverTone,
   PrincipalAccessFilter,
   PrincipalOrder,
   PrincipalType,
@@ -91,7 +92,13 @@ const BlastRadiusSchema = z.object({
   exposure: z.object({
     score: z.number().nullable(),
     band: z.nativeEnum(ExposureBand),
-    drivers: z.string().array()
+    drivers: z
+      .object({
+        label: z.string(),
+        points: z.number(),
+        tone: z.nativeEnum(ExposureDriverTone)
+      })
+      .array()
   }),
   principals: z
     .object({

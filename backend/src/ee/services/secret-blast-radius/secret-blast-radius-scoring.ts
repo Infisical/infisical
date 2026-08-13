@@ -4,10 +4,12 @@ import {
   DestinationKind,
   DestinationStatus,
   ExposureBand,
+  ExposureDriverTone,
   RotationVerdict,
   TBlastRadiusConsumer,
   TBlastRadiusDestination,
   TBlastRadiusPrincipal,
+  TExposureDriver,
   TRotationSimulation,
   TRotationSimulationItem
 } from "./secret-blast-radius-types";
@@ -68,13 +70,21 @@ export const summarizeCounts = (input: TScoringInput) => {
   };
 };
 
+// How many drivers the header can show without turning into a list nobody reads.
+const MAX_DRIVERS = 4;
+
 export const calculateExposure = (input: TScoringInput) => {
   if (!input.consumptionAvailable) {
     return {
       score: null,
       band: ExposureBand.Unavailable,
       drivers: [
-        "The score weighs read activity against entitlements, so it cannot be computed without audit log access."
+        {
+          label:
+            "The score weighs read activity against entitlements, so it cannot be computed without audit log access",
+          points: 0,
+          tone: ExposureDriverTone.Neutral
+        }
       ]
     };
   }
@@ -88,42 +98,61 @@ export const calculateExposure = (input: TScoringInput) => {
   const terms = [
     {
       points: 25 * logScale(counts.withReadValue, 40),
-      driver: `${pluralize(counts.withReadValue, "principal")} can read the value.`
+      label: `${pluralize(counts.withReadValue, "principal")} can read the value`,
+      tone: ExposureDriverTone.Neutral
     },
     {
       points: 15 * clamp01((input.ghostReaders.length + counts.deletedGhosts.length) / 4),
-      driver: `${pluralize(input.ghostReaders.length, "ghost reader")} hold the value and cannot read it today.`
+      label: `${pluralize(input.ghostReaders.length, "ghost reader")} still ${
+        input.ghostReaders.length === 1 ? "holds" : "hold"
+      } the current value`,
+      tone: ExposureDriverTone.Warning
     },
     {
       points: 15 * (counts.entitled ? counts.noReads / counts.entitled : 0),
-      driver: `${counts.noReads} of ${counts.entitled} entitled principals have no reads in ${input.windowDays}d.`
+      label: `${counts.noReads} of ${counts.entitled} entitled principals ${
+        counts.noReads === 1 ? "has" : "have"
+      } no reads in ${input.windowDays}d`,
+      tone: ExposureDriverTone.Warning
     },
     {
       points: 15 * clamp01(weightedDestinations / 8),
-      driver: `${pluralize(input.destinations.length, "destination")} hold the value.`
+      label: `${pluralize(input.destinations.length, "destination")} ${
+        input.destinations.length === 1 ? "holds" : "hold"
+      } the value`,
+      tone: ExposureDriverTone.Neutral
     },
     {
       points: 10 * clamp01(counts.unhealthyDestinations.length / 3),
-      driver: `${pluralize(counts.unhealthyDestinations.length, "destination")} are stale, failing, or synced by hand.`
+      label: `${counts.unhealthyDestinations.length} of ${input.destinations.length} destinations ${
+        counts.unhealthyDestinations.length === 1 ? "is" : "are"
+      } stale, failing, or synced by hand`,
+      tone: ExposureDriverTone.Danger
     },
     {
       points: 10 * clamp01(counts.valueAgeDays / 365 + (input.isRotationManaged ? 0 : 0.3)),
-      driver: input.isRotationManaged
-        ? `Last rotated ${counts.valueAgeDays} days ago.`
-        : `Last rotated ${counts.valueAgeDays} days ago. No automatic rotation is configured.`
+      label: input.isRotationManaged
+        ? `Last rotated ${counts.valueAgeDays} days ago`
+        : `No automatic rotation · last rotated ${counts.valueAgeDays} days ago`,
+      tone: ExposureDriverTone.Neutral
     },
     {
       points: 10 * clamp01(counts.crossProjectDestinations.length / 2),
-      driver: `${pluralize(counts.crossProjectDestinations.length, "destination")} sit outside this project.`
+      label: `${pluralize(counts.crossProjectDestinations.length, "destination")} ${
+        counts.crossProjectDestinations.length === 1 ? "sits" : "sit"
+      } outside this project`,
+      tone: ExposureDriverTone.Danger
     }
   ];
 
   const score = Math.round(terms.reduce((total, term) => total + term.points, 0));
-  const drivers = terms
+  const drivers: TExposureDriver[] = terms
     .filter((term) => term.points > 0)
     .sort((a, b) => b.points - a.points)
-    .slice(0, 3)
-    .map((term) => term.driver);
+    .slice(0, MAX_DRIVERS)
+    // Rounded per driver, so the displayed contributions are whole numbers that read against the score
+    // rather than decimals nobody can add up.
+    .map((term) => ({ label: term.label, points: Math.round(term.points), tone: term.tone }));
 
   let band = ExposureBand.Low;
   if (score >= 85) band = ExposureBand.Critical;

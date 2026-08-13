@@ -18,6 +18,18 @@ export enum ExposureBand {
   Unavailable = "unavailable"
 }
 
+export enum ExposureDriverTone {
+  Danger = "danger",
+  Warning = "warning",
+  Neutral = "neutral"
+}
+
+export type TExposureDriver = {
+  label: string;
+  points: number;
+  tone: ExposureDriverTone;
+};
+
 export enum PrincipalType {
   User = "user",
   Identity = "identity",
@@ -173,7 +185,7 @@ export type TBlastRadius = {
   exposure: {
     score: number | null;
     band: ExposureBand;
-    drivers: string[];
+    drivers: TExposureDriver[];
   };
   principals: TBlastRadiusPrincipal[];
   destinations: TBlastRadiusDestination[];

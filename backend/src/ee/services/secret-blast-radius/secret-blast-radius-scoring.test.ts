@@ -71,7 +71,7 @@ describe("exposure score", () => {
 
     expect(exposure.score).toBeNull();
     expect(exposure.band).toBe(ExposureBand.Unavailable);
-    expect(exposure.drivers[0]).toContain("cannot be computed without audit log access");
+    expect(exposure.drivers[0]?.label).toContain("cannot be computed without audit log access");
   });
 
   test("a quiet secret with two active readers and no syncs stays low", () => {
@@ -138,7 +138,13 @@ describe("exposure score", () => {
 
     expect(exposure.score).toBeGreaterThanOrEqual(60);
     expect([ExposureBand.High, ExposureBand.Critical]).toContain(exposure.band);
-    expect(exposure.drivers).toHaveLength(3);
+    expect(exposure.drivers).toHaveLength(4);
+    // Every displayed contribution is a whole number, and they are ordered largest first so the header
+    // reads top-down as "the reasons that matter most".
+    exposure.drivers.forEach((driver) => expect(Number.isInteger(driver.points)).toBe(true));
+    expect(exposure.drivers.map((driver) => driver.points)).toEqual(
+      [...exposure.drivers.map((driver) => driver.points)].sort((a, b) => b - a)
+    );
   });
 
   test("drivers name the largest contributors in plain language", () => {
@@ -149,7 +155,7 @@ describe("exposure score", () => {
       })
     );
 
-    expect(exposure.drivers.join(" ")).toContain("no reads in 30d");
+    expect(exposure.drivers.map((driver) => driver.label).join(" ")).toContain("no reads in 30d");
   });
 });
 

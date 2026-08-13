@@ -13,6 +13,21 @@ export enum BlastRadiusLeg {
   Consumption = "consumption"
 }
 
+// Tone comes from what the driver is, not from how many points it carries: one failing sync is a failure
+// worth colouring red even though it scores less than breadth of access.
+export enum ExposureDriverTone {
+  Danger = "danger",
+  Warning = "warning",
+  Neutral = "neutral"
+}
+
+export type TExposureDriver = {
+  label: string;
+  // Whole points this driver contributes to the score, so the number shown adds up to the score shown.
+  points: number;
+  tone: ExposureDriverTone;
+};
+
 export enum ExposureBand {
   Low = "low",
   Elevated = "elevated",
@@ -160,7 +175,7 @@ export type TBlastRadius = {
   exposure: {
     score: number | null;
     band: ExposureBand;
-    drivers: string[];
+    drivers: TExposureDriver[];
   };
   principals: TBlastRadiusPrincipal[];
   destinations: TBlastRadiusDestination[];

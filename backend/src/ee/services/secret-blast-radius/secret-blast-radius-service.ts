@@ -878,7 +878,7 @@ export const secretBlastRadiusServiceFactory = ({
         secretPath,
         score: exposure.score,
         band: exposure.band,
-        topDriver: exposure.drivers[0] ?? null,
+        topDriver: exposure.drivers[0]?.label ?? null,
         entitledCount: counts.entitled,
         noReadsCount: counts.noReads,
         destinationCount: destinationResult.destinations.length,

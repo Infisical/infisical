@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from "react";
 import { NetworkIcon, RefreshCwIcon, TableIcon } from "lucide-react";
 
 import {
-  Badge,
   Button,
   ButtonGroup,
   Empty,
@@ -15,7 +14,6 @@ import { cn } from "@app/components/v3/utils";
 import {
   BlastRadiusLeg,
   BlastRadiusWindow,
-  ExposureBand,
   PrincipalAccessFilter,
   PrincipalOrder,
   PrincipalUsageFilter,
@@ -27,14 +25,17 @@ import {
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { principalNodeId } from "../utils/buildGraph";
-import { EXPOSURE_BAND_LABEL, EXPOSURE_BAND_VARIANT, summarizeBlastRadius } from "../utils/format";
 import { BlastRadiusFilters, TBlastRadiusFilterState } from "./BlastRadiusFilters";
 import { BlastRadiusGraph } from "./BlastRadiusGraph";
 import { BlastRadiusTable } from "./BlastRadiusTable";
+import { ExposurePanel } from "./ExposurePanel";
 import { GraphLegend } from "./GraphLegend";
 import { RotationSimulationModal } from "./RotationSimulationModal";
 
 const PRINCIPAL_PAGE_SIZE = 50;
+
+const EXPOSURE_DOCS_HREF =
+  "https://infisical.com/docs/documentation/platform/blast-radius#exposure-score";
 
 enum ViewMode {
   Graph = "graph",
@@ -120,9 +121,6 @@ export const BlastRadiusPanel = ({
     [accessHref, roleHref]
   );
 
-  const exposure = blastRadius?.exposure;
-  const isScored = exposure && exposure.band !== ExposureBand.Unavailable;
-
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div
@@ -139,34 +137,20 @@ export const BlastRadiusPanel = ({
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          {exposure && (
-            <Badge variant={EXPOSURE_BAND_VARIANT[exposure.band]}>
-              {EXPOSURE_BAND_LABEL[exposure.band]}
-              {isScored ? ` · ${exposure.score}` : ""}
-            </Badge>
-          )}
-          <Button
-            size="xs"
-            variant="project"
-            isDisabled={!blastRadius}
-            onClick={() => handlePopUpOpen("rotationSimulation")}
-          >
-            <RefreshCwIcon />
-            Simulate Rotation
-          </Button>
-        </div>
+        <Button
+          size="xs"
+          variant="project"
+          isDisabled={!blastRadius}
+          onClick={() => handlePopUpOpen("rotationSimulation")}
+        >
+          <RefreshCwIcon />
+          Simulate Rotation
+        </Button>
       </div>
 
-      {/* The former header card, as one sentence. Drivers live in the exposure badge's tooltip target
-          rather than taking a third of the drawer. */}
-      <div className="border-y border-border bg-container px-4 py-2.5">
-        {blastRadius ? (
-          <p className="text-xs text-accent">{summarizeBlastRadius(blastRadius)}</p>
-        ) : (
-          <Skeleton className="h-4 w-96" />
-        )}
-      </div>
+      {/* The score and the arithmetic behind it. This replaced a one-sentence summary, which said what was
+          true but never why the number was what it was. */}
+      <ExposurePanel blastRadius={blastRadius} docsHref={EXPOSURE_DOCS_HREF} />
 
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
         <BlastRadiusFilters filters={filters} onChange={setFilters} />
