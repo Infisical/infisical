@@ -11,6 +11,13 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-p
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { runAgentTurn, TAgentEventSink, TAgentMessage } from "./sandbox-agent";
 import { installGithubCli, writeSandboxCaCertificate } from "./sandbox-cli-runtime";
+import {
+  getSandboxCommandLog,
+  SandboxCommandSource,
+  setSandboxCommandContext,
+  subscribeToSandboxCommands,
+  TSandboxCommandEntry
+} from "./sandbox-command-log";
 import { TSandboxDALFactory } from "./sandbox-dal";
 import { deprovisionSandboxIdentity, provisionSandboxIdentity, TSandboxIdentityDeps } from "./sandbox-identity";
 import { SANDBOX_INTEGRATIONS, SandboxCredentialRole, SandboxIntegrationType } from "./sandbox-integrations";
@@ -322,6 +329,11 @@ export const sandboxServiceFactory = ({
     const caPath = await writeSandboxCaCertificate(rootDir, certificatePem);
     const proxyUrl = `http://127.0.0.1:${proxyPort}`;
 
+    setSandboxCommandContext(sandboxId, {
+      pamProxies: proxies,
+      hostnames: grants.integrations.flatMap((integration) => integration.hostnames)
+    });
+
     setSandboxEnv(sandboxId, {
       ...integrationEnv,
       HTTP_PROXY: proxyUrl,
@@ -489,6 +501,24 @@ export const sandboxServiceFactory = ({
     });
   };
 
+  const getCommandLog = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor) => {
+    await $resolve(sandboxId, actor, false);
+    return getSandboxCommandLog(sandboxId);
+  };
+
+  /**
+   * Sends the backlog first, then each new command as it is recorded, so a client that connects
+   * mid-run sees the whole session rather than only what happens after it arrived.
+   */
+  const streamCommandLog = async (
+    { sandboxId, onEntry }: TSandboxIdDTO & { onEntry: (entry: TSandboxCommandEntry) => void },
+    actor: OrgServiceActor
+  ) => {
+    await $resolve(sandboxId, actor, false);
+    getSandboxCommandLog(sandboxId).forEach(onEntry);
+    return subscribeToSandboxCommands(sandboxId, onEntry);
+  };
+
   const getProxyActivity = async ({ sandboxId }: TSandboxIdDTO, actor: OrgServiceActor) => {
     await $resolve(sandboxId, actor, false);
     return getSandboxProxyLog(sandboxId);
@@ -535,7 +565,8 @@ export const sandboxServiceFactory = ({
     // a scope the app may not have, so a failure falls back to saying so on the thread.
     const ack = await execInSandbox(
       sandbox.id,
-      buildAddReactionCommand({ channelId: message.channelId, messageTs: message.ts, name: SLACK_ACK_REACTION })
+      buildAddReactionCommand({ channelId: message.channelId, messageTs: message.ts, name: SLACK_ACK_REACTION }),
+      SandboxCommandSource.Slack
     );
     const acked = ack.stdout.includes('"ok":true');
     if (!acked) {
@@ -546,7 +577,8 @@ export const sandboxServiceFactory = ({
       );
       const fallback = await execInSandbox(
         sandbox.id,
-        buildPostMessageCommand({ channelId: message.channelId, threadTs: replyTo, text: "On it..." })
+        buildPostMessageCommand({ channelId: message.channelId, threadTs: replyTo, text: "On it..." }),
+        SandboxCommandSource.Slack
       );
       if (!fallback.stdout.includes('"ok":true')) {
         logger.warn(
@@ -570,7 +602,8 @@ export const sandboxServiceFactory = ({
 
       const posted = await execInSandbox(
         sandbox.id,
-        buildPostMessageCommand({ channelId: message.channelId, threadTs: replyTo, text: turn.reply })
+        buildPostMessageCommand({ channelId: message.channelId, threadTs: replyTo, text: turn.reply }),
+        SandboxCommandSource.Slack
       );
       // The exec succeeding only means curl ran. Slack reports its own failures in the body, so a
       // delivery that never reached the channel would otherwise be logged as an answer.
@@ -585,7 +618,8 @@ export const sandboxServiceFactory = ({
       if (acked) {
         const done = await execInSandbox(
           sandbox.id,
-          buildAddReactionCommand({ channelId: message.channelId, messageTs: message.ts, name: SLACK_DONE_REACTION })
+          buildAddReactionCommand({ channelId: message.channelId, messageTs: message.ts, name: SLACK_DONE_REACTION }),
+          SandboxCommandSource.Slack
         );
         if (!done.stdout.includes('"ok":true')) {
           logger.info(
@@ -640,7 +674,7 @@ export const sandboxServiceFactory = ({
       return null;
     }
 
-    await execInSandbox(sandbox.id, buildInboxDeliveryCommand(message));
+    await execInSandbox(sandbox.id, buildInboxDeliveryCommand(message), SandboxCommandSource.Slack);
     await sandboxDAL.updateById(sandbox.id, { lastActivityAt: new Date() });
     logSlackRelay(sandbox.id, message);
 
@@ -653,6 +687,8 @@ export const sandboxServiceFactory = ({
 
   return {
     chatWithAgent,
+    getCommandLog,
+    streamCommandLog,
     linkSlackConversation,
     handleSlackEvent,
     getProxyActivity,

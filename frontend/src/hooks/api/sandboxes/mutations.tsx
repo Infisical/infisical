@@ -11,6 +11,7 @@ import {
   TCreateSandboxDTO,
   TLinkSandboxSlackDTO,
   TSandbox,
+  TSandboxCommandEntry,
   TSandboxCredentialConfig,
   TSandboxExecResult,
   TSandboxSecretRef,
@@ -227,4 +228,49 @@ export const useLinkSandboxSlack = () => {
       queryClient.invalidateQueries({ queryKey: sandboxKeys.byId(sandboxId) });
     }
   });
+};
+
+/**
+ * Opens the live command log. Mirrors the chat stream rather than using EventSource, which cannot
+ * carry an Authorization header. Resolves when the connection closes; abort via the signal.
+ */
+export const streamSandboxCommands = async (
+  sandboxId: string,
+  onEntry: (entry: TSandboxCommandEntry) => void,
+  signal?: AbortSignal
+) => {
+  const response = await fetch(`/api/v1/sandboxes/${sandboxId}/commands/stream`, {
+    headers: { Authorization: `Bearer ${getAuthToken()}` },
+    signal
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error("Could not open the command log.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  for (;;) {
+    // eslint-disable-next-line no-await-in-loop -- reading a stream is inherently sequential
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    const frames = buffer.split("\n\n");
+    buffer = frames.pop() ?? "";
+
+    frames.forEach((frame) => {
+      const line = frame.split("\n").find((l) => l.startsWith("data:"));
+      if (!line) return;
+
+      try {
+        onEntry(JSON.parse(line.slice(5).trim()) as TSandboxCommandEntry);
+      } catch {
+        // a partial frame; the next chunk completes it
+      }
+    });
+  }
 };

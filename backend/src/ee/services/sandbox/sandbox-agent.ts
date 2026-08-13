@@ -2,6 +2,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
+import { SandboxCommandSource } from "./sandbox-command-log";
 import { execInSandbox } from "./sandbox-runtime";
 
 /**
@@ -204,7 +205,7 @@ export const runAgentTurn = async ({
       onEvent({ type: "tool_start", command });
 
       // eslint-disable-next-line no-await-in-loop
-      const result = await execInSandbox(sandboxId, command).catch((error: Error) => ({
+      const result = await execInSandbox(sandboxId, command, SandboxCommandSource.Agent).catch((error: Error) => ({
         stdout: "",
         stderr: error.message,
         exitCode: null as number | null

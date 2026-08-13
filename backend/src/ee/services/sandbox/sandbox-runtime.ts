@@ -8,6 +8,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
+import { clearSandboxCommandLog, recordSandboxCommand, SandboxCommandSource } from "./sandbox-command-log";
 import { TSandboxExecResult } from "./sandbox-types";
 
 /**
@@ -64,6 +65,7 @@ export const shutdownSandbox = async (sandboxId: string) => {
   if (!state) return;
 
   states.delete(sandboxId);
+  clearSandboxCommandLog(sandboxId);
   await rm(state.rootDir, { recursive: true, force: true }).catch((error) => {
     logger.error(error, `Failed to clean up sandbox directory [sandboxId=${sandboxId}]`);
   });
@@ -101,7 +103,13 @@ const redactRoot = (value: string, rootDir: string) => value.split(rootDir).join
 // poisoned cwd executable on the next command.
 const shellQuote = (value: string) => `'${value.split("'").join(`'\\''`)}'`;
 
-export const execInSandbox = async (sandboxId: string, command: string): Promise<TSandboxExecResult> => {
+export const execInSandbox = async (
+  sandboxId: string,
+  command: string,
+  // Defaults to the terminal because that is the only caller a user drives directly; everything
+  // else names itself, so the log can tell the agent's work from a person's.
+  source: SandboxCommandSource = SandboxCommandSource.Terminal
+): Promise<TSandboxExecResult> => {
   assertSandboxRuntimeEnabled();
 
   const state = states.get(sandboxId);
@@ -177,6 +185,13 @@ export const execInSandbox = async (sandboxId: string, command: string): Promise
         }
         cleanStdout = stdout.slice(0, markerAt).replace(/\n$/, "");
       }
+
+      recordSandboxCommand(sandboxId, {
+        source,
+        command,
+        exitCode,
+        durationMs: Date.now() - startedAt
+      });
 
       resolve({
         command,

@@ -16,11 +16,19 @@ import {
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { SandboxStatus, useGetSandboxById, useSetSandboxPower } from "@app/hooks/api/sandboxes";
 
-import { AgentTab, IntegrationsTab, OverviewTab, PamAccountsTab, SandboxChat } from "./components";
+import {
+  AgentTab,
+  AuditLogTab,
+  IntegrationsTab,
+  OverviewTab,
+  PamAccountsTab,
+  SandboxChat
+} from "./components";
 
 export enum SandboxTab {
   Overview = "overview",
   Chat = "chat",
+  AuditLog = "audit-log",
   Integrations = "integrations",
   Pam = "pam",
   Agent = "agent"
@@ -118,20 +126,21 @@ export const SandboxPage = () => {
               sandbox.description ?? "An isolated environment for agents and untrusted code."
             }
           >
-            {tab === SandboxTab.Overview && (
-              <Button
-                variant={isRunning ? "danger" : "project"}
-                onClick={handlePower}
-                isPending={setPower.isPending}
-              >
-                {isRunning ? <SquareIcon /> : <PlayIcon />}
-                {isRunning ? "Stop" : "Start"}
-              </Button>
-            )}
+            {/* On every tab, not just the overview: the other pages are the ones that tell you to
+                start the sandbox, so that is exactly where the control needs to be. */}
+            <Button
+              variant={isRunning ? "danger" : "project"}
+              onClick={handlePower}
+              isPending={setPower.isPending}
+            >
+              {isRunning ? <SquareIcon /> : <PlayIcon />}
+              {isRunning ? "Stop" : "Start"}
+            </Button>
           </PageHeader>
 
           <div className="mt-4">
             {tab === SandboxTab.Chat && <SandboxChat sandbox={sandbox} isRunning={isRunning} />}
+            {tab === SandboxTab.AuditLog && <AuditLogTab sandbox={sandbox} />}
             {tab === SandboxTab.Integrations && <IntegrationsTab sandbox={sandbox} />}
             {tab === SandboxTab.Pam && <PamAccountsTab sandbox={sandbox} />}
             {tab === SandboxTab.Agent && <AgentTab sandbox={sandbox} />}

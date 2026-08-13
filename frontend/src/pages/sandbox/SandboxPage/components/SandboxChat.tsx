@@ -95,6 +95,7 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
   const [turns, setTurns] = useState<TTurn[]>([]);
   const [draft, setDraft] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -175,8 +176,17 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
 
   const isDisabled = !isRunning || !sandbox.agentType || isStreaming;
 
+  // Focus on arrival and again when a turn finishes. Keyed on isDisabled rather than done by hand
+  // after send, because the input is disabled while the agent streams and focusing a disabled
+  // element silently does nothing.
+  useEffect(() => {
+    if (!isDisabled) inputRef.current?.focus();
+  }, [isDisabled]);
+
   return (
-    <div className="flex h-[420px] flex-col rounded-md border border-border bg-bunker-800">
+    // Chat is its own page now, so it fills the viewport instead of sitting at a fixed height.
+    // The offset covers the org header and the page title block above it.
+    <div className="flex h-[calc(100vh-14.5rem)] min-h-[420px] flex-col rounded-md border border-border bg-bunker-800">
       <div ref={scrollRef} className="thin-scrollbar flex-1 space-y-2.5 overflow-y-auto p-3">
         {turns.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
@@ -234,6 +244,7 @@ export const SandboxChat = ({ sandbox, isRunning }: { sandbox: TSandbox; isRunni
 
       <div className="flex gap-2 border-t border-border p-2">
         <Input
+          ref={inputRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {

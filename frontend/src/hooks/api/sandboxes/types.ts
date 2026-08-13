@@ -152,3 +152,26 @@ export type TAgentTurn = {
   reply: string;
   toolCalls: TAgentToolCall[];
 };
+
+export enum SandboxCommandKind {
+  Pam = "pam",
+  Integration = "integration",
+  Shell = "shell"
+}
+
+export enum SandboxCommandSource {
+  Agent = "agent",
+  Terminal = "terminal",
+  Slack = "slack"
+}
+
+export type TSandboxCommandEntry = {
+  id: string;
+  at: string;
+  source: SandboxCommandSource;
+  kind: SandboxCommandKind;
+  command: string;
+  exitCode: number | null;
+  durationMs: number;
+  target: string | null;
+};

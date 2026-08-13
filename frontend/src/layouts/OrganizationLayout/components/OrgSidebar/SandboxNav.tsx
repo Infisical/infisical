@@ -5,6 +5,7 @@ import {
   KeyRound,
   LayoutDashboard,
   MessageSquare,
+  ScrollText,
   Server,
   Shield
 } from "lucide-react";
@@ -57,7 +58,8 @@ export const SandboxNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu
 
   const overview = [
     buildTab(sandboxId, "Overview", LayoutDashboard, "overview", true),
-    buildTab(sandboxId, "Chat", MessageSquare, "chat")
+    buildTab(sandboxId, "Chat", MessageSquare, "chat"),
+    buildTab(sandboxId, "Audit Log", ScrollText, "audit-log")
   ];
   const configureItems = [
     buildTab(sandboxId, "Integrations", KeyRound, "integrations"),

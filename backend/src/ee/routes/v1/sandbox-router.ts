@@ -515,4 +515,50 @@ export const registerSandboxRouter = async (server: FastifyZodProvider) => {
       return { ok: true as const };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/:sandboxId/commands/stream",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
+      operationId: "streamSandboxCommands",
+      description: "Every command the sandbox runs, backlog first then live.",
+      params: SandboxIdParamsSchema,
+      produces: ["text/event-stream"]
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req, reply) => {
+      // Fastify replies are thenable, so the hijack call reads as a floating promise without this.
+      void reply.hijack();
+      reply.raw.writeHead(200, {
+        "Cache-Control": "no-cache",
+        "Content-Type": "text/event-stream",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no"
+      });
+
+      const send = (event: unknown) => reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+
+      let unsubscribe: (() => void) | undefined;
+      try {
+        unsubscribe = await server.services.sandbox.streamCommandLog(
+          { sandboxId: req.params.sandboxId, onEntry: send },
+          req.permission
+        );
+      } catch (error) {
+        send({ error: error instanceof Error ? error.message : "Could not open the command log." });
+        reply.raw.end();
+        return;
+      }
+
+      // A sandbox can sit idle far longer than an idle proxy will hold a connection open.
+      const heartbeat = setInterval(() => reply.raw.write(": keep-alive\n\n"), 25_000);
+
+      req.raw.on("close", () => {
+        clearInterval(heartbeat);
+        unsubscribe?.();
+      });
+    }
+  });
 };
