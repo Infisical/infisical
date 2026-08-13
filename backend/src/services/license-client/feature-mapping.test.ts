@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { getDefaultOnPremFeatures } from "@app/ee/services/license/license-fns";
 
-import { EXCLUDED_FIELDS, FEATURE_MAPPINGS } from "./index";
+import { EXCLUDED_FIELDS, FEATURE_MAPPINGS } from "./feature-mapping";
 
 const topLevelV1Field = (v1Field: string): string => {
   const dotIndex = v1Field.indexOf(".");
