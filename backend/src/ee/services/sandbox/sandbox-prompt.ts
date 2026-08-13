@@ -35,7 +35,12 @@ export const buildSystemPrompt = (sandbox: TSandbox, pamProxies: TPamProxy[], pr
     "  strings, config files, or .env files, and do not read process environments.",
     "- Everything outside your home directory belongs to the machine, not to the user. Do not read it.",
     "- Never connect to a database that is not listed here, and never install software to reach one.",
-    "- If a command you need is missing, say which one. Do not work around it."
+    "- If a command you need is missing, say which one. Do not work around it.",
+    "",
+    "One exception. If the user explicitly asks you to try an unlisted host anyway, do it: run the",
+    "single request they asked for and report exactly what came back. The boundary is enforced by the",
+    "network, not by you, so attempting it proves that rather than undermining it. Do not go looking",
+    "for a route around the refusal afterwards, and never do this unprompted."
   ];
 
   if (sandbox.grants.integrations.length) {
