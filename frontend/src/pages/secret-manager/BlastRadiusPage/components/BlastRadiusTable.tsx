@@ -14,6 +14,7 @@ import {
 import { TBlastRadius, TBlastRadiusPrincipal } from "@app/hooks/api/blastRadius";
 
 import {
+  CALLER_KIND_LABEL,
   describeObserved,
   DESTINATION_STATUS_LABEL,
   DESTINATION_STATUS_VARIANT,
@@ -62,6 +63,7 @@ export const BlastRadiusTable = ({ blastRadius, onSelectPrincipal }: Props) => {
                 <TableHead>Reads · {window.effectiveDays}d</TableHead>
                 <TableHead>Precision</TableHead>
                 <TableHead>Clients</TableHead>
+                <TableHead>Caller</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -107,6 +109,12 @@ export const BlastRadiusTable = ({ blastRadius, onSelectPrincipal }: Props) => {
                   <TableCell className="font-mono text-xs text-accent">
                     {principal.observed?.clients.join(", ") || "—"}
                   </TableCell>
+                  {/* Blank for token auth, where nothing about the caller is provable. */}
+                  <TableCell className="font-mono text-xs text-accent">
+                    {principal.observed?.callers.length
+                      ? `${CALLER_KIND_LABEL[principal.observed.callers[0].kind]} ${principal.observed.callers[0].label}`
+                      : "—"}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -126,6 +134,7 @@ export const BlastRadiusTable = ({ blastRadius, onSelectPrincipal }: Props) => {
                   <TableHead>Actor</TableHead>
                   <TableHead>State</TableHead>
                   <TableHead>Reads</TableHead>
+                  <TableHead>Caller</TableHead>
                   <TableHead>Last read</TableHead>
                 </TableRow>
               </TableHeader>
@@ -142,6 +151,11 @@ export const BlastRadiusTable = ({ blastRadius, onSelectPrincipal }: Props) => {
                         saying the count came from a bulk read and is not per-key. */}
                     <TableCell className="text-xs text-accent">
                       {formatReadCount(ghost.readCount, ghost.precision)}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-accent">
+                      {ghost.callers.length
+                        ? `${CALLER_KIND_LABEL[ghost.callers[0].kind]} ${ghost.callers[0].label}`
+                        : "—"}
                     </TableCell>
                     <TableCell className="text-xs text-accent">
                       {relativeTime(ghost.lastReadAt)}

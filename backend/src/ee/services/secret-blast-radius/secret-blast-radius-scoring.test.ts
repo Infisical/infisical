@@ -45,6 +45,8 @@ const consumer = (overrides: Partial<TBlastRadiusConsumer> = {}): TBlastRadiusCo
   readCount: 40,
   lastReadAt: "2026-08-11T00:00:00.000Z",
   precision: ReadPrecision.Secret,
+  callers: [],
+  callerCount: 0,
   entitledNow: true,
   principalExists: true,
   ...overrides
@@ -85,7 +87,9 @@ describe("exposure score", () => {
               lastReadAt: "x",
               lastReadOutsideWindow: false,
               precision: ReadPrecision.Secret,
-              clients: []
+              clients: [],
+              callers: [],
+              callerCount: 0
             }
           }),
           principal({
@@ -95,7 +99,9 @@ describe("exposure score", () => {
               lastReadAt: "x",
               lastReadOutsideWindow: false,
               precision: ReadPrecision.Secret,
-              clients: []
+              clients: [],
+              callers: [],
+              callerCount: 0
             }
           })
         ],
@@ -120,7 +126,9 @@ describe("exposure score", () => {
                     lastReadAt: "x",
                     lastReadOutsideWindow: false,
                     precision: ReadPrecision.Folder,
-                    clients: []
+                    clients: [],
+                    callers: [],
+                    callerCount: 0
                   }
                 : null
           })

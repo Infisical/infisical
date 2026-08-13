@@ -34,6 +34,7 @@ import { calculateExposure, simulateRotation, summarizeCounts, TScoringInput } f
 import {
   BlastRadiusLeg,
   BlastRadiusWindow,
+  CallerKind,
   DestinationKind,
   DestinationStatus,
   PrincipalAccessFilter,
@@ -48,6 +49,7 @@ import {
   TExposureRankingEntry,
   TGetExposureRankingDTO,
   TGetSecretBlastRadiusDTO,
+  TObservedCaller,
   TSimulateSecretRotationDTO
 } from "./secret-blast-radius-types";
 
@@ -93,6 +95,60 @@ const MAX_RANKED_SECRETS = 25;
 const STALE_SYNC_DAYS = 14;
 
 const daysAgo = (from: Date, days: number) => new Date(from.getTime() - days * 24 * 60 * 60 * 1000);
+
+// How many distinct callers a consumer carries into the payload. Past a few the list stops being readable and
+// the count carries the point instead.
+const MAX_CALLERS = 3;
+
+/**
+ * Turns the auth details recorded for an identity request into something a reader can act on.
+ *
+ * Only auth methods that prove something about the caller populate these, so an empty result means either a
+ * user (already the answer) or token auth, where whoever holds the credential cannot be distinguished from
+ * whoever should. That absence is a fact about the auth method, not missing data.
+ */
+const toCallers = (row: TSecretReadActivityRow): TObservedCaller[] => {
+  const callers: TObservedCaller[] = [];
+
+  (row.awsCallers ?? []).forEach((entry) => {
+    const detail = entry as { arn?: string; resourceName?: string; resourceType?: string; accountId?: string };
+    if (!detail?.arn && !detail?.resourceName) return;
+    callers.push({
+      kind: CallerKind.Aws,
+      // The role or user name is what someone recognises; the ARN is the same fact at four times the width.
+      label: detail.resourceName ?? detail.arn!,
+      detail: detail.arn
+    });
+  });
+
+  (row.kubernetesCallers ?? []).forEach((entry) => {
+    const detail = entry as { namespace?: string; name?: string };
+    if (!detail?.name) return;
+    callers.push({
+      kind: CallerKind.Kubernetes,
+      label: detail.namespace ? `${detail.namespace}/${detail.name}` : detail.name,
+      detail: "Kubernetes service account"
+    });
+  });
+
+  (row.oidcCallers ?? []).forEach((entry) => {
+    const claims = (entry as { claims?: Record<string, string> })?.claims;
+    if (!claims) return;
+    // Claim names are provider-specific, so the well-known ones are named and everything else falls back to
+    // `sub`, which every OIDC provider sets.
+    const repository = claims.repository ?? claims.project_path;
+    const workflow = claims.workflow ?? claims.workflow_ref ?? claims.job_workflow_ref;
+    const label = repository ? [repository, workflow].filter(Boolean).join(" · ") : claims.sub;
+    if (!label) return;
+    callers.push({
+      kind: CallerKind.Oidc,
+      label,
+      detail: claims.actor ? `triggered by ${claims.actor}` : claims.sub
+    });
+  });
+
+  return callers;
+};
 
 export const secretBlastRadiusServiceFactory = ({
   secretBlastRadiusDAL,
@@ -490,20 +546,30 @@ export const secretBlastRadiusServiceFactory = ({
       priorReads.filter((row) => row.actorId).map((row) => [row.actorId as string, row.lastReadAt] as const)
     );
 
-    const toConsumer = (row: TSecretReadActivityRow, entitledNow: boolean, principalExists: boolean) => ({
-      actorId: row.actorId,
-      actorType: row.actor,
-      label: row.label ?? row.actorId ?? "Unknown actor",
-      authMethod: row.authMethod ?? undefined,
-      clients: (row.clients ?? []).filter((client): client is string => Boolean(client)),
-      readCount: row.exactReadCount + row.folderReadCount,
-      lastReadAt: new Date(row.lastReadAt).toISOString(),
-      // A bulk read never names the key it returned, so any folder-scoped read keeps the whole
-      // consumer at folder precision rather than implying we know it touched this key.
-      precision: row.folderReadCount > 0 ? ReadPrecision.Folder : ReadPrecision.Secret,
-      entitledNow,
-      principalExists
-    });
+    const toConsumer = (
+      row: TSecretReadActivityRow,
+      entitledNow: boolean,
+      principalExists: boolean
+    ): TBlastRadiusConsumer => {
+      const callers = toCallers(row);
+
+      return {
+        actorId: row.actorId,
+        actorType: row.actor,
+        label: row.label ?? row.actorId ?? "Unknown actor",
+        authMethod: row.authMethod ?? undefined,
+        clients: (row.clients ?? []).filter((client): client is string => Boolean(client)),
+        callers: callers.slice(0, MAX_CALLERS),
+        callerCount: callers.length,
+        readCount: row.exactReadCount + row.folderReadCount,
+        lastReadAt: new Date(row.lastReadAt).toISOString(),
+        // A bulk read never names the key it returned, so any folder-scoped read keeps the whole
+        // consumer at folder precision rather than implying we know it touched this key.
+        precision: row.folderReadCount > 0 ? ReadPrecision.Folder : ReadPrecision.Secret,
+        entitledNow,
+        principalExists
+      };
+    };
 
     const unentitled = activity.filter((row) => !row.actorId || !entitledById.has(row.actorId));
     const { users, identities } = await secretBlastRadiusDAL.findExistingPrincipals({
@@ -535,7 +601,9 @@ export const secretBlastRadiusServiceFactory = ({
           lastReadAt: consumer.lastReadAt,
           lastReadOutsideWindow: false,
           precision: consumer.precision,
-          clients: consumer.clients
+          clients: consumer.clients,
+          callers: consumer.callers,
+          callerCount: consumer.callerCount
         };
       }
     });
@@ -553,7 +621,10 @@ export const secretBlastRadiusServiceFactory = ({
         lastReadAt: new Date(priorRead).toISOString(),
         lastReadOutsideWindow: true,
         precision: null,
-        clients: []
+        clients: [],
+        // The out-of-window lookup only asks "when", not "by what", so there is nothing to attribute here.
+        callers: [],
+        callerCount: 0
       };
     });
 

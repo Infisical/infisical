@@ -373,7 +373,59 @@ JOIN (
 CROSS JOIN generate_series(1, 7) AS gs
 WHERE r.folder = 'webhooks';
 
--- 9. Quiet the rest of the project.
+-- 9. The caller behind a machine identity.
+--
+-- `actorMetadata` carries the auth details for the methods that can prove them: the assumed AWS role, the
+-- Kubernetes service account, the OIDC claim set. Token auth records nothing, because whoever presents the
+-- credential is indistinguishable from whoever should — so the demo gives the two readers of the high-scoring
+-- secret a provable caller each, and leaves the rest as token auth to show both states side by side.
+UPDATE audit_logs a
+SET "actorMetadata" = a."actorMetadata" || jsonb_build_object(
+      'authMethod', 'kubernetes-auth',
+      'kubernetes', jsonb_build_object('namespace', 'platform', 'name', 'github-app-refresher')
+    )
+FROM resolved r
+WHERE a."eventMetadata"->>'blastRadiusDemo' = 'true'
+  AND a."eventMetadata"->>'secretPath' = r.secret_path
+  AND r.folder = 'platform'
+  AND a."actorMetadata"->>'name' = (SELECT label FROM principal WHERE n = 2);
+
+UPDATE audit_logs a
+SET "actorMetadata" = a."actorMetadata" || jsonb_build_object(
+      'authMethod', 'oidc-auth',
+      'oidc', jsonb_build_object(
+        'claims', jsonb_build_object(
+          'repository', 'acme/platform-deploy',
+          'workflow', 'release.yml',
+          'actor', 'maya',
+          'sub', 'repo:acme/platform-deploy:ref:refs/heads/main'
+        )
+      )
+    )
+FROM resolved r
+WHERE a."eventMetadata"->>'blastRadiusDemo' = 'true'
+  AND a."eventMetadata"->>'secretPath' = r.secret_path
+  AND r.folder = 'platform'
+  AND a."actorMetadata"->>'name' = (SELECT label FROM principal WHERE n = 1);
+
+-- A ghost reader with a provable caller is the strongest version of that finding: the identity is gone, but
+-- the workflow that drove it is still named and can be gone and checked.
+UPDATE audit_logs a
+SET "actorMetadata" = a."actorMetadata" || jsonb_build_object(
+      'authMethod', 'oidc-auth',
+      'oidc', jsonb_build_object(
+        'claims', jsonb_build_object(
+          'repository', 'acme/legacy-etl',
+          'workflow', 'nightly.yml',
+          'actor', 'daniel',
+          'sub', 'repo:acme/legacy-etl:ref:refs/heads/main'
+        )
+      )
+    )
+WHERE a."eventMetadata"->>'blastRadiusDemo' = 'true'
+  AND a."actorMetadata"->>'name' = 'old-ci-runner';
+
+-- 10. Quiet the rest of the project.
 --
 -- The ranking is project-wide and across environments, and unused access is worth 15 points, so every secret
 -- nobody reads floats near the Elevated band and buries the two Low targets. One bulk read per folder per
@@ -416,7 +468,7 @@ JOIN LATERAL (
 CROSS JOIN principal p
 WHERE e."projectId" = (SELECT project_id FROM demo);
 
--- 10. Value age. `secrets_v2` carries an on-update trigger that rewrites `updatedAt`, so the age is read from
+-- 11. Value age. `secrets_v2` carries an on-update trigger that rewrites `updatedAt`, so the age is read from
 -- the current version row instead, which is created here when the seeded data has no version history.
 INSERT INTO secret_versions_v2 (id, version, type, key, "secretId", "folderId", "createdAt", "updatedAt")
 SELECT gen_random_uuid(), s.version, 'shared', s.key, s.id, s."folderId", now() - (r.age_days || ' days')::interval, now()

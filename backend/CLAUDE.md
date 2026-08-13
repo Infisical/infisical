@@ -363,6 +363,15 @@ Invariants worth knowing before extending it:
   id.** The id survives a rename, and a version-value read has no path to match on. The key branch is
   guarded on `secretId IS NULL` rather than OR'd in freely, because keys get reused: a secret created with
   a name some earlier secret used would otherwise inherit that secret's read history.
+- **The caller behind a machine identity is surfaced where the auth method proves it.** `actorMetadata`
+  already records the assumed AWS role, the Kubernetes service account, and the OIDC claim set (written in
+  `src/server/plugins/audit-log.ts`), so `aggregateSecretReadActivity` aggregates them **distinctly** — one
+  identity is often shared by several callers, and collapsing to the newest would hide exactly that fan-out.
+  Token and Universal Auth record nothing, and an empty `callers` array is the honest answer rather than
+  missing data: whoever presents the credential is indistinguishable from whoever should. Known gap:
+  `assumedPrivilegeDetails` (a user borrowing an identity's privileges) is audited on the assume-privilege
+  route but never merged into `actorMetadata`, so reads made under assumed privileges still look like plain
+  identity reads.
 - **A negative claim is bounded by retention.** `auditLogsRetentionDays` is a plan feature, so "no reads"
   means "none inside a plan-bounded window". The window is clamped and returned (`window.effectiveDays`,
   `boundByRetention`), and the copy is "No reads in 30d", never "never used".

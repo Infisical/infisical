@@ -44,6 +44,11 @@ export type TSecretReadActivityRow = {
   exactReadCount: number;
   folderReadCount: number;
   lastReadAt: Date;
+  // The auth details of whatever was behind a machine identity, one entry per distinct caller. Only AWS,
+  // Kubernetes and OIDC auth record these; token auth has nothing to record.
+  awsCallers: unknown[] | null;
+  kubernetesCallers: unknown[] | null;
+  oidcCallers: unknown[] | null;
 };
 
 export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "find"> {
@@ -525,6 +530,17 @@ export const auditLogDALFactory = (db: TDbClient) => {
         ),
         db.raw(
           `(ARRAY_AGG("${TableName.AuditLog}"."actorMetadata"->>'authMethod' ORDER BY "${TableName.AuditLog}"."createdAt" DESC))[1] as "authMethod"`
+        ),
+        // Distinct rather than newest: one identity is often shared by several callers (two workflows, two
+        // pods), and collapsing them to the last one would hide exactly the fan-out worth seeing.
+        db.raw(
+          `ARRAY_REMOVE(ARRAY_AGG(DISTINCT "${TableName.AuditLog}"."actorMetadata"->'aws'), NULL) as "awsCallers"`
+        ),
+        db.raw(
+          `ARRAY_REMOVE(ARRAY_AGG(DISTINCT "${TableName.AuditLog}"."actorMetadata"->'kubernetes'), NULL) as "kubernetesCallers"`
+        ),
+        db.raw(
+          `ARRAY_REMOVE(ARRAY_AGG(DISTINCT "${TableName.AuditLog}"."actorMetadata"->'oidc'), NULL) as "oidcCallers"`
         )
       )
       .groupByRaw(`"${TableName.AuditLog}"."actor", ${ACTOR_ID_SQL}`)

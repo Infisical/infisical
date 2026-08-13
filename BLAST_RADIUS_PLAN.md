@@ -719,6 +719,16 @@ the whole column collapsed into one box and the graph showed nothing. Every enti
 now; the drawing cap is the only thing that keeps a node off the canvas, and it reports itself in the
 legend.
 
+**The caller behind a machine identity is a fourth thing the activity leg can answer.** `actorMetadata`
+already carried the assumed AWS role, the Kubernetes service account and the OIDC claim set — nothing in the
+product rendered them, so "who read this" stopped at `identity: checkout-service`. The read aggregate now
+collects them **distinctly** (one identity is often driven by several workflows or pods, and that fan-out is
+the finding), and they surface in the popover, on the ghost cards, and as a Caller column in table mode. Token
+and Universal Auth prove nothing about the caller, so those identities show none, and the absence is stated
+rather than left looking like missing data. Still open: `assumedPrivilegeDetails` is audited on the
+assume-privilege route but not merged into `actorMetadata`, so a read made by a user borrowing an identity's
+privileges is indistinguishable from the identity acting alone.
+
 **The rotation simulation states facts and does not render a verdict.** A tinted `Not safe to rotate. 3
 things will break.` banner led the dialog, which made the call for the reader off one weighted heuristic, and
 gated nothing: there is no rotate action here. What remains is the dry-run disclosure, the four lists, and a

@@ -10,7 +10,13 @@ import {
   TGrantPath
 } from "@app/hooks/api/blastRadius";
 
-import { CLIENT_LABEL, formatReadCount, PRECISION_LABEL, relativeTime } from "../utils/format";
+import {
+  CALLER_KIND_LABEL,
+  CLIENT_LABEL,
+  formatReadCount,
+  PRECISION_LABEL,
+  relativeTime
+} from "../utils/format";
 
 export type TPrincipalPopoverActions = {
   accessHref: string;
@@ -37,6 +43,24 @@ const StepIcon = ({ kind }: { kind: TGrantPath["via"][number]["kind"] }) => {
   return <ShieldIcon size={12} className="text-accent" />;
 };
 
+const roleLabel = (step: TGrantPath["via"][number]) =>
+  step.kind === "role" ? (step.roleSlug ?? step.roleName) : undefined;
+
+/** The role the header sentence names, so the chain below does not repeat it. */
+const primaryRoleLabel = (principal: TBlastRadiusPrincipal) =>
+  principal.grantPaths
+    .flatMap((path) => path.via)
+    .map(roleLabel)
+    .find(Boolean);
+
+/**
+ * A step worth drawing in the chain. The role the sentence already names is dropped: repeating it made the
+ * common case a card that said one thing twice. A role with an expiry stays, because the sentence cannot
+ * carry "and it expires on Friday".
+ */
+const isRedundantStep = (step: TGrantPath["via"][number], namedRole?: string) =>
+  step.kind === "role" && !step.isTemporary && roleLabel(step) === namedRole;
+
 /** The sentence a reader needs before the detail: what this principal can do, and by how many routes. */
 const describeAccess = (principal: TBlastRadiusPrincipal) => {
   const canReadValue =
@@ -44,13 +68,8 @@ const describeAccess = (principal: TBlastRadiusPrincipal) => {
     principal.actions.includes(SecretActionName.DescribeAndReadValue);
   const verb = canReadValue ? "Reads the value" : "Can see this secret but not its value";
 
-  const firstRole = principal.grantPaths
-    .flatMap((path) => path.via)
-    .find((step) => step.kind === "role");
-  const via =
-    firstRole && firstRole.kind === "role"
-      ? ` through role ${firstRole.roleSlug ?? firstRole.roleName}`
-      : "";
+  const namedRole = primaryRoleLabel(principal);
+  const via = namedRole ? ` through role ${namedRole}` : "";
 
   if (!principal.grantPaths.length) return `${verb}${via}.`;
 
@@ -63,61 +82,81 @@ const describeAccess = (principal: TBlastRadiusPrincipal) => {
   return `${verb}${via}. ${paths}`;
 };
 
-const GrantChain = ({ path, index, total }: { path: TGrantPath; index: number; total: number }) => (
-  <div className="flex flex-col gap-1.5 rounded-md border border-border bg-container p-2.5">
-    {total > 1 && (
-      <span className="text-xs tracking-wide text-muted uppercase">
-        Path {index + 1} ·{" "}
-        {path.via.some((step) => step.kind === "group") ? "via group" : "direct assignment"}
-      </span>
-    )}
+const GrantChain = ({
+  path,
+  index,
+  total,
+  namedRole
+}: {
+  path: TGrantPath;
+  index: number;
+  total: number;
+  namedRole?: string;
+}) => {
+  const steps = path.via.filter((step) => !isRedundantStep(step, namedRole));
 
-    <ol className="flex flex-col gap-1">
-      {path.via.map((step) => (
-        <li key={stepKey(step)} className="flex items-center gap-2 text-xs text-foreground">
-          <StepIcon kind={step.kind} />
-          {step.kind === "group" && (
-            <>
-              <span className="text-accent">Member of group</span>
-              <span className="font-medium">{step.groupName}</span>
-            </>
-          )}
-          {step.kind === "role" && (
-            <>
-              <span className="text-accent">Holds role</span>
-              <span className="font-mono">{step.roleSlug ?? step.roleName}</span>
-              {step.isTemporary && step.expiresAt && (
-                <Badge variant="warning">expires {new Date(step.expiresAt).toLocaleString()}</Badge>
-              )}
-            </>
-          )}
-          {step.kind === "additionalPrivilege" && (
-            <>
-              <span className="text-accent">Additional privilege</span>
-              <span className="font-medium">{step.name}</span>
-            </>
-          )}
-        </li>
-      ))}
-    </ol>
+  // With the named role removed, a plain single-role grant has nothing left to show and the card would be an
+  // empty box repeating the sentence above it.
+  if (!steps.length && !path.conditions.length) return null;
 
-    {Boolean(path.conditions.length) && (
-      <div className="flex flex-col gap-0.5 border-t border-border pt-1.5">
-        <span className="text-xs text-accent">Matched rule</span>
-        {/* The rule CASL actually used to decide, rendered rather than re-derived. */}
-        {path.conditions.map((condition) => (
-          <code
-            key={`${condition.field}-${condition.operator}`}
-            className="font-mono text-xs text-foreground"
-          >
-            {condition.field} <span className="text-secret">{condition.operator}</span>{" "}
-            {JSON.stringify(condition.value)}
-          </code>
+  return (
+    <div className="flex flex-col gap-1.5 rounded-md border border-border bg-container p-2.5">
+      {total > 1 && (
+        <span className="text-xs tracking-wide text-muted uppercase">
+          Path {index + 1} ·{" "}
+          {path.via.some((step) => step.kind === "group") ? "via group" : "direct assignment"}
+        </span>
+      )}
+
+      <ol className="flex flex-col gap-1">
+        {steps.map((step) => (
+          <li key={stepKey(step)} className="flex items-center gap-2 text-xs text-foreground">
+            <StepIcon kind={step.kind} />
+            {step.kind === "group" && (
+              <>
+                <span className="text-accent">Member of group</span>
+                <span className="font-medium">{step.groupName}</span>
+              </>
+            )}
+            {step.kind === "role" && (
+              <>
+                <span className="text-accent">Holds role</span>
+                <span className="font-mono">{step.roleSlug ?? step.roleName}</span>
+                {step.isTemporary && step.expiresAt && (
+                  <Badge variant="warning">
+                    expires {new Date(step.expiresAt).toLocaleString()}
+                  </Badge>
+                )}
+              </>
+            )}
+            {step.kind === "additionalPrivilege" && (
+              <>
+                <span className="text-accent">Additional privilege</span>
+                <span className="font-medium">{step.name}</span>
+              </>
+            )}
+          </li>
         ))}
-      </div>
-    )}
-  </div>
-);
+      </ol>
+
+      {Boolean(path.conditions.length) && (
+        <div className="flex flex-col gap-0.5 border-t border-border pt-1.5">
+          <span className="text-xs text-accent">Matched rule</span>
+          {/* The rule CASL actually used to decide, rendered rather than re-derived. */}
+          {path.conditions.map((condition) => (
+            <code
+              key={`${condition.field}-${condition.operator}`}
+              className="font-mono text-xs text-foreground"
+            >
+              {condition.field} <span className="text-secret">{condition.operator}</span>{" "}
+              {JSON.stringify(condition.value)}
+            </code>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const PrincipalPopover = ({
   principal,
@@ -128,6 +167,10 @@ export const PrincipalPopover = ({
 }: Props) => {
   const { observed } = principal;
   const readCount = observed?.readCount ?? 0;
+  const namedRole = primaryRoleLabel(principal);
+  const hasChainToShow = principal.grantPaths.some(
+    (path) => path.conditions.length || path.via.some((step) => !isRedundantStep(step, namedRole))
+  );
   const roleStep = principal.grantPaths
     .flatMap((path) => path.via)
     .find((step) => step.kind === "role");
@@ -197,9 +240,34 @@ export const PrincipalPopover = ({
             Bulk reads are recorded against the folder and cannot be attributed to one key.
           </p>
         )}
+
+        {/* Who was actually behind the identity. Only AWS, Kubernetes and OIDC auth prove this, so most
+            machine identities show nothing here, and that absence is the honest answer rather than a gap. */}
+        {Boolean(observed?.callers.length) && (
+          <div className="flex flex-col gap-1 border-t border-border pt-1.5">
+            <span className="text-xs text-accent">
+              {observed!.callerCount === 1 ? "Called by" : `Called by ${observed!.callerCount}`}
+            </span>
+            {observed!.callers.map((caller) => (
+              <div key={`${caller.kind}-${caller.label}`} className="flex items-baseline gap-1.5">
+                <Badge variant="neutral">{CALLER_KIND_LABEL[caller.kind]}</Badge>
+                <span className="truncate font-mono text-xs text-foreground" title={caller.detail}>
+                  {caller.label}
+                </span>
+              </div>
+            ))}
+            {observed!.callerCount > observed!.callers.length && (
+              <span className="text-xs text-muted">
+                +{observed!.callerCount - observed!.callers.length} more
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
-      {Boolean(principal.grantPaths.length) && (
+      {/* `GrantChain` returns null for a path the sentence above already covers, so this collapses to nothing
+          for the common single-role grant rather than leaving an empty container and its gap. */}
+      {hasChainToShow && (
         <div className="flex flex-col gap-1.5">
           {principal.grantPaths.map((path, index) => (
             <GrantChain
@@ -207,6 +275,7 @@ export const PrincipalPopover = ({
               path={path}
               index={index}
               total={principal.grantPaths.length}
+              namedRole={namedRole}
             />
           ))}
         </div>

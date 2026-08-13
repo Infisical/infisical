@@ -63,6 +63,20 @@ Two absences are different findings and are labelled differently. **No reads in 
   Read activity is bounded by your plan's audit log retention. "No reads" always means "none inside the window we can see", never "never". The window in use is shown in the legend.
 </Note>
 
+### Who was behind a machine identity
+
+An identity is a credential, not a person. Where the auth method can prove what used it, Blast Radius says so:
+
+- **AWS** shows the IAM role or user that was assumed.
+- **Kubernetes** shows the service account, as `namespace/name`.
+- **OIDC** shows the claims that matter — for GitHub Actions, the repository and workflow, with the person who triggered it on hover.
+
+If several callers share one identity, each distinct one is listed, because that fan-out is usually the finding.
+
+<Note>
+  Token Auth and Universal Auth cannot prove anything about the caller: whoever holds the credential is indistinguishable from whoever was meant to. Those identities show no caller at all, and that absence is the honest answer rather than missing data.
+</Note>
+
 Read activity is separately permissioned. A viewer without audit log access still sees entitlements and destinations, but every edge is drawn dashed and the exposure score reads **Unavailable** rather than being computed from half its inputs.
 
 ## Exposure score
@@ -101,4 +115,4 @@ On a project with hundreds of principals the view stays readable without hiding 
 - If the graph reaches its drawing limit, the legend states how many are not drawn and how that remainder splits between those with and without reads, with a **Draw more** control. Nothing is hidden from the counts, only from the canvas.
 - Filters apply to the whole set before the page is drawn, so paging through a filtered graph walks the filtered set.
 
-Switch to **Table** mode for a dense, sortable list with the same information, including the precision and client columns.
+Switch to **Table** mode for a dense, sortable list with the same information, including the precision, client, and caller columns.

@@ -1,6 +1,7 @@
 import { formatDistanceToNowStrict, parseISO } from "date-fns";
 
 import {
+  CallerKind,
   DestinationStatus,
   ExposureBand,
   ReadPrecision,
@@ -112,4 +113,11 @@ export const describeObserved = (
   }
 
   return `No reads in ${windowDays}d`;
+};
+
+// What each caller kind actually is, so the label is never mistaken for the identity's own name.
+export const CALLER_KIND_LABEL: Record<CallerKind, string> = {
+  [CallerKind.Aws]: "AWS",
+  [CallerKind.Kubernetes]: "k8s",
+  [CallerKind.Oidc]: "OIDC"
 };

@@ -4,6 +4,7 @@ import { ProjectPermissionSecretActions } from "@app/ee/services/permission/proj
 import {
   BlastRadiusLeg,
   BlastRadiusWindow,
+  CallerKind,
   DestinationKind,
   DestinationStatus,
   ExposureBand,
@@ -53,12 +54,22 @@ const GrantPathSchema = z.object({
   conditions: z.object({ field: z.string(), operator: z.string(), value: z.unknown() }).array()
 });
 
+// The caller behind a machine identity: the assumed AWS role, the Kubernetes service account, the OIDC
+// claims. Empty for token auth, which proves nothing about who presented the credential.
+const CallerSchema = z.object({
+  kind: z.nativeEnum(CallerKind),
+  label: z.string(),
+  detail: z.string().optional()
+});
+
 const ObservedActivitySchema = z.object({
   readCount: z.number(),
   lastReadAt: z.string().nullable(),
   lastReadOutsideWindow: z.boolean(),
   precision: z.nativeEnum(ReadPrecision).nullable(),
-  clients: z.string().array()
+  clients: z.string().array(),
+  callers: CallerSchema.array(),
+  callerCount: z.number()
 });
 
 const ConsumerSchema = z.object({
@@ -67,6 +78,8 @@ const ConsumerSchema = z.object({
   label: z.string(),
   authMethod: z.string().optional(),
   clients: z.string().array(),
+  callers: CallerSchema.array(),
+  callerCount: z.number(),
   readCount: z.number(),
   lastReadAt: z.string(),
   precision: z.nativeEnum(ReadPrecision),

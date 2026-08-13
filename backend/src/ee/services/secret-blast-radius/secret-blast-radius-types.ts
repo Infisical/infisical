@@ -13,6 +13,23 @@ export enum BlastRadiusLeg {
   Consumption = "consumption"
 }
 
+// What actually made the request behind a machine identity. Only auth methods that prove something about
+// the caller can populate this: AWS records the assumed role, Kubernetes the service account, OIDC its claims.
+// Token and Universal Auth cannot — whoever holds the credential is indistinguishable from whoever should.
+export enum CallerKind {
+  Aws = "aws",
+  Kubernetes = "kubernetes",
+  Oidc = "oidc"
+}
+
+export type TObservedCaller = {
+  kind: CallerKind;
+  // Short enough for a node or a popover line: a role name, `namespace/serviceaccount`, a repo and workflow.
+  label: string;
+  // The unabbreviated form, for a tooltip: a full ARN, the claim that produced the label.
+  detail?: string;
+};
+
 // Tone comes from what the driver is, not from how many points it carries: one failing sync is a failure
 // worth colouring red even though it scores less than breadth of access.
 export enum ExposureDriverTone {
@@ -113,6 +130,10 @@ export type TObservedActivity = {
   lastReadOutsideWindow: boolean;
   precision: ReadPrecision | null;
   clients: string[];
+  // Distinct callers seen behind this principal, newest first and capped. Empty for token-auth identities and
+  // for users, where the actor is already the answer.
+  callers: TObservedCaller[];
+  callerCount: number;
 };
 
 export type TGroupMember = {
@@ -152,6 +173,8 @@ export type TBlastRadiusConsumer = {
   label: string;
   authMethod?: string;
   clients: string[];
+  callers: TObservedCaller[];
+  callerCount: number;
   readCount: number;
   lastReadAt: string;
   precision: ReadPrecision;

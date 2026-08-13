@@ -18,6 +18,20 @@ export enum ExposureBand {
   Unavailable = "unavailable"
 }
 
+// What was actually behind a machine identity on a read. Only AWS, Kubernetes and OIDC auth record this;
+// token auth cannot, because whoever holds the credential is indistinguishable from whoever should.
+export enum CallerKind {
+  Aws = "aws",
+  Kubernetes = "kubernetes",
+  Oidc = "oidc"
+}
+
+export type TObservedCaller = {
+  kind: CallerKind;
+  label: string;
+  detail?: string;
+};
+
 export enum ExposureDriverTone {
   Danger = "danger",
   Warning = "warning",
@@ -124,6 +138,8 @@ export type TObservedActivity = {
   lastReadOutsideWindow: boolean;
   precision: ReadPrecision | null;
   clients: string[];
+  callers: TObservedCaller[];
+  callerCount: number;
 };
 
 export type TGroupMember = {
@@ -162,6 +178,8 @@ export type TBlastRadiusConsumer = {
   label: string;
   authMethod?: string;
   clients: string[];
+  callers: TObservedCaller[];
+  callerCount: number;
   readCount: number;
   lastReadAt: string;
   precision: ReadPrecision;
