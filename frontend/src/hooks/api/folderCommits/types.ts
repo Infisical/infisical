@@ -4,7 +4,7 @@ export type CommitHistoryItem = {
   id: string;
   commitId: string;
   actorMetadata: {
-    id: string;
+    id?: string;
     name?: string;
   };
   actorType: string;
@@ -52,7 +52,7 @@ export type RollbackChange = {
   type: "folder" | "secret";
   id: string;
   versionId: string;
-  changeType: "create" | "update" | "delete";
+  changeType: "add" | "create" | "update" | "delete";
   commitId: string;
 };
 
@@ -64,14 +64,35 @@ export type RollbackPreview = {
 };
 
 interface CommitActorMetadata {
+  id?: string;
   email?: string;
   name?: string;
 }
 
+export type CommitChangeSummary = {
+  secretCount: number;
+  folderCount: number;
+  addedCount: number;
+  updatedCount: number;
+  deletedCount: number;
+};
+
 export interface Commit {
   id: string;
-  message: string;
+  message?: string | null;
   createdAt: string;
   actorType: string;
   actorMetadata?: CommitActorMetadata;
+  summary: CommitChangeSummary;
 }
+
+export type CommitAuthor = {
+  actorId: string | null;
+  actorType: string;
+  name: string | null;
+};
+
+export type CommitAuthorFilter = {
+  actorId?: string;
+  actorType?: string;
+};

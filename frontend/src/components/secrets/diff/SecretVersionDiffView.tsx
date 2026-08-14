@@ -4,12 +4,6 @@ import { FolderIcon, KeyRoundIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
-  FolderDiffView,
-  FolderVersionData,
-  SecretDiffView,
-  SecretVersionData
-} from "@app/components/secrets/diff";
-import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -22,6 +16,10 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+
+import { FolderDiffView } from "./FolderDiffView";
+import { SecretDiffView } from "./SecretDiffView";
+import { FolderVersionData, SecretVersionData } from "./types";
 
 export interface Version {
   id?: string;

@@ -107,18 +107,6 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/projects/secret-management/$projectId/approval",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/approval"
     ),
-    RollbackPreviewPage: setRoute(
-      "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore"
-    ),
-    CommitDetailsPage: setRoute(
-      "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId"
-    ),
-    CommitsPage: setRoute(
-      "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId"
-    ),
     OverviewPage: setRoute(
       "/organizations/$orgId/projects/secret-management/$projectId/overview",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/overview"

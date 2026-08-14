@@ -414,24 +414,71 @@ export const folderCommitDALFactory = (db: TDbClient) => {
       limit?: number;
       search?: string;
       sort?: "asc" | "desc";
+      actorId?: string;
+      actorType?: string;
     } = {},
     tx?: Knex
   ): Promise<{
-    commits: TFolderCommits[];
+    commits: (TFolderCommits & { changes: TFolderCommitChanges[] })[];
     total: number;
     hasMore: boolean;
   }> => {
     try {
-      const { offset = 0, limit = 20, search, sort = "desc" } = options;
+      const { offset = 0, limit = 20, search, sort = "desc", actorId, actorType } = options;
       const trx = tx || db.replicaNode();
 
       // Build base query
-      let baseQuery = trx(TableName.FolderCommit).where({ folderId });
+      let baseQuery = trx(TableName.FolderCommit).where(`${TableName.FolderCommit}.folderId`, folderId);
 
-      // Add search functionality
+      if (actorType) {
+        baseQuery = baseQuery.where(`${TableName.FolderCommit}.actorType`, actorType);
+      }
+
+      if (actorId) {
+        baseQuery = baseQuery.whereRaw(`?? ->> 'id' = ?`, [`${TableName.FolderCommit}.actorMetadata`, actorId]);
+      }
+
+      // Search matches the commit message, its hash, its author, or the key/name of any
+      // resource the commit touched
       if (search) {
+        const sanitizedSearch = sanitizeSqlLikeString(search);
+        const pattern = `%${sanitizedSearch}%`;
         baseQuery = baseQuery.where((qb) => {
-          void qb.whereILike("message", `%${sanitizeSqlLikeString(search)}%`);
+          void qb
+            .whereILike(`${TableName.FolderCommit}.message`, pattern)
+            // The UI shows the leading 8 characters of the commit id, so match on prefix
+            .orWhereRaw(`?? :: text ILIKE ?`, [`${TableName.FolderCommit}.id`, `${sanitizedSearch}%`])
+            // Mirror the author label the UI renders: email, else name, else actor type
+            .orWhereRaw(`COALESCE(NULLIF(?? ->> 'email', ''), NULLIF(?? ->> 'name', ''), ??) ILIKE ?`, [
+              `${TableName.FolderCommit}.actorMetadata`,
+              `${TableName.FolderCommit}.actorMetadata`,
+              `${TableName.FolderCommit}.actorType`,
+              pattern
+            ])
+            .orWhereExists((subQuery) => {
+              void subQuery
+                .select(trx.raw("1"))
+                .from(TableName.FolderCommitChanges)
+                .leftJoin(
+                  TableName.SecretVersionV2,
+                  `${TableName.FolderCommitChanges}.secretVersionId`,
+                  `${TableName.SecretVersionV2}.id`
+                )
+                .leftJoin(
+                  TableName.SecretFolderVersion,
+                  `${TableName.FolderCommitChanges}.folderVersionId`,
+                  `${TableName.SecretFolderVersion}.id`
+                )
+                .whereRaw(`?? = ??`, [
+                  `${TableName.FolderCommitChanges}.folderCommitId`,
+                  `${TableName.FolderCommit}.id`
+                ])
+                .where((resourceQb) => {
+                  void resourceQb
+                    .whereILike(`${TableName.SecretVersionV2}.key`, pattern)
+                    .orWhereILike(`${TableName.SecretFolderVersion}.name`, pattern);
+                });
+            });
         });
       }
 
@@ -440,7 +487,11 @@ export const folderCommitDALFactory = (db: TDbClient) => {
       const total = Number(totalResult?.count || 0);
 
       // Get paginated commits
-      const folderCommits = await baseQuery.select("*").orderBy("createdAt", sort).limit(limit).offset(offset);
+      const folderCommits = await baseQuery
+        .select(selectAllTableCols(TableName.FolderCommit))
+        .orderBy(`${TableName.FolderCommit}.createdAt`, sort)
+        .limit(limit)
+        .offset(offset);
 
       if (folderCommits.length === 0) {
         return { commits: [], total, hasMore: false };
@@ -479,6 +530,38 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findCommitAuthorsByFolderId = async (
+    folderId: string,
+    tx?: Knex
+  ): Promise<{ actorId: string | null; actorType: string; name: string | null }[]> => {
+    try {
+      const trx = tx || db.replicaNode();
+
+      // DISTINCT ON keeps the name from each author's most recent commit, so a renamed
+      // user or identity is labelled with what it is called now rather than at first commit
+      const { rows } = await trx.raw<{
+        rows: { actorId: string | null; actorType: string; name: string | null }[];
+      }>(
+        `SELECT DISTINCT ON ("actorType", "actorMetadata" ->> 'id')
+           "actorType",
+           "actorMetadata" ->> 'id' AS "actorId",
+           "actorMetadata" ->> 'name' AS "name"
+         FROM ??
+         WHERE "folderId" = ?
+         ORDER BY "actorType", "actorMetadata" ->> 'id', "createdAt" DESC`,
+        [TableName.FolderCommit, folderId]
+      );
+
+      return rows.map((row) => ({
+        actorId: row.actorId ?? null,
+        actorType: row.actorType,
+        name: row.name ?? null
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindCommitAuthorsByFolderId" });
+    }
+  };
+
   const findCommitBefore = async (
     folderId: string,
     commitId: bigint,
@@ -513,6 +596,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     findPreviousCommitTo,
     findById,
     findByFolderIdPaginated,
+    findCommitAuthorsByFolderId,
     findCommitBefore
   };
 };

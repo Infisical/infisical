@@ -9,10 +9,18 @@ import { SecretNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { booleanSchema } from "@app/server/routes/sanitizedSchemas";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { commitChangesResponseSchema, resourceChangeSchema } from "@app/services/folder-commit/folder-commit-schemas";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+const commitChangeSummarySchema = z.object({
+  secretCount: z.number(),
+  folderCount: z.number(),
+  addedCount: z.number(),
+  updatedCount: z.number(),
+  deletedCount: z.number()
+});
 
 const commitHistoryItemSchema = z.object({
   id: z.string(),
@@ -22,7 +30,14 @@ const commitHistoryItemSchema = z.object({
   message: z.string().optional().nullable(),
   commitId: z.string(),
   createdAt: z.string().or(z.date()),
-  envId: z.string()
+  envId: z.string(),
+  summary: commitChangeSummarySchema
+});
+
+const commitAuthorSchema = z.object({
+  actorId: z.string().nullable(),
+  actorType: z.string(),
+  name: z.string().nullable()
 });
 
 const folderStateSchema = z.array(
@@ -101,8 +116,22 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim(),
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(20),
-        search: z.string().trim().optional(),
-        sort: z.enum(["asc", "desc"]).default("desc")
+        search: z
+          .string()
+          .trim()
+          .max(255)
+          .optional()
+          .describe(
+            "Match commits by message, commit ID prefix, author, or the key or name of any resource they changed."
+          ),
+        sort: z.enum(["asc", "desc"]).default("desc"),
+        actorId: z
+          .string()
+          .trim()
+          .uuid()
+          .optional()
+          .describe("Only return commits made by the user or machine identity with this ID."),
+        actorType: z.nativeEnum(ActorType).optional().describe("Only return commits made by this type of actor.")
       }),
       response: {
         200: z.object({
@@ -125,7 +154,8 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         offset: req.query.offset,
         limit: req.query.limit,
         search: req.query.search,
-        sort: req.query.sort
+        sort: req.query.sort,
+        authorFilter: { actorId: req.query.actorId, actorType: req.query.actorType }
       });
 
       await server.services.auditLog.createAuditLog({
@@ -140,7 +170,57 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
             offset: req.query.offset.toString(),
             limit: req.query.limit.toString(),
             search: req.query.search,
-            sort: req.query.sort
+            sort: req.query.sort,
+            filteredActorId: req.query.actorId,
+            filteredActorType: req.query.actorType
+          }
+        }
+      });
+
+      return result;
+    }
+  });
+
+  // Get the distinct authors that have committed to a folder
+  server.route({
+    method: "GET",
+    url: "/commits/authors",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        environment: z.string().trim(),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          authors: commitAuthorSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.pit.getCommitAuthorsForFolder({
+        actor: req.permission?.type,
+        actorId: req.permission?.id,
+        actorOrgId: req.permission?.orgId,
+        actorAuthMethod: req.permission?.authMethod,
+        projectId: req.query.projectId,
+        environment: req.query.environment,
+        path: req.query.path
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.query.projectId,
+        event: {
+          type: EventType.GET_PROJECT_PIT_COMMIT_AUTHORS,
+          metadata: {
+            environment: req.query.environment,
+            path: req.query.path,
+            authorCount: result.authors.length.toString()
           }
         }
       });
