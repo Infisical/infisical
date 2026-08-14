@@ -2,6 +2,7 @@ import { Controller, useForm } from "react-hook-form";
 import { faCheckCircle, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AxiosError } from "axios";
 import ms from "ms";
 import { z } from "zod";
 
@@ -18,6 +19,10 @@ import { useCreateDynamicSecret } from "@app/hooks/api";
 import { useGetDynamicSecretProviderData } from "@app/hooks/api/dynamicSecret/queries";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { ProjectEnv } from "@app/hooks/api/types";
+
+// Sanitize a user display name into a valid dynamic secret name suffix:
+// lowercase, only alphanumeric characters and dashes.
+const sanitizeUserName = (name: string) => name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
 
 const formSchema = z.object({
   selectedUsers: z.array(
@@ -91,7 +96,13 @@ export const AzureEntraIdInputForm = ({
   const clientSecret = watch("provider.clientSecret");
 
   const configurationComplete = !!(tenantId && applicationId && clientSecret);
-  const { data, isLoading, isError, isFetching } = useGetDynamicSecretProviderData({
+  const {
+    data,
+    isLoading,
+    isError,
+    error: fetchUsersError,
+    isFetching
+  } = useGetDynamicSecretProviderData({
     tenantId,
     applicationId,
     clientSecret,
@@ -112,26 +123,28 @@ export const AzureEntraIdInputForm = ({
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
-    selectedUsers.map(async (user: { id: string; name: string; email: string }) => {
-      await createDynamicSecret.mutateAsync({
-        provider: {
-          type: DynamicSecretProviders.AzureEntraId,
-          inputs: {
-            userId: user.id,
-            tenantId: provider.tenantId,
-            email: user.email,
-            applicationId: provider.applicationId,
-            clientSecret: provider.clientSecret
-          }
-        },
-        maxTTL,
-        name: `${name}-${user.name}`,
-        path: secretPath,
-        defaultTTL,
-        projectSlug,
-        environmentSlug: environment.slug
-      });
-    });
+    await Promise.all(
+      selectedUsers.map(async (user: { id: string; name: string; email: string }) => {
+        await createDynamicSecret.mutateAsync({
+          provider: {
+            type: DynamicSecretProviders.AzureEntraId,
+            inputs: {
+              userId: user.id,
+              tenantId: provider.tenantId,
+              email: user.email,
+              applicationId: provider.applicationId,
+              clientSecret: provider.clientSecret
+            }
+          },
+          maxTTL,
+          name: `${name}-${sanitizeUserName(user.name)}`,
+          path: secretPath,
+          defaultTTL,
+          projectSlug,
+          environmentSlug: environment.slug
+        });
+      })
+    );
     onCompleted();
   };
 
@@ -297,7 +310,12 @@ export const AzureEntraIdInputForm = ({
                                     if (loading) {
                                       message = "Loading, please wait...";
                                     } else if (errored) {
-                                      message = "Check the configuration";
+                                      message =
+                                        (
+                                          fetchUsersError as AxiosError<{
+                                            message?: string;
+                                          }>
+                                        )?.response?.data?.message || "Check the configuration";
                                     } else if (!configurationComplete) {
                                       message = "Configuration incomplete";
                                     } else {
