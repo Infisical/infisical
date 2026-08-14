@@ -164,7 +164,7 @@ export const integrationDeprecationQueueFactory = ({
 
     const orgAdminRecipients = toRecipients(
       orgAdmins
-        .filter((admin) => admin.status !== OrgMembershipStatus.Invited)
+        .filter((admin) => admin.status !== OrgMembershipStatus.Invited && admin.user.isActive)
         .map((admin) => ({ userId: admin.user.id, email: admin.user.email }))
     );
     const orgAdminUserIds = new Set(orgAdminRecipients.map((recipient) => recipient.userId));
@@ -220,7 +220,9 @@ export const integrationDeprecationQueueFactory = ({
     cronJob.register({
       name: CronJobName.MonthlyNativeIntegrationDeprecationNotice,
       pattern: "0 0 18 2,5,8,11 *",
-      runHashTtlS: 7 * 24 * 60 * 60,
+      // must outlive the longest gap between two fires (92 days). The run hash is the only thing stopping a
+      // restarted pod from re-enqueuing the previous fire, since lastEnqueuedAt is per-process.
+      runHashTtlS: 100 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
         if (!appCfg.SITE_URL) {
