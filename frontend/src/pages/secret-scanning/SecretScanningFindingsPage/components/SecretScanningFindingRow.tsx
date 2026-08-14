@@ -163,8 +163,8 @@ export const SecretScanningFindingRow = ({
       <Tr>
         <Td colSpan={7} className="border-none! p-0">
           <div
-            className={`w-full overflow-hidden bg-mineshaft-900/75 transition-all duration-500 ${
-              isExpanded ? "max-h-200 opacity-100" : "max-h-0"
+            className={`w-full bg-mineshaft-900/75 transition-all duration-500 ${
+              isExpanded ? "max-h-200 overflow-y-auto opacity-100" : "max-h-0 overflow-hidden"
             }`}
           >
             <div className="grid gap-4 p-4 2xl:grid-cols-6">
@@ -187,7 +187,11 @@ export const SecretScanningFindingRow = ({
                 {details.commit}
               </GenericFieldLabel>
               <GenericFieldLabel className="col-span-full" label="Commit Message">
-                {details.message}
+                {details.message && (
+                  <span className="block max-h-24 overflow-y-auto whitespace-pre-wrap">
+                    {details.message}
+                  </span>
+                )}
               </GenericFieldLabel>
               <GenericFieldLabel label="Start Line">{details.startLine}</GenericFieldLabel>
               <GenericFieldLabel label="End Line">{details.endLine}</GenericFieldLabel>
