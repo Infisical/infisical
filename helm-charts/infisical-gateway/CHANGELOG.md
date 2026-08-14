@@ -1,3 +1,6 @@
+## 1.3.0 (August 5, 2026)
+* Added `extraArgs` for appending additional command-line arguments to the gateway container.
+
 ## 1.2.0 (July 17, 2026)
 * Added `extraEnv` for injecting additional environment variables into the gateway container.
 * Added `extraEnvFrom` for loading environment variables from Secrets or ConfigMaps.

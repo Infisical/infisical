@@ -155,7 +155,7 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
       }}
     >
       <DialogContent
-        className="overflow-visible sm:max-w-md"
+        className="sm:max-w-md"
         showCloseButton={false}
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}

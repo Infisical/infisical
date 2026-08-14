@@ -1342,7 +1342,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate",
       params: z.object({
-        id: z.string().trim().describe(CERTIFICATES.GET.id)
+        id: z.string().trim().uuid().describe(CERTIFICATES.GET.id)
       }),
       response: {
         200: z.object({
@@ -1420,7 +1420,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Update certificate",
       params: z.object({
-        id: z.string().trim().describe(CERTIFICATES.GET.id)
+        id: z.string().trim().uuid().describe(CERTIFICATES.GET.id)
       }),
       body: z.object({
         metadata: ResourceMetadataNonEncryptionSchema.optional()
@@ -1473,7 +1473,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate private key",
       params: z.object({
-        id: z.string().trim().describe(CERTIFICATES.GET.id)
+        id: z.string().trim().uuid().describe(CERTIFICATES.GET.id)
       }),
       response: {
         200: z.string().trim()
@@ -1520,7 +1520,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate bundle including the certificate, chain, and private key.",
       params: z.object({
-        id: z.string().trim().describe(CERTIFICATES.GET_CERT.id)
+        id: z.string().trim().uuid().describe(CERTIFICATES.GET_CERT.id)
       }),
       response: {
         200: z.object({
@@ -1718,7 +1718,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Delete certificate",
       params: z.object({
-        id: z.string().trim().describe(CERTIFICATES.DELETE.id)
+        id: z.string().trim().uuid().describe(CERTIFICATES.DELETE.id)
       }),
       response: {
         200: z.object({
@@ -1828,7 +1828,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate body of certificate",
       params: z.object({
-        id: z.string().trim().describe(CERTIFICATES.GET_CERT.id)
+        id: z.string().trim().uuid().describe(CERTIFICATES.GET_CERT.id)
       }),
       response: {
         200: z.object({
@@ -1881,7 +1881,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Download certificate in PKCS12 format",
       params: z.object({
-        id: z.string().trim().describe(CERTIFICATES.GET.id)
+        id: z.string().trim().uuid().describe(CERTIFICATES.GET.id)
       }),
       body: z.object({
         password: z

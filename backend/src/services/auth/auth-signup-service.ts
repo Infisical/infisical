@@ -215,7 +215,6 @@ export const authSignupServiceFactory = ({
           const org = await orgService.createOrganization(
             {
               userId: user.id,
-              userEmail: user.email ?? user.username,
               orgName: dto.organizationName
             },
             tx

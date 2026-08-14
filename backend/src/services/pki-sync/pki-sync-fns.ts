@@ -253,7 +253,9 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.Chef as PkiSync);
         const chefPkiSync = chefPkiSyncFactory({
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
         });
         return chefPkiSync.syncCertificates(pkiSync, certificateMap);
       }
@@ -396,7 +398,9 @@ export const PkiSyncFns = {
         checkPkiSyncDestination(pkiSync, PkiSync.Chef as PkiSync);
         const chefPkiSync = chefPkiSyncFactory({
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
         });
         await chefPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,

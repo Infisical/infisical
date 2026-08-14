@@ -9,6 +9,7 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle
 } from "@app/components/v3";
@@ -68,7 +69,12 @@ const Content = ({ appConnection, onComplete }: ContentProps) => {
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
         <GenericAppConnectionsFields />
-        <div className="mt-8 flex items-center gap-3">
+        <DialogFooter className="mt-8">
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
+              Cancel
+            </Button>
+          </DialogClose>
           <Button
             type="submit"
             variant={scopeVariant}
@@ -77,12 +83,7 @@ const Content = ({ appConnection, onComplete }: ContentProps) => {
           >
             Update Details
           </Button>
-          <DialogClose asChild>
-            <Button type="button" variant="outline">
-              Cancel
-            </Button>
-          </DialogClose>
-        </div>
+        </DialogFooter>
       </form>
     </FormProvider>
   );

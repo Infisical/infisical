@@ -48,7 +48,7 @@ export const DeprecationBanners = ({
       return (a.deprecation.daysLeft ?? Infinity) - (b.deprecation.daysLeft ?? Infinity);
     });
 
-  if (entries.length === 0) {
+  if (entries.length === 0 || !overview.selfServe) {
     return null;
   }
 

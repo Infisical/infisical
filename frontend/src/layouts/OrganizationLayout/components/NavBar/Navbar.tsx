@@ -12,7 +12,6 @@ import {
   Clipboard,
   ExternalLink,
   Github,
-  Infinity,
   Info,
   LogOut,
   Mail,
@@ -29,6 +28,7 @@ import { twMerge } from "tailwind-merge";
 import { AnnouncementNavButton } from "@app/components/announcements/AnnouncementNavButton";
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
+import { NewSubOrganizationModal } from "@app/components/organization/NewSubOrganizationModal";
 import { OrgPermissionCan } from "@app/components/permissions";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button as V2Button, Modal, ModalContent } from "@app/components/v2";
@@ -78,14 +78,13 @@ import {
   projectKeys,
   subOrganizationsQuery,
   useGetOrganizations,
-  useGetOrgTrialUrl,
   useLogoutUser
 } from "@app/hooks/api";
+import { appConnectionKeys } from "@app/hooks/api/appConnections";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { getSubscriptionPlanLabel } from "@app/hooks/api/subscriptions";
-import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import {
@@ -96,7 +95,6 @@ import { TypeSelect } from "@app/layouts/ProjectLayout/components/TypeSelect";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
-import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { VersionBadge } from "./VersionBadge";
 
@@ -224,6 +222,7 @@ export const Navbar = () => {
     queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
     queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
+    queryClient.removeQueries({ queryKey: appConnectionKeys.all });
 
     await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
     await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
@@ -268,8 +267,6 @@ export const Navbar = () => {
       navigateToAdminConsole();
     }
   };
-
-  const { mutateAsync } = useGetOrgTrialUrl();
 
   const logout = useLogoutUser();
   const logOutUser = async () => {
@@ -600,35 +597,9 @@ export const Navbar = () => {
       </div>
 
       <VersionBadge />
-      {subscription &&
-      subscription.slug === SubscriptionPlanTypes.Starter &&
-      !subscription.has_used_trial ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="info"
-              size="xs"
-              className="mt-px mr-2"
-              onClick={async () => {
-                if (!subscription || !rootOrg) return;
-                const url = await mutateAsync({
-                  orgId: rootOrg.id,
-                  success_url: window.location.href
-                });
-                window.location.href = url;
-              }}
-            >
-              <Infinity />
-              Free Pro Trial
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Start Free Pro Trial</TooltipContent>
-        </Tooltip>
-      ) : (
-        <Badge variant="info" className="mt-[3px] mr-3 hidden md:inline-flex">
-          {getSubscriptionPlanLabel(subscription)}
-        </Badge>
-      )}
+      <Badge variant="info" className="mt-[3px] mr-3 hidden md:inline-flex">
+        {getSubscriptionPlanLabel(subscription)}
+      </Badge>
       {!location.pathname.startsWith("/admin") && user.superAdmin && (
         <Button variant="outline" size="xs" className="mt-px mr-2" asChild>
           <Link to="/admin" onClick={handleNavigateToAdminConsole}>
@@ -847,21 +818,11 @@ export const Navbar = () => {
           </div>
         </ModalContent>
       </Modal>
-      <Modal isOpen={showSubOrgForm} onOpenChange={setShowSubOrgForm}>
-        <ModalContent
-          title="Create Sub-Organizations"
-          subTitle="Define a new sub-organization under your current organization."
-        >
-          <div className="mb-2">
-            <NewSubOrganizationForm
-              onClose={() => {
-                setShowSubOrgForm(false);
-              }}
-              handleOrgSelection={handleOrgSelection}
-            />
-          </div>
-        </ModalContent>
-      </Modal>
+      <NewSubOrganizationModal
+        isOpen={showSubOrgForm}
+        onOpenChange={setShowSubOrgForm}
+        onCreated={({ id }) => handleOrgSelection({ organizationId: id })}
+      />
       <Modal isOpen={showAdminsModal} onOpenChange={setShowAdminsModal}>
         <ModalContent title="Server Administrators" subTitle="View all server administrators">
           <div className="mb-2">

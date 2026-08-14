@@ -139,7 +139,8 @@ const ProjectSelectInner = () => {
                 {projectsSortedByFav.map((workspace) => (
                   <CommandItem
                     key={workspace.id}
-                    value={workspace.name}
+                    value={workspace.id}
+                    keywords={[workspace.name]}
                     onSelect={() => handleSelectProject(workspace.id)}
                     className="gap-2"
                   >
