@@ -1,11 +1,19 @@
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusIcon, TrashIcon } from "lucide-react";
+import { CircleAlertIcon, PlusIcon, RefreshCwIcon, TrashIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, IconButton, PageLoader, SheetFooter } from "@app/components/v3";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  IconButton,
+  PageLoader,
+  SheetFooter
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -33,8 +41,14 @@ type Props = {
 export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onClose }: Props) => {
   const { subscription } = useSubscription();
   const { projectId, currentProject } = useProject();
-  const { isRolesLoading, assignableRoleSlugs, getRolesForSelect, isEditDisabled } =
-    useMemberRoleGrant(projectMember);
+  const {
+    isRolesLoading,
+    isRolesError,
+    refetchRoles,
+    assignableRoleSlugs,
+    getRolesForSelect,
+    isEditDisabled
+  } = useMemberRoleGrant(projectMember);
   const updateMembershipRole = useUpdateUserWorkspaceRole();
 
   const roleForm = useForm<TRoleForm>({
@@ -66,6 +80,28 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onClo
     createNotification({ text: "Successfully updated roles", type: "success" });
     onClose();
   };
+
+  if (isRolesError) {
+    return (
+      <div className="p-4">
+        <Alert variant="danger">
+          <CircleAlertIcon />
+          <AlertTitle>Could not load project roles</AlertTitle>
+          <AlertDescription>
+            <span>Retry to edit this user&apos;s roles.</span>
+            <Button
+              size="xs"
+              variant="danger"
+              onClick={() => refetchRoles().catch(() => undefined)}
+            >
+              <RefreshCwIcon />
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   if (isRolesLoading) {
     return (

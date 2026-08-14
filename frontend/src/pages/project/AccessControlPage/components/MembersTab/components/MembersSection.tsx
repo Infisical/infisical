@@ -1,10 +1,18 @@
+import { useState } from "react";
 import { UserPlusIcon } from "lucide-react";
 
 import { AssumePrivilegesModal } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Card,
   CardAction,
@@ -12,7 +20,13 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DocumentationLinkBadge
+  DocumentationLinkBadge,
+  Field,
+  FieldLabel,
+  Input,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -34,7 +48,8 @@ export const MembersSection = () => {
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
-  const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
+  const removeUserMutation = useDeleteUserFromWorkspace();
+  const [removeConfirmation, setRemoveConfirmation] = useState("");
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addMember",
@@ -47,7 +62,7 @@ export const MembersSection = () => {
     if (!currentOrg?.id) return;
     if (!currentProject?.id) return;
 
-    await removeUserFromWorkspace({
+    await removeUserMutation.mutateAsync({
       projectId: currentProject.id,
       projectType: currentProject.type,
       usernames: [username],
@@ -57,8 +72,11 @@ export const MembersSection = () => {
       text: "Successfully removed user from project",
       type: "success"
     });
+    setRemoveConfirmation("");
     handlePopUpClose("removeMember");
   };
+
+  const removeMemberUsername = (popUp?.removeMember?.data as { username?: string })?.username;
 
   return (
     <>
@@ -76,16 +94,33 @@ export const MembersSection = () => {
               I={ProjectPermissionActions.Create}
               a={ProjectPermissionSub.Member}
             >
-              {(isAllowed) => (
-                <Button
-                  variant="project"
-                  onClick={() => handlePopUpOpen("addMember")}
-                  isDisabled={!isAllowed}
-                >
-                  <UserPlusIcon />
-                  {isCertManager ? "Add Users" : `Add Users to ${productLabel}`}
-                </Button>
-              )}
+              {(isAllowed) => {
+                const button = (
+                  <Button
+                    variant="project"
+                    onClick={() => handlePopUpOpen("addMember")}
+                    isDisabled={!isAllowed}
+                  >
+                    <UserPlusIcon />
+                    {isCertManager ? "Add Users" : `Add Users to ${productLabel}`}
+                  </Button>
+                );
+
+                return isAllowed ? (
+                  button
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+                      <span tabIndex={0}>{button}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      You don&apos;t have permission to add users to this{" "}
+                      {productLabel.toLowerCase()}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }}
             </ProjectPermissionCan>
           </CardAction>
         </CardHeader>
@@ -94,13 +129,51 @@ export const MembersSection = () => {
         </CardContent>
       </Card>
       <AddMemberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
-        isOpen={popUp.removeMember.isOpen}
-        deleteKey="remove"
-        title={`Do you want to remove this user from the ${productLabel.toLowerCase()}?`}
-        onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
-        onDeleteApproved={handleRemoveUser}
-      />
+      <AlertDialog
+        open={popUp.removeMember.isOpen}
+        onOpenChange={(isOpen) => {
+          if (removeUserMutation.isPending) return;
+          if (!isOpen) setRemoveConfirmation("");
+          handlePopUpToggle("removeMember", isOpen);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Remove {removeMemberUsername || "this user"} from the {productLabel.toLowerCase()}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This user will lose access granted by this membership.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Field>
+            <FieldLabel htmlFor="remove-project-member-confirmation">
+              Type &quot;remove&quot; to confirm
+            </FieldLabel>
+            <Input
+              id="remove-project-member-confirmation"
+              value={removeConfirmation}
+              onChange={(event) => setRemoveConfirmation(event.target.value)}
+              autoComplete="off"
+              disabled={removeUserMutation.isPending}
+            />
+          </Field>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={removeUserMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={removeUserMutation.isPending}
+              isDisabled={removeConfirmation !== "remove"}
+              onClick={(event) => {
+                event.preventDefault();
+                handleRemoveUser().catch(() => undefined);
+              }}
+            >
+              Remove User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AssumePrivilegesModal
         isOpen={popUp.assumePrivileges.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}

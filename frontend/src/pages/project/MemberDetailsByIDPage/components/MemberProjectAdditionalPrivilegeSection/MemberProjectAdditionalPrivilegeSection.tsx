@@ -1,13 +1,31 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format, formatDistance } from "date-fns";
-import { ClockAlertIcon, ClockIcon, EllipsisIcon, PlusIcon, ShieldIcon } from "lucide-react";
+import {
+  CircleAlertIcon,
+  ClockAlertIcon,
+  ClockIcon,
+  EllipsisIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  ShieldIcon
+} from "lucide-react";
 import picomatch from "picomatch";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Lottie } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertTitle,
   Badge,
   Button,
   Card,
@@ -26,7 +44,11 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  Field,
+  FieldLabel,
   IconButton,
+  Input,
+  PageLoader,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -82,13 +104,18 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
     "revokeAccess"
   ] as const);
   const { permission } = useProjectPermission();
+  const [deletePrivilegeConfirmation, setDeletePrivilegeConfirmation] = useState("");
+  const [revokeAccessConfirmation, setRevokeAccessConfirmation] = useState("");
 
-  const { mutateAsync: deletePrivilege } = useDeleteProjectUserAdditionalPrivilege();
-  const { mutateAsync: revokeAccessRequest } = useRevokeAccessRequest();
+  const deletePrivilegeMutation = useDeleteProjectUserAdditionalPrivilege();
+  const revokeAccessMutation = useRevokeAccessRequest();
 
-  const { data: userProjectPrivileges, isPending } = useListProjectUserPrivileges(
-    membershipDetails?.id
-  );
+  const {
+    data: userProjectPrivileges,
+    isPending,
+    isError,
+    refetch: refetchPrivileges
+  } = useListProjectUserPrivileges(membershipDetails?.id);
 
   const isOwnProjectMembershipDetails = userId === membershipDetails?.user?.id;
 
@@ -111,11 +138,12 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
 
   const handlePrivilegeDelete = async () => {
     const { id } = popUp?.deletePrivilege?.data as { id: string };
-    await deletePrivilege({
+    await deletePrivilegeMutation.mutateAsync({
       privilegeId: id,
       projectMembershipId: membershipDetails.id
     });
     createNotification({ type: "success", text: "Successfully removed the privilege" });
+    setDeletePrivilegeConfirmation("");
     handlePopUpClose("deletePrivilege");
   };
 
@@ -123,7 +151,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
     const { accessApprovalRequestId } = popUp?.revokeAccess?.data as {
       accessApprovalRequestId: string;
     };
-    await revokeAccessRequest({
+    await revokeAccessMutation.mutateAsync({
       requestId: accessApprovalRequestId,
       projectSlug: currentProject?.slug || ""
     });
@@ -131,6 +159,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
       queryKey: projectUserPrivilegeKeys.list(membershipDetails.id)
     });
     createNotification({ type: "success", text: "Successfully revoked access" });
+    setRevokeAccessConfirmation("");
     handlePopUpClose("revokeAccess");
   };
 
@@ -187,221 +216,243 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
           )}
         </CardHeader>
         <CardContent>
-          {/* eslint-disable-next-line no-nested-ternary */}
-          {isPending ? (
-            // scott: todo proper loader
-            <div className="flex h-40 w-full items-center justify-center">
-              <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
-            </div>
-          ) : userProjectPrivileges?.length ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-1/2">Name</TableHead>
-                  <TableHead className="w-1/2">Duration</TableHead>
-                  {!isOwnProjectMembershipDetails && <TableHead className="w-5" />}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {!isPending &&
-                  userProjectPrivileges?.map((privilegeDetails) => {
-                    const isTemporary = privilegeDetails?.isTemporary;
-                    const isLinkedToAccessApproval = privilegeDetails?.isLinkedToAccessApproval;
-                    const isExpired =
-                      privilegeDetails.isTemporary &&
-                      new Date() > new Date(privilegeDetails.temporaryAccessEndTime || "");
-
-                    let text = "Permanent";
-                    let toolTipText = "Non-Expiring Access";
-                    if (privilegeDetails.isTemporary) {
-                      if (isExpired) {
-                        text = "Access Expired";
-                        toolTipText = "Timed Access Expired";
-                      } else {
-                        text = formatDistance(
-                          new Date(privilegeDetails.temporaryAccessEndTime || ""),
-                          new Date()
-                        );
-                        toolTipText = `Until ${format(
-                          new Date(privilegeDetails.temporaryAccessEndTime || ""),
-                          "yyyy-MM-dd hh:mm:ss aaa"
-                        )}`;
-                      }
-                    }
-
-                    return (
-                      <TableRow key={`user-project-privilege-${privilegeDetails?.id}`}>
-                        <TableCell className="flex items-center gap-2">
-                          <span className="truncate">{privilegeDetails.slug}</span>
-                          {isLinkedToAccessApproval && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Badge className="capitalize" variant="info">
-                                  <ShieldIcon />
-                                  Managed
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                This privilege is managed by an access approval request.
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {isTemporary ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Badge
-                                  className="capitalize"
-                                  variant={isExpired ? "danger" : "warning"}
-                                >
-                                  {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
-                                  {text}
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent>{toolTipText}</TooltipContent>
-                            </Tooltip>
-                          ) : (
-                            text
-                          )}
-                        </TableCell>
-                        {!isOwnProjectMembershipDetails && (
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <IconButton size="xs" variant="ghost">
-                                  <EllipsisIcon />
-                                </IconButton>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                {isLinkedToAccessApproval ? (
-                                  <ProjectPermissionCan
-                                    I={ProjectPermissionMemberActions.AssignAdditionalPrivileges}
-                                    a={ProjectPermissionSub.Member}
-                                  >
-                                    {(isAllowed) => {
-                                      const isApproverForPrivilege =
-                                        privilegeDetails.policyApproverUserIds?.includes(
-                                          userId || ""
-                                        );
-                                      return (
-                                        <DropdownMenuItem
-                                          isDisabled={
-                                            !privilegeDetails.accessApprovalRequestId ||
-                                            ((!isAllowed || !canModifyMemberPrivileges) &&
-                                              !isApproverForPrivilege)
-                                          }
-                                          variant="danger"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handlePopUpOpen("revokeAccess", {
-                                              accessApprovalRequestId:
-                                                privilegeDetails.accessApprovalRequestId,
-                                              slug: privilegeDetails.slug
-                                            });
-                                          }}
-                                        >
-                                          Revoke Access
-                                        </DropdownMenuItem>
-                                      );
-                                    }}
-                                  </ProjectPermissionCan>
-                                ) : (
-                                  <>
-                                    <ProjectPermissionCan
-                                      I={ProjectPermissionActions.Edit}
-                                      a={ProjectPermissionSub.Member}
-                                    >
-                                      {(isAllowed) => (
-                                        <DropdownMenuItem
-                                          isDisabled={!isAllowed || !canModifyMemberPrivileges}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handlePopUpOpen("modifyPrivilege", privilegeDetails);
-                                          }}
-                                        >
-                                          Edit Additional Privilege
-                                        </DropdownMenuItem>
-                                      )}
-                                    </ProjectPermissionCan>
-                                    <ProjectPermissionCan
-                                      I={ProjectPermissionActions.Edit}
-                                      a={ProjectPermissionSub.Member}
-                                    >
-                                      {(isAllowed) => (
-                                        <DropdownMenuItem
-                                          isDisabled={!isAllowed || !canModifyMemberPrivileges}
-                                          variant="danger"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handlePopUpOpen("deletePrivilege", {
-                                              id: privilegeDetails?.id,
-                                              slug: privilegeDetails?.slug
-                                            });
-                                          }}
-                                        >
-                                          Remove Additional Privilege
-                                        </DropdownMenuItem>
-                                      )}
-                                    </ProjectPermissionCan>
-                                  </>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    );
-                  })}
-              </TableBody>
-            </Table>
-          ) : (
-            <Empty className="border">
-              <EmptyHeader>
-                <EmptyTitle>This user has no additional privileges</EmptyTitle>
-                <EmptyDescription>
-                  Add an additional privilege to grant one-off access policies
-                </EmptyDescription>
-              </EmptyHeader>
-              {!isOwnProjectMembershipDetails && (
-                <EmptyContent>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Edit}
-                    a={ProjectPermissionSub.Member}
-                  >
-                    {(isAllowed) => {
-                      const isEditDisabled = !isAllowed || !canModifyMemberPrivileges;
-                      const button = (
-                        <Button
-                          variant="project"
-                          size="xs"
-                          onClick={() => {
-                            handlePopUpOpen("modifyPrivilege");
-                          }}
-                          isDisabled={isEditDisabled}
-                        >
-                          <PlusIcon />
-                          Add Additional Privileges
-                        </Button>
-                      );
-                      return isEditDisabled ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="inline-block">{button}</span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            You don&apos;t have permission to edit this user&apos;s privileges
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        button
-                      );
-                    }}
-                  </ProjectPermissionCan>
-                </EmptyContent>
-              )}
-            </Empty>
+          {isError && (
+            <Alert variant="danger">
+              <CircleAlertIcon />
+              <AlertTitle>Could not load additional privileges</AlertTitle>
+              <AlertDescription>
+                <span>Retry to load this user&apos;s additional privileges.</span>
+                <Button
+                  size="xs"
+                  variant="danger"
+                  onClick={() => refetchPrivileges().catch(() => undefined)}
+                >
+                  <RefreshCwIcon />
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
           )}
+          {!isError && isPending && (
+            <div className="h-40 w-full">
+              <PageLoader lottieClassName="w-16" />
+            </div>
+          )}
+          {!isError &&
+            !isPending &&
+            (userProjectPrivileges?.length ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-1/2">Name</TableHead>
+                    <TableHead className="w-1/2">Duration</TableHead>
+                    {!isOwnProjectMembershipDetails && <TableHead className="w-5" />}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!isPending &&
+                    userProjectPrivileges?.map((privilegeDetails) => {
+                      const isTemporary = privilegeDetails?.isTemporary;
+                      const isLinkedToAccessApproval = privilegeDetails?.isLinkedToAccessApproval;
+                      const isExpired =
+                        privilegeDetails.isTemporary &&
+                        new Date() > new Date(privilegeDetails.temporaryAccessEndTime || "");
+
+                      let text = "Permanent";
+                      let toolTipText = "Non-Expiring Access";
+                      if (privilegeDetails.isTemporary) {
+                        if (isExpired) {
+                          text = "Access Expired";
+                          toolTipText = "Timed Access Expired";
+                        } else {
+                          text = formatDistance(
+                            new Date(privilegeDetails.temporaryAccessEndTime || ""),
+                            new Date()
+                          );
+                          toolTipText = `Until ${format(
+                            new Date(privilegeDetails.temporaryAccessEndTime || ""),
+                            "yyyy-MM-dd hh:mm:ss aaa"
+                          )}`;
+                        }
+                      }
+
+                      return (
+                        <TableRow key={`user-project-privilege-${privilegeDetails?.id}`}>
+                          <TableCell className="flex items-center gap-2">
+                            <span className="truncate">{privilegeDetails.slug}</span>
+                            {isLinkedToAccessApproval && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge className="capitalize" variant="info">
+                                    <ShieldIcon />
+                                    Managed
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  This privilege is managed by an access approval request.
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {isTemporary ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    className="capitalize"
+                                    variant={isExpired ? "danger" : "warning"}
+                                  >
+                                    {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+                                    {text}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>{toolTipText}</TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              text
+                            )}
+                          </TableCell>
+                          {!isOwnProjectMembershipDetails && (
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <IconButton
+                                    size="xs"
+                                    variant="ghost"
+                                    aria-label="Open additional privilege actions"
+                                  >
+                                    <EllipsisIcon />
+                                  </IconButton>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {isLinkedToAccessApproval ? (
+                                    <ProjectPermissionCan
+                                      I={ProjectPermissionMemberActions.AssignAdditionalPrivileges}
+                                      a={ProjectPermissionSub.Member}
+                                    >
+                                      {(isAllowed) => {
+                                        const isApproverForPrivilege =
+                                          privilegeDetails.policyApproverUserIds?.includes(
+                                            userId || ""
+                                          );
+                                        return (
+                                          <DropdownMenuItem
+                                            isDisabled={
+                                              !privilegeDetails.accessApprovalRequestId ||
+                                              ((!isAllowed || !canModifyMemberPrivileges) &&
+                                                !isApproverForPrivilege)
+                                            }
+                                            variant="danger"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handlePopUpOpen("revokeAccess", {
+                                                accessApprovalRequestId:
+                                                  privilegeDetails.accessApprovalRequestId,
+                                                slug: privilegeDetails.slug
+                                              });
+                                            }}
+                                          >
+                                            Revoke Access
+                                          </DropdownMenuItem>
+                                        );
+                                      }}
+                                    </ProjectPermissionCan>
+                                  ) : (
+                                    <>
+                                      <ProjectPermissionCan
+                                        I={ProjectPermissionActions.Edit}
+                                        a={ProjectPermissionSub.Member}
+                                      >
+                                        {(isAllowed) => (
+                                          <DropdownMenuItem
+                                            isDisabled={!isAllowed || !canModifyMemberPrivileges}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handlePopUpOpen("modifyPrivilege", privilegeDetails);
+                                            }}
+                                          >
+                                            Edit Additional Privilege
+                                          </DropdownMenuItem>
+                                        )}
+                                      </ProjectPermissionCan>
+                                      <ProjectPermissionCan
+                                        I={ProjectPermissionActions.Edit}
+                                        a={ProjectPermissionSub.Member}
+                                      >
+                                        {(isAllowed) => (
+                                          <DropdownMenuItem
+                                            isDisabled={!isAllowed || !canModifyMemberPrivileges}
+                                            variant="danger"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handlePopUpOpen("deletePrivilege", {
+                                                id: privilegeDetails?.id,
+                                                slug: privilegeDetails?.slug
+                                              });
+                                            }}
+                                          >
+                                            Remove Additional Privilege
+                                          </DropdownMenuItem>
+                                        )}
+                                      </ProjectPermissionCan>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
+                </TableBody>
+              </Table>
+            ) : (
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyTitle>This user has no additional privileges</EmptyTitle>
+                  <EmptyDescription>
+                    Add an additional privilege to grant one-off access policies
+                  </EmptyDescription>
+                </EmptyHeader>
+                {!isOwnProjectMembershipDetails && (
+                  <EmptyContent>
+                    <ProjectPermissionCan
+                      I={ProjectPermissionActions.Edit}
+                      a={ProjectPermissionSub.Member}
+                    >
+                      {(isAllowed) => {
+                        const isEditDisabled = !isAllowed || !canModifyMemberPrivileges;
+                        const button = (
+                          <Button
+                            variant="project"
+                            size="xs"
+                            onClick={() => {
+                              handlePopUpOpen("modifyPrivilege");
+                            }}
+                            isDisabled={isEditDisabled}
+                          >
+                            <PlusIcon />
+                            Add Additional Privileges
+                          </Button>
+                        );
+                        return isEditDisabled ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-block">{button}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              You don&apos;t have permission to edit this user&apos;s privileges
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          button
+                        );
+                      }}
+                    </ProjectPermissionCan>
+                  </EmptyContent>
+                )}
+              </Empty>
+            ))}
         </CardContent>
       </Card>
       <Sheet
@@ -427,25 +478,101 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
           />
         </SheetContent>
       </Sheet>
-      <DeleteActionModal
-        isOpen={popUp.deletePrivilege.isOpen}
-        deleteKey="remove"
-        title={`Do you want to remove role ${
-          (popUp?.deletePrivilege?.data as { slug: string; id: string })?.slug
-        }?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePrivilege", isOpen)}
-        onDeleteApproved={() => handlePrivilegeDelete()}
-      />
-      <DeleteActionModal
-        isOpen={popUp.revokeAccess.isOpen}
-        deleteKey="revoke"
-        title={`Do you want to revoke access for ${
-          (popUp?.revokeAccess?.data as { slug: string })?.slug
-        }?`}
-        subTitle="This will revoke the granted access approval request and remove the associated privilege."
-        onChange={(isOpen) => handlePopUpToggle("revokeAccess", isOpen)}
-        onDeleteApproved={() => handleRevokeAccess()}
-      />
+      <AlertDialog
+        open={popUp.deletePrivilege.isOpen}
+        onOpenChange={(isOpen) => {
+          if (deletePrivilegeMutation.isPending) return;
+          if (!isOpen) setDeletePrivilegeConfirmation("");
+          handlePopUpToggle("deletePrivilege", isOpen);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Remove additional privilege &quot;
+              {(popUp?.deletePrivilege?.data as { slug: string; id: string })?.slug}&quot;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This policy will no longer grant additional access to this user.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Field>
+            <FieldLabel htmlFor="remove-member-privilege-confirmation">
+              Type &quot;remove&quot; to confirm
+            </FieldLabel>
+            <Input
+              id="remove-member-privilege-confirmation"
+              value={deletePrivilegeConfirmation}
+              onChange={(event) => setDeletePrivilegeConfirmation(event.target.value)}
+              autoComplete="off"
+              disabled={deletePrivilegeMutation.isPending}
+            />
+          </Field>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={deletePrivilegeMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={deletePrivilegeMutation.isPending}
+              isDisabled={deletePrivilegeConfirmation !== "remove"}
+              onClick={(event) => {
+                event.preventDefault();
+                handlePrivilegeDelete().catch(() => undefined);
+              }}
+            >
+              Remove Privilege
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={popUp.revokeAccess.isOpen}
+        onOpenChange={(isOpen) => {
+          if (revokeAccessMutation.isPending) return;
+          if (!isOpen) setRevokeAccessConfirmation("");
+          handlePopUpToggle("revokeAccess", isOpen);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Revoke access for &quot;{(popUp?.revokeAccess?.data as { slug: string })?.slug}&quot;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will revoke the access approval request and remove its associated privilege.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Field>
+            <FieldLabel htmlFor="revoke-member-access-confirmation">
+              Type &quot;revoke&quot; to confirm
+            </FieldLabel>
+            <Input
+              id="revoke-member-access-confirmation"
+              value={revokeAccessConfirmation}
+              onChange={(event) => setRevokeAccessConfirmation(event.target.value)}
+              autoComplete="off"
+              disabled={revokeAccessMutation.isPending}
+            />
+          </Field>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={revokeAccessMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={revokeAccessMutation.isPending}
+              isDisabled={revokeAccessConfirmation !== "revoke"}
+              onClick={(event) => {
+                event.preventDefault();
+                handleRevokeAccess().catch(() => undefined);
+              }}
+            >
+              Revoke Access
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
