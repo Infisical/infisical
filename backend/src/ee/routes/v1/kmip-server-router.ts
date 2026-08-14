@@ -31,9 +31,7 @@ const SanitizedKmipServerSchema = KmipServersSchema.pick({
 
 // Cert config lives on the server entity. The daemon's /connect call reads it, rather than
 // passing it on every launch. TTL is API-only (no UI field) and defaults to 1y.
-// ms() throws on unparseable input (including ""), so guard it to return a clean 400.
-// The 1h floor catches accidents like "1m" (ms reads it as one minute, not one month) that
-// would otherwise have the server reissuing its certificate every few seconds forever.
+// The 1h floor catches "1m", which ms() reads as one minute rather than one month.
 const MIN_TTL_MS = ms(MIN_SERVER_CERT_TTL);
 const isTtlAtLeastFloor = (val: string) => {
   try {

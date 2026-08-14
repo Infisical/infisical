@@ -82,8 +82,7 @@ export type TKmipServiceFactory = ReturnType<typeof kmipServiceFactory>;
 
 export const MIN_SERVER_CERT_TTL = "1h";
 
-// Throws rather than clamping: a clamp leaves the stored value wrong and the operator never learns
-// the certificate they get is not the one they configured.
+// Throws rather than clamping, so a wrong stored value surfaces instead of being silently altered.
 export const assertTtlAtLeastFloor = (ttl: string) => {
   let parsed: number | undefined;
   try {
@@ -91,8 +90,7 @@ export const assertTtlAtLeastFloor = (ttl: string) => {
   } catch {
     parsed = undefined;
   }
-  // ms() returns undefined for unparseable input rather than throwing, and NaN comparisons are
-  // always false, so an explicit finiteness check is what stops garbage reaching certificate issuance.
+  // ms() returns undefined rather than throwing, and NaN comparisons are always false.
   if (!Number.isFinite(parsed)) {
     throw new BadRequestError({ message: `KMIP server certificate TTL '${ttl}' is not a valid duration.` });
   }
@@ -850,9 +848,7 @@ export const kmipServiceFactory = ({
     keyAlgorithm,
     hostnamesOrIps
   }: TRegisterServerDTO) => {
-    // Both callers (the enrollment /connect flow and the legacy registration route) land here, so
-    // the floor is enforced at issuance rather than per route. Sub-hour certificates expire faster
-    // than the daemon can replace them, which is the "1m" typo for one month.
+    // Enforced here rather than per route, since both enrollment paths issue through this.
     assertTtlAtLeastFloor(ttl);
 
     // KMIP servers authenticate via their enrollment-based access token, which is itself the
