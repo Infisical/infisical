@@ -249,7 +249,7 @@ const IdentityRoleAssignmentRow = ({
                   type="button"
                   variant={variant}
                   isDisabled={isEditDisabled}
-                  className="w-full capitalize"
+                  className="w-full"
                 >
                   {isTemporary && <ClockIcon />}
                   {text}
