@@ -40,7 +40,6 @@ export const OpenAIServiceAccountRotationParametersFields = () => {
             </FieldLabelWithTooltip>
             <FilterableSelect
               inputId="openai-project"
-              menuPlacement="top"
               isLoading={isProjectsPending && Boolean(connectionId)}
               isDisabled={!connectionId}
               value={projects?.find((project) => project.id === value) ?? null}

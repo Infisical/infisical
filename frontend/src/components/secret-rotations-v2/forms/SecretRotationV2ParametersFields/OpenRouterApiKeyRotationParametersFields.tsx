@@ -7,8 +7,8 @@ import {
   FieldContent,
   FieldError,
   FieldFeedback,
-  FieldLabel,
   Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
@@ -132,10 +132,10 @@ export const OpenRouterApiKeyRotationParametersFields = () => {
               id="include-byok-in-limit"
               checked={value ?? false}
               onCheckedChange={onChange}
-              variant="success"
+              variant="project"
             />
             <FieldContent>
-              <FieldLabel htmlFor="include-byok-in-limit">Include BYOK</FieldLabel>
+              <Label htmlFor="include-byok-in-limit">Include BYOK</Label>
               <FieldFeedback
                 id="include-byok-in-limit-feedback"
                 description={

@@ -40,7 +40,6 @@ export const AwsIamUserSecretRotationParametersFields = () => {
             <FieldLabelWithTooltip htmlFor="aws-iam-user">IAM User</FieldLabelWithTooltip>
             <FilterableSelect
               inputId="aws-iam-user"
-              menuPlacement="top"
               isLoading={isClientsPending && Boolean(connectionId)}
               isDisabled={!connectionId}
               value={clients?.find((client) => client.UserName === value) ?? ""}
@@ -66,7 +65,7 @@ export const AwsIamUserSecretRotationParametersFields = () => {
                   <TooltipTrigger asChild>
                     <button type="button" className="inline-flex items-center gap-1 text-left">
                       <span>Don&#39;t see the IAM user you&#39;re looking for?</span>
-                      <InfoIcon className="size-3.5 shrink-0 text-muted" />
+                      <InfoIcon className="size-3 shrink-0 text-muted" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-md">

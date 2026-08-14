@@ -27,7 +27,7 @@ export const SecretRotationV2ModalHeader = ({ type, isConfigured }: Props) => {
         <p className="mt-1 text-sm leading-4 font-normal text-muted">
           {isConfigured
             ? `Edit the ${destinationDetails.name} rotation configuration.`
-            : `Configure how Infisical rotates ${destinationDetails.name.toLowerCase()}.`}
+            : `Configure how Infisical rotates ${destinationDetails.name}.`}
         </p>
       </div>
     </div>

@@ -51,7 +51,6 @@ export const SnowflakeUserKeyPairRotationParametersFields = () => {
             <FieldLabelWithTooltip htmlFor="snowflake-user">User</FieldLabelWithTooltip>
             <CreatableSelect<TUserOption>
               inputId="snowflake-user"
-              menuPlacement="top"
               isLoading={isUsersPending && Boolean(connectionId) && !isUpdate}
               isDisabled={!connectionId || isUpdate}
               value={users?.find((user) => user.name === value) ?? (value ? { name: value } : null)}
@@ -84,7 +83,7 @@ export const SnowflakeUserKeyPairRotationParametersFields = () => {
                     <TooltipTrigger asChild>
                       <button type="button" className="inline-flex items-center gap-1 text-left">
                         <span>Don&#39;t see the user you&#39;re looking for?</span>
-                        <InfoIcon className="size-3.5 shrink-0 text-muted" />
+                        <InfoIcon className="size-3 shrink-0 text-muted" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-md">

@@ -92,7 +92,6 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
               onChange={(newValue) => {
                 if ((newValue as SingleValue<{ id: string; name: string }>)?.id === "_create") {
                   handlePopUpOpen("addConnection");
-                  onChange(null);
                   localStorage.setItem(
                     "secretRotationFormData",
                     JSON.stringify(watch(), (key, serializedValue) =>

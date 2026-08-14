@@ -88,7 +88,7 @@ export const CloudflareR2AccessKeyRotationParametersFields = () => {
         <TabsTrigger value={ParameterTab.General}>General</TabsTrigger>
         <TabsTrigger value={ParameterTab.Restrictions}>Restrictions</TabsTrigger>
       </TabsList>
-      <TabsContent value={ParameterTab.General}>
+      <TabsContent value={ParameterTab.General} className="space-y-4">
         <Controller
           control={control}
           name="parameters.name"
@@ -167,7 +167,7 @@ export const CloudflareR2AccessKeyRotationParametersFields = () => {
           )}
         />
       </TabsContent>
-      <TabsContent value={ParameterTab.Restrictions}>
+      <TabsContent value={ParameterTab.Restrictions} className="space-y-4">
         <CloudflareIpListField
           control={control}
           name="parameters.allowedIps"

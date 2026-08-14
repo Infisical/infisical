@@ -46,7 +46,7 @@ const ProviderCard = ({ type, onSelect }: { type: SecretRotation; onSelect: () =
       <div className="flex flex-col gap-1">
         <p className="text-sm font-semibold text-foreground">{name}</p>
         <p className="text-xs leading-relaxed text-muted">
-          Rotate {name.toLowerCase()} and write the generated values to Infisical secrets.
+          Rotate {name} and write the generated values to Infisical secrets.
         </p>
       </div>
     </button>

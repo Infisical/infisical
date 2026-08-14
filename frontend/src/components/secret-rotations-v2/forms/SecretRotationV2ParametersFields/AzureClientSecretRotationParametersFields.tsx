@@ -39,7 +39,6 @@ export const AzureClientSecretRotationParametersFields = () => {
           <FieldLabelWithTooltip htmlFor="azure-application">Application</FieldLabelWithTooltip>
           <FilterableSelect
             inputId="azure-application"
-            menuPlacement="top"
             isLoading={isClientsPending && Boolean(connectionId)}
             isDisabled={!connectionId}
             value={clients?.find((client) => client.id === value) ?? null}
@@ -63,7 +62,7 @@ export const AzureClientSecretRotationParametersFields = () => {
                 <TooltipTrigger asChild>
                   <button type="button" className="inline-flex items-center gap-1 text-left">
                     <span>Don&#39;t see the application you&#39;re looking for?</span>
-                    <InfoIcon className="size-3.5 shrink-0 text-muted" />
+                    <InfoIcon className="size-3 shrink-0 text-muted" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-md">

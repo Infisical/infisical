@@ -41,7 +41,6 @@ export const DatabricksServiceAccountSecretRotationParametersFields = () => {
           </FieldLabelWithTooltip>
           <FilterableSelect
             inputId="databricks-service-account-principal"
-            menuPlacement="top"
             isLoading={isServicePrincipalsPending && Boolean(connectionId)}
             isDisabled={!connectionId}
             value={servicePrincipals?.find((sp) => sp.id === value) ?? null}
@@ -66,7 +65,7 @@ export const DatabricksServiceAccountSecretRotationParametersFields = () => {
                 <TooltipTrigger asChild>
                   <button type="button" className="inline-flex items-center gap-1 text-left">
                     <span>Don&#39;t see the service principal you&#39;re looking for?</span>
-                    <InfoIcon className="size-3.5 shrink-0 text-muted" />
+                    <InfoIcon className="size-3 shrink-0 text-muted" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-md">

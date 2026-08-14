@@ -33,7 +33,6 @@ export const DatadogApplicationKeySecretRotationParametersFields = () => {
           </FieldLabelWithTooltip>
           <FilterableSelect
             inputId="datadog-service-account"
-            menuPlacement="top"
             isLoading={isServiceAccountsPending && Boolean(connectionId)}
             isDisabled={!connectionId}
             value={serviceAccounts?.find((serviceAccount) => serviceAccount.id === value) ?? null}

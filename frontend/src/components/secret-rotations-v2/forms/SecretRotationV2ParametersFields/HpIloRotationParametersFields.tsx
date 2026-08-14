@@ -16,6 +16,8 @@ import {
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { HpIloRotationMethod } from "@app/hooks/api/secretRotationsV2/types/hp-ilo-rotation";
 
+import { PasswordRequirementsFields } from "./shared";
+
 // iLO 5 has a maximum password length of 39 characters
 const HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS = {
   length: 39,
@@ -171,132 +173,7 @@ export const HpIloRotationParametersFields = () => {
           />
         )}
       </div>
-      <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-border">
-          <span className="text-sm text-label">Password Requirements</span>
-        </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-sm border border-border bg-card px-3 pt-3">
-          <Controller
-            control={control}
-            name="parameters.passwordRequirements.length"
-            defaultValue={HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS.length}
-            render={({ field, fieldState: { error } }) => (
-              <Field data-invalid={Boolean(error)}>
-                <FieldLabelWithTooltip tooltip="The length of the password to generate">
-                  Password Length
-                </FieldLabelWithTooltip>
-                <Input
-                  type="number"
-                  min={1}
-                  max={250}
-                  {...field}
-                  isError={Boolean(error)}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
-                />
-                <FieldError>{error?.message}</FieldError>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="parameters.passwordRequirements.required.digits"
-            defaultValue={HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS.required.digits}
-            render={({ field, fieldState: { error } }) => (
-              <Field data-invalid={Boolean(error)}>
-                <FieldLabelWithTooltip tooltip="Minimum number of digits">
-                  Digit Count
-                </FieldLabelWithTooltip>
-                <Input
-                  type="number"
-                  min={0}
-                  {...field}
-                  isError={Boolean(error)}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
-                />
-                <FieldError>{error?.message}</FieldError>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="parameters.passwordRequirements.required.lowercase"
-            defaultValue={HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS.required.lowercase}
-            render={({ field, fieldState: { error } }) => (
-              <Field data-invalid={Boolean(error)}>
-                <FieldLabelWithTooltip tooltip="Minimum number of lowercase characters">
-                  Lowercase Character Count
-                </FieldLabelWithTooltip>
-                <Input
-                  type="number"
-                  min={0}
-                  {...field}
-                  isError={Boolean(error)}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
-                />
-                <FieldError>{error?.message}</FieldError>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="parameters.passwordRequirements.required.uppercase"
-            defaultValue={HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS.required.uppercase}
-            render={({ field, fieldState: { error } }) => (
-              <Field data-invalid={Boolean(error)}>
-                <FieldLabelWithTooltip tooltip="Minimum number of uppercase characters">
-                  Uppercase Character Count
-                </FieldLabelWithTooltip>
-                <Input
-                  type="number"
-                  min={0}
-                  {...field}
-                  isError={Boolean(error)}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
-                />
-                <FieldError>{error?.message}</FieldError>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="parameters.passwordRequirements.required.symbols"
-            defaultValue={HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS.required.symbols}
-            render={({ field, fieldState: { error } }) => (
-              <Field data-invalid={Boolean(error)}>
-                <FieldLabelWithTooltip tooltip="Minimum number of symbols">
-                  Symbol Count
-                </FieldLabelWithTooltip>
-                <Input
-                  type="number"
-                  min={0}
-                  {...field}
-                  isError={Boolean(error)}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
-                />
-                <FieldError>{error?.message}</FieldError>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="parameters.passwordRequirements.allowedSymbols"
-            render={({ field, fieldState: { error } }) => (
-              <Field data-invalid={Boolean(error)}>
-                <FieldLabelWithTooltip tooltip="Symbols to use in generated password">
-                  Allowed Symbols
-                </FieldLabelWithTooltip>
-                <Input
-                  placeholder="-_.~!*"
-                  {...field}
-                  isError={Boolean(error)}
-                  onChange={(e) => field.onChange(e.target.value)}
-                />
-                <FieldError>{error?.message}</FieldError>
-              </Field>
-            )}
-          />
-        </div>
-      </div>
+      <PasswordRequirementsFields defaultRequirements={HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS} />
     </>
   );
 };

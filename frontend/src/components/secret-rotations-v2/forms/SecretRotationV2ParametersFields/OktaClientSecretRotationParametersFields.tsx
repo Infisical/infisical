@@ -32,7 +32,6 @@ export const OktaClientSecretRotationParametersFields = () => {
           </FieldLabelWithTooltip>
           <FilterableSelect
             inputId="okta-application"
-            menuPlacement="top"
             isLoading={isAppsPending && Boolean(connectionId)}
             isDisabled={!connectionId}
             value={apps?.find((app) => app.id === value) ?? null}

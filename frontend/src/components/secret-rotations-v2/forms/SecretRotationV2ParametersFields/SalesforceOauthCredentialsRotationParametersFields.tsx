@@ -41,7 +41,6 @@ export const SalesforceOauthCredentialsRotationParametersFields = () => {
           </FieldLabelWithTooltip>
           <FilterableSelect
             inputId="salesforce-external-client-app"
-            menuPlacement="top"
             isLoading={isAppsPending && Boolean(connectionId)}
             isDisabled={!connectionId}
             value={apps?.find((app) => app.identifier === value) ?? null}
@@ -68,7 +67,7 @@ export const SalesforceOauthCredentialsRotationParametersFields = () => {
                 <TooltipTrigger asChild>
                   <button type="button" className="inline-flex items-center gap-1 text-left">
                     <span>Don&#39;t see the app you&#39;re looking for?</span>
-                    <InfoIcon className="size-3.5 shrink-0 text-muted" />
+                    <InfoIcon className="size-3 shrink-0 text-muted" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-md">

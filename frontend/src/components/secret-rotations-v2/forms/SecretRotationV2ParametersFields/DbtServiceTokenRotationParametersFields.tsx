@@ -84,22 +84,29 @@ export const DbtServiceTokenRotationParametersFields = () => {
           </Field>
         )}
       />
-      <FieldLabel>Permission Grants</FieldLabel>
-      <div
-        className={twMerge(
-          "mb-3 flex w-full flex-col space-y-2",
-          permissionGrantsFields?.fields?.length >= 5 ? "max-h-72 overflow-y-auto" : ""
-        )}
-      >
-        {permissionGrantsFields.fields.map(({ id: roleFieldId }, i) => (
-          <div key={roleFieldId} className="flex items-end space-x-2">
-            <div className="w-80">
-              {i === 0 && <span className="text-xs text-muted">Permission set</span>}
+      <div className="space-y-2">
+        <FieldLabel>Permission Grants</FieldLabel>
+        <div
+          className={twMerge(
+            "flex w-full flex-col gap-2",
+            permissionGrantsFields.fields.length >= 5 ? "max-h-72 overflow-y-auto" : ""
+          )}
+        >
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.25rem] items-center gap-2 text-xs text-muted">
+            <span>Permission set</span>
+            <span>Projects</span>
+            <span className="size-9" aria-hidden />
+          </div>
+          {permissionGrantsFields.fields.map(({ id: roleFieldId }, i) => (
+            <div
+              key={roleFieldId}
+              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.25rem] items-start gap-2"
+            >
               <Controller
                 control={control}
                 name={`parameters.permissionGrants.${i}.permissionSet`}
                 render={({ field, fieldState: { error } }) => (
-                  <Field data-invalid={Boolean(error)}>
+                  <Field className="min-w-0" data-invalid={Boolean(error)}>
                     <Select
                       value={field.value}
                       onValueChange={(nextValue) => {
@@ -108,7 +115,7 @@ export const DbtServiceTokenRotationParametersFields = () => {
                         field.onChange(nextValue);
                       }}
                     >
-                      <SelectTrigger className="w-80" isError={Boolean(error)}>
+                      <SelectTrigger className="w-full" isError={Boolean(error)}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent position="popper" className="max-h-72">
@@ -128,14 +135,11 @@ export const DbtServiceTokenRotationParametersFields = () => {
                   </Field>
                 )}
               />
-            </div>
-            <div className="grow">
-              {i === 0 && <FieldLabel className="text-xs text-muted">Projects</FieldLabel>}
               <Controller
                 control={control}
                 name={`parameters.permissionGrants.${i}.projectId`}
                 render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
-                  <Field className="w-full" data-invalid={Boolean(error)}>
+                  <Field className="min-w-0" data-invalid={Boolean(error)}>
                     <FilterableSelect
                       isLoading={isProjectsPending && Boolean(connectionId)}
                       isDisabled={!connectionId}
@@ -156,43 +160,42 @@ export const DbtServiceTokenRotationParametersFields = () => {
                   </Field>
                 )}
               />
+              <IconButton
+                type="button"
+                aria-label="Delete grant"
+                className="self-start"
+                variant="outline"
+                onClick={() => {
+                  const roles = getValues("parameters.permissionGrants");
+                  if (roles && roles.length > 1) {
+                    permissionGrantsFields.remove(i);
+                  } else {
+                    setValue("parameters.permissionGrants", [
+                      { permissionSet: DbtPermissionsSet.AccountAdmin, projectId: undefined }
+                    ]);
+                  }
+                }}
+              >
+                <TrashIcon />
+              </IconButton>
             </div>
-
-            <IconButton
+          ))}
+          <div>
+            <Button
               type="button"
-              aria-label="Delete grant"
-              className="bottom-0.5 h-9"
+              size="xs"
               variant="outline"
-              onClick={() => {
-                const roles = getValues("parameters.permissionGrants");
-                if (roles && roles?.length > 1) {
-                  permissionGrantsFields.remove(i);
-                } else {
-                  setValue("parameters.permissionGrants", [
-                    { permissionSet: DbtPermissionsSet.AccountAdmin, projectId: undefined }
-                  ]);
-                }
-              }}
+              onClick={() =>
+                permissionGrantsFields.append({
+                  permissionSet: DbtPermissionsSet.AccountAdmin,
+                  projectId: undefined
+                })
+              }
             >
-              <TrashIcon />
-            </IconButton>
+              <PlusIcon />
+              Add grant
+            </Button>
           </div>
-        ))}
-        <div>
-          <Button
-            type="button"
-            size="xs"
-            variant="outline"
-            onClick={() =>
-              permissionGrantsFields.append({
-                permissionSet: DbtPermissionsSet.AccountAdmin,
-                projectId: undefined
-              })
-            }
-          >
-            <PlusIcon />
-            Add grant
-          </Button>
         </div>
       </div>
     </>

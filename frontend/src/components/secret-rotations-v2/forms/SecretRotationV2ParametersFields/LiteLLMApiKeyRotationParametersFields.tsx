@@ -137,7 +137,7 @@ export const LiteLLMApiKeyRotationParametersFields = () => {
         <TabsTrigger value={ParameterTab.General}>General</TabsTrigger>
         <TabsTrigger value={ParameterTab.Advanced}>Advanced</TabsTrigger>
       </TabsList>
-      <TabsContent value={ParameterTab.General}>
+      <TabsContent value={ParameterTab.General} className="space-y-4">
         <Controller
           name="parameters.name"
           control={control}
@@ -279,7 +279,7 @@ export const LiteLLMApiKeyRotationParametersFields = () => {
           )}
         />
       </TabsContent>
-      <TabsContent value={ParameterTab.Advanced}>
+      <TabsContent value={ParameterTab.Advanced} className="space-y-4">
         <Controller
           name="parameters.additionalOptions"
           control={control}

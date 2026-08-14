@@ -6,11 +6,13 @@ import {
   Alert,
   AlertDescription,
   Field,
+  FieldContent,
   FieldError,
   FieldFeedback,
   FieldLabel,
   FilterableSelect,
   Input,
+  Label,
   Switch
 } from "@app/components/v3";
 import {
@@ -35,9 +37,6 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted">
-        Configure the connection rotation strategy for this Secret Rotation.
-      </p>
       {!isUpdate && environments && (
         <Controller
           control={control}
@@ -108,7 +107,7 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
                   if (next.hours === value.hours && next.minutes === value.minutes) return;
                   onChange(next);
                 }}
-                className="scheme-dark"
+                className="scheme-dark [&::-webkit-calendar-picker-indicator]:hidden"
                 isError={Boolean(error)}
               />
               <FieldError>{error?.message}</FieldError>
@@ -124,10 +123,10 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
         render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => {
           return (
             <Field data-invalid={Boolean(error)} orientation="horizontal">
-              <div className="flex-1">
-                <FieldLabel htmlFor="auto-rotation-enabled">
+              <FieldContent>
+                <Label htmlFor="auto-rotation-enabled">
                   Auto-Rotation {value ? "Enabled" : "Disabled"}
-                </FieldLabel>
+                </Label>
                 <FieldFeedback
                   id="auto-rotation-enabled-feedback"
                   description={
@@ -137,11 +136,11 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
                   }
                   error={error?.message}
                 />
-              </div>
+              </FieldContent>
               <Switch
                 ref={ref}
                 id="auto-rotation-enabled"
-                variant="success"
+                variant="project"
                 checked={value}
                 onBlur={onBlur}
                 onCheckedChange={onChange}

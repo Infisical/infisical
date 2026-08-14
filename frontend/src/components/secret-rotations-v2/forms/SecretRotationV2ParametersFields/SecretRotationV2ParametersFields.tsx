@@ -69,11 +69,8 @@ export const SecretRotationV2ParametersFields = () => {
   const Component = COMPONENT_MAP[rotationType];
 
   return (
-    <>
-      <p className="mb-4 text-sm text-muted">
-        Configure the required parameters for this Secret Rotation.
-      </p>
+    <div className="space-y-4">
       <Component />
-    </>
+    </div>
   );
 };

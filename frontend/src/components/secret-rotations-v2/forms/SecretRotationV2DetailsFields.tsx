@@ -9,7 +9,6 @@ export const SecretRotationV2DetailsFields = () => {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted">Provide a name and description for this Secret Rotation.</p>
       <Controller
         render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => (
           <Field data-invalid={Boolean(error)}>
