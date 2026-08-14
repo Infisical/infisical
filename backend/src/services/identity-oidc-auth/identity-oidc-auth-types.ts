@@ -29,6 +29,7 @@ export type TUpdateOidcAuthDTO = {
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetOidcAuthDTO = {
@@ -43,4 +44,5 @@ export type TLoginOidcAuthDTO = {
 
 export type TRevokeOidcAuthDTO = {
   identityId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;

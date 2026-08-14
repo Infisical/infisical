@@ -154,6 +154,7 @@ export enum OrgPermissionIdentityActions {
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
   RevokeAuth = "revoke-auth",
+  EditAuth = "edit-auth",
   CreateToken = "create-token",
   GetToken = "get-token",
   DeleteToken = "delete-token"
