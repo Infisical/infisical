@@ -28,7 +28,7 @@ redis-cli ping >/dev/null 2>&1 || sudo redis-server /etc/redis/redis.conf --daem
 sudo mkdir -p /tmp/cursor/nginx/body /tmp/cursor/nginx/proxy /tmp/cursor/nginx/fastcgi \
   /tmp/cursor/nginx/uwsgi /tmp/cursor/nginx/scgi
 sudo chown -R "$(whoami)" /tmp/cursor/nginx
-if [ -f /tmp/cursor/nginx/nginx.pid ] && kill -0 "$(cat /tmp/cursor/nginx/nginx.pid)" 2>/dev/null; then
+if [ -f /tmp/cursor/nginx/nginx.pid ] && sudo kill -0 "$(cat /tmp/cursor/nginx/nginx.pid)" 2>/dev/null; then
   sudo nginx -c "$ROOT/.cursor/nginx.dev.conf" -s reload || true
 else
   sudo nginx -c "$ROOT/.cursor/nginx.dev.conf"
