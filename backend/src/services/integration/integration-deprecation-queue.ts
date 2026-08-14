@@ -219,7 +219,7 @@ export const integrationDeprecationQueueFactory = ({
 
     cronJob.register({
       name: CronJobName.MonthlyNativeIntegrationDeprecationNotice,
-      pattern: "0 0 1 */3 *", // DO NOT FORGET TO UPDATE BEFORE MERGE
+      pattern: "0 0 18 2,5,8,11 *",
       runHashTtlS: 7 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
