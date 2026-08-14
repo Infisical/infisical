@@ -12,10 +12,8 @@ export enum ProjectType {
   SecretManager = "secret-manager",
   CertificateManager = "cert-manager",
   KMS = "kms",
-  SSH = "ssh",
   SecretScanning = "secret-scanning",
-  PAM = "pam",
-  AI = "ai"
+  PAM = "pam"
 }
 
 export enum ProjectUserMembershipTemporaryMode {
@@ -204,21 +202,6 @@ export type TSearchProjectsDTO = {
   options?: { enabled?: boolean };
   orderBy?: ProjectIdentityOrderBy;
   orderDirection?: OrderByDirection;
-};
-
-export type TProjectSshConfig = {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  projectId: string;
-  defaultUserSshCaId: string | null;
-  defaultHostSshCaId: string | null;
-};
-
-export type TUpdateProjectSshConfigDTO = {
-  projectId: string;
-  defaultUserSshCaId?: string;
-  defaultHostSshCaId?: string;
 };
 
 export type TPermissionAuditSourceType = "role" | "group_role" | "additional_privilege";

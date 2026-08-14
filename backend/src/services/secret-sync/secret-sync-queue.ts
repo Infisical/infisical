@@ -1,4 +1,3 @@
-import opentelemetry from "@opentelemetry/api";
 import { AxiosError, isAxiosError } from "axios";
 import { Job } from "bullmq";
 import { randomUUID } from "crypto";
@@ -13,7 +12,7 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { recordSecretSyncOutcomeMetric } from "@app/lib/telemetry/metrics";
+import { highCardinalityMeter, recordSecretSyncOutcomeMetric } from "@app/lib/telemetry/metrics";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -194,7 +193,7 @@ export const secretSyncQueueFactory = ({
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
-  const integrationMeter = opentelemetry.metrics.getMeter("SecretSyncs");
+  const integrationMeter = highCardinalityMeter("SecretSyncs");
   const syncSecretsErrorHistogram = integrationMeter.createHistogram("secret_sync_sync_secrets_errors", {
     description: "Secret Sync - sync secrets errors",
     unit: "1"
@@ -295,6 +294,7 @@ export const secretSyncQueueFactory = ({
       canExpandValue: () => true,
       actorOrgId,
       orgDAL,
+      licenseService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService
@@ -347,6 +347,7 @@ export const secretSyncQueueFactory = ({
         projectFolderGrantDAL,
         actorOrgId,
         orgDAL,
+        licenseService,
         kmsService
       });
 

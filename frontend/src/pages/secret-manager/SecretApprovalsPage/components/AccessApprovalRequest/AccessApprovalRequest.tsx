@@ -136,6 +136,7 @@ const FilterMenu = ({
       <PopoverContent align="end" className="w-[220px] p-0">
         <Command>
           <CommandInput
+            aria-label={searchPlaceholder}
             value={inputValue}
             onValueChange={setInputValue}
             placeholder={searchPlaceholder}

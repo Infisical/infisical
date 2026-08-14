@@ -21,7 +21,6 @@ import {
   SelectValue
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { useGetIdentityMembershipOrgs } from "@app/hooks/api";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
   TPamResourceRole,
@@ -133,12 +132,9 @@ export const AssignAccessModal = ({
   const { currentOrg } = useOrganization();
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
-  const { data: orgIdentities } = useGetIdentityMembershipOrgs({
-    organizationId: currentOrg.id,
-    limit: 1000
-  });
   const { data: productMembers } = useListPamProductMembers();
   const { data: productGroups } = useListPamProductGroups();
+  // Product identity members carry the identity name, covering both org-level and PAM-scoped identities
   const { data: productIdentities } = useListPamProductIdentities();
   const { data: resourceRoles } = useListPamResourceRoles();
 
@@ -194,10 +190,6 @@ export const AssignAccessModal = ({
     () => new Set((productGroups ?? []).map((m) => m.groupId).filter(Boolean) as string[]),
     [productGroups]
   );
-  const pamIdentityIds = useMemo(
-    () => new Set((productIdentities ?? []).map((m) => m.identityId).filter(Boolean) as string[]),
-    [productIdentities]
-  );
 
   const assigneeOptions = useMemo<AssigneeOption[]>(() => {
     const groups: AssigneeOption[] = (orgGroups ?? [])
@@ -217,11 +209,12 @@ export const AssignAccessModal = ({
       });
 
     const existingIds = existingIdentityIds ?? new Set<string>();
-    const identities: AssigneeOption[] = (orgIdentities?.identityMemberships ?? [])
-      .filter((im) => pamIdentityIds.has(im.identity.id) && !existingIds.has(im.identity.id))
-      .map((im) => ({
-        value: im.identity.id,
-        label: im.identity.name,
+    const identities: AssigneeOption[] = (productIdentities ?? [])
+      .filter((m): m is typeof m & { identityId: string } => Boolean(m.identityId))
+      .filter((m) => !existingIds.has(m.identityId))
+      .map((m) => ({
+        value: m.identityId,
+        label: m.name,
         kind: PamMemberKind.Identity,
         subtitle: "Machine Identity"
       }));
@@ -230,10 +223,9 @@ export const AssignAccessModal = ({
   }, [
     orgGroups,
     orgUsers,
-    orgIdentities,
+    productIdentities,
     pamGroupIds,
     pamUserIds,
-    pamIdentityIds,
     existingGroupIds,
     existingUserIds,
     existingIdentityIds
@@ -391,7 +383,7 @@ export const AssignAccessModal = ({
         onOpenChange(open);
       }}
     >
-      <DialogContent className="overflow-visible sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Access" : "Assign Access"}</DialogTitle>
         </DialogHeader>

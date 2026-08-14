@@ -145,23 +145,5 @@ export const projectKeys = {
   getProjectWorkflowIntegrationConfig: (
     projectId: string,
     integration: WorkflowIntegrationPlatform
-  ) => [{ projectId, integration }, "project-workflow-integration-config"] as const,
-  getProjectSshCas: (projectId: string) => [{ projectId }, "project-ssh-cas"] as const,
-  allProjectSshCertificates: (projectId: string) =>
-    [{ projectId }, "project-ssh-certificates"] as const,
-  getProjectSshHosts: (projectId: string) => [{ projectId }, "project-ssh-hosts"] as const,
-  getProjectSshHostGroups: (projectId: string) =>
-    [{ projectId }, "project-ssh-host-groups"] as const,
-  specificProjectSshCertificates: ({
-    offset,
-    limit,
-    projectId
-  }: {
-    offset: number;
-    limit: number;
-    projectId: string;
-  }) => [...projectKeys.allProjectSshCertificates(projectId), { offset, limit }] as const,
-  getProjectSshCertificateTemplates: (projectId: string) =>
-    [{ projectId }, "project-ssh-certificate-templates"] as const,
-  getProjectSshConfig: (projectId: string) => [{ projectId }, "project-ssh-config"] as const
+  ) => [{ projectId, integration }, "project-workflow-integration-config"] as const
 };

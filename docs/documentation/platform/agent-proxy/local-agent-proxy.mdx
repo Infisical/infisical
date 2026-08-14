@@ -139,7 +139,7 @@ A per-run `0700` temporary directory holds the only things that touch disk:
 
 ## The sandbox
 
-The sandbox is on by default, and it is what makes brokering safe when the proxy and the agent share a machine. Its restrictions are deliberate, and a few are surprising the first time, so this is the part worth reading before you use `run` for real work.
+The sandbox is on by default, and it is what makes brokering safe when the proxy and the agent share a machine. `run` applies it to the agent process before the agent starts, and the operating system extends it to every command the agent runs, so nothing inside the agent can lift it, including an agent's own sandbox settings. Its restrictions are deliberate, and a few are surprising the first time, so this is the part worth reading before you use `run` for real work.
 
 ```text
                                   |
@@ -302,11 +302,11 @@ infisical secrets agent-proxy run -e dev --log-file=/tmp/broker.log -- claude
 tail -f /tmp/broker.log
 ```
 
-Every request records a decision: `brokered` (a service matched and a credential was applied), `passthrough` (no service matched, forwarded untouched), `blocked` (rejected by `--unmatched-host=block`), or `error`. Records carry the same fields as in [Activity Logs](/documentation/platform/agent-proxy/activity-logs), written in the human-readable console format.
+Every request records a decision: `brokered` (a service matched and a credential was applied), `passthrough` (no service matched, forwarded untouched), `blocked` (rejected by `--unmatched-host=block`), `canceled` (the agent hung up before the request finished), or `error`. Records carry the same fields as in [Activity Logs](/documentation/platform/agent-proxy/activity-logs), written in the human-readable console format.
 
 Without `--log-file` you still see problems: warnings and errors print to your terminal, including a credential the proxy had to skip and a dropped authorization. What you lose is the per-request trail, so reach for `--log-file` when you need to see what happened on a specific request.
 
-`passthrough` is the one decision left out by default, and it is usually the bulk of an agent's traffic, so a log stays small. `--log-level debug` adds it, which is useful when you are working out why a host is not being brokered and noisy the rest of the time.
+`passthrough` and `canceled` are left out by default. Passthrough is usually most of an agent's traffic, so leaving it out keeps a log small, and a cancellation just means the agent hung up. `--log-level debug` adds both, which is useful when you are working out why a host is not being brokered and noisy the rest of the time.
 
 <Note>
   A path you pass to `--log-file` is appended to on every run and never rotated for you, so rotate it with `logrotate` (`copytruncate`) if you keep one around.
@@ -346,6 +346,10 @@ Without `--log-file` you still see problems: warnings and errors print to your t
   </Accordion>
   <Accordion title="The agent cannot read a file it needs">
     It is probably in a denied credential path. Re-open just that file with `--allow-read <path>`. Reach for `--no-sandbox` last, not first.
+
+    Some agents run a sandbox of their own inside this one, and a denied file looks the same in both. Faced with one, an agent will often assume its own sandbox is too strict and run the command a second time with that sandbox switched off. That does not help: this sandbox is still in force, so the command fails exactly as it did the first time.
+
+    On macOS an agent usually cannot start its own sandbox at all under `run`, because macOS does not allow a second sandbox inside an existing one. Most agents warn about it and carry on without it, which costs you nothing, since this sandbox is the one protecting your credentials. If your agent is set to quit when its sandbox is unavailable, switch that off before you run it here.
   </Accordion>
 </AccordionGroup>
 

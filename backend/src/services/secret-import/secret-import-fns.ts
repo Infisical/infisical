@@ -1,6 +1,7 @@
 import RE2 from "re2";
 
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { groupBy, unique } from "@app/lib/fn";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -257,7 +258,8 @@ export const fnSecretsV2FromImports = async ({
   projectFolderGrantDAL,
   kmsService,
   actorOrgId,
-  orgDAL
+  orgDAL,
+  licenseService
 }: {
   secretImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string; projectId?: string };
@@ -283,6 +285,7 @@ export const fnSecretsV2FromImports = async ({
   projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   actorOrgId: string;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 }) => {
   const cyclicDetector = new Set();
   // Cache decryptors per source project to avoid redundant KMS calls across loop iterations
@@ -398,7 +401,8 @@ export const fnSecretsV2FromImports = async ({
     // Reserved (replication) imports are excluded: their secrets are already
     // stored locally and encrypted with the target project's key.
     const grantedFolderIds = new Set<string>();
-    const crossProjectAllowed = await isCrossProjectEnabled(actorOrgId, orgDAL);
+    const plan = await licenseService.getPlan(actorOrgId);
+    const crossProjectAllowed = await isCrossProjectEnabled(actorOrgId, orgDAL, plan);
     if (projectId && projectFolderGrantDAL && crossProjectAllowed) {
       const crossProjectItems: { sourceFolderId: string; sourceProjectId: string }[] = [];
       for (const { importPath, importEnv, isReserved } of processedBatchImports) {

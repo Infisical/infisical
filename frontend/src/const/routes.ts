@@ -107,10 +107,6 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/projects/secret-management/$projectId/approval",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/approval"
     ),
-    SecretDashboardPage: setRoute(
-      "/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug"
-    ),
     RollbackPreviewPage: setRoute(
       "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore"
@@ -398,16 +394,6 @@ export const ROUTE_PATHS = Object.freeze({
     CodeSigningPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/code-signing",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing"
-    )
-  },
-  Ssh: {
-    SshCaByIDPage: setRoute(
-      "/organizations/$orgId/projects/ssh/$projectId/ca/$caId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId/_ssh-layout/ca/$caId"
-    ),
-    SshHostGroupDetailsByIDPage: setRoute(
-      "/organizations/$orgId/projects/ssh/$projectId/ssh-host-groups/$sshHostGroupId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId/_ssh-layout/ssh-host-groups/$sshHostGroupId"
     )
   },
   SecretScanning: {

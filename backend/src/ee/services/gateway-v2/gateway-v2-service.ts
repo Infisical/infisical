@@ -29,7 +29,6 @@ import { NotificationType } from "@app/services/notification/notification-types"
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { TAiMcpServerDALFactory } from "../ai-mcp-server/ai-mcp-server-dal";
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { PamAccountType } from "../pam/pam-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -65,7 +64,6 @@ type TGatewayV2ServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findByGatewayId" | "countByGatewayId">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findByGatewayId" | "countByGatewayId">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayId" | "countByGatewayId">;
-  aiMcpServerDAL: Pick<TAiMcpServerDALFactory, "findByGatewayId" | "countByGatewayId">;
   pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayId" | "countByGatewayId">;
   resourceAuthMethodService: Pick<
     TResourceAuthMethodServiceFactory,
@@ -87,7 +85,6 @@ export const gatewayV2ServiceFactory = ({
   appConnectionDAL,
   dynamicSecretDAL,
   identityKubernetesAuthDAL,
-  aiMcpServerDAL,
   pkiDiscoveryConfigDAL,
   resourceAuthMethodService
 }: TGatewayV2ServiceFactoryDep) => {
@@ -302,21 +299,15 @@ export const gatewayV2ServiceFactory = ({
 
     const gatewayIds = gateways.map((g) => g.id);
 
-    const [
-      appConnectionsCounts,
-      dynamicSecretsCounts,
-      kubernetesAuthsCounts,
-      mcpServersCounts,
-      pkiDiscoveryConfigsCounts
-    ] = await Promise.all([
-      Promise.all(gatewayIds.map((id) => appConnectionDAL.countByGatewayId(id).then((count) => ({ id, count })))),
-      Promise.all(gatewayIds.map((id) => dynamicSecretDAL.countByGatewayId(id).then((count) => ({ id, count })))),
-      Promise.all(
-        gatewayIds.map((id) => identityKubernetesAuthDAL.countByGatewayId(id).then((count) => ({ id, count })))
-      ),
-      Promise.all(gatewayIds.map((id) => aiMcpServerDAL.countByGatewayId(id).then((count) => ({ id, count })))),
-      Promise.all(gatewayIds.map((id) => pkiDiscoveryConfigDAL.countByGatewayId(id).then((count) => ({ id, count }))))
-    ]);
+    const [appConnectionsCounts, dynamicSecretsCounts, kubernetesAuthsCounts, pkiDiscoveryConfigsCounts] =
+      await Promise.all([
+        Promise.all(gatewayIds.map((id) => appConnectionDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+        Promise.all(gatewayIds.map((id) => dynamicSecretDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+        Promise.all(
+          gatewayIds.map((id) => identityKubernetesAuthDAL.countByGatewayId(id).then((count) => ({ id, count })))
+        ),
+        Promise.all(gatewayIds.map((id) => pkiDiscoveryConfigDAL.countByGatewayId(id).then((count) => ({ id, count }))))
+      ]);
 
     const countMap = new Map<string, number>();
 
@@ -327,9 +318,6 @@ export const gatewayV2ServiceFactory = ({
       countMap.set(id, (countMap.get(id) ?? 0) + count);
     }
     for (const { id, count } of kubernetesAuthsCounts) {
-      countMap.set(id, (countMap.get(id) ?? 0) + count);
-    }
-    for (const { id, count } of mcpServersCounts) {
       countMap.set(id, (countMap.get(id) ?? 0) + count);
     }
     for (const { id, count } of pkiDiscoveryConfigsCounts) {
@@ -1160,11 +1148,10 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
-    const [appConnections, dynamicSecrets, kubernetesAuths, mcpServers, pkiDiscoveryConfigs] = await Promise.all([
+    const [appConnections, dynamicSecrets, kubernetesAuths, pkiDiscoveryConfigs] = await Promise.all([
       appConnectionDAL.findByGatewayId(gatewayId),
       dynamicSecretDAL.findByGatewayId(gatewayId),
       identityKubernetesAuthDAL.findByGatewayId(gatewayId),
-      aiMcpServerDAL.findByGatewayId(gatewayId),
       pkiDiscoveryConfigDAL.findByGatewayId(gatewayId)
     ]);
 
@@ -1172,7 +1159,6 @@ export const gatewayV2ServiceFactory = ({
       appConnections,
       dynamicSecrets,
       kubernetesAuths,
-      mcpServers,
       pkiDiscoveryConfigs
     };
   };

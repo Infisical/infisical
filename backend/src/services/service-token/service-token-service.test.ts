@@ -161,20 +161,19 @@ describe("createServiceToken authorization", () => {
     });
 
     // Realistic V2 caller shape: Secrets supports granular actions (ReadValue + DescribeSecret),
-    // while SecretFolders / SecretImports only support ProjectPermissionActions (plain Read). The
-    // granular boundary fallback in createServiceToken must therefore grant ReadValue+DescribeSecret
-    // on Secrets and plain Read on SecretFolders/SecretImports; otherwise it would emit
-    // (readValue|describeSecret, SecretFolders|SecretImports) rules that no V2 caller can satisfy.
-    test("granular pair on Secrets + plain Read on folders/imports can mint a read token", async () => {
+    // while SecretImports only supports ProjectPermissionActions (plain Read). The granular boundary
+    // fallback in createServiceToken must therefore grant ReadValue+DescribeSecret on Secrets and
+    // plain Read on SecretImports; otherwise it would emit (readValue|describeSecret, SecretImports)
+    // rules that no V2 caller can satisfy. Folder read is implied-for-all, so the builder emits no
+    // SecretFolders read rule and the caller needs no folder permission to mint a read token.
+    test("granular pair on Secrets + plain Read on imports can mint a read token", async () => {
       const permission = buildAbility((b) => {
         grantServiceTokenCreate(b);
         b.can(ProjectPermissionSecretActions.ReadValue, ProjectPermissionSub.Secrets);
         b.can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets);
         b.can(ProjectPermissionSecretActions.Create, ProjectPermissionSub.Secrets);
-        [ProjectPermissionSub.SecretImports, ProjectPermissionSub.SecretFolders].forEach((subj) => {
-          b.can(ProjectPermissionActions.Read, subj);
-          b.can(ProjectPermissionActions.Create, subj);
-        });
+        b.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
+        b.can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretImports);
       });
 
       const { service, serviceTokenDAL } = createService(permission);

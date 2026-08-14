@@ -25,7 +25,7 @@ import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 export type TAuthMode =
   | {
-      authMode: AuthMode.JWT | AuthMode.MCP_JWT | AuthMode.OAUTH;
+      authMode: AuthMode.JWT | AuthMode.OAUTH;
       actor: ActorType.USER;
       userId: string;
       tokenVersionId: string; // the session id of token used
@@ -134,12 +134,14 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
 
   switch (decodedToken.authTokenType) {
     case AuthTokenType.ACCESS_TOKEN: {
-      if (decodedToken?.mcp) {
-        return {
-          authMode: AuthMode.MCP_JWT,
-          token: decodedToken as AuthModeJwtTokenPayload,
-          actor: ActorType.USER
-        } as const;
+      // Access tokens from the removed Agent Sentinel (MCP) product were signed as
+      // ACCESS_TOKEN with an "mcp" claim and a live token session; without this
+      // guard they would fall through and authenticate as a full user JWT session
+      // despite having been endpoint-scoped.
+      if ("mcp" in decodedToken) {
+        throw new UnauthorizedError({
+          message: "This token was issued for the removed Agent Sentinel (MCP) product and is no longer accepted"
+        });
       }
 
       if (decodedToken?.oauthClientId) {
@@ -234,10 +236,6 @@ export const injectIdentity = fp(
         return;
       }
 
-      if (pathname === "/api/v1/ai/mcp/servers/oauth/callback") {
-        return;
-      }
-
       if (pathname === "/api/v1/oauth/token") {
         return;
       }
@@ -267,6 +265,14 @@ export const injectIdentity = fp(
         return;
       }
 
+      // Tombstoned prefixes for the removed SSH / Agent Sentinel products answer
+      // 410 without auth; skip injection so expired or invalid tokens from shipped
+      // clients (the CLI always sends one) still receive the explanatory response
+      // instead of a 401. Remove together with removed-product-tombstone-router.ts.
+      if (pathname.startsWith("/api/v1/ssh/") || pathname.startsWith("/api/v1/ai/mcp/")) {
+        return;
+      }
+
       const { authMode, token, actor } = await extractAuth(req, appCfg.AUTH_SECRET);
 
       if (!authMode) return;
@@ -291,28 +297,6 @@ export const injectIdentity = fp(
             isMfaVerified: token.isMfaVerified,
             token,
             mfaMethod: token.mfaMethod
-          };
-          fireIdentifyForUser(user);
-          break;
-        }
-        case AuthMode.MCP_JWT: {
-          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
-            await server.services.authToken.fnValidateJwtIdentity(token);
-          requestContext.set(RequestContextKey.OrgId, orgId);
-          requestContext.set(RequestContextKey.OrgName, orgName);
-          requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
-          req.auth = {
-            authMode: AuthMode.MCP_JWT,
-            user,
-            userId: user.id,
-            tokenVersionId,
-            actor,
-            orgId,
-            rootOrgId,
-            parentOrgId,
-            authMethod: token.authMethod,
-            isMfaVerified: token.isMfaVerified,
-            token
           };
           fireIdentifyForUser(user);
           break;

@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { ProjectType, TableName } from "../schemas";
+import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   const hasDefaultUserCaCol = await knex.schema.hasColumn(TableName.ProjectSshConfig, "defaultUserSshCaId");
@@ -24,7 +24,8 @@ export async function up(knex: Knex): Promise<void> {
   // (dangtony98): backfill by adding null defaults CAs for all existing Infisical SSH projects
   // that do not have an associated ProjectSshConfig record introduced in Infisical SSH V2.
 
-  const allProjects = await knex(TableName.Project).where("type", ProjectType.SSH).select("id");
+  // "ssh" literal: the SSH project type (ProjectType.SSH) was removed with the SSH product
+  const allProjects = await knex(TableName.Project).where("type", "ssh").select("id");
 
   const projectsWithConfig = await knex(TableName.ProjectSshConfig).select("projectId");
   const projectIdsWithConfig = new Set(projectsWithConfig.map((config) => config.projectId));

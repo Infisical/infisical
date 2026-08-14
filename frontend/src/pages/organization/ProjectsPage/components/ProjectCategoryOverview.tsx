@@ -37,7 +37,7 @@ import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
 import { resolvePamProjectId } from "@app/hooks/api/pam/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 
-type ActiveProducts = Exclude<ProjectType, ProjectType.AI | ProjectType.SSH>;
+type ActiveProducts = ProjectType;
 
 const PRODUCT_TYPES: ActiveProducts[] = [
   ProjectType.SecretManager,

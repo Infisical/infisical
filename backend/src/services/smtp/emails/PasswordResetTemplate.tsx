@@ -5,7 +5,7 @@ import { BaseButton } from "./BaseButton";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 
 interface PasswordResetTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
-  email: string;
+  username: string;
   callback_url: string;
   token: string;
   isCloud: boolean;
@@ -14,7 +14,7 @@ interface PasswordResetTemplateProps extends Omit<BaseEmailWrapperProps, "title"
 }
 
 export const PasswordResetTemplate = ({
-  email,
+  username,
   siteUrl,
   callback_url,
   token,
@@ -66,7 +66,9 @@ export const PasswordResetTemplate = ({
         </Text>
       </Section>
       <Section className="text-center">
-        <BaseButton href={`${callback_url}?token=${token}&to=${encodeURIComponent(email)}`}>Restore Access</BaseButton>
+        <BaseButton href={`${callback_url}?token=${token}&to=${encodeURIComponent(username)}`}>
+          Restore Access
+        </BaseButton>
       </Section>
     </BaseEmailWrapper>
   );
@@ -75,7 +77,7 @@ export const PasswordResetTemplate = ({
 export default PasswordResetTemplate;
 
 PasswordResetTemplate.PreviewProps = {
-  email: "kevin@infisical.com",
+  username: "kevin@infisical.com",
   callback_url: "https://app.infisical.com",
   isCloud: true,
   token: "preview-token",

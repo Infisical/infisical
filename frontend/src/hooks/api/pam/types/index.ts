@@ -74,6 +74,18 @@ export type TPamDiscoveredAccount = {
   dependencies: TPamDependency[];
 };
 
+// an imported account the source's latest scan no longer found. Informational only: nothing about the
+// managed account is blocked, it's listed so an admin can decide whether to delete it.
+export type TPamStaleAccount = {
+  id: string;
+  accountId: string;
+  name: string;
+  folderId: string | null;
+  folderName: string | null;
+  accountType: PamAccountType;
+  lastDiscoveredAt: string | null;
+};
+
 export type TPamAccountDependency = TPamDependency & {
   data: Record<string, unknown> | null;
   rotationStatus: PamRotationStatus | null;
@@ -137,6 +149,7 @@ export type TPamFieldDescriptor = {
   widget: PamFieldWidget;
   required: boolean;
   secret: boolean;
+  optional?: boolean;
   options?: { label: string; value: string }[];
   defaultValue?: string | number | boolean;
   showWhen?: { field: string; equals: string | boolean };
@@ -156,6 +169,7 @@ export type TPamAccountTypeMetadata = {
   supportsWebAccess: boolean;
   requiresGateway: boolean;
   supportsDependencies: boolean;
+  connectionStringSchemes?: string[];
   connectionFields: TPamFieldDescriptor[];
   credentialFields: TPamFieldDescriptor[];
   applicablePolicies: TPamPolicyDescriptor[];
@@ -203,6 +217,8 @@ export type TPamAccount = {
   credentials: Record<string, unknown>;
   isAccessible: boolean;
   accessibilityIssues: PamAccountAccessibilityIssue[];
+  // the latest discovery scan didn't find it. Informational only, nothing about the account is blocked.
+  isStale: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -285,6 +301,7 @@ export type TPamSession = {
   selectedHost?: string | null;
   accessMethod?: string | null;
   userId?: string | null;
+  identityId?: string | null;
   actorName: string;
   actorEmail: string;
   actorIp: string;
@@ -434,6 +451,13 @@ export type TPamMember = {
   isActive: boolean;
   expiresAt?: string | null;
   createdAt: string;
+};
+
+// Identity members come back enriched with the identity's name and scope
+export type TPamIdentityMember = TPamMember & {
+  name: string;
+  identityProjectId?: string | null;
+  identityOrgId?: string | null;
 };
 
 export type TPamResourceRole = {
@@ -642,6 +666,8 @@ export type TPamAccessRequest = {
   projectId: string;
   policyId: string;
   requesterId: string | null;
+  // Set instead of requesterId when a machine identity raised the request
+  machineIdentityId?: string | null;
   requesterName: string;
   requesterEmail: string;
   type: string;

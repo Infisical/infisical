@@ -19,6 +19,7 @@ import {
   keyAlgorithmToAlgCfg,
   signatureAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
+import { TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
 
 import {
   CERT_SUBJECT_ALTERNATIVE_NAMES,
@@ -300,12 +301,7 @@ export type TSelfSignedCertificateRequest = {
 };
 
 export type TCertificatePolicy = {
-  subject?: Array<{
-    type: string;
-    allowed?: string[];
-    required?: string[];
-    denied?: string[];
-  }>;
+  subject?: TSubjectRule[];
   sans?: Array<{
     type: string;
     allowed?: string[];
@@ -456,3 +452,7 @@ export const generateSelfSignedCertificate = async ({
     subjectAlternativeNames: certificateRequest.altNames || []
   };
 };
+
+// Strip hyphens from a UUID to produce a 32-char token that
+// satisfies AWS's IdempotencyToken constraints (max 32 chars, alphanumeric).
+export const buildIdempotencyToken = (id: string) => id.split("-").join("").slice(0, 32);

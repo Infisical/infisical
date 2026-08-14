@@ -33,9 +33,6 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "destination",
   "type",
   "operation",
-  // License Server v2 dual-read comparison (bounded: feature key set + a small set of diff kinds)
-  "license.feature",
-  "license.dual_read.kind",
   // Build info gauge labels — single-value per deploy, no cardinality concern
   "service.version",
   "git.commit.sha",

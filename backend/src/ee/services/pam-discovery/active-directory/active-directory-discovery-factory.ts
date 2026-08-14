@@ -322,6 +322,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
     const machineErrors: TDiscoveryMachineError[] = [];
     const dependencies: TDiscoveredDependency[] = [];
     const scannedDependencyMachines: string[] = [];
+    const scannedAccountMachines: string[] = [];
     // Both local-account and dependency sweeps need the machine list from LDAP.
     const enumerateComputers = Boolean(config.scanLocalAccounts || config.discoverDependencies);
 
@@ -444,6 +445,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
                 }
               });
             }
+            scannedAccountMachines.push(`${domain}:${computer.objectGUID}`);
           } catch (err) {
             const message = err instanceof Error ? err.message : "WinRM enumeration failed";
             logger.warn(err, `PAM AD discovery failed to enumerate local accounts [host=${host}]`);
@@ -492,7 +494,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
       }
     }
 
-    return { accounts: discovered, machineErrors, dependencies, scannedDependencyMachines };
+    return { accounts: discovered, machineErrors, dependencies, scannedDependencyMachines, scannedAccountMachines };
   };
 
   return { validateConnection, scan };

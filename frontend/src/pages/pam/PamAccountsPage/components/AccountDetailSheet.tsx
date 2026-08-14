@@ -47,7 +47,6 @@ import {
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useOrganization, useUser } from "@app/context";
-import { useGetIdentityMembershipOrgs } from "@app/hooks/api";
 import { useListAppConnections } from "@app/hooks/api/appConnections";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
@@ -64,6 +63,7 @@ import {
   useGetPamAccountTemplate,
   useListAccountMembers,
   useListFolderMembers,
+  useListPamProductIdentities,
   useListPamResourceRoles,
   usePamAccountActions,
   usePamAccountTypeMap,
@@ -76,6 +76,7 @@ import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 
 import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
+import { AccountStaleBadge } from "../../components/AccountStaleBadge";
 import { PamMemberKind, PamMembershipScope, PamMemberSource } from "../../components/memberEnums";
 import {
   formatDetailDate,
@@ -141,13 +142,17 @@ const PermissionsTab = ({
     [orgGroups]
   );
 
-  const { data: orgIdentities } = useGetIdentityMembershipOrgs({ organizationId: currentOrg.id });
+  // Product identity members carry names for both org-level and PAM-scoped identities; the org
+  // identity list excludes project-scoped ones, so it can't resolve PAM-created identities.
+  const { data: productIdentities } = useListPamProductIdentities();
   const identityNameMap = useMemo(
     () =>
       new Map(
-        (orgIdentities?.identityMemberships ?? []).map((im) => [im.identity.id, im.identity.name])
+        (productIdentities ?? []).flatMap((m) =>
+          m.identityId ? [[m.identityId, m.name] as const] : []
+        )
       ),
-    [orgIdentities]
+    [productIdentities]
   );
 
   const removeUser = useRemoveAccountMember();
@@ -941,6 +946,7 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
       title={account?.name}
       subtitle={folderSubtitle}
       typeBadge={typeInfo?.name}
+      badges={<AccountStaleBadge isStale={Boolean(account?.isStale)} />}
       icon={
         accountType ? (
           <div className="mb-4 flex size-16 items-center justify-center rounded-lg border border-border bg-container">

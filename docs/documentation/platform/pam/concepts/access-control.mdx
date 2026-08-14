@@ -9,6 +9,8 @@ Access control in PAM happens at two levels:
 1. **Product membership** — being added to PAM itself (the "entry ticket")
 2. **Folder and account memberships** — being granted a role on specific folders or accounts (this is what lets you connect)
 
+Users, groups, and [machine identities](/documentation/platform/identities/machine-identities) all go through both levels and hold the same roles, so everything below applies to all three unless it says otherwise. An [AI agent](/documentation/platform/pam/ai-agents/overview) runs as whoever started it, so it uses either a person's access or a machine identity's.
+
 ## Product Membership
 
 Before anyone can do anything in PAM, they need to be added as a product member. This is the "entry ticket" to PAM.
@@ -29,11 +31,13 @@ Organization Admins can enter PAM as a Product Admin without being explicitly ad
 ### Adding Product Members
 
 1. Go to **Privileged Access Management → Access Control**
-2. Select the **Users** or **Groups** tab
+2. Select the **Users**, **Groups**, or **Identities** tab
 3. Click **Add**
-4. Select from users or groups that exist in your organization
+4. Select from users, groups, or machine identities in your organization
 5. Choose **Product Admin** or **Product Member**
 6. Click **Add**
+
+The **Identities** tab can also create a new machine identity for PAM instead of adding an existing one. See [AI Agents](/documentation/platform/pam/ai-agents/overview) for the agent workflow that uses it.
 
 ## Folder and Account Memberships
 
@@ -60,12 +64,23 @@ You can assign roles at two levels:
 For folders:
 1. Open the folder and go to **Permissions**
 2. Click **Assign Access**
-3. Select user/group, role, and optional expiration
+3. Select a user, group, or machine identity, then set the role and an optional expiration
 4. Click **Add**
 
 For accounts:
 1. Open the account and go to **Permissions**
 2. Same process as above
+
+The picker only offers members of PAM, so a machine identity has to be added on the **Access Control** page before it can be granted a role here.
+
+### What Only People Can Do
+
+Two things stay with users and groups:
+
+- **Web Access.** Connecting in the browser is for users. Machine identities connect through the [CLI](/cli/commands/pam-agentic).
+- **Approving [access requests](/documentation/platform/pam/access-requests/overview).** A machine identity can file a request, but only users and groups can approve one.
+
+An account whose [template](/documentation/platform/pam/templates/overview) requires MFA also stays with people: a machine identity can never complete the challenge, and [agent runs](/documentation/platform/pam/ai-agents/overview) do not support it yet.
 
 ## Putting It Together
 
@@ -88,5 +103,8 @@ The Product Admin sets up the governance structure. The Folder Admin manages day
   </Card>
   <Card title="Accounts" icon="user-lock" href="/documentation/platform/pam/accounts/overview">
     Add accounts and manage account memberships.
+  </Card>
+  <Card title="AI Agents" icon="robot" href="/documentation/platform/pam/ai-agents/overview">
+    Grant the same access to an AI agent.
   </Card>
 </CardGroup>

@@ -17,7 +17,7 @@ type UseWebAccessSessionOptions = {
   accountType: string;
   reason?: string;
   mfaSessionId?: string;
-  onSessionEnd?: () => void;
+  onSessionEnd?: (endReason?: string) => void;
 };
 
 export const useWebAccessSession = ({
@@ -42,6 +42,7 @@ export const useWebAccessSession = ({
   const nextPromptRejecterRef = useRef<((reason: Error) => void) | null>(null);
 
   const onSessionEndRef = useRef(onSessionEnd);
+  const endReasonRef = useRef<string | undefined>(undefined);
   const submittedReasonRef = useRef<string | undefined>(reason);
   const mfaSessionIdRef = useRef<string | undefined>(mfaSessionId);
 
@@ -85,6 +86,7 @@ export const useWebAccessSession = ({
       const { protocol, host } = window.location;
       const wsProtocol = protocol === "https:" ? "wss:" : "ws:";
       const wsUrl = `${wsProtocol}//${host}/api/v1/pam/accounts/${accountId}/web-access?ticket=${encodeURIComponent(ticket)}`;
+      endReasonRef.current = undefined;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -168,6 +170,7 @@ export const useWebAccessSession = ({
         }
 
         if (msg.type === WsMessageType.SessionEnd) {
+          endReasonRef.current = msg.reason;
           terminal.write(`\r\n${msg.reason.replace(/\r?\n/g, "\r\n")}\r\n`);
           return;
         }
@@ -207,7 +210,7 @@ export const useWebAccessSession = ({
           terminalRef.current.options.disableStdin = true;
         }
         setIsConnected(false);
-        onSessionEndRef.current?.();
+        onSessionEndRef.current?.(endReasonRef.current);
       };
 
       ws.onerror = () => {
@@ -470,7 +473,7 @@ export const useWebAccessSession = ({
         }
       });
     } else {
-      // Non-SSH (PostgreSQL, Redis): use xterm-readline for full line-editing support
+      // Redis: use xterm-readline for full line-editing support
       const readlineAddon = new Readline();
       terminal.loadAddon(readlineAddon);
       readlineRef.current = readlineAddon;

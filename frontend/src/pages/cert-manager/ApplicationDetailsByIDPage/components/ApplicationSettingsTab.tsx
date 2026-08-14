@@ -855,7 +855,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
           if (!open) setProfilesToAttach([]);
         }}
       >
-        <DialogContent className="max-w-md overflow-visible">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Attach Profiles</DialogTitle>
             <DialogDescription>

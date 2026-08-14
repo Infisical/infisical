@@ -5,9 +5,6 @@ import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-mana
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
 import { registerAgentProxyCaRouter } from "./agent-proxy-ca-router";
-import { registerAiMcpActivityLogRouter } from "./ai-mcp-activity-log-router";
-import { registerAiMcpEndpointRouter } from "./ai-mcp-endpoint-router";
-import { registerAiMcpServerRouter } from "./ai-mcp-server-router";
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
 import { AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP, registerAuditLogStreamRouter } from "./audit-log-stream-routers";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
@@ -46,17 +43,13 @@ import { registerProjectRouter } from "./project-router";
 import { registerProxiedServiceRouter } from "./proxied-service-router";
 import { registerRateLimitRouter } from "./rate-limit-router";
 import { registerRelayRouter } from "./relay-router";
+import { registerRemovedProductTombstoneRouter } from "./removed-product-tombstone-router";
 import { registerSamlRouter } from "./saml-router";
 import { registerScimRouter } from "./scim-router";
 import { registerSecretApprovalRequestRouter } from "./secret-approval-request-router";
 import { registerSecretRouter } from "./secret-router";
 import { registerSecretScanningRouter } from "./secret-scanning-router";
 import { registerSecretVersionRouter } from "./secret-version-router";
-import { registerSshCaRouter } from "./ssh-certificate-authority-router";
-import { registerSshCertRouter } from "./ssh-certificate-router";
-import { registerSshCertificateTemplateRouter } from "./ssh-certificate-template-router";
-import { registerSshHostGroupRouter } from "./ssh-host-group-router";
-import { registerSshHostRouter } from "./ssh-host-router";
 import { registerSubOrgRouter } from "./sub-org-router";
 import { registerTrustedIpRouter } from "./trusted-ip-router";
 import { registerUserAdditionalPrivilegeRouter } from "./user-additional-privilege-router";
@@ -130,15 +123,19 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     { prefix: "/cert-manager" }
   );
 
+  // 410 tombstones for the removed SSH and Agent Sentinel (AI MCP) products; see
+  // the router file for rationale and removal conditions.
   await server.register(
-    async (sshRouter) => {
-      await sshRouter.register(registerSshCaRouter, { prefix: "/ca" });
-      await sshRouter.register(registerSshCertRouter, { prefix: "/certificates" });
-      await sshRouter.register(registerSshCertificateTemplateRouter, { prefix: "/certificate-templates" });
-      await sshRouter.register(registerSshHostRouter, { prefix: "/hosts" });
-      await sshRouter.register(registerSshHostGroupRouter, { prefix: "/host-groups" });
-    },
+    registerRemovedProductTombstoneRouter(
+      "The Infisical SSH product has been removed. SSH host access is now available through Infisical PAM (https://infisical.com/docs/documentation/platform/pam/overview). If you are using 'infisical ssh' CLI commands, upgrade to the latest CLI version."
+    ),
     { prefix: "/ssh" }
+  );
+  await server.register(
+    registerRemovedProductTombstoneRouter(
+      "The Infisical Agent Sentinel (MCP) product has been removed. See Agent Proxy for agent traffic management (https://infisical.com/docs/documentation/platform/agent-proxy/overview)."
+    ),
+    { prefix: "/ai/mcp" }
   );
 
   await server.register(
@@ -202,15 +199,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await kmipRouter.register(registerKmipServerRouter, { prefix: "/servers" });
     },
     { prefix: "/kmip" }
-  );
-
-  await server.register(
-    async (aiRouter) => {
-      await aiRouter.register(registerAiMcpServerRouter, { prefix: "/mcp/servers" });
-      await aiRouter.register(registerAiMcpEndpointRouter, { prefix: "/mcp/endpoints" });
-      await aiRouter.register(registerAiMcpActivityLogRouter, { prefix: "/mcp/activity-logs" });
-    },
-    { prefix: "/ai" }
   );
 
   await server.register(registerPamRouters, { prefix: "/pam" });

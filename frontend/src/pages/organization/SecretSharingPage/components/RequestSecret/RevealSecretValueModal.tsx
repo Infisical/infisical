@@ -5,6 +5,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   IconButton,
@@ -58,11 +59,11 @@ const Content = ({ secretValue, onClose }: ContentProps) => {
         </Tooltip>
       </div>
 
-      <div className="flex w-full justify-end">
+      <DialogFooter>
         <Button variant="outline" onClick={onClose}>
           Close
         </Button>
-      </div>
+      </DialogFooter>
     </>
   );
 };

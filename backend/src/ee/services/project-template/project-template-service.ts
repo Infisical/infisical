@@ -155,12 +155,9 @@ export const projectTemplateServiceFactory = ({
     );
 
     return [
-      ...(type && type !== ProjectType.SSH
+      ...(type
         ? [getDefaultProjectTemplate(actor.orgId, type)]
-        : Object.values(ProjectType)
-            // Filter out SSH since we're deprecating
-            .filter((projectType) => projectType !== ProjectType.SSH)
-            .map((projectType) => getDefaultProjectTemplate(actor.orgId, projectType))),
+        : Object.values(ProjectType).map((projectType) => getDefaultProjectTemplate(actor.orgId, projectType))),
       ...templatesWithMembers
     ];
   };
@@ -275,10 +272,6 @@ export const projectTemplateServiceFactory = ({
         rejectUnescaped: true
       });
     });
-
-    if (type === ProjectType.AI) {
-      throw new BadRequestError({ message: "Agent Sentinel project templates are not supported" });
-    }
 
     if (type === ProjectType.CertificateManager) {
       throw new BadRequestError({ message: "Certificate Manager project templates are not supported" });

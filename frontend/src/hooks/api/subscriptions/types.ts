@@ -38,7 +38,6 @@ export type SubscriptionPlan = {
   workspacesUsed: number;
   environmentLimit: number;
   samlSSO: boolean;
-  sshHostGroups: boolean;
   secretAccessInsights: boolean;
   auditReports: boolean;
   hsm: boolean;

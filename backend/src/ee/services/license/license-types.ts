@@ -28,15 +28,6 @@ export type TOfflineLicense = {
   entitlements?: TEntitlementsResponse;
 };
 
-export type TPlanBillingInfo = {
-  currentPeriodStart: number;
-  currentPeriodEnd: number;
-  interval: "month" | "year";
-  intervalCount: number;
-  amount: number;
-  quantity: number;
-};
-
 export type TFeatureSet = {
   _id: null;
   slug: string | null;
@@ -101,7 +92,6 @@ export type TFeatureSet = {
   gateway: false;
   gatewayPool: false;
   pamSlackNotifications: boolean;
-  sshHostGroups: false;
   secretScanning: false;
   enterpriseSecretSyncs: false;
   enterpriseCertificateSyncs: false;
@@ -121,50 +111,14 @@ export type TFeatureSet = {
   certManager: null;
   secretsTemporaryAccess: null;
   enterprisePamAccount: null;
+  crossProjectSecretSharing: false;
 };
-
-export type TOrgPlansTableDTO = {
-  billingCycle: string;
-} & TOrgPermission;
 
 export type TOrgPlanDTO = {
   projectId?: string;
   refreshCache?: boolean;
   rootOrgId: string;
 } & TOrgPermission;
-
-export type TStartOrgTrialDTO = {
-  success_url: string;
-} & TOrgPermission;
-
-export type TCreateOrgPortalSession = TOrgPermission;
-
-export type TGetOrgBillInfoDTO = TOrgPermission;
-
-export type TOrgPlanTableDTO = TOrgPermission;
-
-export type TOrgBillingDetailsDTO = TOrgPermission;
-
-export type TUpdateOrgBillingDetailsDTO = TOrgPermission & {
-  name?: string;
-  email?: string;
-};
-
-export type TOrgPmtMethodsDTO = TOrgPermission;
-
-export type TAddOrgPmtMethodDTO = TOrgPermission & { success_url: string; cancel_url: string };
-
-export type TDelOrgPmtMethodDTO = TOrgPermission & { pmtMethodId: string };
-
-export type TGetOrgTaxIdDTO = TOrgPermission;
-
-export type TAddOrgTaxIdDTO = TOrgPermission & { type: string; value: string };
-
-export type TDelOrgTaxIdDTO = TOrgPermission & { taxId: string };
-
-export type TOrgInvoiceDTO = TOrgPermission;
-
-export type TOrgLicensesDTO = TOrgPermission;
 
 export enum LicenseType {
   Offline = "offline",

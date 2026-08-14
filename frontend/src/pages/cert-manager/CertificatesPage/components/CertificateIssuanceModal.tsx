@@ -109,7 +109,13 @@ const extendedKeyUsagesField = z
   })
   .default({});
 
-const buildFormSchema = (isAdcs: boolean) => {
+type CaFormVariant = "default" | "adcs" | "awsPca";
+
+// Mirrored in backend aws-pca-certificate-authority-enums.ts; update both.
+const AWS_PCA_MAX_CA_PATH_LENGTH = 3;
+
+const buildFormSchema = (variant: CaFormVariant) => {
+  const isAdcs = variant === "adcs";
   const baseSchema = z.object({
     profileId: z.string().min(1, "Profile is required"),
     ttl: isAdcs ? z.string().trim().optional() : z.string().trim().min(1, "TTL is required"),
@@ -141,11 +147,34 @@ const buildFormSchema = (isAdcs: boolean) => {
     extendedKeyUsages: extendedKeyUsagesField
   });
 
-  return z.discriminatedUnion("requestMethod", [csrSchema, managedSchema]);
+  return z
+    .discriminatedUnion("requestMethod", [csrSchema, managedSchema])
+    .superRefine((data, ctx) => {
+      if (variant !== "awsPca" || data.requestMethod !== RequestMethod.MANAGED) return;
+      if (!data.basicConstraints?.isCA) return;
+
+      const { pathLength } = data.basicConstraints;
+      if (pathLength === undefined || pathLength === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["basicConstraints", "pathLength"],
+          message: `AWS Private CA requires a path length between 0 and ${AWS_PCA_MAX_CA_PATH_LENGTH} for CA certificates`
+        });
+        return;
+      }
+      if (pathLength > AWS_PCA_MAX_CA_PATH_LENGTH) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["basicConstraints", "pathLength"],
+          message: `AWS Private CA supports a maximum path length of ${AWS_PCA_MAX_CA_PATH_LENGTH}`
+        });
+      }
+    });
 };
 
-const strictFormSchema = buildFormSchema(false);
-const adcsFormSchema = buildFormSchema(true);
+const strictFormSchema = buildFormSchema("default");
+const adcsFormSchema = buildFormSchema("adcs");
+const awsPcaFormSchema = buildFormSchema("awsPca");
 
 export type FormData = z.infer<typeof adcsFormSchema>;
 
@@ -262,18 +291,35 @@ export const CertificateIssuanceModal = ({
 
   const { data: appProfiles } = useListPkiApplicationProfiles(applicationId ?? "");
 
-  const availableProfiles = useMemo(() => {
+  const profileOptions = useMemo(() => {
     const allProfiles = profilesData?.certificateProfiles ?? [];
-    if (!applicationId) return allProfiles;
+    if (!applicationId) return allProfiles.map((profile) => ({ profile, isApiEnabled: true }));
     const apiEnabledProfileIds = new Set(
       (appProfiles ?? []).filter((p) => Boolean(p.apiConfigId)).map((p) => p.profileId)
     );
-    return allProfiles.filter((p) => apiEnabledProfileIds.has(p.id));
+    return allProfiles
+      .map((profile) => ({
+        profile,
+        isApiEnabled: apiEnabledProfileIds.has(profile.id)
+      }))
+      .sort(
+        (a, b) =>
+          Number(b.isApiEnabled) - Number(a.isApiEnabled) ||
+          a.profile.slug.localeCompare(b.profile.slug)
+      );
   }, [profilesData?.certificateProfiles, appProfiles, applicationId]);
+
+  const availableProfiles = useMemo(
+    () => profileOptions.filter((option) => option.isApiEnabled).map((option) => option.profile),
+    [profileOptions]
+  );
+
+  const hasDisabledProfiles = profileOptions.some((option) => !option.isApiEnabled);
 
   const { mutateAsync: issueCertificate } = useUnifiedCertificateIssuance();
 
   const isAdcsProfileRef = useRef(false);
+  const isAwsPcaProfileRef = useRef(false);
 
   const {
     control,
@@ -281,15 +327,16 @@ export const CertificateIssuanceModal = ({
     reset,
     watch,
     setValue,
+    trigger,
     formState,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: (values, context, options) =>
-      zodResolver(isAdcsProfileRef.current ? adcsFormSchema : strictFormSchema)(
-        values,
-        context,
-        options
-      ),
+    resolver: (values, context, options) => {
+      let schema = strictFormSchema;
+      if (isAdcsProfileRef.current) schema = adcsFormSchema;
+      else if (isAwsPcaProfileRef.current) schema = awsPcaFormSchema;
+      return zodResolver(schema)(values, context, options);
+    },
     defaultValues: {
       requestMethod: RequestMethod.MANAGED,
       profileId: profileId || "",
@@ -325,6 +372,9 @@ export const CertificateIssuanceModal = ({
   const externalCaType = actualSelectedProfile?.certificateAuthority?.externalType;
   const isAdcsProfile = externalCaType === CaType.ADCS || externalCaType === CaType.AZURE_AD_CS;
   isAdcsProfileRef.current = isAdcsProfile;
+
+  const isAwsPcaProfile = externalCaType === CaType.AWS_PCA;
+  isAwsPcaProfileRef.current = isAwsPcaProfile;
 
   const externalCaHint =
     "Validity, key usages, extended key usages and basic constraints are controlled by the external CA's certificate template.";
@@ -539,10 +589,24 @@ export const CertificateIssuanceModal = ({
   const selectedProfileReady = Boolean(profileId || actualSelectedProfileId);
 
   const goBack = () => setStep((s) => Math.max(0, s - 1));
-  const goNext = () => {
+  const goNext = async () => {
     if (currentStepKey === "profile" && !selectedProfileReady) return;
+
+    const isStepValid = await trigger(STEP_FIELDS[currentStepKey] as (keyof FormData)[]);
+    if (!isStepValid) {
+      createNotification({ text: "Fix the errors on this step to continue.", type: "error" });
+      return;
+    }
+
     setStep((s) => Math.min(stepKeys.length - 1, s + 1));
   };
+
+  const rowErrorsOf = (fieldErrors: unknown): (string | undefined)[] | undefined =>
+    Array.isArray(fieldErrors)
+      ? (fieldErrors as ({ value?: { message?: string } } | undefined)[]).map(
+          (rowError) => rowError?.value?.message
+        )
+      : undefined;
 
   const onFormInvalid = (errors: Record<string, unknown>) => {
     const errorKeys = Object.keys(errors);
@@ -671,21 +735,34 @@ export const CertificateIssuanceModal = ({
                                   <SelectValue placeholder="Select a certificate profile" />
                                 </SelectTrigger>
                                 <SelectContent position="popper">
-                                  {availableProfiles.length === 0 && applicationId ? (
+                                  {profileOptions.length === 0 && applicationId ? (
                                     <div className="px-3 py-3 text-xs leading-snug whitespace-normal text-muted">
-                                      Only profiles with API enrollment configured on this
-                                      Application are listed here. Configure API enrollment under
-                                      this Application&apos;s Settings tab.
+                                      No certificate profiles are attached to this Application. Add
+                                      one under this Application&apos;s Settings tab.
                                     </div>
                                   ) : (
-                                    availableProfiles.map((profile) => (
-                                      <SelectItem key={profile.id} value={profile.id}>
+                                    profileOptions.map(({ profile, isApiEnabled }) => (
+                                      <SelectItem
+                                        key={profile.id}
+                                        value={profile.id}
+                                        disabled={!isApiEnabled}
+                                        description={
+                                          isApiEnabled ? undefined : "API enrollment not configured"
+                                        }
+                                      >
                                         {profile.slug}
                                       </SelectItem>
                                     ))
                                   )}
                                 </SelectContent>
                               </Select>
+                              {hasDisabledProfiles && (
+                                <FieldDescription>
+                                  Profiles without API enrollment configured can&apos;t be used
+                                  here. Configure API enrollment under this Application&apos;s
+                                  Settings tab.
+                                </FieldDescription>
+                              )}
                               {isAdcsProfile && (
                                 <FieldDescription>{externalCaHint}</FieldDescription>
                               )}
@@ -750,6 +827,9 @@ export const CertificateIssuanceModal = ({
                           (formState.errors as { subjectAttributes?: { message?: string } })
                             .subjectAttributes?.message
                         }
+                        rowErrors={rowErrorsOf(
+                          (formState.errors as { subjectAttributes?: unknown }).subjectAttributes
+                        )}
                       />
                     )}
 
@@ -862,8 +942,9 @@ export const CertificateIssuanceModal = ({
                                       name="basicConstraints.pathLength"
                                       render={({ field, fieldState: { error } }) => {
                                         const isPathLengthRequired =
-                                          typeof constraints.maxPathLength === "number" &&
-                                          constraints.maxPathLength !== -1;
+                                          isAwsPcaProfile ||
+                                          (typeof constraints.maxPathLength === "number" &&
+                                            constraints.maxPathLength !== -1);
                                         return (
                                           <Field>
                                             <FieldLabel>
@@ -876,6 +957,11 @@ export const CertificateIssuanceModal = ({
                                               {...field}
                                               type="number"
                                               min={0}
+                                              max={
+                                                isAwsPcaProfile
+                                                  ? AWS_PCA_MAX_CA_PATH_LENGTH
+                                                  : undefined
+                                              }
                                               isError={Boolean(error)}
                                               placeholder={
                                                 isPathLengthRequired
@@ -896,10 +982,9 @@ export const CertificateIssuanceModal = ({
                                               }}
                                             />
                                             <FieldDescription>
-                                              Sets the pathLen for this CA certificate. Controls how
-                                              many levels of sub-CAs can exist below. Empty means
-                                              unlimited; 0 means it can only sign end-entity
-                                              certificates.
+                                              {isAwsPcaProfile
+                                                ? `Sets the pathLen for this CA certificate. Controls how many levels of sub-CAs can exist below. AWS Private CA supports 0 to ${AWS_PCA_MAX_CA_PATH_LENGTH}; 0 means it can only sign end-entity certificates.`
+                                                : "Sets the pathLen for this CA certificate. Controls how many levels of sub-CAs can exist below. Empty means unlimited; 0 means it can only sign end-entity certificates."}
                                             </FieldDescription>
                                             <FieldError errors={[error]} />
                                           </Field>

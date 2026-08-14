@@ -30,7 +30,6 @@ import {
 } from "./GeneralPermissionPolicies";
 import { GroupPermissionConditions } from "./GroupPermissionConditions";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
-import { McpEndpointPermissionConditions } from "./McpEndpointPermissionConditions";
 import { MemberPermissionConditions } from "./MemberPermissionConditions";
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import { PkiSubscriberPermissionConditions } from "./PkiSubscriberPermissionConditions";
@@ -50,7 +49,6 @@ import { SecretEventPermissionConditions } from "./SecretEventPermissionConditio
 import { SecretPermissionConditions } from "./SecretPermissionConditions";
 import { SecretRotationPermissionConditions } from "./SecretRotationPermissionConditions";
 import { SecretSyncPermissionConditions } from "./SecretSyncPermissionConditions";
-import { SshHostPermissionConditions } from "./SshHostPermissionConditions";
 
 type Props = {
   roleSlug: string;
@@ -70,10 +68,6 @@ export const renderConditionalComponents = (
   if (isConditionalSubjects(subject)) {
     if (subject === ProjectPermissionSub.Identity) {
       return <IdentityManagementPermissionConditions isDisabled={isDisabled} />;
-    }
-
-    if (subject === ProjectPermissionSub.SshHosts) {
-      return <SshHostPermissionConditions isDisabled={isDisabled} />;
     }
 
     if (subject === ProjectPermissionSub.PkiSubscribers) {
@@ -114,10 +108,6 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.CertificatePolicies) {
       return <CertificatePolicyPermissionConditions isDisabled={isDisabled} />;
-    }
-
-    if (subject === ProjectPermissionSub.McpEndpoints) {
-      return <McpEndpointPermissionConditions isDisabled={isDisabled} />;
     }
 
     if (subject === ProjectPermissionSub.HoneyTokens) {

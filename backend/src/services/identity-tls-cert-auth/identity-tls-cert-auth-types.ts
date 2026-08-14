@@ -30,6 +30,7 @@ export type TUpdateTlsCertAuthDTO = {
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetTlsCertAuthDTO = {
@@ -38,6 +39,7 @@ export type TGetTlsCertAuthDTO = {
 
 export type TRevokeTlsCertAuthDTO = {
   identityId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TIdentityTlsCertAuthServiceFactory = {

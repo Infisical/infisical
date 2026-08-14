@@ -307,7 +307,8 @@ const kickOutKmsProject = async (knex: Knex, oldProjectId: string) => {
 };
 
 const kickOutSshProject = async (knex: Knex, oldProjectId: string) => {
-  const newProjectId = await newProject(knex, oldProjectId, ProjectType.SSH);
+  // "ssh" literal: the SSH project type (ProjectType.SSH) was removed with the SSH product
+  const newProjectId = await newProject(knex, oldProjectId, "ssh" as ProjectType);
   await knex(TableName.SshHost).where("projectId", oldProjectId).update("projectId", newProjectId);
   await knex(TableName.ProjectSshConfig).where("projectId", oldProjectId).update("projectId", newProjectId);
   await knex(TableName.SshCertificateAuthority).where("projectId", oldProjectId).update("projectId", newProjectId);

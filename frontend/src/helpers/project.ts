@@ -1,12 +1,4 @@
-import {
-  FileKeyIcon,
-  KeyIcon,
-  LockIcon,
-  LucideIcon,
-  RadarIcon,
-  TerminalIcon,
-  UsersIcon
-} from "lucide-react";
+import { FileKeyIcon, KeyIcon, LockIcon, LucideIcon, RadarIcon, UsersIcon } from "lucide-react";
 
 import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/projects/queries";
@@ -158,10 +150,8 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.SecretManager]: "Secrets Management",
     [ProjectType.KMS]: "KMS",
     [ProjectType.CertificateManager]: "Certificate Manager",
-    [ProjectType.SSH]: "SSH",
     [ProjectType.SecretScanning]: "Secret Scanning",
-    [ProjectType.PAM]: "Privileged Access Manager",
-    [ProjectType.AI]: "AI"
+    [ProjectType.PAM]: "Privileged Access Manager"
   };
   return titleConvert[type] || type;
 };
@@ -212,7 +202,6 @@ export const getProjectLucideIcon = (type: ProjectType): LucideIcon => {
     [ProjectType.SecretManager]: KeyIcon,
     [ProjectType.KMS]: LockIcon,
     [ProjectType.CertificateManager]: FileKeyIcon,
-    [ProjectType.SSH]: TerminalIcon,
     [ProjectType.SecretScanning]: RadarIcon,
     [ProjectType.PAM]: UsersIcon
   };

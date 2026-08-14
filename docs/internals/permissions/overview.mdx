@@ -16,7 +16,7 @@ Infisical's permission system operates at two distinct levels, providing compreh
 
 ### Project Permissions
 
-Project permissions control access to resources within a specific project, including secrets management, PKI, KMS, and SSH certificate functionality.
+Project permissions control access to resources within a specific project, including secrets management, PKI, and KMS functionality.
 
 For a comprehensive list of all project-level subjects, actions, and detailed descriptions, please refer to the [Project Permissions](/internals/permissions/project-permissions) documentation.
 
@@ -34,7 +34,6 @@ Permission inversion allows you to explicitly deny actions instead of allowing t
 - secret-folders
 - secret-imports
 - dynamic-secrets
-- mcp-endpoints
 
 When a permission is inverted, it changes from an "allow" rule to a "deny" rule. For example:
 
@@ -65,7 +64,6 @@ Conditions allow you to create more granular permissions by specifying criteria 
 - secret-folders
 - secret-imports
 - dynamic-secrets
-- mcp-endpoints
 
 ### Properties
 
@@ -76,12 +74,6 @@ Conditions can be applied to the following properties:
 - `secretName`: Control access based on secret names
 - `secretTags`: Control access based on tags (only supports $in operator)
 
-### MCP Endpoint Properties
-
-For `mcp-endpoints`, conditions can be applied to:
-
-- `name`: Control access based on endpoint name (supports `$eq`, `$ne`, `$glob`, `$in`)
-
 ### Operators
 
 The following operators are available for conditions:
@@ -91,7 +83,14 @@ The following operators are available for conditions:
 | `$eq`    | Equal                              | `{ environment: { $eq: "production" } }`              |
 | `$ne`    | Not equal                          | `{ environment: { $ne: "development" } }`             |
 | `$in`    | Matches any value in array         | `{ environment: { $in: ["staging", "production"] } }` |
-| `$glob`  | [Glob pattern](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns/) matching (supports `*`, `**`, `?`, and `{a,b}` wildcards) | `{ secretPath: { $glob: "/app/\*" } }`                |
+| `$glob`  | [Glob pattern](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns/) matching (supports `*`, `**`, `?`, and `{a,b}` wildcards) | `{ secretPath: { $glob: "/app/**" } }`                |
+
+<Note>
+  A trailing `/*` matches only a folder's direct children: `/app/*` matches `/app/api` but not
+  `/app` itself, and not `/app/api/db`. To match a folder and everything under it, use a trailing
+  `/**`. See [condition operators](/internals/permissions/project-permissions#condition-operators)
+  for details.
+</Note>
 
 These details are especially useful if you're using the API to [create new project roles](/api-reference/endpoints/project-roles/create).
 The rules outlined on this page, also apply when using our Terraform Provider to manage your Infisical project roles, or any other of our clients that manage project roles.

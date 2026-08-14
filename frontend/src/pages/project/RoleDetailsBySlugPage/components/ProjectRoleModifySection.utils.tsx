@@ -25,7 +25,6 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
-  ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
@@ -42,7 +41,6 @@ import {
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions,
-  ProjectPermissionSshHostActions,
   TPermissionCondition,
   TPermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
@@ -223,14 +221,6 @@ const KmipPolicyActionSchema = z.object({
   [ProjectPermissionKmipActions.GenerateClientCertificates]: z.boolean().optional()
 });
 
-const SshHostPolicyActionSchema = z.object({
-  [ProjectPermissionSshHostActions.Read]: z.boolean().optional(),
-  [ProjectPermissionSshHostActions.Create]: z.boolean().optional(),
-  [ProjectPermissionSshHostActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionSshHostActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionSshHostActions.IssueHostCert]: z.boolean().optional()
-});
-
 const PkiSubscriberPolicyActionSchema = z.object({
   [ProjectPermissionPkiSubscriberActions.Read]: z.boolean().optional(),
   [ProjectPermissionPkiSubscriberActions.Create]: z.boolean().optional(),
@@ -269,25 +259,6 @@ const SecretEventsPolicyActionSchema = z.object({
   [ProjectPermissionSecretEventActions.SubscribeToUpdateEvents]: z.boolean().optional(),
   [ProjectPermissionSecretEventActions.SubscribeToDeletionEvents]: z.boolean().optional(),
   [ProjectPermissionSecretEventActions.SubscribeToImportMutationEvents]: z.boolean().optional()
-});
-
-const McpEndpointPolicyActionSchema = z.object({
-  [ProjectPermissionMcpEndpointActions.Read]: z.boolean().optional(),
-  [ProjectPermissionMcpEndpointActions.Create]: z.boolean().optional(),
-  [ProjectPermissionMcpEndpointActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionMcpEndpointActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionMcpEndpointActions.Connect]: z.boolean().optional()
-});
-
-const McpServerPolicyActionSchema = z.object({
-  [ProjectPermissionActions.Read]: z.boolean().optional(),
-  [ProjectPermissionActions.Create]: z.boolean().optional(),
-  [ProjectPermissionActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionActions.Delete]: z.boolean().optional()
-});
-
-const McpActivityLogPolicyActionSchema = z.object({
-  [ProjectPermissionActions.Read]: z.boolean().optional()
 });
 
 const ApprovalRequestPolicyActionSchema = z.object({
@@ -506,6 +477,7 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     ],
     [ProjectPermissionIdentityActions.AssumePrivileges]: ["identityId"],
     [ProjectPermissionIdentityActions.RevokeAuth]: ["identityId"],
+    [ProjectPermissionIdentityActions.EditAuth]: ["identityId"],
     [ProjectPermissionIdentityActions.CreateToken]: ["identityId"],
     [ProjectPermissionIdentityActions.GetToken]: ["identityId"],
     [ProjectPermissionIdentityActions.DeleteToken]: ["identityId"]
@@ -624,6 +596,7 @@ const IdentityPolicyActionSchema = createPolicySchemaWithConditions(
     [ProjectPermissionIdentityActions.AssignAdditionalPrivileges]: z.boolean().optional(),
     [ProjectPermissionIdentityActions.AssumePrivileges]: z.boolean().optional(),
     [ProjectPermissionIdentityActions.RevokeAuth]: z.boolean().optional(),
+    [ProjectPermissionIdentityActions.EditAuth]: z.boolean().optional(),
     [ProjectPermissionIdentityActions.GetToken]: z.boolean().optional(),
     [ProjectPermissionIdentityActions.CreateToken]: z.boolean().optional(),
     [ProjectPermissionIdentityActions.DeleteToken]: z.boolean().optional()
@@ -794,18 +767,6 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
-      [ProjectPermissionSub.SshCertificateAuthorities]: GeneralPolicyActionSchema.array().default(
-        []
-      ),
-      [ProjectPermissionSub.SshCertificates]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.SshCertificateTemplates]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.SshHosts]: SshHostPolicyActionSchema.extend({
-        inverted: z.boolean().optional(),
-        conditions: ConditionSchema
-      })
-        .array()
-        .default([]),
-      [ProjectPermissionSub.SshHostGroups]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretApproval]: ApprovalPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SecretRollback]: SecretRollbackPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Project]: WorkspacePolicyActionSchema.array().default([]),
@@ -830,14 +791,6 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
-      [ProjectPermissionSub.McpEndpoints]: McpEndpointPolicyActionSchema.extend({
-        inverted: z.boolean().optional(),
-        conditions: ConditionSchema
-      })
-        .array()
-        .default([]),
-      [ProjectPermissionSub.McpServers]: McpServerPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.McpActivityLogs]: McpActivityLogPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.ApprovalRequests]: ApprovalRequestPolicyActionSchema.array().default(
         []
       ),
@@ -891,14 +844,12 @@ type TConditionalFields =
   | ProjectPermissionSub.Certificates
   | ProjectPermissionSub.CertificateProfiles
   | ProjectPermissionSub.CertificatePolicies
-  | ProjectPermissionSub.SshHosts
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.Identity
   | ProjectPermissionSub.SecretSyncs
   | ProjectPermissionSub.PkiSyncs
   | ProjectPermissionSub.SecretEventSubscriptions
   | ProjectPermissionSub.AppConnections
-  | ProjectPermissionSub.McpEndpoints
   | ProjectPermissionSub.Member
   | ProjectPermissionSub.Groups
   | ProjectPermissionSub.Commits
@@ -914,7 +865,6 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.SecretImports ||
   subject === ProjectPermissionSub.SecretFolders ||
   subject === ProjectPermissionSub.Identity ||
-  subject === ProjectPermissionSub.SshHosts ||
   subject === ProjectPermissionSub.SecretRotation ||
   subject === ProjectPermissionSub.PkiSubscribers ||
   subject === ProjectPermissionSub.CertificateTemplates ||
@@ -926,7 +876,6 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.PkiSyncs ||
   subject === ProjectPermissionSub.SecretEventSubscriptions ||
   subject === ProjectPermissionSub.AppConnections ||
-  subject === ProjectPermissionSub.McpEndpoints ||
   subject === ProjectPermissionSub.Member ||
   subject === ProjectPermissionSub.Groups ||
   subject === ProjectPermissionSub.Commits ||
@@ -1067,18 +1016,11 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.Tags,
         ProjectPermissionSub.SecretRotation,
         ProjectPermissionSub.Kms,
-        ProjectPermissionSub.SshCertificateTemplates,
-        ProjectPermissionSub.SshCertificateAuthorities,
-        ProjectPermissionSub.SshCertificates,
-        ProjectPermissionSub.SshHostGroups,
         ProjectPermissionSub.SecretSyncs,
         ProjectPermissionSub.PkiSyncs,
         ProjectPermissionSub.SecretEventSubscriptions,
         ProjectPermissionSub.AppConnections,
         ProjectPermissionSub.HsmConnectors,
-        ProjectPermissionSub.McpEndpoints,
-        ProjectPermissionSub.McpServers,
-        ProjectPermissionSub.McpActivityLogs,
         ProjectPermissionSub.Insights,
         ProjectPermissionSub.ProjectFolderGrant
       ].includes(subject)
@@ -1292,6 +1234,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             ProjectPermissionIdentityActions.AssumePrivileges
           );
           const canRevokeAuth = action.includes(ProjectPermissionIdentityActions.RevokeAuth);
+          const canEditAuth = action.includes(ProjectPermissionIdentityActions.EditAuth);
           const canCreateToken = action.includes(ProjectPermissionIdentityActions.CreateToken);
           const canGetToken = action.includes(ProjectPermissionIdentityActions.GetToken);
           const canDeleteToken = action.includes(ProjectPermissionIdentityActions.DeleteToken);
@@ -1308,6 +1251,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
               canAssignAdditionalPrivileges,
             [ProjectPermissionIdentityActions.AssumePrivileges]: canAssumePrivileges,
             [ProjectPermissionIdentityActions.RevokeAuth]: canRevokeAuth,
+            [ProjectPermissionIdentityActions.EditAuth]: canEditAuth,
             [ProjectPermissionIdentityActions.CreateToken]: canCreateToken,
             [ProjectPermissionIdentityActions.GetToken]: canGetToken,
             [ProjectPermissionIdentityActions.DeleteToken]: canDeleteToken,
@@ -1763,32 +1707,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       return;
     }
 
-    if (subject === ProjectPermissionSub.SshHosts) {
-      if (!formVal[subject]) formVal[subject] = [];
-
-      formVal[subject]!.push({
-        [ProjectPermissionSshHostActions.Edit]: action.includes(
-          ProjectPermissionSshHostActions.Edit
-        ),
-        [ProjectPermissionSshHostActions.Delete]: action.includes(
-          ProjectPermissionSshHostActions.Delete
-        ),
-        [ProjectPermissionSshHostActions.Create]: action.includes(
-          ProjectPermissionSshHostActions.Create
-        ),
-        [ProjectPermissionSshHostActions.Read]: action.includes(
-          ProjectPermissionSshHostActions.Read
-        ),
-        [ProjectPermissionSshHostActions.IssueHostCert]: action.includes(
-          ProjectPermissionSshHostActions.IssueHostCert
-        ),
-        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
-        inverted
-      });
-
-      return;
-    }
-
     if (subject === ProjectPermissionSub.Commits) {
       const canRead = action.includes(ProjectPermissionCommitsActions.Read);
       const canPerformRollback = action.includes(ProjectPermissionCommitsActions.PerformRollback);
@@ -1906,48 +1824,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       });
 
       return;
-    }
-
-    if (subject === ProjectPermissionSub.McpEndpoints) {
-      const canRead = action.includes(ProjectPermissionMcpEndpointActions.Read);
-      const canCreate = action.includes(ProjectPermissionMcpEndpointActions.Create);
-      const canEdit = action.includes(ProjectPermissionMcpEndpointActions.Edit);
-      const canDelete = action.includes(ProjectPermissionMcpEndpointActions.Delete);
-      const canConnect = action.includes(ProjectPermissionMcpEndpointActions.Connect);
-
-      if (!formVal[subject]) formVal[subject] = [];
-
-      formVal[subject]!.push({
-        [ProjectPermissionMcpEndpointActions.Read]: canRead,
-        [ProjectPermissionMcpEndpointActions.Create]: canCreate,
-        [ProjectPermissionMcpEndpointActions.Edit]: canEdit,
-        [ProjectPermissionMcpEndpointActions.Delete]: canDelete,
-        [ProjectPermissionMcpEndpointActions.Connect]: canConnect,
-        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
-        inverted
-      });
-    }
-
-    if (subject === ProjectPermissionSub.McpServers) {
-      const canRead = action.includes(ProjectPermissionActions.Read);
-      const canCreate = action.includes(ProjectPermissionActions.Create);
-      const canEdit = action.includes(ProjectPermissionActions.Edit);
-      const canDelete = action.includes(ProjectPermissionActions.Delete);
-
-      if (!formVal[subject]) formVal[subject] = [{}];
-
-      if (canRead) formVal[subject]![0][ProjectPermissionActions.Read] = true;
-      if (canCreate) formVal[subject]![0][ProjectPermissionActions.Create] = true;
-      if (canEdit) formVal[subject]![0][ProjectPermissionActions.Edit] = true;
-      if (canDelete) formVal[subject]![0][ProjectPermissionActions.Delete] = true;
-    }
-
-    if (subject === ProjectPermissionSub.McpActivityLogs) {
-      const canRead = action.includes(ProjectPermissionActions.Read);
-
-      if (!formVal[subject]) formVal[subject] = [{}];
-
-      if (canRead) formVal[subject]![0][ProjectPermissionActions.Read] = true;
     }
 
     if (subject === ProjectPermissionSub.ApprovalRequests) {
@@ -2396,6 +2272,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         description: "Revoke authentication for a machine identity"
       },
       {
+        label: "Configure Auth Methods",
+        value: ProjectPermissionIdentityActions.EditAuth,
+        description: "Add or update authentication methods for a machine identity"
+      },
+      {
         label: "Create Token",
         value: ProjectPermissionIdentityActions.CreateToken,
         description: "Generate access tokens for machine identities"
@@ -2788,77 +2669,6 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         value: ProjectPermissionCertificatePolicyActions.Delete,
         description: "Delete certificate policies"
       }
-    ]
-  },
-  [ProjectPermissionSub.SshCertificateAuthorities]: {
-    title: "SSH Certificate Authorities",
-    description: "Manage SSH CA for signing host and user certificates",
-    actions: [
-      { label: "Read", value: "read", description: "View SSH certificate authorities" },
-      { label: "Create", value: "create", description: "Create new SSH certificate authorities" },
-      { label: "Modify", value: "edit", description: "Update SSH CA configuration" },
-      { label: "Remove", value: "delete", description: "Delete SSH certificate authorities" }
-    ]
-  },
-  [ProjectPermissionSub.SshCertificates]: {
-    title: "SSH Certificates",
-    description: "Issue and manage SSH user certificates",
-    actions: [
-      { label: "Read", value: "read", description: "View SSH certificates" },
-      { label: "Create", value: "create", description: "Issue new SSH certificates" },
-      { label: "Modify", value: "edit", description: "Update SSH certificate properties" },
-      { label: "Remove", value: "delete", description: "Revoke SSH certificates" }
-    ]
-  },
-  [ProjectPermissionSub.SshCertificateTemplates]: {
-    title: "SSH Certificate Templates",
-    description: "Define templates for SSH certificate issuance",
-    actions: [
-      { label: "Read", value: "read", description: "View SSH certificate templates" },
-      { label: "Create", value: "create", description: "Create new SSH certificate templates" },
-      { label: "Modify", value: "edit", description: "Update SSH template configuration" },
-      { label: "Remove", value: "delete", description: "Delete SSH certificate templates" }
-    ]
-  },
-  [ProjectPermissionSub.SshHosts]: {
-    title: "SSH Hosts",
-    description: "Manage SSH host certificates and access",
-    actions: [
-      {
-        label: "Read",
-        value: ProjectPermissionSshHostActions.Read,
-        description: "View SSH hosts and their configuration"
-      },
-      {
-        label: "Create",
-        value: ProjectPermissionSshHostActions.Create,
-        description: "Register new SSH hosts"
-      },
-      {
-        label: "Modify",
-        value: ProjectPermissionSshHostActions.Edit,
-        description: "Update SSH host settings"
-      },
-      {
-        label: "Remove",
-        value: ProjectPermissionSshHostActions.Delete,
-        description: "Remove SSH hosts"
-      },
-      {
-        label: "Issue Host Certificate",
-        value: ProjectPermissionSshHostActions.IssueHostCert,
-        description: "Issue host certificates for SSH hosts"
-      }
-    ]
-  },
-  [ProjectPermissionSub.SshHostGroups]: {
-    title: "SSH Host Groups",
-    description: "Organize SSH hosts into groups",
-    actions: [
-      { label: "Read", value: "read", description: "View SSH host groups" },
-      { label: "Create", value: "create", description: "Create new SSH host groups" },
-      { label: "Modify", value: "edit", description: "Update SSH host group membership" },
-      { label: "Remove", value: "delete", description: "Delete SSH host groups" }
     ]
   },
   [ProjectPermissionSub.PkiSubscribers]: {
@@ -3369,66 +3179,6 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
-  [ProjectPermissionSub.McpEndpoints]: {
-    title: "MCP Endpoints",
-    description: "Manage Model Context Protocol endpoints",
-    actions: [
-      {
-        label: "Read",
-        value: ProjectPermissionMcpEndpointActions.Read,
-        description: "View MCP endpoints"
-      },
-      {
-        label: "Create",
-        value: ProjectPermissionMcpEndpointActions.Create,
-        description: "Create new MCP endpoints"
-      },
-      {
-        label: "Modify",
-        value: ProjectPermissionMcpEndpointActions.Edit,
-        description: "Update endpoint configuration"
-      },
-      {
-        label: "Remove",
-        value: ProjectPermissionMcpEndpointActions.Delete,
-        description: "Delete MCP endpoints"
-      },
-      {
-        label: "Connect",
-        value: ProjectPermissionMcpEndpointActions.Connect,
-        description: "Connect to MCP endpoints"
-      }
-    ]
-  },
-  [ProjectPermissionSub.McpServers]: {
-    title: "MCP Servers",
-    description: "Configure MCP server connections",
-    actions: [
-      { label: "Read", value: ProjectPermissionActions.Read, description: "View MCP servers" },
-      {
-        label: "Create",
-        value: ProjectPermissionActions.Create,
-        description: "Register new MCP servers"
-      },
-      {
-        label: "Modify",
-        value: ProjectPermissionActions.Edit,
-        description: "Update server configuration"
-      },
-      { label: "Remove", value: ProjectPermissionActions.Delete, description: "Remove MCP servers" }
-    ]
-  },
-  [ProjectPermissionSub.McpActivityLogs]: {
-    title: "MCP Activity Logs",
-    description: "View MCP endpoint activity and usage",
-    actions: [
-      {
-        label: "Read",
-        value: ProjectPermissionActions.Read,
-        description: "View MCP activity and access logs"
-      }
-    ]
-  },
   [ProjectPermissionSub.SecretApprovalRequest]: {
     title: "Secret Approval Requests",
     description: "View secret change requests pending approval",
@@ -3501,24 +3251,10 @@ const CertificateManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.HsmConnectors]: enabled
 });
 
-const SshPermissionSubjects = (enabled = false) => ({
-  [ProjectPermissionSub.SshCertificateAuthorities]: enabled,
-  [ProjectPermissionSub.SshCertificates]: enabled,
-  [ProjectPermissionSub.SshCertificateTemplates]: enabled,
-  [ProjectPermissionSub.SshHosts]: enabled,
-  [ProjectPermissionSub.SshHostGroups]: enabled
-});
-
 const SecretScanningSubject = (enabled = false) => ({
   [ProjectPermissionSub.SecretScanningDataSources]: enabled,
   [ProjectPermissionSub.SecretScanningFindings]: enabled,
   [ProjectPermissionSub.SecretScanningConfigs]: enabled
-});
-
-const AiPermissionSubjects = (enabled = false) => ({
-  [ProjectPermissionSub.McpEndpoints]: enabled,
-  [ProjectPermissionSub.McpServers]: enabled,
-  [ProjectPermissionSub.McpActivityLogs]: enabled
 });
 
 // scott: this structure ensures we don't forget to add project permissions to their relevant project type
@@ -3531,9 +3267,7 @@ export const ProjectTypePermissionSubjects: Record<
     ...SecretsManagerPermissionSubjects(true),
     ...KmsPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(),
-    ...SshPermissionSubjects(),
     ...SecretScanningSubject(),
-    ...AiPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: true,
     // Approval Requests / Grants are not used in Secret Manager (secret approvals use SecretApproval policy)
     [ProjectPermissionSub.ApprovalRequests]: false,
@@ -3544,9 +3278,7 @@ export const ProjectTypePermissionSubjects: Record<
     ...KmsPermissionSubjects(true),
     ...SecretsManagerPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(),
-    ...SshPermissionSubjects(),
     ...SecretScanningSubject(),
-    ...AiPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: false
   },
   [ProjectType.CertificateManager]: {
@@ -3554,49 +3286,23 @@ export const ProjectTypePermissionSubjects: Record<
     ...CertificateManagerPermissionSubjects(true),
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
-    ...SshPermissionSubjects(),
     ...SecretScanningSubject(),
-    ...AiPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: true
-  },
-  [ProjectType.SSH]: {
-    ...SharedPermissionSubjects,
-    ...SshPermissionSubjects(true),
-    ...CertificateManagerPermissionSubjects(),
-    ...KmsPermissionSubjects(),
-    ...SecretsManagerPermissionSubjects(),
-    ...SecretScanningSubject(),
-    ...AiPermissionSubjects(),
-    [ProjectPermissionSub.AppConnections]: false
   },
   [ProjectType.SecretScanning]: {
     ...SharedPermissionSubjects,
     ...SecretScanningSubject(true),
-    ...SshPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(),
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
-    ...AiPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: true
   },
   [ProjectType.PAM]: {
     ...SharedPermissionSubjects,
     ...SecretScanningSubject(),
-    ...SshPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(),
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
-    ...AiPermissionSubjects(),
-    [ProjectPermissionSub.AppConnections]: false
-  },
-  [ProjectType.AI]: {
-    ...SharedPermissionSubjects,
-    ...SecretsManagerPermissionSubjects(),
-    ...KmsPermissionSubjects(),
-    ...CertificateManagerPermissionSubjects(),
-    ...SshPermissionSubjects(),
-    ...SecretScanningSubject(),
-    ...AiPermissionSubjects(true),
     [ProjectPermissionSub.AppConnections]: false
   }
 };
@@ -3651,70 +3357,6 @@ const projectManagerTemplate = (
 });
 
 export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
-  [ProjectType.SSH]: [
-    {
-      id: "ssh-viewer",
-      name: "SSH Viewing Policies",
-      description: "Grants read access to SSH certificates and hosts",
-      permissions: [
-        {
-          subject: ProjectPermissionSub.SshCertificateAuthorities,
-          actions: [ProjectPermissionActions.Read]
-        },
-        {
-          subject: ProjectPermissionSub.SshCertificates,
-          actions: [ProjectPermissionActions.Read]
-        },
-        {
-          subject: ProjectPermissionSub.SshCertificateTemplates,
-          actions: [ProjectPermissionActions.Read]
-        },
-        {
-          subject: ProjectPermissionSub.SshHosts,
-          actions: [ProjectPermissionSshHostActions.Read]
-        },
-        {
-          subject: ProjectPermissionSub.SshHostGroups,
-          actions: [ProjectPermissionActions.Read]
-        }
-      ]
-    },
-    {
-      id: "ssh-cert-editor",
-      name: "SSH Certificate Editing Policies",
-      description: "Grants read and edit access to SSH certificates",
-      permissions: [
-        {
-          subject: ProjectPermissionSub.SshCertificateAuthorities,
-          actions: Object.values(ProjectPermissionActions)
-        },
-        {
-          subject: ProjectPermissionSub.SshCertificates,
-          actions: Object.values(ProjectPermissionActions)
-        },
-        {
-          subject: ProjectPermissionSub.SshCertificateTemplates,
-          actions: Object.values(ProjectPermissionActions)
-        }
-      ]
-    },
-    {
-      id: "ssh-host-editor",
-      name: "SSH Host Editing Policies",
-      description: "Grants read and edit access to SSH hosts",
-      permissions: [
-        {
-          subject: ProjectPermissionSub.SshHosts,
-          actions: Object.values(ProjectPermissionSshHostActions)
-        },
-        {
-          subject: ProjectPermissionSub.SshHostGroups,
-          actions: Object.values(ProjectPermissionActions)
-        }
-      ]
-    },
-    projectManagerTemplate()
-  ],
   [ProjectType.KMS]: [
     {
       id: "kms-viewer",
@@ -4081,6 +3723,5 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       ]
     }
   ],
-  [ProjectType.PAM]: [projectManagerTemplate()],
-  [ProjectType.AI]: [projectManagerTemplate()]
+  [ProjectType.PAM]: [projectManagerTemplate()]
 };

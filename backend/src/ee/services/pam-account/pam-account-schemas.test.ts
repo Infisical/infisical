@@ -14,7 +14,7 @@ import {
 // These assertions exercise the Zod-introspection path (buildPamAccountTypeMetadata reads schema internals to derive field descriptors)
 describe("buildPamAccountTypeMetadata", () => {
   const metadata = buildPamAccountTypeMetadata(
-    new Set([PamAccountType.Postgres, PamAccountType.MySQL, PamAccountType.SSH])
+    new Set([PamAccountType.Postgres, PamAccountType.MySQL, PamAccountType.SSH, PamAccountType.Redis])
   );
   const byType = new Map(metadata.map((m) => [m.type, m]));
 
@@ -81,6 +81,12 @@ describe("buildPamAccountTypeMetadata", () => {
     });
   });
 
+  test("only advertises connection string schemes for types that accept them", () => {
+    expect(byType.get(PamAccountType.Postgres)?.connectionStringSchemes).toEqual(["postgres", "postgresql"]);
+    expect(byType.get(PamAccountType.MySQL)?.connectionStringSchemes).toBeUndefined();
+    expect(byType.get(PamAccountType.SSH)?.connectionStringSchemes).toBeUndefined();
+  });
+
   test("derives MySQL connection and credential fields from the schema", () => {
     const mysql = byType.get(PamAccountType.MySQL);
     expect(mysql).toBeDefined();
@@ -103,6 +109,38 @@ describe("buildPamAccountTypeMetadata", () => {
       secret: false
     });
     expect(fieldByKey(mysql!.credentialFields, "password")).toMatchObject({
+      widget: "password",
+      secret: true,
+      required: false
+    });
+  });
+
+  test("derives Redis connection and credential fields from the schema", () => {
+    const redis = byType.get(PamAccountType.Redis);
+    expect(redis).toBeDefined();
+    expect(redis?.name).toBe("Redis");
+    expect(redis?.supportsWebAccess).toBe(true);
+
+    expect(redis?.connectionFields.map((f) => f.key)).toEqual([
+      "host",
+      "port",
+      "sslEnabled",
+      "sslRejectUnauthorized",
+      "sslCertificate"
+    ]);
+    expect(fieldByKey(redis!.connectionFields, "port")).toMatchObject({
+      widget: "number",
+      required: true,
+      defaultValue: 6379
+    });
+
+    expect(fieldByKey(redis!.credentialFields, "username")).toMatchObject({
+      widget: "text",
+      required: true,
+      secret: false,
+      defaultValue: "default"
+    });
+    expect(fieldByKey(redis!.credentialFields, "password")).toMatchObject({
       widget: "password",
       secret: true,
       required: false

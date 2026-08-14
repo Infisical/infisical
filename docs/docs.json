@@ -4,13 +4,26 @@
   "name": "Infisical",
   "colors": {
     "primary": "#26272b",
-    "light": "#97b31d",
+    "light": "#EFFF33",
     "dark": "#A1B659"
   },
   "styling": {
     "codeblocks": "dark"
   },
+  "thumbnails": {
+    "appearance": "light"
+  },
   "favicon": "/favicon.ico",
+  "contextual": {
+    "options": [
+      "assistant",
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "mcp"
+    ]
+  },
   "navigation": {
     "tabs": [
       {
@@ -175,6 +188,7 @@
                       "integrations/app-connections/render",
                       "integrations/app-connections/rundeck",
                       "integrations/app-connections/salesforce",
+                      "integrations/app-connections/servicenow",
                       "integrations/app-connections/snowflake",
                       "integrations/app-connections/spacelift",
                       "integrations/app-connections/supabase",
@@ -198,7 +212,8 @@
                 "group": "Workflow Integrations",
                 "pages": [
                   "documentation/platform/workflow-integrations/slack-integration",
-                  "documentation/platform/workflow-integrations/microsoft-teams-integration"
+                  "documentation/platform/workflow-integrations/microsoft-teams-integration",
+                  "documentation/platform/workflow-integrations/servicenow-integration"
                 ]
               },
               {
@@ -690,15 +705,7 @@
                   {
                     "group": "Infrastructure",
                     "pages": [
-                      {
-                        "group": "Docker",
-                        "pages": [
-                          "integrations/platforms/docker-intro",
-                          "integrations/platforms/docker",
-                          "integrations/platforms/docker-pass-envs",
-                          "integrations/platforms/docker-compose"
-                        ]
-                      },
+                      "integrations/platforms/docker",
                       "integrations/platforms/ansible",
                       "integrations/platforms/apache-airflow",
                       {
@@ -1121,6 +1128,7 @@
                       "documentation/platform/pam/accounts/mysql",
                       "documentation/platform/pam/accounts/mssql",
                       "documentation/platform/pam/accounts/mongodb",
+                      "documentation/platform/pam/accounts/redis",
                       "documentation/platform/pam/accounts/ssh",
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
@@ -1131,6 +1139,7 @@
                     ]
                   },
                   "documentation/platform/pam/access-requests/overview",
+                  "documentation/platform/pam/ai-agents/overview",
                   {
                     "group": "Credential Rotation",
                     "pages": [
@@ -1193,7 +1202,10 @@
                   "cli/commands/secrets",
                   "cli/commands/agent-proxy",
                   "cli/commands/dynamic-secrets",
-                  "cli/commands/pam",
+                  {
+                    "group": "infisical pam",
+                    "pages": ["cli/commands/pam", "cli/commands/pam-agentic"]
+                  },
                   "cli/commands/gateway",
                   "cli/commands/kmip",
                   "cli/commands/relay",
@@ -1713,6 +1725,12 @@
                     ]
                   },
                   {
+                    "group": "Datadog",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/datadog/create"
+                    ]
+                  },
+                  {
                     "group": "DBT",
                     "pages": [
                       "api-reference/endpoints/app-connections/dbt/list",
@@ -1869,6 +1887,12 @@
                     ]
                   },
                   {
+                    "group": "GoDaddy",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/godaddy/create"
+                    ]
+                  },
+                  {
                     "group": "Hashicorp Vault",
                     "pages": [
                       "api-reference/endpoints/app-connections/hashicorp-vault/list",
@@ -1929,6 +1953,12 @@
                     ]
                   },
                   {
+                    "group": "Kemp LoadMaster",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/kemp-loadmaster/create"
+                    ]
+                  },
+                  {
                     "group": "Laravel Forge",
                     "pages": [
                       "api-reference/endpoints/app-connections/laravel-forge/list",
@@ -1962,6 +1992,12 @@
                       "api-reference/endpoints/app-connections/litellm/create",
                       "api-reference/endpoints/app-connections/litellm/update",
                       "api-reference/endpoints/app-connections/litellm/delete"
+                    ]
+                  },
+                  {
+                    "group": "Microsoft Intune",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/microsoft-intune/create"
                     ]
                   },
                   {
@@ -2085,6 +2121,12 @@
                     ]
                   },
                   {
+                    "group": "Ona",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/ona/create"
+                    ]
+                  },
+                  {
                     "group": "OpenAI",
                     "pages": [
                       "api-reference/endpoints/app-connections/openai/list",
@@ -2118,6 +2160,12 @@
                       "api-reference/endpoints/app-connections/oracledb/create",
                       "api-reference/endpoints/app-connections/oracledb/update",
                       "api-reference/endpoints/app-connections/oracledb/delete"
+                    ]
+                  },
+                  {
+                    "group": "OVH",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/ovh/create"
                     ]
                   },
                   {
@@ -2250,6 +2298,12 @@
                       "api-reference/endpoints/app-connections/terraform-cloud/create",
                       "api-reference/endpoints/app-connections/terraform-cloud/update",
                       "api-reference/endpoints/app-connections/terraform-cloud/delete"
+                    ]
+                  },
+                  {
+                    "group": "Travis CI",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/travis-ci/create"
                     ]
                   },
                   {
@@ -2467,6 +2521,12 @@
                   "api-reference/endpoints/ldap-auth/update",
                   "api-reference/endpoints/ldap-auth/revoke"
                 ]
+              },
+              {
+                "group": "SPIFFE Auth",
+                "pages": [
+                  "api-reference/endpoints/machine-identities/spiffe-auth/refresh-bundle"
+                ]
               }
             ]
           },
@@ -2657,6 +2717,12 @@
                     ]
                   },
                   {
+                    "group": "Convex Access Key",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/convex-access-key/create"
+                    ]
+                  },
+                  {
                     "group": "Databricks Service Principal Secret",
                     "pages": [
                       "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/create",
@@ -2667,6 +2733,18 @@
                       "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/list",
                       "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/update"
+                    ]
+                  },
+                  {
+                    "group": "Datadog Application Key Secret",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/datadog-application-key-secret/create"
+                    ]
+                  },
+                  {
+                    "group": "Datadog API Key",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/datadog-api-key/create"
                     ]
                   },
                   {
@@ -3382,6 +3460,18 @@
                     ]
                   },
                   {
+                    "group": "Ona",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/ona/create"
+                    ]
+                  },
+                  {
+                    "group": "OVH",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/ovh/create"
+                    ]
+                  },
+                  {
                     "group": "Qovery",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/qovery/list",
@@ -3499,6 +3589,12 @@
                       "api-reference/endpoints/secret-syncs/terraform-cloud/delete",
                       "api-reference/endpoints/secret-syncs/terraform-cloud/sync-secrets",
                       "api-reference/endpoints/secret-syncs/terraform-cloud/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Travis CI",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/travis-ci/create"
                     ]
                   },
                   {
@@ -3757,6 +3853,13 @@
                         ]
                       },
                       {
+                        "group": "Kemp LoadMaster",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/kemp-loadmaster/create",
+                          "api-reference/endpoints/pki/syncs/kemp-loadmaster/sync-certificates"
+                        ]
+                      },
+                      {
                         "group": "NetScaler",
                         "pages": [
                           "api-reference/endpoints/pki/syncs/netscaler/list",
@@ -3912,6 +4015,12 @@
                           "api-reference/endpoints/certificate-authorities/digicert/read",
                           "api-reference/endpoints/certificate-authorities/digicert/update",
                           "api-reference/endpoints/certificate-authorities/digicert/delete"
+                        ]
+                      },
+                      {
+                        "group": "GoDaddy",
+                        "pages": [
+                          "api-reference/endpoints/certificate-authorities/godaddy/create"
                         ]
                       }
                     ]
@@ -4196,10 +4305,6 @@
       "server": ["https://app.infisical.com"]
     }
   },
-  "appearance": {
-    "default": "light",
-    "strict": true
-  },
   "background": {
     "color": {
       "light": "#ffffff",
@@ -4297,7 +4402,7 @@
           },
           {
             "label": "Docker",
-            "href": "https://infisical.com/docs/integrations/platforms/docker-intro"
+            "href": "https://infisical.com/docs/integrations/platforms/docker"
           },
           {
             "label": "AWS ECS",
@@ -4407,6 +4512,18 @@
   },
   "redirects": [
     {
+      "source": "/integrations/platforms/docker-intro",
+      "destination": "/integrations/platforms/docker"
+    },
+    {
+      "source": "/integrations/platforms/docker-pass-envs",
+      "destination": "/integrations/platforms/docker"
+    },
+    {
+      "source": "/integrations/platforms/docker-compose",
+      "destination": "/integrations/platforms/docker"
+    },
+    {
       "source": "/documentation/platform/agent-proxy/quickstart",
       "destination": "/documentation/platform/agent-proxy/quickstart/credentials"
     },
@@ -4421,6 +4538,38 @@
     {
       "source": "/documentation/platform/agent-proxy/connecting-agents",
       "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy#the-two-commands"
+    },
+    {
+      "source": "/documentation/platform/ssh",
+      "destination": "/documentation/platform/pam/overview"
+    },
+    {
+      "source": "/documentation/platform/ssh/concepts/ssh-certificates",
+      "destination": "/documentation/platform/pam/guides/ssh-certificate-auth"
+    },
+    {
+      "source": "/documentation/platform/ssh/:slug*",
+      "destination": "/documentation/platform/pam/accounts/ssh"
+    },
+    {
+      "source": "/api-reference/endpoints/ssh/:slug*",
+      "destination": "/documentation/platform/pam/overview"
+    },
+    {
+      "source": "/cli/commands/ssh",
+      "destination": "/cli/commands/pam"
+    },
+    {
+      "source": "/documentation/platform/agent-sentinel",
+      "destination": "/documentation/platform/agent-proxy/overview"
+    },
+    {
+      "source": "/documentation/platform/agent-sentinel/activity-logs",
+      "destination": "/documentation/platform/agent-proxy/activity-logs"
+    },
+    {
+      "source": "/documentation/platform/agent-sentinel/:slug*",
+      "destination": "/documentation/platform/agent-proxy/overview"
     },
     {
       "source": "/documentation/platform/kms/hsm-integration",

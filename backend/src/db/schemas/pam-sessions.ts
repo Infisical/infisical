@@ -39,7 +39,8 @@ export const PamSessionsSchema = z.object({
   gatewayUploadTokenHash: zodBuffer.nullable().optional(),
   gatewayId: z.string().uuid().nullable().optional(),
   folderName: z.string().nullable().optional(),
-  selectedHost: z.string().nullable().optional()
+  selectedHost: z.string().nullable().optional(),
+  identityId: z.string().uuid().nullable().optional()
 });
 
 export type TPamSessions = z.infer<typeof PamSessionsSchema>;

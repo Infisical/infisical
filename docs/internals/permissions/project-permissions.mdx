@@ -12,7 +12,7 @@ Each permission consists of:
 - **Subject**: The resource the permission applies to (e.g., secrets, members, settings)
 - **Action**: The operation that can be performed (e.g., read, create, edit, delete)
 
-Some project-level resources—specifically `secrets`, `secret-folders`, `secret-imports`, `dynamic-secrets`, `secret-syncs`, `secret-rotation`, `honey-tokens`, `identity`, `app-connections`, `mcp-endpoints`, and `pam-accounts`—support conditional permissions and permission inversion for more granular access control. Conditions allow you to specify criteria (like environment, secret path, tags, app connection ID, identity ID, resource name, or endpoint name) that must be met for the permission to apply.
+Some project-level resources—specifically `secrets`, `secret-folders`, `secret-imports`, `dynamic-secrets`, `secret-syncs`, `secret-rotation`, `honey-tokens`, `identity`, `app-connections`, and `pam-accounts`—support conditional permissions and permission inversion for more granular access control. Conditions allow you to specify criteria (like environment, secret path, tags, app connection ID, identity ID, resource name, or endpoint name) that must be met for the permission to apply.
 
 ## Available Project Permissions
 
@@ -72,6 +72,7 @@ Supports conditions and permission inversion.
 | `assign-additional-privileges` | Grant additional privileges to project identities | `identityId`, `assignableSubject`, `assignableAction` |
 | `assume-privileges` | Temporarily assume another identity's privileges | `identityId` |
 | `revoke-auth` | Revoke authentication for a machine identity | `identityId` |
+| `edit-auth` | Modify authentication methods for a machine identity | `identityId` |
 | `create-token` | Generate access tokens for machine identities | `identityId` |
 | `get-token` | View existing access tokens | `identityId` |
 | `delete-token` | Revoke access tokens | `identityId` |
@@ -431,20 +432,6 @@ Supports conditions and permission inversion.
 | `read-configs`   | View Secret Scanning Project Configuration   |
 | `update-configs` | Update Secret Scanning Project Configuration |
 
-### Agent Sentinel
-
-#### Subject: `mcp-endpoints`
-
-Supports conditions and permission inversion.
-
-| Action    | Description                         | Condition keys |
-| --------- | ----------------------------------- | ----- |
-| `read`    | View MCP endpoints                  | `name` |
-| `create`  | Create new MCP endpoints            | `name` |
-| `edit`    | Modify MCP endpoint configurations  | `name` |
-| `delete`  | Remove MCP endpoints                | `name` |
-| `connect` | Connect AI clients to MCP endpoints | `name` |
-
 ### Privileged Access Management (PAM)
 
 #### Subject: `pam-resources`
@@ -492,10 +479,12 @@ When defining conditions for permissions, you can use the following operators to
 <Note>
 When using `$glob`, note that `*` does **not** match across `/` boundaries. Use `**` to match across multiple path segments.
 
+A trailing `/*` also does **not** match the folder itself: `/app/*` matches secrets in `/app/config` but not secrets directly in `/app`. To grant access to a folder and everything under it, use a trailing `/**`.
+
 | Pattern | Matches | Does not match |
 |---------|---------|----------------|
-| `/app/*` | `/app/config`, `/app/secrets` | `/app/config/db` |
-| `/app/**` | `/app/config`, `/app/config/db`, `/app/config/db/primary` | `/other/config` |
+| `/app/*` | `/app/config`, `/app/secrets` | `/app` (the folder itself), `/app/config/db` |
+| `/app/**` | `/app`, `/app/config`, `/app/config/db/primary` | `/other/config` |
 | `/{dev,staging}/*` | `/dev/secrets`, `/staging/config` | `/prod/secrets` |
 </Note>
 

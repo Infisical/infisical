@@ -41,6 +41,7 @@ import {
   CertStatus
 } from "@app/services/certificate/certificate-types";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
+import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-validators";
 import {
   TCertificateAuthorityDALFactory,
   TCertificateAuthorityWithAssociatedCa
@@ -59,10 +60,12 @@ import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-a
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
   CertExtendedKeyUsageType,
+  CertificateIssuanceOperation,
   CertKeyUsageType,
   CertPolicyState,
   mapExtendedKeyUsageToLegacy,
@@ -86,6 +89,7 @@ import {
   validateAlgorithmCompatibility,
   validateCaSupport
 } from "../certificate-common/certificate-issuance-utils";
+import { reportCertificateIssued } from "../certificate-common/certificate-telemetry-fns";
 import {
   bufferToString,
   buildCertificateSubjectFromTemplate,
@@ -97,7 +101,7 @@ import {
   removeRootCaFromChain,
   validatePqcLicense
 } from "../certificate-common/certificate-utils";
-import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
+import { TCertificateRequest, TSubjectRule } from "../certificate-policy/certificate-policy-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
@@ -174,6 +178,7 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -595,12 +600,7 @@ const processSelfSignedCertificate = async ({
     notAfter?: Date;
   };
   policy?: {
-    subject?: Array<{
-      type: string;
-      allowed?: string[];
-      required?: string[];
-      denied?: string[];
-    }>;
+    subject?: TSubjectRule[];
     sans?: Array<{
       type: string;
       allowed?: string[];
@@ -702,8 +702,53 @@ export const certificateV3ServiceFactory = ({
   pkiAlertV2Queue,
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
-  licenseService
+  licenseService,
+  telemetryService
 }: TCertificateV3ServiceFactoryDep) => {
+  const $reportCertificateIssued = async ({
+    orgId,
+    projectId,
+    profileId,
+    applicationId,
+    enrollmentType,
+    operation,
+    actor,
+    actorId
+  }: {
+    orgId?: string;
+    projectId: string;
+    profileId?: string | null;
+    applicationId?: string | null;
+    enrollmentType: EnrollmentType;
+    operation: CertificateIssuanceOperation;
+    actor?: ActorType;
+    actorId?: string;
+  }) => {
+    let distinctId: string | undefined;
+    try {
+      if (actor === ActorType.USER && actorId) {
+        const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+        distinctId = user?.username ?? user?.email;
+      } else if (actor === ActorType.IDENTITY && actorId) {
+        distinctId = `identity-${actorId}`;
+      }
+    } catch (error) {
+      logger.debug({ error }, "Failed to resolve distinctId for certificate issuance telemetry");
+    }
+
+    await reportCertificateIssued({
+      telemetryService,
+      projectDAL,
+      orgId,
+      projectId,
+      profileId,
+      applicationId,
+      enrollmentType,
+      operation,
+      distinctId
+    });
+  };
+
   const $resolveApplicationIdForProfile = async (
     profile: {
       id: string;
@@ -1096,13 +1141,13 @@ export const certificateV3ServiceFactory = ({
 
     if (policy.algorithms?.keyAlgorithm && !effectiveKeyAlgorithm) {
       throw new BadRequestError({
-        message: "Key algorithm is required by template policy but not provided in request"
+        message: "Key algorithm is required by this policy but not provided in request"
       });
     }
 
     if (policy.algorithms?.signature && !effectiveSignatureAlgorithm) {
       throw new BadRequestError({
-        message: "Signature algorithm is required by template policy but not provided in request"
+        message: "Signature algorithm is required by this policy but not provided in request"
       });
     }
 
@@ -1267,6 +1312,17 @@ export const certificateV3ServiceFactory = ({
       } catch {
         logger.debug("Failed to queue PKI issuance alert event");
       }
+
+      await $reportCertificateIssued({
+        orgId: profile.project?.orgId ?? actorOrgId,
+        projectId: profile.projectId,
+        profileId,
+        applicationId,
+        enrollmentType: EnrollmentType.API,
+        operation: CertificateIssuanceOperation.ISSUE,
+        actor,
+        actorId
+      });
 
       return {
         status: CertificateRequestStatus.ISSUED,
@@ -1490,6 +1546,17 @@ export const certificateV3ServiceFactory = ({
     } catch {
       logger.debug("Failed to queue PKI issuance alert event");
     }
+
+    await $reportCertificateIssued({
+      orgId: profile.project?.orgId ?? actorOrgId,
+      projectId: profile.projectId,
+      profileId,
+      applicationId,
+      enrollmentType: EnrollmentType.API,
+      operation: CertificateIssuanceOperation.ISSUE,
+      actor,
+      actorId
+    });
 
     return {
       status: CertificateRequestStatus.ISSUED,
@@ -1940,6 +2007,17 @@ export const certificateV3ServiceFactory = ({
       logger.debug("Failed to queue PKI issuance alert event");
     }
 
+    await $reportCertificateIssued({
+      orgId: profile.project?.orgId ?? actorOrgId,
+      projectId: profile.projectId,
+      profileId,
+      applicationId,
+      enrollmentType,
+      operation: CertificateIssuanceOperation.SIGN,
+      actor,
+      actorId
+    });
+
     return {
       status: CertificateRequestStatus.ISSUED,
       certificate: certificateString,
@@ -2010,6 +2088,7 @@ export const certificateV3ServiceFactory = ({
         notAfter: certificateOrder.notAfter,
         signatureAlgorithm: certificateOrder.signatureAlgorithm,
         keyAlgorithm: certificateOrder.keyAlgorithm,
+        basicConstraints: certificateOrder.basicConstraints,
         organization: certificateOrder.organization,
         organizationalUnit: certificateOrder.organizationalUnit,
         country: certificateOrder.country,
@@ -2019,13 +2098,26 @@ export const certificateV3ServiceFactory = ({
       certificateRequest = applyProfileDefaults(rawRequest, profile.defaults);
     }
 
+    const preflightCa = profile.caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId) : undefined;
+    if (preflightCa) {
+      assertCaInProfileProject(preflightCa, profile);
+    }
+
     // Check if this is a CA certificate request (either explicit basicConstraints or keyCertSign in key usages)
     // Per RFC 5280, keyCertSign implies CA certificate. Some clients (like cert-manager) only send keyCertSign without basicConstraints.
     const orderCsrHasKeyCertSign = certificateRequest.keyUsages?.includes(CertKeyUsageType.KEY_CERT_SIGN) ?? false;
-    if (certificateRequest.basicConstraints?.isCA || orderCsrHasKeyCertSign) {
-      throw new BadRequestError({
-        message: "CA certificate issuance is not supported for external certificate authorities."
-      });
+    const orderWantsCaCertificate = certificateRequest.basicConstraints?.isCA || orderCsrHasKeyCertSign;
+    if (orderWantsCaCertificate) {
+      if (preflightCa?.externalCa?.type !== CaType.AWS_PCA) {
+        throw new BadRequestError({
+          message: "CA certificate issuance is not supported for this external certificate authority."
+        });
+      }
+
+      certificateRequest.basicConstraints = {
+        isCA: true,
+        pathLength: certificateRequest.basicConstraints?.pathLength
+      };
     }
 
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
@@ -2033,11 +2125,6 @@ export const certificateV3ServiceFactory = ({
     if (certificateOrder.csr) {
       mappedCertificateRequest.keyAlgorithm = extractedKeyAlgorithm;
       mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
-    }
-
-    const preflightCa = profile.caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId) : undefined;
-    if (preflightCa) {
-      assertCaInProfileProject(preflightCa, profile);
     }
 
     const validationResult = await certificatePolicyService.validateCertificateRequest(
@@ -2068,6 +2155,10 @@ export const certificateV3ServiceFactory = ({
         state: certificateRequest.state,
         locality: certificateRequest.locality
       });
+    }
+
+    if (preflightCa?.externalCa?.type === CaType.AWS_PCA) {
+      validateAwsPcaCaIssuanceInputs({ basicConstraints: certificateRequest.basicConstraints });
     }
 
     const orderApprovalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
@@ -2117,6 +2208,10 @@ export const certificateV3ServiceFactory = ({
               : null,
             enrollmentType: EnrollmentType.API,
             status: CertificateRequestStatus.PENDING_APPROVAL,
+            // Issuance after approval reads this row, not the approval payload.
+            basicConstraints: certificateRequest.basicConstraints
+              ? JSON.stringify(certificateRequest.basicConstraints)
+              : null,
             createdAt: certRequestCreatedAt
           } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
           tx
@@ -2150,7 +2245,8 @@ export const certificateV3ServiceFactory = ({
             notBefore: certificateOrder.notBefore?.toISOString(),
             notAfter: certificateOrder.notAfter?.toISOString(),
             signatureAlgorithm: certificateOrder.signatureAlgorithm,
-            keyAlgorithm: certificateOrder.keyAlgorithm
+            keyAlgorithm: certificateOrder.keyAlgorithm,
+            basicConstraints: certificateRequest.basicConstraints
           },
           certificateRequestId: certRequest.id
         };
@@ -2293,7 +2389,8 @@ export const certificateV3ServiceFactory = ({
         country: certificateRequest.country,
         state: certificateRequest.state,
         locality: certificateRequest.locality,
-        domainComponents: certificateRequest.domainComponents
+        domainComponents: certificateRequest.domainComponents,
+        basicConstraints: certificateRequest.basicConstraints
       });
 
       if (metadata && metadata.length > 0) {
@@ -2325,6 +2422,7 @@ export const certificateV3ServiceFactory = ({
         country: certificateRequest.country,
         state: certificateRequest.state,
         locality: certificateRequest.locality,
+        basicConstraints: certificateRequest.basicConstraints,
         ...(applicationId && { applicationId })
       });
 
@@ -2537,7 +2635,10 @@ export const certificateV3ServiceFactory = ({
           ttl
         },
         signatureAlgorithm: originalCert.signatureAlgorithm || undefined,
-        keyAlgorithm: originalCert.keyAlgorithm || undefined
+        keyAlgorithm: originalCert.keyAlgorithm || undefined,
+        ...(originalCert.isCA && {
+          basicConstraints: { isCA: true, pathLength: originalCert.pathLength ?? undefined }
+        })
       };
 
       let validationResult: { isValid: boolean; errors: string[] } = { isValid: true, errors: [] };
@@ -2606,6 +2707,10 @@ export const certificateV3ServiceFactory = ({
             friendlyName: originalCert.friendlyName || originalCert.commonName || "Renewed Certificate",
             commonName: originalCert.commonName || "",
             altNames: originalCert.altNames || "",
+            ...(originalCert.isCA && {
+              basicConstraints: { isCA: true, pathLength: policy?.basicConstraints?.maxPathLength },
+              pathLength: originalCert.pathLength ?? undefined
+            }),
             ttl,
             notBefore: normalizeDateForApi(notBefore),
             notAfter: normalizeDateForApi(notAfter),
@@ -2781,7 +2886,10 @@ export const certificateV3ServiceFactory = ({
         country: certificateRequest.country,
         state: certificateRequest.state,
         locality: certificateRequest.locality,
-        domainComponents: certificateRequest.domainComponents
+        domainComponents: certificateRequest.domainComponents,
+        ...(originalCert.isCA && {
+          basicConstraints: { isCA: true, pathLength: originalCert.pathLength ?? undefined }
+        })
       });
 
       // Copy metadata from original cert to new cert and cert request
@@ -2818,6 +2926,10 @@ export const certificateV3ServiceFactory = ({
         : [];
       const structuredAltNames = altNamesArray.map((san) => detectSanType(san));
 
+      const renewalBasicConstraints = originalCert.isCA
+        ? { isCA: true, pathLength: originalCert.pathLength ?? undefined }
+        : undefined;
+
       const certificateRequest = await certificateRequestService.createCertificateRequest({
         internal: true,
         actor,
@@ -2845,7 +2957,8 @@ export const certificateV3ServiceFactory = ({
         locality: originalCert.subjectLocality || undefined,
         domainComponents: originalCert.subjectDomainComponents
           ? originalCert.subjectDomainComponents.split(",")
-          : undefined
+          : undefined,
+        basicConstraints: renewalBasicConstraints
       });
 
       certificateRequestId = certificateRequest.id;
@@ -2878,6 +2991,7 @@ export const certificateV3ServiceFactory = ({
         isRenewal: true,
         originalCertificateId: certificateId,
         certificateRequestId: certificateRequest.id,
+        basicConstraints: renewalBasicConstraints,
         ...(originalCert.applicationId && { applicationId: originalCert.applicationId })
       });
 
@@ -2921,6 +3035,17 @@ export const certificateV3ServiceFactory = ({
     } catch {
       logger.debug("Failed to queue PKI renewal alert event");
     }
+
+    await $reportCertificateIssued({
+      orgId: renewalResult.profile?.project?.orgId ?? actorOrgId,
+      projectId: renewalResult.originalCert.projectId,
+      profileId: renewalResult.originalCert.profileId ?? undefined,
+      applicationId: renewalResult.originalCert.applicationId ?? undefined,
+      enrollmentType: EnrollmentType.API,
+      operation: CertificateIssuanceOperation.RENEW,
+      actor,
+      actorId
+    });
 
     return {
       status: CertificateRequestStatus.ISSUED,

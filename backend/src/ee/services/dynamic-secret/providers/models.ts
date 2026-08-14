@@ -2,7 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { TDynamicSecrets } from "@app/db/schemas";
-import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
+import { SshCertKeyAlgorithm } from "@app/lib/ssh";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { TConstraint } from "@app/services/secret-validation-rule/secret-validation-rule-types";
@@ -984,6 +984,43 @@ export const SshStoredSchema = z.object({
   principals: z.array(z.string().trim().min(1)).min(1),
   keyAlgorithm: z.nativeEnum(SshCertKeyAlgorithm)
 });
+
+export const DYNAMIC_SECRET_SECRET_FIELDS: Record<DynamicSecretProviders, readonly string[]> = {
+  [DynamicSecretProviders.Ssh]: ["caPrivateKey"],
+  [DynamicSecretProviders.SqlDatabase]: [],
+  [DynamicSecretProviders.Clickhouse]: [],
+  [DynamicSecretProviders.Cassandra]: [],
+  [DynamicSecretProviders.AwsIam]: [],
+  [DynamicSecretProviders.Redis]: [],
+  [DynamicSecretProviders.AwsElastiCache]: [],
+  [DynamicSecretProviders.AwsMemoryDb]: [],
+  [DynamicSecretProviders.MongoAtlas]: [],
+  [DynamicSecretProviders.ElasticSearch]: [],
+  [DynamicSecretProviders.MongoDB]: [],
+  [DynamicSecretProviders.RabbitMq]: [],
+  [DynamicSecretProviders.AzureEntraID]: [],
+  [DynamicSecretProviders.AzureSqlDatabase]: [],
+  [DynamicSecretProviders.Ldap]: [],
+  [DynamicSecretProviders.SapHana]: [],
+  [DynamicSecretProviders.Snowflake]: [],
+  [DynamicSecretProviders.Totp]: [],
+  [DynamicSecretProviders.SapAse]: [],
+  [DynamicSecretProviders.Kubernetes]: [],
+  [DynamicSecretProviders.Vertica]: [],
+  [DynamicSecretProviders.GcpIam]: [],
+  [DynamicSecretProviders.Github]: [],
+  [DynamicSecretProviders.Couchbase]: [],
+  [DynamicSecretProviders.Milvus]: [],
+  [DynamicSecretProviders.IbmApiConnect]: [],
+  [DynamicSecretProviders.Tailscale]: []
+};
+
+export const redactStoredInputs = (type: DynamicSecretProviders, inputs: unknown): unknown => {
+  const secretFields = DYNAMIC_SECRET_SECRET_FIELDS[type];
+  if (!secretFields?.length || typeof inputs !== "object" || inputs === null) return inputs;
+
+  return Object.fromEntries(Object.entries(inputs).filter(([field]) => !secretFields.includes(field)));
+};
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.SqlDatabase), inputs: DynamicSecretSqlDBSchema }),

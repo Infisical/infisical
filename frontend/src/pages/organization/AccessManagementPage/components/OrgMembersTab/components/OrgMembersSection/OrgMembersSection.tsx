@@ -5,13 +5,7 @@ import { BanIcon, TrashIcon, UserPlusIcon } from "lucide-react";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import {
-  DeleteActionModal,
-  EmailServiceSetupModal,
-  Modal,
-  ModalContent,
-  Tooltip
-} from "@app/components/v2";
+import { DeleteActionModal, EmailServiceSetupModal, Tooltip } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -227,14 +221,7 @@ export const OrgMembersSection = () => {
         completeInviteLinks={completeInviteLinks}
         setCompleteInviteLinks={setCompleteInviteLinks}
       />
-      <Modal
-        isOpen={popUp.addMemberToSubOrg.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("addMemberToSubOrg", isOpen)}
-      >
-        <ModalContent title="Add member from your organization" bodyClassName="overflow-visible">
-          <AddSubOrgMemberModal onClose={() => handlePopUpClose("addMemberToSubOrg")} />
-        </ModalContent>
-      </Modal>
+      <AddSubOrgMemberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
         title={`Are you sure you want to remove member with username ${

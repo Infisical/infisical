@@ -987,6 +987,9 @@ export const projectDALFactory = (db: TDbClient) => {
         .whereNotIn("type", [ProjectType.CertificateManager])
         .whereNull("deleteAfter")
         .whereNotIn("type", [ProjectType.CertificateManager, ProjectType.PAM])
+        // Project rows of the removed SSH / Agent Sentinel products are left in
+        // place (see migration 20260729150000) but must not consume workspace quota.
+        .whereNotIn("type", ["ssh", "ai"])
         .andWhere((bd) => {
           if (orgId) {
             void bd.where({ orgId }).orWhereIn("orgId", subOrgProjects);

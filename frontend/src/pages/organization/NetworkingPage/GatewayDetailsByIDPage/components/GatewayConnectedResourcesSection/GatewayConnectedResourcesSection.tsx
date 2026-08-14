@@ -36,7 +36,6 @@ const totalCountOf = (r: TGatewayConnectedResources | undefined) =>
     ? r.appConnections.length +
       r.dynamicSecrets.length +
       r.kubernetesAuths.length +
-      r.mcpServers.length +
       r.pkiDiscoveryConfigs.length
     : 0;
 
@@ -44,15 +43,17 @@ const ResourceRow = ({
   name,
   subtitle,
   to,
-  params
+  params,
+  search
 }: {
   name: string;
   subtitle: string;
   to: string;
   params: Record<string, string>;
+  search?: Record<string, unknown>;
 }) => (
   <Item asChild variant="outline" size="xs">
-    <Link to={to as "/"} params={params}>
+    <Link to={to as "/"} params={params} search={search as never}>
       <ItemContent>
         <ItemTitle>{name}</ItemTitle>
         <ItemDescription className="text-mineshaft-400">{subtitle}</ItemDescription>
@@ -133,12 +134,12 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                         key={d.id}
                         name={d.name}
                         subtitle={`${d.environmentSlug} · ${d.projectName}`}
-                        to="/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
+                        to="/organizations/$orgId/projects/secret-management/$projectId/overview"
                         params={{
                           orgId: currentOrg.id,
-                          projectId: d.projectId,
-                          envSlug: d.environmentSlug
+                          projectId: d.projectId
                         }}
+                        search={{ environments: [d.environmentSlug] }}
                       />
                     ))}
                   </ItemGroup>
@@ -161,28 +162,6 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                         subtitle="Kubernetes Auth"
                         to="/organizations/$orgId/identities/$identityId"
                         params={{ orgId: currentOrg.id, identityId: a.identityId }}
-                      />
-                    ))}
-                  </ItemGroup>
-                </AccordionContent>
-              </AccordionItem>
-            )}
-
-            {(resources?.mcpServers.length ?? 0) > 0 && (
-              <AccordionItem value="mcp-servers">
-                <AccordionTrigger>
-                  <span className="flex-1">MCP Servers</span>
-                  <Badge variant="neutral">{resources?.mcpServers.length}</Badge>
-                </AccordionTrigger>
-                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
-                  <ItemGroup>
-                    {resources?.mcpServers.map((s) => (
-                      <ResourceRow
-                        key={s.id}
-                        name={s.name}
-                        subtitle={s.projectName}
-                        to="/organizations/$orgId/projects/ai/$projectId/mcp-servers/$serverId"
-                        params={{ orgId: currentOrg.id, projectId: s.projectId, serverId: s.id }}
                       />
                     ))}
                   </ItemGroup>

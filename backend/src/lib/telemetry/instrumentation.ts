@@ -85,7 +85,17 @@ const initTelemetryInstrumentation = ({
 
   if (dropHighCardinalityMeters) {
     HIGH_CARDINALITY_METER_NAMES.forEach((meterName) => {
-      views.push({ meterName, aggregation: { type: AggregationType.DROP } });
+      // The empty allowlist is load-bearing, not redundant with DROP. The SDK applies the attributes
+      // processor before hashing the attribute set, but consults the aggregator after: a DROP view still
+      // inserts a map entry keyed by the full attribute set, and under cumulative temporality (which the
+      // Prometheus exporter mandates) that entry is retained for the lifetime of the process with no
+      // cardinality cap. Collapsing every point onto the empty attribute set bounds that to one entry
+      // per instrument.
+      views.push({
+        meterName,
+        aggregation: { type: AggregationType.DROP },
+        attributesProcessors: [createAllowListAttributesProcessor([])]
+      });
     });
   }
 

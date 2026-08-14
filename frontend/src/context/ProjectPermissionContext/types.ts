@@ -112,6 +112,7 @@ export enum ProjectPermissionIdentityActions {
   AssignAdditionalPrivileges = "assign-additional-privileges",
   AssumePrivileges = "assume-privileges",
   RevokeAuth = "revoke-auth",
+  EditAuth = "edit-auth",
   CreateToken = "create-token",
   GetToken = "get-token",
   DeleteToken = "delete-token"
@@ -135,14 +136,6 @@ export enum ProjectPermissionGroupActions {
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
   AssignRole = "assign-role"
-}
-
-export enum ProjectPermissionSshHostActions {
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete",
-  IssueHostCert = "issue-host-cert"
 }
 
 export enum ProjectPermissionPkiSubscriberActions {
@@ -271,14 +264,6 @@ export enum ProjectPermissionCommitsActions {
   PerformRollback = "perform-rollback"
 }
 
-export enum ProjectPermissionMcpEndpointActions {
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete",
-  Connect = "connect"
-}
-
 export enum ProjectPermissionHoneyTokenActions {
   Read = "read",
   ReadCredentials = "read-credentials",
@@ -341,7 +326,6 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.Secrets
   | ProjectPermissionSub.DynamicSecrets
   | ProjectPermissionSub.Identity
-  | ProjectPermissionSub.SshHosts
   | ProjectPermissionSub.PkiSubscribers
   | ProjectPermissionSub.CertificateTemplates
   | ProjectPermissionSub.CertificateAuthorities
@@ -353,7 +337,6 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.SecretEventSubscriptions
   | ProjectPermissionSub.AppConnections
-  | ProjectPermissionSub.McpEndpoints
   | ProjectPermissionSub.Member
   | ProjectPermissionSub.Groups
   | ProjectPermissionSub.Commits
@@ -423,11 +406,6 @@ export enum ProjectPermissionSub {
   CertificateAuthorities = "certificate-authorities",
   Certificates = "certificates",
   CertificateTemplates = "certificate-templates",
-  SshCertificateAuthorities = "ssh-certificate-authorities",
-  SshCertificateTemplates = "ssh-certificate-templates",
-  SshCertificates = "ssh-certificates",
-  SshHosts = "ssh-hosts",
-  SshHostGroups = "ssh-host-groups",
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
   CertificateInventoryViews = "certificate-inventory-views",
@@ -449,9 +427,6 @@ export enum ProjectPermissionSub {
   SecretEventSubscriptions = "secret-event-subscriptions",
   AppConnections = "app-connections",
   HsmConnectors = "hsm-connectors",
-  McpEndpoints = "mcp-endpoints",
-  McpServers = "mcp-servers",
-  McpActivityLogs = "mcp-activity-logs",
   HoneyTokens = "honey-tokens",
   ProxiedServices = "proxied-services",
   ApprovalRequests = "approval-requests",
@@ -538,10 +513,6 @@ export type SecretRotationSubjectFields = {
   connectionId?: string;
 };
 
-export type SshHostSubjectFields = {
-  hostname: string;
-};
-
 export type PkiSubscriberSubjectFields = {
   name: string;
 };
@@ -552,10 +523,6 @@ export type PkiTemplateSubjectFields = {
 };
 
 export type CertificatePolicySubjectFields = {
-  name: string;
-};
-
-export type McpEndpointSubjectFields = {
   name: string;
 };
 
@@ -656,17 +623,6 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.CertificateTemplates> & PkiTemplateSubjectFields)
       )
     ]
-  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
-  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
-  | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
-  | [ProjectPermissionActions, ProjectPermissionSub.SshHostGroups]
-  | [
-      ProjectPermissionSshHostActions,
-      (
-        | ProjectPermissionSub.SshHosts
-        | (ForcedSubject<ProjectPermissionSub.SshHosts> & SshHostSubjectFields)
-      )
-    ]
   | [
       ProjectPermissionPkiSubscriberActions,
       (
@@ -745,15 +701,6 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.ProxiedServices> & ProxiedServiceSubjectFields)
       )
     ]
-  | [
-      ProjectPermissionMcpEndpointActions,
-      (
-        | ProjectPermissionSub.McpEndpoints
-        | (ForcedSubject<ProjectPermissionSub.McpEndpoints> & McpEndpointSubjectFields)
-      )
-    ]
-  | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
-  | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs]
   | [
       ProjectPermissionProjectFolderGrantActions,
       (
