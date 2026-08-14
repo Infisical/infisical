@@ -132,7 +132,7 @@ const ProjectSelectInner = () => {
         </PopoverTrigger>
         <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
           <Command>
-            <CommandInput placeholder="Search projects..." />
+            <CommandInput aria-label="Search projects" placeholder="Search projects..." />
             <CommandList>
               <CommandEmpty>No projects found.</CommandEmpty>
               <CommandGroup heading="Projects">
