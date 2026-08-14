@@ -31,8 +31,25 @@ generate_env "$ROOT/.env"
 cp "$ROOT/.env" "$ROOT/backend/.env"
 
 # 2. Install JS dependencies for each workspace.
-npm install
-npm install --prefix backend
-npm install --prefix frontend
+#    Only hit the network when deps are actually missing or the lockfile changed.
+#    On a warm-forked boot (node_modules already present from the snapshot, lockfile
+#    unchanged) this is a no-op, so `install` never depends on registry egress at
+#    boot — it only installs during the environment build, where network is available.
+hash_lock() { [ -f "$1/package-lock.json" ] && sha256sum "$1/package-lock.json" | cut -d' ' -f1 || true; }
+install_deps() {
+  local dir="$1"
+  local marker="$dir/node_modules/.deps-lock-hash"
+  if [ -d "$dir/node_modules" ] && [ "$(cat "$marker" 2>/dev/null)" = "$(hash_lock "$dir")" ]; then
+    echo "install.sh: deps up-to-date in ${dir#"$ROOT"/}, skipping npm install"
+    return 0
+  fi
+  ( cd "$dir" && npm install --no-audit --no-fund --prefer-offline )
+  # npm may normalize the lockfile during install; record the settled hash so the
+  # next run matches and skips instead of reinstalling in a loop.
+  hash_lock "$dir" >"$marker"
+}
+install_deps "$ROOT"
+install_deps "$ROOT/backend"
+install_deps "$ROOT/frontend"
 
 echo "install.sh: done"
