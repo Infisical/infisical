@@ -34,4 +34,26 @@ else
   sudo nginx -c "$ROOT/.cursor/nginx.dev.conf"
 fi
 
-echo "start.sh: infrastructure ready (Postgres, Redis, nginx :8080)"
+# --- App dev servers -------------------------------------------------------
+# Launch the backend (Fastify, :4000, runs DB migrations on boot) and frontend
+# (Vite, :3000) in the background. Guarded on the listening port so re-running
+# start.sh (or a terminal already running the server) never double-starts.
+LOG_DIR="${TMPDIR:-/tmp}/infisical-dev"
+mkdir -p "$LOG_DIR"
+port_listening() { ss -ltn 2>/dev/null | grep -q ":$1[[:space:]]"; }
+start_app() {
+  local name="$1" dir="$2" port="$3"
+  if port_listening "$port"; then
+    echo "$name already listening on :$port"
+    return
+  fi
+  # Fully detach: new session (setsid) with stdio redirected so `start` returns
+  # cleanly instead of holding the parent's terminal open.
+  setsid bash -c "cd '$ROOT/$dir' && exec npm run dev" >"$LOG_DIR/$name.log" 2>&1 </dev/null &
+  disown 2>/dev/null || true
+  echo "$name starting on :$port (logs: $LOG_DIR/$name.log)"
+}
+start_app backend backend 4000
+start_app frontend frontend 3000
+
+echo "start.sh: infrastructure ready (Postgres, Redis, nginx :8080) + app dev servers launching"
