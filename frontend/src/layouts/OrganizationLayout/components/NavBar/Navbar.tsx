@@ -12,7 +12,6 @@ import {
   Clipboard,
   ExternalLink,
   Github,
-  Infinity,
   Info,
   LogOut,
   Mail,
@@ -79,7 +78,6 @@ import {
   projectKeys,
   subOrganizationsQuery,
   useGetOrganizations,
-  useGetOrgTrialUrl,
   useLogoutUser
 } from "@app/hooks/api";
 import { appConnectionKeys } from "@app/hooks/api/appConnections";
@@ -87,7 +85,6 @@ import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { getSubscriptionPlanLabel } from "@app/hooks/api/subscriptions";
-import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import {
@@ -271,8 +268,6 @@ export const Navbar = () => {
     }
   };
 
-  const { mutateAsync } = useGetOrgTrialUrl();
-
   const logout = useLogoutUser();
   const logOutUser = async () => {
     try {
@@ -450,7 +445,10 @@ export const Navbar = () => {
                 </PopoverTrigger>
                 <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
                   <Command>
-                    <CommandInput placeholder="Search organizations..." />
+                    <CommandInput
+                      aria-label="Search organizations"
+                      placeholder="Search organizations..."
+                    />
                     <CommandList>
                       <CommandEmpty>No organizations found.</CommandEmpty>
                       {/* Current Organization */}
@@ -602,35 +600,9 @@ export const Navbar = () => {
       </div>
 
       <VersionBadge />
-      {subscription &&
-      subscription.slug === SubscriptionPlanTypes.Starter &&
-      !subscription.has_used_trial ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="info"
-              size="xs"
-              className="mt-px mr-2"
-              onClick={async () => {
-                if (!subscription || !rootOrg) return;
-                const url = await mutateAsync({
-                  orgId: rootOrg.id,
-                  success_url: window.location.href
-                });
-                window.location.href = url;
-              }}
-            >
-              <Infinity />
-              Free Pro Trial
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Start Free Pro Trial</TooltipContent>
-        </Tooltip>
-      ) : (
-        <Badge variant="info" className="mt-[3px] mr-3 hidden md:inline-flex">
-          {getSubscriptionPlanLabel(subscription)}
-        </Badge>
-      )}
+      <Badge variant="info" className="mt-[3px] mr-3 hidden md:inline-flex">
+        {getSubscriptionPlanLabel(subscription)}
+      </Badge>
       {!location.pathname.startsWith("/admin") && user.superAdmin && (
         <Button variant="outline" size="xs" className="mt-px mr-2" asChild>
           <Link to="/admin" onClick={handleNavigateToAdminConsole}>

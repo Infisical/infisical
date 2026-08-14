@@ -289,7 +289,7 @@ const IdentityActionsMenu = (props: IdentityActionsMenuProps) => {
                 </DropdownMenuItem>
               ))}
               <OrgPermissionCan
-                I={OrgPermissionIdentityActions.Edit}
+                I={OrgPermissionIdentityActions.EditAuth}
                 a={OrgPermissionSubjects.Identity}
               >
                 {(isAllowed) => (

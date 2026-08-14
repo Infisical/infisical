@@ -48,7 +48,7 @@ const Content = ({ invalidSubjects }: { invalidSubjects?: string[] }) => {
         return 0;
       }}
     >
-      <CommandInput placeholder="Search policies..." />
+      <CommandInput aria-label="Search policies" placeholder="Search policies..." />
       <CommandList>
         <CommandEmpty>No policies found.</CommandEmpty>
         <CommandGroup>
