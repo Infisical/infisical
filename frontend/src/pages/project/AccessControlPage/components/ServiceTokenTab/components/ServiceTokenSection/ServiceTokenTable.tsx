@@ -12,6 +12,7 @@ import { twMerge } from "tailwind-merge";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -145,6 +146,11 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
     setOrderDirection(OrderByDirection.ASC);
   };
 
+  const getAriaSort = (column: TokensOrderBy) => {
+    if (orderBy !== column) return "none";
+    return orderDirection === OrderByDirection.ASC ? "ascending" : "descending";
+  };
+
   return (
     <div>
       <div className="mb-4">
@@ -155,6 +161,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search service tokens"
             placeholder="Search service tokens by name, environment or secret path..."
           />
         </InputGroup>
@@ -175,32 +182,50 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead onClick={() => handleSort(TokensOrderBy.Name)}>
-                  Name
-                  <ChevronDownIcon
-                    className={twMerge(
-                      "transition-transform",
-                      orderDirection === OrderByDirection.DESC &&
-                        orderBy === TokensOrderBy.Name &&
-                        "rotate-180",
-                      orderBy !== TokensOrderBy.Name && "opacity-30"
-                    )}
-                  />
+                <TableHead className="p-0" aria-sort={getAriaSort(TokensOrderBy.Name)}>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    isFullWidth
+                    className="h-[30px] justify-start rounded-none px-3 text-accent"
+                    onClick={() => handleSort(TokensOrderBy.Name)}
+                  >
+                    Name
+                    <ChevronDownIcon
+                      className={twMerge(
+                        "transition-transform",
+                        orderDirection === OrderByDirection.DESC &&
+                          orderBy === TokensOrderBy.Name &&
+                          "rotate-180",
+                        orderBy !== TokensOrderBy.Name && "opacity-30"
+                      )}
+                    />
+                  </Button>
                 </TableHead>
                 <TableHead>Environment / Secret Path</TableHead>
-                <TableHead onClick={() => handleSort(TokensOrderBy.Expiration)}>
-                  Valid Until
-                  <ChevronDownIcon
-                    className={twMerge(
-                      "transition-transform",
-                      orderDirection === OrderByDirection.DESC &&
-                        orderBy === TokensOrderBy.Expiration &&
-                        "rotate-180",
-                      orderBy !== TokensOrderBy.Expiration && "opacity-30"
-                    )}
-                  />
+                <TableHead className="p-0" aria-sort={getAriaSort(TokensOrderBy.Expiration)}>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    isFullWidth
+                    className="h-[30px] justify-start rounded-none px-3 text-accent"
+                    onClick={() => handleSort(TokensOrderBy.Expiration)}
+                  >
+                    Valid Until
+                    <ChevronDownIcon
+                      className={twMerge(
+                        "transition-transform",
+                        orderDirection === OrderByDirection.DESC &&
+                          orderBy === TokensOrderBy.Expiration &&
+                          "rotate-180",
+                        orderBy !== TokensOrderBy.Expiration && "opacity-30"
+                      )}
+                    />
+                  </Button>
                 </TableHead>
-                <TableHead className="w-5" />
+                <TableHead className="w-5">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -230,7 +255,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
                         {row?.scopes.map(({ secretPath, environment }) => (
                           <Badge key={`${row.id}-${environment}-${secretPath}`} variant="neutral">
                             <span className="border-r border-border pr-1.5">{environment}</span>
-                            <FolderIcon className="text-yellow" />
+                            <FolderIcon className="text-folder" />
                             <span>{secretPath}</span>
                           </Badge>
                         ))}
@@ -249,6 +274,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
                           <IconButton
                             variant="ghost"
                             size="xs"
+                            aria-label={`${row.name} actions`}
                             onClick={(e) => e.stopPropagation()}
                           >
                             <MoreHorizontalIcon />
