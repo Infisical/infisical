@@ -2,12 +2,15 @@ import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
-import { ArrowRightIcon } from "lucide-react";
+import { ArrowRightIcon, CircleAlertIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { RoleOption } from "@app/components/roles";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Dialog,
   DialogContent,
@@ -53,16 +56,28 @@ const Content = ({ onClose }: { onClose: () => void }) => {
 
   const orgId = currentOrg?.id || "";
 
-  const { data: groups, isPending: isGroupsPending } = useGetOrganizationGroups(orgId);
-  const { data: groupMemberships, isPending: isGroupMembershipsPending } = useListWorkspaceGroups(
-    currentProject?.id || "",
-    currentProject?.type
-  );
+  const {
+    data: groups,
+    isError: isGroupsError,
+    isFetching: isGroupsFetching,
+    isPending: isGroupsPending,
+    refetch: refetchGroups
+  } = useGetOrganizationGroups(orgId);
+  const {
+    data: groupMemberships,
+    isError: isGroupMembershipsError,
+    isFetching: isGroupMembershipsFetching,
+    isPending: isGroupMembershipsPending,
+    refetch: refetchGroupMemberships
+  } = useListWorkspaceGroups(currentProject?.id || "", currentProject?.type);
 
-  const { data: roles, isPending: isRolesPending } = useGetProjectRoles(
-    currentProject?.id || "",
-    currentProject?.type
-  );
+  const {
+    data: roles,
+    isError: isRolesError,
+    isFetching: isRolesFetching,
+    isPending: isRolesPending,
+    refetch: refetchRoles
+  } = useGetProjectRoles(currentProject?.id || "", currentProject?.type);
 
   const { mutateAsync: addGroupToWorkspaceMutateAsync } = useAddGroupToWorkspace();
 
@@ -103,6 +118,8 @@ const Content = ({ onClose }: { onClose: () => void }) => {
   };
 
   const isDataPending = isGroupsPending || isGroupMembershipsPending || isRolesPending;
+  const isDataError = isGroupsError || isGroupMembershipsError || isRolesError;
+  const isRetrying = isGroupsFetching || isGroupMembershipsFetching || isRolesFetching;
 
   if (isDataPending) {
     return (
@@ -121,6 +138,36 @@ const Content = ({ onClose }: { onClose: () => void }) => {
           </Button>
           <Button variant="project" type="button" isPending isDisabled>
             Add
+          </Button>
+        </DialogFooter>
+      </div>
+    );
+  }
+
+  if (isDataError) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Alert variant="danger">
+          <CircleAlertIcon />
+          <AlertTitle>Unable to load groups and roles</AlertTitle>
+          <AlertDescription>
+            We couldn&apos;t load the information needed to add a group. Try again.
+          </AlertDescription>
+        </Alert>
+        <DialogFooter>
+          <Button variant="ghost" type="button" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="outline"
+            type="button"
+            isPending={isRetrying}
+            isDisabled={isRetrying}
+            onClick={async () => {
+              await Promise.all([refetchGroups(), refetchGroupMemberships(), refetchRoles()]);
+            }}
+          >
+            Try again
           </Button>
         </DialogFooter>
       </div>

@@ -4,14 +4,6 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   Button,
   Card,
   CardAction,
@@ -19,6 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DeleteConfirmDialog,
   DocumentationLinkBadge
 } from "@app/components/v3";
 import {
@@ -113,38 +106,20 @@ export const GroupsSection = () => {
           <GroupTable handlePopUpOpen={handlePopUpOpen} />
         </CardContent>
       </Card>
-      <AlertDialog
-        open={popUp.deleteGroup.isOpen}
+      <DeleteConfirmDialog
+        isOpen={popUp.deleteGroup.isOpen}
         onOpenChange={(isOpen) => {
           if (!isRemovingGroup) handlePopUpToggle("deleteGroup", isOpen);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Remove &quot;{groupToRemove?.name}&quot; from {productLabel}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This removes the group&apos;s access to this {productLabel.toLowerCase()}. You can add
-              the group again later.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isRemovingGroup}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="danger"
-              isPending={isRemovingGroup}
-              isDisabled={!groupToRemove?.id}
-              onClick={async (event) => {
-                event.preventDefault();
-                if (groupToRemove?.id) await onRemoveGroupSubmit(groupToRemove.id);
-              }}
-            >
-              Remove Group
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={`Remove "${groupToRemove?.name}" from ${productLabel}?`}
+        description={`This removes the group's access to this ${productLabel.toLowerCase()}. You can add the group again later.`}
+        confirmKey={groupToRemove?.name ?? ""}
+        confirmLabel="Remove Group"
+        isPending={isRemovingGroup}
+        onConfirm={async () => {
+          if (groupToRemove?.id) await onRemoveGroupSubmit(groupToRemove.id);
+        }}
+      />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
