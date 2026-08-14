@@ -1,25 +1,35 @@
 import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon } from "lucide-react";
 
-import {
-  defaultVaultConnectionId,
-  VaultConnectionAndNamespaceFields
-} from "@app/components/external-migrations";
+import { AppConnectionOption } from "@app/components/app-connections";
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
+  Field,
+  FieldDescription,
+  FieldLabel,
+  FieldTitle,
   FilterableSelect,
-  FormControl,
-  Modal,
-  ModalClose,
-  ModalContent,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   TextArea
-} from "@app/components/v2";
+} from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
-import { useGetVaultMounts, useGetVaultPolicies } from "@app/hooks/api/migration/queries";
+import {
+  useGetVaultMounts,
+  useGetVaultNamespaces,
+  useGetVaultPolicies
+} from "@app/hooks/api/migration/queries";
 
 import { TFormSchema } from "./ProjectRoleModifySection.utils";
 import { analyzeVaultPolicy, PolicyBlock, PolicyLine } from "./VaultPolicyAnalyzer.utils";
@@ -37,9 +47,13 @@ type ContentProps = {
   appConnections: TAvailableAppConnection[];
 };
 
+const defaultVaultConnectionId = (appConnections: TAvailableAppConnection[]) =>
+  appConnections.length === 1 ? appConnections[0].id : null;
+
 const Content = ({ onClose, appConnections }: ContentProps) => {
   const rootForm = useFormContext<TFormSchema>();
   const hasAppConnections = appConnections.length > 0;
+  const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(
     defaultVaultConnectionId(appConnections)
   );
@@ -54,6 +68,10 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
   } | null>(null);
 
   const activeConnectionId = hasAppConnections ? (selectedConnectionId ?? undefined) : undefined;
+  const needsConnection = hasAppConnections && !selectedConnectionId;
+
+  const { data: namespaces, isLoading: isLoadingNamespaces } =
+    useGetVaultNamespaces(activeConnectionId);
 
   const { data: policies, isLoading: isLoadingPolicies } = useGetVaultPolicies(
     shouldFetchPolicies,
@@ -88,7 +106,6 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
     }
   }, [selectedNamespace]);
 
-  // Auto-populate HCL when a policy is selected
   useEffect(() => {
     if (selectedPolicy && policies) {
       const policy = policies.find((p) => p.name === selectedPolicy);
@@ -98,7 +115,6 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
     }
   }, [selectedPolicy, policies]);
 
-  // Automatically analyze policy when it changes (with debouncing)
   useEffect(() => {
     if (!hclPolicy.trim() || !mounts || mounts.length === 0) {
       setAnalysisResult(null);
@@ -108,7 +124,7 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
     const timeoutId = setTimeout(() => {
       const result = analyzeVaultPolicy(hclPolicy, mounts);
       setAnalysisResult(result);
-    }, 300); // Debounce for 300ms
+    }, 300);
 
     return () => {
       clearTimeout(timeoutId);
@@ -131,7 +147,7 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
     if (!mounts || mounts.length === 0) {
       return (
         <div>
-          <p className="font-medium text-yellow-400">No KV mounts found</p>
+          <p className="font-medium text-warning">No KV mounts found</p>
           <p className="mt-1 text-xs">This namespace has no KV secret engines configured.</p>
           <p className="mt-1 text-xs">Policy translation requires KV mounts.</p>
         </div>
@@ -171,7 +187,6 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
         return;
       }
 
-      // Apply the parsed permissions to the form
       (Object.keys(parsedPermissions) as ProjectPermissionSub[]).forEach((subjectKey) => {
         const value = parsedPermissions[subjectKey];
         if (!value) return;
@@ -179,7 +194,6 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
         const existingValue = rootForm.getValues(`permissions.${subjectKey}`) as unknown[];
 
         if (Array.isArray(existingValue) && existingValue.length > 0) {
-          // Merge with existing permissions
           rootForm.setValue(`permissions.${subjectKey}`, [...existingValue, ...value] as never, {
             shouldDirty: true,
             shouldTouch: true,
@@ -211,14 +225,15 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
 
   return (
     <>
-      <div className="mb-4 rounded-md bg-primary/10 p-3 text-sm text-mineshaft-200">
-        <div className="flex items-start gap-2">
-          <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-primary" />
-          <div>
-            <div className="mb-2">
-              <strong>How Policy Translation Works</strong>
-            </div>
-            <div className="space-y-1.5 text-xs leading-relaxed">
+      <div
+        ref={setPortalContainer}
+        className="min-h-0 thin-scrollbar flex-1 space-y-4 overflow-y-auto p-4"
+      >
+        <Alert variant="info">
+          <InfoIcon />
+          <AlertTitle>How Policy Translation Works</AlertTitle>
+          <AlertDescription>
+            <div className="space-y-1.5">
               <p>
                 Policies are translated by identifying KV secret engine mounts and parsing path
                 structures to extract environments and secret paths.
@@ -231,23 +246,65 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
                 automatically mapped to equivalent Infisical permissions and glob patterns.
               </p>
             </div>
-          </div>
-        </div>
-      </div>
+          </AlertDescription>
+        </Alert>
 
-      <VaultConnectionAndNamespaceFields
-        appConnections={appConnections}
-        connectionId={selectedConnectionId}
-        onConnectionIdChange={handleConnectionChange}
-        namespace={selectedNamespace}
-        onNamespaceChange={handleNamespaceChange}
-        namespaceTooltip="Required to fetch mount information. Policies will be translated using your Vault's KV secret engine mounts to extract environments and secret paths."
-        namespaceHelpText="Select the Vault namespace to fetch policies and mount information"
-      />
+        {hasAppConnections && (
+          <Field>
+            <FieldLabel htmlFor="vault-app-connection">App Connection</FieldLabel>
+            <FilterableSelect<TAvailableAppConnection>
+              inputId="vault-app-connection"
+              value={
+                appConnections.find((connection) => connection.id === selectedConnectionId) ?? null
+              }
+              onChange={(value) => {
+                if (value && !Array.isArray(value)) {
+                  handleConnectionChange((value as TAvailableAppConnection).id);
+                }
+              }}
+              options={appConnections}
+              getOptionValue={(option) => option.id}
+              getOptionLabel={(option) => option.name}
+              placeholder="Select app connection..."
+              components={{ Option: AppConnectionOption }}
+              menuPortalTarget={portalContainer}
+            />
+            <FieldDescription>
+              Project-scoped HashiCorp Vault app connections available to you.
+            </FieldDescription>
+          </Field>
+        )}
 
-      <FormControl label="Select Vault Policy (Optional)" className="mb-4">
-        <>
+        <Field>
+          <FieldLabel htmlFor="vault-namespace">Namespace</FieldLabel>
+          <FilterableSelect<{ id: string; name: string }>
+            inputId="vault-namespace"
+            value={namespaces?.find((namespace) => namespace.name === selectedNamespace) ?? null}
+            onChange={(value) => {
+              if (value && !Array.isArray(value)) {
+                handleNamespaceChange((value as { id: string; name: string }).name);
+              }
+            }}
+            options={namespaces || []}
+            getOptionValue={(option) => option.name}
+            getOptionLabel={(option) => (option.name === "/" ? "root" : option.name)}
+            isDisabled={isLoadingNamespaces || needsConnection}
+            isLoading={isLoadingNamespaces}
+            placeholder={
+              needsConnection ? "Select an app connection first..." : "Select namespace..."
+            }
+            menuPortalTarget={portalContainer}
+          />
+          <FieldDescription>
+            Select the Vault namespace used to fetch policies and KV mount information for the
+            translation.
+          </FieldDescription>
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="vault-policy">Select Vault Policy (Optional)</FieldLabel>
           <FilterableSelect
+            inputId="vault-policy"
             value={selectedPolicy ? policies?.find((p) => p.name === selectedPolicy) : null}
             onChange={(value) => {
               if (value && !Array.isArray(value)) {
@@ -261,20 +318,21 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
             getOptionValue={(option) => option.name}
             getOptionLabel={(option) => option.name}
             isDisabled={isLoadingPolicies}
+            isLoading={isLoadingPolicies}
             placeholder="Choose a policy to import..."
             isClearable
-            className="w-full"
+            menuPortalTarget={portalContainer}
           />
-          <p className="mt-1 text-xs text-mineshaft-400">
-            Select a policy to auto-populate the HCL editor below, or skip to paste your own
-          </p>
-        </>
-      </FormControl>
+          <FieldDescription>
+            Select a policy to auto-populate the HCL editor below, or skip to paste your own policy.
+          </FieldDescription>
+        </Field>
 
-      <div className="grid grid-cols-2 gap-4">
-        <FormControl label="Vault HCL Policy" className="mb-4">
-          <>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="vault-hcl-policy">Vault HCL Policy</FieldLabel>
             <TextArea
+              id="vault-hcl-policy"
               value={hclPolicy}
               onChange={(e) => setHclPolicy(e.target.value)}
               placeholder={`path "secret/data/prod/app/*" {
@@ -285,54 +343,55 @@ path "secret/metadata/prod/*" {
   capabilities = ["list"]
 }`}
               rows={20}
-              className="h-[30rem] px-4 py-0.5 font-mono text-xs leading-6"
+              className="h-80 resize-none px-4 py-2 font-mono text-xs leading-6 xl:h-[30rem]"
             />
-            <p className="mt-1 text-xs text-mineshaft-400">
+            <FieldDescription>
               Paste your HCL policy here or select one from the dropdown above.
-            </p>
-          </>
-        </FormControl>
+            </FieldDescription>
+          </Field>
 
-        <div className="mb-4">
-          <FormControl label="Translation Preview" className="mb-4">
+          <Field>
+            <FieldTitle>Translation Preview</FieldTitle>
             {analysisResult ? (
               <VaultPolicyPreview blocks={analysisResult.blocks} lines={analysisResult.lines} />
             ) : (
-              <div className="flex h-[30rem] items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-900 text-center text-sm text-mineshaft-400">
+              <div className="flex h-80 items-center justify-center rounded-md border border-border bg-container p-4 text-center text-sm text-muted xl:h-[30rem]">
                 {renderEmptyState()}
               </div>
             )}
-          </FormControl>
+          </Field>
         </div>
       </div>
 
-      <div className="mt-8 flex space-x-4">
+      <SheetFooter className="justify-end border-t">
+        <SheetClose asChild>
+          <Button variant="ghost">Cancel</Button>
+        </SheetClose>
         <Button
+          variant="project"
           onClick={handleTranslateAndApply}
           isDisabled={!hclPolicy.trim() || isLoadingMounts || !mounts}
         >
           Translate & Apply
         </Button>
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
-            Cancel
-          </Button>
-        </ModalClose>
-      </div>
+      </SheetFooter>
     </>
   );
 };
 
 export const VaultPolicyImportModal = ({ isOpen, onOpenChange, appConnections }: Props) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title="Import from HashiCorp Vault"
-        subTitle="Select a policy from your Vault namespace or paste your own HCL policy to translate it into Infisical permissions."
-        className="max-w-4xl"
-      >
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent className="w-[calc(100vw-2rem)] sm:max-w-5xl">
+        <SheetHeader>
+          <SheetTitle>Import from HashiCorp Vault</SheetTitle>
+          <SheetDescription>
+            Select a policy from your Vault namespace or paste your own HCL policy to translate it
+            into Infisical permissions.
+          </SheetDescription>
+        </SheetHeader>
         <Content onClose={() => onOpenChange(false)} appConnections={appConnections} />
-      </ModalContent>
-    </Modal>
+      </SheetContent>
+    </Sheet>
   );
 };

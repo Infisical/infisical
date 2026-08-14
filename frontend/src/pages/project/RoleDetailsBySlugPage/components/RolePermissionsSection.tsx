@@ -142,7 +142,11 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
 
   const isSecretManagerProject = currentProject.type === ProjectType.SecretManager;
 
-  const { data: role, isPending } = useGetProjectRoleBySlug(projectId, roleSlug as string);
+  const { data: role, isPending } = useGetProjectRoleBySlug(
+    projectId,
+    roleSlug as string,
+    currentProject.type
+  );
 
   const [showAccessTree, setShowAccessTree] = useState<ProjectPermissionSub | null>(null);
   const [openPolicies, setOpenPolicies] = useState<string[]>([]);
@@ -174,13 +178,15 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
       permissionsForm[ProjectPermissionSub.ProjectFolderGrant] = [];
     }
 
-    await updateRole({
+    const updatedRole = await updateRole({
       id: role?.id as string,
       projectId,
+      projectType: currentProject.type,
       ...el,
       permissions: formRolePermission2API(permissionsForm)
     });
-    createNotification({ type: "success", text: "Successfully updated role" });
+    reset({ ...updatedRole, permissions: rolePermission2Form(updatedRole.permissions) });
+    createNotification({ type: "success", text: `Project role "${updatedRole.name}" updated` });
   };
 
   // Expand accordion items that have validation errors
@@ -223,19 +229,19 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
         className="flex h-full w-full flex-1 flex-col rounded-lg border border-border bg-card py-4"
       >
         <FormProvider {...form}>
-          <div className="mx-4 flex items-center justify-between border-b border-border pb-4">
+          <div className="mx-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
             <div>
               <h3 className="text-lg font-medium text-foreground">Policies</h3>
               <p className="text-sm leading-3 text-muted">Configure granular access policies</p>
             </div>
             {isCustomRole && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {isDirty && (
                   <Button
                     type="button"
                     className="mr-4 text-muted"
                     variant="ghost"
-                    disabled={isSubmitting}
+                    isDisabled={isSubmitting}
                     onClick={() => {
                       if (role) {
                         reset({ ...role, permissions: rolePermission2Form(role.permissions) });
@@ -245,7 +251,12 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     Discard
                   </Button>
                 )}
-                <Button variant="project" type="submit" disabled={isSubmitting || !isDirty}>
+                <Button
+                  variant="project"
+                  type="submit"
+                  isDisabled={isDisabled || isSubmitting || !isDirty}
+                  isPending={isSubmitting}
+                >
                   <SaveIcon className="size-4" />
                   Save
                 </Button>

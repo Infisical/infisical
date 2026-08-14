@@ -17,7 +17,6 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -71,6 +70,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole, TProjectRole } from "@app/hooks/api/roles/types";
 import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
+import { DeleteProjectRoleDialog } from "@app/pages/project/RoleDetailsBySlugPage/components/DeleteProjectRoleDialog";
 import { DuplicateProjectRoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal";
 import { RoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/RoleModal";
 
@@ -96,17 +96,17 @@ export const ProjectRoleList = () => {
     currentProject?.type
   );
 
-  const { mutateAsync: deleteRole } = useDeleteProjectRole();
+  const { mutateAsync: deleteRole, isPending: isDeletingRole } = useDeleteProjectRole();
   const { subscription } = useSubscription();
 
   const handleRoleDelete = async () => {
-    const { id } = popUp?.deleteRole?.data as TProjectRole;
+    const { id, name } = popUp?.deleteRole?.data as TProjectRole;
     await deleteRole({
       projectId,
       projectType: currentProject?.type,
       id
     });
-    createNotification({ type: "success", text: "Successfully removed the role" });
+    createNotification({ type: "success", text: `Project role "${name}" deleted` });
     handlePopUpClose("deleteRole");
   };
 
@@ -178,6 +178,13 @@ export const ProjectRoleList = () => {
 
     setOrderBy(column);
     setOrderDirection(OrderByDirection.ASC);
+  };
+
+  const getAriaSort = (column: RolesOrderBy) => {
+    if (orderBy !== column) return "none" as const;
+    return orderDirection === OrderByDirection.ASC
+      ? ("ascending" as const)
+      : ("descending" as const);
   };
 
   const filteredRolesPage = filteredRoles.slice(offset, perPage * page);
@@ -297,43 +304,63 @@ export const ProjectRoleList = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-1/3" onClick={() => handleSort(RolesOrderBy.Name)}>
-                      Name
-                      <ChevronDownIcon
-                        className={twMerge(
-                          "transition-transform",
-                          orderDirection === OrderByDirection.DESC &&
-                            orderBy === RolesOrderBy.Name &&
-                            "rotate-180",
-                          orderBy !== RolesOrderBy.Name && "opacity-30"
-                        )}
-                      />
+                    <TableHead className="w-1/3" aria-sort={getAriaSort(RolesOrderBy.Name)}>
+                      <button
+                        type="button"
+                        className="flex w-full cursor-pointer items-center rounded-sm text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                        onClick={() => handleSort(RolesOrderBy.Name)}
+                      >
+                        Name
+                        <ChevronDownIcon
+                          className={twMerge(
+                            "ml-1 size-4 transition-transform",
+                            orderDirection === OrderByDirection.DESC &&
+                              orderBy === RolesOrderBy.Name &&
+                              "rotate-180",
+                            orderBy !== RolesOrderBy.Name && "opacity-30"
+                          )}
+                        />
+                      </button>
                     </TableHead>
-                    <TableHead className="w-1/3" onClick={() => handleSort(RolesOrderBy.Slug)}>
-                      Slug
-                      <ChevronDownIcon
-                        className={twMerge(
-                          "transition-transform",
-                          orderDirection === OrderByDirection.DESC &&
-                            orderBy === RolesOrderBy.Slug &&
-                            "rotate-180",
-                          orderBy !== RolesOrderBy.Slug && "opacity-30"
-                        )}
-                      />
+                    <TableHead className="w-1/3" aria-sort={getAriaSort(RolesOrderBy.Slug)}>
+                      <button
+                        type="button"
+                        className="flex w-full cursor-pointer items-center rounded-sm text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                        onClick={() => handleSort(RolesOrderBy.Slug)}
+                      >
+                        Slug
+                        <ChevronDownIcon
+                          className={twMerge(
+                            "ml-1 size-4 transition-transform",
+                            orderDirection === OrderByDirection.DESC &&
+                              orderBy === RolesOrderBy.Slug &&
+                              "rotate-180",
+                            orderBy !== RolesOrderBy.Slug && "opacity-30"
+                          )}
+                        />
+                      </button>
                     </TableHead>
-                    <TableHead onClick={() => handleSort(RolesOrderBy.Type)}>
-                      Type
-                      <ChevronDownIcon
-                        className={twMerge(
-                          "transition-transform",
-                          orderDirection === OrderByDirection.DESC &&
-                            orderBy === RolesOrderBy.Type &&
-                            "rotate-180",
-                          orderBy !== RolesOrderBy.Type && "opacity-30"
-                        )}
-                      />
+                    <TableHead aria-sort={getAriaSort(RolesOrderBy.Type)}>
+                      <button
+                        type="button"
+                        className="flex w-full cursor-pointer items-center rounded-sm text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                        onClick={() => handleSort(RolesOrderBy.Type)}
+                      >
+                        Type
+                        <ChevronDownIcon
+                          className={twMerge(
+                            "ml-1 size-4 transition-transform",
+                            orderDirection === OrderByDirection.DESC &&
+                              orderBy === RolesOrderBy.Type &&
+                              "rotate-180",
+                            orderBy !== RolesOrderBy.Type && "opacity-30"
+                          )}
+                        />
+                      </button>
                     </TableHead>
-                    <TableHead className="w-5" />
+                    <TableHead className="w-5">
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -364,6 +391,8 @@ export const ProjectRoleList = () => {
                       <TableRow
                         key={`role-list-${id}`}
                         className="cursor-pointer"
+                        tabIndex={0}
+                        aria-label={`View ${name}`}
                         onClick={() =>
                           navigate({
                             to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
@@ -373,6 +402,16 @@ export const ProjectRoleList = () => {
                             }
                           })
                         }
+                        onKeyDown={(event) => {
+                          if (event.target !== event.currentTarget || event.key !== "Enter") return;
+                          navigate({
+                            to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                            params: {
+                              projectId: currentProject.id,
+                              roleSlug: slug
+                            }
+                          });
+                        }}
                       >
                         <TableCell isTruncatable>{name}</TableCell>
                         <TableCell isTruncatable>{slug}</TableCell>
@@ -395,6 +434,7 @@ export const ProjectRoleList = () => {
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <IconButton
+                                aria-label={`Open actions for ${name}`}
                                 variant="ghost"
                                 size="xs"
                                 onClick={(e) => e.stopPropagation()}
@@ -487,14 +527,13 @@ export const ProjectRoleList = () => {
         </CardContent>
       </Card>
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <DeleteProjectRoleDialog
         isOpen={popUp.deleteRole.isOpen}
-        title={`Are you sure you want to delete ${
-          (popUp?.deleteRole?.data as TProjectRole)?.name || " "
-        } role?`}
-        deleteKey={(popUp?.deleteRole?.data as TProjectRole)?.slug || ""}
-        onClose={() => handlePopUpClose("deleteRole")}
-        onDeleteApproved={handleRoleDelete}
+        roleName={(popUp?.deleteRole?.data as TProjectRole)?.name || "project role"}
+        confirmationKey={(popUp?.deleteRole?.data as TProjectRole)?.slug || ""}
+        isPending={isDeletingRole}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
+        onConfirm={handleRoleDelete}
       />
       <DuplicateProjectRoleModal
         isOpen={popUp.duplicateRole.isOpen}

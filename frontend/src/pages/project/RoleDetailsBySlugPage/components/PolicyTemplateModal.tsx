@@ -8,10 +8,14 @@ import {
   AccordionItem,
   AccordionTrigger,
   Button,
-  Modal,
-  ModalClose,
-  ModalContent
-} from "@app/components/v2";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -94,34 +98,29 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
 
   return (
     <>
-      <Modal isOpen={showConflictingSubjects} onOpenChange={setShowConflictingSubjects}>
-        <ModalContent
-          title="Conflicting Policies"
-          subTitle="The following resources already have policies assigned to them."
-        >
-          <div className="grid grid-cols-2 gap-2 text-sm">
+      <Dialog open={showConflictingSubjects} onOpenChange={setShowConflictingSubjects}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Conflicting Policies</DialogTitle>
+            <DialogDescription>
+              The following resources already have policies assigned to them.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
             {conflictingSubjects.map((subject) => (
-              <div key={subject}>
-                <span className="text-mineshaft-200">
-                  {PROJECT_PERMISSION_OBJECT[subject].title}
-                </span>
-              </div>
+              <div key={subject}>{PROJECT_PERMISSION_OBJECT[subject].title}</div>
             ))}
           </div>
-          <div className="mt-8 flex space-x-4">
-            <ModalClose asChild>
-              <Button colorSchema="danger" onClick={() => onSubmit()}>
-                Overwrite Existing
-              </Button>
-            </ModalClose>
-            <ModalClose asChild>
-              <Button colorSchema="secondary" onClick={() => onSubmit(true)}>
-                Skip Conflicting
-              </Button>
-            </ModalClose>
-          </div>
-        </ModalContent>
-      </Modal>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onSubmit(true)}>
+              Skip Conflicting
+            </Button>
+            <Button variant="danger" onClick={() => onSubmit()}>
+              Overwrite Existing
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Accordion
         type="single"
         value={selectedTemplate?.id}
@@ -129,24 +128,20 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
           setSelectedTemplate(templates.find((template) => template.id === value))
         }
         collapsible
-        className="w-full border-collapse"
+        className="w-full"
       >
         {templates.map(({ name, description, permissions, id }) => (
-          <AccordionItem
-            key={id}
-            value={id}
-            className="m-0 border border-mineshaft-600 first:rounded-t last:rounded-b data-[state=open]:border-primary/40 data-[state=open]:bg-mineshaft-600/30"
-          >
-            <AccordionTrigger className="w-full justify-start p-4 py-8 text-mineshaft-100 hover:bg-mineshaft-700 hover:text-mineshaft-100 data-[state=open]:bg-primary/3 data-[state=open]:text-mineshaft-100">
-              <div className="mr-auto flex flex-col py-2 text-left">
+          <AccordionItem key={id} value={id}>
+            <AccordionTrigger className="py-3">
+              <div className="mr-auto flex flex-col gap-1 text-left">
                 <span>{name}</span>
-                <span className="text-sm leading-3 text-mineshaft-400">{description}</span>
+                <span className="text-sm font-normal text-muted">{description}</span>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="border-t border-mineshaft-600">
+            <AccordionContent className="border-t border-border">
               <div className="max-h-80 thin-scrollbar overflow-y-auto">
-                <span className="text-mineshaft-300">Grants the following permissions:</span>
-                <div className="grid grid-cols-2 gap-4 py-2">
+                <span className="text-muted">Grants the following permissions:</span>
+                <div className="grid grid-cols-1 gap-4 py-2 sm:grid-cols-2">
                   {permissions
                     .map((permission) => ({
                       ...permission,
@@ -156,7 +151,7 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
                     .map(({ subject, actions, object }) => {
                       return (
                         <div key={subject}>
-                          <span className="text-mineshaft-200">{object.title}</span>
+                          <span className="text-foreground">{object.title}</span>
                           <ul className="mt-1 flex list-disc flex-col gap-1 pl-4">
                             {actions.map((action) => (
                               <li key={action}>
@@ -173,30 +168,31 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
           </AccordionItem>
         ))}
       </Accordion>
-      <div className="mt-8 flex space-x-4">
-        <Button isDisabled={!selectedTemplate} onClick={onApply}>
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="ghost">Cancel</Button>
+        </DialogClose>
+        <Button variant="project" isDisabled={!selectedTemplate} onClick={onApply}>
           Apply Template
         </Button>
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
-            Cancel
-          </Button>
-        </ModalClose>
-      </div>
+      </DialogFooter>
     </>
   );
 };
 
 export const PolicyTemplateModal = ({ isOpen, onOpenChange, type }: Props) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title="Policy Templates"
-        subTitle="Select a template with prepopulated policies to get started. You can always add more policies later."
-        className="max-w-3xl"
-      >
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Policy Templates</DialogTitle>
+          <DialogDescription>
+            Select a template with prepopulated policies to get started. You can always add more
+            policies later.
+          </DialogDescription>
+        </DialogHeader>
         <Content onClose={() => onOpenChange(false)} type={type} />
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };
