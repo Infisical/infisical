@@ -6,6 +6,24 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# 0. System dependencies (idempotent). The apps run natively (no Docker), so we
+#    need Postgres, Redis, an nginx reverse proxy, and the toolchain to build the
+#    backend's native npm modules. Skipped entirely when already present (e.g. a
+#    snapshot-backed base image), so this only pays the apt cost on a bare image.
+if ! command -v psql >/dev/null 2>&1 || ! command -v redis-server >/dev/null 2>&1 \
+   || ! command -v nginx >/dev/null 2>&1; then
+  sudo apt-get update -y
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    postgresql postgresql-contrib redis-server nginx \
+    build-essential python3 pkg-config unixodbc-dev ca-certificates curl
+fi
+# Infisical CLI powers the repo's secret-scanning pre-commit hook.
+if ! command -v infisical >/dev/null 2>&1; then
+  curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash \
+    || curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | sudo -E bash
+  sudo apt-get install -y infisical
+fi
+
 # 1. Generate a native (non-FIPS) dev .env from the committed example.
 #    - point DB/Redis at localhost instead of the compose service names
 #    - use a 32-byte ENCRYPTION_KEY (valid AES-256 key in software mode; the
