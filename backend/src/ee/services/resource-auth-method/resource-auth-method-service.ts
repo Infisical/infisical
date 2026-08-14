@@ -10,6 +10,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TGatewayPoolDALFactory } from "../gateway-pool/gateway-pool-dal";
+import { TGatewayPoolMembershipDALFactory } from "../gateway-pool/gateway-pool-membership-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TKmipServerDALFactory } from "../kmip-server/kmip-server-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -28,7 +29,6 @@ import { TGatewayProxyRegistry } from "./gateway-proxy-registry";
 import { TResourceKubernetesAuthDALFactory } from "./kubernetes-auth-dal";
 import {
   assertKubernetesHostAllowed,
-  assertKubernetesProxyNotSelf,
   buildDirectKubernetesExecutor,
   reviewServiceAccountToken,
   TKubernetesRequestExecutor,
@@ -84,6 +84,7 @@ type TResourceAuthMethodServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById" | "updateById">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
+  gatewayPoolMembershipDAL: Pick<TGatewayPoolMembershipDALFactory, "find">;
   relayDAL: Pick<TRelayDALFactory, "findById" | "updateById">;
   kmipServerDAL: Pick<TKmipServerDALFactory, "findById" | "updateById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -129,6 +130,7 @@ export const resourceAuthMethodServiceFactory = ({
   kmsService,
   gatewayV2DAL,
   gatewayPoolDAL,
+  gatewayPoolMembershipDAL,
   relayDAL,
   kmipServerDAL,
   identityDAL,
@@ -403,6 +405,33 @@ export const resourceAuthMethodServiceFactory = ({
     return Boolean(pending);
   };
 
+  // A gateway cannot vouch for itself: the proxy runs over its own tunnel, which only exists once
+  // it has authenticated. Covers pools too, since selecting a healthy member can land on itself
+  // while a stale heartbeat is still within its TTL.
+  const $assertProxyNotSelf = async (
+    resource: ResourceRef,
+    proxy: { gatewayV2Id?: string | null; gatewayPoolId?: string | null }
+  ) => {
+    if (resource.type !== RESOURCE_TYPE_GATEWAY) return;
+
+    if (proxy.gatewayV2Id === resource.id) {
+      throw new BadRequestError({
+        message:
+          "A gateway cannot review its own Kubernetes token. Select a different gateway, one that is already enrolled and connected."
+      });
+    }
+
+    if (proxy.gatewayPoolId) {
+      const members = await gatewayPoolMembershipDAL.find({ gatewayPoolId: proxy.gatewayPoolId });
+      if (members.some((member) => member.gatewayId === resource.id)) {
+        throw new BadRequestError({
+          message:
+            "This gateway is a member of the selected pool, so the pool could be asked to review its own token. Choose a pool it does not belong to."
+        });
+      }
+    }
+  };
+
   // Picks the route to the API server: straight out from Infisical, or tunnelled through a gateway.
   // Makes network calls when proxied, so call it outside a transaction.
   const $buildKubernetesExecutor = async (
@@ -504,7 +533,7 @@ export const resourceAuthMethodServiceFactory = ({
     // Absent on paths where the caller was already authorized to attach, e.g. an unauthenticated login.
     actor?: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">
   ) => {
-    if (resource) assertKubernetesProxyNotSelf(resource, config.gatewayV2Id);
+    if (resource) await $assertProxyNotSelf(resource, config);
     if (actor) await $assertCanAttachProxy(actor, config);
 
     const isProxied = Boolean(config.gatewayV2Id ?? config.gatewayPoolId);
@@ -706,7 +735,7 @@ export const resourceAuthMethodServiceFactory = ({
         }
       }
 
-      assertKubernetesProxyNotSelf(resource, authMethod.gatewayV2Id);
+      await $assertProxyNotSelf(resource, authMethod);
       await $assertCanAttachProxy(actor, authMethod);
 
       const validation = await $buildKubernetesExecutor(

@@ -86,17 +86,6 @@ export const buildDirectKubernetesExecutor = ({
   };
 };
 
-// A gateway cannot vouch for itself: the proxy runs over the gateway's own tunnel, which only
-// exists once it has already authenticated. Left unchecked, this config would never log in.
-export const assertKubernetesProxyNotSelf = (resource: { type: string; id: string }, gatewayV2Id?: string | null) => {
-  if (gatewayV2Id && resource.type === "gateway" && gatewayV2Id === resource.id) {
-    throw new BadRequestError({
-      message:
-        "A gateway cannot review its own Kubernetes token. Select a different gateway, one that is already enrolled and connected."
-    });
-  }
-};
-
 export const assertKubernetesHostAllowed = async (kubernetesHost: string) => {
   const url = kubernetesHost.startsWith("https://") ? kubernetesHost : `https://${kubernetesHost}`;
   try {
