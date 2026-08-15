@@ -31,8 +31,8 @@ type ComboboxSharedProps<TOption> = {
 
 type ComboboxSingleProps<TOption> = ComboboxSharedProps<TOption> &
   Omit<
-    React.ComponentPropsWithoutRef<"button">,
-    "children" | "disabled" | "onChange" | "type" | "value"
+    React.ComponentPropsWithoutRef<"input">,
+    "children" | "disabled" | "multiple" | "onChange" | "type" | "value"
   > & {
     multiple?: false;
     value?: TOption | null;
@@ -53,7 +53,7 @@ type ComboboxMultipleProps<TOption> = ComboboxSharedProps<TOption> &
 
 type ComboboxProps<TOption> = ComboboxSingleProps<TOption> | ComboboxMultipleProps<TOption>;
 
-const SINGLE_LIST_MAX_HEIGHT = "min(18.75rem, max(4rem, calc(var(--available-height) - 2.5rem)))";
+const SINGLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height))";
 const MULTIPLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height))";
 
 const normalizeSearchText = (value: string) =>
@@ -241,13 +241,11 @@ const SingleCombobox = <TOption,>({
   contentClassName,
   id,
   onKeyDown,
-  ...triggerProps
+  ...inputProps
 }: ComboboxSingleProps<TOption>) => {
-  const triggerRef = React.useRef<HTMLButtonElement>(null);
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
   const [portalContainer, setPortalContainer] = React.useState<HTMLElement | null>(null);
   const [open, setOpen] = React.useState(false);
-  const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => (value == null ? [] : [value]), [value]);
   const items = useComboboxItems(options, selectedOptions, getOptionValue);
   const filter = useComboboxFilter({ getOptionKeywords, getOptionLabel });
@@ -256,33 +254,10 @@ const SingleCombobox = <TOption,>({
     [getOptionValue, value]
   );
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen);
-    if (!nextOpen) setSearch("");
-  };
-
-  const handleTriggerRef = React.useCallback((element: HTMLButtonElement | null) => {
-    triggerRef.current = element;
+  const handleInputRef = React.useCallback((element: HTMLInputElement | null) => {
+    inputRef.current = element;
     setPortalContainer(element?.closest<HTMLElement>("[data-slot='sheet-content']") ?? null);
   }, []);
-
-  const handleTriggerKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
-    onKeyDown?.(event);
-    if (event.defaultPrevented) return;
-
-    if (
-      event.key.length === 1 &&
-      event.key !== " " &&
-      !event.altKey &&
-      !event.ctrlKey &&
-      !event.metaKey
-    ) {
-      event.preventDefault();
-      setSearch(event.key);
-      setOpen(true);
-      window.requestAnimationFrame(() => inputRef.current?.focus());
-    }
-  };
 
   return (
     <ComboboxPrimitive.Root<TOption, false>
@@ -296,9 +271,7 @@ const SingleCombobox = <TOption,>({
         onValueChange(nextValue);
       }}
       open={open}
-      onOpenChange={handleOpenChange}
-      inputValue={search}
-      onInputValueChange={setSearch}
+      onOpenChange={setOpen}
       itemToStringLabel={getOptionLabel}
       itemToStringValue={getOptionValue}
       isItemEqualToValue={(option, selectedOption) =>
@@ -307,41 +280,40 @@ const SingleCombobox = <TOption,>({
       filter={filter}
       disabled={isDisabled}
       modal={modal}
-      autoHighlight="always"
+      autoHighlight
     >
       <div className="relative w-full">
-        <ComboboxPrimitive.Trigger
-          ref={handleTriggerRef}
+        <ComboboxPrimitive.Input
+          ref={handleInputRef}
           id={id}
-          type="button"
-          data-slot="combobox-trigger"
+          data-slot="combobox-input"
           data-invalid={isError}
           aria-invalid={isError || undefined}
+          aria-busy={isLoading || undefined}
+          placeholder={open ? searchPlaceholder : placeholder}
+          onKeyDown={(event) => {
+            onKeyDown?.(event);
+            preventComboboxFormSubmit(event);
+          }}
           className={cn(
-            "flex h-9 w-full cursor-pointer items-center justify-between gap-1.5 rounded-md border border-border bg-transparent py-2 pr-2 pl-2.5 text-sm text-foreground transition-[color,box-shadow] outline-none select-none",
-            "hover:border-foreground/20 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
+            "h-9 w-full rounded-md border border-border bg-transparent py-2 pr-9 pl-2.5 text-sm text-foreground transition-[color,box-shadow] outline-none placeholder:text-muted",
+            "hover:border-foreground/20 focus:border-ring focus:ring-[3px] focus:ring-ring/50",
             "data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
+            !open && value != null && renderValue && "text-transparent",
             className
           )}
-          onKeyDown={handleTriggerKeyDown}
-          {...triggerProps}
-        >
-          <span className={cn("min-w-0 flex-1 truncate text-left", value == null && "text-muted")}>
-            {value == null ? placeholder : (renderValue?.(value) ?? getOptionLabel(value))}
+          {...inputProps}
+        />
+        {!open && value != null && renderValue && (
+          <span className="pointer-events-none absolute inset-y-0 right-9 left-2.5 flex min-w-0 items-center truncate text-sm text-foreground">
+            {renderValue(value)}
           </span>
-          {value != null && onClear && <span className="size-7 shrink-0" aria-hidden="true" />}
-          {isLoading ? (
-            <Loader2Icon className="size-4 shrink-0 animate-spin text-accent" aria-hidden="true" />
-          ) : (
-            <ChevronDownIcon className="size-4 shrink-0 text-accent" aria-hidden="true" />
-          )}
-          {isLoading && <span className="sr-only">{loadingMessage}</span>}
-        </ComboboxPrimitive.Trigger>
+        )}
         {value != null && onClear && (
           <ComboboxPrimitive.Clear
             aria-label={clearAriaLabel}
             tabIndex={0}
-            onClick={() => window.requestAnimationFrame(() => triggerRef.current?.focus())}
+            onClick={() => window.requestAnimationFrame(() => inputRef.current?.focus())}
             className={cn(
               "absolute top-1/2 right-7 z-10 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted outline-none",
               "hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[popup-open]:hidden"
@@ -350,23 +322,28 @@ const SingleCombobox = <TOption,>({
             <XIcon className="size-3.5" />
           </ComboboxPrimitive.Clear>
         )}
+        {isLoading ? (
+          <Loader2Icon
+            className="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 animate-spin text-accent"
+            aria-hidden="true"
+          />
+        ) : (
+          <ChevronDownIcon
+            className="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-accent"
+            aria-hidden="true"
+          />
+        )}
+        {isLoading && <span className="sr-only">{loadingMessage}</span>}
       </div>
       <ComboboxPrimitive.Status className="sr-only">
         {isLoading ? loadingMessage : null}
       </ComboboxPrimitive.Status>
       <ComboboxPopup
+        anchor={inputRef}
         ariaLabel={searchAriaLabel}
         className={contentClassName}
-        initialFocus={inputRef}
         portalContainer={portalContainer}
       >
-        <ComboboxPrimitive.Input
-          ref={inputRef}
-          aria-label={searchAriaLabel}
-          placeholder={searchPlaceholder}
-          onKeyDown={preventComboboxFormSubmit}
-          className="h-10 w-full border-b border-border bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted"
-        />
         <ComboboxList
           emptyMessage={emptyMessage}
           loadingMessage={loadingMessage}
@@ -411,8 +388,8 @@ const MultipleCombobox = <TOption,>({
   onKeyDown,
   ...inputProps
 }: ComboboxMultipleProps<TOption>) => {
-  const inputRef = React.useRef<HTMLInputElement>(null);
-  const chipsRef = React.useRef<HTMLDivElement>(null);
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const chipsRef = React.useRef<HTMLDivElement | null>(null);
   const [portalContainer, setPortalContainer] = React.useState<HTMLElement | null>(null);
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -464,7 +441,7 @@ const MultipleCombobox = <TOption,>({
       filter={filter}
       disabled={isDisabled}
       modal={modal}
-      autoHighlight="always"
+      autoHighlight
     >
       <ComboboxPrimitive.Chips
         ref={handleChipsRef}
@@ -508,7 +485,7 @@ const MultipleCombobox = <TOption,>({
           aria-label={searchAriaLabel}
           aria-invalid={isError || undefined}
           aria-busy={isLoading || undefined}
-          placeholder={value.length === 0 ? placeholder : searchPlaceholder}
+          placeholder={value.length === 0 ? placeholder : undefined}
           onKeyDown={(event) => {
             onKeyDown?.(event);
             preventComboboxFormSubmit(event);

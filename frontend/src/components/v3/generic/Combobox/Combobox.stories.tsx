@@ -78,7 +78,7 @@ const meta = {
 } satisfies Meta<typeof Combobox>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj;
 
 const DefaultRender = () => {
   const [value, setValue] = useState<(typeof ENVIRONMENTS)[number] | null>(null);
