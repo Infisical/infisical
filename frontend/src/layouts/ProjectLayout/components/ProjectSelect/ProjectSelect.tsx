@@ -81,12 +81,24 @@ const ProjectSelectInner = () => {
     return projectOptions;
   }, [projects, projectFavorites, currentWorkspace.type]);
 
-  const handleSelectProject = (projectId: string) => {
+  const handleSelectProject = (event: React.MouseEvent, projectId: string) => {
+    // The row is a real link, so modified clicks are the browser's to handle: let them
+    // through untouched so the project opens in a new tab and this one stays put.
+    if (event.defaultPrevented) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)
+      return;
+
     const workspace = projects.find((p) => p.id === projectId);
     if (!workspace || workspace.id === currentWorkspace.id) {
+      event.preventDefault();
       setOpen(false);
       return;
     }
+
+    // Switching projects reloads the page instead of navigating client-side: React Query
+    // throws in the overview when the two projects have a different environment count.
+    // Preventing the default keeps the anchor from also navigating.
+    event.preventDefault();
     const url = linkOptions({
       to: getProjectHomePage(workspace.type, workspace.environments),
       params: {
@@ -138,47 +150,58 @@ const ProjectSelectInner = () => {
               <CommandGroup heading="Projects">
                 {projectsSortedByFav.map((workspace) => (
                   <CommandItem
+                    asChild
                     key={workspace.id}
                     value={workspace.id}
                     keywords={[workspace.name]}
-                    onSelect={() => handleSelectProject(workspace.id)}
                     className="gap-2"
                   >
-                    <Check
-                      className={
-                        currentWorkspace?.id === workspace.id ? "opacity-100" : "opacity-0"
-                      }
-                    />
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-sm">{workspace.name}</span>
-                      <span className="truncate text-[11px] text-muted">
-                        {workspace.description || "No description"}
-                      </span>
-                    </div>
-                    <IconButton
-                      variant="ghost"
-                      size="xs"
-                      aria-label="toggle favorite"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        await (
-                          workspace.isFavorite ? removeProjectFromFavorites : addProjectToFavorites
-                        )(workspace.id);
+                    <Link
+                      to={getProjectHomePage(workspace.type, workspace.environments)}
+                      params={{
+                        projectId: workspace.id,
+                        orgId: workspace.orgId
                       }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") e.stopPropagation();
-                      }}
+                      onClick={(event) => handleSelectProject(event, workspace.id)}
                     >
-                      <Star
+                      <Check
                         className={
-                          workspace.isFavorite
-                            ? "fill-yellow-600 text-yellow-600"
-                            : "text-yellow-600"
+                          currentWorkspace?.id === workspace.id ? "opacity-100" : "opacity-0"
                         }
                       />
-                    </IconButton>
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-sm">{workspace.name}</span>
+                        <span className="truncate text-[11px] text-muted">
+                          {workspace.description || "No description"}
+                        </span>
+                      </div>
+                      <IconButton
+                        variant="ghost"
+                        size="xs"
+                        aria-label="toggle favorite"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          await (
+                            workspace.isFavorite
+                              ? removeProjectFromFavorites
+                              : addProjectToFavorites
+                          )(workspace.id);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.stopPropagation();
+                        }}
+                      >
+                        <Star
+                          className={
+                            workspace.isFavorite
+                              ? "fill-yellow-600 text-yellow-600"
+                              : "text-yellow-600"
+                          }
+                        />
+                      </IconButton>
+                    </Link>
                   </CommandItem>
                 ))}
               </CommandGroup>

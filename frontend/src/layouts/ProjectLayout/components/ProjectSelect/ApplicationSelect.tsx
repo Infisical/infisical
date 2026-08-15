@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { Check, ChevronsUpDown } from "lucide-react";
 
 import {
@@ -32,18 +32,20 @@ const ApplicationSelectInner = ({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
-  const navigate = useNavigate();
   const { data } = useListPkiApplications({ search: debouncedSearch || undefined, limit: 20 });
   const applications = data?.applications ?? [];
 
   const displayName = applicationName;
 
-  const handleSelect = (nextName: string) => {
+  // The row is a real link, so the router owns the navigation; this only closes the
+  // popover, and leaves modified clicks alone so they open in a new tab.
+  const handleSelect = (event: React.MouseEvent, nextName: string) => {
+    if (event.defaultPrevented) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)
+      return;
+
+    if (nextName === applicationName) event.preventDefault();
     setOpen(false);
-    if (nextName === applicationName) return;
-    navigate({
-      to: `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${nextName}` as never
-    } as never);
   };
 
   return (
@@ -80,19 +82,23 @@ const ApplicationSelectInner = ({
               <CommandEmpty>No applications found.</CommandEmpty>
               <CommandGroup heading="Applications">
                 {applications.map((app) => (
-                  <CommandItem
-                    key={app.id}
-                    value={app.name}
-                    onSelect={() => handleSelect(app.name)}
-                    className="gap-2"
-                  >
-                    <Check className={app.name === applicationName ? "opacity-100" : "opacity-0"} />
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-sm">{app.name}</span>
-                      <span className="truncate text-[11px] text-muted">
-                        {app.description || "No description"}
-                      </span>
-                    </div>
+                  <CommandItem asChild key={app.id} value={app.name} className="gap-2">
+                    <Link
+                      to={
+                        `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${app.name}` as never
+                      }
+                      onClick={(event) => handleSelect(event, app.name)}
+                    >
+                      <Check
+                        className={app.name === applicationName ? "opacity-100" : "opacity-0"}
+                      />
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-sm">{app.name}</span>
+                        <span className="truncate text-[11px] text-muted">
+                          {app.description || "No description"}
+                        </span>
+                      </div>
+                    </Link>
                   </CommandItem>
                 ))}
               </CommandGroup>
