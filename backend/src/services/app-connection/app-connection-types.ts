@@ -384,6 +384,12 @@ import {
   TValidatePaloAltoNetworksConnectionCredentialsSchema
 } from "./palo-alto-networks";
 import {
+  TPortainerConnection,
+  TPortainerConnectionConfig,
+  TPortainerConnectionInput,
+  TValidatePortainerConnectionCredentialsSchema
+} from "./portainer";
+import {
   TPostgresConnection,
   TPostgresConnectionInput,
   TValidatePostgresConnectionCredentialsSchema
@@ -615,6 +621,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TF5BigIpConnection
   | TConvexConnection
   | TRundeckConnection
+  | TPortainerConnection
   | THasuraCloudConnection
   | TQoveryConnection
   | TLiteLLMConnection
@@ -716,6 +723,7 @@ export type TAppConnectionInput = { id: string } & (
   | TF5BigIpConnectionInput
   | TConvexConnectionInput
   | TRundeckConnectionInput
+  | TPortainerConnectionInput
   | THasuraCloudConnectionInput
   | TQoveryConnectionInput
   | TLiteLLMConnectionInput
@@ -851,6 +859,7 @@ export type TAppConnectionConfig =
   | TF5BigIpConnectionConfig
   | TConvexConnectionConfig
   | TRundeckConnectionConfig
+  | TPortainerConnectionConfig
   | THasuraCloudConnectionConfig
   | TQoveryConnectionConfig
   | TLiteLLMConnectionConfig
@@ -943,6 +952,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateF5BigIpConnectionCredentialsSchema
   | TValidateConvexConnectionCredentialsSchema
   | TValidateRundeckConnectionCredentialsSchema
+  | TValidatePortainerConnectionCredentialsSchema
   | TValidateHasuraCloudConnectionCredentialsSchema
   | TValidateQoveryConnectionCredentialsSchema
   | TValidateLiteLLMConnectionCredentialsSchema
