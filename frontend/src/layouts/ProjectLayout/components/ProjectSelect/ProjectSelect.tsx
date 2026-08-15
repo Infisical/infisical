@@ -35,6 +35,23 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 
+// Modified and middle clicks belong to the browser: it opens the row's href in a new tab
+// or window, so we neither preventDefault nor navigate programmatically on those paths.
+const isBrowserHandledClick = (event: React.MouseEvent) =>
+  event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0;
+
+// The row's anchor exists for its href (new-tab, copy link, status bar preview) while cmdk
+// owns activation via onSelect. A plain primary click therefore suppresses the anchor's own
+// navigation and bubbles up to cmdk; a browser-handled click is kept away from cmdk instead,
+// so the current tab stays put while the new one opens.
+const handleRowAnchorClick = (event: React.MouseEvent) => {
+  if (isBrowserHandledClick(event)) {
+    event.stopPropagation();
+    return;
+  }
+  event.preventDefault();
+};
+
 const ProjectSelectInner = () => {
   const [open, setOpen] = useState(false);
   const { currentProject: currentWorkspace } = useProject();
@@ -81,24 +98,17 @@ const ProjectSelectInner = () => {
     return projectOptions;
   }, [projects, projectFavorites, currentWorkspace.type]);
 
-  const handleSelectProject = (event: React.MouseEvent, projectId: string) => {
-    // The row is a real link, so modified clicks are the browser's to handle: let them
-    // through untouched so the project opens in a new tab and this one stays put.
-    if (event.defaultPrevented) return;
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)
-      return;
-
+  // cmdk activates a row through onSelect, which fires both on pointer click and on
+  // Enter for the arrow-key selected row, so all plain activation is funnelled here.
+  const handleSelectProject = (projectId: string) => {
     const workspace = projects.find((p) => p.id === projectId);
     if (!workspace || workspace.id === currentWorkspace.id) {
-      event.preventDefault();
       setOpen(false);
       return;
     }
 
     // Switching projects reloads the page instead of navigating client-side: React Query
     // throws in the overview when the two projects have a different environment count.
-    // Preventing the default keeps the anchor from also navigating.
-    event.preventDefault();
     const url = linkOptions({
       to: getProjectHomePage(workspace.type, workspace.environments),
       params: {
@@ -150,58 +160,60 @@ const ProjectSelectInner = () => {
               <CommandGroup heading="Projects">
                 {projectsSortedByFav.map((workspace) => (
                   <CommandItem
-                    asChild
                     key={workspace.id}
                     value={workspace.id}
                     keywords={[workspace.name]}
-                    className="gap-2"
+                    onSelect={() => handleSelectProject(workspace.id)}
+                    className="relative gap-2"
                   >
+                    {/* Overlay rather than a wrapper so the favorite button below stays outside
+                        the anchor instead of nesting a button inside a link. */}
                     <Link
                       to={getProjectHomePage(workspace.type, workspace.environments)}
                       params={{
                         projectId: workspace.id,
                         orgId: workspace.orgId
                       }}
-                      onClick={(event) => handleSelectProject(event, workspace.id)}
+                      aria-label={workspace.name}
+                      tabIndex={-1}
+                      className="absolute inset-0 z-0 rounded-sm"
+                      onClick={handleRowAnchorClick}
+                    />
+                    <Check
+                      className={
+                        currentWorkspace?.id === workspace.id ? "opacity-100" : "opacity-0"
+                      }
+                    />
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-sm">{workspace.name}</span>
+                      <span className="truncate text-[11px] text-muted">
+                        {workspace.description || "No description"}
+                      </span>
+                    </div>
+                    <IconButton
+                      variant="ghost"
+                      size="xs"
+                      aria-label="toggle favorite"
+                      className="relative z-10"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        await (
+                          workspace.isFavorite ? removeProjectFromFavorites : addProjectToFavorites
+                        )(workspace.id);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.stopPropagation();
+                      }}
                     >
-                      <Check
+                      <Star
                         className={
-                          currentWorkspace?.id === workspace.id ? "opacity-100" : "opacity-0"
+                          workspace.isFavorite
+                            ? "fill-yellow-600 text-yellow-600"
+                            : "text-yellow-600"
                         }
                       />
-                      <div className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate text-sm">{workspace.name}</span>
-                        <span className="truncate text-[11px] text-muted">
-                          {workspace.description || "No description"}
-                        </span>
-                      </div>
-                      <IconButton
-                        variant="ghost"
-                        size="xs"
-                        aria-label="toggle favorite"
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          await (
-                            workspace.isFavorite
-                              ? removeProjectFromFavorites
-                              : addProjectToFavorites
-                          )(workspace.id);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") e.stopPropagation();
-                        }}
-                      >
-                        <Star
-                          className={
-                            workspace.isFavorite
-                              ? "fill-yellow-600 text-yellow-600"
-                              : "text-yellow-600"
-                          }
-                        />
-                      </IconButton>
-                    </Link>
+                    </IconButton>
                   </CommandItem>
                 ))}
               </CommandGroup>

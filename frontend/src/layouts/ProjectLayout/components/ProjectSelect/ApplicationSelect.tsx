@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { Check, ChevronsUpDown } from "lucide-react";
 
 import {
@@ -20,6 +20,23 @@ import {
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { useDebounce } from "@app/hooks/useDebounce";
 
+// Modified and middle clicks belong to the browser: it opens the row's href in a new tab
+// or window, so we neither preventDefault nor navigate programmatically on those paths.
+const isBrowserHandledClick = (event: React.MouseEvent) =>
+  event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0;
+
+// The row's anchor exists for its href (new-tab, copy link, status bar preview) while cmdk
+// owns activation via onSelect. A plain primary click therefore suppresses the anchor's own
+// navigation and bubbles up to cmdk; a browser-handled click is kept away from cmdk instead,
+// so the current tab stays put while the new one opens.
+const handleRowAnchorClick = (event: React.MouseEvent) => {
+  if (isBrowserHandledClick(event)) {
+    event.stopPropagation();
+    return;
+  }
+  event.preventDefault();
+};
+
 const ApplicationSelectInner = ({
   applicationName,
   projectId,
@@ -32,20 +49,20 @@ const ApplicationSelectInner = ({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
+  const navigate = useNavigate();
   const { data } = useListPkiApplications({ search: debouncedSearch || undefined, limit: 20 });
   const applications = data?.applications ?? [];
 
   const displayName = applicationName;
 
-  // The row is a real link, so the router owns the navigation; this only closes the
-  // popover, and leaves modified clicks alone so they open in a new tab.
-  const handleSelect = (event: React.MouseEvent, nextName: string) => {
-    if (event.defaultPrevented) return;
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)
-      return;
-
-    if (nextName === applicationName) event.preventDefault();
+  // cmdk activates a row through onSelect, which fires both on pointer click and on
+  // Enter for the arrow-key selected row, so all plain activation is funnelled here.
+  const handleSelect = (nextName: string) => {
     setOpen(false);
+    if (nextName === applicationName) return;
+    navigate({
+      to: `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${nextName}` as never
+    } as never);
   };
 
   return (
@@ -82,23 +99,28 @@ const ApplicationSelectInner = ({
               <CommandEmpty>No applications found.</CommandEmpty>
               <CommandGroup heading="Applications">
                 {applications.map((app) => (
-                  <CommandItem asChild key={app.id} value={app.name} className="gap-2">
+                  <CommandItem
+                    key={app.id}
+                    value={app.name}
+                    onSelect={() => handleSelect(app.name)}
+                    className="relative gap-2"
+                  >
                     <Link
                       to={
                         `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${app.name}` as never
                       }
-                      onClick={(event) => handleSelect(event, app.name)}
-                    >
-                      <Check
-                        className={app.name === applicationName ? "opacity-100" : "opacity-0"}
-                      />
-                      <div className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate text-sm">{app.name}</span>
-                        <span className="truncate text-[11px] text-muted">
-                          {app.description || "No description"}
-                        </span>
-                      </div>
-                    </Link>
+                      aria-label={app.name}
+                      tabIndex={-1}
+                      className="absolute inset-0 z-0 rounded-sm"
+                      onClick={handleRowAnchorClick}
+                    />
+                    <Check className={app.name === applicationName ? "opacity-100" : "opacity-0"} />
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-sm">{app.name}</span>
+                      <span className="truncate text-[11px] text-muted">
+                        {app.description || "No description"}
+                      </span>
+                    </div>
                   </CommandItem>
                 ))}
               </CommandGroup>
