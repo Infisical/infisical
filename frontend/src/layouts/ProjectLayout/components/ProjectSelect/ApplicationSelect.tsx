@@ -105,18 +105,21 @@ const ApplicationSelectInner = ({
                     onSelect={() => handleSelect(app.name)}
                     className="relative gap-2"
                   >
-                    <Link
-                      to={
-                        `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${app.name}` as never
-                      }
-                      aria-label={app.name}
-                      tabIndex={-1}
-                      className="absolute inset-0 z-0 rounded-sm"
-                      onClick={handleRowAnchorClick}
-                    />
                     <Check className={app.name === applicationName ? "opacity-100" : "opacity-0"} />
                     <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-sm">{app.name}</span>
+                      {/* The name is the row's link, so its accessible name comes from visible
+                          text and its stretched pseudo-element covers the row. It stays
+                          unfocusable because cmdk drives selection from the search input. */}
+                      <Link
+                        to={
+                          `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${app.name}` as never
+                        }
+                        tabIndex={-1}
+                        className="truncate text-sm after:absolute after:inset-0 after:content-['']"
+                        onClick={handleRowAnchorClick}
+                      >
+                        {app.name}
+                      </Link>
                       <span className="truncate text-[11px] text-muted">
                         {app.description || "No description"}
                       </span>
