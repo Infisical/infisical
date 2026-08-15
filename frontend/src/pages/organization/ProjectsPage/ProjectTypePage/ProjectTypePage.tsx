@@ -373,6 +373,8 @@ const MyProjectsForType = ({
         aria-label="Remove from favorites"
         className="text-warning hover:text-warning/75"
         onClick={(e) => {
+          // the grid card is wrapped in a link; stopPropagation alone would still follow it
+          e.preventDefault();
           e.stopPropagation();
           removeProjectFromFavorites(workspace.id);
         }}
@@ -385,6 +387,7 @@ const MyProjectsForType = ({
         size="xs"
         aria-label="Add to favorites"
         onClick={(e) => {
+          e.preventDefault();
           e.stopPropagation();
           addProjectToFavorites(workspace.id);
         }}
@@ -400,55 +403,55 @@ const MyProjectsForType = ({
     const tileStyle = PROJECT_TILE_STYLE;
     const environmentCount = workspace.environments?.length ?? 0;
     return (
-      <Card
+      <Link
         key={workspace.id}
-        role="button"
-        tabIndex={0}
-        onClick={() => navigateToProject(workspace)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") navigateToProject(workspace);
-        }}
-        className={`group h-full cursor-pointer bg-container transition-all duration-200 ease-out ${tileStyle.cardHoverClassName}`}
+        to={getProjectHomePage(workspace.type, workspace.environments)}
+        params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
+        className="block h-full"
       >
-        <CardHeader>
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="shrink-0 rounded-sm border border-border bg-muted/10 p-2 transition-colors duration-200 ease-out group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
-              <WorkspaceIcon className="size-5.5 shrink-0 text-accent transition-colors duration-200 ease-out group-hover:text-project" />
+        <Card
+          className={`group h-full cursor-pointer bg-container transition-all duration-200 ease-out ${tileStyle.cardHoverClassName}`}
+        >
+          <CardHeader>
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="shrink-0 rounded-sm border border-border bg-muted/10 p-2 transition-colors duration-200 ease-out group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
+                <WorkspaceIcon className="size-5.5 shrink-0 text-accent transition-colors duration-200 ease-out group-hover:text-project" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <CardDescription className="truncate text-base font-semibold text-foreground">
+                  {workspace.name}
+                </CardDescription>
+                <p className="truncate text-sm leading-5 text-muted">
+                  {getProjectTitle(workspace.type)}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <CardDescription className="truncate text-base font-semibold text-foreground">
-                {workspace.name}
-              </CardDescription>
-              <p className="truncate text-sm leading-5 text-muted">
-                {getProjectTitle(workspace.type)}
-              </p>
-            </div>
-          </div>
-          <CardAction>{renderFavoriteButton(workspace)}</CardAction>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <p className="line-clamp-2 text-sm leading-relaxed text-accent">
-            {workspace.description || <span className="text-muted italic">No description</span>}
-          </p>
-          <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
-            <span className="flex items-center gap-1.5 text-muted">
-              <LayersIcon className="h-3.5 w-3.5 shrink-0" />
-              <span>
-                <span className="text-xs font-medium text-foreground">{environmentCount}</span>{" "}
-                <span className="text-xs">
-                  {environmentCount === 1 ? "Environment" : "Environments"}
+            <CardAction>{renderFavoriteButton(workspace)}</CardAction>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <p className="line-clamp-2 text-sm leading-relaxed text-accent">
+              {workspace.description || <span className="text-muted italic">No description</span>}
+            </p>
+            <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+              <span className="flex items-center gap-1.5 text-muted">
+                <LayersIcon className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  <span className="text-xs font-medium text-foreground">{environmentCount}</span>{" "}
+                  <span className="text-xs">
+                    {environmentCount === 1 ? "Environment" : "Environments"}
+                  </span>
                 </span>
               </span>
-            </span>
-            <span className="text-muted">
-              <span className="text-xs">Created </span>
-              <span className="text-xs font-medium text-foreground">
-                {format(new Date(workspace.createdAt), "MMM d, yyyy")}
+              <span className="text-muted">
+                <span className="text-xs">Created </span>
+                <span className="text-xs font-medium text-foreground">
+                  {format(new Date(workspace.createdAt), "MMM d, yyyy")}
+                </span>
               </span>
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
     );
   };
 
