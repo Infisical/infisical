@@ -166,26 +166,27 @@ const ProjectSelectInner = () => {
                     onSelect={() => handleSelectProject(workspace.id)}
                     className="relative gap-2"
                   >
-                    {/* Overlay rather than a wrapper so the favorite button below stays outside
-                        the anchor instead of nesting a button inside a link. */}
-                    <Link
-                      to={getProjectHomePage(workspace.type, workspace.environments)}
-                      params={{
-                        projectId: workspace.id,
-                        orgId: workspace.orgId
-                      }}
-                      aria-label={workspace.name}
-                      tabIndex={-1}
-                      className="absolute inset-0 z-0 rounded-sm"
-                      onClick={handleRowAnchorClick}
-                    />
                     <Check
                       className={
                         currentWorkspace?.id === workspace.id ? "opacity-100" : "opacity-0"
                       }
                     />
                     <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-sm">{workspace.name}</span>
+                      {/* The name is the row's link, so its accessible name comes from visible
+                          text and its stretched pseudo-element covers the row. It stays
+                          unfocusable because cmdk drives selection from the search input. */}
+                      <Link
+                        to={getProjectHomePage(workspace.type, workspace.environments)}
+                        params={{
+                          projectId: workspace.id,
+                          orgId: workspace.orgId
+                        }}
+                        tabIndex={-1}
+                        className="truncate text-sm after:absolute after:inset-0 after:content-['']"
+                        onClick={handleRowAnchorClick}
+                      >
+                        {workspace.name}
+                      </Link>
                       <span className="truncate text-[11px] text-muted">
                         {workspace.description || "No description"}
                       </span>
