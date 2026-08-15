@@ -61,6 +61,7 @@ import { OctopusDeploySyncReviewFields } from "./OctopusDeploySyncReviewFields";
 import { OnaSyncReviewFields } from "./OnaSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
 import { OvhSyncReviewFields } from "./OvhSyncReviewFields";
+import { PortainerSyncReviewFields } from "./PortainerSyncReviewFields";
 import { QoverySyncReviewFields } from "./QoverySyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
@@ -203,6 +204,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Rundeck:
       DestinationFieldsComponent = <RundeckSyncReviewFields />;
+      break;
+    case SecretSync.Portainer:
+      DestinationFieldsComponent = <PortainerSyncReviewFields />;
       break;
     case SecretSync.DigitalOceanAppPlatform:
       DestinationFieldsComponent = <DigitalOceanAppPlatformSyncReviewFields />;

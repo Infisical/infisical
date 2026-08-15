@@ -66,6 +66,7 @@ import { NorthflankSyncListItemSchema, NorthflankSyncSchema } from "@app/service
 import { OctopusDeploySyncListItemSchema, OctopusDeploySyncSchema } from "@app/services/secret-sync/octopus-deploy";
 import { OnaSyncListItemSchema, OnaSyncSchema } from "@app/services/secret-sync/ona";
 import { OvhSyncListItemSchema, OvhSyncSchema } from "@app/services/secret-sync/ovh";
+import { PortainerSyncListItemSchema, PortainerSyncSchema } from "@app/services/secret-sync/portainer";
 import { QoverySyncListItemSchema, QoverySyncSchema } from "@app/services/secret-sync/qovery";
 import { RailwaySyncListItemSchema, RailwaySyncSchema } from "@app/services/secret-sync/railway/railway-sync-schemas";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
@@ -108,6 +109,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   CloudflareWorkersSyncSchema,
   SupabaseSyncSchema,
   RundeckSyncSchema,
+  PortainerSyncSchema,
   ZabbixSyncSchema,
   RailwaySyncSchema,
   ChecklySyncSchema,
@@ -163,6 +165,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   ChecklySyncListItemSchema,
   SupabaseSyncListItemSchema,
   RundeckSyncListItemSchema,
+  PortainerSyncListItemSchema,
   NetlifySyncListItemSchema,
   NorthflankSyncListItemSchema,
   BitbucketSyncListItemSchema,
