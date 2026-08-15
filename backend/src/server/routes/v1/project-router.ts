@@ -1093,7 +1093,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim()
       }),
       body: z.object({
-        comment: z.string().trim().max(2500).optional()
+        comment: z
+          .string()
+          .trim()
+          .max(2500)
+          .refine((val) => !val.includes("\0"), { message: "Comment cannot contain null characters" })
+          .optional()
       }),
       response: {
         200: z.object({
