@@ -1093,26 +1093,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim()
       }),
       body: z.object({
-        comment: z
-          .string()
-          .trim()
-          .max(2500)
-          .refine(
-            (val) =>
-              !val ||
-              characterValidator([
-                CharacterType.AlphaNumeric,
-                CharacterType.Hyphen,
-                CharacterType.Comma,
-                CharacterType.Fullstop,
-                CharacterType.Spaces,
-                CharacterType.Exclamation
-              ])(val),
-            {
-              message: "Invalid pattern: only alphanumeric characters, spaces, -.!, are allowed."
-            }
-          )
-          .optional()
+        comment: z.string().trim().max(2500).optional()
       }),
       response: {
         200: z.object({
