@@ -48,6 +48,13 @@ const writeStackEnv = async (
 ) => {
   const { instanceUrl, headers, environmentId, stackId } = getPortainerClientDetails(secretSync);
 
+  if (stack.EndpointId !== environmentId) {
+    throw new SecretSyncError({
+      message: `Stack with ID '${stackId}' belongs to Portainer environment '${stack.EndpointId}', not the configured environment '${environmentId}'`,
+      shouldRetry: false
+    });
+  }
+
   try {
     if (stack.GitConfig?.URL) {
       // The Git settings are replaced wholesale, so the existing reference and auto-update config are echoed back
