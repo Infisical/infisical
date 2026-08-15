@@ -77,6 +77,7 @@ import { NORTHFLANK_SYNC_LIST_OPTION, NorthflankSyncFns } from "./northflank";
 import { OCTOPUS_DEPLOY_SYNC_LIST_OPTION, OctopusDeploySyncFns } from "./octopus-deploy";
 import { ONA_SYNC_LIST_OPTION, OnaSyncFns } from "./ona";
 import { OVH_SYNC_LIST_OPTION, OvhSyncFns } from "./ovh";
+import { PORTAINER_SYNC_LIST_OPTION, PortainerSyncFns } from "./portainer";
 import { QOVERY_SYNC_LIST_OPTION, QoverySyncFns } from "./qovery";
 import { RAILWAY_SYNC_LIST_OPTION } from "./railway/railway-sync-constants";
 import { RailwaySyncFns } from "./railway/railway-sync-fns";
@@ -122,6 +123,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.CloudflareWorkers]: CLOUDFLARE_WORKERS_SYNC_LIST_OPTION,
   [SecretSync.Supabase]: SUPABASE_SYNC_LIST_OPTION,
   [SecretSync.Rundeck]: RUNDECK_SYNC_LIST_OPTION,
+  [SecretSync.Portainer]: PORTAINER_SYNC_LIST_OPTION,
   [SecretSync.Zabbix]: ZABBIX_SYNC_LIST_OPTION,
   [SecretSync.Railway]: RAILWAY_SYNC_LIST_OPTION,
   [SecretSync.Checkly]: CHECKLY_SYNC_LIST_OPTION,
@@ -359,6 +361,8 @@ export const SecretSyncFns = {
         return SupabaseSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Rundeck:
         return RundeckSyncFns.syncSecrets(secretSync, payload);
+      case SecretSync.Portainer:
+        return PortainerSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Netlify:
@@ -518,6 +522,9 @@ export const SecretSyncFns = {
       case SecretSync.Rundeck:
         secretMap = await RundeckSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Portainer:
+        secretMap = await PortainerSyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.DigitalOceanAppPlatform:
         secretMap = await DigitalOceanAppPlatformSyncFns.getSecrets(secretSync);
         break;
@@ -671,6 +678,8 @@ export const SecretSyncFns = {
         return SupabaseSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Rundeck:
         return RundeckSyncFns.removeSecrets(secretSync, payload);
+      case SecretSync.Portainer:
+        return PortainerSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Netlify:

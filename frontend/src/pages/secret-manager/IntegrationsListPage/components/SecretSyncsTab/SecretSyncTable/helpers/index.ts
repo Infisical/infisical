@@ -209,6 +209,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.project;
       secondaryText = destinationConfig.path;
       break;
+    case SecretSync.Portainer:
+      primaryText = `Stack #${destinationConfig.stackId}`;
+      secondaryText = `Environment #${destinationConfig.environmentId}`;
+      break;
     case SecretSync.DigitalOceanAppPlatform:
       primaryText = destinationConfig.appName;
       secondaryText = "Digital Ocean App";

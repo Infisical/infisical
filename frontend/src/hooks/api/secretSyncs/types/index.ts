@@ -36,6 +36,7 @@ import { TOCIVaultSync } from "./oci-vault-sync";
 import { TOctopusDeploySync } from "./octopus-deploy-sync";
 import { TOnaSync } from "./ona-sync";
 import { TOvhSync } from "./ovh-sync";
+import { TPortainerSync } from "./portainer-sync";
 import { TQoverySync } from "./qovery-sync";
 import { TRailwaySync } from "./railway-sync";
 import { TRenderSync } from "./render-sync";
@@ -90,6 +91,7 @@ export type TSecretSync =
   | TChecklySync
   | TSupabaseSync
   | TRundeckSync
+  | TPortainerSync
   | TDigitalOceanAppPlatformSync
   | TNetlifySync
   | TNorthflankSync

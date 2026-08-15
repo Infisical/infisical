@@ -35,6 +35,7 @@ import { OCIVaultSyncDestinationSchema } from "./oci-vault-sync-destination-sche
 import { OctopusDeploySyncDestinationSchema } from "./octopus-deploy-sync-destination-schema";
 import { OnaSyncDestinationSchema } from "./ona-sync-destination-schema";
 import { OvhSyncDestinationSchema } from "./ovh-sync-destination-schema";
+import { PortainerSyncDestinationSchema } from "./portainer-sync-destination-schema";
 import { QoverySyncDestinationSchema } from "./qovery-sync-destination-schema";
 import { RailwaySyncDestinationSchema } from "./railway-sync-destination-schema";
 import { RenderSyncDestinationSchema } from "./render-sync-destination-schema";
@@ -76,6 +77,7 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   CloudflareWorkersSyncDestinationSchema,
   SupabaseSyncDestinationSchema,
   RundeckSyncDestinationSchema,
+  PortainerSyncDestinationSchema,
   ZabbixSyncDestinationSchema,
   RailwaySyncDestinationSchema,
   ChecklySyncDestinationSchema,
