@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { Check, Copy, FolderIcon, SlashIcon } from "lucide-react";
 
 import {
@@ -35,10 +35,6 @@ type Measurements = {
 };
 
 export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
-  const navigate = useNavigate({
-    from: "/organizations/$orgId/projects/secret-management/$projectId/overview"
-  });
-
   const containerRef = useRef<HTMLDivElement>(null);
   const measureContainerRef = useRef<HTMLDivElement>(null);
 
@@ -72,18 +68,6 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
       onResetSearch(newSecPath);
     },
     [getCrumbPath, secretPath, onResetSearch]
-  );
-
-  // The overflow entries are Radix menu items rather than links, so they still navigate imperatively.
-  const onOverflowCrumbSelect = useCallback(
-    (index: number) => {
-      const newSecPath = getCrumbPath(index);
-      if (secretPath === newSecPath) return;
-      navigate({
-        search: (prev) => ({ ...prev, secretPath: newSecPath })
-      }).then(() => onResetSearch(newSecPath));
-    },
-    [getCrumbPath, secretPath, navigate, onResetSearch]
   );
 
   // Measure all elements and track container width
@@ -334,15 +318,25 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
                       const originalIndex = startCount + idx;
                       return (
                         <DropdownMenuItem
+                          asChild
                           key={`hidden-${originalIndex}`}
-                          onClick={() => onOverflowCrumbSelect(originalIndex + 1)}
                           className="text-accent hover:text-foreground"
                           title={segment}
                         >
-                          <div className="absolute top-1/2 -left-[3px] h-px w-2 bg-muted/50 transition-colors" />
+                          <Link
+                            from="/organizations/$orgId/projects/secret-management/$projectId/overview"
+                            to="."
+                            search={(prev) => ({
+                              ...prev,
+                              secretPath: getCrumbPath(originalIndex + 1)
+                            })}
+                            onClick={(event) => onFolderCrumbClick(event, originalIndex + 1)}
+                          >
+                            <div className="absolute top-1/2 -left-[3px] h-px w-2 bg-muted/50 transition-colors" />
 
-                          <FolderIcon className="text-folder" />
-                          <span className="truncate">{segment}</span>
+                            <FolderIcon className="text-folder" />
+                            <span className="truncate">{segment}</span>
+                          </Link>
                         </DropdownMenuItem>
                       );
                     })}
