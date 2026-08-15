@@ -5,20 +5,19 @@ import { Info } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
 import {
   Button,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Combobox,
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   TextArea,
   Tooltip,
   TooltipContent,
@@ -73,7 +72,9 @@ export const AddOrgMemberModal = ({
 }: Props) => {
   const { currentOrg } = useOrganization();
 
-  const { data: organizationRoles } = useGetOrgRoles(currentOrg?.id ?? "");
+  const { data: organizationRoles, isPending: isOrganizationRolesPending } = useGetOrgRoles(
+    currentOrg?.id ?? ""
+  );
   const { data: serverDetails } = useFetchServerStatus();
   const { mutateAsync: addUsersMutateAsync } = useAddUsersToOrg();
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
@@ -165,83 +166,104 @@ export const AddOrgMemberModal = ({
   };
 
   return (
-    <Dialog
+    <Sheet
       open={popUp?.addMember?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("addMember", isOpen);
         setCompleteInviteLinks(null);
       }}
     >
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Invite others to {currentOrg?.name}</DialogTitle>
-          <DialogDescription>
+      <SheetContent className="w-full gap-0 sm:max-w-xl">
+        <SheetHeader className="shrink-0 pr-12">
+          <SheetTitle>Invite others to {currentOrg?.name}</SheetTitle>
+          <SheetDescription>
             {completeInviteLinks
               ? "This Infisical instance does not have a email provider setup. Please share this invite link with the invitee manually"
               : "An invite is specific to an email address and expires after 1 day."}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         {!completeInviteLinks && (
           <FormProvider {...methods}>
-            <form onSubmit={handleSubmit(onAddMembers)} className="flex flex-col gap-4">
-              <Controller
-                control={control}
-                name="emails"
-                render={({ field, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel htmlFor="add-org-member-emails">Emails</FieldLabel>
-                    <TextArea
-                      id="add-org-member-emails"
-                      className="h-24"
-                      isError={Boolean(error)}
-                      placeholder="email@example.com, email2@example.com..."
-                      {...field}
-                    />
-                    <FieldError>{error?.message}</FieldError>
-                  </Field>
-                )}
-              />
+            <form onSubmit={handleSubmit(onAddMembers)} className="flex min-h-0 flex-1 flex-col">
+              <div className="thin-scrollbar flex-1 space-y-4 overflow-y-auto p-4">
+                <Controller
+                  control={control}
+                  name="emails"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="add-org-member-emails">Emails</FieldLabel>
+                      <TextArea
+                        id="add-org-member-emails"
+                        className="h-24"
+                        isError={Boolean(error)}
+                        placeholder="email@example.com, email2@example.com..."
+                        {...field}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
 
-              <Controller
-                control={control}
-                name="organizationRole"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel
-                      htmlFor="add-org-member-org-role"
-                      className="flex items-center gap-1.5"
-                    >
-                      Assign organization role
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>
-                            <Info className="size-3 text-muted" />
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-md">
-                          Select which organization role you want to assign to the user.
-                        </TooltipContent>
-                      </Tooltip>
-                    </FieldLabel>
-                    <FilterableSelect
-                      inputId="add-org-member-org-role"
-                      placeholder="Select role..."
-                      options={organizationRoles}
-                      getOptionValue={(option) => option.slug}
-                      getOptionLabel={(option) => option.name}
-                      value={value}
-                      onChange={onChange}
-                      isError={Boolean(error)}
-                      components={{ Option: RoleOption }}
-                    />
-                    <FieldError>{error?.message}</FieldError>
-                  </Field>
-                )}
-              />
+                <Controller
+                  control={control}
+                  name="organizationRole"
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel
+                        htmlFor="add-org-member-org-role"
+                        className="flex items-center gap-1.5"
+                      >
+                        Assign organization role
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <Info className="size-3 text-muted" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-md">
+                            Select which organization role you want to assign to the user.
+                          </TooltipContent>
+                        </Tooltip>
+                      </FieldLabel>
+                      <Combobox
+                        id="add-org-member-org-role"
+                        options={organizationRoles ?? []}
+                        value={value}
+                        onValueChange={onChange}
+                        getOptionValue={(option) => option.slug}
+                        getOptionLabel={(option) => option.name}
+                        getOptionKeywords={(option) =>
+                          option.description ? [option.description] : []
+                        }
+                        placeholder="Select role..."
+                        searchPlaceholder="Search roles..."
+                        searchAriaLabel="Search organization roles"
+                        emptyMessage="No organization roles found."
+                        isError={Boolean(error)}
+                        isLoading={isOrganizationRolesPending}
+                        modal
+                        renderOption={(option) => (
+                          <div className="min-w-0">
+                            <p className="truncate">{option.name}</p>
+                            {option.description ? (
+                              <p className="text-xs leading-4 break-words whitespace-normal text-muted">
+                                {option.description}
+                              </p>
+                            ) : (
+                              <p className="text-xs leading-4 text-muted/65">No Description</p>
+                            )}
+                          </div>
+                        )}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
 
-              <ProjectAssignmentFields />
+                <ProjectAssignmentFields />
+              </div>
 
-              <DialogFooter>
+              <SheetFooter className="shrink-0 justify-end border-t bg-popover">
                 <Button
                   variant="ghost"
                   type="button"
@@ -257,27 +279,27 @@ export const AddOrgMemberModal = ({
                 >
                   Add Member
                 </Button>
-              </DialogFooter>
+              </SheetFooter>
             </form>
           </FormProvider>
         )}
         {completeInviteLinks && (
-          <>
-            <div className="space-y-3">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="thin-scrollbar flex-1 space-y-3 overflow-y-auto p-4">
               {completeInviteLinks.map((invite) => (
                 <OrgInviteLink key={`invite-${invite.email}`} invite={invite} />
               ))}
             </div>
-            <DialogFooter>
-              <DialogClose asChild>
+            <SheetFooter className="shrink-0 justify-end border-t bg-popover">
+              <SheetClose asChild>
                 <Button type="button" variant="org">
                   Done
                 </Button>
-              </DialogClose>
-            </DialogFooter>
-          </>
+              </SheetClose>
+            </SheetFooter>
+          </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 };

@@ -4,9 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
 import { z } from "zod";
 
-import { RoleOption } from "@app/components/roles";
 import {
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -68,7 +68,9 @@ type Props = {
 export const AddSubOrgMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
 
-  const { data: organizationRoles } = useGetOrgRoles(currentOrg?.id ?? "");
+  const { data: organizationRoles, isPending: isOrganizationRolesPending } = useGetOrgRoles(
+    currentOrg?.id ?? ""
+  );
   const { data: members = [], isPending: isMembersPending } = useGetAvailableOrgUsers();
 
   const { mutateAsync: addUsersMutateAsync } = useAddUsersToOrg();
@@ -210,16 +212,33 @@ export const AddSubOrgMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                       </TooltipContent>
                     </Tooltip>
                   </FieldLabel>
-                  <FilterableSelect
-                    inputId="add-sub-org-member-org-role"
-                    placeholder="Select role..."
-                    options={organizationRoles}
+                  <Combobox
+                    id="add-sub-org-member-org-role"
+                    options={organizationRoles ?? []}
+                    value={value}
+                    onValueChange={onChange}
                     getOptionValue={(option) => option.slug}
                     getOptionLabel={(option) => option.name}
-                    value={value}
-                    onChange={onChange}
+                    getOptionKeywords={(option) => (option.description ? [option.description] : [])}
+                    placeholder="Select role..."
+                    searchPlaceholder="Search roles..."
+                    searchAriaLabel="Search organization roles"
+                    emptyMessage="No organization roles found."
                     isError={Boolean(error)}
-                    components={{ Option: RoleOption }}
+                    isLoading={isOrganizationRolesPending}
+                    modal
+                    renderOption={(option) => (
+                      <div className="min-w-0">
+                        <p className="truncate">{option.name}</p>
+                        {option.description ? (
+                          <p className="text-xs leading-4 break-words whitespace-normal text-muted">
+                            {option.description}
+                          </p>
+                        ) : (
+                          <p className="text-xs leading-4 text-muted/65">No Description</p>
+                        )}
+                      </div>
+                    )}
                   />
                   <FieldError>{error?.message}</FieldError>
                 </Field>

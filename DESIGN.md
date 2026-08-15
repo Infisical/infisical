@@ -185,18 +185,20 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 
 #### Forms
 
-| Component                                                                                                                                   | Reach for this when…                                                                                        |
-| ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| [`Field`](frontend/src/components/v3/generic/Field/Field.tsx)                                                                               | Wrap every form control — label + control + description + error. **Never render a bare control in a form.** |
-| [`Label`](frontend/src/components/v3/generic/Label/Label.tsx)                                                                               | Standalone form label outside a `Field`.                                                                    |
-| [`Input`](frontend/src/components/v3/generic/Input/Input.tsx) / [`TextArea`](frontend/src/components/v3/generic/TextArea/TextArea.tsx)      | Single-line / multi-line text entry.                                                                        |
-| [`InputGroup`](frontend/src/components/v3/generic/InputGroup/InputGroup.tsx)                                                                | Input with left/right addons — search bars, prefixed values.                                                |
-| [`Select`](frontend/src/components/v3/generic/Select/Select.tsx) / [`ReactSelect`](frontend/src/components/v3/generic/ReactSelect/index.ts) | Native-style dropdown / async or searchable dropdown.                                                       |
-| [`Switch`](frontend/src/components/v3/generic/Switch/Switch.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx)   | Boolean toggle / multi-select boolean.                                                                      |
-| [`Calendar`](frontend/src/components/v3/generic/Calendar/Calendar.tsx)                                                                      | Date / multi-date / range picker primitive.                                                                 |
-| [`DateRangeFilter`](frontend/src/components/v3/generic/DateRangeFilter/DateRangeFilter.tsx)                                                 | Date-range filter with presets — for filter bars.                                                           |
-| [`SecretInput`](frontend/src/components/v3/generic/SecretInput/SecretInput.tsx)                                                             | Secret-value editor with mask toggle and `${var}` highlighting.                                             |
-| [`PasswordGenerator`](frontend/src/components/v3/generic/PasswordGenerator/PasswordGenerator.tsx)                                           | Generate a password against project secret-validation rules.                                                |
+| Component                                                                                                                                 | Reach for this when…                                                                                        |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| [`Field`](frontend/src/components/v3/generic/Field/Field.tsx)                                                                             | Wrap every form control — label + control + description + error. **Never render a bare control in a form.** |
+| [`Label`](frontend/src/components/v3/generic/Label/Label.tsx)                                                                             | Standalone form label outside a `Field`.                                                                    |
+| [`Input`](frontend/src/components/v3/generic/Input/Input.tsx) / [`TextArea`](frontend/src/components/v3/generic/TextArea/TextArea.tsx)    | Single-line / multi-line text entry.                                                                        |
+| [`InputGroup`](frontend/src/components/v3/generic/InputGroup/InputGroup.tsx)                                                              | Input with left/right addons — search bars, prefixed values.                                                |
+| [`Select`](frontend/src/components/v3/generic/Select/Select.tsx)                                                                          | Non-searchable single-select with a short, known option list.                                               |
+| [`Combobox`](frontend/src/components/v3/generic/Combobox/Combobox.tsx)                                                                    | Searchable single- or multi-select with chips, rich rows, and viewport-aware positioning.                   |
+| [`ReactSelect`](frontend/src/components/v3/generic/ReactSelect/index.ts)                                                                  | Sunsetting compatibility path for creatable, grouped, or advanced custom-rendering behavior.                |
+| [`Switch`](frontend/src/components/v3/generic/Switch/Switch.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx) | Boolean toggle / multi-select boolean.                                                                      |
+| [`Calendar`](frontend/src/components/v3/generic/Calendar/Calendar.tsx)                                                                    | Date / multi-date / range picker primitive.                                                                 |
+| [`DateRangeFilter`](frontend/src/components/v3/generic/DateRangeFilter/DateRangeFilter.tsx)                                               | Date-range filter with presets — for filter bars.                                                           |
+| [`SecretInput`](frontend/src/components/v3/generic/SecretInput/SecretInput.tsx)                                                           | Secret-value editor with mask toggle and `${var}` highlighting.                                             |
+| [`PasswordGenerator`](frontend/src/components/v3/generic/PasswordGenerator/PasswordGenerator.tsx)                                         | Generate a password against project secret-validation rules.                                                |
 
 #### Containers & overlays
 
@@ -241,12 +243,12 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 
 #### Atoms & domain
 
-| Component                                                                                                         | Reach for this when…                                                                  |
-| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| [`Separator`](frontend/src/components/v3/generic/Separator/Separator.tsx)                                         | Horizontal/vertical divider.                                                          |
-| [`ScopeIcons`](frontend/src/components/v3/platform/ScopeIcons.tsx)                                                | `OrgIcon` / `SubOrgIcon` / `ProjectIcon` / `InstanceIcon` — use when intent is scope. |
+| Component                                                                                                         | Reach for this when…                                                                   |
+| ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [`Separator`](frontend/src/components/v3/generic/Separator/Separator.tsx)                                         | Horizontal/vertical divider.                                                           |
+| [`ScopeIcons`](frontend/src/components/v3/platform/ScopeIcons.tsx)                                                | `OrgIcon` / `SubOrgIcon` / `ProjectIcon` / `InstanceIcon` — use when intent is scope.  |
 | [`PageHeader`](frontend/src/components/v3/platform/PageHeader/PageHeader.tsx)                                     | Canonical full-width page heading with scope semantics, description, and page actions. |
-| [`DocumentationLinkBadge`](frontend/src/components/v3/platform/DocumentationLinkBadge/DocumentationLinkBadge.tsx) | Inline "Documentation" link badge in `CardTitle`.                                     |
+| [`DocumentationLinkBadge`](frontend/src/components/v3/platform/DocumentationLinkBadge/DocumentationLinkBadge.tsx) | Inline "Documentation" link badge in `CardTitle`.                                      |
 
 **Icons** — [`lucide-react`](https://lucide.dev). Sizing is bound by the
 host component; don't override unless necessary.
