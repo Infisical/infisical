@@ -233,11 +233,11 @@ const InDialogRender = () => {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline">Open role picker</Button>
+        <Button variant="outline">Open Role Picker</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Invite organization member</DialogTitle>
+          <DialogTitle>Invite Organization Member</DialogTitle>
           <DialogDescription>Choose the organization role for this member.</DialogDescription>
         </DialogHeader>
         <Field>
@@ -359,13 +359,13 @@ const ViewportEdgesRender = () => {
     <div className="relative h-screen min-h-[28rem] w-screen p-2">
       <div className="absolute top-2 left-2 w-72">
         <Field>
-          <FieldLabel htmlFor="combobox-top-edge">Near the top edge</FieldLabel>
+          <FieldLabel htmlFor="combobox-top-edge">Near the Top Edge</FieldLabel>
           {renderCombobox("combobox-top-edge", topValue, setTopValue)}
         </Field>
       </div>
       <div className="absolute right-2 bottom-2 w-80 max-w-[calc(100vw-1rem)]">
         <Field>
-          <FieldLabel htmlFor="combobox-bottom-edge">Near the bottom edge</FieldLabel>
+          <FieldLabel htmlFor="combobox-bottom-edge">Near the Bottom Edge</FieldLabel>
           {renderCombobox("combobox-bottom-edge", bottomValue, setBottomValue)}
         </Field>
       </div>
