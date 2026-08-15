@@ -34,6 +34,7 @@ import { OCIVaultSyncDestinationCol } from "./OCIVaultSyncDestinationCol";
 import { OctopusDeploySyncDestinationCol } from "./OctopusDeploySyncDestinationCol";
 import { OnaSyncDestinationCol } from "./OnaSyncDestinationCol";
 import { OvhSyncDestinationCol } from "./OvhSyncDestinationCol";
+import { PortainerSyncDestinationCol } from "./PortainerSyncDestinationCol";
 import { QoverySyncDestinationCol } from "./QoverySyncDestinationCol";
 import { RailwaySyncDestinationCol } from "./RailwaySyncDestinationCol";
 import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
@@ -113,6 +114,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <SupabaseSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Rundeck:
       return <RundeckSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Portainer:
+      return <PortainerSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.DigitalOceanAppPlatform:
       return <DigitalOceanAppPlatformSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Netlify:

@@ -37,6 +37,7 @@ import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
 import { OctopusDeploySyncFields } from "./OctopusDeploySyncFields";
 import { OnaSyncFields } from "./OnaSyncFields";
 import { OvhSyncFields } from "./OvhSyncFields";
+import { PortainerSyncFields } from "./PortainerSyncFields";
 import { QoverySyncFields } from "./QoverySyncFields";
 import { RailwaySyncFields } from "./RailwaySyncFields";
 import { RenderSyncFields } from "./RenderSyncFields";
@@ -114,6 +115,8 @@ export const SecretSyncDestinationFields = () => {
       return <SupabaseSyncFields />;
     case SecretSync.Rundeck:
       return <RundeckSyncFields />;
+    case SecretSync.Portainer:
+      return <PortainerSyncFields />;
     case SecretSync.DigitalOceanAppPlatform:
       return <DigitalOceanAppPlatformSyncFields />;
     case SecretSync.Netlify:
