@@ -84,7 +84,7 @@ const AwsParameterStoreSyncOptionsSchema = z.object({
         .string()
         .max(256, "Resource tag value cannot exceed 256 characters")
         .refine(
-          (val) => tagFieldCharacterValidator(val),
+          (val) => !val || tagFieldCharacterValidator(val),
           "Invalid resource tag value: tag values can only contain Unicode letters, digits, white space and any of the following: _.:/=+@-"
         )
     })

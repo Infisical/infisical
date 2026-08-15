@@ -69,7 +69,10 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     schema: {
       body: z
         .object({
-          githubOrgName: githubOrgNameValidator(z.string().trim(), "GitHub Org Name"),
+          githubOrgName: githubOrgNameValidator(
+            z.string().trim().min(1, "GitHub Org Name is required"),
+            "GitHub Org Name"
+          ),
           githubOrgAccessToken: z.string().trim().max(1000),
           isActive: z.boolean()
         })
