@@ -1099,6 +1099,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .max(2500)
           .refine(
             (val) =>
+              !val ||
               characterValidator([
                 CharacterType.AlphaNumeric,
                 CharacterType.Hyphen,
