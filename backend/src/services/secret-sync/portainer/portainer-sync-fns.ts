@@ -23,17 +23,27 @@ const getPortainerClientDetails = (secretSync: TPortainerSyncWithCredentials) =>
 };
 
 const getPortainerStack = async (secretSync: TPortainerSyncWithCredentials): Promise<TPortainerStackResponse> => {
-  const { instanceUrl, headers, stackId } = getPortainerClientDetails(secretSync);
+  const { instanceUrl, headers, environmentId, stackId } = getPortainerClientDetails(secretSync);
 
+  let stack: TPortainerStackResponse;
   try {
     const { data } = await safeRequest.get<TPortainerStackResponse>(`${instanceUrl}/api/stacks/${stackId}`, {
       headers
     });
 
-    return data;
+    stack = data;
   } catch (error) {
     throw new SecretSyncError({ error });
   }
+
+  if (stack.EndpointId !== environmentId) {
+    throw new SecretSyncError({
+      message: `Stack with ID '${stackId}' belongs to Portainer environment '${stack.EndpointId}', not the configured environment '${environmentId}'`,
+      shouldRetry: false
+    });
+  }
+
+  return stack;
 };
 
 /**
@@ -47,13 +57,6 @@ const writeStackEnv = async (
   env: TPortainerEnvVar[]
 ) => {
   const { instanceUrl, headers, environmentId, stackId } = getPortainerClientDetails(secretSync);
-
-  if (stack.EndpointId !== environmentId) {
-    throw new SecretSyncError({
-      message: `Stack with ID '${stackId}' belongs to Portainer environment '${stack.EndpointId}', not the configured environment '${environmentId}'`,
-      shouldRetry: false
-    });
-  }
 
   try {
     if (stack.GitConfig?.URL) {
