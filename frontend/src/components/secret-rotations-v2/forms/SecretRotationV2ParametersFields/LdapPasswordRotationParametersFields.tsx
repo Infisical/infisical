@@ -2,9 +2,14 @@ import { Controller, useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { DEFAULT_PASSWORD_REQUIREMENTS } from "@app/components/secret-rotations-v2/forms/schemas/shared";
+import { ValidationRuleOverrideNotice } from "@app/components/secret-validation/ValidationRuleOverrideNotice";
 import { FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ldap-password-rotation";
+import {
+  SecretRotationRuleProvider,
+  SecretValidationRuleType
+} from "@app/hooks/api/secretValidationRules";
 
 export const LdapPasswordRotationParametersFields = () => {
   const { control, watch, setValue } = useFormContext<
@@ -14,6 +19,8 @@ export const LdapPasswordRotationParametersFields = () => {
   >();
 
   const [id, rotationMethod] = watch(["id", "parameters.rotationMethod"]);
+  const environmentSlug = watch("environment")?.slug;
+  const secretPath = watch("secretPath");
   const isUpdate = Boolean(id);
 
   return (
@@ -127,6 +134,12 @@ export const LdapPasswordRotationParametersFields = () => {
         )}
       </div>
       <div className="flex flex-col gap-3">
+        <ValidationRuleOverrideNotice
+          type={SecretValidationRuleType.SecretRotations}
+          provider={SecretRotationRuleProvider.LdapPassword}
+          environmentSlug={environmentSlug}
+          secretPath={secretPath}
+        />
         <div className="w-full border-b border-mineshaft-600">
           <span className="text-sm text-mineshaft-300">Password Requirements</span>
         </div>
