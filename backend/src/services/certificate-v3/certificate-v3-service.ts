@@ -2684,6 +2684,9 @@ export const certificateV3ServiceFactory = ({
       let issuingCaCertificate: string;
       let serialNumber: string;
       let newCert: TCertificates;
+      // Renewal generates a fresh key pair, so the newly issued private key is returned to the
+      // caller (the renewed certificate is otherwise unusable without it).
+      let privateKey: string | undefined;
 
       if (issuerType === IssuerType.CA) {
         // CA-signed certificate renewal
@@ -2741,6 +2744,7 @@ export const certificateV3ServiceFactory = ({
           certificateChain = caResult.certificateChain;
           issuingCaCertificate = caResult.issuingCaCertificate;
           serialNumber = caResult.serialNumber;
+          privateKey = caResult.privateKey;
 
           const foundCert = await certificateDAL.findById(caResult.certificateId, tx);
           if (!foundCert) {
@@ -2800,6 +2804,7 @@ export const certificateV3ServiceFactory = ({
         certificateChain = selfSignedRenewalResult.selfSignedResult.certificate.toString("utf8"); // Self-signed has no chain
         issuingCaCertificate = ""; // No issuing CA for self-signed
         serialNumber = selfSignedRenewalResult.selfSignedResult.serialNumber;
+        privateKey = selfSignedRenewalResult.selfSignedResult.privateKey.toString("utf8");
         newCert = selfSignedRenewalResult.certificateData;
       }
 
@@ -2907,6 +2912,7 @@ export const certificateV3ServiceFactory = ({
         certificateChain,
         issuingCaCertificate,
         serialNumber,
+        privateKey,
         newCert,
         originalCert,
         profile,
@@ -3053,6 +3059,7 @@ export const certificateV3ServiceFactory = ({
       issuingCaCertificate: renewalResult.issuingCaCertificate,
       certificateChain: finalCertificateChain,
       serialNumber: renewalResult.serialNumber,
+      privateKey: renewalResult.privateKey,
       certificateId: renewalResult.newCert.id,
       certificateRequestId,
       projectId: renewalResult.originalCert.projectId,
