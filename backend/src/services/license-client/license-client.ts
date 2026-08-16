@@ -20,7 +20,12 @@ import { createSelfHostedTokenProvider } from "./license-token-provider";
 type TLicenseClientFactoryDep = {
   envConfig: Pick<
     TEnvConfig,
-    "LICENSE_SERVER_V2_SERVICE_KEY" | "LICENSE_SERVER_URL" | "LICENSE_KEY" | "INTERNAL_REGION"
+    | "LICENSE_SERVER_V2_MODE"
+    | "LICENSE_SERVER_V2_URL"
+    | "LICENSE_SERVER_V2_SERVICE_KEY"
+    | "LICENSE_SERVER_URL"
+    | "LICENSE_KEY"
+    | "INTERNAL_REGION"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   // Offline (air-gapped) licenses must never contact the license server; the SDK stays dormant for them.
@@ -29,8 +34,8 @@ type TLicenseClientFactoryDep = {
 
 export type TLicenseClientFactory = ReturnType<typeof licenseClientFactory>;
 
-// Returns null (SDK dormant -> getFeature serves fallbacks) unless either a self-hosted license key or
-// the cloud service key (plus the license server URL) is configured.
+// Returns null (SDK dormant -> getFeature serves fallbacks) unless the kill switch is on and either a
+// self-hosted license key or the cloud service key (plus server URL) is configured.
 const buildBackend = (
   envConfig: TLicenseClientFactoryDep["envConfig"],
   isOffline: boolean
@@ -53,10 +58,13 @@ const buildBackend = (
     return licenseServerSelfHostedBackend(envConfig.LICENSE_SERVER_URL, tokenProvider, envConfig.INTERNAL_REGION);
   }
 
-  // One host serves both the self-hosted token endpoint and the entitlement API.
-  const serverUrl = envConfig.LICENSE_SERVER_URL;
+  // Self-hosted sets only LICENSE_SERVER_URL (that one host now serves both the token endpoint and the
+  // v2 API after the DNS switch); cloud sets LICENSE_SERVER_V2_URL. Accept either as the v2 API base.
+  const serverUrl = envConfig.LICENSE_SERVER_V2_URL || envConfig.LICENSE_SERVER_URL;
   if (!serverUrl) {
-    logger.warn("license-client: LICENSE_SERVER_URL is not set; serving feature fallbacks");
+    logger.warn(
+      "license-client: enabled but neither LICENSE_SERVER_V2_URL nor LICENSE_SERVER_URL is set; serving feature fallbacks"
+    );
     return null;
   }
 
@@ -65,11 +73,11 @@ const buildBackend = (
   try {
     parsedUrl = new URL(serverUrl);
   } catch {
-    logger.warn("license-client: LICENSE_SERVER_URL is not a valid URL; serving feature fallbacks");
+    logger.warn("license-client: LICENSE_SERVER_V2_URL is not a valid URL; serving feature fallbacks");
     return null;
   }
   if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-    logger.warn("license-client: LICENSE_SERVER_URL must use http(s); serving feature fallbacks");
+    logger.warn("license-client: LICENSE_SERVER_V2_URL must use http(s); serving feature fallbacks");
     return null;
   }
 
@@ -221,9 +229,6 @@ export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }:
 
   return {
     ...featureReaderFactory({ getEntitlements }),
-    // False when no license server is reachable (unlicensed self-hosted, or an offline license), so
-    // callers can skip work that would only end in a dormant no-op.
-    isEnabled: () => backend !== null,
     getEntitlements,
     invalidateEntitlements,
     markEntitlementsStale,

@@ -433,6 +433,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
       const organization = await server.services.org.createOrganization({
         userId: req.permission.id,
+        userEmail: req.auth.user.email,
         orgName: req.body.name
       });
 

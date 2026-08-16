@@ -2,8 +2,8 @@ import { describe, expect, test } from "vitest";
 
 import { TFeatureSet } from "@app/ee/services/license/license-types";
 
+import { TEntitlementsResponse } from "../license-client-types";
 import { projectV2ToFeatureSet } from "./entitlement-projection";
-import { TEntitlementsResponse } from "./license-client-types";
 
 const makeBase = (overrides: Partial<Record<keyof TFeatureSet, unknown>>): TFeatureSet =>
   ({ rateLimits: { readLimit: 0, writeLimit: 0, secretsLimit: 0 }, ...overrides }) as TFeatureSet;

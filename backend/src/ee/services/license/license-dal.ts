@@ -184,6 +184,15 @@ export const licenseDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countOfOrgIdentities = async (orgId: string | null, tx?: Knex) => {
+    try {
+      const { identities } = await countBillableOrgActors(orgId, tx);
+      return identities;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count of Org Identities" });
+    }
+  };
+
   const countOrgUsersAndIdentities = async (orgId: string | null, tx?: Knex) => {
     try {
       const { users, identities } = await countBillableOrgActors(orgId, tx);
@@ -193,5 +202,5 @@ export const licenseDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { countOfOrgMembers, countOrgUsersAndIdentities };
+  return { countOfOrgMembers, countOrgUsersAndIdentities, countOfOrgIdentities };
 };
