@@ -108,7 +108,8 @@ export const registerApprovalPolicyEndpoints = ({
           organizationId: req.permission.orgId,
           properties: {
             policyType,
-            orgId: req.permission.orgId
+            orgId: req.permission.orgId,
+            projectId: policy.projectId
           }
         });
       }
@@ -243,6 +244,19 @@ export const registerApprovalPolicyEndpoints = ({
         }
       });
 
+      if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.PkiApprovalPolicyUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            policyType,
+            orgId: req.permission.orgId,
+            projectId: policy.projectId
+          }
+        });
+      }
+
       return { policy };
     }
   });
@@ -284,6 +298,19 @@ export const registerApprovalPolicyEndpoints = ({
           }
         }
       });
+
+      if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.PkiApprovalPolicyDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            policyType,
+            orgId: req.permission.orgId,
+            projectId
+          }
+        });
+      }
 
       return { policyId };
     }
@@ -397,6 +424,19 @@ export const registerApprovalPolicyEndpoints = ({
             }
           }
         });
+
+        if (policyType === ApprovalPolicyType.CertRequest || policyType === ApprovalPolicyType.CertCodeSigning) {
+          await server.services.telemetry.sendPostHogEvents({
+            event: PostHogEventTypes.PkiApprovalRequestCreated,
+            distinctId: getTelemetryDistinctId(req),
+            organizationId: req.permission.orgId,
+            properties: {
+              policyType,
+              orgId: req.permission.orgId,
+              projectId: request.projectId
+            }
+          });
+        }
 
         return { request };
       }
@@ -513,7 +553,8 @@ export const registerApprovalPolicyEndpoints = ({
           organizationId: req.permission.orgId,
           properties: {
             decision: "approved",
-            orgId: req.permission.orgId
+            orgId: req.permission.orgId,
+            projectId: request.projectId
           }
         });
       }
@@ -572,7 +613,8 @@ export const registerApprovalPolicyEndpoints = ({
           organizationId: req.permission.orgId,
           properties: {
             decision: "rejected",
-            orgId: req.permission.orgId
+            orgId: req.permission.orgId,
+            projectId: request.projectId
           }
         });
       }
