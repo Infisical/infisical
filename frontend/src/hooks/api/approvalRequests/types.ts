@@ -89,8 +89,7 @@ export type CodeSigningRequestData = {
   approvalPolicyId: string;
   signerName: string;
   justification?: string;
-  requestedWindowStart?: string;
-  requestedWindowEnd?: string;
+  requestedWindowDuration?: string;
   requestedSignings?: number;
   scope?: TCodeSigningScope;
 };

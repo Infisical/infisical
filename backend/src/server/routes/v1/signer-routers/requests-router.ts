@@ -4,13 +4,17 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { CodeSigningScopeField } from "@app/services/approval-policy/code-signing/code-signing-policy-enums";
 import {
   CODE_SIGNING_SCOPE_API_DESCRIPTION,
-  CodeSigningScopeInputSchema
+  CodeSigningRequestSchema,
+  CodeSigningScopeInputSchema,
+  RemoveCodeSigningScopeFieldsSchema,
+  SigningWindowDurationSchema
 } from "@app/services/approval-policy/code-signing/code-signing-policy-schemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-import { SignerIdParamsSchema } from "./schemas";
+import { SignerIdParamsSchema, SignerRequestParamsSchema } from "./schemas";
 
 export const registerSignerRequestsRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -69,8 +73,9 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
       body: z.object({
         justification: z.string().trim().min(1).max(2048),
         requestedSignings: z.number().int().min(1).optional(),
-        requestedWindowStart: z.string().datetime().optional(),
-        requestedWindowEnd: z.string().datetime().optional(),
+        requestedWindowDuration: SigningWindowDurationSchema.optional().describe(
+          "How long the approval stays usable once it is granted, for example '4h'. The window starts when the request is approved."
+        ),
         scope: CodeSigningScopeInputSchema.optional().describe(CODE_SIGNING_SCOPE_API_DESCRIPTION)
       })
     },
@@ -113,8 +118,9 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         granteeIdentityId: z.string().uuid().optional(),
         justification: z.string().trim().min(1).max(2048),
         requestedSignings: z.number().int().min(1).optional(),
-        requestedWindowStart: z.string().datetime().optional(),
-        requestedWindowEnd: z.string().datetime().optional(),
+        requestedWindowDuration: SigningWindowDurationSchema.optional().describe(
+          "How long the approval stays usable once it is granted, for example '4h'. The window starts when the request is approved."
+        ),
         scope: CodeSigningScopeInputSchema.optional().describe(CODE_SIGNING_SCOPE_API_DESCRIPTION)
       })
     },
@@ -148,6 +154,54 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
   });
 
   server.route({
+    method: "PATCH",
+    url: "/:signerId/requests/:requestId/scope",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "removeSignerRequestScopeFields",
+      tags: [ApiDocsTags.PkiSigners],
+      description:
+        "Stop enforcing scope parameters on a pending signing request. Open to the requester and to the request's approvers.",
+      params: SignerRequestParamsSchema,
+      body: RemoveCodeSigningScopeFieldsSchema,
+      response: {
+        200: z.object({
+          request: CodeSigningRequestSchema,
+          removedFields: z.array(z.nativeEnum(CodeSigningScopeField))
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { request, removedFields } = await server.services.signerPolicy.removeRequestScopeFields({
+        signerId: req.params.signerId,
+        requestId: req.params.requestId,
+        removeFields: req.body.removeFields,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: await server.services.pkiSigner.getProjectIdForSigner(req.params.signerId),
+        event: {
+          type: EventType.PKI_SIGNER_REMOVE_REQUEST_SCOPE_FIELDS,
+          metadata: {
+            signerId: req.params.signerId,
+            requestId: req.params.requestId,
+            removedFields
+          }
+        }
+      });
+
+      return { request, removedFields };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/:signerId/requests/:requestId/revoke",
     config: { rateLimit: writeLimit },
@@ -156,7 +210,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
       operationId: "revokeSignerRequest",
       tags: [ApiDocsTags.PkiSigners],
       description: "Revoke a pending or active signing request",
-      params: z.object({ signerId: z.string().uuid(), requestId: z.string().uuid() })
+      params: SignerRequestParamsSchema
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {

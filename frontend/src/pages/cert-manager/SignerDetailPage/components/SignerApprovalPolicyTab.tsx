@@ -214,7 +214,7 @@ export const SignerApprovalPolicyTab = ({ signerId }: Props) => {
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
                       The longest signing window a request can ask for. The window runs from the
-                      time the request is opened.
+                      moment the request is approved.
                     </TooltipContent>
                   </Tooltip>
                   <p className="mt-0.5 text-xs text-foreground">

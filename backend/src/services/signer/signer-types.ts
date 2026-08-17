@@ -4,6 +4,7 @@ import { z } from "zod";
 import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { TProjectPermission } from "@app/lib/types";
 
+import { CodeSigningScopeField } from "../approval-policy/code-signing/code-signing-policy-enums";
 import { TCodeSigningScope } from "../approval-policy/code-signing/code-signing-policy-types";
 import { CertKeyAlgorithm } from "../certificate/certificate-types";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
@@ -98,8 +99,8 @@ export type TSignDataDTO = {
   actorName?: string;
   clientMetadata?: {
     tool?: string;
+    signingApplication?: string;
     hostname?: string;
-    reportedIp?: string;
     command?: string;
     osUsername?: string;
     signingApplicationHash?: string;
@@ -181,8 +182,7 @@ export type TRequestToSignDTO = {
   signerId: string;
   justification: string;
   requestedSignings?: number;
-  requestedWindowStart?: string;
-  requestedWindowEnd?: string;
+  requestedWindowDuration?: string;
   scope?: TCodeSigningScope;
 } & TActorPermission;
 
@@ -192,9 +192,14 @@ export type TPreApproveSigningDTO = {
   granteeIdentityId?: string;
   justification: string;
   requestedSignings?: number;
-  requestedWindowStart?: string;
-  requestedWindowEnd?: string;
+  requestedWindowDuration?: string;
   scope?: TCodeSigningScope;
+} & TActorPermission;
+
+export type TRemoveSignerRequestScopeFieldsDTO = {
+  signerId: string;
+  requestId: string;
+  removeFields: CodeSigningScopeField[];
 } & TActorPermission;
 
 export type TRevokeSignerRequestDTO = {

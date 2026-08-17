@@ -8,7 +8,7 @@ import {
   ResourcePermissionSignerActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 
 import {
@@ -20,7 +20,8 @@ import {
   ApprovalPolicyScope,
   ApprovalPolicyType,
   ApprovalRequestGrantStatus,
-  ApprovalRequestStatus
+  ApprovalRequestStatus,
+  ApproverType
 } from "../approval-policy/approval-policy-enums";
 import {
   TApprovalRequestDALFactory,
@@ -31,8 +32,8 @@ import {
 import { createApprovalRequestWithSteps, notifyStepApprovers } from "../approval-policy/approval-request-fns";
 import { CodeSigningScopeField } from "../approval-policy/code-signing/code-signing-policy-enums";
 import {
-  isSameRequestedSigningWindow,
-  normalizeCodeSigningScope
+  normalizeCodeSigningScope,
+  removeCodeSigningScopeFields
 } from "../approval-policy/code-signing/code-signing-policy-fns";
 import { TCodeSigningRequestData, TCodeSigningScope } from "../approval-policy/code-signing/code-signing-policy-types";
 import { ActorType } from "../auth/auth-type";
@@ -48,6 +49,7 @@ import {
   TGetSignerPolicyDTO,
   TListSignerRequestsDTO,
   TPreApproveSigningDTO,
+  TRemoveSignerRequestScopeFieldsDTO,
   TRequestToSignDTO,
   TRevokeSignerRequestDTO,
   TSignerRequestStatusFilter,
@@ -59,14 +61,17 @@ type TSignerPolicyServiceFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findById" | "updateById" | "findStepsByPolicyId">;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "create" | "delete" | "find">;
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "create" | "delete">;
-  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "create" | "find" | "findById" | "updateById" | "transaction">;
+  approvalRequestDAL: Pick<
+    TApprovalRequestDALFactory,
+    "create" | "find" | "findById" | "findByIdForUpdate" | "findStepsByRequestId" | "updateById" | "transaction"
+  >;
   signerRequestDAL: TSignerRequestDALFactory;
   approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create">;
   approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "create" | "find" | "updateById">;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "findGroupMembershipsByUserIdInOrg">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -82,6 +87,15 @@ type TConstraintsBlob = {
     maxSignings?: number | null;
     maxWindowDuration?: string | null;
   };
+};
+
+const $parseDurationMs = (duration: string): number | null => {
+  try {
+    const parsed = ms(duration);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  } catch {
+    return null;
+  }
 };
 
 const $loadSignerOrThrow = async (signerDAL: TSignerPolicyServiceFactoryDep["signerDAL"], signerId: string) => {
@@ -165,8 +179,8 @@ export const signerPolicyServiceFactory = ({
 
   const $resolveRequestEffectiveLimits = (
     policyConstraints: unknown,
-    dto: { requestedSignings?: number; requestedWindowStart?: string; requestedWindowEnd?: string }
-  ): { effectiveSignings?: number; effectiveWindowStart?: string; effectiveWindowEnd?: string } => {
+    dto: { requestedSignings?: number; requestedWindowDuration?: string }
+  ): { effectiveSignings?: number; effectiveWindowDuration?: string } => {
     const blob = (policyConstraints as TConstraintsBlob) ?? {};
     const maxSignings = blob.constraints?.maxSignings ?? null;
     const maxWindowDuration = blob.constraints?.maxWindowDuration ?? null;
@@ -180,50 +194,23 @@ export const signerPolicyServiceFactory = ({
       });
     }
 
-    let effectiveWindowStart: string | undefined;
-    let effectiveWindowEnd: string | undefined;
-    if (dto.requestedWindowEnd) {
-      const end = new Date(dto.requestedWindowEnd).getTime();
-      if (Number.isNaN(end)) {
-        throw new BadRequestError({ message: "Invalid requestedWindowEnd date." });
-      }
-      const rawStart = dto.requestedWindowStart ? new Date(dto.requestedWindowStart).getTime() : Date.now();
-      if (Number.isNaN(rawStart)) {
-        throw new BadRequestError({ message: "Invalid requestedWindowStart date." });
-      }
-      const startTime = Math.max(rawStart, Date.now());
-      if (end <= startTime) {
+    let effectiveWindowDuration: string | undefined;
+    if (dto.requestedWindowDuration) {
+      const requestedMs = $parseDurationMs(dto.requestedWindowDuration);
+      if (requestedMs === null) {
         throw new BadRequestError({
-          message: "requestedWindowEnd must be in the future and after requestedWindowStart."
+          message: `Invalid signing window duration '${dto.requestedWindowDuration}'. Use a duration such as '4h' or '30m'.`
         });
       }
-      if (maxWindowDuration) {
-        let allowedMs: number;
-        try {
-          allowedMs = ms(maxWindowDuration);
-        } catch {
-          allowedMs = Number.POSITIVE_INFINITY;
-        }
-        if (Number.isFinite(allowedMs) && end - startTime > allowedMs) {
-          throw new BadRequestError({
-            message: `Requested signing window exceeds the policy maximum of ${maxWindowDuration}.`
-          });
-        }
+      const allowedMs = maxWindowDuration ? $parseDurationMs(maxWindowDuration) : null;
+      if (allowedMs !== null && requestedMs > allowedMs) {
+        throw new BadRequestError({
+          message: `Requested signing window exceeds the policy maximum of ${maxWindowDuration}.`
+        });
       }
-      effectiveWindowStart = dto.requestedWindowStart;
-      effectiveWindowEnd = dto.requestedWindowEnd;
+      effectiveWindowDuration = dto.requestedWindowDuration;
     } else if (maxWindowDuration) {
-      let allowedMs: number;
-      try {
-        allowedMs = ms(maxWindowDuration);
-      } catch {
-        allowedMs = 0;
-      }
-      if (allowedMs > 0) {
-        const start = new Date();
-        effectiveWindowStart = dto.requestedWindowStart ?? start.toISOString();
-        effectiveWindowEnd = new Date(start.getTime() + allowedMs).toISOString();
-      }
+      effectiveWindowDuration = maxWindowDuration;
     }
 
     let effectiveSignings = dto.requestedSignings;
@@ -231,7 +218,7 @@ export const signerPolicyServiceFactory = ({
       effectiveSignings = maxSignings;
     }
 
-    return { effectiveSignings, effectiveWindowStart, effectiveWindowEnd };
+    return { effectiveSignings, effectiveWindowDuration };
   };
 
   const $findDuplicatePendingRequest = async ({
@@ -241,8 +228,7 @@ export const signerPolicyServiceFactory = ({
     actorId,
     scope,
     effectiveSignings,
-    effectiveWindowStart,
-    effectiveWindowEnd
+    effectiveWindowDuration
   }: {
     policyId: string;
     signerId: string;
@@ -250,8 +236,7 @@ export const signerPolicyServiceFactory = ({
     actorId: string;
     scope: TCodeSigningScope;
     effectiveSignings?: number;
-    effectiveWindowStart?: string;
-    effectiveWindowEnd?: string;
+    effectiveWindowDuration?: string;
   }) => {
     const isHumanRequester = actor === ActorType.USER;
     const pendingRequests = await approvalRequestDAL.find({
@@ -268,12 +253,7 @@ export const signerPolicyServiceFactory = ({
       if (!pendingScope) return false;
 
       if ((requestData?.requestedSignings ?? null) !== (effectiveSignings ?? null)) return false;
-      const sameWindow = isSameRequestedSigningWindow(
-        isHumanRequester,
-        { start: requestData?.requestedWindowStart, end: requestData?.requestedWindowEnd },
-        { start: effectiveWindowStart, end: effectiveWindowEnd }
-      );
-      if (!sameWindow) return false;
+      if ((requestData?.requestedWindowDuration ?? null) !== (effectiveWindowDuration ?? null)) return false;
 
       return Object.values(CodeSigningScopeField).every(
         (field) => (pendingScope[field] ?? null) === (scope[field] ?? null)
@@ -605,8 +585,8 @@ export const signerPolicyServiceFactory = ({
       });
     }
 
-    if (!dto.requestedSignings && !dto.requestedWindowEnd) {
-      throw new BadRequestError({ message: "Provide at least one of requestedSignings or requestedWindowEnd." });
+    if (!dto.requestedSignings && !dto.requestedWindowDuration) {
+      throw new BadRequestError({ message: "Provide at least one of requestedSignings or requestedWindowDuration." });
     }
 
     const policy = await approvalPolicyDAL.findById(signer.approvalPolicyId);
@@ -614,14 +594,10 @@ export const signerPolicyServiceFactory = ({
       throw new NotFoundError({ message: `Policy for signer '${signer.name}' has been removed.` });
     }
 
-    const { effectiveSignings, effectiveWindowStart, effectiveWindowEnd } = $resolveRequestEffectiveLimits(
-      policy.constraints,
-      {
-        requestedSignings: dto.requestedSignings,
-        requestedWindowStart: dto.requestedWindowStart,
-        requestedWindowEnd: dto.requestedWindowEnd
-      }
-    );
+    const { effectiveSignings, effectiveWindowDuration } = $resolveRequestEffectiveLimits(policy.constraints, {
+      requestedSignings: dto.requestedSignings,
+      requestedWindowDuration: dto.requestedWindowDuration
+    });
     const scope = normalizeCodeSigningScope(dto.scope);
 
     if (scope) {
@@ -632,10 +608,11 @@ export const signerPolicyServiceFactory = ({
         actorId: dto.actorId,
         scope,
         effectiveSignings,
-        effectiveWindowStart,
-        effectiveWindowEnd
+        effectiveWindowDuration
       });
-      if (duplicate) return duplicate;
+      if (duplicate) {
+        return { ...duplicate, steps: await approvalRequestDAL.findStepsByRequestId(duplicate.id) };
+      }
     }
 
     const requester = await $resolveActorDisplay({
@@ -658,8 +635,7 @@ export const signerPolicyServiceFactory = ({
           approvalPolicyId: policy.id,
           justification: dto.justification,
           requestedSignings: effectiveSignings,
-          requestedWindowStart: effectiveWindowStart,
-          requestedWindowEnd: effectiveWindowEnd,
+          requestedWindowDuration: effectiveWindowDuration,
           scope
         },
         justification: dto.justification,
@@ -704,8 +680,8 @@ export const signerPolicyServiceFactory = ({
     if (!dto.granteeUserId && !dto.granteeIdentityId) {
       throw new BadRequestError({ message: "granteeUserId or granteeIdentityId is required." });
     }
-    if (!dto.requestedSignings && !dto.requestedWindowEnd) {
-      throw new BadRequestError({ message: "Provide at least one of requestedSignings or requestedWindowEnd." });
+    if (!dto.requestedSignings && !dto.requestedWindowDuration) {
+      throw new BadRequestError({ message: "Provide at least one of requestedSignings or requestedWindowDuration." });
     }
 
     if (!signer.approvalPolicyId) {
@@ -717,14 +693,10 @@ export const signerPolicyServiceFactory = ({
     if (!policy) {
       throw new NotFoundError({ message: `Policy for signer '${signer.name}' has been removed.` });
     }
-    const { effectiveSignings, effectiveWindowStart, effectiveWindowEnd } = $resolveRequestEffectiveLimits(
-      policy.constraints,
-      {
-        requestedSignings: dto.requestedSignings,
-        requestedWindowStart: dto.requestedWindowStart,
-        requestedWindowEnd: dto.requestedWindowEnd
-      }
-    );
+    const { effectiveSignings, effectiveWindowDuration } = $resolveRequestEffectiveLimits(policy.constraints, {
+      requestedSignings: dto.requestedSignings,
+      requestedWindowDuration: dto.requestedWindowDuration
+    });
     const scope = normalizeCodeSigningScope(dto.scope);
 
     const granteeRoles = await $resolveGranteeEffectiveRoles({
@@ -747,6 +719,8 @@ export const signerPolicyServiceFactory = ({
     });
 
     const orgId = dto.actorOrgId;
+    const windowStart = new Date();
+    const windowDurationMs = effectiveWindowDuration ? $parseDurationMs(effectiveWindowDuration) : null;
     const result = await membershipDAL.transaction(async (tx) => {
       const request = await approvalRequestDAL.create(
         {
@@ -771,8 +745,7 @@ export const signerPolicyServiceFactory = ({
               approvalPolicyId: signer.approvalPolicyId,
               justification: dto.justification,
               requestedSignings: effectiveSignings,
-              requestedWindowStart: effectiveWindowStart,
-              requestedWindowEnd: effectiveWindowEnd,
+              requestedWindowDuration: effectiveWindowDuration,
               scope
             }
           }
@@ -792,10 +765,10 @@ export const signerPolicyServiceFactory = ({
             signerId: signer.id,
             signerName: signer.name,
             maxSignings: effectiveSignings,
-            windowStart: effectiveWindowStart,
+            windowStart: windowDurationMs ? windowStart.toISOString() : undefined,
             scope
           },
-          expiresAt: effectiveWindowEnd ? new Date(effectiveWindowEnd) : null
+          expiresAt: windowDurationMs ? new Date(windowStart.getTime() + windowDurationMs) : null
         },
         tx
       );
@@ -804,6 +777,100 @@ export const signerPolicyServiceFactory = ({
     });
 
     return result;
+  };
+
+  const removeRequestScopeFields = async (dto: TRemoveSignerRequestScopeFieldsDTO) => {
+    const signer = await $loadSignerOrThrow(signerDAL, dto.signerId);
+    await $assertResourcePermission(
+      signer.id,
+      signer.projectId,
+      dto.actor,
+      dto.actorId,
+      dto.actorAuthMethod,
+      dto.actorOrgId,
+      ResourcePermissionSignerActions.Read
+    );
+
+    const request = await approvalRequestDAL.findById(dto.requestId);
+    if (!request || request.scopeId !== signer.id || request.type !== ApprovalPolicyType.CertCodeSigning) {
+      throw new NotFoundError({ message: `Request with ID '${dto.requestId}' not found on this signer.` });
+    }
+    if (request.status !== ApprovalRequestStatus.Pending) {
+      throw new BadRequestError({
+        message: `This request is ${request.status}. Scope parameters can only be removed while a request is pending review.`
+      });
+    }
+
+    const requestData = (request.requestData as { requestData?: TCodeSigningRequestData } | null)?.requestData;
+    const scope = requestData?.scope;
+    if (!scope || !Object.values(scope).some(Boolean)) {
+      throw new BadRequestError({ message: "This request has no scope parameters to remove." });
+    }
+
+    const steps = await approvalRequestDAL.findStepsByRequestId(dto.requestId);
+    const currentStep = steps.find((step) => step.stepNumber === request.currentStep);
+
+    if (currentStep?.approvals.length) {
+      throw new BadRequestError({
+        message:
+          "This request already has an approval on its current step. Reject it and open a new request to sign with different parameters."
+      });
+    }
+
+    const isRequester =
+      dto.actor === ActorType.USER ? request.requesterId === dto.actorId : request.machineIdentityId === dto.actorId;
+
+    if (!isRequester) {
+      const groupIds = new Set(
+        dto.actor === ActorType.USER && dto.actorOrgId
+          ? (await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(dto.actorId, dto.actorOrgId)).map(
+              (membership) => membership.groupId
+            )
+          : []
+      );
+      const isApprover = Boolean(
+        currentStep?.approvers.some(
+          (approver) =>
+            (approver.type === ApproverType.User && approver.id === dto.actorId) ||
+            (approver.type === ApproverType.Group && groupIds.has(approver.id))
+        )
+      );
+      if (!isApprover) {
+        throw new ForbiddenRequestError({
+          message: "Only the requester or an approver on this request can remove its scope parameters."
+        });
+      }
+    }
+
+    const { request: updatedRow, removedFields } = await approvalRequestDAL.transaction(async (tx) => {
+      const locked = await approvalRequestDAL.findByIdForUpdate(dto.requestId, tx);
+      if (!locked || locked.status !== ApprovalRequestStatus.Pending) {
+        throw new BadRequestError({ message: "This request is no longer pending review." });
+      }
+
+      const lockedBlob = locked.requestData as { version: number; requestData: TCodeSigningRequestData };
+      const lockedScope = lockedBlob.requestData.scope;
+      const { scope: remainingScope, removed } = lockedScope
+        ? removeCodeSigningScopeFields(lockedScope, dto.removeFields)
+        : { scope: undefined, removed: [] };
+
+      const updatedRequest = await approvalRequestDAL.updateById(
+        dto.requestId,
+        {
+          requestData: {
+            ...lockedBlob,
+            requestData: { ...lockedBlob.requestData, scope: remainingScope }
+          }
+        },
+        tx
+      );
+
+      return { request: updatedRequest, removedFields: removed };
+    });
+
+    const updatedBlob = updatedRow.requestData as { version: 1; requestData: TCodeSigningRequestData };
+
+    return { request: { ...updatedRow, requestData: updatedBlob, steps }, removedFields };
   };
 
   const revokeRequest = async (dto: TRevokeSignerRequestDTO) => {
@@ -852,6 +919,7 @@ export const signerPolicyServiceFactory = ({
     listRequests,
     requestToSign,
     preApproveSigning,
+    removeRequestScopeFields,
     revokeRequest
   };
 };

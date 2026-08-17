@@ -83,39 +83,16 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
     const errors: string[] = [];
     const { maxWindowDuration, maxSignings } = policy.constraints.constraints;
 
-    const hasTimeConstraint = Boolean(maxWindowDuration);
-    const hasCountConstraint = Boolean(maxSignings);
-
-    if (hasTimeConstraint) {
-      if (!inputs.requestedWindowStart || !inputs.requestedWindowEnd) {
-        errors.push("Both requestedWindowStart and requestedWindowEnd are required for this policy");
-      } else {
-        const startTime = new Date(inputs.requestedWindowStart).getTime();
-        const endTime = new Date(inputs.requestedWindowEnd).getTime();
-        const requestedDuration = endTime - startTime;
-
-        if (requestedDuration <= 0) {
-          errors.push("Requested window end must be after window start");
-        }
-        if (endTime <= Date.now()) {
-          errors.push("Requested window end must be in the future");
-        }
-        if (maxWindowDuration && requestedDuration > ms(maxWindowDuration)) {
-          errors.push(`Requested window duration exceeds maximum of ${maxWindowDuration}`);
-        }
-      }
-    } else if (inputs.requestedWindowStart || inputs.requestedWindowEnd) {
-      errors.push("This policy does not allow time-window parameters");
+    if (
+      maxWindowDuration &&
+      inputs.requestedWindowDuration &&
+      ms(inputs.requestedWindowDuration) > ms(maxWindowDuration)
+    ) {
+      errors.push(`Requested window duration exceeds maximum of ${maxWindowDuration}`);
     }
 
-    if (hasCountConstraint) {
-      if (!inputs.requestedSignings) {
-        errors.push("requestedSignings is required for this policy");
-      } else if (maxSignings && inputs.requestedSignings > maxSignings) {
-        errors.push(`Requested signings (${inputs.requestedSignings}) exceeds maximum of ${maxSignings}`);
-      }
-    } else if (inputs.requestedSignings) {
-      errors.push("This policy does not allow requestedSignings");
+    if (maxSignings && inputs.requestedSignings && inputs.requestedSignings > maxSignings) {
+      errors.push(`Requested signings (${inputs.requestedSignings}) exceeds maximum of ${maxSignings}`);
     }
 
     return {
@@ -138,11 +115,10 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
       grantAttributes.maxSignings = requestData.requestedSignings;
     }
 
-    if (requestData.requestedWindowStart) {
-      grantAttributes.windowStart = requestData.requestedWindowStart;
-    }
-    if (requestData.requestedWindowEnd) {
-      expiresAt = new Date(requestData.requestedWindowEnd);
+    if (requestData.requestedWindowDuration) {
+      const windowStart = new Date();
+      grantAttributes.windowStart = windowStart.toISOString();
+      expiresAt = new Date(windowStart.getTime() + ms(requestData.requestedWindowDuration));
     }
     const scope = normalizeCodeSigningScope(requestData.scope);
     if (scope) {

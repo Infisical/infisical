@@ -24,12 +24,6 @@ export const formatDateTime = ({
   return format(date, dateFormat);
 };
 
-export const toDateTimeLocalInputValue = (epochMs: number) => {
-  const date = new Date(epochMs);
-  const pad = (part: number) => String(part).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
-
 export const parseDurationMs = (duration?: string | null): number | null => {
   if (!duration) return null;
   try {

@@ -42,7 +42,8 @@ import {
 import {
   ApprovalPolicyScope,
   ApprovalPolicyType,
-  ApprovalRequestGrantStatus
+  ApprovalRequestGrantStatus,
+  ApprovalRequestStatus
 } from "../approval-policy/approval-policy-enums";
 import { TApprovalRequestDALFactory, TApprovalRequestGrantsDALFactory } from "../approval-policy/approval-request-dal";
 import {
@@ -55,7 +56,10 @@ import {
   redactCommandCredentials,
   TObservedSigningContext
 } from "../approval-policy/code-signing/code-signing-policy-fns";
-import { TCodeSigningGrantAttributes } from "../approval-policy/code-signing/code-signing-policy-types";
+import {
+  TCodeSigningGrantAttributes,
+  TCodeSigningRequestData
+} from "../approval-policy/code-signing/code-signing-policy-types";
 import { ActorType } from "../auth/auth-type";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
@@ -164,7 +168,7 @@ type TSignerServiceFactoryDep = {
   approvalPolicyDAL: TApprovalPolicyDALFactory;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "create">;
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "create">;
-  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "delete">;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "delete" | "find">;
   approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
   membershipDAL: Pick<
     TMembershipDALFactory,
@@ -1678,16 +1682,24 @@ export const signerServiceFactory = ({
 
     const requiresApproval = signer.approvalPolicyId ? (await $countPolicySteps(signer.approvalPolicyId)) > 0 : false;
 
+    const clientMetadata = dto.clientMetadata
+      ? {
+          ...dto.clientMetadata,
+          tool: dto.clientMetadata.tool ?? dto.clientMetadata.signingApplication,
+          signingApplication: undefined
+        }
+      : undefined;
+
     const observedContext = buildObservedSigningContext({
-      clientMetadata: dto.clientMetadata,
+      clientMetadata,
       ipAddress: dto.ipAddress,
       dataHash
     });
     const operationClientMetadata =
-      dto.clientMetadata || dto.ipAddress
+      clientMetadata || dto.ipAddress
         ? {
-            ...dto.clientMetadata,
-            ...(dto.clientMetadata?.command ? { command: redactCommandCredentials(dto.clientMetadata.command) } : {}),
+            ...clientMetadata,
+            ...(clientMetadata?.command ? { command: redactCommandCredentials(clientMetadata.command) } : {}),
             sourceIp: dto.ipAddress
           }
         : null;
@@ -1707,9 +1719,22 @@ export const signerServiceFactory = ({
       });
 
       if (access.deniedReason) {
+        const pendingRequests = await approvalRequestDAL.find({
+          scopeType: ApprovalPolicyScope.Signer,
+          scopeId: signer.id,
+          status: ApprovalRequestStatus.Pending,
+          ...(dto.actor === ActorType.USER ? { requesterId: dto.actorId } : { machineIdentityId: dto.actorId })
+        });
+        const hasPendingRequest = pendingRequests.some((request) => {
+          const pendingScope = (request.requestData as { requestData?: TCodeSigningRequestData } | null)?.requestData
+            ?.scope;
+          return getCodeSigningScopeMismatches(pendingScope, observedContext).length === 0;
+        });
+
         throw new ForbiddenRequestError({
           message: access.deniedReason,
-          name: SIGNER_APPROVAL_REQUIRED_ERROR_NAME
+          name: SIGNER_APPROVAL_REQUIRED_ERROR_NAME,
+          details: { hasPendingRequest }
         });
       }
 

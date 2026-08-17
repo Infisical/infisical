@@ -123,7 +123,7 @@ $env:INFISICAL_TOKEN = "<your-access-token>"
 | `cache.token_ttl_seconds` | No | `300` | How long to reuse a login token before logging in again. |
 | `cache.cert_ttl_seconds` | No | `3600` | How long to reuse a downloaded certificate. |
 | `cache.signer_ttl_seconds` | No | `300` | How long to reuse the list of Signers. |
-| `approval.signing_duration` | No | None | Ask for an access window of this length when signing is denied for want of approved access (`30m`, `8h`, `2d`). The provider accepts 1m to 30d as a sanity check; the real limit is the Signer's approval policy. The window starts when the request is opened, not when it is approved, so allow for review time. |
+| `approval.signing_duration` | No | None | Ask for an access window of this length when signing is denied for want of approved access (`30m`, `8h`, `2d`). The provider accepts 1m to 30d as a sanity check; the real limit is the Signer's approval policy. The window starts when the request is approved, so time spent waiting for an approver does not eat into it. |
 | `approval.signing_count` | No | None | Ask for access good for this many signing operations. |
 | `log_level` | No | `info` | How much detail to log: `trace`, `debug`, `info`, `warn`, or `error`. |
 | `log_file` | No | `%ProgramData%\Infisical\ksp.log` | Where to write the log. `signtool` has no window to print to, so the plug-in writes here by default. |

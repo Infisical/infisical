@@ -46,6 +46,26 @@ export const normalizeCodeSigningScope = (scope: TCodeSigningScope | undefined):
   return hasAny ? declared : undefined;
 };
 
+/**
+ * The scope with the named parameters taken out. Removing a parameter widens what the approval will
+ * cover, so this only ever runs on a pending request and never on an issued grant.
+ */
+export const removeCodeSigningScopeFields = (
+  scope: TCodeSigningScope,
+  fields: readonly CodeSigningScopeField[]
+): { scope: TCodeSigningScope | undefined; removed: CodeSigningScopeField[] } => {
+  const removed = Object.values(CodeSigningScopeField).filter(
+    (field) => fields.includes(field) && Boolean(scope[field])
+  );
+
+  const remaining: TCodeSigningScope = {};
+  Object.values(CodeSigningScopeField).forEach((field) => {
+    if (scope[field] && !removed.includes(field)) remaining[field] = scope[field];
+  });
+
+  return { scope: Object.keys(remaining).length ? remaining : undefined, removed };
+};
+
 export type TObservedSigningContext = {
   [CodeSigningScopeField.Command]?: string;
   [CodeSigningScopeField.SigningApplication]?: string;
@@ -122,33 +142,4 @@ export const getCodeSigningScopeMismatches = (
     }
     return boundValue !== observedValue;
   });
-};
-
-type TRequestedSigningWindow = { start?: string; end?: string };
-
-/**
- * Whether two requested signing windows are the same ask, which depends on who is asking.
- *
- * A signing client re-derives its window from a configured duration on every call, so a retry asks
- * for identical terms at a later absolute window. Comparing instants would never match and every
- * retry would open a duplicate request. A person picks absolute times, so both ends of the window
- * are compared: 10:00-18:00 and 12:00-18:00 are different asks even though they end together.
- */
-export const isSameRequestedSigningWindow = (
-  isHumanRequester: boolean,
-  pending: TRequestedSigningWindow,
-  incoming: TRequestedSigningWindow
-): boolean => {
-  const sameEnd = (pending.end ?? null) === (incoming.end ?? null);
-  if (isHumanRequester) return sameEnd && (pending.start ?? null) === (incoming.start ?? null);
-
-  if (!pending.start || !pending.end || !incoming.start || !incoming.end) return sameEnd;
-
-  const durationOf = (start: string, end: string) => new Date(end).getTime() - new Date(start).getTime();
-
-  const pendingDuration = durationOf(pending.start, pending.end);
-  const incomingDuration = durationOf(incoming.start, incoming.end);
-  // A stored window whose timestamps will not parse is a malformed record, not a match.
-  if (Number.isNaN(pendingDuration) || Number.isNaN(incomingDuration)) return false;
-  return pendingDuration === incomingDuration;
 };

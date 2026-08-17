@@ -117,7 +117,7 @@ export const SigningOperationDetailPage = () => {
               </Detail>
             </div>
             <Detail>
-              <DetailLabel>Data Digest (SHA-256)</DetailLabel>
+              <DetailLabel>Data Digest</DetailLabel>
               <MonoValue value={operation.dataHash} />
             </Detail>
             {operation.errorMessage && (
@@ -161,12 +161,6 @@ export const SigningOperationDetailPage = () => {
                     <Detail>
                       <DetailLabel>IP Address</DetailLabel>
                       <DetailValue>{metadata.sourceIp}</DetailValue>
-                    </Detail>
-                  )}
-                  {metadata.reportedIp && (
-                    <Detail>
-                      <DetailLabel>Reported IP</DetailLabel>
-                      <DetailValue>{metadata.reportedIp}</DetailValue>
                     </Detail>
                   )}
                 </div>

@@ -78,7 +78,7 @@ Open the Signer's **Approvals** tab and click the pencil icon on the **Approval 
     | Field | Description |
     |-------|-------------|
     | **Signatures per approval** | How many signing operations one approval is good for. Leave empty for unlimited. Set to **1** for "approve once per artifact". |
-    | **Signing window** | How long the access record is valid after approval. Options: No limit, 1h, 8h, 24h, 7d, 30d. |
+    | **Signing window** | The longest an access record can stay valid, counted from approval. Options: No limit, 1h, 8h, 24h, 7d, 30d. |
 
     You can combine both. For example: `maxSignings=10` with `signing window=1h` issues access good for at most 10 sign calls within one hour of approval, whichever comes first.
 
@@ -87,10 +87,6 @@ Open the Signer's **Approvals** tab and click the pencil icon on the **Approval 
 </Steps>
 
 Press **Save policy**. The new policy applies to **new** requests; existing active access keeps its original terms until it expires or is revoked.
-
-<Warning>
-  **The signing window runs from when the request is opened, not from when it is approved**, because the requester picks the start and end times and approval activates that window. Time spent waiting for an approver comes out of it, so set the window wide enough to cover how long approvals usually take.
-</Warning>
 
 ## Scoping an approval
 
@@ -136,6 +132,16 @@ The [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) and
   Filling in a digest by hand is fiddly, because a sign call carries a digest rather than the file, so the value to declare is the hash of the bytes the call submits and not `sha256sum yourfile`. If you are calling the API directly, see the [Sign API reference](/api-reference/endpoints/code-signing/signers/sign).
 </Note>
 
+### Removing a parameter from a request
+
+A scoped request is not fixed once it is open. While it is still pending review, both the requester and the request's approvers can stop enforcing any parameter on it, from the **Request Scope** panel on the request. The parameters left in place still have to match at signing time.
+
+This is what makes a digest-scoped request usable for a pipeline that signs on every build. A client opens its request pinned to the artifact it was denied on, someone drops **Data Digest**, and the approval that follows covers that command on that machine for any artifact until the window or the signature count runs out.
+
+<Warning>
+  Removing a parameter widens what the approval will cover, so it is recorded in the audit log against whoever did it. Once a request is approved its scope is fixed: the access record enforces exactly the parameters that were left in place, and loosening it further means a new request.
+</Warning>
+
 ## Access lifecycle
 
 Every approved request becomes an **active access record**. On the Approvals tab it's a row in the Requests table with its own status, expiry, and signature counter.
@@ -170,8 +176,7 @@ There are two ways someone gets active access on a Signer: Administrators **pre-
         |-------|-------------|
         | **Justification** | Short note recorded on the access record for audit. Required. |
         | **Signatures allowed** | How many sign operations the access permits. Capped at the policy's **Signatures per approval**. Leave empty to fall back to the policy ceiling. |
-        | **When access begins** | Defaults to "now". |
-        | **When access expires** | Capped at the policy's **Signing window**. Leave empty to fall back to the policy ceiling. |
+        | **How long the approval lasts** | How long the access stays usable, counted from the moment the access is granted. Capped at the policy's **Signing window**. |
         | **Scope this request** | Optional. Expand it to [scope](#scoping-an-approval) the access to a specific command, signing tool, checksum, machine, OS account, IP address, or payload digest. Useful for pre-approving a known build agent: set its address and the access only works from there. |
 
         <Note>
@@ -200,8 +205,7 @@ There are two ways someone gets active access on a Signer: Administrators **pre-
         | Field | Description |
         |-------|-------------|
         | **Signatures requested** | How many sign operations you need. Capped at the policy's **Signatures per approval**. Leave empty to fall back to the policy ceiling. |
-        | **When access begins** | When the access window should start once approvals complete. Defaults to "now". |
-        | **When access expires** | When the access window should end. Capped at the policy's **Signing window**. Leave empty to fall back to the policy ceiling. |
+        | **How long the approval lasts** | How long you need the access for, counted from the moment approvals complete. Capped at the policy's **Signing window**. Waiting for an approver does not eat into it. |
         | **Scope this request** | Optional. Expand it to [scope](#scoping-an-approval) your access to the command, signing tool, checksum, machine, OS account, IP address, or payload digest you will sign with. Approvers see whatever you declare, and the access only covers matching sign calls. |
 
         <Note>
@@ -227,7 +231,7 @@ If you're an eligible approver for the **current** step of a pending request, an
 
 <Steps>
   <Step title="Open the request">
-    Click the row on the Signer's **Approvals** tab. Full details: requester, recipient, justification, requested signings, requested window, and which step is currently pending.
+    Click the row on the Signer's **Approvals** tab. Full details: requester, recipient, justification, requested signings, requested duration, and which step is currently pending.
   </Step>
   <Step title="Review">
     Verify who's asking, for how many signings, for how long, and why. If the requester scoped the request, the detail page lists every parameter the access will be limited to, so you can see exactly which signing situation you are approving.

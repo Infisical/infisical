@@ -106,7 +106,7 @@ export const codeSigningScopeFieldDescriptions: Record<CodeSigningScopeField, st
   [CodeSigningScopeField.Hostname]: "The machine the signing requests come from.",
   [CodeSigningScopeField.OsUsername]: "The operating system account running the signing tool.",
   [CodeSigningScopeField.IpAddress]: "The address sign calls must come from.",
-  [CodeSigningScopeField.DataHash]: "SHA-256 hash of the payload being signed."
+  [CodeSigningScopeField.DataHash]: "SHA-256 digest of the payload being signed."
 };
 
 /** How each value is compared at signing time, mirroring the API's matching rules. */
@@ -223,7 +223,6 @@ export type TSigningOperation = {
   clientMetadata?: {
     tool?: string;
     hostname?: string;
-    reportedIp?: string;
     command?: string;
     sourceIp?: string;
     osUsername?: string;
@@ -510,8 +509,7 @@ export type TRequestToSignDTO = {
   signerId: string;
   justification: string;
   requestedSignings?: number;
-  requestedWindowStart?: string;
-  requestedWindowEnd?: string;
+  requestedWindowDuration?: string;
   scope?: TCodeSigningScope;
 };
 export type TPreApproveSigningDTO = {
@@ -520,8 +518,12 @@ export type TPreApproveSigningDTO = {
   granteeIdentityId?: string;
   justification: string;
   requestedSignings?: number;
-  requestedWindowStart?: string;
-  requestedWindowEnd?: string;
+  requestedWindowDuration?: string;
   scope?: TCodeSigningScope;
+};
+export type TRemoveSignerRequestScopeFieldsDTO = {
+  signerId: string;
+  requestId: string;
+  removeFields: CodeSigningScopeField[];
 };
 export type TRevokeSignerRequestDTO = { signerId: string; requestId: string };

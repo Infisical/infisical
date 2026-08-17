@@ -234,8 +234,8 @@ export const ApprovalPolicyStep = ({
             <div className="min-w-0">
               <div className="text-sm font-medium text-mineshaft-100">Signing window</div>
               <p className="text-xs text-mineshaft-400">
-                The longest signing window a request can ask for. The window runs from the time the
-                request is opened.
+                The longest signing window a request can ask for. The window runs from the moment
+                the request is approved.
               </p>
             </div>
           </div>

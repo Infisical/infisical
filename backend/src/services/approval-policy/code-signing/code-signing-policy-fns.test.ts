@@ -3,9 +3,9 @@ import {
   buildObservedSigningContext,
   commandsMatch,
   getCodeSigningScopeMismatches,
-  isSameRequestedSigningWindow,
   normalizeCodeSigningScope,
-  redactCommandCredentials
+  redactCommandCredentials,
+  removeCodeSigningScopeFields
 } from "./code-signing-policy-fns";
 
 const DIGEST = "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9";
@@ -207,68 +207,6 @@ describe("commandsMatch", () => {
   });
 });
 
-describe("isSameRequestedSigningWindow", () => {
-  const MACHINE = false;
-  const HUMAN = true;
-
-  // The case that made the pending-request lookup useless for signing clients: a retry asks for
-  // the same duration, but every call anchors the window at its own "now".
-  test("a client retry asking for the same duration later is the same ask", () => {
-    const first = { start: "2026-08-04T10:00:00.000Z", end: "2026-08-04T18:00:00.000Z" };
-    const retriedSecondsLater = { start: "2026-08-04T10:00:07.000Z", end: "2026-08-04T18:00:07.000Z" };
-    const retriedHoursLater = { start: "2026-08-04T15:30:00.000Z", end: "2026-08-04T23:30:00.000Z" };
-
-    expect(isSameRequestedSigningWindow(MACHINE, first, retriedSecondsLater)).toBe(true);
-    expect(isSameRequestedSigningWindow(MACHINE, first, retriedHoursLater)).toBe(true);
-  });
-
-  test("a client asking for a different duration is a new ask", () => {
-    const eightHours = { start: "2026-08-04T10:00:00.000Z", end: "2026-08-04T18:00:00.000Z" };
-    const oneHour = { start: "2026-08-04T10:00:00.000Z", end: "2026-08-04T11:00:00.000Z" };
-
-    expect(isSameRequestedSigningWindow(MACHINE, eightHours, oneHour)).toBe(false);
-  });
-
-  // A person picks absolute times, so two windows of equal length at different times are two
-  // different asks and must not collapse into one.
-  test("equal-length windows at different times stay distinct for a person", () => {
-    const morning = { start: "2026-08-04T10:00:00.000Z", end: "2026-08-04T11:00:00.000Z" };
-    const midday = { start: "2026-08-04T11:00:00.000Z", end: "2026-08-04T12:00:00.000Z" };
-
-    expect(isSameRequestedSigningWindow(HUMAN, morning, midday)).toBe(false);
-    expect(isSameRequestedSigningWindow(HUMAN, morning, { ...morning })).toBe(true);
-  });
-
-  test("a count-only request with no window at all is the same ask", () => {
-    expect(isSameRequestedSigningWindow(MACHINE, {}, {})).toBe(true);
-    expect(isSameRequestedSigningWindow(HUMAN, {}, {})).toBe(true);
-  });
-
-  // With no start there is no duration, so falling back to the instant keeps two different
-  // absolute ends apart instead of treating both unknowns as equal.
-  test("an end with no start falls back to comparing the instant", () => {
-    const a = { end: "2026-08-04T18:00:00.000Z" };
-    const b = { end: "2026-08-04T19:00:00.000Z" };
-
-    expect(isSameRequestedSigningWindow(MACHINE, a, b)).toBe(false);
-    expect(isSameRequestedSigningWindow(MACHINE, a, { ...a })).toBe(true);
-  });
-
-  test("an unparseable timestamp does not read as a match", () => {
-    const good = { start: "2026-08-04T10:00:00.000Z", end: "2026-08-04T18:00:00.000Z" };
-    const broken = { start: "not a date", end: "2026-08-04T18:00:00.000Z" };
-
-    expect(isSameRequestedSigningWindow(MACHINE, good, broken)).toBe(false);
-  });
-
-  test("a window is never the same ask as no window", () => {
-    const windowed = { start: "2026-08-04T10:00:00.000Z", end: "2026-08-04T18:00:00.000Z" };
-
-    expect(isSameRequestedSigningWindow(MACHINE, windowed, {})).toBe(false);
-    expect(isSameRequestedSigningWindow(HUMAN, windowed, {})).toBe(false);
-  });
-});
-
 describe("redactCommandCredentials", () => {
   test.each([
     ["custom-signer --api-token hunter2 --in app.exe", "custom-signer --api-token hunter2 --in app.exe"],
@@ -305,5 +243,38 @@ describe("redactCommandCredentials", () => {
     const observed = buildObservedSigningContext({ clientMetadata: { command: raw }, dataHash: "d" });
     expect(getCodeSigningScopeMismatches(bound, observed)).toEqual([]);
     expect(bound?.command).not.toContain("hunter2");
+  });
+});
+
+describe("removeCodeSigningScopeFields", () => {
+  const scope = {
+    [CodeSigningScopeField.Command]: "signtool sign app.exe",
+    [CodeSigningScopeField.Hostname]: "build-01",
+    [CodeSigningScopeField.DataHash]: DIGEST
+  };
+
+  test("takes out the named parameters and keeps the rest", () => {
+    const result = removeCodeSigningScopeFields(scope, [CodeSigningScopeField.DataHash]);
+
+    expect(result.removed).toEqual([CodeSigningScopeField.DataHash]);
+    expect(result.scope).toEqual({
+      [CodeSigningScopeField.Command]: "signtool sign app.exe",
+      [CodeSigningScopeField.Hostname]: "build-01"
+    });
+  });
+
+  // Removing twice must land in the same place, so a retried call is not an error.
+  test("a parameter the scope does not declare is not reported as removed", () => {
+    const result = removeCodeSigningScopeFields(scope, [CodeSigningScopeField.IpAddress]);
+
+    expect(result.removed).toEqual([]);
+    expect(result.scope).toEqual(scope);
+  });
+
+  test("removing every parameter leaves no scope at all", () => {
+    const result = removeCodeSigningScopeFields(scope, Object.values(CodeSigningScopeField));
+
+    expect(result.scope).toBeUndefined();
+    expect(result.removed).toHaveLength(3);
   });
 });

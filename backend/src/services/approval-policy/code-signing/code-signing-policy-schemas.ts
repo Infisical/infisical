@@ -20,17 +20,16 @@ export const CodeSigningPolicyInputsSchema = z.object({
 
 export const CodeSigningPolicyConditionsSchema = z.object({}).array();
 
-const WindowDurationSchema = z
-  .string()
-  .refine(
-    (val) => {
-      const duration = ms(val) / 1000;
-      // 1 minute to 30 days
-      return duration >= 60 && duration <= 2592000;
-    },
-    { message: "Window duration must be between 1 minute and 30 days" }
-  )
-  .optional();
+export const SigningWindowDurationSchema = z.string().refine(
+  (val) => {
+    const duration = ms(val) / 1000;
+    // 1 minute to 30 days
+    return duration >= 60 && duration <= 2592000;
+  },
+  { message: "Window duration must be between 1 minute and 30 days" }
+);
+
+export const MAX_SIGNING_COMMAND_LENGTH = 32767;
 
 const SHA256_HEX_RE = new RE2("^[a-fA-F0-9]{64}$");
 
@@ -52,7 +51,7 @@ const scopeSha256 = (message: string) =>
     .refine((value) => value === undefined || SHA256_HEX_RE.test(value), message);
 
 export const CodeSigningScopeSchema = z.object({
-  [CodeSigningScopeField.Command]: scopeText(2048),
+  [CodeSigningScopeField.Command]: scopeText(MAX_SIGNING_COMMAND_LENGTH),
   [CodeSigningScopeField.SigningApplication]: scopeText(256),
   [CodeSigningScopeField.SigningApplicationHash]: scopeSha256(
     "Signing application checksum must be a 64-character SHA-256 hex string"
@@ -74,9 +73,19 @@ export const CodeSigningScopeInputSchema = CodeSigningScopeSchema.strict();
 export const CODE_SIGNING_SCOPE_API_DESCRIPTION =
   "Optional parameters to scope this approval to (command, signingApplication, signingApplicationHash, hostname, osUsername, ipAddress, dataHash). Every value declared here must match at signing time or the sign call is denied; parameters left out are not restricted. A command must match exactly, apart from whitespace, so a different order of options is a different command. ipAddress is compared against the address the sign call arrives from and dataHash against the digest of the submitted payload, so those two hold even if a caller reports something else.";
 
+export const RemoveCodeSigningScopeFieldsSchema = z.object({
+  removeFields: z
+    .array(z.nativeEnum(CodeSigningScopeField))
+    .min(1)
+    .max(Object.keys(CodeSigningScopeField).length)
+    .describe(
+      "Scope parameters to stop enforcing on this request, for example ['dataHash'] so the approval covers the same command and machine for any payload. Parameters left in place still have to match at signing time, and naming one the request does not declare has no effect."
+    )
+});
+
 export const CodeSigningPolicyConstraintsSchema = z
   .object({
-    maxWindowDuration: WindowDurationSchema,
+    maxWindowDuration: SigningWindowDurationSchema.optional(),
     maxSignings: z.number().int().positive().optional()
   })
   .refine((data) => data.maxWindowDuration || data.maxSignings, {
@@ -88,8 +97,7 @@ export const CodeSigningPolicyRequestDataSchema = z.object({
   approvalPolicyId: z.string().uuid(),
   signerName: z.string(),
   justification: z.string().max(512).optional(),
-  requestedWindowStart: z.string().datetime().optional(),
-  requestedWindowEnd: z.string().datetime().optional(),
+  requestedWindowDuration: SigningWindowDurationSchema.optional(),
   requestedSignings: z.number().int().positive().optional(),
   scope: CodeSigningScopeSchema.optional()
 });

@@ -40,7 +40,7 @@ import {
   TCodeSigningScope
 } from "@app/hooks/api/signers";
 
-const MAX_COMMAND_LENGTH = 2048;
+const MAX_COMMAND_LENGTH = 32767;
 const MAX_SCOPE_TEXT_LENGTH = 256;
 const SHA256_HEX = /^[a-fA-F0-9]{64}$/;
 

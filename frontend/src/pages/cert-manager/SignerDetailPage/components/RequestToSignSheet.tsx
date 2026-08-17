@@ -21,7 +21,6 @@ import {
   SheetTitle,
   TextArea
 } from "@app/components/v3";
-import { parseDurationMs, toDateTimeLocalInputValue } from "@app/helpers/datetime";
 import { useGetSignerPolicy, useRequestToSign } from "@app/hooks/api/signers";
 import {
   pickDeclaredScope,
@@ -29,6 +28,8 @@ import {
   SigningScopeSchema
 } from "@app/pages/cert-manager/components/ScopeFieldsFormSection";
 import { PkiDocsUrls } from "@app/pages/cert-manager/pki-docs-urls";
+
+import { getDefaultSigningWindow, SigningWindowField } from "../../components/SigningWindowField";
 
 type Props = {
   isOpen: boolean;
@@ -48,19 +49,16 @@ const schema = z
         .union([z.number().int("Must be a whole number").min(1, "Must be at least 1"), z.null()])
         .optional()
     ),
-    requestedWindowStart: z.string().optional(),
-    requestedWindowEnd: z.string().optional(),
+    requestedWindowDuration: z.string().optional(),
     justification: z.string().trim().min(1, "Reason is required").max(2048),
     scope: SigningScopeSchema
   })
-  .refine((d) => d.requestedSignings || d.requestedWindowEnd, {
-    message: "Provide a signature count or a window end",
+  .refine((d) => d.requestedSignings || d.requestedWindowDuration, {
+    message: "Provide a signature count or an approval duration",
     path: ["requestedSignings"]
   });
 
 type FormData = z.infer<typeof schema>;
-
-const DEFAULT_SIGNING_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export const RequestToSignSheet = ({ isOpen, onOpenChange, signerId }: Props) => {
   const requestToSign = useRequestToSign();
@@ -70,17 +68,12 @@ export const RequestToSignSheet = ({ isOpen, onOpenChange, signerId }: Props) =>
   const maxSignings = policy?.constraints?.maxSignings ?? null;
   const maxWindowDuration = policy?.constraints?.maxWindowDuration ?? null;
 
-  const buildDefaults = (): FormData => {
-    const now = Date.now();
-    const allowedMs = parseDurationMs(maxWindowDuration);
-    return {
-      requestedSignings: maxSignings ?? null,
-      requestedWindowStart: toDateTimeLocalInputValue(now),
-      requestedWindowEnd: toDateTimeLocalInputValue(now + (allowedMs ?? DEFAULT_SIGNING_WINDOW_MS)),
-      justification: "",
-      scope: []
-    };
-  };
+  const buildDefaults = (): FormData => ({
+    requestedSignings: maxSignings ?? null,
+    requestedWindowDuration: getDefaultSigningWindow(maxWindowDuration),
+    justification: "",
+    scope: []
+  });
 
   const { control, handleSubmit, reset } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -104,12 +97,7 @@ export const RequestToSignSheet = ({ isOpen, onOpenChange, signerId }: Props) =>
         signerId,
         justification: data.justification,
         requestedSignings: data.requestedSignings ?? undefined,
-        requestedWindowStart: data.requestedWindowStart
-          ? new Date(data.requestedWindowStart).toISOString()
-          : undefined,
-        requestedWindowEnd: data.requestedWindowEnd
-          ? new Date(data.requestedWindowEnd).toISOString()
-          : undefined,
+        requestedWindowDuration: data.requestedWindowDuration,
         scope: pickDeclaredScope(data.scope)
       });
       handleClose(false);
@@ -178,46 +166,11 @@ export const RequestToSignSheet = ({ isOpen, onOpenChange, signerId }: Props) =>
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-3">
-                  <Controller
-                    name="requestedWindowStart"
-                    control={control}
-                    render={({ field, fieldState: { error } }) => (
-                      <Field>
-                        <FieldLabel>Starts</FieldLabel>
-                        <FieldContent>
-                          <Input
-                            type="datetime-local"
-                            value={field.value ?? ""}
-                            onChange={(e) => field.onChange(e.target.value || undefined)}
-                            isError={Boolean(error)}
-                          />
-                          <FieldDescription>When access starts.</FieldDescription>
-                          <FieldError errors={[error]} />
-                        </FieldContent>
-                      </Field>
-                    )}
-                  />
-                  <Controller
-                    name="requestedWindowEnd"
-                    control={control}
-                    render={({ field, fieldState: { error } }) => (
-                      <Field>
-                        <FieldLabel>Ends</FieldLabel>
-                        <FieldContent>
-                          <Input
-                            type="datetime-local"
-                            value={field.value ?? ""}
-                            onChange={(e) => field.onChange(e.target.value || undefined)}
-                            isError={Boolean(error)}
-                          />
-                          <FieldDescription>When access ends.</FieldDescription>
-                          <FieldError errors={[error]} />
-                        </FieldContent>
-                      </Field>
-                    )}
-                  />
-                </div>
+                <SigningWindowField
+                  control={control}
+                  name="requestedWindowDuration"
+                  maxWindowDuration={maxWindowDuration}
+                />
 
                 <ScopeFieldsFormSection control={control} />
 
@@ -254,8 +207,8 @@ export const RequestToSignSheet = ({ isOpen, onOpenChange, signerId }: Props) =>
                 <p className="mt-2 text-sm leading-relaxed text-muted">
                   Your request goes to this signer&apos;s approvers, and you cannot sign until one
                   of them approves it. On approval it becomes an access record with the signatures
-                  and window you asked for. The window is measured from when you send the request,
-                  not from when it is approved, so allow for review time.
+                  and window you asked for. The window starts on approval, so waiting for a review
+                  does not eat into it.
                 </p>
               </div>
             </aside>

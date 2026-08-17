@@ -3,9 +3,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 import { approvalRequestQuery } from "@app/hooks/api/approvalRequests/queries";
+import { TApprovalRequest } from "@app/hooks/api/approvalRequests/types";
 
 import { signerKeys } from "./queries";
 import {
+  CodeSigningScopeField,
   SignerStatus,
   TAddSignerGroupMemberDTO,
   TAddSignerIdentityMemberDTO,
@@ -18,6 +20,7 @@ import {
   TReissueSignerCertificateDTO,
   TRemoveSignerGroupDTO,
   TRemoveSignerIdentityDTO,
+  TRemoveSignerRequestScopeFieldsDTO,
   TRemoveSignerUserDTO,
   TRequestToSignDTO,
   TRevokeSignerRequestDTO,
@@ -413,6 +416,29 @@ export const useRevokeSignerRequest = () => {
       queryClient.invalidateQueries({ queryKey: signerKeys.requests(signerId) });
       queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
       createNotification({ text: "Request revoked", type: "success" });
+    }
+  });
+};
+
+export const useRemoveSignerRequestScopeFields = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { removedFields: CodeSigningScopeField[]; request: TApprovalRequest },
+    object,
+    TRemoveSignerRequestScopeFieldsDTO
+  >({
+    mutationFn: async ({ signerId, requestId, removeFields }) => {
+      const { data } = await apiRequest.patch<{
+        removedFields: CodeSigningScopeField[];
+        request: TApprovalRequest;
+      }>(`/api/v1/cert-manager/signers/${signerId}/requests/${requestId}/scope`, { removeFields });
+      return data;
+    },
+    onSuccess: (_, { signerId }) => {
+      queryClient.invalidateQueries({ queryKey: signerKeys.requests(signerId) });
+      queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
+      createNotification({ text: "Scope parameter removed from the request", type: "success" });
     }
   });
 };

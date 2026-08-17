@@ -78,8 +78,8 @@ export const LimitsStep = ({
             </SelectContent>
           </Select>
           <FieldDescription>
-            The longest signing window a request can ask for. The window runs from the time the
-            request is opened.
+            The longest signing window a request can ask for. The window runs from the moment the
+            request is approved.
           </FieldDescription>
           {showError && (
             <FieldError
