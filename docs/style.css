@@ -210,6 +210,10 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
   background-color: #3f3f3f;
 }
 
+#sidebar-content .sidebar-title {
+  font-weight: inherit;
+}
+
 .ifx-home {
   width: 100%;
   max-width: 70rem;
