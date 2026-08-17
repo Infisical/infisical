@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
+import axios from "axios";
 import { format } from "date-fns";
 import {
   ChevronDownIcon,
   GitCommitHorizontalIcon,
   InfoIcon,
   MaximizeIcon,
-  MinimizeIcon
+  MinimizeIcon,
+  TriangleAlertIcon
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -27,6 +29,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
+  EmptyContent,
+  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -81,7 +85,12 @@ export const CommitDetailsView = ({
   const [isRevertOpen, setIsRevertOpen] = useState(false);
   const [revertConfirmation, setRevertConfirmation] = useState("");
 
-  const { data: commitDetails, isPending } = useGetCommitDetails(projectId, commitId);
+  const {
+    data: commitDetails,
+    isPending,
+    error,
+    refetch
+  } = useGetCommitDetails(projectId, commitId);
   const { mutateAsync: revert, isPending: isReverting } = useCommitRevert({
     commitId,
     projectId,
@@ -122,6 +131,10 @@ export const CommitDetailsView = ({
   }
 
   if (!commit) {
+    // A commit reachable from the history list only 404s if it was pruned since the list
+    // loaded, so anything else is an operational failure the user can retry out of
+    const isMissing = axios.isAxiosError(error) && error.response?.status === 404;
+
     return (
       <>
         <SheetHeader>
@@ -132,10 +145,22 @@ export const CommitDetailsView = ({
           <Empty>
             <EmptyHeader>
               <EmptyMedia variant="icon">
-                <GitCommitHorizontalIcon />
+                {isMissing ? <GitCommitHorizontalIcon /> : <TriangleAlertIcon />}
               </EmptyMedia>
-              <EmptyTitle>Commit Not Found</EmptyTitle>
+              <EmptyTitle>{isMissing ? "Commit Not Found" : "Unable To Load Commit"}</EmptyTitle>
+              <EmptyDescription>
+                {isMissing
+                  ? "This commit is no longer part of this folder's history."
+                  : "Something went wrong loading the changes in this commit."}
+              </EmptyDescription>
             </EmptyHeader>
+            {!isMissing && (
+              <EmptyContent>
+                <Button variant="outline" size="sm" onClick={() => refetch()}>
+                  Try Again
+                </Button>
+              </EmptyContent>
+            )}
           </Empty>
         </div>
       </>

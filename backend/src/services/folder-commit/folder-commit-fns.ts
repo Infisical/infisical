@@ -1,5 +1,4 @@
-import { TFolderCommitChanges } from "@app/db/schemas";
-
+import { TFolderCommitChangeCount } from "./folder-commit-dal";
 import { CommitType } from "./folder-commit-service";
 
 export type TFolderCommitChangeSummary = {
@@ -10,7 +9,7 @@ export type TFolderCommitChangeSummary = {
   deletedCount: number;
 };
 
-export const summarizeCommitChanges = (changes: TFolderCommitChanges[]): TFolderCommitChangeSummary => {
+export const summarizeCommitChanges = (changeCounts: TFolderCommitChangeCount[]): TFolderCommitChangeSummary => {
   const summary: TFolderCommitChangeSummary = {
     secretCount: 0,
     folderCount: 0,
@@ -19,16 +18,16 @@ export const summarizeCommitChanges = (changes: TFolderCommitChanges[]): TFolder
     deletedCount: 0
   };
 
-  for (const change of changes) {
-    if (change.secretVersionId) summary.secretCount += 1;
-    if (change.folderVersionId) summary.folderCount += 1;
+  for (const count of changeCounts) {
+    summary.secretCount += count.secretCount;
+    summary.folderCount += count.folderCount;
 
-    if (change.changeType === CommitType.DELETE) {
-      summary.deletedCount += 1;
-    } else if (change.isUpdate) {
-      summary.updatedCount += 1;
+    if (count.changeType === CommitType.DELETE) {
+      summary.deletedCount += count.totalCount;
+    } else if (count.isUpdate) {
+      summary.updatedCount += count.totalCount;
     } else {
-      summary.addedCount += 1;
+      summary.addedCount += count.totalCount;
     }
   }
 

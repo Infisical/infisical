@@ -7,7 +7,8 @@ import {
   ChevronRightIcon,
   GitCommitHorizontalIcon,
   InfoIcon,
-  SearchIcon
+  SearchIcon,
+  TriangleAlertIcon
 } from "lucide-react";
 
 import {
@@ -18,6 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
@@ -116,7 +118,7 @@ type Props = {
   environment: string;
   environmentName: string;
   secretPath: string;
-  onSelectCommit: (commitId: string) => void;
+  onSelectCommit: (commitId: string, folderId: string) => void;
 };
 
 export const CommitHistoryView = ({
@@ -133,7 +135,7 @@ export const CommitHistoryView = ({
 
   const { data: authors } = useGetCommitAuthors({ projectId, environment, directory: secretPath });
 
-  const { data, isPending, fetchNextPage, isFetchingNextPage, hasNextPage } =
+  const { data, isPending, isError, refetch, fetchNextPage, isFetchingNextPage, hasNextPage } =
     useGetFolderCommitHistory({
       projectId,
       environment,
@@ -149,6 +151,7 @@ export const CommitHistoryView = ({
   );
   const remainingCount = (data?.total ?? 0) - (data?.loadedCount ?? 0);
   const isFiltered = Boolean(debouncedSearch || author);
+  const hasCommits = Boolean(data?.groups.length);
 
   return (
     <>
@@ -237,7 +240,26 @@ export const CommitHistoryView = ({
         >
           {isPending && <CommitHistorySkeleton />}
 
-          {!isPending && !data?.groups.length && (
+          {!isPending && !hasCommits && isError && (
+            <Empty className="h-full">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <TriangleAlertIcon />
+                </EmptyMedia>
+                <EmptyTitle>Unable To Load Commit History</EmptyTitle>
+                <EmptyDescription>
+                  Something went wrong loading the commits for this path.
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button variant="outline" size="sm" onClick={() => refetch()}>
+                  Try Again
+                </Button>
+              </EmptyContent>
+            </Empty>
+          )}
+
+          {!isPending && !hasCommits && !isError && (
             <Empty className="h-full">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -253,9 +275,9 @@ export const CommitHistoryView = ({
             </Empty>
           )}
 
-          {!isPending && !!data?.groups.length && (
+          {!isPending && hasCommits && (
             <div>
-              {data.groups.map((group) => (
+              {data?.groups.map((group) => (
                 <div key={group.date} className="mb-6 last:mb-0">
                   <div className="mb-2 flex items-center gap-2">
                     <GitCommitHorizontalIcon className="size-4 text-muted" />
@@ -274,7 +296,7 @@ export const CommitHistoryView = ({
                       <CommitRow
                         key={commit.id}
                         commit={commit}
-                        onSelect={() => onSelectCommit(commit.id)}
+                        onSelect={() => onSelectCommit(commit.id, commit.folderId)}
                       />
                     ))}
                   </div>

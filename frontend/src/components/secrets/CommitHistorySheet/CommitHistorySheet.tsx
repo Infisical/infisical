@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 import { Sheet, SheetContent } from "@app/components/v3";
-import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits/queries";
 
 import { CommitDetailsView } from "./CommitDetailsView";
 import { CommitHistoryView } from "./CommitHistoryView";
@@ -9,8 +8,8 @@ import { CommitRestoreView } from "./CommitRestoreView";
 
 type View =
   | { name: "history" }
-  | { name: "details"; commitId: string }
-  | { name: "restore"; commitId: string };
+  | { name: "details"; commitId: string; folderId: string }
+  | { name: "restore"; commitId: string; folderId: string };
 
 type Props = {
   isOpen: boolean;
@@ -33,14 +32,6 @@ export const CommitHistorySheet = ({
 }: Props) => {
   const [view, setView] = useState<View>({ name: "history" });
 
-  const { data: commitsCount } = useGetFolderCommitsCount({
-    projectId,
-    environment,
-    directory: secretPath,
-    isPaused: !isOpen
-  });
-  const folderId = commitsCount?.folderId;
-
   // Reopening on a different environment or path must not inherit the previous scope's view
   useEffect(() => {
     if (isOpen) setView({ name: "history" });
@@ -55,7 +46,9 @@ export const CommitHistorySheet = ({
             environment={environment}
             environmentName={environmentName}
             secretPath={secretPath}
-            onSelectCommit={(commitId) => setView({ name: "details", commitId })}
+            onSelectCommit={(commitId, folderId) =>
+              setView({ name: "details", commitId, folderId })
+            }
           />
         )}
 
@@ -68,18 +61,22 @@ export const CommitHistorySheet = ({
             commitId={view.commitId}
             onBack={() => setView({ name: "history" })}
             onCommitReverted={() => setView({ name: "history" })}
-            onGoToRestore={() => setView({ name: "restore", commitId: view.commitId })}
+            onGoToRestore={() =>
+              setView({ name: "restore", commitId: view.commitId, folderId: view.folderId })
+            }
           />
         )}
 
-        {view.name === "restore" && folderId && (
+        {view.name === "restore" && (
           <CommitRestoreView
             projectId={projectId}
             environment={environment}
             secretPath={secretPath}
-            folderId={folderId}
+            folderId={view.folderId}
             commitId={view.commitId}
-            onBack={() => setView({ name: "details", commitId: view.commitId })}
+            onBack={() =>
+              setView({ name: "details", commitId: view.commitId, folderId: view.folderId })
+            }
             onRestored={() => setView({ name: "history" })}
           />
         )}

@@ -79,6 +79,7 @@ export type CommitChangeSummary = {
 
 export interface Commit {
   id: string;
+  folderId: string;
   message?: string | null;
   createdAt: string;
   actorType: string;

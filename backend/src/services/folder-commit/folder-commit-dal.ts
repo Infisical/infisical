@@ -15,6 +15,14 @@ import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TFolderCommitDALFactory = ReturnType<typeof folderCommitDALFactory>;
 
+export type TFolderCommitChangeCount = {
+  changeType: string;
+  isUpdate: boolean;
+  secretCount: number;
+  folderCount: number;
+  totalCount: number;
+};
+
 export const folderCommitDALFactory = (db: TDbClient) => {
   const folderCommitOrm = ormify(db, TableName.FolderCommit);
   const { delete: deleteOp, deleteById, ...restOfOrm } = folderCommitOrm;
@@ -419,7 +427,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     } = {},
     tx?: Knex
   ): Promise<{
-    commits: (TFolderCommits & { changes: TFolderCommitChanges[] })[];
+    commits: (TFolderCommits & { changeCounts: TFolderCommitChangeCount[] })[];
     total: number;
     hasMore: boolean;
   }> => {
@@ -497,31 +505,49 @@ export const folderCommitDALFactory = (db: TDbClient) => {
         return { commits: [], total, hasMore: false };
       }
 
-      // Get all commit IDs for changes
       const commitIds = folderCommits.map((commit) => commit.id);
 
-      // Get all related changes
-      const changes = await trx(TableName.FolderCommitChanges).whereIn("folderCommitId", commitIds).select("*");
+      // Counted in the database rather than by loading the rows: a single commit can carry
+      // tens of thousands of changes (a bulk import, a folder delete), and the caller only
+      // needs the totals. Grouping caps this at one row per change kind per commit.
+      const countRows = await trx(TableName.FolderCommitChanges)
+        .whereIn("folderCommitId", commitIds)
+        .groupBy("folderCommitId", "changeType", "isUpdate")
+        .select<
+          {
+            folderCommitId: string;
+            changeType: string;
+            isUpdate: boolean;
+            secretCount: string;
+            folderCount: string;
+            totalCount: string;
+          }[]
+        >("folderCommitId", "changeType", "isUpdate", trx.raw(`COUNT(*) FILTER (WHERE "secretVersionId" IS NOT NULL) AS "secretCount"`), trx.raw(`COUNT(*) FILTER (WHERE "folderVersionId" IS NOT NULL) AS "folderCount"`), trx.raw(`COUNT(*) AS "totalCount"`));
 
-      const changesMap = changes.reduce(
-        (acc, change) => {
-          const { folderCommitId } = change;
-          if (!acc[folderCommitId]) acc[folderCommitId] = [];
-          acc[folderCommitId].push(change);
+      const countsMap = countRows.reduce(
+        (acc, row) => {
+          if (!acc[row.folderCommitId]) acc[row.folderCommitId] = [];
+          acc[row.folderCommitId].push({
+            changeType: row.changeType,
+            isUpdate: row.isUpdate,
+            secretCount: Number(row.secretCount),
+            folderCount: Number(row.folderCount),
+            totalCount: Number(row.totalCount)
+          });
           return acc;
         },
-        {} as Record<string, TFolderCommitChanges[]>
+        {} as Record<string, TFolderCommitChangeCount[]>
       );
 
-      const commitsWithChanges = folderCommits.map((commit) => ({
+      const commitsWithCounts = folderCommits.map((commit) => ({
         ...commit,
-        changes: changesMap[commit.id] || []
+        changeCounts: countsMap[commit.id] || []
       }));
 
       const hasMore = offset + limit < total;
 
       return {
-        commits: commitsWithChanges,
+        commits: commitsWithCounts,
         total,
         hasMore
       };

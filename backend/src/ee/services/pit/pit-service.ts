@@ -143,10 +143,10 @@ export const pitServiceFactory = ({
     });
 
     return {
-      commits: result.commits.map(({ changes, ...commit }) => ({
+      commits: result.commits.map(({ changeCounts, ...commit }) => ({
         ...commit,
         commitId: commit.commitId.toString(),
-        summary: summarizeCommitChanges(changes)
+        summary: summarizeCommitChanges(changeCounts)
       })),
       total: result.total,
       hasMore: result.hasMore
