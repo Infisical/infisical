@@ -10,6 +10,9 @@
   "styling": {
     "codeblocks": "dark"
   },
+  "thumbnails": {
+    "appearance": "light"
+  },
   "favicon": "/favicon.ico",
   "contextual": {
     "options": [
@@ -702,15 +705,7 @@
                   {
                     "group": "Infrastructure",
                     "pages": [
-                      {
-                        "group": "Docker",
-                        "pages": [
-                          "integrations/platforms/docker-intro",
-                          "integrations/platforms/docker",
-                          "integrations/platforms/docker-pass-envs",
-                          "integrations/platforms/docker-compose"
-                        ]
-                      },
+                      "integrations/platforms/docker",
                       "integrations/platforms/ansible",
                       "integrations/platforms/apache-airflow",
                       {
@@ -1144,6 +1139,7 @@
                     ]
                   },
                   "documentation/platform/pam/access-requests/overview",
+                  "documentation/platform/pam/ai-agents/overview",
                   {
                     "group": "Credential Rotation",
                     "pages": [
@@ -1206,7 +1202,10 @@
                   "cli/commands/secrets",
                   "cli/commands/agent-proxy",
                   "cli/commands/dynamic-secrets",
-                  "cli/commands/pam",
+                  {
+                    "group": "infisical pam",
+                    "pages": ["cli/commands/pam", "cli/commands/pam-agentic"]
+                  },
                   "cli/commands/gateway",
                   "cli/commands/kmip",
                   "cli/commands/relay",
@@ -3001,6 +3000,15 @@
                 ]
               },
               {
+                "group": "Secret Validation Rules",
+                "pages": [
+                  "api-reference/endpoints/secret-validation-rules/list",
+                  "api-reference/endpoints/secret-validation-rules/create",
+                  "api-reference/endpoints/secret-validation-rules/update",
+                  "api-reference/endpoints/secret-validation-rules/delete"
+                ]
+              },
+              {
                 "group": "Secret Syncs",
                 "pages": [
                   "api-reference/endpoints/secret-syncs/list",
@@ -4394,7 +4402,7 @@
           },
           {
             "label": "Docker",
-            "href": "https://infisical.com/docs/integrations/platforms/docker-intro"
+            "href": "https://infisical.com/docs/integrations/platforms/docker"
           },
           {
             "label": "AWS ECS",
@@ -4503,6 +4511,18 @@
     }
   },
   "redirects": [
+    {
+      "source": "/integrations/platforms/docker-intro",
+      "destination": "/integrations/platforms/docker"
+    },
+    {
+      "source": "/integrations/platforms/docker-pass-envs",
+      "destination": "/integrations/platforms/docker"
+    },
+    {
+      "source": "/integrations/platforms/docker-compose",
+      "destination": "/integrations/platforms/docker"
+    },
     {
       "source": "/documentation/platform/agent-proxy/quickstart",
       "destination": "/documentation/platform/agent-proxy/quickstart/credentials"

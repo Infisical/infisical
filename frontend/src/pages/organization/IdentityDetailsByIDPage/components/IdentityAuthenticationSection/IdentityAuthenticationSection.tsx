@@ -46,7 +46,7 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
           ) && (
             <CardAction>
               <OrgPermissionCan
-                I={OrgPermissionIdentityActions.Edit}
+                I={OrgPermissionIdentityActions.EditAuth}
                 a={OrgPermissionSubjects.Identity}
               >
                 {(isAllowed) => (
@@ -88,7 +88,7 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
             </EmptyHeader>
             <EmptyContent>
               <OrgPermissionCan
-                I={OrgPermissionIdentityActions.Edit}
+                I={OrgPermissionIdentityActions.EditAuth}
                 a={OrgPermissionSubjects.Identity}
               >
                 {(isAllowed) => (

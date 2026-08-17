@@ -31,6 +31,7 @@ export type TUpdateAliCloudAuthDTO = {
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetAliCloudAuthDTO = {
@@ -39,6 +40,7 @@ export type TGetAliCloudAuthDTO = {
 
 export type TRevokeAliCloudAuthDTO = {
   identityId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TAliCloudGetUserResponse = {

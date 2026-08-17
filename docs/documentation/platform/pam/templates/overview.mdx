@@ -1,7 +1,7 @@
 ---
 title: "Account Templates"
 sidebarTitle: "Account Templates"
-description: "Define the rules that apply when users connect to accounts."
+description: "Define the rules that apply when someone connects to an account."
 ---
 
 Templates define how [accounts](/documentation/platform/pam/accounts/overview) behave when someone connects — session duration limits, MFA requirements, which [Gateway](/documentation/platform/gateways/overview) to use, where to store [session recordings](/documentation/platform/pam/sessions/session-recording), and more.
@@ -12,7 +12,7 @@ Infisical provides **default templates** for each account type with sensible def
 
 ## Default Templates
 
-When you first use PAM, default templates are available for each account type (PostgreSQL, MySQL, MS SQL, MongoDB, SSH, Kubernetes, AWS IAM, Windows, Windows AD). Each has sensible defaults like 1-hour session duration.
+When you first use PAM, default templates are available for each account type (PostgreSQL, MySQL, MS SQL, MongoDB, Redis, SSH, Kubernetes, AWS IAM, GCP Service Account, Azure CLI, Windows, Windows AD). Each has sensible defaults like 1-hour session duration.
 
 If the defaults work for you, you can skip straight to [adding accounts](/documentation/platform/pam/accounts/overview).
 
@@ -35,9 +35,13 @@ If you need different rules — say, 4-hour sessions with MFA for production —
     | Option | What it does |
     |--------|--------------|
     | **Require MFA** | Users must re-authenticate with MFA before connecting |
-    | **Require Reason** | Users must provide a reason before connecting |
+    | **Require Reason** | A reason must be provided before connecting |
     | **Max Session Duration** | How long someone can stay connected (in seconds) |
     | **Command Blocking** | Regex patterns for commands to reject (one per line). Currently SSH only. |
+
+    <Note>
+      **Require MFA** puts an account out of reach of [AI agents](/documentation/platform/pam/ai-agents/overview), which cannot complete the challenge yet, and of [machine identities](/documentation/platform/identities/machine-identities), which never can. For accounts an agent needs, use a template without it and gate access with [approvals](/documentation/platform/pam/access-requests/overview) instead.
+    </Note>
   </Step>
   <Step title="Configure system settings">
     | Option | What it does |

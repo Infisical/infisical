@@ -3,6 +3,7 @@ import { useFormContext } from "react-hook-form";
 
 import {
   Badge,
+  CodeBlock,
   Table,
   TableBody,
   TableCell,
@@ -180,12 +181,10 @@ export const PkiSyncReviewFields = () => {
       </div>
       {postSyncCommand && (
         <div className="flex flex-col gap-3">
-          <div className="w-full border-b border-mineshaft-600">
-            <span className="text-sm text-mineshaft-300">Post-Sync Command</span>
+          <div className="w-full border-b border-border">
+            <span className="text-sm text-muted">Post-Sync Command</span>
           </div>
-          <pre className="thin-scrollbar overflow-x-auto rounded-sm bg-mineshaft-600 p-2 font-mono text-xs whitespace-pre-wrap text-mineshaft-200">
-            {postSyncCommand}
-          </pre>
+          <CodeBlock value={postSyncCommand} className="max-h-48 whitespace-pre-wrap" />
         </div>
       )}
       <div className="flex flex-col gap-3">

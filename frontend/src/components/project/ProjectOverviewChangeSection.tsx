@@ -5,7 +5,20 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, FormControl, Input, TextArea } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  Input,
+  TextArea
+} from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useUpdateProject } from "@app/hooks/api";
 
@@ -75,12 +88,12 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="justify-betweens mb-8 flex flex-wrap gap-2">
-        <h2 className="flex-1 text-xl font-medium text-mineshaft-100">Project Overview</h2>
-        <div className="space-x-2">
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>Project Overview</CardTitle>
+        <CardAction className="flex flex-wrap gap-2">
           <Button
-            variant="outline_bg"
+            variant="outline"
             size="sm"
             onClick={() => {
               navigator.clipboard.writeText(currentSlug || "");
@@ -94,7 +107,7 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
             Copy Project Slug
           </Button>
           <Button
-            variant="outline_bg"
+            variant="outline"
             size="sm"
             onClick={() => {
               navigator.clipboard.writeText(currentProject?.id || "");
@@ -107,122 +120,100 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
           >
             Copy Project ID
           </Button>
-        </div>
-      </div>
-      <div>
-        <form onSubmit={handleSubmit(onFormSubmit)} className="flex w-full flex-col gap-0">
-          <div className="flex w-full flex-row items-end gap-4">
-            <div className="w-full max-w-md">
-              <ProjectPermissionCan
-                I={ProjectPermissionActions.Edit}
-                a={ProjectPermissionSub.Project}
-              >
-                {(isAllowed) => (
-                  <Controller
-                    defaultValue=""
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                        label="Project name"
-                      >
-                        <Input
-                          placeholder="Project name"
-                          {...field}
-                          className="bg-mineshaft-800"
-                          isDisabled={!isAllowed}
-                        />
-                      </FormControl>
-                    )}
-                    control={control}
-                    name="name"
-                  />
-                )}
-              </ProjectPermissionCan>
-            </div>
-          </div>
-          {showSlugField && (
-            <div className="flex w-full flex-row items-end gap-4">
-              <div className="w-full max-w-md">
-                <ProjectPermissionCan
-                  I={ProjectPermissionActions.Edit}
-                  a={ProjectPermissionSub.Project}
-                >
-                  {(isAllowed) => (
-                    <Controller
-                      defaultValue=""
-                      render={({ field, fieldState: { error } }) => (
-                        <FormControl
-                          isError={Boolean(error)}
-                          errorText={error?.message}
-                          label="Project slug"
-                        >
-                          <Input
-                            placeholder="Project slug"
-                            {...field}
-                            className="bg-mineshaft-800"
-                            isDisabled={!isAllowed}
-                          />
-                        </FormControl>
-                      )}
-                      control={control}
-                      name="slug"
-                    />
-                  )}
-                </ProjectPermissionCan>
-              </div>
-            </div>
-          )}
-          <div className="flex w-full flex-row items-end gap-4">
-            <div className="w-full max-w-md">
-              <ProjectPermissionCan
-                I={ProjectPermissionActions.Edit}
-                a={ProjectPermissionSub.Project}
-              >
-                {(isAllowed) => (
-                  <Controller
-                    defaultValue=""
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                        label="Project description"
-                      >
-                        <TextArea
-                          placeholder="Project description"
-                          {...field}
-                          rows={3}
-                          className="thin-scrollbar max-w-md resize-none! bg-mineshaft-800"
-                          isDisabled={!isAllowed}
-                        />
-                      </FormControl>
-                    )}
-                    control={control}
-                    name="description"
-                  />
-                )}
-              </ProjectPermissionCan>
-            </div>
-          </div>
-          <div>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(onFormSubmit)} className="flex max-w-md flex-col gap-4">
+          <FieldGroup>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Edit}
               a={ProjectPermissionSub.Project}
             >
               {(isAllowed) => (
-                <Button
-                  colorSchema="secondary"
-                  type="submit"
-                  isLoading={isPending}
-                  isDisabled={isPending || !isAllowed}
-                >
-                  Save
-                </Button>
+                <Controller
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="project-name">Project name</FieldLabel>
+                      <Input
+                        id="project-name"
+                        placeholder="Project name"
+                        {...field}
+                        disabled={!isAllowed}
+                        isError={Boolean(error)}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                  control={control}
+                  name="name"
+                />
               )}
             </ProjectPermissionCan>
-          </div>
+            {showSlugField && (
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Edit}
+                a={ProjectPermissionSub.Project}
+              >
+                {(isAllowed) => (
+                  <Controller
+                    defaultValue=""
+                    render={({ field, fieldState: { error } }) => (
+                      <Field data-invalid={Boolean(error)}>
+                        <FieldLabel htmlFor="project-slug">Project slug</FieldLabel>
+                        <Input
+                          id="project-slug"
+                          placeholder="Project slug"
+                          {...field}
+                          disabled={!isAllowed}
+                          isError={Boolean(error)}
+                        />
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                    control={control}
+                    name="slug"
+                  />
+                )}
+              </ProjectPermissionCan>
+            )}
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Edit}
+              a={ProjectPermissionSub.Project}
+            >
+              {(isAllowed) => (
+                <Controller
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="project-description">Project description</FieldLabel>
+                      <TextArea
+                        id="project-description"
+                        placeholder="Project description"
+                        {...field}
+                        rows={3}
+                        className="resize-none"
+                        disabled={!isAllowed}
+                        isError={Boolean(error)}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                  control={control}
+                  name="description"
+                />
+              )}
+            </ProjectPermissionCan>
+          </FieldGroup>
+          <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Project}>
+            {(isAllowed) => (
+              <Button variant="project" type="submit" isPending={isPending} isDisabled={!isAllowed}>
+                Save
+              </Button>
+            )}
+          </ProjectPermissionCan>
         </form>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
