@@ -23,6 +23,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -50,7 +51,6 @@ import {
   EmptyMedia,
   EmptyTitle,
   Field,
-  FieldLabel,
   IconButton,
   Input,
   InputGroup,
@@ -486,7 +486,7 @@ export const GatewayTab = withPermission(
                   </AlertDialogHeader>
                   <AlertDialogConfirmationField>
                     <Field>
-                      <FieldLabel htmlFor="delete-gateway-confirmation" size="sm">
+                      <AlertDialogConfirmationLabel htmlFor="delete-gateway-confirmation">
                         <span>
                           Type &quot;
                           <span className="text-foreground">
@@ -494,7 +494,7 @@ export const GatewayTab = withPermission(
                           </span>
                           &quot; to confirm.
                         </span>
-                      </FieldLabel>
+                      </AlertDialogConfirmationLabel>
                       <Input
                         id="delete-gateway-confirmation"
                         value={deleteConfirmation}

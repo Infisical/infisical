@@ -4,6 +4,7 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 import { cn } from "../../utils";
 import { Button } from "../Button";
 import { DIALOG_CONTENT_WIDTH_CLASSNAME } from "../Dialog";
+import { FieldLabel } from "../Field";
 
 function AlertDialog({ ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />;
@@ -136,6 +137,20 @@ function AlertDialogConfirmationField({ className, ...props }: React.ComponentPr
   );
 }
 
+function AlertDialogConfirmationLabel({
+  className,
+  ...props
+}: React.ComponentProps<typeof FieldLabel>) {
+  return (
+    <FieldLabel
+      data-slot="alert-dialog-confirmation-label"
+      size="sm"
+      className={cn("gap-0", className)}
+      {...props}
+    />
+  );
+}
+
 function AlertDialogAction({
   className,
   variant = "outline",
@@ -193,6 +208,7 @@ export {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,

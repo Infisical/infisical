@@ -17,6 +17,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -31,7 +32,6 @@ import {
   EmptyMedia,
   EmptyTitle,
   Field,
-  FieldLabel,
   IconButton,
   Input,
   Skeleton,
@@ -246,7 +246,7 @@ export const GatewayPoolsContent = ({ search }: Props) => {
           </AlertDialogHeader>
           <AlertDialogConfirmationField>
             <Field>
-              <FieldLabel htmlFor="delete-pool-confirmation" size="sm">
+              <AlertDialogConfirmationLabel htmlFor="delete-pool-confirmation">
                 <span>
                   Type &quot;
                   <span className="text-foreground">
@@ -254,7 +254,7 @@ export const GatewayPoolsContent = ({ search }: Props) => {
                   </span>
                   &quot; to confirm.
                 </span>
-              </FieldLabel>
+              </AlertDialogConfirmationLabel>
               <Input
                 id="delete-pool-confirmation"
                 value={deleteConfirmation}

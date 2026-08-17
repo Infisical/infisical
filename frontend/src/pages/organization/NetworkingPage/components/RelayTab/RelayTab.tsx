@@ -20,6 +20,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -43,7 +44,6 @@ import {
   EmptyMedia,
   EmptyTitle,
   Field,
-  FieldLabel,
   IconButton,
   Input,
   InputGroup,
@@ -318,7 +318,7 @@ export const RelayTab = withPermission(
               </AlertDialogHeader>
               <AlertDialogConfirmationField>
                 <Field>
-                  <FieldLabel htmlFor="delete-relay-confirmation" size="sm">
+                  <AlertDialogConfirmationLabel htmlFor="delete-relay-confirmation">
                     <span>
                       Type &quot;
                       <span className="text-foreground">
@@ -326,7 +326,7 @@ export const RelayTab = withPermission(
                       </span>
                       &quot; to confirm.
                     </span>
-                  </FieldLabel>
+                  </AlertDialogConfirmationLabel>
                   <Input
                     id="delete-relay-confirmation"
                     value={deleteConfirmation}

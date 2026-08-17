@@ -11,6 +11,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -25,7 +26,6 @@ import {
   CardTitle,
   DocumentationLinkBadge,
   Field,
-  FieldLabel,
   Input
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
@@ -127,10 +127,10 @@ export const ServiceTokenSection = withProjectPermission(
             </AlertDialogHeader>
             <AlertDialogConfirmationField>
               <Field>
-                <FieldLabel htmlFor="delete-service-token-confirmation" className="gap-0 text-sm">
+                <AlertDialogConfirmationLabel htmlFor="delete-service-token-confirmation">
                   Type &quot;<span className="text-foreground">{deleteConfirmationText}</span>&quot;
                   to confirm.
-                </FieldLabel>
+                </AlertDialogConfirmationLabel>
                 <Input
                   id="delete-service-token-confirmation"
                   value={deleteConfirmation}

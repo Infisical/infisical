@@ -12,6 +12,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -23,7 +24,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Field,
-  FieldLabel,
   Input
 } from "@app/components/v3";
 import {
@@ -164,12 +164,12 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
           </AlertDialogHeader>
           <AlertDialogConfirmationField>
             <Field>
-              <FieldLabel htmlFor="delete-gateway-confirmation" size="sm">
+              <AlertDialogConfirmationLabel htmlFor="delete-gateway-confirmation">
                 <span>
                   Type &quot;<span className="text-foreground">{gateway.name}</span>&quot; to
                   confirm.
                 </span>
-              </FieldLabel>
+              </AlertDialogConfirmationLabel>
               <Input
                 id="delete-gateway-confirmation"
                 value={deleteConfirmation}

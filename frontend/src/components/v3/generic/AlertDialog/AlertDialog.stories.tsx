@@ -3,12 +3,14 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { LogOutIcon, TrashIcon } from "lucide-react";
 
 import { Button } from "../Button";
+import { Field } from "../Field";
 import { Input } from "../Input";
-import { Label } from "../Label";
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -211,18 +213,22 @@ const TypedConfirmationStory = () => {
             history. This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="alert-dialog-confirmation">Type &quot;delete&quot; to confirm</Label>
-          <Input
-            id="alert-dialog-confirmation"
-            value={confirmation}
-            onChange={(e) => setConfirmation(e.target.value)}
-            autoComplete="off"
-          />
-        </div>
+        <AlertDialogConfirmationField>
+          <Field>
+            <AlertDialogConfirmationLabel htmlFor="alert-dialog-confirmation">
+              Type &quot;delete&quot; to confirm
+            </AlertDialogConfirmationLabel>
+            <Input
+              id="alert-dialog-confirmation"
+              value={confirmation}
+              onChange={(e) => setConfirmation(e.target.value)}
+              autoComplete="off"
+            />
+          </Field>
+        </AlertDialogConfirmationField>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="danger" disabled={!isConfirmed}>
+          <AlertDialogAction variant="danger" isDisabled={!isConfirmed}>
             Delete project
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -237,7 +243,7 @@ export const TypedConfirmation: Story = {
     docs: {
       description: {
         story:
-          "Add an `Input` between the header and footer that requires the user to type a keyword before the destructive action is enabled. Use this pattern for tier-two destructive actions (delete account, delete project) where an extra deliberate step reduces accidental loss. The input clears whenever the dialog closes."
+          "Compose `AlertDialogConfirmationField`, `Field`, and `AlertDialogConfirmationLabel` with an `Input` that requires a keyword before the destructive action is enabled. Use this pattern for tier-two destructive actions where an extra deliberate step reduces accidental loss."
       }
     }
   },
