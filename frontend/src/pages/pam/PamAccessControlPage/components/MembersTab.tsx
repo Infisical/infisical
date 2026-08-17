@@ -1,13 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearch } from "@tanstack/react-router";
-import {
-  MailIcon,
-  MoreHorizontalIcon,
-  PencilIcon,
-  Plus,
-  SearchIcon,
-  Trash2Icon
-} from "lucide-react";
+import { MoreHorizontalIcon, PencilIcon, Plus, SearchIcon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -37,10 +30,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TableRow
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject, useUser } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
@@ -49,6 +39,7 @@ import { useRemovePamProductUserMember } from "@app/hooks/api/pam";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
+import { PendingInvitationBadge } from "../../components/PendingInvitationBadge";
 import { InviteMemberModal } from "./InviteMemberModal";
 import { MemberRoleModal } from "./MemberRoleModal";
 
@@ -180,19 +171,7 @@ export const MembersTab = () => {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-x-1.5">
                         <HighlightText text={getDisplayName(member) ?? ""} highlight={search} />
-                        {member.user.isOrgMembershipPending && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge variant="info">
-                                <MailIcon />
-                                Pending Invitation
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              Access begins once they accept their organization invitation.
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
+                        <PendingInvitationBadge isPending={member.user.isOrgMembershipPending} />
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">
