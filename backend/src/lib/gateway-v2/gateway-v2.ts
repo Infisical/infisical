@@ -154,6 +154,8 @@ export const setupRelayServer = async ({
   httpsAgent,
   longLived
 }: {
+  // Consumed by the load tracker; accepted here so callers thread it through from the start.
+  gatewayId: string;
   protocol: GatewayProxyProtocol;
   relayHost: string;
   gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
@@ -279,9 +281,10 @@ export const withGatewayV2Proxy = async <T>(
     longLived?: boolean;
   } & TGatewayV2ConnectionDetails
 ): Promise<T> => {
-  const { protocol, relayHost, gateway, relay, httpsAgent, longLived } = options;
+  const { gatewayId, protocol, relayHost, gateway, relay, httpsAgent, longLived } = options;
 
   const { port, cleanup, getRelayError } = await setupRelayServer({
+    gatewayId,
     protocol,
     relayHost,
     gateway,

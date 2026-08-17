@@ -535,9 +535,7 @@ export const pamWebAccessServiceFactory = ({
 
       relayServer = await setupRelayServer({
         protocol: isRdp ? GatewayProxyProtocol.PamRdpBrowser : GatewayProxyProtocol.Pam,
-        relayHost: certs.relayHost,
-        relay: certs.relay,
-        gateway: certs.gateway,
+        ...certs,
         longLived: true
       });
 

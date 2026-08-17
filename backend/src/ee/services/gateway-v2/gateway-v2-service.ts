@@ -464,6 +464,7 @@ export const gatewayV2ServiceFactory = ({
     });
 
     return {
+      gatewayId,
       relayHost: relayCredentials.relayHost,
       gateway: {
         clientCertificate: clientCert.toString("pem"),
@@ -627,6 +628,7 @@ export const gatewayV2ServiceFactory = ({
     });
 
     return {
+      gatewayId,
       relayHost: relayCredentials.relayHost,
       gateway: {
         clientCertificate: clientCert.toString("pem"),
@@ -891,9 +893,7 @@ export const gatewayV2ServiceFactory = ({
         },
         {
           protocol: GatewayProxyProtocol.Health,
-          relayHost: gatewayV2ConnectionDetails.relayHost,
-          gateway: gatewayV2ConnectionDetails.gateway,
-          relay: gatewayV2ConnectionDetails.relay
+          ...gatewayV2ConnectionDetails
         }
       );
     } catch (err) {
