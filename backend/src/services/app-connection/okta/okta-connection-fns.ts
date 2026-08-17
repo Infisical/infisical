@@ -1,6 +1,6 @@
 import { UnauthorizedError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { logger } from "@app/lib/logger";
+import { logger, sanitizeUrlForLog } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -89,7 +89,7 @@ export const listOktaApps = async (appConnection: TOktaConnection) => {
 
   if (url) {
     logger.warn(
-      `listOktaApps: page cap reached, returning a partial list [instanceUrl=${instanceUrl}] [pagesRead=${OKTA_APPS_MAX_PAGES}]`
+      `listOktaApps: page cap reached, returning a partial list [instanceUrl=${sanitizeUrlForLog(instanceUrl)}] [pagesRead=${OKTA_APPS_MAX_PAGES}]`
     );
   }
 

@@ -20,7 +20,9 @@ vi.mock("@app/lib/config/request", () => ({
   request: { get: (...args: unknown[]) => (requestGetMock as any)(...args) }
 }));
 vi.mock("@app/lib/logger", () => ({
-  logger: { error: vi.fn(), info: vi.fn(), debug: vi.fn(), warn: (...args: unknown[]) => (warnMock as any)(...args) }
+  logger: { error: vi.fn(), info: vi.fn(), debug: vi.fn(), warn: (...args: unknown[]) => (warnMock as any)(...args) },
+  // Stands in for the real redaction so the test can assert the warning goes through it at all.
+  sanitizeUrlForLog: (url: string) => `sanitized(${url})`
 }));
 
 // eslint-disable-next-line import/first
@@ -157,5 +159,8 @@ describe("listOktaApps", () => {
     expect(safeRequestGetMock).toHaveBeenCalledTimes(100);
     expect(apps).toHaveLength(100);
     expect(warnMock).toHaveBeenCalledWith(expect.stringContaining("page cap reached"));
+    // The instance URL is user-supplied and can carry userinfo or a query string, so it must be
+    // redacted rather than interpolated raw into a log line.
+    expect(warnMock).toHaveBeenCalledWith(expect.stringContaining(`sanitized(${INSTANCE_URL})`));
   });
 });
