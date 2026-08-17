@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearch } from "@tanstack/react-router";
-import { MoreHorizontalIcon, PencilIcon, Plus, SearchIcon, Trash2Icon } from "lucide-react";
+import {
+  MailIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  Plus,
+  SearchIcon,
+  Trash2Icon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -30,7 +37,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject, useUser } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
@@ -168,7 +178,22 @@ export const MembersTab = () => {
                 return (
                   <TableRow key={member.id}>
                     <TableCell className="font-medium">
-                      <HighlightText text={getDisplayName(member) ?? ""} highlight={search} />
+                      <div className="flex items-center gap-x-1.5">
+                        <HighlightText text={getDisplayName(member) ?? ""} highlight={search} />
+                        {member.user.isOrgMembershipPending && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="info">
+                                <MailIcon />
+                                Pending Invitation
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Access begins once they accept their organization invitation.
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-sm">
                       <HighlightText
