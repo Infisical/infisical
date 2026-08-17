@@ -19,6 +19,9 @@ type TPermissionConditionShape = {
 };
 
 const getPermissionSetID = (action: string, subject: string) => `${action}:${subject}`;
+
+const IGNORED_PERMISSIONS = new Set([getPermissionSetID("read", "secret-folders")]);
+
 const invertTheOperation = (shouldInvert: boolean, operation: boolean) => (shouldInvert ? !operation : operation);
 const formatConditionOperator = (condition: TPermissionConditionShape | string) => {
   return (
@@ -281,9 +284,11 @@ export const validatePermissionBoundary = (parentSetPermissions: MongoAbility, s
       });
     }
 
-    // if action is already processed ignore
+    // if action is already processed or is explicitly ignored, ignore
     subsetPermissionActions = subsetPermissionActions.filter(
-      (el) => !checkedPermissionRules.has(getPermissionSetID(el, subsetPermissionSubject))
+      (el) =>
+        !checkedPermissionRules.has(getPermissionSetID(el, subsetPermissionSubject)) &&
+        !IGNORED_PERMISSIONS.has(getPermissionSetID(el, subsetPermissionSubject))
     );
 
     if (!subsetPermissionActions.length) return;
