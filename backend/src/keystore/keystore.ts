@@ -82,6 +82,9 @@ export const KeyStorePrefixes = {
   ProxiedServiceUsageDebounce: (serviceId: string) => `proxied-service-usage-debounce:${serviceId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
+  GatewayLoad: (gatewayId: string) => `gateway-load:${gatewayId}` as const,
+  GatewayLoadReservation: (gatewayId: string) => `gateway-reservation:${gatewayId}` as const,
+  GatewaySuspect: (gatewayId: string) => `gateway-suspect:${gatewayId}` as const,
   ActiveSSEConnectionsSet: (projectId: string, identityId: string) =>
     `sse-connections:${projectId}:${identityId}` as const,
   ActiveSSEConnections: (projectId: string, identityId: string, connectionId: string) =>
@@ -259,6 +262,7 @@ export type TKeyStoreFactory = {
   getItem: (key: string, prefix?: string) => Promise<string | null>;
   getItemPrimary: (key: string, prefix?: string) => Promise<string | null>;
   getItems: (keys: string[], prefix?: string) => Promise<(string | null)[]>;
+  getItemsPrimary: (keys: string[], prefix?: string) => Promise<(string | null)[]>;
   setExpiry: (key: string, expiryInSeconds: number) => Promise<number>;
   ttl: (key: string) => Promise<number>;
   setItemWithExpiry: (
@@ -306,6 +310,8 @@ export type TKeyStoreFactory = {
   // hash operations
   hashSet: (key: string, field: string, value: string) => Promise<number>;
   hashGet: (key: string, field: string) => Promise<string | null>;
+  hashGetAll: (key: string) => Promise<Record<string, string>>;
+  hashDelete: (key: string, field: string) => Promise<number>;
   // pg
   pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
   pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
@@ -359,6 +365,9 @@ export const keyStoreFactory = (
     pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).get(prefix ? `${prefix}:${key}` : key);
 
   const getItemPrimary = async (key: string, prefix?: string) => primaryRedis.get(prefix ? `${prefix}:${key}` : key);
+
+  const getItemsPrimary = async (keys: string[], prefix?: string) =>
+    primaryRedis.mget(keys.map((key) => (prefix ? `${prefix}:${key}` : key)));
 
   const getItems = async (keys: string[], prefix?: string) =>
     pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).mget(
@@ -532,6 +541,10 @@ export const keyStoreFactory = (
 
   const hashGet = async (key: string, field: string) => primaryRedis.hget(key, field);
 
+  const hashGetAll = async (key: string) => primaryRedis.hgetall(key);
+
+  const hashDelete = async (key: string, field: string) => primaryRedis.hdel(key, field);
+
   // List operations
   const listPush = async (key: string, value: string) => primaryRedis.rpush(key, value);
 
@@ -654,10 +667,13 @@ export const keyStoreFactory = (
     getKeysByPattern,
     deleteItemsByKeyIn,
     getItems,
+    getItemsPrimary,
     pgGetIntItem,
     pgIncrementBy,
     hashSet,
     hashGet,
+    hashGetAll,
+    hashDelete,
     listPush,
     listRange,
     listRemove,

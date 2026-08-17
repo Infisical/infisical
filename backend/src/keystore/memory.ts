@@ -20,7 +20,7 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
     },
     setExpiry: async () => 0,
     ttl: async () => -1,
-    setItemWithExpiry: async (key, value) => {
+    setItemWithExpiry: async (key, _expiryInSeconds, value) => {
       store[key] = value;
       return "OK";
     },
@@ -83,6 +83,14 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
     hashGet: async (key, field) => {
       return hashStore[key]?.[field] ?? null;
     },
+    hashGetAll: async (key) => {
+      return { ...(hashStore[key] ?? {}) };
+    },
+    hashDelete: async (key, field) => {
+      if (!hashStore[key]?.[field]) return 0;
+      delete hashStore[key][field];
+      return 1;
+    },
     pgIncrementBy: async () => {
       return 1;
     },
@@ -95,8 +103,15 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
     incrementByAndRefreshExpiryIfUnderLimit: async () => {
       return 1;
     },
-    decrementByOrDelete: async () => {
-      return 0;
+    decrementByOrDelete: async (key) => {
+      const current = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;
+      const next = current - 1;
+      if (next <= 0) {
+        delete store[key];
+        return 0;
+      }
+      store[key] = String(next);
+      return next;
     },
     incrementByWithExpiry: async (key, value) => {
       const current = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;
@@ -131,6 +146,12 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
         delete store[key];
       }
       return keys.length;
+    },
+    getItemsPrimary: async (keys) => {
+      return keys.map((key) => {
+        const value = store[key];
+        return typeof value === "string" ? value : null;
+      });
     },
     getItems: async (keys) => {
       const values = keys.map((key) => {

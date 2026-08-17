@@ -2,7 +2,9 @@ import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, GatewayTransportError, NotFoundError } from "@app/lib/errors";
+import { runGatewayAttempt } from "@app/lib/gateway-v2/gateway-attempt-context";
+import { getGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -10,22 +12,23 @@ import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubern
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
-import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
-import { TGatewayV2ConnectionDetails } from "../gateway-v2/gateway-v2-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionGatewayPoolActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
 import { TGatewayPoolDALFactory } from "./gateway-pool-dal";
 import { TGatewayPoolMembershipDALFactory } from "./gateway-pool-membership-dal";
+import { chooseLeastLoadedGateway, pickRandomGateway } from "./gateway-pool-selection-fns";
 import {
+  DEFAULT_POOL_FAILOVER_ATTEMPTS,
   TAddGatewayToPoolDTO,
   TCreateGatewayPoolDTO,
   TDeleteGatewayPoolDTO,
   TGetGatewayPoolByIdDTO,
-  TGetPlatformConnectionDetailsByPoolIdDTO,
   TListGatewayPoolsDTO,
   TRemoveGatewayFromPoolDTO,
+  TRunWithPoolFailoverDTO,
+  TSelectGatewayFromPoolDTO,
   TUpdateGatewayPoolDTO
 } from "./gateway-pool-types";
 
@@ -33,7 +36,6 @@ type TGatewayPoolServiceFactoryDep = {
   gatewayPoolDAL: TGatewayPoolDALFactory;
   gatewayPoolMembershipDAL: TGatewayPoolMembershipDALFactory;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
@@ -48,7 +50,6 @@ export const gatewayPoolServiceFactory = ({
   gatewayPoolDAL,
   gatewayPoolMembershipDAL,
   gatewayV2DAL,
-  gatewayV2Service,
   permissionService,
   licenseService,
   identityKubernetesAuthDAL,
@@ -257,14 +258,44 @@ export const gatewayPoolServiceFactory = ({
     return { membership: deleted, poolName: pool.name, gatewayName: gateway.name };
   };
 
-  const pickRandomHealthyGateway = async (poolId: string) => {
+  const selectGatewayFromPool = async ({ poolId, exclude, filter, unavailableMessage }: TSelectGatewayFromPoolDTO) => {
     const healthyGateways = await gatewayPoolMembershipDAL.findHealthyGatewaysByPoolId(poolId);
-    if (healthyGateways.length === 0) {
+
+    const eligible = healthyGateways
+      .filter((gateway) => !exclude?.has(gateway.id))
+      .filter((gateway) => (filter ? filter(gateway) : true));
+
+    if (eligible.length === 0) {
       throw new BadRequestError({
-        message: "Gateway pool has no healthy gateways."
+        message: unavailableMessage ?? "Gateway pool has no healthy gateways."
       });
     }
-    const selected = healthyGateways[Math.floor(Math.random() * healthyGateways.length)];
+
+    const loadTracker = getGatewayLoadTracker();
+    let selected: (typeof eligible)[number] | undefined;
+
+    if (loadTracker) {
+      try {
+        const ids = eligible.map((gateway) => gateway.id);
+        const suspect = await loadTracker.getSuspect(ids);
+        // A pool where every member recently failed is still worth attempting: refusing to route is a
+        // guaranteed outage, whereas the suspect marks may simply have aged badly.
+        const candidates = eligible.filter((gateway) => !suspect.has(gateway.id));
+        const pool = candidates.length > 0 ? candidates : eligible;
+
+        const scores = await loadTracker.getScores(pool.map((gateway) => gateway.id));
+        selected = chooseLeastLoadedGateway(pool, scores);
+      } catch (err) {
+        logger.warn({ err, poolId }, `Gateway load lookup failed, falling back to random selection [poolId=${poolId}]`);
+      }
+    }
+
+    if (!selected) selected = pickRandomGateway(eligible);
+    if (!selected)
+      throw new BadRequestError({ message: unavailableMessage ?? "Gateway pool has no healthy gateways." });
+
+    await loadTracker?.reserve(selected.id);
+
     logger.info(
       { poolId, selectedGatewayId: selected.id },
       `Pool gateway selection: picked gateway [gatewayId=${selected.id}] from pool [poolId=${poolId}]`
@@ -272,27 +303,73 @@ export const gatewayPoolServiceFactory = ({
     return selected;
   };
 
-  const listHealthyGateways = async (poolId: string) => {
-    return gatewayPoolMembershipDAL.findHealthyGatewaysByPoolId(poolId);
-  };
+  const pickHealthyGateway = async (poolId: string) => selectGatewayFromPool({ poolId });
 
-  const getPlatformConnectionDetailsByPoolId = async ({
-    poolId,
-    targetHost,
-    targetPort
-  }: TGetPlatformConnectionDetailsByPoolIdDTO): Promise<TGatewayV2ConnectionDetails | undefined> => {
-    const pool = await gatewayPoolDAL.findById(poolId);
-    if (!pool) {
-      throw new NotFoundError({ message: `Gateway pool with ID ${poolId} not found` });
+  /**
+   * Runs an operation against a pool, retrying on another member when the tunnel could not be
+   * established. Only GatewayTransportError retries, because it is the one failure that guarantees
+   * nothing reached the target.
+   */
+  const runWithPoolFailover = async <T>(
+    {
+      poolId,
+      gatewayId,
+      filter,
+      maxAttempts = DEFAULT_POOL_FAILOVER_ATTEMPTS,
+      unavailableMessage
+    }: TRunWithPoolFailoverDTO,
+    operation: (gatewayId: string) => Promise<T>
+  ): Promise<{ result: T; gatewayId: string }> => {
+    if (gatewayId || !poolId) {
+      if (!gatewayId) {
+        throw new BadRequestError({ message: unavailableMessage ?? "No gateway or gateway pool is configured." });
+      }
+      return { result: await operation(gatewayId), gatewayId };
     }
 
-    const selectedGateway = await pickRandomHealthyGateway(poolId);
+    const tried = new Set<string>();
+    let lastError: unknown;
 
-    return gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-      gatewayId: selectedGateway.id,
-      targetHost,
-      targetPort
-    });
+    // Sequential by design: each attempt has to know which member just failed.
+    /* eslint-disable no-await-in-loop */
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      let selected: Awaited<ReturnType<typeof selectGatewayFromPool>>;
+      try {
+        selected = await selectGatewayFromPool({ poolId, exclude: tried, filter, unavailableMessage });
+      } catch (err) {
+        // Running out of untried members is only interesting on the first attempt. After that the
+        // transport failure that got us here is the useful error, not "pool has no healthy gateways".
+        if (!lastError) throw err;
+        break;
+      }
+      tried.add(selected.id);
+
+      const gatewayAttempt = { transportFailed: false };
+      try {
+        return {
+          result: await runGatewayAttempt(gatewayAttempt, () => operation(selected.id)),
+          gatewayId: selected.id
+        };
+      } catch (err) {
+        // Providers rewrap gateway errors in their own BadRequestError, so the async-local flag is
+        // the only reliable signal that nothing reached the target.
+        if (!gatewayAttempt.transportFailed && !(err instanceof GatewayTransportError)) throw err;
+        lastError = err;
+        logger.warn(
+          { err, poolId, gatewayId: selected.id, attempt },
+          `Gateway unreachable, retrying on another pool member [poolId=${poolId}] [gatewayId=${selected.id}]`
+        );
+      }
+    }
+    /* eslint-enable no-await-in-loop */
+
+    throw lastError instanceof Error
+      ? lastError
+      : new BadRequestError({ message: "Failed to reach any gateway in the pool." });
+  };
+
+  const listHealthyGateways = async (poolId: string) => {
+    return gatewayPoolMembershipDAL.findHealthyGatewaysByPoolId(poolId);
   };
 
   // Enforce license + RBAC + pool-belongs-to-org before a consumer attaches a pool. Does NOT require a healthy member.
@@ -336,7 +413,7 @@ export const gatewayPoolServiceFactory = ({
   }): Promise<string | null> => {
     if (gatewayId) return gatewayId;
     if (gatewayPoolId) {
-      const picked = await pickRandomHealthyGateway(gatewayPoolId);
+      const picked = await pickHealthyGateway(gatewayPoolId);
       return picked.id;
     }
     return null;
@@ -386,9 +463,11 @@ export const gatewayPoolServiceFactory = ({
     deleteGatewayPool,
     addGatewayToPool,
     removeGatewayFromPool,
-    pickRandomHealthyGateway,
+    pickHealthyGateway,
+    selectGatewayFromPool,
+    runWithPoolFailover,
     listHealthyGateways,
-    getPlatformConnectionDetailsByPoolId,
+
     getConnectedResources,
     getConnectedResourcesCount,
     resolveAttachableGatewayFromPool,

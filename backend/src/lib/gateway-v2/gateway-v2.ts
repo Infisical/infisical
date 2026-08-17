@@ -9,15 +9,18 @@ import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway
 import { splitPemChain } from "@app/services/certificate/certificate-fns";
 
 import { getConfig } from "../config/env";
-import { BadRequestError } from "../errors";
+import { BadRequestError, GatewayTransportError } from "../errors";
 import { GatewayProxyProtocol } from "../gateway/types";
 import { logger } from "../logger";
+import { markAttemptTransportFailure } from "./gateway-attempt-context";
+import { getGatewayLoadTracker } from "./gateway-load-tracker";
 
 interface IGatewayRelayServer {
   server: net.Server;
   port: number;
   cleanup: () => Promise<void>;
   getRelayError: () => string;
+  hasEstablishedChannel: () => boolean;
 }
 
 const DEFAULT_RELAY_CONNECTION_TIMEOUT_MS = 100000;
@@ -147,6 +150,7 @@ export const createGatewayConnection = async (
 };
 
 export const setupRelayServer = async ({
+  gatewayId,
   protocol,
   relayHost,
   gateway,
@@ -154,7 +158,6 @@ export const setupRelayServer = async ({
   httpsAgent,
   longLived
 }: {
-  // Consumed by the load tracker; accepted here so callers thread it through from the start.
   gatewayId: string;
   protocol: GatewayProxyProtocol;
   relayHost: string;
@@ -164,6 +167,8 @@ export const setupRelayServer = async ({
   longLived?: boolean;
 }): Promise<IGatewayRelayServer> => {
   const relayErrorMsg: string[] = [];
+  let establishedChannel = false;
+  const loadTracker = getGatewayLoadTracker();
 
   return new Promise((resolve, reject) => {
     const server = net.createServer();
@@ -184,6 +189,17 @@ export const setupRelayServer = async ({
 
           // Stage 2: Establish mTLS connection to gateway through the relay
           const gatewayConn = await createGatewayConnection(relayConn, gateway, protocol);
+
+          // The caller may have given up while the two handshakes were in flight. Its "close" event
+          // has already fired by now, so attaching the teardown listeners below would never run and
+          // the channel would stay counted for the life of the pod.
+          if (clientConn.destroyed) {
+            relayConn.destroy();
+            gatewayConn.destroy();
+            return;
+          }
+
+          establishedChannel = true;
 
           if (longLived) {
             // Disable the 30s idle-activity timeout that was set during connection establishment.
@@ -218,7 +234,19 @@ export const setupRelayServer = async ({
             }
           }
 
+          // Counted here rather than around the caller's operation: one operation can open many
+          // channels (a pooled SQL client, an HTTP client without keepalive, a discovery sweep), and
+          // it is the channel that costs the gateway a goroutine.
+          loadTracker?.channelOpened(gatewayId);
+          let released = false;
+          const releaseChannel = () => {
+            if (released) return;
+            released = true;
+            loadTracker?.channelClosed(gatewayId);
+          };
+
           const destroyAll = () => {
+            releaseChannel();
             clientConn.destroy();
             relayConn.destroy();
             gatewayConn.destroy();
@@ -266,7 +294,8 @@ export const setupRelayServer = async ({
             logger.debug("Error closing server:", err instanceof Error ? err.message : String(err));
           }
         },
-        getRelayError: () => relayErrorMsg.join(",")
+        getRelayError: () => relayErrorMsg.join(","),
+        hasEstablishedChannel: () => establishedChannel
       });
     });
   });
@@ -283,7 +312,7 @@ export const withGatewayV2Proxy = async <T>(
 ): Promise<T> => {
   const { gatewayId, protocol, relayHost, gateway, relay, httpsAgent, longLived } = options;
 
-  const { port, cleanup, getRelayError } = await setupRelayServer({
+  const { port, cleanup, getRelayError, hasEstablishedChannel } = await setupRelayServer({
     gatewayId,
     protocol,
     relayHost,
@@ -305,6 +334,15 @@ export const withGatewayV2Proxy = async <T>(
     let errorMessage = relayErrorMessage || (err instanceof Error ? err.message : String(err));
     if (isAxiosError(err) && (err.response?.data as { message?: string })?.message) {
       errorMessage = (err.response?.data as { message: string }).message;
+    }
+
+    // Retryable only when no tunnel ever came up, so the target cannot have seen anything. The relay
+    // error list is shared by every channel this proxy served and is never cleared, so a single
+    // transient setup failure would otherwise keep marking later target-side errors as retryable.
+    if (relayErrorMessage && !hasEstablishedChannel()) {
+      markAttemptTransportFailure();
+      await getGatewayLoadTracker()?.markSuspect(gatewayId);
+      throw new GatewayTransportError({ message: errorMessage, gatewayId });
     }
 
     throw new BadRequestError({ message: errorMessage });

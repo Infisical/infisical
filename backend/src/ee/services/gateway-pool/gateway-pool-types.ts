@@ -1,4 +1,9 @@
+import { TGatewaysV2 } from "@app/db/schemas";
 import { OrgServiceActor } from "@app/lib/types";
+
+// One retry past the first attempt. Higher multiplies load onto whichever members are still up,
+// which is the flood this is meant to avoid.
+export const DEFAULT_POOL_FAILOVER_ATTEMPTS = 2;
 
 export type TCreateGatewayPoolDTO = {
   name: string;
@@ -29,8 +34,19 @@ export type TRemoveGatewayFromPoolDTO = {
   gatewayId: string;
 } & OrgServiceActor;
 
-export type TGetPlatformConnectionDetailsByPoolIdDTO = {
+export type TGatewayPoolMemberFilter = (gateway: TGatewaysV2) => boolean;
+
+export type TSelectGatewayFromPoolDTO = {
   poolId: string;
-  targetHost: string;
-  targetPort: number;
+  exclude?: Set<string>;
+  filter?: TGatewayPoolMemberFilter;
+  unavailableMessage?: string;
+};
+
+export type TRunWithPoolFailoverDTO = {
+  poolId?: string | null;
+  gatewayId?: string | null;
+  filter?: TGatewayPoolMemberFilter;
+  maxAttempts?: number;
+  unavailableMessage?: string;
 };

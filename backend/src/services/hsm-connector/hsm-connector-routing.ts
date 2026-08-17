@@ -15,6 +15,8 @@ import {
 const PKCS11_POOL_RETRY_LIMIT = 2;
 const TEST_FANOUT_MAX = 10;
 const PKCS11_TARGET_HOST = "pkcs11";
+const NO_CAPABLE_MEMBER_MESSAGE =
+  "No HSM-capable gateway available in the pool. Ensure at least one gateway in the pool has HSM support enabled.";
 
 type TGatewayRouting = {
   gatewayId: string | null | undefined;
@@ -23,7 +25,7 @@ type TGatewayRouting = {
 
 type THsmConnectorRoutingDeps = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "listHealthyGateways">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "listHealthyGateways" | "selectGatewayFromPool">;
 };
 
 const isPkcs11Capable = (capabilities: unknown): boolean => {
@@ -45,15 +47,16 @@ export const hsmConnectorRoutingFactory = ({ gatewayV2Service, gatewayPoolServic
     if (!connector.gatewayPoolId) {
       throw new BadRequestError({ message: "Connector has neither gatewayId nor gatewayPoolId set." });
     }
-    const healthy = await gatewayPoolService.listHealthyGateways(connector.gatewayPoolId);
-    const capable = healthy.filter((g) => isPkcs11Capable(g.capabilities) && !triedGatewayIds.has(g.id));
-    if (capable.length === 0) {
-      throw new BadRequestError({
-        message:
-          "No HSM-capable gateway available in the pool. Ensure at least one gateway in the pool has HSM support enabled."
-      });
-    }
-    return capable[Math.floor(Math.random() * capable.length)].id;
+
+    // Key material is not portable between HSMs, so a member without the module attached is not an
+    // acceptable substitute no matter how idle it is.
+    const selected = await gatewayPoolService.selectGatewayFromPool({
+      poolId: connector.gatewayPoolId,
+      exclude: triedGatewayIds,
+      filter: (gateway) => isPkcs11Capable(gateway.capabilities),
+      unavailableMessage: NO_CAPABLE_MEMBER_MESSAGE
+    });
+    return selected.id;
   };
 
   const dispatchPkcs11 = async <T>(args: {
@@ -70,7 +73,15 @@ export const hsmConnectorRoutingFactory = ({ gatewayV2Service, gatewayPoolServic
     // retryable, etc.). Parallelising would fire redundant PKCS#11 calls.
     /* eslint-disable no-await-in-loop */
     for (let attempt = 0; attempt <= PKCS11_POOL_RETRY_LIMIT; attempt += 1) {
-      const gatewayId = await pickGateway(args.connector, triedGatewayIds);
+      let gatewayId;
+      try {
+        gatewayId = await pickGateway(args.connector, triedGatewayIds);
+      } catch (err) {
+        // Once every capable member has been tried, the accumulated PKCS#11 failure is the useful
+        // error. Reporting "no HSM-capable gateway" instead points operators at the wrong problem.
+        if (!lastError) throw err;
+        break;
+      }
       triedGatewayIds.add(gatewayId);
 
       const conn = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
@@ -186,10 +197,7 @@ export const hsmConnectorRoutingFactory = ({ gatewayV2Service, gatewayPoolServic
         if (isPkcs11Capable(g.capabilities)) targets.push(g.id);
       }
       if (targets.length === 0) {
-        throw new BadRequestError({
-          message:
-            "No HSM-capable gateway available in the pool. Ensure at least one gateway in the pool has HSM support enabled."
-        });
+        throw new BadRequestError({ message: NO_CAPABLE_MEMBER_MESSAGE });
       }
     }
 

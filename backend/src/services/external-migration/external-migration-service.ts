@@ -78,7 +78,7 @@ type TExternalMigrationServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
-    "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool" | "pickRandomHealthyGateway"
+    "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool" | "pickHealthyGateway"
   >;
 };
 
@@ -250,7 +250,7 @@ export const externalMigrationServiceFactory = ({
         orgId: actorOrgId,
         actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
       });
-      const picked = await gatewayPoolService.pickRandomHealthyGateway(gatewayPoolId);
+      const picked = await gatewayPoolService.pickHealthyGateway(gatewayPoolId);
       effectiveGatewayId = picked.id;
     }
 

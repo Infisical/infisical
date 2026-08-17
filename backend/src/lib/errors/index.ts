@@ -118,6 +118,20 @@ export class BadRequestError extends Error {
   }
 }
 
+/**
+ * The tunnel to the gateway could never be established, so nothing reached the target and the
+ * operation is safe to retry against a different pool member. Any failure raised once the tunnel is
+ * up must NOT use this class: the target may have already applied a partial change.
+ */
+export class GatewayTransportError extends BadRequestError {
+  gatewayId?: string;
+
+  constructor({ message, gatewayId }: { message?: string; gatewayId?: string }) {
+    super({ message: message ?? "Failed to reach the gateway", name: "GatewayTransportError" });
+    this.gatewayId = gatewayId;
+  }
+}
+
 export class RateLimitError extends Error {
   constructor({ message }: { message?: string }) {
     super(message || "Rate limit exceeded");
