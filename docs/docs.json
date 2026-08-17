@@ -15,8 +15,12 @@
     "light": "#dbf530",
     "dark": "#A1B659"
   },
+  "appearance": {
+    "default": "light"
+  },
   "styling": {
-    "codeblocks": "dark"
+    "codeblocks": "dark",
+    "eyebrows": "breadcrumbs"
   },
   "favicon": "/favicon.ico",
   "contextual": {
@@ -25,7 +29,7 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Get Started",
+        "tab": "Get started",
         "groups": [
           {
             "group": "Getting Started",
@@ -865,33 +869,33 @@
                     "root": "https://docs.agent-vault.dev/"
                   }
                 ]
-              },
+              }
+        ]
+      },
+      {
+        "tab": "Secrets Scanning",
+        "groups": [
+          {
+            "group": "Secrets Scanning",
+            "pages": [
+              "documentation/platform/secret-scanning/overview",
               {
-                "group": "Scan secrets",
+                "group": "Concepts",
                 "pages": [
-                  {
-                    "group": "Secrets Scanning",
-                    "pages": [
-                      "documentation/platform/secret-scanning/overview",
-                      {
-                        "group": "Concepts",
-                        "pages": [
-                          "documentation/platform/secret-scanning/concepts/secret-scanning"
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "group": "Product Reference",
-                    "pages": [
-                      "documentation/platform/secret-scanning/usage",
-                      "documentation/platform/secret-scanning/bitbucket",
-                      "documentation/platform/secret-scanning/github",
-                      "documentation/platform/secret-scanning/gitlab"
-                    ]
-                  }
+                  "documentation/platform/secret-scanning/concepts/secret-scanning"
                 ]
               }
+            ]
+          },
+          {
+            "group": "Product Reference",
+            "pages": [
+              "documentation/platform/secret-scanning/usage",
+              "documentation/platform/secret-scanning/bitbucket",
+              "documentation/platform/secret-scanning/github",
+              "documentation/platform/secret-scanning/gitlab"
+            ]
+          }
         ]
       },
       {
@@ -1097,7 +1101,7 @@
             ]
           },
           {
-            "tab": "Privileged Access Manager",
+            "tab": "Privileged Access Management",
             "groups": [
               {
                 "group": "Privileged Access Manager",
@@ -4290,7 +4294,7 @@
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg",
-    "href": "https://infisical.com"
+    "href": "/"
   },
   "api": {
     "openapi": "https://app.infisical.com/api/docs/json",

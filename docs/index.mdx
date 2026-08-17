@@ -1,0 +1,91 @@
+---
+title: "Infisical Documentation"
+sidebarTitle: "Documentation"
+description: "Learn how to use Infisical to manage secrets, certificates, and secure infrastructure access."
+mode: custom
+---
+
+import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard } from "/snippets/home.jsx";
+
+<div className="ifx-home">
+
+<HomeHero
+  title="Documentation"
+  description="Learn how to use Infisical, the all-in-one open source security platform."
+>
+  <HomeButton href="/documentation/getting-started/overview" variant="primary">
+    Get started
+  </HomeButton>
+  <HomeButton href="/documentation/getting-started/introduction">
+    What is Infisical?
+  </HomeButton>
+</HomeHero>
+
+<HomeSection title="Products">
+  <HomeGrid>
+    <HomeCard
+      title="Secrets Management"
+      href="/documentation/platform/secrets-mgmt/overview"
+      icon="vault"
+      product="secrets"
+      wide
+    >
+      Store application secrets, control who can read them, and deliver them to every environment your services run in.
+    </HomeCard>
+    <HomeCard
+      title="Secrets Scanning"
+      href="/documentation/platform/secret-scanning/overview"
+      icon="radar"
+      product="scanning"
+    >
+      Catch hardcoded secrets in source code, pipelines, and infrastructure before they reach production.
+    </HomeCard>
+    <HomeCard
+      title="Certificate Management"
+      href="/documentation/platform/pki/overview"
+      icon="certificate"
+      product="certificates"
+    >
+      Run your own certificate authorities and automate the X.509 lifecycle end to end.
+    </HomeCard>
+    <HomeCard
+      title="Privileged Access Management"
+      href="/documentation/platform/pam/overview"
+      icon="user-shield"
+      product="pam"
+    >
+      Gate access to databases, servers, and accounts behind policies, approvals, and a full session record.
+    </HomeCard>
+    <HomeCard
+      title="Key Management"
+      href="/documentation/platform/kms/overview"
+      icon="key"
+      product="kms"
+    >
+      Encrypt and decrypt sensitive data with centrally managed keys.
+    </HomeCard>
+  </HomeGrid>
+</HomeSection>
+
+<HomeSection title="Resources">
+  <HomeGrid cols={4}>
+    <HomeCard title="CLI" href="/cli/overview" icon="terminal">
+      Manage secrets and run commands from your terminal.
+    </HomeCard>
+    <HomeCard
+      title="API Reference"
+      href="/api-reference/overview/introduction"
+      icon="book"
+    >
+      Work with every Infisical resource programmatically.
+    </HomeCard>
+    <HomeCard title="Self-Hosting" href="/self-hosting/overview" icon="server">
+      Deploy and operate Infisical on your own infrastructure.
+    </HomeCard>
+    <HomeCard title="Security" href="/internals/security" icon="shield">
+      Understand the security model and how to build on it.
+    </HomeCard>
+  </HomeGrid>
+</HomeSection>
+
+</div>
