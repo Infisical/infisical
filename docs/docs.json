@@ -34,7 +34,7 @@
           {
             "group": "Getting Started",
             "pages": [
-              "index",
+              "documentation/getting-started/overview",
               "documentation/getting-started/introduction",
               {
                 "group": "Concepts",
