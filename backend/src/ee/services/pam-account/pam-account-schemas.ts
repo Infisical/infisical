@@ -143,7 +143,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       roleArn: {
         label: "Role ARN",
         tooltip:
-          "The IAM role the gateway assumes to generate the authentication token. It needs rds-db:connect on this account's database user, and its trust policy must allow the gateway's own identity."
+          "The IAM role Infisical assumes to generate the authentication token. It needs rds-db:connect on this account's database user, and its trust policy must allow Infisical using your Infisical Organization ID as the External ID.\n\nOrganization ID: {{organizationId}}"
       },
       sslEnabled: {
         label: "SSL Enabled",

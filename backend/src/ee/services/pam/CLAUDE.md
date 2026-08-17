@@ -88,9 +88,12 @@ frontend components**. Adding a type is mostly a config entry + an icon; the gat
 by `applyForcedFields` on create/update and mirrored by the form) pins fields an auth method leaves no
 choice about; its condition may cross field groups (`credentials.authMethod` from a connection field).
 TLS trust stays where it is for every other database account: the operator supplies `sslCertificate`,
-and Infisical ships no CA material. A gateway too old for an account's auth method is not gated on;
-it falls back to password auth and the connection test fails on the login, as with every other
-gateway capability added so far.
+and Infisical ships no CA material.
+
+Postgres AWS IAM auth mints an RDS token backend-side (`generateRdsAuthToken`) and hands it to the
+gateway as the password, so the gateway is unchanged and the role trust model matches every other AWS
+integration (Infisical assumes it, External ID = org ID). The token lives 15 minutes while sessions run
+longer, so the gateway caps its credential cache for postgres and re-fetches (`pam-proxy.go`).
 
 **Adding an auth method to an existing type is a compatibility event.** Stored credentials (and API
 callers) predating the discriminator carry none, which a `z.discriminatedUnion` rejects outright, so the

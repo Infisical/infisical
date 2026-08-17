@@ -21,6 +21,7 @@ import {
   PamAccessMethod,
   PamAccessStatus,
   PamAccountType,
+  PamPostgresAuthMethod,
   PamSessionEndReason,
   PamSessionStatus
 } from "../pam/pam-enums";
@@ -46,7 +47,6 @@ import {
   buildSessionGatewayConnectionDetails,
   extractGatewayTarget,
   getAccountAccessibilityIssues,
-  normalizeCredentialAuthMethod,
   PamAccountAccessibilityIssue,
   parseInternalMetadata,
   qualifyUsernameWithDomain,
@@ -62,7 +62,8 @@ import {
   AWS_STS_MIN_DURATION_SECONDS,
   exchangeCredentialsForConsoleUrl,
   extractAwsAccountIdFromArn,
-  generateAwsIamSessionCredentials
+  generateAwsIamSessionCredentials,
+  generateRdsAuthToken
 } from "./aws-iam/aws-iam-federation";
 import { getAzureAccessTokens } from "./azure/azure-federation";
 import { mintGcpAccessToken } from "./gcp/gcp-federation";
@@ -189,7 +190,7 @@ export const pamSessionServiceFactory = ({
   };
 
   // Called by the gateway
-  const getSessionCredentials = async (sessionId: string, gatewayId: string) => {
+  const getSessionCredentials = async (sessionId: string, gatewayId: string, orgId: string) => {
     const session = await pamSessionDAL.findOne({ id: sessionId, gatewayId });
     if (!session) {
       throw new NotFoundError({ message: "Session not found" });
@@ -209,10 +210,7 @@ export const pamSessionServiceFactory = ({
     }
 
     const connectionDetails = await decrypt(session.projectId, account.encryptedConnectionDetails);
-    const credentials = normalizeCredentialAuthMethod(
-      account.accountType as PamAccountType,
-      await decrypt(session.projectId, account.encryptedCredentials)
-    );
+    const credentials = await decrypt(session.projectId, account.encryptedCredentials);
 
     if (credentials.authMethod === "certificate" && account.encryptedInternalMetadata) {
       const internalMetadata = parseInternalMetadata(
@@ -248,6 +246,21 @@ export const pamSessionServiceFactory = ({
         ttlSeconds: Math.min(remainingSeconds, 3600)
       });
       delete credentials.serviceAccountKeyJson;
+    }
+
+    if (credentials.authMethod === PamPostgresAuthMethod.AwsIam) {
+      const { host, port } = connectionDetails as { host: string; port: number };
+      credentials.password = await generateRdsAuthToken({
+        roleArn: credentials.roleArn as string,
+        externalId: orgId,
+        roleSessionName: `infisical-pam-${sessionId}`,
+        region: credentials.awsRegion as string,
+        host,
+        port,
+        username: credentials.username as string
+      });
+      delete credentials.awsRegion;
+      delete credentials.roleArn;
     }
 
     if (account.accountType === PamAccountType.AzureCli) {

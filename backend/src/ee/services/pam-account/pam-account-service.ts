@@ -341,7 +341,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       return;
     }
 
-    const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials);
+    const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials, orgId);
     if (!test) return;
 
     const effectiveGatewayId = gateway.gatewayId ?? gateway.templateGatewayId;
