@@ -29,7 +29,8 @@ import {
   TableFooter,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  type TableSortDirection
 } from "./Table";
 
 type Identity = {
@@ -90,8 +91,9 @@ const identities: Identity[] = [
  *   ellipsis instead of letting the column blow out the row width.
  * - **`data-state="selected"`** on a `TableRow` paints the selected highlight
  *   for row-checkbox patterns.
- * - A `TableHead` with a child icon flips to a sortable look — clickable
- *   cursor and inline icon — without any extra wiring.
+ * - **`onSortChange`** on `TableHead` renders an accessible, full-cell sort button.
+ *   Control it with `sortDirection`; each activation cycles none → ascending →
+ *   descending → none.
  *
  * For datasets that don't fit on a single screen, pair the `Table` with the
  * `Pagination` component as a sibling below it — see *Example: With
@@ -260,36 +262,70 @@ export const WithSelection: Story = {
   )
 };
 
-export const SortableHeaders: Story = {
-  name: "Example: Sortable Headers",
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Drop a sort-indicator icon as a child of `TableHead` and the cell automatically picks up a clickable cursor and an inline icon slot. Wire `onClick` to your sort handler; rotate or fade the icon to reflect the active column and direction."
-      }
-    }
-  },
-  render: () => (
+type SortableColumn = "managedBy" | "name" | "role";
+
+const SortableHeadersExample = () => {
+  const [sort, setSort] = useState<{
+    column: SortableColumn;
+    direction: Exclude<TableSortDirection, "none">;
+  } | null>({ column: "name", direction: "ascending" });
+
+  const getSortDirection = (column: SortableColumn): TableSortDirection =>
+    sort?.column === column ? sort.direction : "none";
+
+  const handleSortChange = (column: SortableColumn, direction: TableSortDirection) => {
+    setSort(direction === "none" ? null : { column, direction });
+  };
+
+  const sortedIdentities = identities.slice(0, 4);
+
+  if (sort) {
+    sortedIdentities.sort((a, b) => {
+      const getValue = (identity: Identity) => {
+        if (sort.column === "managedBy") return identity.managedBy?.name ?? "";
+        return identity[sort.column];
+      };
+
+      const comparison = getValue(a).localeCompare(getValue(b));
+      return sort.direction === "ascending" ? comparison : -comparison;
+    });
+  }
+
+  return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead onClick={() => {}}>
+          <TableHead
+            sortDirection={getSortDirection("name")}
+            onSortChange={(direction) => handleSortChange("name", direction)}
+          >
             Name
-            <ChevronDownIcon />
+            <ChevronDownIcon
+              className={getSortDirection("name") === "descending" ? "rotate-180" : undefined}
+            />
           </TableHead>
-          <TableHead onClick={() => {}}>
+          <TableHead
+            sortDirection={getSortDirection("role")}
+            onSortChange={(direction) => handleSortChange("role", direction)}
+          >
             Role
-            <ChevronsUpDownIcon className="opacity-30" />
+            <ChevronsUpDownIcon
+              className={getSortDirection("role") === "none" ? "opacity-30" : undefined}
+            />
           </TableHead>
-          <TableHead onClick={() => {}}>
+          <TableHead
+            sortDirection={getSortDirection("managedBy")}
+            onSortChange={(direction) => handleSortChange("managedBy", direction)}
+          >
             Managed by
-            <ChevronsUpDownIcon className="opacity-30" />
+            <ChevronsUpDownIcon
+              className={getSortDirection("managedBy") === "none" ? "opacity-30" : undefined}
+            />
           </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {identities.slice(0, 4).map((id) => (
+        {sortedIdentities.map((id) => (
           <TableRow key={id.name}>
             <TableCell className="font-medium">{id.name}</TableCell>
             <TableCell>{id.role}</TableCell>
@@ -298,7 +334,20 @@ export const SortableHeaders: Story = {
         ))}
       </TableBody>
     </Table>
-  )
+  );
+};
+
+export const SortableHeaders: Story = {
+  name: "Example: Sortable Headers",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Pass `onSortChange` to render a keyboard-operable, full-cell sort button. Control it with `sortDirection`; each activation cycles from none to ascending, descending, and back to none."
+      }
+    }
+  },
+  render: () => <SortableHeadersExample />
 };
 
 export const TruncatedCells: Story = {

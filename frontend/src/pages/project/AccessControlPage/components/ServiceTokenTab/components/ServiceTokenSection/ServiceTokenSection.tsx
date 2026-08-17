@@ -5,6 +5,8 @@ import { PlusIcon } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -49,8 +51,9 @@ export const ServiceTokenSection = withProjectPermission(
     ] as const);
 
     const deleteModalData = popUp.deleteAPITokenConfirmation.data as DeleteModalData | undefined;
+    const deleteConfirmationText = deleteModalData?.name.trim() || "service token";
     const isDeleteConfirmed =
-      Boolean(deleteModalData?.name) && deleteConfirmation === deleteModalData?.name;
+      Boolean(deleteModalData) && deleteConfirmation === deleteConfirmationText;
 
     const onDeleteApproved = async () => {
       if (!deleteModalData?.id) return;
@@ -113,30 +116,32 @@ export const ServiceTokenSection = withProjectPermission(
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>
-                Delete {deleteModalData?.name || "service token"}?
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                This permanently revokes the service token and cannot be undone.
+              <AlertDialogTitle>Delete token?</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <Alert variant="danger" appearance="borderless">
+                  <AlertDescription>
+                    This permanently revokes the service token and cannot be undone.
+                  </AlertDescription>
+                </Alert>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogConfirmationField>
               <Field>
-                <FieldLabel htmlFor="delete-service-token-confirmation">
-                  Type &quot;<span className="text-foreground">{deleteModalData?.name}</span>&quot;
+                <FieldLabel htmlFor="delete-service-token-confirmation" className="gap-0 text-sm">
+                  Type &quot;<span className="text-foreground">{deleteConfirmationText}</span>&quot;
                   to confirm.
                 </FieldLabel>
                 <Input
                   id="delete-service-token-confirmation"
                   value={deleteConfirmation}
                   onChange={(event) => setDeleteConfirmation(event.target.value)}
-                  placeholder={deleteModalData?.name}
+                  placeholder={deleteConfirmationText}
                   autoComplete="off"
                   autoFocus
                 />
               </Field>
             </AlertDialogConfirmationField>
-            <AlertDialogFooter>
+            <AlertDialogFooter className="bg-container">
               <AlertDialogCancel isDisabled={deleteServiceToken.isPending}>
                 Cancel
               </AlertDialogCancel>

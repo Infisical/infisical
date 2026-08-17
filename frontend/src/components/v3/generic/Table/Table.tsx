@@ -79,22 +79,53 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.ComponentProps<"tr"
 
 TableRow.displayName = "TableRow";
 
+type TableSortDirection = "ascending" | "descending" | "none";
+
+const nextTableSortDirection: Record<TableSortDirection, TableSortDirection> = {
+  none: "ascending",
+  ascending: "descending",
+  descending: "none"
+};
+
 function TableHead({
   className,
+  children,
   isTruncatable,
+  "aria-sort": ariaSort,
+  onSortChange,
+  sortDirection = "none",
   ...props
-}: React.ComponentProps<"th"> & { isTruncatable?: boolean }) {
+}: React.ComponentProps<"th"> & {
+  isTruncatable?: boolean;
+  onSortChange?: (direction: TableSortDirection) => void;
+  sortDirection?: TableSortDirection;
+}) {
   return (
     <th
       data-slot="table-head"
       className={cn(
         "h-[30px] border-x-0 border-t-0 border-b border-border px-3 text-left align-middle text-xs whitespace-nowrap text-accent select-none [&:has([role=checkbox])]:pr-0",
         "has-[>svg]:cursor-pointer [&>svg]:ml-1 [&>svg]:inline-block [&>svg:not([class*='size-'])]:size-4",
+        onSortChange && "p-0",
         isTruncatable && "truncate",
         className
       )}
+      aria-sort={onSortChange ? sortDirection : ariaSort}
       {...props}
-    />
+    >
+      {onSortChange ? (
+        <button
+          type="button"
+          data-slot="table-head-sort-trigger"
+          className="flex h-[30px] w-full cursor-pointer items-center gap-1 px-3 text-left text-xs text-accent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&>svg]:shrink-0 [&>svg:not([class*='size-'])]:size-4"
+          onClick={() => onSortChange(nextTableSortDirection[sortDirection])}
+        >
+          {children}
+        </button>
+      ) : (
+        children
+      )}
+    </th>
   );
 }
 
@@ -156,5 +187,6 @@ export {
   TableHead,
   TableHeader,
   TableHeadLabel,
-  TableRow
+  TableRow,
+  type TableSortDirection
 };

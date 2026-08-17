@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
   ChevronDownIcon,
@@ -12,7 +12,6 @@ import { twMerge } from "tailwind-merge";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -65,6 +64,7 @@ enum TokensOrderBy {
 
 export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
   const { currentProject } = useProject();
+  const [activeSort, setActiveSort] = useState<TokensOrderBy | null>(TokensOrderBy.Name);
   const { data, isPending } = useGetUserWsServiceTokens({
     workspaceID: currentProject?.id || ""
   });
@@ -78,8 +78,6 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
     setPerPage,
     offset,
     orderDirection,
-    toggleOrderDirection,
-    orderBy,
     setOrderDirection,
     setOrderBy
   } = usePagination<TokensOrderBy>(TokensOrderBy.Name, {
@@ -110,9 +108,11 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
           );
         })
         .sort((a, b) => {
+          if (!activeSort) return 0;
+
           const [tokenOne, tokenTwo] = orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
 
-          switch (orderBy) {
+          switch (activeSort) {
             case TokensOrderBy.Expiration:
               if (!tokenOne.expiresAt && !tokenTwo.expiresAt) return 0;
               if (!tokenOne.expiresAt) return 1;
@@ -127,7 +127,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
               return tokenOne.name.toLowerCase().localeCompare(tokenTwo.name.toLowerCase());
           }
         }) ?? [],
-    [data, orderDirection, search, orderBy]
+    [activeSort, data, orderDirection, search]
   );
 
   useResetPageHelper({
@@ -136,18 +136,24 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
     setPage
   });
 
-  const handleSort = (column: TokensOrderBy) => {
-    if (column === orderBy) {
-      toggleOrderDirection();
+  const handleSort = (
+    column: TokensOrderBy,
+    direction: "ascending" | "descending" | "none"
+  ) => {
+    if (direction === "none") {
+      setActiveSort(null);
       return;
     }
 
+    setActiveSort(column);
     setOrderBy(column);
-    setOrderDirection(OrderByDirection.ASC);
+    setOrderDirection(
+      direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC
+    );
   };
 
   const getAriaSort = (column: TokensOrderBy) => {
-    if (orderBy !== column) return "none";
+    if (activeSort !== column) return "none";
     return orderDirection === OrderByDirection.ASC ? "ascending" : "descending";
   };
 
@@ -182,46 +188,36 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="p-0" aria-sort={getAriaSort(TokensOrderBy.Name)}>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    isFullWidth
-                    className="h-[30px] justify-start rounded-none px-3 text-accent"
-                    onClick={() => handleSort(TokensOrderBy.Name)}
-                  >
-                    Name
-                    <ChevronDownIcon
-                      className={twMerge(
-                        "transition-transform",
-                        orderDirection === OrderByDirection.DESC &&
-                          orderBy === TokensOrderBy.Name &&
-                          "rotate-180",
-                        orderBy !== TokensOrderBy.Name && "opacity-30"
-                      )}
-                    />
-                  </Button>
+                <TableHead
+                  sortDirection={getAriaSort(TokensOrderBy.Name)}
+                  onSortChange={(direction) => handleSort(TokensOrderBy.Name, direction)}
+                >
+                  Name
+                  <ChevronDownIcon
+                    className={twMerge(
+                      "transition-transform",
+                      orderDirection === OrderByDirection.DESC &&
+                        activeSort === TokensOrderBy.Name &&
+                        "rotate-180",
+                      activeSort !== TokensOrderBy.Name && "opacity-30"
+                    )}
+                  />
                 </TableHead>
                 <TableHead>Environment / Secret Path</TableHead>
-                <TableHead className="p-0" aria-sort={getAriaSort(TokensOrderBy.Expiration)}>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    isFullWidth
-                    className="h-[30px] justify-start rounded-none px-3 text-accent"
-                    onClick={() => handleSort(TokensOrderBy.Expiration)}
-                  >
-                    Valid Until
-                    <ChevronDownIcon
-                      className={twMerge(
-                        "transition-transform",
-                        orderDirection === OrderByDirection.DESC &&
-                          orderBy === TokensOrderBy.Expiration &&
-                          "rotate-180",
-                        orderBy !== TokensOrderBy.Expiration && "opacity-30"
-                      )}
-                    />
-                  </Button>
+                <TableHead
+                  sortDirection={getAriaSort(TokensOrderBy.Expiration)}
+                  onSortChange={(direction) => handleSort(TokensOrderBy.Expiration, direction)}
+                >
+                  Valid Until
+                  <ChevronDownIcon
+                    className={twMerge(
+                      "transition-transform",
+                      orderDirection === OrderByDirection.DESC &&
+                        activeSort === TokensOrderBy.Expiration &&
+                        "rotate-180",
+                      activeSort !== TokensOrderBy.Expiration && "opacity-30"
+                    )}
+                  />
                 </TableHead>
                 <TableHead className="w-5">
                   <span className="sr-only">Actions</span>
@@ -251,7 +247,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
                   <TableRow key={row.id}>
                     <TableCell isTruncatable>{row.name}</TableCell>
                     <TableCell>
-                      <div className="flex flex-row flex-wrap gap-1">
+                      <div className="flex flex-row gap-1">
                         {row?.scopes.map(({ secretPath, environment }) => (
                           <Badge key={`${row.id}-${environment}-${secretPath}`} variant="neutral">
                             <span className="border-r border-border pr-1.5">{environment}</span>
