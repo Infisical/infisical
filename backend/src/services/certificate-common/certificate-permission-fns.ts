@@ -90,3 +90,27 @@ export const assertCanEditCertificate = async ({
 
   return { certMetadata, projectPermission: permission };
 };
+
+export const assertCanEditCertificateResult = ({
+  projectPermission,
+  commonName,
+  altNames,
+  serialNumber,
+  metadata
+}: {
+  projectPermission: MongoAbility;
+  commonName?: string | null;
+  altNames?: string[];
+  serialNumber?: string | null;
+  metadata: { key: string; value: string }[];
+}) => {
+  ForbiddenError.from(projectPermission).throwUnlessCan(
+    ProjectPermissionCertificateActions.Edit,
+    subject(ProjectPermissionSub.Certificates, {
+      commonName: commonName ?? undefined,
+      altNames,
+      serialNumber: serialNumber ?? undefined,
+      metadata
+    })
+  );
+};

@@ -55,7 +55,10 @@ import {
   validateAlgorithmCompatibility,
   validateCaSupport
 } from "../certificate-common/certificate-issuance-utils";
-import { assertCanEditCertificate } from "../certificate-common/certificate-permission-fns";
+import {
+  assertCanEditCertificate,
+  assertCanEditCertificateResult
+} from "../certificate-common/certificate-permission-fns";
 import {
   convertExtendedKeyUsageArrayToLegacy,
   convertKeyUsageArrayToLegacy,
@@ -573,7 +576,7 @@ export const certificateRenewalServiceFactory = ({
     profile: { id: string; projectId: string; slug: string };
     actorCtx: TRenewalActor;
   }) => {
-    await assertCanEditCertificate({
+    const { certMetadata, projectPermission } = await assertCanEditCertificate({
       certificate: originalCert,
       ...actorCtx,
       permissionService,
@@ -582,7 +585,7 @@ export const certificateRenewalServiceFactory = ({
 
     if (originalCert.applicationId) {
       await $resolveApplicationIdForProfile(profile, originalCert.applicationId, actorCtx, EnrollmentType.API);
-      return;
+      return { certMetadata, projectPermission };
     }
 
     const { permission } = await permissionService.getProjectPermission({
@@ -594,6 +597,8 @@ export const certificateRenewalServiceFactory = ({
       ProjectPermissionCertificateProfileActions.IssueCert,
       subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
     );
+
+    return { certMetadata, projectPermission };
   };
 
   const $resolveRenewalIssuer = async (
@@ -932,9 +937,7 @@ export const certificateRenewalServiceFactory = ({
         originalKeyAlgorithm
       } = await $loadRenewalSubject({ certificateId, keySource }, tx);
 
-      if (!internal) {
-        await $authorizeRenewal({ originalCert, profile, actorCtx });
-      }
+      const renewalAuth = internal ? undefined : await $authorizeRenewal({ originalCert, profile, actorCtx });
 
       const { issuerType, ca, caType, policy } = await $resolveRenewalIssuer(
         {
@@ -951,6 +954,16 @@ export const certificateRenewalServiceFactory = ({
         { originalCert, policy, csrRenewalRequest, attributes, keySource },
         tx
       );
+
+      if (renewalAuth?.projectPermission) {
+        assertCanEditCertificateResult({
+          projectPermission: renewalAuth.projectPermission,
+          commonName: certificateRequest.commonName,
+          altNames: (certificateRequest.subjectAlternativeNames ?? []).map((san) => san.value),
+          serialNumber: originalCert.serialNumber,
+          metadata: renewalAuth.certMetadata
+        });
+      }
 
       const notBefore = new Date();
       const notAfter = new Date(Date.now() + ms(ttl));

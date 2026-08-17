@@ -3,10 +3,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { ForbiddenError } from "@casl/ability";
+import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateProfileActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -2199,6 +2204,56 @@ describe("CertificateV3Service", () => {
           ...mockActor
         })
       ).rejects.toThrow("Only certificates issued from a profile can be renewed");
+    });
+
+    it("refuses to renew a certificate into a name the caller may not edit", async () => {
+      // The suite-wide beforeEach stubs ForbiddenError.from into a no-op, which would let any
+      // permission check pass. This test is about the check itself, so it needs the real one.
+      vi.mocked(ForbiddenError).from.mockRestore();
+
+      // A real ability, so the condition is evaluated by CASL rather than by a mock. The caller may
+      // edit certificates named allowed.example.com and issue from the profile, nothing else.
+      const cnScoped = createMongoAbility([
+        {
+          action: [ProjectPermissionCertificateActions.Read, ProjectPermissionCertificateActions.Edit],
+          subject: ProjectPermissionSub.Certificates,
+          conditions: { commonName: "allowed.example.com" }
+        },
+        {
+          action: ProjectPermissionCertificateProfileActions.IssueCert,
+          subject: ProjectPermissionSub.CertificateProfiles
+        }
+      ]);
+      (mockPermissionService.getProjectPermission as any).mockResolvedValue({ permission: cnScoped });
+
+      const scopedCert = { ...mockOriginalCert, commonName: "allowed.example.com" };
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(scopedCert);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy);
+      vi.mocked(mockCertificatePolicyService.validateRequestAgainstPolicy).mockReturnValue({
+        isValid: true,
+        errors: [],
+        warnings: []
+      } as any);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({
+        id: "secret-123",
+        certId: "cert-123"
+      } as any);
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) =>
+        callback({})
+      );
+
+      // Renaming it outside that scope must be refused even though the profile policy accepts the
+      // name: the replacement inherits the original's syncs and would be pushed. The allow path is
+      // covered by the other renewal tests, which run with an unconditional ability.
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          attributes: { commonName: "out-of-scope.example.com" },
+          ...mockActor
+        })
+      ).rejects.toThrow(ForbiddenError);
     });
 
     it("refuses to reuse a key pair it holds neither the key nor the signing request for", async () => {

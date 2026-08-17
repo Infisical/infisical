@@ -69,7 +69,10 @@ import {
   validateAlgorithmCompatibility,
   validateCaSupport
 } from "../certificate-common/certificate-issuance-utils";
-import { assertCanEditCertificate } from "../certificate-common/certificate-permission-fns";
+import {
+  assertCanEditCertificate,
+  assertCanEditCertificateResult
+} from "../certificate-common/certificate-permission-fns";
 import { reportCertificateIssued } from "../certificate-common/certificate-telemetry-fns";
 import {
   bufferToString,
@@ -2056,15 +2059,13 @@ export const certificateV3ServiceFactory = ({
     });
 
     if (metadata && projectPermission) {
-      ForbiddenError.from(projectPermission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Edit,
-        subject(ProjectPermissionSub.Certificates, {
-          commonName: certificate.commonName,
-          altNames: certificate.altNames?.split(",").map((s) => s.trim()),
-          serialNumber: certificate.serialNumber,
-          metadata
-        })
-      );
+      assertCanEditCertificateResult({
+        projectPermission,
+        commonName: certificate.commonName,
+        altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+        serialNumber: certificate.serialNumber,
+        metadata
+      });
     }
 
     let updatedMetadata: Array<{ key: string; value: string }> = [];
