@@ -1,7 +1,7 @@
 import { AxiosError } from "axios";
 
 import { BadRequestError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
+import { logger, sanitizeUrlForLog } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -64,6 +64,12 @@ const $paginateCloudflare = async <T>(
 
     totalPages = data.result_info?.total_pages ?? 1;
     page += 1;
+  }
+
+  if (page <= totalPages) {
+    logger.warn(
+      `$paginateCloudflare: page cap reached, returning a partial list [url=${sanitizeUrlForLog(url)}] [pagesRead=${CLOUDFLARE_MAX_PAGES}] [totalPages=${totalPages}]`
+    );
   }
 
   return results;

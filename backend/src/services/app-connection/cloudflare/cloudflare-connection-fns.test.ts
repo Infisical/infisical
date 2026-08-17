@@ -2,15 +2,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // `vi.mock` factories are hoisted above imports — the spies they reference must come from `vi.hoisted`.
-const { safeRequestGetMock } = vi.hoisted(() => ({
-  safeRequestGetMock: vi.fn()
+const { safeRequestGetMock, warnMock } = vi.hoisted(() => ({
+  safeRequestGetMock: vi.fn(),
+  warnMock: vi.fn()
 }));
 
 vi.mock("@app/lib/validator", () => ({
   safeRequest: { get: (...args: unknown[]) => (safeRequestGetMock as any)(...args) }
 }));
 vi.mock("@app/lib/logger", () => ({
-  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }
+  logger: { error: vi.fn(), info: vi.fn(), debug: vi.fn(), warn: (...args: unknown[]) => (warnMock as any)(...args) },
+  sanitizeUrlForLog: (url: string) => url
 }));
 // Stub out the heavier transitive imports so the module loads in isolation.
 vi.mock("@app/services/integration-auth/integration-list", () => ({
@@ -33,6 +35,7 @@ const pageOf = <T>(result: T[], totalPages: number) => ({
 describe("listCloudflarePagesProjects", () => {
   beforeEach(() => {
     safeRequestGetMock.mockReset();
+    warnMock.mockReset();
   });
 
   it("returns projects from every page, not just the first", async () => {
@@ -73,6 +76,27 @@ describe("listCloudflarePagesProjects", () => {
 
     expect(safeRequestGetMock).toHaveBeenCalledTimes(1);
     expect(projects).toEqual([{ id: "p1", name: "alpha" }]);
+  });
+
+  it("stops at the page cap and logs rather than truncating silently", async () => {
+    // More pages than the helper will walk: the list comes back short, so it has to say so.
+    safeRequestGetMock.mockResolvedValue(pageOf([{ id: "p", name: "alpha" }], 500));
+
+    const projects = await listCloudflarePagesProjects(connection);
+
+    expect(safeRequestGetMock).toHaveBeenCalledTimes(100);
+    expect(projects).toHaveLength(100);
+    expect(warnMock).toHaveBeenCalledWith(expect.stringContaining("page cap reached"));
+  });
+
+  it("does not warn when every page was read", async () => {
+    safeRequestGetMock
+      .mockResolvedValueOnce(pageOf([{ id: "p1", name: "alpha" }], 2))
+      .mockResolvedValueOnce(pageOf([{ id: "p2", name: "beta" }], 2));
+
+    await listCloudflarePagesProjects(connection);
+
+    expect(warnMock).not.toHaveBeenCalled();
   });
 });
 
