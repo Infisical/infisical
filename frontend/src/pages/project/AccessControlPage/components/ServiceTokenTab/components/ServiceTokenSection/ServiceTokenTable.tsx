@@ -136,10 +136,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
     setPage
   });
 
-  const handleSort = (
-    column: TokensOrderBy,
-    direction: "ascending" | "descending" | "none"
-  ) => {
+  const handleSort = (column: TokensOrderBy, direction: "ascending" | "descending" | "none") => {
     if (direction === "none") {
       setActiveSort(null);
       return;
@@ -147,9 +144,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
 
     setActiveSort(column);
     setOrderBy(column);
-    setOrderDirection(
-      direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC
-    );
+    setOrderDirection(direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC);
   };
 
   const getAriaSort = (column: TokensOrderBy) => {

@@ -117,7 +117,7 @@ function TableHead({
         <button
           type="button"
           data-slot="table-head-sort-trigger"
-          className="flex h-[30px] w-full cursor-pointer items-center gap-1 px-3 text-left text-xs text-accent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&>svg]:shrink-0 [&>svg:not([class*='size-'])]:size-4"
+          className="flex h-[30px] w-full cursor-pointer items-center gap-1 px-3 text-left text-xs text-accent outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset [&>svg]:shrink-0 [&>svg:not([class*='size-'])]:size-4"
           onClick={() => onSortChange(nextTableSortDirection[sortDirection])}
         >
           {children}
