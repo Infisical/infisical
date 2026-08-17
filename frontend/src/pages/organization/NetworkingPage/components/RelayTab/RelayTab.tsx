@@ -318,15 +318,12 @@ export const RelayTab = withPermission(
               </AlertDialogHeader>
               <AlertDialogConfirmationField>
                 <Field>
-                  <AlertDialogConfirmationLabel htmlFor="delete-relay-confirmation">
-                    <span>
-                      Type &quot;
-                      <span className="text-foreground">
-                        {(popUp.deleteRelay.data as { name?: string })?.name || "relay"}
-                      </span>
-                      &quot; to confirm.
-                    </span>
-                  </AlertDialogConfirmationLabel>
+                  <AlertDialogConfirmationLabel
+                    htmlFor="delete-relay-confirmation"
+                    confirmationValue={
+                      (popUp.deleteRelay.data as { name?: string })?.name || "relay"
+                    }
+                  />
                   <Input
                     id="delete-relay-confirmation"
                     value={deleteConfirmation}

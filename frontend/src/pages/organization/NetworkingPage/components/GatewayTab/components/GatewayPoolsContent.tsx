@@ -246,15 +246,10 @@ export const GatewayPoolsContent = ({ search }: Props) => {
           </AlertDialogHeader>
           <AlertDialogConfirmationField>
             <Field>
-              <AlertDialogConfirmationLabel htmlFor="delete-pool-confirmation">
-                <span>
-                  Type &quot;
-                  <span className="text-foreground">
-                    {(popUp.deletePool.data as TGatewayPool)?.name}
-                  </span>
-                  &quot; to confirm.
-                </span>
-              </AlertDialogConfirmationLabel>
+              <AlertDialogConfirmationLabel
+                htmlFor="delete-pool-confirmation"
+                confirmationValue={(popUp.deletePool.data as TGatewayPool)?.name}
+              />
               <Input
                 id="delete-pool-confirmation"
                 value={deleteConfirmation}

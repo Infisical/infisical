@@ -170,10 +170,10 @@ export const DeleteProjectSection = () => {
           </AlertDialogHeader>
           <AlertDialogConfirmationField>
             <Field>
-              <AlertDialogConfirmationLabel htmlFor="delete-project-confirmation">
-                Type <span className="font-bold text-foreground">{CONFIRM_KEYWORD}</span> to perform
-                this action
-              </AlertDialogConfirmationLabel>
+              <AlertDialogConfirmationLabel
+                htmlFor="delete-project-confirmation"
+                confirmationValue={CONFIRM_KEYWORD}
+              />
               <Input
                 id="delete-project-confirmation"
                 value={deleteConfirmInput}
@@ -230,10 +230,10 @@ export const DeleteProjectSection = () => {
           </AlertDialogHeader>
           <AlertDialogConfirmationField>
             <Field>
-              <AlertDialogConfirmationLabel htmlFor="leave-project-confirmation">
-                Type <span className="font-bold text-foreground">{CONFIRM_KEYWORD}</span> to leave
-                the project
-              </AlertDialogConfirmationLabel>
+              <AlertDialogConfirmationLabel
+                htmlFor="leave-project-confirmation"
+                confirmationValue={CONFIRM_KEYWORD}
+              />
               <Input
                 id="leave-project-confirmation"
                 value={leaveConfirmInput}

@@ -164,12 +164,10 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
           </AlertDialogHeader>
           <AlertDialogConfirmationField>
             <Field>
-              <AlertDialogConfirmationLabel htmlFor="delete-gateway-confirmation">
-                <span>
-                  Type &quot;<span className="text-foreground">{gateway.name}</span>&quot; to
-                  confirm.
-                </span>
-              </AlertDialogConfirmationLabel>
+              <AlertDialogConfirmationLabel
+                htmlFor="delete-gateway-confirmation"
+                confirmationValue={gateway.name}
+              />
               <Input
                 id="delete-gateway-confirmation"
                 value={deleteConfirmation}

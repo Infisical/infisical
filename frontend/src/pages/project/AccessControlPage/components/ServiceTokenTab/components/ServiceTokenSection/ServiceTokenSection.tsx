@@ -127,10 +127,10 @@ export const ServiceTokenSection = withProjectPermission(
             </AlertDialogHeader>
             <AlertDialogConfirmationField>
               <Field>
-                <AlertDialogConfirmationLabel htmlFor="delete-service-token-confirmation">
-                  Type &quot;<span className="text-foreground">{deleteConfirmationText}</span>&quot;
-                  to confirm.
-                </AlertDialogConfirmationLabel>
+                <AlertDialogConfirmationLabel
+                  htmlFor="delete-service-token-confirmation"
+                  confirmationValue={deleteConfirmationText}
+                />
                 <Input
                   id="delete-service-token-confirmation"
                   value={deleteConfirmation}
@@ -141,7 +141,7 @@ export const ServiceTokenSection = withProjectPermission(
                 />
               </Field>
             </AlertDialogConfirmationField>
-            <AlertDialogFooter className="bg-container">
+            <AlertDialogFooter>
               <AlertDialogCancel isDisabled={deleteServiceToken.isPending}>
                 Cancel
               </AlertDialogCancel>

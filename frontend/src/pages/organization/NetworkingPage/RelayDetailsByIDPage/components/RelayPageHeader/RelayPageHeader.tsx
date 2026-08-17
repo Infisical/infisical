@@ -152,11 +152,10 @@ export const RelayPageHeader = ({
           </AlertDialogHeader>
           <AlertDialogConfirmationField>
             <Field>
-              <AlertDialogConfirmationLabel htmlFor="delete-relay-confirmation">
-                <span>
-                  Type &quot;<span className="text-foreground">{relay.name}</span>&quot; to confirm.
-                </span>
-              </AlertDialogConfirmationLabel>
+              <AlertDialogConfirmationLabel
+                htmlFor="delete-relay-confirmation"
+                confirmationValue={relay.name}
+              />
               <Input
                 id="delete-relay-confirmation"
                 value={deleteConfirmation}

@@ -215,9 +215,10 @@ const TypedConfirmationStory = () => {
         </AlertDialogHeader>
         <AlertDialogConfirmationField>
           <Field>
-            <AlertDialogConfirmationLabel htmlFor="alert-dialog-confirmation">
-              Type &quot;delete&quot; to confirm
-            </AlertDialogConfirmationLabel>
+            <AlertDialogConfirmationLabel
+              htmlFor="alert-dialog-confirmation"
+              confirmationValue={CONFIRMATION_KEYWORD}
+            />
             <Input
               id="alert-dialog-confirmation"
               value={confirmation}
@@ -243,7 +244,7 @@ export const TypedConfirmation: Story = {
     docs: {
       description: {
         story:
-          "Compose `AlertDialogConfirmationField`, `Field`, and `AlertDialogConfirmationLabel` with an `Input` that requires a keyword before the destructive action is enabled. Use this pattern for tier-two destructive actions where an extra deliberate step reduces accidental loss."
+          "Compose `AlertDialogConfirmationField`, `Field`, and `AlertDialogConfirmationLabel` with an `Input` that requires either a fixed keyword or the resource name before the destructive action is enabled. Pass that required value to `confirmationValue` so the label owns the confirmation sentence and styling."
       }
     }
   },

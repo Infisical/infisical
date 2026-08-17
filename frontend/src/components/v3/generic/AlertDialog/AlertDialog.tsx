@@ -78,7 +78,7 @@ function AlertDialogFooter({ className, ...props }: React.ComponentProps<"div">)
     <div
       data-slot="alert-dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-row flex-wrap justify-end gap-2 rounded-b-xl border-t border-border p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2",
+        "-mx-4 -mb-4 flex flex-row flex-wrap justify-end gap-2 rounded-b-xl border-t border-border bg-container p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2",
         className
       )}
       {...props}
@@ -139,15 +139,23 @@ function AlertDialogConfirmationField({ className, ...props }: React.ComponentPr
 
 function AlertDialogConfirmationLabel({
   className,
+  confirmationValue,
   ...props
-}: React.ComponentProps<typeof FieldLabel>) {
+}: Omit<React.ComponentProps<typeof FieldLabel>, "children"> & {
+  confirmationValue: React.ReactNode;
+}) {
   return (
     <FieldLabel
       data-slot="alert-dialog-confirmation-label"
       size="sm"
       className={cn("gap-0", className)}
       {...props}
-    />
+    >
+      <span>
+        Type &quot;<span className="font-medium text-foreground">{confirmationValue}</span>&quot; to
+        confirm.
+      </span>
+    </FieldLabel>
   );
 }
 

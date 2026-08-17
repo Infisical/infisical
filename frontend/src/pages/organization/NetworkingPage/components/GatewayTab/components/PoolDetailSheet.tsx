@@ -308,15 +308,12 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
             </AlertDialogHeader>
             <AlertDialogConfirmationField>
               <Field>
-                <AlertDialogConfirmationLabel htmlFor="remove-gateway-confirmation">
-                  <span>
-                    Type &quot;
-                    <span className="text-foreground">
-                      {(popUp.removeGateway.data as { name: string } | undefined)?.name}
-                    </span>
-                    &quot; to confirm.
-                  </span>
-                </AlertDialogConfirmationLabel>
+                <AlertDialogConfirmationLabel
+                  htmlFor="remove-gateway-confirmation"
+                  confirmationValue={
+                    (popUp.removeGateway.data as { name: string } | undefined)?.name
+                  }
+                />
                 <Input
                   id="remove-gateway-confirmation"
                   value={removeConfirmation}

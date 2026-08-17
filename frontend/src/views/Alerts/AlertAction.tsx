@@ -249,12 +249,10 @@ export const AlertAction = ({
               </AlertDialogHeader>
               <AlertDialogConfirmationField>
                 <Field>
-                  <AlertDialogConfirmationLabel htmlFor="delete-alert-confirmation">
-                    <span>
-                      Type &quot;<span className="text-foreground">{existingAlert.name}</span>
-                      &quot; to confirm.
-                    </span>
-                  </AlertDialogConfirmationLabel>
+                  <AlertDialogConfirmationLabel
+                    htmlFor="delete-alert-confirmation"
+                    confirmationValue={existingAlert.name}
+                  />
                   <Input
                     id="delete-alert-confirmation"
                     value={deleteConfirmation}
