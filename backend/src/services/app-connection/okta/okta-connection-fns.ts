@@ -42,16 +42,42 @@ export const validateOktaConnectionCredentials = async (config: TOktaConnectionC
   return config.credentials;
 };
 
+// Okta caps `limit` at 200 on /api/v1/apps and defaults it far lower, so the full list only arrives by
+// following the `next` link it returns.
+const OKTA_APPS_PER_PAGE = 200;
+const OKTA_APPS_MAX_PAGES = 100;
+
+// Okta documents the `next` link as opaque, so it is followed rather than rebuilt. It still has to be
+// re-validated: it comes from the response body's headers, and the instance host is user-supplied.
+const $getNextLink = (linkHeader: string | undefined, instanceUrl: string) => {
+  const nextLink = linkHeader?.split(",").find((part) => part.includes('rel="next"'));
+  if (!nextLink) return null;
+
+  const url = nextLink.trim().split(";")[0].slice(1, -1);
+  if (!url.startsWith(`${instanceUrl}/`)) return null;
+
+  return url;
+};
+
 export const listOktaApps = async (appConnection: TOktaConnection) => {
   const { apiToken } = appConnection.credentials;
   const instanceUrl = await getOktaInstanceUrl(appConnection);
 
-  const { data } = await request.get<TOktaApp[]>(`${instanceUrl}/api/v1/apps`, {
-    headers: {
-      Accept: "application/json",
-      Authorization: `SSWS ${apiToken}`
-    }
-  });
+  const apps: TOktaApp[] = [];
+  let url: string | null = `${instanceUrl}/api/v1/apps?limit=${OKTA_APPS_PER_PAGE}`;
 
-  return data.filter((app) => app.status === "ACTIVE" && app.name === "oidc_client");
+  for (let page = 0; page < OKTA_APPS_MAX_PAGES && url; page += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const response = await request.get<TOktaApp[]>(url, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `SSWS ${apiToken}`
+      }
+    });
+
+    apps.push(...response.data);
+    url = $getNextLink(response.headers.link as string | undefined, instanceUrl);
+  }
+
+  return apps.filter((app) => app.status === "ACTIVE" && app.name === "oidc_client");
 };
