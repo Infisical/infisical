@@ -120,6 +120,32 @@ describe("listOktaApps", () => {
     expect(apps.map((app) => app.id)).toEqual(["a"]);
   });
 
+  it.each([
+    ["an uppercase host", "https://EXAMPLE.okta.com"],
+    ["an explicit default port", "https://example.okta.com:443"]
+  ])("still follows the next link when the connection spells the origin with %s", async (_label, configuredUrl) => {
+    // Okta echoes its canonical host in the Link header, so a raw string prefix check would drop the
+    // link here and quietly reinstate the truncation this change is meant to remove.
+    const nextUrl = `${INSTANCE_URL}/api/v1/apps?after=cursor-1&limit=200`;
+    safeRequestGetMock
+      .mockResolvedValueOnce(pageWithNext([oidcApp("a")], nextUrl))
+      .mockResolvedValueOnce(lastPage([oidcApp("b")]));
+
+    const apps = await listOktaApps({ credentials: { instanceUrl: configuredUrl, apiToken: "test-token" } } as any);
+
+    expect(safeRequestGetMock).toHaveBeenCalledTimes(2);
+    expect(apps.map((app) => app.id)).toEqual(["a", "b"]);
+  });
+
+  it("ignores a malformed next link instead of throwing", async () => {
+    safeRequestGetMock.mockResolvedValueOnce(pageWithNext([oidcApp("a")], "not-a-url"));
+
+    const apps = await listOktaApps(connection);
+
+    expect(safeRequestGetMock).toHaveBeenCalledTimes(1);
+    expect(apps.map((app) => app.id)).toEqual(["a"]);
+  });
+
   it("stops at the page cap and logs rather than looping forever or truncating silently", async () => {
     // An Okta instance that always advertises another page would otherwise loop without end.
     safeRequestGetMock.mockResolvedValue(
