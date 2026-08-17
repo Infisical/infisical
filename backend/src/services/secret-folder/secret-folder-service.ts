@@ -1804,10 +1804,6 @@ export const secretFolderServiceFactory = ({
         secretIdsByFolderId.set(secret.folderId, list);
       }
 
-      // pre-generate a destination id for every source folder so parent links are known up front. this lets us
-      // insert the folders with correct parentIds in dependency order and lets the
-      // secret move resolve each destination path within this tx. relativePath is relative to the moved folder,
-      // where the folder itself is "/".
       const idBySourceFolderId = new Map<string, string>(subtree.map((f) => [f.id, uuidv4()]));
       const plan = subtree
         .slice()
@@ -1817,7 +1813,6 @@ export const secretFolderServiceFactory = ({
           const sourceAbsPath = toSourceAbsPath(f);
           const destinationAbsPath =
             relativePath === "/" ? destinationFolderRoot : `${destinationFolderRoot}${relativePath}`;
-          // the subtree root re-parents onto the destination parent; every other folder onto its mapped new parent.
           const newParentId =
             f.id === sourceFolder.id
               ? destinationParentFolder.id
@@ -1834,19 +1829,12 @@ export const secretFolderServiceFactory = ({
           };
         });
 
-      // pre-authorize folder create/delete across the entire subtree before any write. a move recreates each
-      // folder at its destination parent and removes it from its source parent, so the actor needs Delete at every
-      // source parent path and Create at every destination parent path. paths are deduped because subtree siblings
-      // share a parent. folder permissions are path-scoped (glob conditions can differ per nested path), so the
-      // root-only check performed before the transaction is not sufficient.
       const checkedSourceParents = new Set<string>();
       const checkedDestinationParents = new Set<string>();
       for (const entry of plan) {
         const sourceParent = path.dirname(entry.sourceAbsPath);
         if (!checkedSourceParents.has(sourceParent)) {
           checkedSourceParents.add(sourceParent);
-          // a move only requires Delete at each source parent path. folder read is implied-for-all (folder
-          // list/get is not gated by a Read permission), so it is not required here.
           ForbiddenError.from(permission).throwUnlessCan(
             ProjectPermissionActions.Delete,
             subject(ProjectPermissionSub.SecretFolders, { environment: sourceEnvironment, secretPath: sourceParent })
@@ -1865,9 +1853,6 @@ export const secretFolderServiceFactory = ({
         }
       }
 
-      // pre-authorize the secret moves for the entire subtree before any write, so an unauthorized move fails
-      // before anything is created or moved. each folder that holds secrets is checked once at its own
-      // source/destination path.
       for (const entry of plan) {
         if (!entry.secretIds.length) {
           // eslint-disable-next-line no-continue
@@ -1919,10 +1904,6 @@ export const secretFolderServiceFactory = ({
         );
       }
 
-      // 7. move every folder's secrets inside this same transaction (root first), so the whole subtree move is
-      // atomic. fnSecretMoveInTransaction performs the move only; its snapshots and syncs are dispatched once, per
-      // affected folder, after commit. moves run sequentially because they share this one connection, and each
-      // destination path resolves from the folders just created above.
       const moveResultsList: TFnSecretMoveResult[] = [];
       for (const entry of plan) {
         if (!entry.secretIds.length) {

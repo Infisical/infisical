@@ -305,6 +305,15 @@ export enum ProjectPermissionSecretApprovalRequestActions {
   Read = "read"
 }
 
+// Delegating access within the scope a grant is attached to, which today is a single folder via
+// additional_privileges.folderId. Distinct from ProjectFolderGrant, which is cross-project folder
+// sharing, and from Member.GrantPrivileges, which is project-wide.
+export enum ProjectPermissionManageAccessActions {
+  Read = "read",
+  Grant = "grant",
+  Revoke = "revoke"
+}
+
 export const isCustomProjectRole = (slug: string) =>
   !Object.values(ProjectMembershipRole).includes(slug as ProjectMembershipRole);
 
@@ -358,6 +367,7 @@ export enum ProjectPermissionSub {
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   ProjectFolderGrant = "project-folder-grant",
+  ManageAccess = "manage-access",
   HoneyTokens = "honey-tokens",
   ProxiedServices = "proxied-services",
   Insights = "insights"
@@ -698,7 +708,10 @@ export type ProjectPermissionSet =
         | ProjectPermissionSub.ProjectFolderGrant
         | (ForcedSubject<ProjectPermissionSub.ProjectFolderGrant> & ProjectFolderGrantSubjectFields)
       )
-    ];
+    ]
+  // No subject fields: the scope comes from additional_privileges.folderId, not from
+  // environment/secretPath conditions.
+  | [ProjectPermissionManageAccessActions, ProjectPermissionSub.ManageAccess];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
 const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([

@@ -1,5 +1,6 @@
-import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability";
+import { AbilityBuilder, createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 
+import { SecretFolderRole } from "@app/db/schemas";
 import {
   ProjectPermissionActions,
   ProjectPermissionAppConnectionActions,
@@ -21,6 +22,7 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
+  ProjectPermissionManageAccessActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
@@ -796,6 +798,127 @@ export const projectNoAccessPermissions = buildNoAccessProjectPermission();
 
 // KMS
 export const cryptographicOperatorPermissions = buildCryptographicOperatorPermissionRules();
+
+// Folder RBAC. These are project-subject rules scoped to one folder by
+// additional_privileges.folderId rather than by CASL conditions, so they carry no subject fields.
+// The tiers are cumulative, and each apply* helper chains to the one below it so that relationship
+// lives in one place instead of being re-listed five times.
+type TProjectCan = AbilityBuilder<MongoAbility<ProjectPermissionSet>>["can"];
+
+// See what exists, without exposing any secret values.
+const applyFolderListRules = (can: TProjectCan) => {
+  can([ProjectPermissionSecretActions.DescribeSecret], ProjectPermissionSub.Secrets);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.Tags);
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.SecretImports);
+  can([ProjectPermissionSecretSyncActions.Read], ProjectPermissionSub.SecretSyncs);
+  can([ProjectPermissionSecretRotationActions.Read], ProjectPermissionSub.SecretRotation);
+  can([ProjectPermissionHoneyTokenActions.Read], ProjectPermissionSub.HoneyTokens);
+};
+
+const applyFolderReadRules = (can: TProjectCan) => {
+  applyFolderListRules(can);
+
+  can([ProjectPermissionSecretActions.ReadValue], ProjectPermissionSub.Secrets);
+  can([ProjectPermissionCommitsActions.Read], ProjectPermissionSub.Commits);
+  can([ProjectPermissionDynamicSecretActions.Lease], ProjectPermissionSub.DynamicSecrets);
+};
+
+const applyFolderEditRules = (can: TProjectCan) => {
+  applyFolderReadRules(can);
+
+  can(
+    [ProjectPermissionSecretActions.Create, ProjectPermissionSecretActions.Edit, ProjectPermissionSecretActions.Delete],
+    ProjectPermissionSub.Secrets
+  );
+  can([ProjectPermissionActions.Create, ProjectPermissionActions.Edit], ProjectPermissionSub.SecretFolders);
+  can(
+    [ProjectPermissionActions.Create, ProjectPermissionActions.Edit, ProjectPermissionActions.Delete],
+    ProjectPermissionSub.SecretImports
+  );
+  can(
+    [ProjectPermissionActions.Create, ProjectPermissionActions.Edit, ProjectPermissionActions.Delete],
+    ProjectPermissionSub.Tags
+  );
+};
+
+const applyFolderManageRules = (can: TProjectCan) => {
+  applyFolderEditRules(can);
+
+  can(
+    [
+      ProjectPermissionSecretRotationActions.Create,
+      ProjectPermissionSecretRotationActions.Edit,
+      ProjectPermissionSecretRotationActions.Delete,
+      ProjectPermissionSecretRotationActions.RotateSecrets,
+      ProjectPermissionSecretRotationActions.ReadGeneratedCredentials
+    ],
+    ProjectPermissionSub.SecretRotation
+  );
+  can(
+    [
+      ProjectPermissionDynamicSecretActions.ReadRootCredential,
+      ProjectPermissionDynamicSecretActions.CreateRootCredential,
+      ProjectPermissionDynamicSecretActions.EditRootCredential,
+      ProjectPermissionDynamicSecretActions.DeleteRootCredential
+    ],
+    ProjectPermissionSub.DynamicSecrets
+  );
+  can(
+    [
+      ProjectPermissionHoneyTokenActions.Create,
+      ProjectPermissionHoneyTokenActions.Edit,
+      ProjectPermissionHoneyTokenActions.Reset,
+      ProjectPermissionHoneyTokenActions.Revoke,
+      ProjectPermissionHoneyTokenActions.ReadCredentials
+    ],
+    ProjectPermissionSub.HoneyTokens
+  );
+  can(
+    [
+      ProjectPermissionSecretSyncActions.Create,
+      ProjectPermissionSecretSyncActions.Edit,
+      ProjectPermissionSecretSyncActions.Delete,
+      ProjectPermissionSecretSyncActions.SyncSecrets,
+      ProjectPermissionSecretSyncActions.ImportSecrets,
+      ProjectPermissionSecretSyncActions.RemoveSecrets
+    ],
+    ProjectPermissionSub.SecretSyncs
+  );
+};
+
+const applyFolderFullAccessRules = (can: TProjectCan) => {
+  applyFolderManageRules(can);
+
+  can(
+    [
+      ProjectPermissionManageAccessActions.Read,
+      ProjectPermissionManageAccessActions.Grant,
+      ProjectPermissionManageAccessActions.Revoke
+    ],
+    ProjectPermissionSub.ManageAccess
+  );
+};
+
+const buildFolderRoleRules = (applyRules: (can: TProjectCan) => void) => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
+  applyRules(can);
+  return rules;
+};
+
+export const folderListPermissions = buildFolderRoleRules(applyFolderListRules);
+export const folderReadPermissions = buildFolderRoleRules(applyFolderReadRules);
+export const folderEditPermissions = buildFolderRoleRules(applyFolderEditRules);
+export const folderManagePermissions = buildFolderRoleRules(applyFolderManageRules);
+export const folderFullAccessPermissions = buildFolderRoleRules(applyFolderFullAccessRules);
+
+export const SECRET_FOLDER_ROLE_PERMISSIONS: Record<SecretFolderRole, RawRuleOf<MongoAbility<ProjectPermissionSet>>[]> =
+  {
+    [SecretFolderRole.List]: folderListPermissions,
+    [SecretFolderRole.Read]: folderReadPermissions,
+    [SecretFolderRole.Edit]: folderEditPermissions,
+    [SecretFolderRole.Manage]: folderManagePermissions,
+    [SecretFolderRole.FullAccess]: folderFullAccessPermissions
+  };
 
 const buildApplicationAdminPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
