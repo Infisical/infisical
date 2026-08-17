@@ -54,6 +54,7 @@ const handleRowAnchorClick = (event: React.MouseEvent) => {
 
 const ProjectSelectInner = () => {
   const [open, setOpen] = useState(false);
+  const [selectedValue, setSelectedValue] = useState("");
   const { currentProject: currentWorkspace } = useProject();
   const { currentOrg } = useOrganization();
   const { data: projects = [] } = useGetUserProjects();
@@ -131,7 +132,16 @@ const ProjectSelectInner = () => {
 
   return (
     <div className="mr-2 flex min-w-16 items-center gap-1 pr-1 pl-1">
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(nextOpen) => {
+          // Clearing on open lets cmdk pick the first row again, as it did while its
+          // selection was uncontrolled. Reset here rather than on close so the paths that
+          // call setOpen(false) directly cannot leave a stale row selected.
+          if (nextOpen) setSelectedValue("");
+          setOpen(nextOpen);
+        }}
+      >
         <PopoverAnchor className="absolute left-18" />
         <Link
           to={getProjectHomePage(currentWorkspace.type, currentWorkspace.environments)}
@@ -153,7 +163,7 @@ const ProjectSelectInner = () => {
           </IconButton>
         </PopoverTrigger>
         <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
-          <Command>
+          <Command value={selectedValue} onValueChange={setSelectedValue}>
             <CommandInput aria-label="Search projects" placeholder="Search projects..." />
             <CommandList>
               <CommandEmpty>No projects found.</CommandEmpty>
@@ -173,14 +183,19 @@ const ProjectSelectInner = () => {
                     />
                     <div className="flex min-w-0 flex-1 flex-col">
                       {/* The name is the row's link, so its accessible name comes from visible
-                          text and its stretched pseudo-element covers the row. */}
+                          text and its stretched pseudo-element covers the row. Being a tab stop
+                          means focus must drive cmdk's selection: cmdk resolves Enter against the
+                          row it has marked aria-selected, never against the focused element, so
+                          without this onFocus a tabbed-to row would activate whichever row the
+                          arrow keys last selected and switch the user to the wrong project. */}
                       <Link
                         to={getProjectHomePage(workspace.type, workspace.environments)}
                         params={{
                           projectId: workspace.id,
                           orgId: workspace.orgId
                         }}
-                        className="truncate rounded-sm text-sm after:absolute after:inset-0 after:rounded-sm after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                        className="truncate rounded-sm text-sm outline-0 after:absolute after:inset-0 after:rounded-sm after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                        onFocus={() => setSelectedValue(workspace.id)}
                         onClick={handleRowAnchorClick}
                       >
                         {workspace.name}

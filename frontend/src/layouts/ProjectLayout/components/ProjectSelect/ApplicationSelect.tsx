@@ -47,6 +47,7 @@ const ApplicationSelectInner = ({
   orgId: string;
 }) => {
   const [open, setOpen] = useState(false);
+  const [selectedValue, setSelectedValue] = useState("");
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const navigate = useNavigate();
@@ -67,7 +68,16 @@ const ApplicationSelectInner = ({
 
   return (
     <div className="mr-2 flex min-w-16 items-center gap-1 pr-1 pl-1">
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(nextOpen) => {
+          // Clearing on open lets cmdk pick the first row again, as it did while its
+          // selection was uncontrolled. Reset here rather than on close so the paths that
+          // call setOpen(false) directly cannot leave a stale row selected.
+          if (nextOpen) setSelectedValue("");
+          setOpen(nextOpen);
+        }}
+      >
         <PopoverAnchor asChild>
           <Link
             to={
@@ -88,7 +98,7 @@ const ApplicationSelectInner = ({
           </IconButton>
         </PopoverTrigger>
         <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
-          <Command shouldFilter={false}>
+          <Command shouldFilter={false} value={selectedValue} onValueChange={setSelectedValue}>
             <CommandInput
               aria-label="Search applications"
               placeholder="Search applications..."
@@ -108,12 +118,17 @@ const ApplicationSelectInner = ({
                     <Check className={app.name === applicationName ? "opacity-100" : "opacity-0"} />
                     <div className="flex min-w-0 flex-1 flex-col">
                       {/* The name is the row's link, so its accessible name comes from visible
-                          text and its stretched pseudo-element covers the row. */}
+                          text and its stretched pseudo-element covers the row. Being a tab stop
+                          means focus must drive cmdk's selection: cmdk resolves Enter against the
+                          row it has marked aria-selected, never against the focused element, so
+                          without this onFocus a tabbed-to row would activate whichever row the
+                          arrow keys last selected and switch the user to the wrong application. */}
                       <Link
                         to={
                           `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${app.name}` as never
                         }
-                        className="truncate rounded-sm text-sm after:absolute after:inset-0 after:rounded-sm after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                        className="truncate rounded-sm text-sm outline-0 after:absolute after:inset-0 after:rounded-sm after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                        onFocus={() => setSelectedValue(app.name)}
                         onClick={handleRowAnchorClick}
                       >
                         {app.name}
