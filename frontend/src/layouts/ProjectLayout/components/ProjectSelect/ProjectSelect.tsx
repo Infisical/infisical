@@ -173,16 +173,14 @@ const ProjectSelectInner = () => {
                     />
                     <div className="flex min-w-0 flex-1 flex-col">
                       {/* The name is the row's link, so its accessible name comes from visible
-                          text and its stretched pseudo-element covers the row. It stays
-                          unfocusable because cmdk drives selection from the search input. */}
+                          text and its stretched pseudo-element covers the row. */}
                       <Link
                         to={getProjectHomePage(workspace.type, workspace.environments)}
                         params={{
                           projectId: workspace.id,
                           orgId: workspace.orgId
                         }}
-                        tabIndex={-1}
-                        className="truncate text-sm after:absolute after:inset-0 after:content-['']"
+                        className="truncate rounded-sm text-sm after:absolute after:inset-0 after:rounded-sm after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                         onClick={handleRowAnchorClick}
                       >
                         {workspace.name}
