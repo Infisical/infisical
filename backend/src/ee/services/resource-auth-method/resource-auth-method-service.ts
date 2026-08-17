@@ -69,6 +69,9 @@ import { TResourceTokenAuthDALFactory } from "./token-auth-dal";
 
 const ENROLLMENT_TOKEN_TTL_SECONDS = 3600;
 
+// Bounds the reviewer chain walk; nobody legitimately chains proxies this deep.
+const MAX_PROXY_CHAIN_DEPTH = 10;
+
 const $generateEnrollmentToken = () => {
   const plainToken = `gwe_${crypto.randomBytes(32).toString("base64url")}`;
   const tokenHash = crypto.nativeCrypto.createHash("sha256").update(plainToken).digest("hex");
@@ -405,6 +408,54 @@ export const resourceAuthMethodServiceFactory = ({
     return Boolean(pending);
   };
 
+  // Resolves a proxy selection to the gateways it could actually route through: the one named, or
+  // every member of the pool, since any of them can be picked.
+  const $expandProxyToGateways = async (proxy: {
+    gatewayV2Id?: string | null;
+    gatewayPoolId?: string | null;
+  }): Promise<string[]> => {
+    if (proxy.gatewayV2Id) return [proxy.gatewayV2Id];
+    if (!proxy.gatewayPoolId) return [];
+    const members = await gatewayPoolMembershipDAL.find({ gatewayPoolId: proxy.gatewayPoolId });
+    return members.map((member) => member.gatewayId);
+  };
+
+  const $storedProxyOf = async (gatewayId: string) => {
+    const registry = await resourceAuthMethodDAL.findOne({ gatewayId });
+    if (!registry || registry.method !== ResourceAuthMethodType.Kubernetes) return {};
+    const config = await resourceKubernetesAuthDAL.findOne({ authMethodId: registry.id });
+    return { gatewayV2Id: config?.gatewayV2Id, gatewayPoolId: config?.gatewayPoolId };
+  };
+
+  // Reviewing through a gateway that reviews back through this one leaves neither able to log in,
+  // since each waits on a tunnel the other has not built yet. Recursive so a wide pool fans out in
+  // parallel; the depth bound also stops a cycle already in the data from spinning here.
+  const $assertProxyChainAvoids = async (
+    gatewayId: string,
+    proxy: { gatewayV2Id?: string | null; gatewayPoolId?: string | null },
+    depth = 0,
+    seen = new Set<string>()
+  ): Promise<void> => {
+    if (depth >= MAX_PROXY_CHAIN_DEPTH) return;
+
+    const candidates = await $expandProxyToGateways(proxy);
+    if (candidates.includes(gatewayId)) {
+      throw new BadRequestError({
+        message:
+          "The selected reviewer eventually reviews through this gateway, so neither could ever authenticate. Point one of them at a gateway outside the chain."
+      });
+    }
+
+    await Promise.all(
+      candidates
+        .filter((candidate) => !seen.has(candidate))
+        .map(async (candidate) => {
+          seen.add(candidate);
+          await $assertProxyChainAvoids(gatewayId, await $storedProxyOf(candidate), depth + 1, seen);
+        })
+    );
+  };
+
   // A gateway cannot vouch for itself: the proxy runs over its own tunnel, which only exists once
   // it has authenticated. Covers pools too, since selecting a healthy member can land on itself
   // while a stale heartbeat is still within its TTL.
@@ -430,6 +481,8 @@ export const resourceAuthMethodServiceFactory = ({
         });
       }
     }
+
+    await $assertProxyChainAvoids(resource.id, proxy);
   };
 
   // Picks the route to the API server: straight out from Infisical, or tunnelled through a gateway.

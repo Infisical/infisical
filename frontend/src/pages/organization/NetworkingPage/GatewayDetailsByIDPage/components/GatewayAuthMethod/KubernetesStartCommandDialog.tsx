@@ -34,8 +34,8 @@ export const KubernetesStartCommandContent = ({ gatewayId, gatewayName }: Props)
     const relayPart = resolvedRelayName
       ? ` \\\n  --set gateway.relayName=${resolvedRelayName}`
       : "";
-    return `helm repo add infisical-helm-charts https://dl.infisical.com/helm-charts
-helm install infisical-gateway infisical-helm-charts/infisical-gateway \\
+    return `helm repo add infisical https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
+helm install infisical-gateway infisical/infisical-gateway \\
   --namespace infisical-gateway --create-namespace \\
   --set gateway.name=${gatewayName} \\
   --set gateway.domain=${siteURL} \\
@@ -55,6 +55,10 @@ helm install infisical-gateway infisical-helm-charts/infisical-gateway \\
       </TabsContent>
       <TabsContent value="cli" className="mt-0 min-w-0">
         <CodeBlock value={cliCommand} label="Container command" />
+        <p className="mt-2 text-xs text-muted">
+          Runs inside the cluster, since it reads the pod&apos;s service account token. The domain
+          must be reachable from the pod, so a loopback address will not work.
+        </p>
       </TabsContent>
       <Field>
         <Select
