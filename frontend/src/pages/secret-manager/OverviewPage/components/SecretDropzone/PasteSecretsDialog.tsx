@@ -9,6 +9,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   TextArea
@@ -129,9 +130,11 @@ const PasteSecretsContent = ({ onParsedSecrets, onClose }: ContentProps) => {
             <FieldError errors={[errors.value]} />
           </FieldContent>
         </Field>
-        <Button className="mt-4 ml-auto" variant="project" isDisabled={!isDirty} type="submit">
-          Parse Secrets
-        </Button>
+        <DialogFooter className="mt-4">
+          <Button variant="project" isDisabled={!isDirty} type="submit">
+            Parse Secrets
+          </Button>
+        </DialogFooter>
       </form>
     </>
   );

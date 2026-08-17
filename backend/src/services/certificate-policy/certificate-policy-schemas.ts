@@ -1,35 +1,84 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { CERTIFICATE_POLICIES } from "@app/lib/api-docs";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   CertPolicyState,
   CertSubjectAlternativeNameType,
-  CertSubjectAttributeType
+  CertSubjectAttributeType,
+  domainComponentSchema,
+  MAX_DOMAIN_COMPONENTS,
+  PKI_TEXT_COLUMN_MAX_LENGTH
 } from "@app/services/certificate-common/certificate-constants";
 
-const attributeTypeSchema = z.nativeEnum(CertSubjectAttributeType);
+import { TSingleValuedSubjectAttributeType } from "./certificate-policy-types";
+
 const sanTypeSchema = z.nativeEnum(CertSubjectAlternativeNameType);
 
-const policySubjectSchema = z
-  .object({
-    type: attributeTypeSchema,
-    allowed: z.array(z.string().trim().min(1, "Value cannot be empty")).optional(),
-    required: z.array(z.string().trim().min(1, "Value cannot be empty")).optional(),
-    denied: z.array(z.string().trim().min(1, "Value cannot be empty")).optional()
-  })
+const SINGLE_VALUED_SUBJECT_ATTRIBUTE_TYPES = Object.values(CertSubjectAttributeType).filter(
+  (type): type is TSingleValuedSubjectAttributeType => type !== CertSubjectAttributeType.DOMAIN_COMPONENT
+);
+
+const singleValuedAttributeTypeSchema = z.enum(
+  SINGLE_VALUED_SUBJECT_ATTRIBUTE_TYPES as [TSingleValuedSubjectAttributeType, ...TSingleValuedSubjectAttributeType[]]
+);
+
+const MAX_DOMAIN_COMPONENT_SEQUENCES = 25;
+
+const requestSubjectValueSchema = z
+  .string()
+  .trim()
+  .min(1, "Value cannot be empty")
+  .max(PKI_TEXT_COLUMN_MAX_LENGTH, `Value cannot exceed ${PKI_TEXT_COLUMN_MAX_LENGTH} characters`);
+
+const requestDomainComponentSequenceSchema = requestSubjectValueSchema
   .refine(
-    (data) => {
-      if (!data.allowed && !data.required && !data.denied) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message: "Subject attribute must have at least one allowed, required, or denied value"
-    }
+    (value) => value.split(",").every((component) => domainComponentSchema.safeParse(component).success),
+    "A domain component sequence must be comma-separated components, most specific first"
+  )
+  .refine(
+    (value) => value.split(",").length <= MAX_DOMAIN_COMPONENTS,
+    `A domain component sequence cannot exceed ${MAX_DOMAIN_COMPONENTS} components`
   );
+
+const buildPolicySubjectSchema = (
+  valueSchema: z.ZodType<string>,
+  domainComponentValueSchema: z.ZodType<string>,
+  maxSequences?: number
+) => {
+  const sequenceList = z.array(domainComponentValueSchema);
+  const domainComponentListSchema = maxSequences ? sequenceList.max(maxSequences) : sequenceList;
+
+  const singleValuedSchema = z.object({
+    type: singleValuedAttributeTypeSchema,
+    allowed: z.array(valueSchema).optional(),
+    required: z.array(valueSchema).optional(),
+    denied: z.array(valueSchema).optional()
+  });
+
+  const domainComponentSchemaShape = z.object({
+    type: z.literal(CertSubjectAttributeType.DOMAIN_COMPONENT),
+    allowed: domainComponentListSchema.optional().describe(CERTIFICATE_POLICIES.SUBJECT_DOMAIN_COMPONENT_RULE.allowed),
+    required: domainComponentListSchema
+      .optional()
+      .describe(CERTIFICATE_POLICIES.SUBJECT_DOMAIN_COMPONENT_RULE.required),
+    denied: domainComponentListSchema.optional().describe(CERTIFICATE_POLICIES.SUBJECT_DOMAIN_COMPONENT_RULE.denied)
+  });
+
+  return z.discriminatedUnion("type", [singleValuedSchema, domainComponentSchemaShape]);
+};
+
+export const policySubjectSchema = buildPolicySubjectSchema(
+  requestSubjectValueSchema,
+  requestDomainComponentSequenceSchema,
+  MAX_DOMAIN_COMPONENT_SEQUENCES
+).refine((data) => Boolean(data.allowed || data.required || data.denied), {
+  message: "Subject attribute must have at least one allowed, required, or denied value"
+});
+
+const storedPolicySubjectSchema = buildPolicySubjectSchema(z.string(), z.string());
 
 const policyKeyUsagesSchema = z
   .object({
@@ -127,7 +176,7 @@ export const certificatePolicyResponseSchema = z.object({
     .max(255, "Policy name must be less than 255 characters")
     .regex(new RE2("^[a-zA-Z0-9-_]+$"), "Policy name must contain only letters, numbers, hyphens, and underscores"),
   description: z.string().trim().max(1000, "Description must be less than 1000 characters").nullable().optional(),
-  subject: z.array(policySubjectSchema).optional(),
+  subject: z.array(storedPolicySubjectSchema).optional(),
   sans: z.array(policySanSchema).optional(),
   keyUsages: policyKeyUsagesSchema.optional(),
   extendedKeyUsages: policyExtendedKeyUsagesSchema.optional(),

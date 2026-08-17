@@ -185,4 +185,62 @@ describe("Secret Folder Router", async () => {
     expect(payload).toHaveProperty("error");
     await deleteFolder({ path: "/level1/level2", id: newFolder.id });
   });
+
+  const listFolderNames = async (path: string) => {
+    const res = await testServer.inject({
+      method: "GET",
+      url: `/api/v1/folders`,
+      headers: {
+        authorization: `Bearer ${jwtAuthToken}`
+      },
+      query: {
+        workspaceId: seedData1.project.id,
+        environment: seedData1.environment.slug,
+        path
+      }
+    });
+    expect(res.statusCode).toBe(200);
+    return (JSON.parse(res.payload).folders as { id: string; name: string }[]).map((folder) => folder.name);
+  };
+
+  // Concurrent creates of the same folder race on the create-folder lock. The lock keeps them from all inserting:
+  // exactly one request wins and the rest observe the committed row and are rejected, so no duplicate siblings.
+  test.each([
+    { name: "concurrent-shallow", path: "/" },
+    { name: "concurrent-deep", path: "/conc-level1/conc-level2" }
+  ])("Concurrent creation of $name in $path collapses to a single folder", async ({ name, path }) => {
+    const CONCURRENCY = 10;
+
+    const responses = await Promise.all(
+      Array.from({ length: CONCURRENCY }, () =>
+        testServer.inject({
+          method: "POST",
+          url: `/api/v1/folders`,
+          headers: {
+            authorization: `Bearer ${jwtAuthToken}`
+          },
+          body: {
+            workspaceId: seedData1.project.id,
+            environment: seedData1.environment.slug,
+            name,
+            path
+          }
+        })
+      )
+    );
+
+    const created = responses.filter((res) => res.statusCode === 200);
+    const rejected = responses.filter((res) => res.statusCode === 400);
+
+    expect(created).toHaveLength(1);
+    expect(rejected).toHaveLength(CONCURRENCY - 1);
+
+    // the folder exists exactly once at its path, and every rejection is the "already exists" conflict
+    const namesAtPath = await listFolderNames(path);
+    expect(namesAtPath.filter((folderName) => folderName === name)).toHaveLength(1);
+    rejected.forEach((res) => expect(JSON.parse(res.payload)).toHaveProperty("error"));
+
+    const createdFolder = created[0].json().folder as { id: string };
+    await deleteFolder({ path, id: createdFolder.id });
+  });
 });

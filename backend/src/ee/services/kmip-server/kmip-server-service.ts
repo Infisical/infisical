@@ -80,7 +80,7 @@ export const kmipServerServiceFactory = ({
   }: {
     kmipServerId: string;
     hostnamesOrIps?: string;
-    ttl?: string;
+    ttl?: string | null;
     keyAlgorithm?: string;
     actor: TActor;
   }) => {

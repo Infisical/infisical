@@ -4,7 +4,7 @@ import { HardDriveIcon, UserIcon, UsersIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { RoleOption } from "@app/components/roles";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import { FormControl } from "@app/components/v2";
 import {
   Button,
   ButtonGroup,
@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v3";
+import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { apiRequest } from "@app/config/request";
 import { useProject } from "@app/context";
 import {
@@ -271,7 +272,7 @@ export const AddApplicationMemberModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl overflow-visible">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add Member</DialogTitle>
           <DialogDescription>

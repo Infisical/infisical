@@ -1,5 +1,4 @@
 /* eslint-disable no-await-in-loop */
-import opentelemetry from "@opentelemetry/api";
 import * as x509 from "@peculiar/x509";
 import { AxiosError } from "axios";
 import { Job } from "bullmq";
@@ -14,6 +13,7 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+import { highCardinalityMeter } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -118,7 +118,7 @@ export const pkiSyncQueueFactory = ({
 }: TPkiSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
-  const integrationMeter = opentelemetry.metrics.getMeter("PkiSyncs");
+  const integrationMeter = highCardinalityMeter("PkiSyncs");
   const syncCertificatesErrorHistogram = integrationMeter.createHistogram("pki_sync_sync_certificates_errors", {
     description: "PKI Sync - sync certificates errors",
     unit: "1"
@@ -702,6 +702,7 @@ export const pkiSyncQueueFactory = ({
           organizationId: pkiSync.connection.orgId,
           properties: {
             orgId: pkiSync.connection.orgId,
+            projectId: pkiSync.projectId,
             destination: pkiSync.destination,
             success: fullySynced
           }

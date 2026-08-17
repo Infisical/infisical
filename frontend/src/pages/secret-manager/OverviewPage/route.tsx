@@ -12,6 +12,7 @@ const SecretOverviewPageQuerySchema = z.object({
   environments: z.array(z.string()).catch([]),
   dynamicSecretId: z.string().optional(),
   honeyTokenId: z.string().optional(),
+  tags: z.string().optional(),
   filterBy: z.string().optional()
 });
 

@@ -325,7 +325,7 @@ function AddMemberPopover({
       </PopoverTrigger>
       <PopoverContent onWheel={(e) => e.stopPropagation()} align="end" className="w-lg p-0">
         <Command>
-          <CommandInput placeholder="Search users..." />
+          <CommandInput aria-label="Search users" placeholder="Search users..." />
           <CommandList>
             <CommandEmpty>No users available to add.</CommandEmpty>
             {availableOrgUsers.length > 0 && (

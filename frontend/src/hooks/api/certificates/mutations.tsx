@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { certificateProfileKeys } from "../certificateProfiles/queries";
 import { pkiSubscriberKeys } from "../pkiSubscriber/queries";
 import { projectKeys } from "../projects";
 import { certKeys } from "./queries";
@@ -38,7 +39,7 @@ export const useDeleteCert = () => {
         queryKey: certKeys.getCertificateById(id)
       });
       queryClient.invalidateQueries({
-        queryKey: ["certificate-profiles", "list"]
+        queryKey: certificateProfileKeys.lists()
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
@@ -72,7 +73,7 @@ export const useRevokeCert = () => {
         queryKey: certKeys.getCertificateById(id)
       });
       queryClient.invalidateQueries({
-        queryKey: ["certificate-profiles", "list"]
+        queryKey: certificateProfileKeys.lists()
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
@@ -123,7 +124,7 @@ export const useRenewCertificate = () => {
         queryKey: certKeys.getCertificateById(certificateId)
       });
       queryClient.invalidateQueries({
-        queryKey: ["certificate-profiles", "list"]
+        queryKey: certificateProfileKeys.lists()
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
@@ -242,7 +243,7 @@ export const useUnifiedCertificateIssuance = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["certificate-profiles", "list"]
+        queryKey: certificateProfileKeys.lists()
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()

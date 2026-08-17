@@ -1,130 +1,459 @@
 ---
-title: "Docker Entrypoint"
-description: "Learn how to use Infisical to inject environment variables into a Docker container."
+title: "Inject secrets into a Docker application"
+sidebarTitle: "Docker"
+description: "Store secrets in Infisical and deliver them to a Dockerized application at runtime."
 ---
 
-This approach allows you to inject secrets from Infisical directly into your application.
-This is achieved by installing the Infisical CLI into your docker image and modifying your start command to execute with Infisical.
+import ConfigureProject from "/snippets/documentation/platform/secrets-mgmt/configure-project.mdx";
 
-## Install the Infisical CLI to your Dockerfile
+This guide walks you through storing secrets in Infisical and injecting them into a Dockerized application as environment variables. You can [fetch secrets when the container starts](#fetch-at-startup) or [export them from the host](#pass-with-docker-run) when you run the container.
 
-To install the CLI, follow the instructions for your chosen distribution [here](/cli/overview).
-
-####
 <Tip>
-  We recommend you to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://github.com/Infisical/cli/releases)
+  Visual learner? Watch an [overview of managing secrets in Docker with Infisical](https://www.youtube.com/watch?v=oU2nNBwlOTA).
 </Tip>
 
-## Modify the start command in your Dockerfile
+<Info>
+Prerequisites:
 
-Starting your service with the Infisical CLI pulls your secrets from Infisical and injects them into your service.
+- An Infisical account on [Infisical Cloud](https://app.infisical.com) or a [self-hosted instance](/self-hosting/overview)
+- [Docker](https://docs.docker.com/get-started/get-docker/) installed
+- The [Infisical CLI](/cli/overview) installed on the machine where you run Docker
+- An application or container image to run
+</Info>
+
+<ConfigureProject />
+
+## Step 2: Choose a delivery method
+
+Next, choose how Docker should receive your application secrets:
 
 <Tabs>
-  <Tab title="Machine Identity (Recommended)">
-    ```dockerfile
-  CMD ["infisical", "run", "--projectId", "<your-project-id>", "--", "[your service start command]"]
+  <Tab title="Fetch at startup (Recommended)">
+    <span id="fetch-at-startup"></span>
 
-# example with single single command
+    This method installs the Infisical CLI in your image and uses it to start your application. The CLI fetches secrets when the container starts and injects them into the application process.
 
-CMD ["infisical", "run", "--projectId", "<your-project-id>", "--", "npm", "run", "start"]
+    <Note>
+      We strongly recommend this method, since it works for both local development and automated/production environments.
+    </Note>
 
-# example with multiple commands
+    ### Create a machine identity
 
-CMD ["infisical", "run", "--projectId", "<your-project-id>", "--command", "npm run start && ..."]
+    Create a [machine identity](/documentation/platform/identities/machine-identities) for your application:
 
-````
+    <Steps>
+      <Step>
+        In your project, select **Project Settings** > **Access Control** > **Machine Identities**.
+      </Step>
+      <Step>
+        Select **Add Machine Identity**, then select **Create New**.
+      </Step>
+      <Step>
+        Enter a name (e.g., `orders-service-docker`), select a role that can read secrets, and select **Create**.
+      </Step>
+    </Steps>
 
-<Steps>
-  <Step title="Generate a machine identity">
-    Generate a machine identity for your project by following the steps in the [Machine Identity](/documentation/platform/identities/machine-identities) guide. The machine identity will allow you to authenticate and fetch secrets from Infisical.
-  </Step>
-  <Step title="Obtain an access token for the machine identity">
-    Obtain an access token for the machine identity by running the following command:
-    ```bash
-    export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=<your-client-id> --client-secret=<your-client-secret> --plain --silent)
-    ```
+    Infisical creates the identity with [Universal Auth](/documentation/platform/identities/universal-auth) enabled and opens its details page.
 
-    <Info>
-     Please note that the access token has a limited lifespan. The `infisical token renew` command can be used to renew the token if needed.
-    </Info>
-  </Step>
-  <Step title="Feed the access token to the docker container">
-    The last step is to give the Infisical CLI installed in your Docker container access to the access token. This will allow the CLI to fetch and inject the secrets into your application.
+    ### Create a client secret
 
-    To feed the access token to the container, use the INFISICAL_TOKEN environment variable as shown below.
+    Create credentials that the application can exchange for a short-lived access token:
 
-    ```bash
-    docker run --env INFISICAL_TOKEN=$INFISICAL_TOKEN [DOCKER-IMAGE]...
-    ```
-  </Step>
-</Steps>
+    <Steps>
+      <Step>
+        In the machine identity's **Authentication** section, select **Universal Auth**.
+      </Step>
+      <Step>
+        Copy the **Client ID** and save it somewhere secure for the next step.
+      </Step>
+      <Step>
+        Select **Create Client Secret**, enter a description (e.g., `docker-quickstart`), and select **Create**.
+      </Step>
+      <Step>
+        Copy the **Client Secret**. You won't be able to view it again.
+      </Step>
+    </Steps>
 
-### Using a Starting Script
+    <Warning>
+      Don't add the Client ID, Client Secret, or an Infisical access token to your Dockerfile. Docker images may be shared or stored in a registry.
+    </Warning>
 
-The drawback of the previous method is that you would have to generate the `INFISICAL_TOKEN` manually. To automate this process, you can use a shell script as your starting command.
+    <Note>
+      Machine identity access tokens are short-lived. Token expiration doesn't affect an application after `infisical run` has fetched its secrets, but the container needs a valid token every time it starts.
+      
+      In automated deployments, store the Client ID and Client Secret in your deployment platform's secret store and run `infisical login` immediately before each `docker run` or `docker compose up`.
+    </Note>
 
-<Steps>
-  <Step title="Generate a Machine Identity">
-    Create a machine identity for your project by following the steps in the [Machine Identity](/documentation/platform/identities/machine-identities) guide. This identity will enable authentication and secret retrieval from Infisical.
-  </Step>
+    ### Copy your project ID
 
-  <Step title="Create the Shell Script">
-    Create a shell script to obtain an access token for the machine identity:
+    In your project, select **Project Settings**, then select **Copy Project ID**. You'll add this ID to your Dockerfile in the next step.
 
-    ```bash script.sh
-    #!/bin/sh
-    export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=$INFISICAL_MACHINE_CLIENT_ID --client-secret=$INFISICAL_MACHINE_CLIENT_SECRET --plain --silent)
-    exec infisical run --token $INFISICAL_TOKEN --projectId $PROJECT_ID --env $INFISICAL_SECRET_ENV --domain $INFISICAL_API_URL -- <starting script>
-    ```
+    ### Update your Dockerfile
 
-    > **Note:** The access token has a limited lifespan. Use the [infisical token renew](/cli/commands/token) CLI command to renew it when necessary.
-		<Warning>
-		Caution: Implementing this directly in your Dockerfile presents two key issues:
+    Add the Infisical CLI installation that matches your base image:
 
-		1. Lack of persistence: Variables set in one build step are not automatically carried over to subsequent steps, complicating the process.
-		2. Security risk: It exposes sensitive credentials inside your container, potentially allowing anyone with container access to retrieve them.
-		</Warning>
-  </Step>
-
-  <Step title="Update Your Dockerfile">
-    Grant the Infisical CLI access to the access token, inside your Docker container. This allows the CLI to fetch and inject secrets into your application.
-
-    Add the following line to your Dockerfile:
-
-    ```dockerfile
-    CMD ["./script.sh"]
-    ```
-  </Step>
-</Steps>
-
-</Tab>
-<Tab title="Service Token (Deprecated)">
-```dockerfile
-CMD ["infisical", "run", "--", "[your service start command]"]
-
-# example with single single command
-CMD ["infisical", "run", "--", "npm", "run", "start"]
-
-# example with multiple commands
-CMD ["infisical", "run", "--command", "npm run start && ..."]
-````
-
-  <Steps>
-    <Step title="Generate a service token">
-      Head to your project settings in the Infisical dashboard to generate an [service token](/documentation/platform/token). 
-      This service token will allow you to authenticate and fetch secrets from Infisical. 
-      Once you have created a service token with the required permissions, you’ll need to feed the token to the CLI installed in your docker container.
-    </Step>
-    <Step title="Feed service token to docker container">
-      The last step is to give the Infisical CLI installed in your Docker container access to the service token. This will allow the CLI to fetch and inject the secrets into your application.
-
-      To feed the service token to the container, use the INFISICAL_TOKEN environment variable as shown below.
-
-      ```bash
-      docker run --env INFISICAL_TOKEN=[token] [DOCKER-IMAGE]...
+    <CodeGroup>
+      ```dockerfile Alpine
+      RUN apk add --no-cache bash wget \
+          && wget -qO- 'https://artifacts-cli.infisical.com/setup.apk.sh' | sh \
+          && apk add --no-cache infisical
       ```
-    </Step>
 
-  </Steps>
+      ```dockerfile Debian or Ubuntu
+      RUN apt-get update \
+          && apt-get install -y --no-install-recommends bash curl ca-certificates \
+          && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
+          && apt-get update \
+          && apt-get install -y --no-install-recommends infisical \
+          && rm -rf /var/lib/apt/lists/*
+      ```
+    </CodeGroup>
+
+    <Tip>
+      Pin the [Infisical CLI version](https://github.com/Infisical/cli/releases) in production images to keep builds reproducible.
+    </Tip>
+
+    Next, wrap your application's start command with [`infisical run`](/cli/commands/run). Replace `<project-id>` with the project ID you copied earlier:
+
+    <CodeGroup>
+      ```dockerfile Node.js
+      CMD ["infisical", "run", "--projectId=<project-id>", "--env=dev", "--", "npm", "start"]
+      ```
+
+      ```dockerfile Flask
+      CMD ["infisical", "run", "--projectId=<project-id>", "--env=dev", "--", "flask", "run", "--host=0.0.0.0"]
+      ```
+
+      ```dockerfile Go
+      CMD ["infisical", "run", "--projectId=<project-id>", "--env=dev", "--", "./app"]
+      ```
+    </CodeGroup>
+
+    <Accordion title="Run multiple startup commands">
+      Use the [`--command` option](/cli/commands/run#infisical-run:command) when your application needs to run multiple shell commands in sequence:
+
+      ```dockerfile
+      CMD ["infisical", "run", "--projectId=<project-id>", "--env=dev", "--command", "npm run migrate && npm start"]
+      ```
+    </Accordion>
+
+    ### Build and run your container
+
+    Build your image:
+
+    ```bash
+    docker build -t orders-service .
+    ```
+
+    On the machine where Docker runs, authenticate the machine identity and start the container using the commands for your Infisical deployment:
+
+    <CodeGroup>
+      ```bash Infisical Cloud US
+      export INFISICAL_TOKEN=$(infisical login \
+        --method=universal-auth \
+        --client-id=<client-id> \
+        --client-secret=<client-secret> \
+        --plain \
+        --silent)
+
+      docker run --rm --env INFISICAL_TOKEN orders-service
+      ```
+
+      ```bash EU Cloud or self-hosted
+      # Use https://eu.infisical.com for EU Cloud or your self-hosted instance URL
+      export INFISICAL_DOMAIN=<your-infisical-domain>
+
+      export INFISICAL_TOKEN=$(infisical login \
+        --method=universal-auth \
+        --client-id=<client-id> \
+        --client-secret=<client-secret> \
+        --plain \
+        --silent)
+
+      docker run --rm --env INFISICAL_TOKEN --env INFISICAL_DOMAIN orders-service
+      ```
+    </CodeGroup>
+
+    <Note>
+      If your self-hosted Infisical instance is running locally on the Docker host, don't set `INFISICAL_DOMAIN` to a `localhost` URL, since this will point to the container itself.
+      
+      Instead, set it to a `host.docker.internal` URL, [which points to the container's host domain](https://docs.docker.com/desktop/features/networking/networking-how-tos/#connect-a-container-to-a-service-on-the-host).
+    </Note>
+
+    Replace `<client-id>` and `<client-secret>` with the machine identity credentials you created earlier. The access token is passed to the container at runtime and isn't stored in the image.
+
+    <Check>
+      Your application can now read secrets as environment variables when the container starts.
+    </Check>
+  </Tab>
+
+  <Tab title="Docker Run (Interactive)">
+    <span id="pass-with-docker-run"></span>
+    <span id="docker-run-interactive"></span>
+
+    Alternatively, you can run the Infisical CLI on the host and pass exported secrets to an existing image through Docker's `--env-file` option. This method doesn't require you to install the CLI in the image.
+
+    <Note>
+      This method requires a Bash-compatible shell because it uses process substitution.
+    </Note>
+
+    ### Authenticate with the CLI
+
+    Authenticate with Infisical by running [`infisical login`](/cli/commands/login):
+
+    ```bash
+    infisical login
+    ```
+
+    This prompts you to select your hosting option, then opens your browser to complete the login.
+
+    ### Connect your project
+
+    In your application's directory, link it to the project you created by running [`infisical init`](/cli/commands/init):
+
+    ```bash
+    infisical init
+    ```
+
+    Follow the prompts to select your organization and project.
+
+    ### Run your container
+
+    Export the secrets from the **Development** environment and pass them to your container:
+
+    ```bash
+    docker run --rm \
+      --env-file <(infisical export --env=dev --format=dotenv) \
+      orders-service
+    ```
+
+    Replace `orders-service` with the image you want to run. Infisical serves the exported secrets through a temporary file descriptor rather than writing a `.env` file to disk.
+
+    <Warning>
+      Docker's `--env-file` option doesn't support multiline secret values. Use the startup method if your application requires multiline secrets.
+    </Warning>
+
+    <Check>
+      Your container can now read the exported secrets as environment variables.
+    </Check>
+  </Tab>
+
+  <Tab title="Docker Run (CI/CD)">
+    <span id="docker-run-cicd"></span>
+
+    In CI/CD and other automated environments, use a [machine identity](/documentation/platform/identities/machine-identities) to authenticate the Infisical CLI on the host. The CLI exports your application secrets and passes them to an existing image through Docker's `--env-file` option.
+
+    <Note>
+      This method requires a Bash-compatible shell because it uses process substitution.
+    </Note>
+
+    ### Configure machine identity access
+
+    Create a machine identity with permission to read the required secrets, configure it with [Universal Auth](/documentation/platform/identities/universal-auth), and copy its **Client ID** and **Client Secret**. Then copy the **Project ID** from **Project Settings**.
+
+    Store these values in your automation platform's secret store rather than in source control.
+
+    ### Authenticate with the CLI
+
+    Exchange the machine identity credentials for a short-lived access token using the commands for your Infisical deployment:
+
+    <CodeGroup>
+      ```bash Infisical Cloud US
+      export INFISICAL_TOKEN=$(infisical login \
+        --method=universal-auth \
+        --client-id=<client-id> \
+        --client-secret=<client-secret> \
+        --plain \
+        --silent)
+      ```
+
+      ```bash EU Cloud or self-hosted
+      # Use https://eu.infisical.com for EU Cloud or your self-hosted instance URL
+      export INFISICAL_DOMAIN=<your-infisical-domain>
+
+      export INFISICAL_TOKEN=$(infisical login \
+        --method=universal-auth \
+        --client-id=<client-id> \
+        --client-secret=<client-secret> \
+        --plain \
+        --silent)
+      ```
+    </CodeGroup>
+
+    ### Run your container
+
+    Identify the project explicitly when exporting secrets, then pass them to the container:
+
+    ```bash
+    docker run --rm \
+      --env-file <(infisical export --projectId=<project-id> --env=dev --format=dotenv) \
+      orders-service
+    ```
+
+    Replace `<project-id>` with your project ID and `orders-service` with the image you want to run.
+
+    <Warning>
+      Docker's `--env-file` option doesn't support multiline secret values. Use the startup method if your application requires multiline secrets.
+    </Warning>
+
+    <Check>
+      Your automation can now authenticate without a user session and inject secrets into the container.
+    </Check>
   </Tab>
 </Tabs>
+
+## Use with Docker Compose
+
+If you [fetch secrets at startup](#fetch-at-startup), you can use [Docker Compose](https://docs.docker.com/compose/) to build and run one or more configured service images.
+
+[Configure each image](/integrations/platforms/docker#update-your-dockerfile) to start through `infisical run`, then configure your Compose file for your Infisical deployment:
+
+<CodeGroup>
+  ```yaml Infisical Cloud US
+  services:
+    orders-service:
+      build: .
+      environment:
+        INFISICAL_TOKEN: ${INFISICAL_TOKEN}
+  ```
+
+  ```yaml EU Cloud or self-hosted
+  services:
+    orders-service:
+      build: .
+      environment:
+        INFISICAL_TOKEN: ${INFISICAL_TOKEN}
+        INFISICAL_DOMAIN: ${INFISICAL_DOMAIN}
+  ```
+</CodeGroup>
+
+Authenticate the machine identity in the same shell, then start the services using the commands for your Infisical deployment:
+
+<CodeGroup>
+  ```bash Infisical Cloud US
+  export INFISICAL_TOKEN=$(infisical login \
+    --method=universal-auth \
+    --client-id=<client-id> \
+    --client-secret=<client-secret> \
+    --plain \
+    --silent)
+
+  docker compose up --build
+  ```
+
+  ```bash EU Cloud or self-hosted
+  # Use https://eu.infisical.com for EU Cloud or your self-hosted instance URL
+  export INFISICAL_DOMAIN=<your-infisical-domain>
+
+  export INFISICAL_TOKEN=$(infisical login \
+    --method=universal-auth \
+    --client-id=<client-id> \
+    --client-secret=<client-secret> \
+    --plain \
+    --silent)
+
+  docker compose up --build
+  ```
+</CodeGroup>
+
+<Note>
+  If your self-hosted Infisical instance is running locally on the Docker host, don't set `INFISICAL_DOMAIN` to a `localhost` URL, since this will point to the container itself.
+
+  Instead, set it to a `host.docker.internal` URL, [which points to the container's host domain](https://docs.docker.com/desktop/features/networking/networking-how-tos/#connect-a-container-to-a-service-on-the-host).
+</Note>
+
+### Use different permissions for each service
+
+If multiple services need different access permissions, create a [machine identity](/documentation/platform/identities/machine-identities) for each permission set and pass each access token through a separate variable.
+
+  Map each service to the access token for its machine identity:
+
+<CodeGroup>
+  ```yaml Infisical Cloud US
+  services:
+    web:
+      build: ./web
+      environment:
+        INFISICAL_TOKEN: ${INFISICAL_TOKEN_WEB}
+
+    api:
+      build: ./api
+      environment:
+        INFISICAL_TOKEN: ${INFISICAL_TOKEN_API}
+  ```
+
+  ```yaml EU Cloud or self-hosted
+  services:
+    web:
+      build: ./web
+      environment:
+        INFISICAL_TOKEN: ${INFISICAL_TOKEN_WEB}
+        INFISICAL_DOMAIN: ${INFISICAL_DOMAIN}
+
+    api:
+      build: ./api
+      environment:
+        INFISICAL_TOKEN: ${INFISICAL_TOKEN_API}
+        INFISICAL_DOMAIN: ${INFISICAL_DOMAIN}
+  ```
+</CodeGroup>
+
+Authenticate each identity before starting the services:
+
+<CodeGroup>
+  ```bash Infisical Cloud US
+  export INFISICAL_TOKEN_WEB=$(infisical login \
+    --method=universal-auth \
+    --client-id=<web-client-id> \
+    --client-secret=<web-client-secret> \
+    --plain \
+    --silent)
+
+  export INFISICAL_TOKEN_API=$(infisical login \
+    --method=universal-auth \
+    --client-id=<api-client-id> \
+    --client-secret=<api-client-secret> \
+    --plain \
+    --silent)
+
+  docker compose up --build
+  ```
+
+  ```bash EU Cloud or self-hosted
+  # Use https://eu.infisical.com for EU Cloud or your self-hosted instance URL
+  export INFISICAL_DOMAIN=<your-infisical-domain>
+
+  export INFISICAL_TOKEN_WEB=$(infisical login \
+    --method=universal-auth \
+    --client-id=<web-client-id> \
+    --client-secret=<web-client-secret> \
+    --plain \
+    --silent)
+
+  export INFISICAL_TOKEN_API=$(infisical login \
+    --method=universal-auth \
+    --client-id=<api-client-id> \
+    --client-secret=<api-client-secret> \
+    --plain \
+    --silent)
+
+  docker compose up --build
+  ```
+</CodeGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Core Concepts" icon="book" href="/documentation/platform/secrets-mgmt/concepts/secrets-mgmt">
+    Understand how projects, environments, folders, and secrets fit together.
+  </Card>
+  <Card title="Secrets Delivery" icon="truck-fast" href="/documentation/platform/secrets-mgmt/concepts/secrets-delivery">
+    Explore other ways to deliver secrets to applications and infrastructure.
+  </Card>
+  <Card title="Machine Identities" icon="robot" href="/documentation/platform/identities/machine-identities">
+    Configure workload authentication and access controls.
+  </Card>
+  <Card title="Infisical Run" icon="terminal" href="/cli/commands/run">
+    Review all options for injecting secrets into an application process.
+  </Card>
+</CardGroup>

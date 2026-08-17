@@ -291,14 +291,30 @@ export const CertificateIssuanceModal = ({
 
   const { data: appProfiles } = useListPkiApplicationProfiles(applicationId ?? "");
 
-  const availableProfiles = useMemo(() => {
+  const profileOptions = useMemo(() => {
     const allProfiles = profilesData?.certificateProfiles ?? [];
-    if (!applicationId) return allProfiles;
+    if (!applicationId) return allProfiles.map((profile) => ({ profile, isApiEnabled: true }));
     const apiEnabledProfileIds = new Set(
       (appProfiles ?? []).filter((p) => Boolean(p.apiConfigId)).map((p) => p.profileId)
     );
-    return allProfiles.filter((p) => apiEnabledProfileIds.has(p.id));
+    return allProfiles
+      .map((profile) => ({
+        profile,
+        isApiEnabled: apiEnabledProfileIds.has(profile.id)
+      }))
+      .sort(
+        (a, b) =>
+          Number(b.isApiEnabled) - Number(a.isApiEnabled) ||
+          a.profile.slug.localeCompare(b.profile.slug)
+      );
   }, [profilesData?.certificateProfiles, appProfiles, applicationId]);
+
+  const availableProfiles = useMemo(
+    () => profileOptions.filter((option) => option.isApiEnabled).map((option) => option.profile),
+    [profileOptions]
+  );
+
+  const hasDisabledProfiles = profileOptions.some((option) => !option.isApiEnabled);
 
   const { mutateAsync: issueCertificate } = useUnifiedCertificateIssuance();
 
@@ -311,6 +327,7 @@ export const CertificateIssuanceModal = ({
     reset,
     watch,
     setValue,
+    trigger,
     formState,
     formState: { isSubmitting }
   } = useForm<FormData>({
@@ -572,10 +589,24 @@ export const CertificateIssuanceModal = ({
   const selectedProfileReady = Boolean(profileId || actualSelectedProfileId);
 
   const goBack = () => setStep((s) => Math.max(0, s - 1));
-  const goNext = () => {
+  const goNext = async () => {
     if (currentStepKey === "profile" && !selectedProfileReady) return;
+
+    const isStepValid = await trigger(STEP_FIELDS[currentStepKey] as (keyof FormData)[]);
+    if (!isStepValid) {
+      createNotification({ text: "Fix the errors on this step to continue.", type: "error" });
+      return;
+    }
+
     setStep((s) => Math.min(stepKeys.length - 1, s + 1));
   };
+
+  const rowErrorsOf = (fieldErrors: unknown): (string | undefined)[] | undefined =>
+    Array.isArray(fieldErrors)
+      ? (fieldErrors as ({ value?: { message?: string } } | undefined)[]).map(
+          (rowError) => rowError?.value?.message
+        )
+      : undefined;
 
   const onFormInvalid = (errors: Record<string, unknown>) => {
     const errorKeys = Object.keys(errors);
@@ -704,21 +735,34 @@ export const CertificateIssuanceModal = ({
                                   <SelectValue placeholder="Select a certificate profile" />
                                 </SelectTrigger>
                                 <SelectContent position="popper">
-                                  {availableProfiles.length === 0 && applicationId ? (
+                                  {profileOptions.length === 0 && applicationId ? (
                                     <div className="px-3 py-3 text-xs leading-snug whitespace-normal text-muted">
-                                      Only profiles with API enrollment configured on this
-                                      Application are listed here. Configure API enrollment under
-                                      this Application&apos;s Settings tab.
+                                      No certificate profiles are attached to this Application. Add
+                                      one under this Application&apos;s Settings tab.
                                     </div>
                                   ) : (
-                                    availableProfiles.map((profile) => (
-                                      <SelectItem key={profile.id} value={profile.id}>
+                                    profileOptions.map(({ profile, isApiEnabled }) => (
+                                      <SelectItem
+                                        key={profile.id}
+                                        value={profile.id}
+                                        disabled={!isApiEnabled}
+                                        description={
+                                          isApiEnabled ? undefined : "API enrollment not configured"
+                                        }
+                                      >
                                         {profile.slug}
                                       </SelectItem>
                                     ))
                                   )}
                                 </SelectContent>
                               </Select>
+                              {hasDisabledProfiles && (
+                                <FieldDescription>
+                                  Profiles without API enrollment configured can&apos;t be used
+                                  here. Configure API enrollment under this Application&apos;s
+                                  Settings tab.
+                                </FieldDescription>
+                              )}
                               {isAdcsProfile && (
                                 <FieldDescription>{externalCaHint}</FieldDescription>
                               )}
@@ -783,6 +827,9 @@ export const CertificateIssuanceModal = ({
                           (formState.errors as { subjectAttributes?: { message?: string } })
                             .subjectAttributes?.message
                         }
+                        rowErrors={rowErrorsOf(
+                          (formState.errors as { subjectAttributes?: unknown }).subjectAttributes
+                        )}
                       />
                     )}
 

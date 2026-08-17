@@ -13,33 +13,15 @@ import {
   CertKeyUsageType,
   CertPolicyState,
   CertSubjectAlternativeNameType,
-  CertSubjectAttributeType,
   pkiDescriptionSchema
 } from "@app/services/certificate-common/certificate-constants";
-import { certificatePolicyResponseSchema } from "@app/services/certificate-policy/certificate-policy-schemas";
+import {
+  certificatePolicyResponseSchema,
+  policySubjectSchema
+} from "@app/services/certificate-policy/certificate-policy-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const attributeTypeSchema = z.nativeEnum(CertSubjectAttributeType);
 const sanTypeSchema = z.nativeEnum(CertSubjectAlternativeNameType);
-
-const policySubjectSchema = z
-  .object({
-    type: attributeTypeSchema,
-    allowed: z.array(z.string()).optional(),
-    required: z.array(z.string()).optional(),
-    denied: z.array(z.string()).optional()
-  })
-  .refine(
-    (data) => {
-      if (!data.allowed && !data.required && !data.denied) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message: "Subject attribute must have at least one allowed, required, or denied value"
-    }
-  );
 
 const policyKeyUsagesSchema = z
   .object({
@@ -249,7 +231,8 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: certificatePolicy.projectId
         }
       });
 
@@ -399,6 +382,16 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertificatePolicyUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: certificatePolicy.projectId
+        }
+      });
+
       return { certificatePolicy };
     }
   });
@@ -449,7 +442,8 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: certificatePolicy.projectId
         }
       });
 

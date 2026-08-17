@@ -140,6 +140,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
         <PopoverContent align="start" className="p-0">
           <Command>
             <CommandInput
+              aria-label="Filter environments"
               value={inputValue}
               onValueChange={setInputValue}
               placeholder="Filter environments"
