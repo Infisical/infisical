@@ -27,6 +27,10 @@
   padding-left: 2rem;
 }
 
+#sidebar-content .sidebar-title {
+  font-weight: inherit;
+}
+
 #sidebar .relative .sticky {
   opacity: 0;
 }
