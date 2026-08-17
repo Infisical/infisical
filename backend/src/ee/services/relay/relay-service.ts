@@ -17,6 +17,8 @@ import { constructPemChainFromCerts, prependCertToPemChain } from "@app/services
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
   createSerialNumber,
+  getNotAfterWithClockSkew,
+  getNotBeforeWithClockSkew,
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -28,7 +30,6 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
-import { CERT_CLOCK_SKEW_MS, getNotBeforeWithClockSkew } from "../gateway-v2/gateway-v2-constants";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { OrgPermissionRelayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -86,7 +87,7 @@ export const relayServiceFactory = ({
         name: `O=Infisical,CN=Infisical Instance Root Relay CA`,
         serialNumber: rootCaSerialNumber,
         notBefore: getNotBeforeWithClockSkew(rootCaIssuedAt),
-        notAfter: rootCaExpiration,
+        notAfter: getNotAfterWithClockSkew(rootCaExpiration),
         signingAlgorithm: alg,
         keys: rootCaKeys,
         extensions: [
@@ -107,7 +108,7 @@ export const relayServiceFactory = ({
         subject: `O=Infisical,CN=Infisical Organization Relay CA`,
         issuer: rootCaCert.subject,
         notBefore: getNotBeforeWithClockSkew(orgRelayCaIssuedAt),
-        notAfter: orgRelayCaExpiration,
+        notAfter: getNotAfterWithClockSkew(orgRelayCaExpiration),
         signingKey: rootCaKeys.privateKey,
         publicKey: orgRelayCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -138,7 +139,7 @@ export const relayServiceFactory = ({
         subject: `O=Infisical,CN=Infisical Instance Relay CA`,
         issuer: rootCaCert.subject,
         notBefore: getNotBeforeWithClockSkew(instanceRelayCaIssuedAt),
-        notAfter: instanceRelayCaExpiration,
+        notAfter: getNotAfterWithClockSkew(instanceRelayCaExpiration),
         signingKey: rootCaKeys.privateKey,
         publicKey: instanceRelayCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -169,7 +170,7 @@ export const relayServiceFactory = ({
         subject: `O=Infisical,CN=Infisical Instance Relay Client CA`,
         issuer: instanceRelayCaCert.subject,
         notBefore: getNotBeforeWithClockSkew(instanceRelayClientCaIssuedAt),
-        notAfter: instanceRelayClientCaExpiration,
+        notAfter: getNotAfterWithClockSkew(instanceRelayClientCaExpiration),
         signingKey: instanceRelayCaKeys.privateKey,
         publicKey: instanceRelayClientCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -200,7 +201,7 @@ export const relayServiceFactory = ({
         subject: `O=Infisical,CN=Infisical Instance Relay Server CA`,
         issuer: instanceRelayCaCert.subject,
         notBefore: getNotBeforeWithClockSkew(instanceRelayServerCaIssuedAt),
-        notAfter: instanceRelayServerCaExpiration,
+        notAfter: getNotAfterWithClockSkew(instanceRelayServerCaExpiration),
         signingKey: instanceRelayCaKeys.privateKey,
         publicKey: instanceRelayServerCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -455,7 +456,7 @@ export const relayServiceFactory = ({
         subject: `O=${orgId},CN=Infisical Org Relay Client CA`,
         issuer: orgRelayCaCert.subject,
         notBefore: getNotBeforeWithClockSkew(orgRelayClientCaIssuedAt),
-        notAfter: orgRelayClientCaExpiration,
+        notAfter: getNotAfterWithClockSkew(orgRelayClientCaExpiration),
         signingKey: orgRelayCaPrivateKey,
         publicKey: orgRelayClientCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -490,7 +491,7 @@ export const relayServiceFactory = ({
         subject: `O=${orgId},CN=Infisical Org Relay Server CA`,
         issuer: orgRelayCaCert.subject,
         notBefore: getNotBeforeWithClockSkew(orgRelayServerCaIssuedAt),
-        notAfter: orgRelayServerCaExpiration,
+        notAfter: getNotAfterWithClockSkew(orgRelayServerCaExpiration),
         signingKey: orgRelayCaPrivateKey,
         publicKey: orgRelayServerCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -681,7 +682,7 @@ export const relayServiceFactory = ({
       subject: `CN=${host},O=${orgId ?? "Infisical"},OU=Relay`,
       issuer: relayServerCaCert.subject,
       notBefore: getNotBeforeWithClockSkew(relayServerCertIssuedAt),
-      notAfter: relayServerCertExpireAt,
+      notAfter: getNotAfterWithClockSkew(relayServerCertExpireAt),
       signingKey: relayServerCaPrivateKey,
       publicKey: relayServerKeys.publicKey,
       signingAlgorithm: alg,
@@ -699,8 +700,7 @@ export const relayServiceFactory = ({
       keyId: "relay-server",
       principals: [`${host}:2222`],
       certType: SshCertType.HOST,
-      requestedTtl: "30d",
-      clockSkewSeconds: CERT_CLOCK_SKEW_MS / 1000
+      requestedTtl: "30d"
     });
 
     return {
@@ -795,7 +795,7 @@ export const relayServiceFactory = ({
       serialNumber: clientCertSerialNumber,
       subject: `O=${orgName}-${orgId},OU=relay-client,CN=${gatewayId}`,
       issuer: relayClientCaCert.subject,
-      notAfter: clientCertExpiration,
+      notAfter: getNotAfterWithClockSkew(clientCertExpiration),
       notBefore: getNotBeforeWithClockSkew(clientCertIssuedAt),
       signingKey: importedRelayClientCaPrivateKey,
       publicKey: clientKeys.publicKey,
@@ -854,8 +854,7 @@ export const relayServiceFactory = ({
         keyId: `client-${relayName}`,
         principals: [gatewayId],
         certType: SshCertType.USER,
-        requestedTtl: "1d",
-        clockSkewSeconds: CERT_CLOCK_SKEW_MS / 1000
+        requestedTtl: "1d"
       });
 
       return {
@@ -873,8 +872,7 @@ export const relayServiceFactory = ({
       keyId: `client-${relayName}`,
       principals: [gatewayId, gatewayName],
       certType: SshCertType.USER,
-      requestedTtl: "1d",
-      clockSkewSeconds: CERT_CLOCK_SKEW_MS / 1000
+      requestedTtl: "1d"
     });
 
     return {

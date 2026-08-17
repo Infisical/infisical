@@ -19,6 +19,8 @@ import { constructPemChainFromCerts } from "@app/services/certificate/certificat
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
   createSerialNumber,
+  getNotAfterWithClockSkew,
+  getNotBeforeWithClockSkew,
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
@@ -42,7 +44,6 @@ import {
   DEFAULT_HEARTBEAT_TTL,
   GATEWAY_ACTOR_OID,
   GATEWAY_ROUTING_INFO_OID,
-  getNotBeforeWithClockSkew,
   PAM_INFO_OID
 } from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
@@ -131,7 +132,7 @@ export const gatewayV2ServiceFactory = ({
         name: `O=${orgId},CN=Infisical Gateway Root CA`,
         serialNumber: rootCaSerialNumber,
         notBefore: getNotBeforeWithClockSkew(rootCaIssuedAt),
-        notAfter: rootCaExpiration,
+        notAfter: getNotAfterWithClockSkew(rootCaExpiration),
         signingAlgorithm: alg,
         keys: rootCaKeys,
         extensions: [
@@ -152,7 +153,7 @@ export const gatewayV2ServiceFactory = ({
         subject: `O=${orgId},CN=Infisical Gateway Server CA`,
         issuer: rootCaCert.subject,
         notBefore: getNotBeforeWithClockSkew(serverCaIssuedAt),
-        notAfter: serverCaExpiration,
+        notAfter: getNotAfterWithClockSkew(serverCaExpiration),
         signingKey: rootCaKeys.privateKey,
         publicKey: serverCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -182,7 +183,7 @@ export const gatewayV2ServiceFactory = ({
         subject: `O=${orgId},CN=Infisical Gateway Client CA`,
         issuer: rootCaCert.subject,
         notBefore: getNotBeforeWithClockSkew(clientCaIssuedAt),
-        notAfter: clientCaExpiration,
+        notAfter: getNotAfterWithClockSkew(clientCaExpiration),
         signingKey: rootCaKeys.privateKey,
         publicKey: clientCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -425,7 +426,7 @@ export const gatewayV2ServiceFactory = ({
       serialNumber: clientCertSerialNumber,
       subject: `O=${orgGatewayConfig.orgId},OU=gateway-client,CN=${ActorType.PLATFORM}:${gatewayId}`,
       issuer: gatewayClientCaCert.subject,
-      notAfter: clientCertExpiration,
+      notAfter: getNotAfterWithClockSkew(clientCertExpiration),
       notBefore: getNotBeforeWithClockSkew(clientCertIssuedAt),
       signingKey: importedGatewayClientCaPrivateKey,
       publicKey: clientKeys.publicKey,
@@ -586,7 +587,7 @@ export const gatewayV2ServiceFactory = ({
       serialNumber: clientCertSerialNumber,
       subject: `O=${orgGatewayConfig.orgId},OU=gateway-client,CN=${actorMetadata.type}:${gatewayId}`,
       issuer: gatewayClientCaCert.subject,
-      notAfter: clientCertExpiration,
+      notAfter: getNotAfterWithClockSkew(clientCertExpiration),
       notBefore: getNotBeforeWithClockSkew(clientCertIssuedAt),
       signingKey: importedGatewayClientCaPrivateKey,
       publicKey: clientKeys.publicKey,
@@ -694,7 +695,7 @@ export const gatewayV2ServiceFactory = ({
       subject: `O=${orgId},CN=Gateway`,
       issuer: gatewayServerCaCert.subject,
       notBefore: getNotBeforeWithClockSkew(gatewayServerCertIssuedAt),
-      notAfter: gatewayServerCertExpireAt,
+      notAfter: getNotAfterWithClockSkew(gatewayServerCertExpireAt),
       signingKey: gatewayServerCaPrivateKey,
       publicKey: gatewayServerKeys.publicKey,
       signingAlgorithm: alg,
