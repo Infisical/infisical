@@ -1,7 +1,7 @@
-import { request } from "@app/lib/config/request";
 import { UnauthorizedError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { OktaConnectionMethod } from "./okta-connection-enums";
@@ -26,7 +26,7 @@ export const validateOktaConnectionCredentials = async (config: TOktaConnectionC
   const instanceUrl = await getOktaInstanceUrl(config);
 
   try {
-    await request.get(`${instanceUrl}/api/v1/users/me`, {
+    await safeRequest.get(`${instanceUrl}/api/v1/users/me`, {
       headers: {
         Accept: "application/json",
         Authorization: `SSWS ${apiToken}`
@@ -47,8 +47,9 @@ export const validateOktaConnectionCredentials = async (config: TOktaConnectionC
 const OKTA_APPS_PER_PAGE = 200;
 const OKTA_APPS_MAX_PAGES = 100;
 
-// Okta documents the `next` link as opaque, so it is followed rather than rebuilt. It still has to be
-// re-validated: it comes from the response body's headers, and the instance host is user-supplied.
+// Okta documents the `next` link as opaque, so it is followed rather than rebuilt. It is still
+// constrained to the instance origin: the link arrives in a response header and the host is
+// user-supplied, so a `next` pointing elsewhere must not be handed the API token.
 const $getNextLink = (linkHeader: string | undefined, instanceUrl: string) => {
   const nextLink = linkHeader?.split(",").find((part) => part.includes('rel="next"'));
   if (!nextLink) return null;
@@ -68,7 +69,7 @@ export const listOktaApps = async (appConnection: TOktaConnection) => {
 
   for (let page = 0; page < OKTA_APPS_MAX_PAGES && url; page += 1) {
     // eslint-disable-next-line no-await-in-loop
-    const response = await request.get<TOktaApp[]>(url, {
+    const response = await safeRequest.get<TOktaApp[]>(url, {
       headers: {
         Accept: "application/json",
         Authorization: `SSWS ${apiToken}`
@@ -77,6 +78,12 @@ export const listOktaApps = async (appConnection: TOktaConnection) => {
 
     apps.push(...response.data);
     url = $getNextLink(response.headers.link as string | undefined, instanceUrl);
+  }
+
+  if (url) {
+    logger.warn(
+      `listOktaApps: page cap reached, returning a partial list [instanceUrl=${instanceUrl}] [pagesRead=${OKTA_APPS_MAX_PAGES}]`
+    );
   }
 
   return apps.filter((app) => app.status === "ACTIVE" && app.name === "oidc_client");
