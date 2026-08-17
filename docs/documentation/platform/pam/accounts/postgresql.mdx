@@ -51,6 +51,9 @@ RDS and Aurora instances that require IAM database authentication use the **AWS 
 Set the following up before creating the account.
 
 <Steps>
+  <Step title="Enable IAM authentication on the instance">
+    Turn on **IAM database authentication** for the RDS instance or Aurora cluster.
+  </Step>
   <Step title="Grant the database user IAM access">
     ```sql
     CREATE USER app_user WITH LOGIN;
@@ -83,8 +86,12 @@ Set the following up before creating the account.
 </Note>
 
 <Note>
-  IAM authentication requires an encrypted connection, so **SSL Enabled** is turned on and cannot be disabled. To verify the server certificate, turn on **Reject Unauthorized** and paste your region's certificate from the [RDS trust store](https://truststore.pki.rds.amazonaws.com) into **SSL Certificate**.
+  IAM authentication requires an encrypted connection, so **SSL Enabled** is turned on and cannot be disabled. To verify the server certificate, turn on **Reject Unauthorized** and paste your region's RDS root certificate into **SSL Certificate**, for example `https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem`.
 </Note>
+
+<Warning>
+  `PAM authentication failed for user` means AWS rejected the token rather than the database being unreachable. Check that the role's `rds-db:connect` resource ARN uses the instance's current resource ID, region, and the same database user the account connects as.
+</Warning>
 
 [Credential rotation](/documentation/platform/pam/product-reference/credential-rotation/overview) does not apply to these accounts, since there is no stored password.
 

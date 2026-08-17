@@ -164,7 +164,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
         widget: PamFieldWidget.Textarea,
         showWhen: { field: "sslEnabled", equals: true },
         tooltip:
-          "The CA certificate used to verify the server. Amazon RDS and Aurora publish theirs at https://truststore.pki.rds.amazonaws.com."
+          "The CA certificate used to verify the server. Amazon RDS and Aurora publish one per region, e.g. https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem"
       },
       password: { widget: PamFieldWidget.Password, secret: true }
     }
