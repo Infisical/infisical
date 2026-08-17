@@ -84,6 +84,24 @@ the frontend renders create/edit forms from `GET /pam/accounts/types` metadata, 
 frontend components**. Adding a type is mostly a config entry + an icon; the gateway extension points are
 `extractGatewayTarget` and `buildSessionGatewayConnectionDetails` in the same file.
 
+**Auth methods** are a discriminated union on `credentials`. `forceWhen` (a UI hint, applied server-side
+by `applyForcedFields` on create/update and mirrored by the form) pins fields an auth method leaves no
+choice about; its condition may cross field groups (`credentials.authMethod` from a connection field).
+TLS trust stays where it is for every other database account: the operator supplies `sslCertificate`,
+and Infisical ships no CA material. A gateway too old for an account's auth method is not gated on;
+it falls back to password auth and the connection test fails on the login, as with every other
+gateway capability added so far.
+
+**Adding an auth method to an existing type is a compatibility event.** Stored credentials (and API
+callers) predating the discriminator carry none, which a `z.discriminatedUnion` rejects outright, so the
+union goes through `withLegacyAuthMethod` and every path that reads the blob without re-parsing goes
+through `normalizeCredentialAuthMethod`. The rotation cron validates the stored blob on every run, so
+skipping this breaks rotation for every existing account of that type, not just edits.
+
+Postgres AWS IAM auth is the reference implementation: the **gateway** mints the RDS token per connection
+from its own AWS identity (`packages/pam/aws_rds_auth.go`), so no secret is stored, none crosses the wire,
+and the 15-minute token lifetime never collides with session duration.
+
 **Connection test** (`assertConnectionOk`) runs inside account `create`/`update` and **throws to block the write**
 if the target can't be reached/authenticated. Per-type behaviour lives in `pam-account-connection-test.ts`:
 `buildGatewayConnectionTest` resolves the gateway target + a `mode`-tagged request, and `CLOUD_CONNECTION_VALIDATORS`

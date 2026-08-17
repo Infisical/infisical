@@ -24,8 +24,11 @@ export type TestConnectionRequest =
   | {
       mode: TestConnectionMode.SQL;
       dialect: "postgres" | "mysql" | "mssql";
+      authMethod?: string;
       username: string;
       password?: string;
+      awsRegion?: string;
+      roleArn?: string;
       database: string;
       sslEnabled?: boolean;
       sslRejectUnauthorized?: boolean;
@@ -105,7 +108,13 @@ export const buildGatewayConnectionTest = async (
         sslRejectUnauthorized?: boolean;
         sslCertificate?: string;
       };
-      const c = creds as { authMethod?: string; username: string; password?: string } | null;
+      const c = creds as {
+        authMethod?: string;
+        username: string;
+        password?: string;
+        awsRegion?: string;
+        roleArn?: string;
+      } | null;
       if (!c || (accountType === PamAccountType.MsSQL && c.authMethod !== "sql-login")) return tcp(host, port);
       return {
         host,
@@ -113,8 +122,11 @@ export const buildGatewayConnectionTest = async (
         request: {
           mode: TestConnectionMode.SQL,
           dialect: SQL_DIALECTS[accountType],
+          authMethod: c.authMethod,
           username: c.username,
           password: c.password,
+          awsRegion: c.awsRegion,
+          roleArn: c.roleArn,
           database: cd.database,
           sslEnabled: cd.sslEnabled,
           sslRejectUnauthorized: cd.sslRejectUnauthorized,

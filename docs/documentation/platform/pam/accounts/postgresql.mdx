@@ -33,13 +33,75 @@ PostgreSQL accounts let you manage access to your PostgreSQL databases. Users co
   <Step title="Enter credentials">
     | Field | Description |
     |-------|-------------|
+    | **Auth Method** | **Password** for a standard PostgreSQL login, or **AWS IAM** for RDS and Aurora instances that use [IAM database authentication](#aws-iam-authentication) |
     | **Username** | PostgreSQL username |
-    | **Password** | PostgreSQL password |
+    | **Password** | PostgreSQL password (password auth only) |
+    | **AWS Region** | Region of the RDS or Aurora instance (AWS IAM only) |
+    | **Role ARN** | IAM role the gateway assumes to generate a token (AWS IAM only) |
   </Step>
   <Step title="Save">
     Click **Create**.
   </Step>
 </Steps>
+
+## AWS IAM Authentication
+
+RDS and Aurora instances that require IAM database authentication use the **AWS IAM** auth method. No password is stored: the [gateway](/documentation/platform/gateways/overview) generates a short-lived authentication token for each connection.
+
+Set the following up before creating the account.
+
+<Steps>
+  <Step title="Grant the database user IAM access">
+    ```sql
+    CREATE USER app_user WITH LOGIN;
+    GRANT rds_iam TO app_user;
+    ```
+  </Step>
+  <Step title="Create the IAM role">
+    Create the role you'll set as **Role ARN**, with permission to connect as that database user:
+
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [{
+        "Effect": "Allow",
+        "Action": "rds-db:connect",
+        "Resource": "arn:aws:rds-db:<REGION>:<AWS_ACCOUNT_ID>:dbuser:<DB_RESOURCE_ID>/app_user"
+      }]
+    }
+    ```
+
+    The resource ARN uses the instance's **resource ID** (`db-...`), not its name. Find it under **Configuration** on the instance in the RDS console.
+  </Step>
+  <Step title="Allow the gateway to assume the role">
+    The gateway uses its own AWS identity, picked up from its environment: EKS Pod Identity or IRSA, an EC2 instance profile, or AWS environment variables. Give that identity permission to assume the role, and allow it in the role's trust policy.
+
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [{
+        "Effect": "Allow",
+        "Action": "sts:AssumeRole",
+        "Resource": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/infisical-pam-*"
+      }]
+    }
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  Set **Host** to the instance's RDS or Aurora endpoint. Tokens are signed for that exact endpoint, so a CNAME or other alias is rejected.
+</Note>
+
+<Note>
+  IAM authentication requires an encrypted connection, so **SSL Enabled** is turned on and cannot be disabled. To verify the server certificate, turn on **Reject Unauthorized** and paste your region's certificate from the [RDS trust store](https://truststore.pki.rds.amazonaws.com) into **SSL Certificate**.
+</Note>
+
+<Warning>
+  If the connection test fails with a password authentication error, check your gateway's version. Gateways released before IAM support connect with a password instead.
+</Warning>
+
+[Credential rotation](/documentation/platform/pam/product-reference/credential-rotation/overview) does not apply to these accounts, since there is no stored password.
 
 ## Connecting
 

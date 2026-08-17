@@ -46,6 +46,7 @@ import {
   buildSessionGatewayConnectionDetails,
   extractGatewayTarget,
   getAccountAccessibilityIssues,
+  normalizeCredentialAuthMethod,
   PamAccountAccessibilityIssue,
   parseInternalMetadata,
   qualifyUsernameWithDomain,
@@ -208,7 +209,10 @@ export const pamSessionServiceFactory = ({
     }
 
     const connectionDetails = await decrypt(session.projectId, account.encryptedConnectionDetails);
-    const credentials = await decrypt(session.projectId, account.encryptedCredentials);
+    const credentials = normalizeCredentialAuthMethod(
+      account.accountType as PamAccountType,
+      await decrypt(session.projectId, account.encryptedCredentials)
+    );
 
     if (credentials.authMethod === "certificate" && account.encryptedInternalMetadata) {
       const internalMetadata = parseInternalMetadata(
