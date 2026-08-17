@@ -1,11 +1,20 @@
-export const HomeHero = ({ title, description, children }) => (
+export const HomeHero = ({ title, description, aside, children }) => (
   <div className="ifx-home__hero">
-    {/* <p className="ifx-home__eyebrow">{eyebrow}</p> */}
-    <h1 className="ifx-home__title">{title}</h1>
-    <div className="ifx-home__lede">{description}</div>
-    <div className="ifx-home__actions">{children}</div>
+    <div className="ifx-home__hero-main">
+      {/* <p className="ifx-home__eyebrow">{eyebrow}</p> */}
+      <h1 className="ifx-home__title">{title}</h1>
+      <div className="ifx-home__lede">{description}</div>
+      <div className="ifx-home__actions">{children}</div>
+    </div>
+    {aside ? <div className="ifx-home__hero-aside">{aside}</div> : null}
   </div>
 );
+
+export const HomeLinks = ({ children }) => (
+  <div className="ifx-links">{children}</div>
+);
+
+export const Mark = ({ children }) => <span className="ifx-mark">{children}</span>;
 
 export const HomeButton = ({ href, variant = "secondary", children }) => (
   <a href={href} className={`ifx-btn ifx-btn--${variant}`}>
@@ -20,8 +29,10 @@ export const HomeSection = ({ title, children }) => (
   </section>
 );
 
-export const HomeGrid = ({ cols = 3, children }) => (
-  <div className={`ifx-grid ifx-grid--${cols}`}>{children}</div>
+export const HomeGrid = ({ cols = 3, bare, children }) => (
+  <div className={`ifx-grid ifx-grid--${cols}${bare ? " ifx-grid--bare" : ""}`}>
+    {children}
+  </div>
 );
 
 export const HomeCard = ({ title, href, icon, product, wide, children }) => {
@@ -127,7 +138,7 @@ export const HomeCard = ({ title, href, icon, product, wide, children }) => {
           <path d="m9 18 6-6-6-6" />
         </svg>
       </span>
-      <div className="ifx-card__body">{children}</div>
+      {children ? <div className="ifx-card__body">{children}</div> : null}
     </a>
   );
 };

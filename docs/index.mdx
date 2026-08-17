@@ -5,13 +5,30 @@ description: "Learn how to use Infisical to manage secrets, certificates, and se
 mode: custom
 ---
 
-import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard } from "/snippets/home.jsx";
+import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard, HomeLinks, Mark } from "/snippets/home.jsx";
 
 <div className="ifx-home">
 
 <HomeHero
   title="Documentation"
-  description="Learn how to use Infisical, the all-in-one open source security platform."
+  description={
+    <>
+      Learn how to use Infisical, the{" "}
+      <Mark>all-in-one open source security platform.</Mark>
+    </>
+  }
+  aside={
+    <HomeLinks>
+      <HomeCard title="CLI" href="/cli/overview" icon="terminal" />
+      <HomeCard
+        title="API Reference"
+        href="/api-reference/overview/introduction"
+        icon="book"
+      />
+      <HomeCard title="Self-Hosting" href="/self-hosting/overview" icon="server" />
+      <HomeCard title="Security" href="/internals/security" icon="shield" />
+    </HomeLinks>
+  }
 >
   <HomeButton href="/documentation/getting-started/overview" variant="primary">
     Get started
@@ -63,27 +80,6 @@ import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard } from "/snippets
       product="kms"
     >
       Encrypt and decrypt sensitive data with centrally managed keys.
-    </HomeCard>
-  </HomeGrid>
-</HomeSection>
-
-<HomeSection title="Resources">
-  <HomeGrid cols={4}>
-    <HomeCard title="CLI" href="/cli/overview" icon="terminal">
-      Manage secrets and run commands from your terminal.
-    </HomeCard>
-    <HomeCard
-      title="API Reference"
-      href="/api-reference/overview/introduction"
-      icon="book"
-    >
-      Work with every Infisical resource programmatically.
-    </HomeCard>
-    <HomeCard title="Self-Hosting" href="/self-hosting/overview" icon="server">
-      Deploy and operate Infisical on your own infrastructure.
-    </HomeCard>
-    <HomeCard title="Security" href="/internals/security" icon="shield">
-      Understand the security model and how to build on it.
     </HomeCard>
   </HomeGrid>
 </HomeSection>
