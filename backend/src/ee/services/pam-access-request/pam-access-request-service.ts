@@ -122,7 +122,7 @@ type TPamAccessRequestServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "find" | "findOne">;
   pamAccountTemplateDAL: Pick<TPamAccountTemplateDALFactory, "find">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById" | "find" | "findOne">;
-  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "terminateSessionById">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;

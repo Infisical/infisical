@@ -7,7 +7,7 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamSessionStatus } from "../pam/pam-enums";
-import { getResourceIdsWithActions } from "../pam/pam-permission";
+import { getResourceIdsWithActionsForActors, pamActorKey } from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { TPamSessionDALFactory } from "./pam-session-dal";
@@ -17,8 +17,6 @@ import { terminatePamSessions } from "./pam-session-fns";
 // (`userId` / `identityId` on the session, `actorUserId` / `actorIdentityId` on the membership). Carrying
 // the kind alongside the id is what keeps a lookup from silently crossing the two.
 export type TPamSessionActor = { type: ActorType.USER | ActorType.IDENTITY; id: string };
-
-const actorKey = ({ type, id }: TPamSessionActor) => `${type}:${id}`;
 
 // Exactly one actor column is set per session row.
 export const resolveSessionActor = (session: {
@@ -45,15 +43,14 @@ export const hasLaunchAccessToAccount = (
 
 type TTerminatePamSessionsWithoutLaunchAccessDTO = {
   projectId: string;
-  orgId: string;
   // The actors whose access just changed, users and machine identities alike.
   actors: TPamSessionActor[];
   // The admin who made the access change; named as the terminating actor on the gateway signal.
   actorId: string;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
-  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "terminateSessionById">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   userDAL: Pick<TUserDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   tx: Knex;
@@ -77,10 +74,13 @@ type TTerminatePamSessionsWithoutLaunchAccessDTO = {
  * read would miss, and rolling back the membership change has to roll back the terminations with it. Only
  * the tunnel-cancellation signals are deferred, since those cannot be undone; the caller fires the returned
  * callback after COMMIT.
+ *
+ * Sharing that transaction is only affordable because the queries here are a fixed handful however many
+ * actors and sessions are involved. Keep it that way: a per-actor lookup would pin the connection for
+ * hundreds of round trips on a large group.
  */
 export const terminatePamSessionsWithoutLaunchAccess = async ({
   projectId,
-  orgId,
   actors,
   actorId,
   membershipDAL,
@@ -125,29 +125,21 @@ export const terminatePamSessionsWithoutLaunchAccess = async ({
   );
   const accountById = new Map(accounts.map((account) => [account.id, account]));
 
-  // One membership resolution per actor, not per session, since an actor's grants cover every account.
-  const launchableByActor = new Map<string, TLaunchableResources>();
-  for (const sessionActor of new Map(sessions.map((s) => [actorKey(s.sessionActor), s.sessionActor])).values()) {
-    // eslint-disable-next-line no-await-in-loop
-    const { folderIds, accountIds } = await getResourceIdsWithActions(
-      membershipDAL,
-      membershipRoleDAL,
-      projectId,
-      { allOf: [ResourcePermissionPamResourceActions.LaunchSessions] },
-      { actor: sessionActor.type, actorId: sessionActor.id, actorOrgId: orgId, actorAuthMethod: null },
-      tx
-    );
-    launchableByActor.set(actorKey(sessionActor), {
-      folderIds: new Set(folderIds),
-      accountIds: new Set(accountIds)
-    });
-  }
+  // Resolved per actor rather than per session, since an actor's grants cover every account.
+  const launchableByActor = await getResourceIdsWithActionsForActors(
+    membershipDAL,
+    membershipRoleDAL,
+    projectId,
+    { allOf: [ResourcePermissionPamResourceActions.LaunchSessions] },
+    [...new Map(sessions.map((s) => [pamActorKey(s.sessionActor), s.sessionActor])).values()],
+    tx
+  );
 
   const revoked = sessions.filter((session) => {
     const account = accountById.get(session.accountId);
     // The account is gone from under the session; its own delete path owns closing it.
     if (!account) return false;
-    return !hasLaunchAccessToAccount(launchableByActor.get(actorKey(session.sessionActor)), account);
+    return !hasLaunchAccessToAccount(launchableByActor.get(pamActorKey(session.sessionActor)), account);
   });
   if (revoked.length === 0) return noop;
 

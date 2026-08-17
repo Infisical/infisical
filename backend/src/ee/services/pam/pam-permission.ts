@@ -36,7 +36,33 @@ const pamRoleHasAction = (role: string, action: ResourcePermissionPamResourceAct
 type TPermissionDep = Pick<TPermissionServiceFactory, "getResourcePermission">;
 type TProjectPermissionDep = Pick<TPermissionServiceFactory, "getProjectPermission">;
 type TMembershipDep = Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+type TBatchMembershipDep = Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
 type TMembershipRoleDep = Pick<TMembershipRoleDALFactory, "find">;
+
+type TPamActionFilter = {
+  allOf?: ResourcePermissionPamResourceActions[];
+  anyOf?: ResourcePermissionPamResourceActions[];
+};
+
+type TPamActor = { type: ActorType.USER | ActorType.IDENTITY; id: string };
+
+// Users and identities live in separate columns everywhere, so a map keyed by id alone would cross the two.
+export const pamActorKey = ({ type, id }: TPamActor) => `${type}:${id}`;
+
+const roleMatchesActions = (role: string, actions: TPamActionFilter) => {
+  if (actions.allOf && !actions.allOf.every((a) => pamRoleHasAction(role, a))) return false;
+  if (actions.anyOf && !actions.anyOf.some((a) => pamRoleHasAction(role, a))) return false;
+  return true;
+};
+
+const activeRoleByMembershipId = (roles: Awaited<ReturnType<TMembershipRoleDALFactory["find"]>>) => {
+  const now = new Date();
+  return new Map(
+    roles
+      .filter((r) => !r.isTemporary || (r.temporaryAccessEndTime && now < new Date(r.temporaryAccessEndTime)))
+      .map((r) => [r.membershipId, r.role])
+  );
+};
 
 export const verifyProductMembership = async (
   permissionService: TProjectPermissionDep,
@@ -108,10 +134,7 @@ export const getResourceIdsWithActions = async (
   membershipDAL: TMembershipDep,
   membershipRoleDAL: TMembershipRoleDep,
   projectId: string,
-  actions: {
-    allOf?: ResourcePermissionPamResourceActions[];
-    anyOf?: ResourcePermissionPamResourceActions[];
-  },
+  actions: TPamActionFilter,
   ctx: TActorContext,
   tx?: Knex
 ) => {
@@ -150,33 +173,73 @@ export const getResourceIdsWithActions = async (
     },
     { tx }
   );
-  const now = new Date();
-  const activeRoles = roles.filter(
-    (r) => !r.isTemporary || (r.temporaryAccessEndTime && now < new Date(r.temporaryAccessEndTime))
-  );
-  const roleByMembershipId = new Map(activeRoles.map((r) => [r.membershipId, r.role]));
-
-  const roleMatchesActions = (role: string) => {
-    if (actions.allOf && !actions.allOf.every((a) => pamRoleHasAction(role, a))) return false;
-    if (actions.anyOf && !actions.anyOf.some((a) => pamRoleHasAction(role, a))) return false;
-    return true;
-  };
+  const roleByMembershipId = activeRoleByMembershipId(roles);
 
   const folderIds = activeFolderMemberships
     .filter((m) => {
       const role = roleByMembershipId.get(m.id);
-      return m.scopeResourceId && role && roleMatchesActions(role);
+      return m.scopeResourceId && role && roleMatchesActions(role, actions);
     })
     .map((m) => m.scopeResourceId!);
 
   const accountIds = activeAccountMemberships
     .filter((m) => {
       const role = roleByMembershipId.get(m.id);
-      return m.scopeResourceId && role && roleMatchesActions(role);
+      return m.scopeResourceId && role && roleMatchesActions(role, actions);
     })
     .map((m) => m.scopeResourceId!);
 
   return { folderIds, accountIds };
+};
+
+// Batched form of getResourceIdsWithActions, keyed by `pamActorKey`: same merge, but a fixed number of
+// queries for any number of actors. Callers are bulk re-checks that run inside a transaction, where a
+// per-actor loop would pin its connection for the whole set.
+export const getResourceIdsWithActionsForActors = async (
+  membershipDAL: TBatchMembershipDep,
+  membershipRoleDAL: TMembershipRoleDep,
+  projectId: string,
+  actions: TPamActionFilter,
+  actors: TPamActor[],
+  tx?: Knex
+) => {
+  const byActor = new Map<string, { folderIds: Set<string>; accountIds: Set<string> }>(
+    actors.map((actor) => [pamActorKey(actor), { folderIds: new Set<string>(), accountIds: new Set<string>() }])
+  );
+  if (byActor.size === 0) return byActor;
+
+  const memberships = await membershipDAL.findResourceMembershipsForActors(
+    {
+      projectId,
+      resourceTypes: [ResourceType.PamFolder, ResourceType.PamAccount],
+      userIds: actors.filter((actor) => actor.type === ActorType.USER).map((actor) => actor.id),
+      identityIds: actors.filter((actor) => actor.type === ActorType.IDENTITY).map((actor) => actor.id)
+    },
+    tx
+  );
+
+  const activeMemberships = memberships.filter((m) => m.isActive && m.scopeResourceId);
+  if (activeMemberships.length === 0) return byActor;
+
+  const roles = await membershipRoleDAL.find(
+    { $in: { membershipId: [...new Set(activeMemberships.map((m) => m.id))] } },
+    { tx }
+  );
+  const roleByMembershipId = activeRoleByMembershipId(roles);
+
+  for (const membership of activeMemberships) {
+    const role = roleByMembershipId.get(membership.id);
+    const resources = byActor.get(pamActorKey({ type: membership.forActorType, id: membership.forActorId }));
+    if (role && resources && roleMatchesActions(role, actions)) {
+      if (membership.scopeResourceType === ResourceType.PamFolder) {
+        resources.folderIds.add(membership.scopeResourceId!);
+      } else {
+        resources.accountIds.add(membership.scopeResourceId!);
+      }
+    }
+  }
+
+  return byActor;
 };
 
 // Resolves each account's effective (packed) resource permissions in a single membership fetch, so a

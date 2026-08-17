@@ -49,14 +49,21 @@ import {
 type TPamMembershipServiceFactoryDep = {
   membershipDAL: Pick<
     TMembershipDALFactory,
-    "create" | "find" | "findById" | "delete" | "deleteById" | "findResourceMembershipsForActor" | "transaction"
+    | "create"
+    | "find"
+    | "findById"
+    | "delete"
+    | "deleteById"
+    | "findResourceMembershipsForActor"
+    | "findResourceMembershipsForActors"
+    | "transaction"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteStepApproversBySubject">;
   projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById" | "find">;
-  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "terminateSessionById">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   groupDAL: Pick<TGroupDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById" | "find">;
@@ -294,7 +301,6 @@ export const pamMembershipServiceFactory = ({
 
     return terminatePamSessionsWithoutLaunchAccess({
       projectId,
-      orgId: subject.actorOrgId,
       actors,
       actorId: subject.actorId,
       membershipDAL,

@@ -10,7 +10,7 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamAccessMethod, PamAccountType, PamSessionEndReason } from "../pam/pam-enums";
+import { PamAccessMethod, PamAccountType, PamSessionEndReason, PamSessionStatus } from "../pam/pam-enums";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 
 export const resolvePamSessionDistinctId = async ({
@@ -146,14 +146,21 @@ export const terminatePamSessions = async ({
   sessions: { id: string; gatewayId?: string | null; accountType: string }[];
   actorId: string;
   actorEmail: string;
-  pamSessionDAL: Pick<TPamSessionDALFactory, "terminateSessionById">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   tx?: Knex;
 }) => {
-  for (const session of sessions) {
-    // eslint-disable-next-line no-await-in-loop
-    await pamSessionDAL.terminateSessionById(session.id, tx);
-  }
+  // One statement rather than one per session: callers run this inside a transaction, holding a connection.
+  await pamSessionDAL.update(
+    {
+      $in: {
+        id: sessions.map((session) => session.id),
+        status: [PamSessionStatus.Active, PamSessionStatus.Starting]
+      }
+    },
+    { status: PamSessionStatus.Terminated, endedAt: new Date() },
+    tx
+  );
 
   return () => {
     for (const session of sessions) {

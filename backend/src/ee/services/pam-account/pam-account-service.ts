@@ -73,7 +73,7 @@ type TPamAccountServiceFactoryDep = {
   pamAccountTemplateDAL: Pick<TPamAccountTemplateDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "delete" | "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "delete" | "find">;
-  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "terminateSessionById">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<
     TPermissionServiceFactory,
