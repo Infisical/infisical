@@ -25,10 +25,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
   TextArea
 } from "@app/components/v3";
 import {
@@ -193,86 +189,78 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
       metadata={metadata}
       isDirty={isDirty && !isPending}
     >
-      <Tabs defaultValue="request" className="flex h-full flex-col">
-        <TabsList variant="pam" className="shrink-0 bg-popover">
-          <TabsTrigger value="request">
-            <Send className="size-4" />
-            Request Access
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="request" className="m-0 flex flex-1 flex-col p-6">
-          {isPending ? (
-            <div className="flex flex-1 flex-col gap-6">
-              <div className="flex items-center gap-2.5 rounded-md border border-border bg-container px-4 py-3">
-                <Clock className="size-4 shrink-0 text-warning" />
-                <p className="text-sm text-foreground">Your access request is awaiting approval.</p>
-              </div>
-              <ApprovalWorkflow accountId={account?.id} isPending />
+      <div className="flex h-full flex-1 flex-col p-6">
+        {isPending ? (
+          <div className="flex flex-1 flex-col gap-6">
+            <div className="flex items-center gap-2.5 rounded-md border border-border bg-container px-4 py-3">
+              <Clock className="size-4 shrink-0 text-warning" />
+              <p className="text-sm text-foreground">Your access request is awaiting approval.</p>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col">
-              <div className="flex flex-1 flex-col gap-6">
-                <Controller
-                  control={control}
-                  name="reason"
-                  render={({ field, fieldState }) => (
-                    <Field>
-                      <FieldLabel>
-                        Reason {requireReason && <span className="text-danger">*</span>}
-                      </FieldLabel>
-                      <FieldContent>
-                        <TextArea
-                          {...field}
-                          rows={4}
-                          placeholder="What are you working on?"
-                          isError={!!fieldState.error}
-                        />
-                        <FieldDescription>
-                          Will be visible to approvers and recorded in audit logs.
-                        </FieldDescription>
-                        <FieldError>{fieldState.error?.message}</FieldError>
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="duration"
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel>Requested duration</FieldLabel>
-                      <FieldContent>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent position="popper">
-                            {DURATION_OPTIONS.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-                <ApprovalWorkflow accountId={account?.id} isPending={false} />
-              </div>
-              <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-                <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" variant="pam" isPending={createRequest.isPending}>
-                  <Send className="mr-1.5 size-4" />
-                  Submit request
-                </Button>
-              </div>
-            </form>
-          )}
-        </TabsContent>
-      </Tabs>
+            <ApprovalWorkflow accountId={account?.id} isPending />
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col">
+            <div className="flex flex-1 flex-col gap-6">
+              <Controller
+                control={control}
+                name="reason"
+                render={({ field, fieldState }) => (
+                  <Field>
+                    <FieldLabel>
+                      Reason {requireReason && <span className="text-danger">*</span>}
+                    </FieldLabel>
+                    <FieldContent>
+                      <TextArea
+                        {...field}
+                        rows={4}
+                        placeholder="What are you working on?"
+                        isError={!!fieldState.error}
+                      />
+                      <FieldDescription>
+                        Will be visible to approvers and recorded in audit logs.
+                      </FieldDescription>
+                      <FieldError>{fieldState.error?.message}</FieldError>
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                name="duration"
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>Requested duration</FieldLabel>
+                    <FieldContent>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          {DURATION_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+              <ApprovalWorkflow accountId={account?.id} isPending={false} />
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="pam" isPending={createRequest.isPending}>
+                <Send className="mr-1.5 size-4" />
+                Submit request
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
     </PamDetailSheet>
   );
 };

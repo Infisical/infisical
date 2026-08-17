@@ -39,6 +39,23 @@ const Page = () => {
 
   const isSecretManager = currentProject.type === ProjectType.SecretManager;
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
+  const hasTabs = isCertManager || isSecretManager;
+
+  const renderTabContent = () => {
+    switch (selectedTab) {
+      case ProjectAccessControlTabs.Identities:
+        return <IdentityTab />;
+      case ProjectAccessControlTabs.Groups:
+        return <GroupsTab />;
+      case ProjectAccessControlTabs.ServiceTokens:
+        return isSecretManager ? <ServiceTokenTab /> : <MembersTab />;
+      case ProjectAccessControlTabs.Roles:
+        return <ProjectRoleListTab />;
+      case ProjectAccessControlTabs.Member:
+      default:
+        return <MembersTab />;
+    }
+  };
 
   return (
     <div className="mx-auto flex flex-col justify-between text-foreground">
@@ -63,17 +80,9 @@ const Page = () => {
             control?
           </Link>
         </PageHeader>
-        <Tabs
-          orientation={isCertManager || isSecretManager ? "horizontal" : "vertical"}
-          value={selectedTab}
-          onValueChange={updateSelectedTab}
-        >
-          {(isCertManager || isSecretManager) && (
-            <TabsList
-              variant="project"
-              aria-label="Project access control sections"
-              className="w-full justify-start"
-            >
+        {hasTabs ? (
+          <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
+            <TabsList variant="project" aria-label="Project access control sections">
               <TabsTrigger value={ProjectAccessControlTabs.Member}>Users</TabsTrigger>
               <TabsTrigger value={ProjectAccessControlTabs.Identities}>
                 Machine Identities
@@ -88,37 +97,27 @@ const Page = () => {
                 <TabsTrigger value={ProjectAccessControlTabs.Roles}>Roles</TabsTrigger>
               )}
             </TabsList>
-          )}
-          <TabsContent
-            value={ProjectAccessControlTabs.Member}
-            className={isCertManager || isSecretManager ? undefined : "mt-0"}
-          >
-            <MembersTab />
-          </TabsContent>
-          <TabsContent
-            value={ProjectAccessControlTabs.Identities}
-            className={isCertManager || isSecretManager ? undefined : "mt-0"}
-          >
-            <IdentityTab />
-          </TabsContent>
-          <TabsContent
-            value={ProjectAccessControlTabs.Groups}
-            className={isCertManager || isSecretManager ? undefined : "mt-0"}
-          >
-            <GroupsTab />
-          </TabsContent>
-          {isSecretManager && (
-            <TabsContent value={ProjectAccessControlTabs.ServiceTokens}>
-              <ServiceTokenTab />
+            <TabsContent value={ProjectAccessControlTabs.Member}>
+              <MembersTab />
             </TabsContent>
-          )}
-          <TabsContent
-            value={ProjectAccessControlTabs.Roles}
-            className={isCertManager || isSecretManager ? undefined : "mt-0"}
-          >
-            <ProjectRoleListTab />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value={ProjectAccessControlTabs.Identities}>
+              <IdentityTab />
+            </TabsContent>
+            <TabsContent value={ProjectAccessControlTabs.Groups}>
+              <GroupsTab />
+            </TabsContent>
+            {isSecretManager && (
+              <TabsContent value={ProjectAccessControlTabs.ServiceTokens}>
+                <ServiceTokenTab />
+              </TabsContent>
+            )}
+            <TabsContent value={ProjectAccessControlTabs.Roles}>
+              <ProjectRoleListTab />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          renderTabContent()
+        )}
       </div>
     </div>
   );

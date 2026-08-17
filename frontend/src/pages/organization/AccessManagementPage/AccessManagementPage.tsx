@@ -134,7 +134,10 @@ export const AccessManagementPage = () => {
           <OrgPermissionGuardBanner />
         ) : (
           <Tabs value={activeTab} onValueChange={updateSelectedTab}>
-            <TabsList variant={isSubOrganization ? "sub-org" : "org"}>
+            <TabsList
+              variant={isSubOrganization ? "sub-org" : "org"}
+              aria-label="Organization access control sections"
+            >
               {visibleTabSections.map(({ key, label }) => (
                 <TabsTrigger value={key} key={`org-access-tab-${key}`}>
                   {label}
