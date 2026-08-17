@@ -6,15 +6,8 @@ import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   Button,
+  DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -203,38 +196,18 @@ const Page = () => {
           </EmptyHeader>
         </Empty>
       )}
-      <AlertDialog
-        open={popUp.deleteGroup.isOpen}
+      <DeleteConfirmDialog
+        isOpen={popUp.deleteGroup.isOpen}
         onOpenChange={(isOpen) => {
           if (!isRemovingGroup) handlePopUpToggle("deleteGroup", isOpen);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Remove &quot;{groupMembership?.group.name}&quot; from {productLabel}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This removes the group&apos;s access to this {productLabel.toLowerCase()}. You can add
-              the group again later.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isRemovingGroup}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="danger"
-              isPending={isRemovingGroup}
-              isDisabled={!groupMembership}
-              onClick={async (event) => {
-                event.preventDefault();
-                await onRemoveGroupSubmit();
-              }}
-            >
-              Remove Group
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={`Remove "${groupMembership?.group.name}" from ${productLabel}?`}
+        description={`This removes the group's access to this ${productLabel.toLowerCase()}. You can add the group again later.`}
+        confirmKey={groupMembership?.group.name ?? ""}
+        confirmLabel="Remove Group"
+        isPending={isRemovingGroup}
+        onConfirm={onRemoveGroupSubmit}
+      />
     </div>
   );
 };
