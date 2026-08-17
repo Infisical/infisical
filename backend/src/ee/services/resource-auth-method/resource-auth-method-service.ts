@@ -763,6 +763,11 @@ export const resourceAuthMethodServiceFactory = ({
         // host alone is not enough: routing it through a different gateway, trusting a different
         // CA, or turning verification off all redirect it somewhere it was never validated against.
         const destinationChanged =
+          // The review mode counts. Gateway mode is exempt from this guard, so without it an
+          // editor could park a new host under gateway mode, then switch back to API mode with
+          // that host already stored and have the preserved token sent there.
+          (stored?.tokenReviewMode ?? KubernetesTokenReviewMode.Api) !==
+            (authMethod.tokenReviewMode ?? KubernetesTokenReviewMode.Api) ||
           stored?.kubernetesHost !== authMethod.kubernetesHost ||
           (stored?.gatewayV2Id ?? null) !== (authMethod.gatewayV2Id ?? null) ||
           (stored?.gatewayPoolId ?? null) !== (authMethod.gatewayPoolId ?? null) ||
@@ -776,7 +781,7 @@ export const resourceAuthMethodServiceFactory = ({
         ) {
           throw new BadRequestError({
             message:
-              "Re-enter the token reviewer JWT when changing the Kubernetes host, the reviewing gateway, the CA certificate, or TLS verification. Reset it instead to remove it. The stored token is never sent to a destination it was not validated against."
+              "Re-enter the token reviewer JWT when changing the review mode, the Kubernetes host, the reviewing gateway, the CA certificate, or TLS verification. Reset it instead to remove it. The stored token is never sent to a destination it was not validated against."
           });
         }
 

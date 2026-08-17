@@ -98,6 +98,13 @@ const KubernetesAuthMethodInputSchema = z
       "A gateway pool cannot perform the review, because its membership can change after this is saved. Select a specific gateway.",
     path: ["gatewayPoolId"]
   })
+  // The gateway calls its own API server in gateway review mode, so a host there is not merely
+  // unnecessary, it is unused: accepting one lets a host be parked and picked up by a later
+  // switch back to API mode.
+  .refine((data) => data.tokenReviewMode !== KubernetesTokenReviewMode.Gateway || !data.kubernetesHost, {
+    message: "A Kubernetes host does not apply when the gateway performs the review. Remove it.",
+    path: ["kubernetesHost"]
+  })
   // Only gateway review mode can go without a host, because there the gateway calls its own
   // API server rather than an address we supply.
   .refine((data) => data.tokenReviewMode === KubernetesTokenReviewMode.Gateway || Boolean(data.kubernetesHost), {
