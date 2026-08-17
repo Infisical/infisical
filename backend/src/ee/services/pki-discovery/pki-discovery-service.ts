@@ -29,7 +29,7 @@ import {
   TUpdatePkiDiscoveryDTO
 } from "./pki-discovery-types";
 
-const MAX_CLOUD_DISCOVERIES_PER_PROJECT = 10;
+const MAX_CLOUD_DISCOVERIES = 10;
 const SCAN_RATE_LIMIT_HOURS = 24;
 
 type TPkiDiscoveryServiceFactoryDep = {
@@ -116,9 +116,9 @@ export const pkiDiscoveryServiceFactory = ({
     const appCfg = getConfig();
     if (appCfg.isCloud) {
       const existingCount = await pkiDiscoveryConfigDAL.countByProjectId(projectId);
-      if (existingCount >= MAX_CLOUD_DISCOVERIES_PER_PROJECT) {
+      if (existingCount >= MAX_CLOUD_DISCOVERIES) {
         throw new BadRequestError({
-          message: `Maximum number of discovery configurations (${MAX_CLOUD_DISCOVERIES_PER_PROJECT}) reached for this project`
+          message: `Maximum number of discovery configurations (${MAX_CLOUD_DISCOVERIES}) reached`
         });
       }
     }
