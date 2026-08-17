@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -19,17 +19,19 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   FilterableSelect,
   Skeleton
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { useDebounce } from "@app/hooks";
 import {
   useAddGroupToWorkspace,
-  useGetOrganizationGroups,
   useGetProjectRoles,
-  useListWorkspaceGroups
+  useListWorkspaceGroups,
+  useSearchOrganizationGroups
 } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -40,6 +42,8 @@ const schema = z.object({
 });
 
 export type FormData = z.infer<typeof schema>;
+
+const GROUP_PAGE_SIZE = 20;
 
 type Props = {
   popUp: UsePopUpState<["group"]>;
@@ -56,13 +60,20 @@ const Content = ({ onClose }: { onClose: () => void }) => {
 
   const orgId = currentOrg?.id || "";
 
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch] = useDebounce(searchInput);
+
   const {
-    data: groups,
+    data: orgGroupsData,
     isError: isGroupsError,
     isFetching: isGroupsFetching,
     isPending: isGroupsPending,
     refetch: refetchGroups
-  } = useGetOrganizationGroups(orgId);
+  } = useSearchOrganizationGroups({
+    organizationId: orgId,
+    search: debouncedSearch,
+    limit: GROUP_PAGE_SIZE
+  });
   const {
     data: groupMemberships,
     isError: isGroupMembershipsError,
@@ -88,8 +99,8 @@ const Content = ({ onClose }: { onClose: () => void }) => {
       wsGroupIds.set(groupMembership.group.id, true);
     });
 
-    return (groups || []).filter(({ id }) => !wsGroupIds.has(id));
-  }, [groups, groupMemberships]);
+    return (orgGroupsData?.groups || []).filter(({ id }) => !wsGroupIds.has(id));
+  }, [orgGroupsData?.groups, groupMemberships]);
 
   const {
     control,
@@ -174,7 +185,20 @@ const Content = ({ onClose }: { onClose: () => void }) => {
     );
   }
 
-  return filteredGroupMembershipOrgs.length ? (
+  const totalOrgGroups = orgGroupsData?.totalCount ?? 0;
+  const assignedCount = groupMemberships?.length ?? 0;
+  // totalCount is scoped to the active search, so only trust it against the project's group count
+  // once both the input and the debounced query it drives are clear.
+  const hasSearchTerm = Boolean(searchInput || debouncedSearch);
+  const hasNoAvailableGroups = !hasSearchTerm && assignedCount >= totalOrgGroups;
+  const isGroupListTruncated = totalOrgGroups > GROUP_PAGE_SIZE;
+
+  const noOptionsMessage = () => {
+    if (hasSearchTerm) return "No groups match your search";
+    return `The first ${GROUP_PAGE_SIZE} groups are already added. Search by name to find others.`;
+  };
+
+  return !hasNoAvailableGroups ? (
     <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
       <Controller
         control={control}
@@ -189,10 +213,21 @@ const Content = ({ onClose }: { onClose: () => void }) => {
               placeholder="Select group..."
               autoFocus
               isError={Boolean(error)}
-              options={filteredGroupMembershipOrgs}
+              isLoading={isGroupsFetching || searchInput !== debouncedSearch}
+              options={isGroupsFetching ? [] : filteredGroupMembershipOrgs}
+              onInputChange={(newValue, actionMeta) => {
+                if (actionMeta.action === "input-change") {
+                  setSearchInput(newValue);
+                }
+              }}
+              filterOption={() => true}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
+              noOptionsMessage={noOptionsMessage}
             />
+            <FieldDescription>
+              {isGroupListTruncated ? "Search by name to find groups that are not listed." : null}
+            </FieldDescription>
             <FieldError>{error?.message}</FieldError>
           </Field>
         )}
@@ -230,18 +265,21 @@ const Content = ({ onClose }: { onClose: () => void }) => {
   ) : (
     <div className="flex flex-col gap-4">
       <p className="text-sm">
-        Every group in your organization is already added. To add another group, create one at the
-        organization level first.
+        {totalOrgGroups === 0
+          ? "Your organization has no groups yet. Create one at the organization level to add it to this project."
+          : "Every group in your organization is already added. To add another group, create one at the organization level first."}
       </p>
-      <Button asChild variant="outline" className="self-end">
-        <Link
-          to={"/organizations/$orgId/access-management" as const}
-          params={{ orgId }}
-          search={{ selectedTab: "groups" }}
-        >
-          Go to organization groups <ArrowRightIcon />
-        </Link>
-      </Button>
+      <DialogFooter>
+        <Button asChild variant="outline">
+          <Link
+            to={"/organizations/$orgId/access-management" as const}
+            params={{ orgId }}
+            search={{ selectedTab: "groups" }}
+          >
+            Go to organization groups <ArrowRightIcon />
+          </Link>
+        </Button>
+      </DialogFooter>
     </div>
   );
 };

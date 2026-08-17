@@ -297,7 +297,7 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
   return (
     <form onSubmit={handleSubmit(handleRoleUpdate)} id="role-update-form">
       <Command>
-        <CommandInput placeholder="Search roles..." />
+        <CommandInput aria-label="Search roles" placeholder="Search roles..." />
         <CommandList>
           <CommandEmpty>No roles found</CommandEmpty>
           <CommandGroup>

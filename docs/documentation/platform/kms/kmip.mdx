@@ -65,10 +65,11 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
     2. Click **Create KMIP Server** and fill in:
         - **Name** of the server.
         - **Hostnames or IPs**: a comma-separated list of the hostnames or IPs that KMIP clients will use to reach this server (for example `kmip.example.com` or `10.0.1.50`). These become the Subject Alternative Names (SANs) of the server's TLS certificate, so they must match how clients connect.
-        - **Certificate TTL**: validity period of the server certificate (for example `1y`).
         - **Key Algorithm**: key algorithm used to sign the server certificate.
 
-        This certificate configuration is stored on the server entity. The CLI reads it on start, so you do not pass it on the command line. You can change it later from the server's detail page (edit the **Certificate Configuration** card) and restart the server to apply it.
+        The server certificate is issued with a one-year validity period and renews automatically before it expires, so there is no TTL to configure. If you need a custom validity period (for example, to meet a compliance requirement), set `ttl` via the [API](/api-reference/endpoints/kmip-servers/update).
+
+        This certificate configuration is stored on the server entity. The CLI reads it on start, so you do not pass it on the command line. You can change it later from the server's detail page (edit the **Certificate Configuration** card); changes apply at the server's next automatic certificate renewal, or immediately if you restart it.
     3. (Optional) Open the new server's detail page and click the edit icon next to **Authentication** to switch the auth method. Two methods are supported:
         - **Token** (default): a one-time enrollment token (1h expiry) bootstraps the server.
         - **AWS**: the server authenticates by signing an `sts:GetCallerIdentity` request with whatever AWS credentials it can resolve on the host (instance role, env vars, shared profile). Configure the allowed principal ARNs and/or account IDs that match your hosts.
@@ -153,7 +154,7 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
     </Warning>
 
     <Note>
-      The server's certificate configuration (hostnames/IPs, TTL, key algorithm) is read from the server entity you configured in the UI, so the deploy command does not include it. To change the certificate, edit the **Certificate Configuration** card on the server's detail page and restart the server.
+      The server's certificate configuration (hostnames/IPs, key algorithm) is read from the server entity you configured in the UI, so the deploy command does not include it. To change the certificate, edit the **Certificate Configuration** card on the server's detail page. Changes apply at the next automatic certificate renewal, or restart the server to apply them immediately.
     </Note>
 
     <Note>
@@ -171,7 +172,7 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
 
   <Step title="Verify the KMIP Server">
     After deployment, verify the server is running:
-    1. **Check logs** for a "Listening on ..." message and confirm the certificates loaded successfully.
+    1. **Check logs** for a "Listening on ..." message, confirmation that the certificates loaded successfully, and a "Next certificate renewal scheduled in ..." line showing auto-renewal is active.
     2. For systemd installations, check the service status:
         ```bash
         sudo systemctl status infisical-kmip
@@ -187,10 +188,18 @@ A KMIP server is created as an organization-wide entity in Infisical and then en
 From the KMIP server's detail page (under **Infisical KMS > KMIP Servers**):
 
 - **Show deploy command** — Generates a fresh enrollment token (token method) or re-displays the AWS start command. For token-method servers this does not disconnect a running server; the next enrollment with the new token supersedes the old one.
-- **Edit certificate configuration**: Update the hostnames/IPs, TTL, or key algorithm used for the server's TLS certificate. Restart the server after saving for the new certificate to take effect.
+- **Edit certificate configuration**: Update the hostnames/IPs or key algorithm used for the server's TLS certificate. Changes take effect at the next automatic certificate renewal; restart the server to apply them immediately.
 - **Edit authentication** — Switch between Token and AWS, or update the AWS allowlists.
 - **Options → Revoke Access** — Invalidates the server's outstanding access tokens and enrollment tokens. The server must re-enroll to reconnect.
 - **Options → Delete** — Permanently removes the KMIP server entity.
+
+### Renewal Failures
+
+The server's TLS certificate renews automatically in the background; no action is needed and existing client connections are never interrupted. You only need to step in if renewal fails, which the server reports with `Certificate renewal failed` warnings and errors in its logs.
+
+If the failure is transient (for example, the Infisical platform is temporarily unreachable), the server keeps serving its current certificate and retries with increasing frequency as expiry approaches. Once the platform is reachable again, the next retry succeeds and normal operation resumes on its own.
+
+If the failure is an authentication error (for example, after revoking the server's access), recovery depends on the auth method. AWS-enrolled servers recover automatically by re-authenticating via STS. Token-enrolled servers cannot, since enrollment tokens are single-use; the server logs an error asking you to re-enroll. Generate a new enrollment token via **Show deploy command** and restart the server with it to recover.
 
 ## Register a KMIP Client
 
