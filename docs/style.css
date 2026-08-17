@@ -152,6 +152,10 @@
   color: #0e1014;
 }
 
+#sidebar-content .sidebar-title {
+  font-weight: inherit;
+}
+
 
 /* ── Homepage */
 html[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"] {
