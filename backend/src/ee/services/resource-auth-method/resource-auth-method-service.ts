@@ -317,7 +317,7 @@ export const resourceAuthMethodServiceFactory = ({
           id: config.id,
           kubernetesHost: config.kubernetesHost ?? "",
           tokenReviewMode: config.tokenReviewMode,
-          gatewayV2Id: config.gatewayV2Id ?? null,
+          gatewayId: config.gatewayV2Id ?? null,
           gatewayPoolId: config.gatewayPoolId ?? null,
           allowedNamespaces: config.allowedNamespaces,
           allowedNames: config.allowedNames,

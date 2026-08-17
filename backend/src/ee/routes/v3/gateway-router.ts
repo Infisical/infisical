@@ -71,7 +71,7 @@ const KubernetesAuthMethodInputSchema = z
       .nativeEnum(KubernetesTokenReviewMode)
       .default(KubernetesTokenReviewMode.Api)
       .describe(GATEWAYS.AUTH_METHOD.tokenReviewMode),
-    gatewayV2Id: z.string().uuid().nullable().optional().describe(GATEWAYS.AUTH_METHOD.gatewayV2Id),
+    gatewayId: z.string().uuid().nullable().optional().describe(GATEWAYS.AUTH_METHOD.gatewayId),
     gatewayPoolId: z.string().uuid().nullable().optional().describe(GATEWAYS.AUTH_METHOD.gatewayPoolId),
     allowedNamespaces: validateAllowedNamespaces.describe(GATEWAYS.AUTH_METHOD.allowedNamespaces),
     allowedNames: validateAllowedNames.describe(GATEWAYS.AUTH_METHOD.allowedNames),
@@ -82,13 +82,13 @@ const KubernetesAuthMethodInputSchema = z
     message: "At least one of allowedNamespaces or allowedNames must be set",
     path: ["allowedNamespaces"]
   })
-  .refine((data) => !(data.gatewayV2Id && data.gatewayPoolId), {
+  .refine((data) => !(data.gatewayId && data.gatewayPoolId), {
     message: "Select either a gateway or a gateway pool to review tokens, not both",
     path: ["gatewayPoolId"]
   })
-  .refine((data) => data.tokenReviewMode !== KubernetesTokenReviewMode.Gateway || Boolean(data.gatewayV2Id), {
+  .refine((data) => data.tokenReviewMode !== KubernetesTokenReviewMode.Gateway || Boolean(data.gatewayId), {
     message: "Gateway review mode requires a specific gateway to perform the review",
-    path: ["gatewayV2Id"]
+    path: ["gatewayId"]
   })
   // In this mode the selected gateway supplies the TokenReview verdict, so it is the attestor for
   // every login. Pool membership can change afterwards under a different permission, which would
@@ -138,7 +138,7 @@ const toCreateAuthMethodArg = (input: TSettableAuthMethodInput) => {
         caCertificate: input.caCertificate,
         tokenReviewerJwt: input.tokenReviewerJwt,
         tokenReviewMode: input.tokenReviewMode,
-        gatewayV2Id: input.gatewayV2Id,
+        gatewayV2Id: input.gatewayId,
         gatewayPoolId: input.gatewayPoolId,
         allowedNamespaces: input.allowedNamespaces,
         allowedNames: input.allowedNames,
@@ -166,7 +166,7 @@ const toSetAuthMethodArg = (input: TSettableAuthMethodInput) => {
       caCertificate: input.caCertificate,
       tokenReviewerJwt: input.tokenReviewerJwt,
       tokenReviewMode: input.tokenReviewMode,
-      gatewayV2Id: input.gatewayV2Id,
+      gatewayV2Id: input.gatewayId,
       gatewayPoolId: input.gatewayPoolId,
       allowedNamespaces: input.allowedNamespaces,
       allowedNames: input.allowedNames,

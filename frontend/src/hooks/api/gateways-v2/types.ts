@@ -34,7 +34,7 @@ export type GatewayKubernetesAuthConfig = {
   caCertificate: string;
   hasTokenReviewerJwt: boolean;
   tokenReviewMode: string;
-  gatewayV2Id: string | null;
+  gatewayId: string | null;
   gatewayPoolId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -72,7 +72,7 @@ export type SettableAuthMethodInput =
       // Write-only. Omitted means "keep the stored value"; an empty string clears it.
       tokenReviewerJwt?: string;
       tokenReviewMode?: string;
-      gatewayV2Id?: string | null;
+      gatewayId?: string | null;
       gatewayPoolId?: string | null;
       allowedNamespaces: string;
       allowedNames: string;

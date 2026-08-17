@@ -50,7 +50,7 @@ const schema = z
     // host and no reviewer token but requires that gateway to run as a pod in the cluster.
     tokenReviewMode: z.enum(["api", "gateway"]),
     // Empty string means "no proxy": review straight from Infisical. Only one may be set.
-    gatewayV2Id: z.string(),
+    gatewayId: z.string(),
     gatewayPoolId: z.string(),
     // True once Reset is clicked, which swaps the stored token for an editable field. Saving with
     // that field empty is what removes the token, since a never-returned value cannot be blanked.
@@ -84,10 +84,10 @@ const schema = z
           message: "Kubernetes host is required"
         });
       }
-      if (isGatewayReviewer && !data.gatewayV2Id) {
+      if (isGatewayReviewer && !data.gatewayId) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["gatewayV2Id"],
+          path: ["gatewayId"],
           message: "Select a specific gateway to perform the review; a pool cannot"
         });
       }
@@ -134,7 +134,7 @@ export const toNetworkingAuthMethodInput = (form: FormData) => {
       // The gateway resolves its own API server, so sending a host would be meaningless.
       kubernetesHost: isGatewayReviewer ? undefined : form.kubernetesHost,
       tokenReviewMode: form.tokenReviewMode,
-      gatewayV2Id: form.gatewayV2Id || null,
+      gatewayId: form.gatewayId || null,
       gatewayPoolId: form.gatewayPoolId || null,
       caCertificate: form.caCertificate,
       // Write-only: undefined keeps the stored value, empty string removes it.
@@ -169,7 +169,7 @@ type AuthMethod =
         caCertificate: string;
         hasTokenReviewerJwt: boolean;
         tokenReviewMode: string;
-        gatewayV2Id: string | null;
+        gatewayId: string | null;
         gatewayPoolId: string | null;
       };
     }
@@ -218,7 +218,7 @@ export const NetworkingAuthMethodForm = ({
     allowedAudience: initialKubernetes?.allowedAudience ?? "",
     verifyTlsCertificate: initialKubernetes?.verifyTlsCertificate ?? true,
     tokenReviewMode: initialKubernetes?.tokenReviewMode === "gateway" ? "gateway" : "api",
-    gatewayV2Id: initialKubernetes?.gatewayV2Id ?? "",
+    gatewayId: initialKubernetes?.gatewayId ?? "",
     gatewayPoolId: initialKubernetes?.gatewayPoolId ?? "",
     resetTokenReviewerJwt: false
   };
@@ -251,7 +251,7 @@ export const NetworkingAuthMethodForm = ({
     initialKubernetes?.verifyTlsCertificate,
     initialKubernetes?.caCertificate,
     initialKubernetes?.tokenReviewMode,
-    initialKubernetes?.gatewayV2Id,
+    initialKubernetes?.gatewayId,
     initialKubernetes?.gatewayPoolId,
     reset
   ]);
@@ -260,9 +260,9 @@ export const NetworkingAuthMethodForm = ({
   const isSaving = isSubmitting || isPending;
   const verifyTlsCertificate = watch("verifyTlsCertificate");
   const tokenReviewMode = watch("tokenReviewMode");
-  const gatewayV2Id = watch("gatewayV2Id");
+  const gatewayId = watch("gatewayId");
   const gatewayPoolId = watch("gatewayPoolId");
-  const isProxied = Boolean(gatewayV2Id || gatewayPoolId);
+  const isProxied = Boolean(gatewayId || gatewayPoolId);
   const isGatewayReviewer = tokenReviewMode === "gateway";
   const isTokenReviewerJwtConfigured =
     Boolean(initialKubernetes?.hasTokenReviewerJwt) && !watch("resetTokenReviewerJwt");
@@ -369,7 +369,7 @@ export const NetworkingAuthMethodForm = ({
         <>
           <Controller
             control={control}
-            name="gatewayV2Id"
+            name="gatewayId"
             render={({ field, fieldState: { error } }) => (
               <Field>
                 <FieldLabel className="inline-flex items-center gap-1.5">
@@ -389,7 +389,7 @@ export const NetworkingAuthMethodForm = ({
                   <GatewayPicker
                     value={{ gatewayId: field.value || null, gatewayPoolId: gatewayPoolId || null }}
                     onChange={(next) => {
-                      setValue("gatewayV2Id", next.gatewayId ?? "", { shouldDirty: true });
+                      setValue("gatewayId", next.gatewayId ?? "", { shouldDirty: true });
                       setValue("gatewayPoolId", next.gatewayPoolId ?? "", { shouldDirty: true });
                       // Without a proxy there is nobody to hand the review to.
                       if (!next.gatewayId && !next.gatewayPoolId) {

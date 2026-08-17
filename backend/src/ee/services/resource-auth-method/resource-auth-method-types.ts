@@ -38,7 +38,7 @@ export type TKubernetesAuthMethodConfigView = Omit<
   // Always present on read, empty when the review runs through a gateway's own service account.
   kubernetesHost: string;
   tokenReviewMode: string;
-  gatewayV2Id: string | null;
+  gatewayId: string | null;
   gatewayPoolId: string | null;
   caCertificate: string;
   hasTokenReviewerJwt: boolean;

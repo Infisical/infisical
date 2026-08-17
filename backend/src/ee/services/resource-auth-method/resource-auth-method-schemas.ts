@@ -15,7 +15,7 @@ export const KubernetesAuthMethodConfigSchema = z.object({
   id: z.string().uuid(),
   kubernetesHost: z.string(),
   tokenReviewMode: z.string(),
-  gatewayV2Id: z.string().nullable(),
+  gatewayId: z.string().nullable(),
   gatewayPoolId: z.string().nullable(),
   allowedNamespaces: z.string(),
   allowedNames: z.string(),
