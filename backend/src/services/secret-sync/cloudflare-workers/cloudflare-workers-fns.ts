@@ -198,7 +198,10 @@ export const CloudflareWorkersSyncFns = {
       // - present keys with an object value are created/updated
       // - keys set to null are deleted
       // - omitted keys are left unchanged
-      const bulkSecrets: Record<string, { name: string; text: string; type: string } | null> = {};
+      // Null-prototype object so secret names like "__proto__" are stored as regular properties.
+      const bulkSecrets: Record<string, { name: string; text: string; type: string } | null> = Object.create(
+        null
+      ) as Record<string, { name: string; text: string; type: string } | null>;
 
       for (const [key, val] of secretEntries) {
         bulkSecrets[key] = { name: key, text: val.value, type: CLOUDFLARE_SECRET_TYPE };
@@ -324,7 +327,8 @@ export const CloudflareWorkersSyncFns = {
 
     try {
       if (secretTypeToRemove.length > 0) {
-        const bulkSecrets: Record<string, null> = {};
+        // Null-prototype object so secret names like "__proto__" are stored as regular properties.
+        const bulkSecrets: Record<string, null> = Object.create(null) as Record<string, null>;
         for (const secret of secretTypeToRemove) {
           bulkSecrets[secret.key] = null;
         }
