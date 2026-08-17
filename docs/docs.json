@@ -2,9 +2,17 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Infisical",
+  "fonts": {
+    "heading": {
+      "family": "Alliance",
+      "source": "/fonts/AllianceNo2-Regular.woff2",
+      "format": "woff2",
+      "weight": 400
+    }
+  },
   "colors": {
     "primary": "#26272b",
-    "light": "#EFFF33",
+    "light": "#dbf530",
     "dark": "#A1B659"
   },
   "styling": {
@@ -4293,7 +4301,7 @@
   "background": {
     "color": {
       "light": "#ffffff",
-      "dark": "#0D1117"
+      "dark": "#08090b"
     }
   },
   "navbar": {

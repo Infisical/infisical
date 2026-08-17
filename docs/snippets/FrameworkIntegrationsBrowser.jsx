@@ -49,7 +49,7 @@ export const FrameworkIntegrationsBrowser = () => {
           <input
             type="text"
             placeholder="Search framework integrations..."
-            className="block w-full pl-9 pr-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white shadow-sm dark:bg-black dark:text-gray-100 dark:border-gray-700 dark:placeholder-gray-400"
+            className="block w-full pl-9 pr-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white shadow-sm dark:bg-[#1e1f22] dark:text-gray-100 dark:border-gray-700 dark:placeholder-gray-400"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -71,7 +71,7 @@ export const FrameworkIntegrationsBrowser = () => {
             <a
               key={integration.slug}
               href={integration.path}
-              className="group block px-4 py-3 border border-gray-200 rounded-xl hover:border-yellow-200 hover:bg-yellow-50/50 hover:shadow-sm transition-all duration-200 bg-white shadow-sm dark:bg-black dark:border-gray-700 dark:hover:bg-yellow-950/20 dark:hover:border-yellow-700"
+              className="group block px-4 py-3 border border-gray-200 rounded-xl hover:border-yellow-200 hover:bg-yellow-50/50 hover:shadow-sm transition-all duration-200 bg-white shadow-sm dark:bg-[#1e1f22] dark:border-gray-700 dark:hover:bg-yellow-950/20 dark:hover:border-yellow-700"
             >
               <div className="w-full">
                 <div className="mb-0.5">
