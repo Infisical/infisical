@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -20,11 +20,12 @@ import {
   FilterableSelect
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { useDebounce } from "@app/hooks";
 import {
   useAddGroupToWorkspace,
-  useGetOrganizationGroups,
   useGetProjectRoles,
-  useListWorkspaceGroups
+  useListWorkspaceGroups,
+  useSearchOrganizationGroups
 } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -49,7 +50,14 @@ const Content = ({ onClose }: { onClose: () => void }) => {
 
   const orgId = currentOrg?.id || "";
 
-  const { data: groups } = useGetOrganizationGroups(orgId);
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch] = useDebounce(searchInput);
+
+  const { data: orgGroupsData, isLoading: isLoadingGroups } = useSearchOrganizationGroups({
+    organizationId: orgId,
+    search: debouncedSearch,
+    limit: 20
+  });
   const { data: groupMemberships } = useListWorkspaceGroups(
     currentProject?.id || "",
     currentProject?.type
@@ -66,8 +74,8 @@ const Content = ({ onClose }: { onClose: () => void }) => {
       wsGroupIds.set(groupMembership.group.id, true);
     });
 
-    return (groups || []).filter(({ id }) => !wsGroupIds.has(id));
-  }, [groups, groupMemberships]);
+    return (orgGroupsData?.groups || []).filter(({ id }) => !wsGroupIds.has(id));
+  }, [orgGroupsData?.groups, groupMemberships]);
 
   const {
     control,
@@ -95,7 +103,10 @@ const Content = ({ onClose }: { onClose: () => void }) => {
     });
   };
 
-  return filteredGroupMembershipOrgs.length ? (
+  const hasNoAvailableGroups =
+    !isLoadingGroups && !searchInput && filteredGroupMembershipOrgs.length === 0;
+
+  return !hasNoAvailableGroups ? (
     <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
       <Controller
         control={control}
@@ -110,7 +121,10 @@ const Content = ({ onClose }: { onClose: () => void }) => {
               placeholder="Select group..."
               autoFocus
               isError={Boolean(error)}
+              isLoading={isLoadingGroups || searchInput !== debouncedSearch}
               options={filteredGroupMembershipOrgs}
+              onInputChange={setSearchInput}
+              filterOption={() => true}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
             />
