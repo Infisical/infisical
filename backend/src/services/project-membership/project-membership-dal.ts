@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, TableName, TMemberships, TUserEncryptionKeys } from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus, TableName, TMemberships, TUserEncryptionKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
@@ -73,7 +73,8 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           db.ref("temporaryAccessStartTime").withSchema(TableName.MembershipRole),
           db.ref("temporaryAccessEndTime").withSchema(TableName.MembershipRole),
           db.ref("name").as("projectName").withSchema(TableName.Project),
-          db.ref("isActive").withSchema("orgMembership")
+          db.ref("isActive").withSchema("orgMembership"),
+          db.ref("status").withSchema("orgMembership").as("orgMembershipStatus")
         )
         .where({ isGhost: false })
         .orderBy(`${TableName.Users}.username` as "username");
@@ -90,7 +91,8 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           userId,
           projectName,
           createdAt,
-          isActive
+          isActive,
+          orgMembershipStatus
         }) => ({
           id,
           userId,
@@ -105,7 +107,8 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
             // public key is not used anymore as well
             publicKey: "",
             isGhost,
-            isOrgMembershipActive: isActive ?? true
+            isOrgMembershipActive: isActive ?? true,
+            isOrgMembershipPending: orgMembershipStatus === OrgMembershipStatus.Invited
           },
           project: {
             id: projectId,

@@ -29,6 +29,7 @@ export type TUpdateAwsAuthDTO = {
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetAwsAuthDTO = {
@@ -58,4 +59,5 @@ export type TGetCallerIdentityResponse = {
 
 export type TRevokeAwsAuthDTO = {
   identityId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;

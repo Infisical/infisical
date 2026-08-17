@@ -9,6 +9,7 @@ export type {
   TCreateSecretValidationRuleDTO,
   TDeleteSecretValidationRuleDTO,
   TSecretValidationRule,
+  TSecretValidationRuleConfig,
   TUpdateSecretValidationRuleDTO
 } from "./types";
 export {

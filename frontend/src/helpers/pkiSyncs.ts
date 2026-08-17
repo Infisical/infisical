@@ -1,5 +1,5 @@
 import { AppConnection } from "@app/hooks/api/appConnections";
-import { PkiSync } from "@app/hooks/api/pkiSyncs";
+import { PkiSync, PostSyncCommandVariable } from "@app/hooks/api/pkiSyncs";
 
 export const PKI_SYNC_MAP: Record<
   PkiSync,
@@ -149,3 +149,16 @@ export const VALUE_SYNC_OPTION_FIELDS = [
   { key: "owner", label: "Owner" },
   { key: "group", label: "Group" }
 ] as const;
+
+export const POST_SYNC_COMMAND_VARIABLE_DESCRIPTIONS: Record<PostSyncCommandVariable, string> = {
+  [PostSyncCommandVariable.CertificatePath]: "Full path of the certificate file delivered this run",
+  [PostSyncCommandVariable.CertificateDirectory]: "The destination directory",
+  [PostSyncCommandVariable.CertificateFiles]: "Every path written this run, one per line",
+  [PostSyncCommandVariable.CommonName]: "The certificate's common name",
+  [PostSyncCommandVariable.Pkcs12Password]: "The PKCS#12 export password"
+};
+
+export const SINGLE_CERTIFICATE_POST_SYNC_COMMAND_VARIABLES = [
+  PostSyncCommandVariable.CertificatePath,
+  PostSyncCommandVariable.CommonName
+];

@@ -10,6 +10,9 @@
   "styling": {
     "codeblocks": "dark"
   },
+  "thumbnails": {
+    "appearance": "light"
+  },
   "favicon": "/favicon.ico",
   "contextual": {
     "options": [
@@ -2994,6 +2997,15 @@
                       "api-reference/endpoints/secret-rotations/windows-local-account/reconcile"
                     ]
                   }
+                ]
+              },
+              {
+                "group": "Secret Validation Rules",
+                "pages": [
+                  "api-reference/endpoints/secret-validation-rules/list",
+                  "api-reference/endpoints/secret-validation-rules/create",
+                  "api-reference/endpoints/secret-validation-rules/update",
+                  "api-reference/endpoints/secret-validation-rules/delete"
                 ]
               },
               {

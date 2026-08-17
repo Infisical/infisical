@@ -426,6 +426,13 @@ export const pamMembershipServiceFactory = ({
       return true;
     });
 
+    if (unresolved.length) {
+      const rejected = unresolved.map((el) => `'${el}'`).join(", ");
+      throw new BadRequestError({
+        message: `Cannot add ${rejected} to Privileged Access Manager because they are not an active member of this organization. Invite them to the organization first.`
+      });
+    }
+
     const memberships = await membershipDAL.transaction(async (tx) => {
       const results: { membershipId: string; userId: string; role: string; createdAt: Date }[] = [];
       for (const { userId } of toCreate) {
@@ -459,7 +466,7 @@ export const pamMembershipServiceFactory = ({
       usageMeteringService.emitForProject(projectId, PamIdentities.key);
     }
 
-    return { memberships, skipped, unresolved };
+    return { memberships, skipped };
   };
 
   const assertNotLastAdmin = async (projectId: string, membershipId: string, tx?: Knex) => {
