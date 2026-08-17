@@ -51,7 +51,7 @@ const NONE_RULE_OPTION: RuleOption = {
 };
 
 const getValueConstraints = (rule: TSecretValidationRule): TConstraint[] =>
-  rule.inputs.constraints.filter((c) => c.appliesTo === ConstraintTarget.SecretValue);
+  rule.constraints.filter((c) => c.appliesTo === ConstraintTarget.SecretValue);
 
 const hasValueConstraints = (rule: TSecretValidationRule): boolean =>
   getValueConstraints(rule).length > 0;

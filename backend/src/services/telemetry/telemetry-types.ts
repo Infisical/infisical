@@ -146,39 +146,62 @@ export enum PostHogEventTypes {
 
   // PKI / Certificate Manager events
   CaCreated = "CA Created",
+  CaUpdated = "CA Updated",
   CaDeleted = "CA Deleted",
   CaRenewed = "CA Renewed",
   CertificatePolicyCreated = "Certificate Policy Created",
+  CertificatePolicyUpdated = "Certificate Policy Updated",
   CertificatePolicyDeleted = "Certificate Policy Deleted",
   CertificateProfileCreated = "Certificate Profile Created",
+  CertificateProfileUpdated = "Certificate Profile Updated",
   CertificateProfileDeleted = "Certificate Profile Deleted",
   PkiApplicationCreated = "PKI Application Created",
   PkiApplicationUpdated = "PKI Application Updated",
   PkiApplicationDeleted = "PKI Application Deleted",
   PkiApplicationMemberAdded = "PKI Application Member Added",
+  PkiApplicationMemberUpdated = "PKI Application Member Updated",
+  PkiApplicationMemberRemoved = "PKI Application Member Removed",
   PkiApplicationProfileAttached = "PKI Application Profile Attached",
+  PkiApplicationProfileDetached = "PKI Application Profile Detached",
   EnrollmentMethodConfigured = "Enrollment Method Configured",
   EnrollmentMethodRemoved = "Enrollment Method Removed",
   CertificateRevoked = "Certificate Revoked",
   CertificateRenewed = "Certificate Renewed",
   CertificateAutoRenewalFailed = "Certificate Auto-Renewal Failed",
+  CertificateUpdated = "Certificate Updated",
   CertificateDeleted = "Certificate Deleted",
   CertificateExported = "Certificate Exported",
+  CertManagerProjectExported = "Cert Manager Project Exported",
+  CertificateImported = "Certificate Imported",
+  CertificatePrivateKeyDownloaded = "Certificate Private Key Downloaded",
   CertificateRequestCreated = "Certificate Request Created",
   PkiSyncCreated = "PKI Sync Created",
+  PkiSyncUpdated = "PKI Sync Updated",
   PkiSyncDeleted = "PKI Sync Deleted",
   PkiSyncExecuted = "PKI Sync Executed",
   PkiAlertCreated = "PKI Alert Created",
+  PkiAlertUpdated = "PKI Alert Updated",
   PkiAlertDeleted = "PKI Alert Deleted",
   PkiApprovalPolicyCreated = "PKI Approval Policy Created",
+  PkiApprovalPolicyUpdated = "PKI Approval Policy Updated",
+  PkiApprovalPolicyDeleted = "PKI Approval Policy Deleted",
+  PkiApprovalRequestCreated = "PKI Approval Request Created",
   PkiApprovalRequestReviewed = "PKI Approval Request Reviewed",
   PkiDiscoveryCreated = "PKI Discovery Created",
+  PkiDiscoveryUpdated = "PKI Discovery Updated",
   PkiDiscoveryScanTriggered = "PKI Discovery Scan Triggered",
+  PkiDiscoveryScanCompleted = "PKI Discovery Scan Completed",
   PkiDiscoveryDeleted = "PKI Discovery Deleted",
   SignerCreated = "Signer Created",
+  SignerUpdated = "Signer Updated",
   SignerDeleted = "Signer Deleted",
+  SignerMemberAdded = "Signer Member Added",
+  SignerMemberUpdated = "Signer Member Updated",
+  SignerMemberRemoved = "Signer Member Removed",
   CodeSigningOperation = "Code Signing Operation",
-  CertManagerIdentityAdded = "Cert Manager Identity Added",
+  CertManagerMemberAdded = "Cert Manager Member Added",
+  CertManagerMemberUpdated = "Cert Manager Member Updated",
+  CertManagerMemberRemoved = "Cert Manager Member Removed",
   CertificateCleanupConfigured = "Certificate Cleanup Configured",
   CertificateCleanupCompleted = "Certificate Cleanup Completed",
 
@@ -562,6 +585,16 @@ export type TTelemetryInstanceStatsEvent = {
     integrations: number;
     certificateAuthorities: number;
     certificates: number;
+    certificatePolicies: number;
+    certificateProfiles: number;
+    pkiApplications: number;
+    pkiSyncs: number;
+    pkiSigners: number;
+    pkiDiscoveryConfigs: number;
+    pkiAlerts: number;
+    pkiEnrollmentMethods: number;
+    pkiEnrollmentMethodBreakdown: Record<string, number>;
+    pkiSyncBreakdown: Record<string, number>;
     dynamicSecrets: number;
     identityAuthMethods: number;
     identityAuthMethodBreakdown: Record<string, number>;
@@ -1236,12 +1269,25 @@ export type THoneyTokenTriggeredEvent = {
 
 // PKI / Certificate Manager event types
 
+export type TCertManagerMemberType = "user" | "group" | "identity";
+
 export type TCaCreatedEvent = {
   event: PostHogEventTypes.CaCreated;
   properties: {
     caType: string;
     caKeyAlgorithm?: string;
     orgId: string;
+    projectId: string;
+  };
+};
+
+export type TCaUpdatedEvent = {
+  event: PostHogEventTypes.CaUpdated;
+  properties: {
+    caType: string;
+    orgId: string;
+    projectId: string;
+    status?: string;
   };
 };
 
@@ -1250,6 +1296,7 @@ export type TCaDeletedEvent = {
   properties: {
     caType: string;
     orgId: string;
+    projectId: string;
   };
 };
 
@@ -1258,6 +1305,7 @@ export type TCaRenewedEvent = {
   properties: {
     caType: string;
     orgId: string;
+    projectId: string;
   };
 };
 
@@ -1265,6 +1313,15 @@ export type TCertificatePolicyCreatedEvent = {
   event: PostHogEventTypes.CertificatePolicyCreated;
   properties: {
     orgId: string;
+    projectId: string;
+  };
+};
+
+export type TCertificatePolicyUpdatedEvent = {
+  event: PostHogEventTypes.CertificatePolicyUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
   };
 };
 
@@ -1272,6 +1329,7 @@ export type TCertificatePolicyDeletedEvent = {
   event: PostHogEventTypes.CertificatePolicyDeleted;
   properties: {
     orgId: string;
+    projectId: string;
   };
 };
 
@@ -1279,7 +1337,17 @@ export type TCertificateProfileCreatedEvent = {
   event: PostHogEventTypes.CertificateProfileCreated;
   properties: {
     orgId: string;
+    projectId: string;
     issuerType: string;
+  };
+};
+
+export type TCertificateProfileUpdatedEvent = {
+  event: PostHogEventTypes.CertificateProfileUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
+    profileId: string;
   };
 };
 
@@ -1287,6 +1355,7 @@ export type TCertificateProfileDeletedEvent = {
   event: PostHogEventTypes.CertificateProfileDeleted;
   properties: {
     orgId: string;
+    projectId: string;
   };
 };
 
@@ -1294,6 +1363,7 @@ export type TPkiApplicationCreatedEvent = {
   event: PostHogEventTypes.PkiApplicationCreated;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId?: string;
   };
 };
@@ -1302,6 +1372,7 @@ export type TPkiApplicationUpdatedEvent = {
   event: PostHogEventTypes.PkiApplicationUpdated;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId?: string;
   };
 };
@@ -1310,23 +1381,30 @@ export type TPkiApplicationDeletedEvent = {
   event: PostHogEventTypes.PkiApplicationDeleted;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId?: string;
   };
 };
 
-export type TPkiApplicationMemberAddedEvent = {
-  event: PostHogEventTypes.PkiApplicationMemberAdded;
+export type TPkiApplicationMemberEvent = {
+  event:
+    | PostHogEventTypes.PkiApplicationMemberAdded
+    | PostHogEventTypes.PkiApplicationMemberUpdated
+    | PostHogEventTypes.PkiApplicationMemberRemoved;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId: string;
-    role: string;
+    memberType: TCertManagerMemberType;
+    role?: string;
   };
 };
 
-export type TPkiApplicationProfileAttachedEvent = {
-  event: PostHogEventTypes.PkiApplicationProfileAttached;
+export type TPkiApplicationProfileEvent = {
+  event: PostHogEventTypes.PkiApplicationProfileAttached | PostHogEventTypes.PkiApplicationProfileDetached;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId: string;
   };
 };
@@ -1335,6 +1413,7 @@ export type TEnrollmentMethodConfiguredEvent = {
   event: PostHogEventTypes.EnrollmentMethodConfigured;
   properties: {
     orgId: string;
+    projectId: string;
     enrollmentMethod: string;
   };
 };
@@ -1343,6 +1422,7 @@ export type TEnrollmentMethodRemovedEvent = {
   event: PostHogEventTypes.EnrollmentMethodRemoved;
   properties: {
     orgId: string;
+    projectId: string;
     enrollmentMethod: string;
   };
 };
@@ -1351,7 +1431,9 @@ export type TCertificateRevokedEvent = {
   event: PostHogEventTypes.CertificateRevoked;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId?: string;
+    revocationReason?: string;
   };
 };
 
@@ -1359,6 +1441,7 @@ export type TCertificateRenewedEvent = {
   event: PostHogEventTypes.CertificateRenewed;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId?: string;
     profileId?: string;
   };
@@ -1368,7 +1451,18 @@ export type TCertificateAutoRenewalFailedEvent = {
   event: PostHogEventTypes.CertificateAutoRenewalFailed;
   properties: {
     orgId: string;
+    projectId: string;
     profileId?: string;
+  };
+};
+
+export type TCertificateUpdatedEvent = {
+  event: PostHogEventTypes.CertificateUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
+    applicationId?: string;
+    updatedField: "certificate" | "renewal-config";
   };
 };
 
@@ -1376,6 +1470,7 @@ export type TCertificateDeletedEvent = {
   event: PostHogEventTypes.CertificateDeleted;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId?: string;
   };
 };
@@ -1384,7 +1479,37 @@ export type TCertificateExportedEvent = {
   event: PostHogEventTypes.CertificateExported;
   properties: {
     orgId: string;
+    projectId: string;
     format?: string;
+  };
+};
+
+export type TCertManagerProjectExportedEvent = {
+  event: PostHogEventTypes.CertManagerProjectExported;
+  properties: {
+    orgId: string;
+    sourceProjectId: string;
+    destinationProjectId: string;
+    numberOfCertificateAuthorities: number;
+    numberOfCertificatePolicies: number;
+    numberOfCertificateProfiles: number;
+  };
+};
+
+export type TCertificateImportedEvent = {
+  event: PostHogEventTypes.CertificateImported;
+  properties: {
+    orgId: string;
+    projectId: string;
+    applicationId?: string;
+  };
+};
+
+export type TCertificatePrivateKeyDownloadedEvent = {
+  event: PostHogEventTypes.CertificatePrivateKeyDownloaded;
+  properties: {
+    orgId: string;
+    projectId: string;
   };
 };
 
@@ -1392,6 +1517,7 @@ export type TCertificateRequestCreatedEvent = {
   event: PostHogEventTypes.CertificateRequestCreated;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId?: string;
     profileId?: string;
   };
@@ -1401,6 +1527,17 @@ export type TPkiSyncCreatedEvent = {
   event: PostHogEventTypes.PkiSyncCreated;
   properties: {
     orgId: string;
+    projectId: string;
+    destination: string;
+    isAutoSyncEnabled?: boolean;
+  };
+};
+
+export type TPkiSyncUpdatedEvent = {
+  event: PostHogEventTypes.PkiSyncUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
     destination: string;
     isAutoSyncEnabled?: boolean;
   };
@@ -1410,6 +1547,7 @@ export type TPkiSyncDeletedEvent = {
   event: PostHogEventTypes.PkiSyncDeleted;
   properties: {
     orgId: string;
+    projectId: string;
     destination: string;
   };
 };
@@ -1418,6 +1556,7 @@ export type TPkiSyncExecutedEvent = {
   event: PostHogEventTypes.PkiSyncExecuted;
   properties: {
     orgId: string;
+    projectId: string;
     destination: string;
     success: boolean;
   };
@@ -1427,8 +1566,18 @@ export type TPkiAlertCreatedEvent = {
   event: PostHogEventTypes.PkiAlertCreated;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId: string;
     alertType?: string;
+  };
+};
+
+export type TPkiAlertUpdatedEvent = {
+  event: PostHogEventTypes.PkiAlertUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
+    applicationId: string;
   };
 };
 
@@ -1436,6 +1585,7 @@ export type TPkiAlertDeletedEvent = {
   event: PostHogEventTypes.PkiAlertDeleted;
   properties: {
     orgId: string;
+    projectId: string;
     applicationId: string;
   };
 };
@@ -1444,7 +1594,35 @@ export type TPkiApprovalPolicyCreatedEvent = {
   event: PostHogEventTypes.PkiApprovalPolicyCreated;
   properties: {
     orgId: string;
+    projectId: string;
     policyType: string;
+  };
+};
+
+export type TPkiApprovalPolicyUpdatedEvent = {
+  event: PostHogEventTypes.PkiApprovalPolicyUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
+    policyType?: string;
+  };
+};
+
+export type TPkiApprovalPolicyDeletedEvent = {
+  event: PostHogEventTypes.PkiApprovalPolicyDeleted;
+  properties: {
+    orgId: string;
+    projectId: string;
+    policyType?: string;
+  };
+};
+
+export type TPkiApprovalRequestCreatedEvent = {
+  event: PostHogEventTypes.PkiApprovalRequestCreated;
+  properties: {
+    orgId: string;
+    projectId: string;
+    policyType?: string;
   };
 };
 
@@ -1452,6 +1630,7 @@ export type TPkiApprovalRequestReviewedEvent = {
   event: PostHogEventTypes.PkiApprovalRequestReviewed;
   properties: {
     orgId: string;
+    projectId: string;
     decision: string;
   };
 };
@@ -1460,7 +1639,16 @@ export type TPkiDiscoveryCreatedEvent = {
   event: PostHogEventTypes.PkiDiscoveryCreated;
   properties: {
     orgId: string;
+    projectId: string;
     discoveryType: string;
+  };
+};
+
+export type TPkiDiscoveryUpdatedEvent = {
+  event: PostHogEventTypes.PkiDiscoveryUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
   };
 };
 
@@ -1468,6 +1656,19 @@ export type TPkiDiscoveryScanTriggeredEvent = {
   event: PostHogEventTypes.PkiDiscoveryScanTriggered;
   properties: {
     orgId: string;
+    projectId: string;
+  };
+};
+
+export type TPkiDiscoveryScanCompletedEvent = {
+  event: PostHogEventTypes.PkiDiscoveryScanCompleted;
+  properties: {
+    orgId: string;
+    projectId: string;
+    status: string;
+    certificatesFound: number;
+    installationsFound: number;
+    durationMs?: number;
   };
 };
 
@@ -1475,6 +1676,7 @@ export type TPkiDiscoveryDeletedEvent = {
   event: PostHogEventTypes.PkiDiscoveryDeleted;
   properties: {
     orgId: string;
+    projectId: string;
   };
 };
 
@@ -1482,6 +1684,18 @@ export type TSignerCreatedEvent = {
   event: PostHogEventTypes.SignerCreated;
   properties: {
     orgId: string;
+    projectId: string;
+    signerId: string;
+  };
+};
+
+export type TSignerUpdatedEvent = {
+  event: PostHogEventTypes.SignerUpdated;
+  properties: {
+    orgId: string;
+    projectId: string;
+    signerId: string;
+    status?: string;
   };
 };
 
@@ -1489,6 +1703,22 @@ export type TSignerDeletedEvent = {
   event: PostHogEventTypes.SignerDeleted;
   properties: {
     orgId: string;
+    projectId: string;
+    signerId: string;
+  };
+};
+
+export type TSignerMemberEvent = {
+  event:
+    | PostHogEventTypes.SignerMemberAdded
+    | PostHogEventTypes.SignerMemberUpdated
+    | PostHogEventTypes.SignerMemberRemoved;
+  properties: {
+    orgId: string;
+    projectId: string;
+    signerId: string;
+    memberType: TCertManagerMemberType;
+    role?: string;
   };
 };
 
@@ -1496,14 +1726,20 @@ export type TCodeSigningOperationEvent = {
   event: PostHogEventTypes.CodeSigningOperation;
   properties: {
     orgId: string;
+    projectId: string;
     signerId: string;
   };
 };
 
-export type TCertManagerIdentityAddedEvent = {
-  event: PostHogEventTypes.CertManagerIdentityAdded;
+export type TCertManagerMemberEvent = {
+  event:
+    | PostHogEventTypes.CertManagerMemberAdded
+    | PostHogEventTypes.CertManagerMemberUpdated
+    | PostHogEventTypes.CertManagerMemberRemoved;
   properties: {
     orgId: string;
+    projectId: string;
+    memberType: TCertManagerMemberType;
     role?: string;
   };
 };
@@ -1512,6 +1748,7 @@ export type TCertificateCleanupConfiguredEvent = {
   event: PostHogEventTypes.CertificateCleanupConfigured;
   properties: {
     orgId: string;
+    projectId: string;
     isEnabled: boolean;
   };
 };
@@ -2180,39 +2417,55 @@ export type TPostHogEvent = {
   | THoneyTokenResetEvent
   | THoneyTokenTriggeredEvent
   | TCaCreatedEvent
+  | TCaUpdatedEvent
   | TCaDeletedEvent
   | TCaRenewedEvent
   | TCertificatePolicyCreatedEvent
+  | TCertificatePolicyUpdatedEvent
   | TCertificatePolicyDeletedEvent
   | TCertificateProfileCreatedEvent
+  | TCertificateProfileUpdatedEvent
   | TCertificateProfileDeletedEvent
   | TPkiApplicationCreatedEvent
   | TPkiApplicationUpdatedEvent
   | TPkiApplicationDeletedEvent
-  | TPkiApplicationMemberAddedEvent
-  | TPkiApplicationProfileAttachedEvent
+  | TPkiApplicationMemberEvent
+  | TPkiApplicationProfileEvent
   | TEnrollmentMethodConfiguredEvent
   | TEnrollmentMethodRemovedEvent
   | TCertificateRevokedEvent
   | TCertificateRenewedEvent
   | TCertificateAutoRenewalFailedEvent
+  | TCertificateUpdatedEvent
   | TCertificateDeletedEvent
   | TCertificateExportedEvent
+  | TCertManagerProjectExportedEvent
+  | TCertificateImportedEvent
+  | TCertificatePrivateKeyDownloadedEvent
   | TCertificateRequestCreatedEvent
   | TPkiSyncCreatedEvent
+  | TPkiSyncUpdatedEvent
   | TPkiSyncDeletedEvent
   | TPkiSyncExecutedEvent
   | TPkiAlertCreatedEvent
+  | TPkiAlertUpdatedEvent
   | TPkiAlertDeletedEvent
   | TPkiApprovalPolicyCreatedEvent
+  | TPkiApprovalPolicyUpdatedEvent
+  | TPkiApprovalPolicyDeletedEvent
+  | TPkiApprovalRequestCreatedEvent
   | TPkiApprovalRequestReviewedEvent
   | TPkiDiscoveryCreatedEvent
+  | TPkiDiscoveryUpdatedEvent
   | TPkiDiscoveryScanTriggeredEvent
+  | TPkiDiscoveryScanCompletedEvent
   | TPkiDiscoveryDeletedEvent
   | TSignerCreatedEvent
+  | TSignerUpdatedEvent
   | TSignerDeletedEvent
+  | TSignerMemberEvent
   | TCodeSigningOperationEvent
-  | TCertManagerIdentityAddedEvent
+  | TCertManagerMemberEvent
   | TCertificateCleanupConfiguredEvent
   | TCertificateCleanupCompletedEvent
   | TCustomRoleCreatedEvent

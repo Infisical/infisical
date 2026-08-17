@@ -204,6 +204,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.SETUP_KMIP]: "Setup KMIP configuration",
   [EventType.GET_KMIP]: "Get KMIP configuration",
   [EventType.REGISTER_KMIP_SERVER]: "Register KMIP server",
+  [EventType.KMIP_SERVER_CONNECT]: "KMIP server connect",
   [EventType.KMIP_OPERATION_CREATE]: "KMIP operation create",
   [EventType.KMIP_OPERATION_GET]: "KMIP operation get",
   [EventType.KMIP_OPERATION_DESTROY]: "KMIP operation destroy",

@@ -152,6 +152,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         organizationId: req.permission.orgId,
         properties: {
           orgId: req.permission.orgId,
+          projectId,
           discoveryType: req.body.discoveryType
         }
       });
@@ -373,6 +374,16 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiDiscoveryUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: discovery.projectId
+        }
+      });
+
       return discovery;
     }
   });
@@ -422,7 +433,8 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: discovery.projectId
         }
       });
 
@@ -477,7 +489,8 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: result.projectId
         }
       });
 

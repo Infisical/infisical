@@ -303,7 +303,8 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
         actorOrgId: req.permission.orgId,
         ...req.body,
         identityId: req.params.identityId,
-        allowedUsernames: req.body.allowedUsernames || null
+        allowedUsernames: req.body.allowedUsernames || null,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({
@@ -423,7 +424,8 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({
