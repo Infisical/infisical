@@ -83,6 +83,10 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
     const errors: string[] = [];
     const { maxWindowDuration, maxSignings } = policy.constraints.constraints;
 
+    if ((maxWindowDuration || maxSignings) && !inputs.requestedWindowDuration && !inputs.requestedSignings) {
+      errors.push("A request must ask for a signature count or a signing window");
+    }
+
     if (
       maxWindowDuration &&
       inputs.requestedWindowDuration &&

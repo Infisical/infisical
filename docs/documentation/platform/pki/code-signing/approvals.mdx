@@ -134,7 +134,7 @@ The [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) and
 
 ### Removing a parameter from a request
 
-A scoped request is not fixed once it is open. While it is still pending review, both the requester and the request's approvers can stop enforcing any parameter on it, from the **Request Scope** panel on the request. The parameters left in place still have to match at signing time.
+A scoped request is not fixed once it is open. While it is still pending review, an approver deciding it can stop enforcing any parameter on it, from the **Request Scope** panel on the request. The requester cannot: widening is a reviewer's decision, and the requester is often the signing client itself. The parameters left in place still have to match at signing time.
 
 This is what makes a digest-scoped request usable for a pipeline that signs on every build. A client opens its request pinned to the artifact it was denied on, someone drops **Data Digest**, and the approval that follows covers that command on that machine for any artifact until the window or the signature count runs out.
 

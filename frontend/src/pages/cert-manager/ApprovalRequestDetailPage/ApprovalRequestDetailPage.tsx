@@ -395,7 +395,6 @@ const PageContent = () => {
   const renderDetailsSection = () => {
     if (isCodeSigning) {
       const reqData = request.requestData.requestData as CodeSigningRequestData;
-      const isRequester = Boolean(currentUser?.id) && request.requesterId === currentUser?.id;
       const currentStep = request.steps.find(
         (step) => step.status === ApprovalRequestStepStatus.InProgress
       );
@@ -412,10 +411,7 @@ const PageContent = () => {
           requesterName={request.requesterName}
           requesterEmail={request.requesterEmail}
           requestId={request.id}
-          canEditScope={
-            request.status === ApprovalRequestStatus.Pending &&
-            (isRequester || isCurrentStepApprover)
-          }
+          canEditScope={request.status === ApprovalRequestStatus.Pending && isCurrentStepApprover}
         />
       );
     }

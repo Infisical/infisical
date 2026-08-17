@@ -817,29 +817,25 @@ export const signerPolicyServiceFactory = ({
       });
     }
 
-    const isRequester =
-      dto.actor === ActorType.USER ? request.requesterId === dto.actorId : request.machineIdentityId === dto.actorId;
-
-    if (!isRequester) {
-      const groupIds = new Set(
-        dto.actor === ActorType.USER && dto.actorOrgId
-          ? (await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(dto.actorId, dto.actorOrgId)).map(
-              (membership) => membership.groupId
-            )
-          : []
-      );
-      const isApprover = Boolean(
+    const groupIds = new Set(
+      dto.actor === ActorType.USER && dto.actorOrgId
+        ? (await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(dto.actorId, dto.actorOrgId)).map(
+            (membership) => membership.groupId
+          )
+        : []
+    );
+    const isApprover = Boolean(
+      dto.actor === ActorType.USER &&
         currentStep?.approvers.some(
           (approver) =>
             (approver.type === ApproverType.User && approver.id === dto.actorId) ||
             (approver.type === ApproverType.Group && groupIds.has(approver.id))
         )
-      );
-      if (!isApprover) {
-        throw new ForbiddenRequestError({
-          message: "Only the requester or an approver on this request can remove its scope parameters."
-        });
-      }
+    );
+    if (!isApprover) {
+      throw new ForbiddenRequestError({
+        message: "Only an approver on this request can remove its scope parameters."
+      });
     }
 
     const { request: updatedRow, removedFields } = await approvalRequestDAL.transaction(async (tx) => {

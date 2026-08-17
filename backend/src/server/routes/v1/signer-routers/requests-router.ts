@@ -161,8 +161,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
       hide: false,
       operationId: "removeSignerRequestScopeFields",
       tags: [ApiDocsTags.PkiSigners],
-      description:
-        "Stop enforcing scope parameters on a pending signing request. Open to the requester and to the request's approvers.",
+      description: "Stop enforcing scope parameters on a pending signing request. Open to the approvers deciding it.",
       params: SignerRequestParamsSchema,
       body: RemoveCodeSigningScopeFieldsSchema,
       response: {
