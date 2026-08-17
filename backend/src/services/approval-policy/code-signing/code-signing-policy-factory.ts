@@ -83,11 +83,9 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
     const errors: string[] = [];
     const { maxWindowDuration, maxSignings } = policy.constraints.constraints;
 
-    if ((maxWindowDuration || maxSignings) && !inputs.requestedWindowDuration && !inputs.requestedSignings) {
-      errors.push("A request must ask for a signature count or a signing window");
-    }
-
-    if (
+    if (maxWindowDuration && !inputs.requestedWindowDuration) {
+      errors.push(`This policy caps the signing window at ${maxWindowDuration}, so a request must ask for one`);
+    } else if (
       maxWindowDuration &&
       inputs.requestedWindowDuration &&
       ms(inputs.requestedWindowDuration) > ms(maxWindowDuration)
@@ -95,7 +93,9 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
       errors.push(`Requested window duration exceeds maximum of ${maxWindowDuration}`);
     }
 
-    if (maxSignings && inputs.requestedSignings && inputs.requestedSignings > maxSignings) {
+    if (maxSignings && !inputs.requestedSignings) {
+      errors.push(`This policy caps signatures per approval at ${maxSignings}, so a request must ask for a count`);
+    } else if (maxSignings && inputs.requestedSignings && inputs.requestedSignings > maxSignings) {
       errors.push(`Requested signings (${inputs.requestedSignings}) exceeds maximum of ${maxSignings}`);
     }
 
