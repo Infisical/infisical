@@ -136,9 +136,13 @@ while (page <= totalPages && page <= MAX_PAGES) {
   `src/services/app-connection/cloudflare/cloudflare-connection-fns.ts`.
 - **Do not truncate silently.** If you hit the cap, log it.
 
-In that same Cloudflare file, `listCloudflareZones` paginates correctly while
-`listCloudflarePagesProjects` and `listCloudflareWorkersScripts` return only the first
-page. That is exactly the bug, and it is easy to write by accident.
+In that same Cloudflare file, `listCloudflarePagesProjects` used to read a single response
+while `listCloudflareZones` walked every page, even though both endpoints report
+`result_info.total_pages`. Any account past the first page silently lost the rest of its
+projects. That is exactly the bug, and it is easy to write by accident. Both now share
+`$paginateCloudflare`. `listCloudflareWorkersScripts` stays a single request because
+`workers/scripts` accepts no page parameters and returns no `result_info` — check the
+endpoint before assuming either way.
 
 ---
 

@@ -84,17 +84,21 @@ export const listCloudflarePagesProjects = async (
     credentials: { apiToken, accountId }
   } = appConnection;
 
-  const { data } = await safeRequest.get<{ result: { name: string; id: string }[] }>(
+  const projects = await $paginateCloudflare<{ id: string; name: string }>(
     `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/pages/projects`,
-    { headers: getCloudflareAuthHeaders(apiToken) }
+    { apiToken }
   );
 
-  return data.result.map((a) => ({
+  return projects.map((a) => ({
     name: a.name,
     id: a.id
   }));
 };
 
+/**
+ * `workers/scripts` takes no page parameters and reports no `result_info` — Cloudflare's own SDKs type it
+ * as a single page — so the account's full script list arrives in one response.
+ */
 export const listCloudflareWorkersScripts = async (
   appConnection: TCloudflareConnection
 ): Promise<TCloudflareWorkersScript[]> => {
