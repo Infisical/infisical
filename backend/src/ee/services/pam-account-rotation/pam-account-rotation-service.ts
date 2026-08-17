@@ -868,6 +868,12 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
           account.accountType,
           rotator.encryptedCredentials
         );
+        if (!rotatorCredentials.password) {
+          throw new BadRequestError({
+            message:
+              "Rotation account authenticates without a password, so it cannot perform rotations. Choose an account that uses password authentication."
+          });
+        }
         if (
           toBareAccountName(rotatorCredentials.username).toLowerCase() ===
           toBareAccountName(targetCredentials.username).toLowerCase()

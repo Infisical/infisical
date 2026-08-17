@@ -636,6 +636,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     // Forced fields cross the two groups, so a change to either side is resolved against the merged
     // view and both are rewritten
     let principalChanged = false;
+    let authMethodChanged = false;
     let connectionTargetChanged = false;
     let effectiveConnectionDetails: Record<string, unknown> | null = null;
     let effectiveCredentials: Record<string, unknown> | null = null;
@@ -673,10 +674,15 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       const oldUsername = (existingCredentials as { username?: string }).username;
       const newUsername = (effectiveCredentials as { username?: string }).username;
       if (oldUsername !== newUsername) principalChanged = true;
+
+      // Normalized on both sides so an older account without a stored auth method doesn't read as a change
+      const oldAuthMethod = normalizeCredentialAuthMethod(accountType, existingCredentials).authMethod;
+      if (oldAuthMethod !== (effectiveCredentials as { authMethod?: string }).authMethod) authMethodChanged = true;
     }
 
     const routingChanged =
       connectionTargetChanged ||
+      authMethodChanged ||
       (gatewayId !== undefined && gatewayId !== existing.gatewayId) ||
       (gatewayPoolId !== undefined && gatewayPoolId !== existing.gatewayPoolId);
     if ((routingChanged || principalChanged) && existing.rotationAccountId) {
