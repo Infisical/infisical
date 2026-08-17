@@ -72,7 +72,7 @@ const Page = () => {
             <TabsList
               variant="project"
               aria-label="Project access control sections"
-              className="w-full justify-start overflow-x-auto"
+              className="w-full justify-start"
             >
               <TabsTrigger value={ProjectAccessControlTabs.Member}>Users</TabsTrigger>
               <TabsTrigger value={ProjectAccessControlTabs.Identities}>
