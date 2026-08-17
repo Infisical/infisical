@@ -153,14 +153,6 @@
 }
 
 @media (min-width: 1024px) {
-  #navbar .nav-tabs {
-    width: 100%;
-  }
-
-  #navbar .nav-tabs > button.nav-tabs-item[aria-haspopup="menu"] {
-    margin-left: auto;
-  }
-
   #navbar.is-not-custom.is-not-center + div:has(> #sidebar) {
     max-width: none !important;
     margin-inline: 0 !important;

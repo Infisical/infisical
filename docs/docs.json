@@ -475,8 +475,11 @@
         ]
       },
       {
-        "tab": "Secrets Management",
-        "groups": [
+        "tab": "Products",
+        "menu": [
+          {
+            "item": "Secrets Management",
+            "groups": [
               {
                 "group": "Get started",
                 "pages": [
@@ -873,7 +876,7 @@
         ]
       },
       {
-        "tab": "Secrets Scanning",
+        "item": "Secrets Scanning",
         "groups": [
           {
             "group": "Secrets Scanning",
@@ -899,7 +902,7 @@
         ]
       },
       {
-            "tab": "Certificate Management",
+            "item": "Certificate Management",
             "groups": [
               {
                 "group": "Certificate Management",
@@ -1081,7 +1084,7 @@
             ]
           },
           {
-            "tab": "KMS",
+            "item": "KMS",
             "groups": [
               {
                 "group": "Infisical KMS",
@@ -1101,7 +1104,7 @@
             ]
           },
           {
-            "tab": "Privileged Access Management",
+            "item": "Privileged Access Management",
             "groups": [
               {
                 "group": "Privileged Access Manager",
@@ -1191,13 +1194,11 @@
                 ]
               }
             ]
-          },
+          }
+        ]
+      },
       {
-        "tab": "Reference",
-        "icon": "code",
-        "menu": [
-          {
-            "item": "CLI",
+            "tab": "CLI Reference",
             "groups": [
           {
             "group": "Command line",
@@ -1243,7 +1244,7 @@
         ]
       },
       {
-        "item": "API",
+        "tab": "API Reference",
         "groups": [
           {
             "group": "Overview",
@@ -4265,7 +4266,7 @@
         ]
       },
       {
-        "item": "SDKs",
+        "tab": "SDKs",
         "groups": [
           {
             "group": "Overview",
@@ -4285,8 +4286,6 @@
               "sdks/languages/ruby"
             ]
           }
-        ]
-      }
         ]
       }
     ]
