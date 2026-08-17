@@ -1,8 +1,6 @@
 import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
-import { applyJitter } from "@app/lib/dates";
-import { delay as delayMs } from "@app/lib/delay";
 import { BadRequestError } from "@app/lib/errors";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -196,12 +194,36 @@ export const CloudflareWorkersSyncFns = {
         );
       }
 
-      /* eslint-disable no-await-in-loop */
+      // Build the bulk secrets payload using JSON Merge Patch (RFC 7396):
+      // - present keys with an object value are created/updated
+      // - keys set to null are deleted
+      // - omitted keys are left unchanged
+      const bulkSecrets: Record<string, { name: string; text: string; type: string } | null> = {};
+
       for (const [key, val] of secretEntries) {
-        await delayMs(Math.max(0, applyJitter(100, 200)));
-        await request.put(
-          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets`,
-          { name: key, text: val.value, type: CLOUDFLARE_SECRET_TYPE },
+        bulkSecrets[key] = { name: key, text: val.value, type: CLOUDFLARE_SECRET_TYPE };
+      }
+
+      if (!secretSync.syncOptions.disableSecretDeletion) {
+        const secretTypeToDelete = existingSecrets.filter((existingSecret) => {
+          if (existingSecret.type !== CLOUDFLARE_SECRET_TYPE) return false;
+          const isManagedBySchema = matchesSchema(
+            existingSecret.key,
+            secretSync.environment?.slug || "",
+            secretSync.syncOptions.keySchema
+          );
+          return !secretMapKeys.has(existingSecret.key) && isManagedBySchema;
+        });
+
+        for (const secret of secretTypeToDelete) {
+          bulkSecrets[secret.key] = null;
+        }
+      }
+
+      if (Object.keys(bulkSecrets).length > 0) {
+        await request.patch(
+          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets-bulk`,
+          { secrets: bulkSecrets },
           {
             headers: {
               Authorization: `Bearer ${apiToken}`,
@@ -210,41 +232,23 @@ export const CloudflareWorkersSyncFns = {
           }
         );
       }
-      /* eslint-enable no-await-in-loop */
     } catch (err) {
       throwOnUndeployedVersionError(err);
     }
 
     if (!secretSync.syncOptions.disableSecretDeletion) {
-      const secretsToDelete = existingSecrets.filter((existingSecret) => {
+      const bindingTypeToDelete = existingSecrets.filter((existingSecret) => {
+        if (existingSecret.type === CLOUDFLARE_SECRET_TYPE) return false;
         const isManagedBySchema = matchesSchema(
           existingSecret.key,
           secretSync.environment?.slug || "",
           secretSync.syncOptions.keySchema
         );
-        const isInNewSecretMap = secretMapKeys.has(existingSecret.key);
-        return !isInNewSecretMap && isManagedBySchema;
+        return !secretMapKeys.has(existingSecret.key) && isManagedBySchema;
       });
 
-      const secretTypeToDelete = secretsToDelete.filter((s) => s.type === CLOUDFLARE_SECRET_TYPE);
-      const bindingTypeToDelete = secretsToDelete.filter((s) => s.type !== CLOUDFLARE_SECRET_TYPE);
-
-      try {
-        /* eslint-disable no-await-in-loop */
-        for (const secret of secretTypeToDelete) {
-          await delayMs(Math.max(0, applyJitter(100, 200)));
-          await request.delete(
-            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${secret.key}`,
-            {
-              headers: {
-                Authorization: `Bearer ${apiToken}`
-              }
-            }
-          );
-        }
-        /* eslint-enable no-await-in-loop */
-
-        if (bindingTypeToDelete.length > 0) {
+      if (bindingTypeToDelete.length > 0) {
+        try {
           const bindingKeysToDelete = new Set(bindingTypeToDelete.map((b) => b.key));
 
           const { data: settingsData } = await request.get<{
@@ -278,9 +282,9 @@ export const CloudflareWorkersSyncFns = {
               }
             }
           );
+        } catch (err) {
+          throwOnUndeployedVersionError(err);
         }
-      } catch (err) {
-        throwOnUndeployedVersionError(err);
       }
     }
   },
@@ -319,19 +323,23 @@ export const CloudflareWorkersSyncFns = {
     const bindingTypeToRemove = secretsToRemove.filter((s) => s.type !== CLOUDFLARE_SECRET_TYPE);
 
     try {
-      /* eslint-disable no-await-in-loop */
-      for (const secret of secretTypeToRemove) {
-        await delayMs(Math.max(0, applyJitter(100, 200)));
-        await request.delete(
-          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${secret.key}`,
+      if (secretTypeToRemove.length > 0) {
+        const bulkSecrets: Record<string, null> = {};
+        for (const secret of secretTypeToRemove) {
+          bulkSecrets[secret.key] = null;
+        }
+
+        await request.patch(
+          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets-bulk`,
+          { secrets: bulkSecrets },
           {
             headers: {
-              Authorization: `Bearer ${apiToken}`
+              Authorization: `Bearer ${apiToken}`,
+              "Content-Type": "application/json"
             }
           }
         );
       }
-      /* eslint-enable no-await-in-loop */
 
       if (bindingTypeToRemove.length > 0) {
         const bindingKeysToRemove = new Set(bindingTypeToRemove.map((b) => b.key));
