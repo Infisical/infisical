@@ -2,17 +2,21 @@ import { FunctionComponent, ReactNode } from "react";
 import { AbilityTuple, MongoAbility } from "@casl/ability";
 import { Can } from "@casl/react";
 
-import { AccessRestrictedBanner } from "@app/components/v2";
+import {
+  AccessRestrictedDialog,
+  TAccessRestrictedRequirement,
+  toPermissionRequirement
+} from "@app/components/v3";
 import { ProjectPermissionSet, useProjectPermission } from "@app/context/ProjectPermissionContext";
 
 import { Tooltip } from "../v2/Tooltip";
 
-export const ProjectPermissionGuardBanner = () => {
-  return (
-    <div className="container mx-auto flex h-full items-center justify-center">
-      <AccessRestrictedBanner />
-    </div>
-  );
+export const ProjectPermissionGuardBanner = ({
+  requirement
+}: {
+  requirement?: TAccessRestrictedRequirement;
+}) => {
+  return <AccessRestrictedDialog requirement={requirement} />;
 };
 
 type Props<T extends AbilityTuple> = {
@@ -47,7 +51,9 @@ export const ProjectPermissionCan: FunctionComponent<Props<ProjectPermissionSet>
           typeof children === "function" ? children(isAllowed, ability as any) : children;
 
         if (!isAllowed && renderGuardBanner) {
-          return <ProjectPermissionGuardBanner />;
+          return (
+            <ProjectPermissionGuardBanner requirement={toPermissionRequirement(props.I, props.a)} />
+          );
         }
 
         if (!isAllowed && passThrough) {

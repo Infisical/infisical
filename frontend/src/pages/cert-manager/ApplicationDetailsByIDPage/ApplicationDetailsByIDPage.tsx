@@ -12,8 +12,9 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { AccessRestrictedBanner, PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 import {
+  AccessRestrictedDialog,
   Button,
   DeleteConfirmDialog,
   DocumentationLinkBadge,
@@ -175,9 +176,7 @@ export const ApplicationDetailsByIDPage = () => {
 
   if (isAccessForbidden) {
     return (
-      <div className="container mx-auto flex h-full items-center justify-center p-16">
-        <AccessRestrictedBanner body="You do not have access to this application. Reach out to an administrator to request access." />
-      </div>
+      <AccessRestrictedDialog description="You don't have access to this application. An administrator can grant it." />
     );
   }
 

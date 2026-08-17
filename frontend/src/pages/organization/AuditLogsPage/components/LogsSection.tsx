@@ -304,6 +304,18 @@ const LogsSectionComponent = ({
   );
 };
 
+// Built once at module scope: creating them inside the render makes a new component type on every
+// render, which remounts the whole log table (and replays the permission gate) each time.
+const ProjectLogsSectionWithPermission = withProjectPermission(LogsSectionComponent, {
+  action: ProjectPermissionAuditLogsActions.Read,
+  subject: ProjectPermissionSub.AuditLogs
+});
+
+const OrgLogsSectionWithPermission = withPermission(LogsSectionComponent, {
+  action: OrgPermissionAuditLogsActions.Read,
+  subject: OrgPermissionSubjects.AuditLogs
+});
+
 export const LogsSection = (props: Props) => {
   const { project } = props;
 
@@ -314,16 +326,8 @@ export const LogsSection = (props: Props) => {
       return <LogsSectionComponent {...props} />;
     }
 
-    const ProjectLogsSectionWithPermission = withProjectPermission(LogsSectionComponent, {
-      action: ProjectPermissionAuditLogsActions.Read,
-      subject: ProjectPermissionSub.AuditLogs
-    });
     return <ProjectLogsSectionWithPermission {...props} />;
   }
 
-  const OrgLogsSectionWithPermission = withPermission(LogsSectionComponent, {
-    action: OrgPermissionAuditLogsActions.Read,
-    subject: OrgPermissionSubjects.AuditLogs
-  });
   return <OrgLogsSectionWithPermission {...props} />;
 };

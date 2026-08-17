@@ -1,8 +1,7 @@
 import { ComponentType } from "react";
 import { AbilityTuple } from "@casl/ability";
-import { twMerge } from "tailwind-merge";
 
-import { AccessRestrictedBanner } from "@app/components/v2";
+import { AccessRestrictedDialog, toPermissionRequirement } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 
@@ -23,14 +22,10 @@ export const withProjectPermission = <T extends object>(
     // REASON: casl due to its type checking can't seem to union even if union intersection is applied
     if (permission.cannot(action as any, subject as any)) {
       return (
-        <div
-          className={twMerge(
-            "container mx-auto flex h-full items-center justify-center",
-            containerClassName
-          )}
-        >
-          <AccessRestrictedBanner />
-        </div>
+        <AccessRestrictedDialog
+          className={containerClassName}
+          requirement={toPermissionRequirement(action, subject)}
+        />
       );
     }
 

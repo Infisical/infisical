@@ -5,13 +5,9 @@ import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
+import { DeleteActionModal, EmptyState, PageHeader } from "@app/components/v2";
 import {
-  AccessRestrictedBanner,
-  DeleteActionModal,
-  EmptyState,
-  PageHeader
-} from "@app/components/v2";
-import {
+  AccessRestrictedDialog,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -261,9 +257,12 @@ const Page = () => {
     pageBody = <EmptyState title="Error: Unable to find the certificate." className="py-12" />;
   } else if (!canReadCertificate) {
     pageBody = (
-      <div className="container mx-auto flex h-full items-center justify-center">
-        <AccessRestrictedBanner />
-      </div>
+      <AccessRestrictedDialog
+        requirement={{
+          action: ProjectPermissionCertificateActions.Read,
+          subject: ProjectPermissionSub.Certificates
+        }}
+      />
     );
   } else {
     pageBody = (

@@ -3,17 +3,22 @@ import { AbilityTuple, MongoAbility } from "@casl/ability";
 import { Can } from "@casl/react";
 
 import { TooltipProps } from "@app/components/v2/Tooltip/Tooltip";
+import {
+  AccessRestrictedDialog,
+  TAccessRestrictedRequirement,
+  toPermissionRequirement
+} from "@app/components/v3";
 import { useOrgPermission } from "@app/context/OrgPermissionContext";
 import { OrgPermissionSet } from "@app/context/OrgPermissionContext/types";
 
-import { AccessRestrictedBanner, Tooltip } from "../v2";
+import { Tooltip } from "../v2";
 
-export const OrgPermissionGuardBanner = () => {
-  return (
-    <div className="container mx-auto flex h-full items-center justify-center">
-      <AccessRestrictedBanner />
-    </div>
-  );
+export const OrgPermissionGuardBanner = ({
+  requirement
+}: {
+  requirement?: TAccessRestrictedRequirement;
+}) => {
+  return <AccessRestrictedDialog requirement={requirement} />;
 };
 
 type Props<T extends AbilityTuple> = {
@@ -71,7 +76,11 @@ export const OrgPermissionCan: FunctionComponent<Props<OrgPermissionSet>> = ({
         }
 
         if (!isAllowed && renderGuardBanner) {
-          return <OrgPermissionGuardBanner />;
+          return (
+            <OrgPermissionGuardBanner
+              requirement={toPermissionRequirement(props.I, "a" in props ? props.a : props.an)}
+            />
+          );
         }
 
         if (!isAllowed) return null;
