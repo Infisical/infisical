@@ -53,7 +53,11 @@ const Content = ({ onClose }: { onClose: () => void }) => {
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch] = useDebounce(searchInput);
 
-  const { data: orgGroupsData, isLoading: isLoadingGroups } = useSearchOrganizationGroups({
+  const {
+    data: orgGroupsData,
+    isLoading: isLoadingGroups,
+    isFetching: isFetchingGroups
+  } = useSearchOrganizationGroups({
     organizationId: orgId,
     search: debouncedSearch,
     limit: 20
@@ -103,8 +107,10 @@ const Content = ({ onClose }: { onClose: () => void }) => {
     });
   };
 
+  const totalOrgGroups = orgGroupsData?.totalCount ?? 0;
+  const assignedCount = groupMemberships?.length ?? 0;
   const hasNoAvailableGroups =
-    !isLoadingGroups && !searchInput && filteredGroupMembershipOrgs.length === 0;
+    !isLoadingGroups && !searchInput && totalOrgGroups > 0 && assignedCount >= totalOrgGroups;
 
   return !hasNoAvailableGroups ? (
     <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
@@ -121,9 +127,13 @@ const Content = ({ onClose }: { onClose: () => void }) => {
               placeholder="Select group..."
               autoFocus
               isError={Boolean(error)}
-              isLoading={isLoadingGroups || searchInput !== debouncedSearch}
-              options={filteredGroupMembershipOrgs}
-              onInputChange={setSearchInput}
+              isLoading={isFetchingGroups || searchInput !== debouncedSearch}
+              options={isFetchingGroups ? [] : filteredGroupMembershipOrgs}
+              onInputChange={(newValue, actionMeta) => {
+                if (actionMeta.action === "input-change") {
+                  setSearchInput(newValue);
+                }
+              }}
               filterOption={() => true}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
