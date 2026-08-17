@@ -1,6 +1,6 @@
 import { groupBy, unique } from "@app/lib/fn";
 
-export const NATIVE_INTEGRATION_DEPRECATION_DATE = "August 18, 2027";
+export const NATIVE_INTEGRATION_DEPRECATION_DATE = "August 19, 2027";
 
 /**
  * Returned by the create-integration endpoint, which is closed ahead of the deprecation date. Kept next to the date so

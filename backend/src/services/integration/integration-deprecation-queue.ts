@@ -188,11 +188,20 @@ export const integrationDeprecationQueueFactory = ({
     });
 
     // then each project's admins get a notice scoped to their own project, minus anyone already reached above
-    for (const project of projects) {
-      // eslint-disable-next-line no-await-in-loop
+    for await (const project of projects) {
+      const recipients = toRecipients(projectAdminsByProjectId[project.projectId] ?? [], orgAdminUserIds);
+
+      if (!recipients?.length) {
+        logger.info(
+          `integrationDeprecationNotice: no project admins to notify [orgId=${orgId}] [projectId=${project.projectId}]`
+        );
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
       await sendNotice({
         orgId,
-        recipients: toRecipients(projectAdminsByProjectId[project.projectId] ?? [], orgAdminUserIds),
+        recipients,
         email: {
           template: SmtpTemplates.NativeIntegrationDeprecationProjectAdmin,
           subjectLine: PROJECT_ADMIN_EMAIL_SUBJECT,
@@ -219,7 +228,7 @@ export const integrationDeprecationQueueFactory = ({
 
     cronJob.register({
       name: CronJobName.MonthlyNativeIntegrationDeprecationNotice,
-      pattern: "0 0 18 2,5,8,11 *",
+      pattern: "0 0 19 2,5,8,11 *",
       // must outlive the longest gap between two fires (92 days). The run hash is the only thing stopping a
       // restarted pod from re-enqueuing the previous fire, since lastEnqueuedAt is per-process.
       runHashTtlS: 100 * 24 * 60 * 60,
