@@ -362,7 +362,7 @@ export const DEFAULT_CRL_VALIDITY_DAYS = 7;
  * Lives here rather than next to the getNotBefore/getNotAfter helpers in certificate-authority-fns
  * so `@app/lib/ssh` can read it without importing that module and closing an import cycle.
  */
-export const CERT_CLOCK_SKEW_MS = 5 * 60 * 1000;
+export const CERT_CLOCK_SKEW_MS = 2 * 60 * 1000;
 
 export const ALGORITHM_FAMILIES = {
   ECDSA: {
