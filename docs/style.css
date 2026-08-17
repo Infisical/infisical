@@ -360,6 +360,8 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
   align-items: center;
   gap: 0.375rem;
   margin-top: 1rem;
+  font-family: var(--font-family-headings-custom, inherit);
+  font-weight: var(--font-weight-headings-custom, 400);
   font-size: 0.9375rem;
   color: #101114;
 }
