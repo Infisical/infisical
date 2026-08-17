@@ -5181,6 +5181,7 @@ interface GetProjectPitCommitsEvent {
     search?: string;
     sort: string;
     filteredActorId?: string;
+    filteredActorName?: string;
     filteredActorType?: string;
   };
 }

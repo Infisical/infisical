@@ -52,6 +52,15 @@ const folderStateSchema = z.array(
   })
 );
 
+// Bounds match what the columns behind these actually permit, so no existing resource can be
+// locked out: project ids are varchar(36) rather than uuid (they still hold pre-uuid ids), env
+// slugs are varchar(255), and a path is at most buildFolderPath's 20 levels of varchar(255) names
+const folderScopeQuerySchema = z.object({
+  environment: z.string().trim().min(1).max(255),
+  path: z.string().trim().max(6144).default("/").transform(removeTrailingSlash),
+  projectId: z.string().trim().min(1).max(36)
+});
+
 export const registerPITRouter = async (server: FastifyZodProvider) => {
   // Get commits count for a folder
   server.route({
@@ -110,10 +119,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      querystring: z.object({
-        environment: z.string().trim(),
-        path: z.string().trim().default("/").transform(removeTrailingSlash),
-        projectId: z.string().trim(),
+      querystring: folderScopeQuerySchema.extend({
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(20),
         search: z
@@ -158,6 +164,12 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         authorFilter: { actorId: req.query.actorId, actorType: req.query.actorType }
       });
 
+      // Every commit on an author-filtered page belongs to that author, so the readable label
+      // the audit log needs for the actor filter comes off the page without a second lookup
+      const filteredActor = req.query.actorId
+        ? (result.commits[0]?.actorMetadata as { name?: string; email?: string } | undefined)
+        : undefined;
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.query.projectId,
@@ -172,6 +184,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
             search: req.query.search,
             sort: req.query.sort,
             filteredActorId: req.query.actorId,
+            filteredActorName: filteredActor?.email || filteredActor?.name,
             filteredActorType: req.query.actorType
           }
         }
@@ -189,11 +202,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
-      querystring: z.object({
-        environment: z.string().trim(),
-        path: z.string().trim().default("/").transform(removeTrailingSlash),
-        projectId: z.string().trim()
-      }),
+      querystring: folderScopeQuerySchema,
       response: {
         200: z.object({
           authors: commitAuthorSchema.array()
