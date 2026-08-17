@@ -224,7 +224,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionIdentityActions.GetToken,
       ProjectPermissionIdentityActions.CreateToken,
       ProjectPermissionIdentityActions.DeleteToken,
-      ProjectPermissionIdentityActions.RevokeAuth
+      ProjectPermissionIdentityActions.RevokeAuth,
+      ProjectPermissionIdentityActions.EditAuth
     ],
     ProjectPermissionSub.Identity
   );
@@ -751,6 +752,24 @@ const buildNoAccessProjectPermission = () => {
   return rules;
 };
 
+// PAM product membership is stored as plain project membership (PamProductRole.Admin/Member are the
+// `admin`/`member` project role slugs), so these two sets are what those slugs mean inside a PAM
+// project. The split exists to constrain members, not admins: everything a product member is entitled
+// to comes from their resource-level (folder/account) memberships, which PAM resolves separately and
+// which are not project role rules at all. Their project ability is directory visibility and nothing
+// more. Managing identities, users and groups is a product admin responsibility — a member who inherited
+// the generic Member identity rules could attach an auth method to a product admin identity and log in
+// with its PAM access.
+const buildPamProjectMemberPermissionRules = () => {
+  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
+
+  can([ProjectPermissionMemberActions.Read], ProjectPermissionSub.Member);
+  can([ProjectPermissionGroupActions.Read], ProjectPermissionSub.Groups);
+  can([ProjectPermissionIdentityActions.Read], ProjectPermissionSub.Identity);
+
+  return rules;
+};
+
 const buildCryptographicOperatorPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
@@ -1122,6 +1141,9 @@ const buildPamResourceAuditorPermissionRules = () => {
   return rules;
 };
 
+// The product admin owns the PAM project, so it keeps the full project Admin ability it has always had.
+export const pamProjectAdminPermissions = projectAdminPermissions;
+export const pamProjectMemberPermissions = buildPamProjectMemberPermissionRules();
 export const pamResourceAdminPermissions = buildPamResourceAdminPermissionRules();
 export const pamResourceConnectorPermissions = buildPamResourceConnectorPermissionRules();
 export const pamResourceAuditorPermissions = buildPamResourceAuditorPermissionRules();

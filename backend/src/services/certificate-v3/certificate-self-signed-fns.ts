@@ -18,6 +18,7 @@ import {
   convertExtendedKeyUsageArrayToLegacy,
   convertKeyUsageArrayToLegacy
 } from "../certificate-common/certificate-utils";
+import { TSubjectRule } from "../certificate-policy/certificate-policy-types";
 
 const createSelfSignedCertificateRecord = async ({
   selfSignedResult,
@@ -176,12 +177,7 @@ export const processSelfSignedCertificate = async ({
     notAfter?: Date;
   };
   policy?: {
-    subject?: Array<{
-      type: string;
-      allowed?: string[];
-      required?: string[];
-      denied?: string[];
-    }>;
+    subject?: TSubjectRule[];
     sans?: Array<{
       type: string;
       allowed?: string[];

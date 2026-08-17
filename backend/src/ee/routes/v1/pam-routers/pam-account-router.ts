@@ -411,6 +411,11 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
                 .boolean()
                 .describe("Whether this account requires approval before launching a session"),
               requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
+              requireMfa: z
+                .boolean()
+                .describe(
+                  "Whether launching a session for this account requires MFA verification. Machine identities cannot satisfy MFA, so launch is rejected for them when this is true."
+                ),
               accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
               grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
               disabledReason: z.string().nullable().describe("Why this account is disabled, or null if usable")

@@ -54,6 +54,7 @@ export enum ApiDocsTags {
   DynamicSecrets = "Dynamic Secrets",
   SecretImports = "Secret Imports",
   SecretRotations = "Secret Rotations",
+  SecretValidationRules = "Secret Validation Rules",
   ProxiedServices = "Proxied Services",
   IdentitySpecificPrivilegesV1 = "Identity Specific Privileges",
   IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
@@ -2091,7 +2092,7 @@ export const CERTIFICATES = {
   RENEW: {
     id: "The ID of the certificate to renew.",
     renewalKeySource:
-      "How the renewed certificate's key pair is handled. 'new' generates a fresh pair, 'reuse' keeps the current one so the renewed certificate carries the same public key, and 'csr' takes the key from a supplied signing request. Omitting this generates a new key pair, and additionally declines to renew a certificate that was issued from a signing request, since that would change which key the certificate certifies without the caller saying so.",
+      "How the renewed certificate's key pair is handled. 'new' generates a fresh pair, 'reuse' keeps the current one so the renewed certificate carries the same public key, and 'csr' takes the key from a supplied signing request. Defaults to 'new'.",
     csr: "A PEM-encoded certificate signing request to renew from. Its subject, key and extensions take precedence, so only TTL and basic constraints may be set alongside it.",
     attributes:
       "Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied.",
@@ -2131,6 +2132,19 @@ export const CERTIFICATES = {
     privateKey:
       "The PEM-encoded private key associated with the imported certificate. Returned only when a private key was supplied at import.",
     serialNumber: "The serial number of the imported certificate."
+  }
+};
+
+const domainComponentRule = (rule: string) =>
+  `Domain component sequences that are ${rule}. Each entry is one sequence, its components comma-joined most specific first: "corp,example,com" matches DC=corp,DC=example,DC=com. A request matches a sequence only when its components line up position by position, so the same labels in another order do not match.`;
+
+const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.`;
+
+export const CERTIFICATE_POLICIES = {
+  SUBJECT_DOMAIN_COMPONENT_RULE: {
+    allowed: domainComponentRule("permitted"),
+    required: domainComponentRule("required"),
+    denied: DOMAIN_COMPONENT_DENIED_RULE
   }
 };
 
@@ -3841,5 +3855,52 @@ export const RELAYS = {
     iamRequestBody: "The base64-encoded body of the signed STS request.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
     token: "The one-time enrollment token previously issued for this relay (token method only)."
+  }
+} as const;
+
+export const SECRET_VALIDATION_RULES = {
+  RULE: {
+    type: "The kind of secret the rule applies to. Determines which fields the rule accepts and where the constraints are enforced: `static-secrets` constraints run on write, while `dynamic-secrets` and `secret-rotations` constraints shape the generated credential.",
+    constraints:
+      "The constraints enforced by this rule. Each constraint names what it checks (`type`), what it applies to (`appliesTo`), and its `value`, e.g. the minimum character count for `min-length` or the pattern for `regex-pattern`.",
+    dynamicSecretProviders:
+      "The dynamic secret providers this rule applies to. A lease is only constrained when its provider is listed here.",
+    secretRotationProviders:
+      "The secret rotation providers this rule applies to. A rotation is only constrained when its provider is listed here.",
+    appliesToStatic: "What the constraint checks: the secret key or the secret value.",
+    appliesToGenerated: "What the constraint checks: the generated credential.",
+    constraintTypeStatic:
+      "The kind of check this constraint performs, e.g. `min-length`, `regex-pattern`, `required-prefix`, or `prevent-value-reuse`.",
+    constraintTypeGenerated:
+      "The kind of check this constraint performs, e.g. `min-length`, `regex-pattern`, or `required-prefix`.",
+    constraintValue:
+      "The value the constraint is checked against, e.g. the minimum length, the regex pattern, or the required prefix/suffix string."
+  },
+  LIST: {
+    projectId: "The ID of the project to list secret validation rules for."
+  },
+  CREATE: {
+    projectId: "The ID of the project to create the secret validation rule in.",
+    name: "The name of the secret validation rule.",
+    description: "An optional description of the secret validation rule.",
+    environmentSlug:
+      "The slug of the environment this rule is scoped to. Omit to apply the rule to every environment in the project.",
+    secretPath: "The secret path this rule is scoped to.",
+    rule: "The rule configuration: which secret type it targets and the constraints to enforce."
+  },
+  UPDATE: {
+    projectId: "The ID of the project the secret validation rule belongs to.",
+    ruleId: "The ID of the secret validation rule to update.",
+    name: "The name of the secret validation rule.",
+    description: "An optional description of the secret validation rule.",
+    environmentSlug:
+      "The slug of the environment this rule is scoped to. Omit to leave the current scope unchanged; pass `null` to make the rule apply to every environment in the project.",
+    secretPath: "The secret path this rule is scoped to.",
+    rule: "The rule configuration: which secret type it targets and the constraints to enforce. Replaces the existing configuration as a whole, or omits to leave it untouched.",
+    isActive: "Whether the secret validation rule is active."
+  },
+  DELETE: {
+    projectId: "The ID of the project the secret validation rule belongs to.",
+    ruleId: "The ID of the secret validation rule to delete."
   }
 } as const;

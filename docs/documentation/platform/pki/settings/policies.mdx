@@ -73,7 +73,7 @@ Control what X.509 distinguished name attributes can appear in certificates:
 | Country | C | `US` |
 | State/Province | ST | `California` |
 | Locality | L | `San Francisco` |
-| Domain Component | DC | `example` |
+| Domain Component | DC | `corp,example,com` |
 
 For each attribute, configure enforcement:
 
@@ -90,11 +90,25 @@ For each attribute, configure enforcement:
 </AccordionGroup>
 
 <Note>
-  Domain Component (DC) support is for requests that use DC attributes explicitly. Each DC value is
-  matched independently against the Domain Component rule (like a Subject Alternative Name),
-  separately from the Common Name. A subject can carry more than one domain component (for example
-  `CN=host, DC=auth, DC=example, DC=app`), so allow the labels your requests use, such as `auth`,
-  `example`, and `app`, or a pattern like `*`.
+  Domain Component (DC) support is for requests that use DC attributes explicitly, separately from the
+  Common Name. Domain components form an ordered chain in the distinguished name, so a DC rule
+  constrains whole sequences rather than individual labels:
+
+  - Enter the full sequence most specific component first, separated by commas. `corp,example,com`
+    describes the domain `corp.example.com`.
+  - A request matches a sequence only when its components line up position by position, so the same
+    labels in another order are rejected.
+  - A request's domain components are read the way the standard defines the encoding, with the
+    top-level component first, which is how Windows, Active Directory, Intune and OpenSSL all write
+    them. A CSR built with `openssl req -subj "/DC=com/DC=example/DC=corp/CN=host"` matches
+    `corp,example,com`. Writing the same subject in the reverse order describes `com.example.corp`
+    instead, and is rejected against this rule.
+  - Wildcards apply within a single component. `*,example,com` matches any three-component sequence
+    ending in `example`, `com`.
+  - Deny is the exception to position-by-position matching: a denied sequence is rejected wherever it
+    appears in the chain, so denying `example,com` also rejects `CN=host,DC=corp,DC=example,DC=com`.
+    Denying a domain therefore denies everything under it.
+  - Add one rule per sequence you want to accept, deny, or require.
 </Note>
 
 Once you define subject attribute rules, only the attribute types you explicitly include are permitted — any other attribute in a request will be rejected. An empty configuration forbids all subject attributes; leave the section unconfigured to allow any attribute.

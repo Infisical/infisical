@@ -22,6 +22,10 @@ import { useRenewCertificate } from "@app/hooks/api";
 import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
 import { IssuerType, useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles";
 import {
+  EXTENDED_KEY_USAGES_OPTIONS,
+  KEY_USAGES_OPTIONS
+} from "@app/hooks/api/certificates/constants";
+import {
   CertificateIssuerKind,
   CertificateRenewalKeySource
 } from "@app/hooks/api/certificates/enums";
@@ -35,7 +39,11 @@ import {
 
 import { AlgorithmSelectors } from "./AlgorithmSelectors";
 import { BasicConstraintsField } from "./BasicConstraintsField";
-import { buildRenewalFormDefaults, buildRenewalRequestAttributes } from "./certificateRenewalUtils";
+import {
+  buildRenewalFormDefaults,
+  buildRenewalRequestAttributes,
+  unionUsageOptions
+} from "./certificateRenewalUtils";
 import { CertificateWizardSheet, useWizardSteps, WizardStep } from "./CertificateWizardSheet";
 import { KeyUsageSection } from "./KeyUsageSection";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
@@ -207,6 +215,12 @@ export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => 
   const keySource = watch("keySource");
   const watchedIsCA = watch("basicConstraints.isCA") || false;
   const sanTypesInForm = (watch("subjectAltNames") ?? []).map((san) => san.type).join(",");
+  const watchedKeyUsages = Object.keys(watch("keyUsages") ?? {})
+    .sort()
+    .join(",");
+  const watchedExtendedKeyUsages = Object.keys(watch("extendedKeyUsages") ?? {})
+    .sort()
+    .join(",");
   const subjectTypesInForm = (watch("subjectAttributes") ?? []).map((attr) => attr.type).join(",");
 
   const selectableSanTypes = useMemo(
@@ -218,6 +232,22 @@ export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => 
         ])
       ),
     [constraints.allowedSanTypes, sanTypesInForm]
+  );
+
+  // Same reason as the SAN types above: a certificate can carry a usage its policy no longer allows.
+  // Rendering it keeps it visible and unsettable, instead of submitting a checkbox nobody can see.
+  const selectableKeyUsages = useMemo(
+    () => unionUsageOptions(filteredKeyUsages, KEY_USAGES_OPTIONS, watchedKeyUsages),
+    [filteredKeyUsages, watchedKeyUsages]
+  );
+  const selectableExtendedKeyUsages = useMemo(
+    () =>
+      unionUsageOptions(
+        filteredExtendedKeyUsages,
+        EXTENDED_KEY_USAGES_OPTIONS,
+        watchedExtendedKeyUsages
+      ),
+    [filteredExtendedKeyUsages, watchedExtendedKeyUsages]
   );
 
   const selectableSubjectAttributeTypes = useMemo(
@@ -306,7 +336,7 @@ export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => 
     });
 
     createNotification({
-      text: result.certificateId
+      text: result.certificate
         ? "Certificate renewed successfully"
         : `Certificate renewal submitted. This may take a few minutes to process. Certificate Request ID: ${result.certificateRequestId}`,
       type: "success"
@@ -513,14 +543,14 @@ export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => 
               control={control}
               title="Key Usages"
               namePrefix="keyUsages"
-              options={filteredKeyUsages}
+              options={selectableKeyUsages}
               requiredUsages={constraints.requiredKeyUsages}
             />
             <KeyUsageSection
               control={control}
               title="Extended Key Usages"
               namePrefix="extendedKeyUsages"
-              options={filteredExtendedKeyUsages}
+              options={selectableExtendedKeyUsages}
               requiredUsages={constraints.requiredExtendedKeyUsages}
             />
             {constraints.templateAllowsCA && (

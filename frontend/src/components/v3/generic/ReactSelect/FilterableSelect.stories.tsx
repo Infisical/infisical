@@ -1,11 +1,15 @@
 import { useState } from "react";
+import { components, OptionProps } from "react-select";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { InfoIcon } from "lucide-react";
 
 import { Field, FieldDescription, FieldError, FieldLabel } from "../Field";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
 import { FilterableSelect } from "./FilterableSelect";
 
 type Option = { label: string; value: string };
 type RegionOption = Option & { region: string };
+type PolicyOption = Option & { description: string };
 
 const ENVIRONMENT_OPTIONS: Option[] = [
   { label: "Development", value: "dev" },
@@ -24,6 +28,36 @@ const REGION_OPTIONS: RegionOption[] = [
   { label: "ap-south-1 (Mumbai)", value: "ap-south-1", region: "Asia Pacific" },
   { label: "ap-southeast-1 (Singapore)", value: "ap-southeast-1", region: "Asia Pacific" }
 ];
+
+const POLICY_OPTIONS: PolicyOption[] = [
+  {
+    label: "Secret Viewing Policies",
+    value: "secret-viewer",
+    description: "Grants read access to secrets and related resources"
+  },
+  {
+    label: "Secret Editing Policies",
+    value: "secret-editor",
+    description: "Grants read and edit access to secrets and related resources"
+  }
+];
+
+const PolicyOptionRow = ({ children, ...props }: OptionProps<PolicyOption>) => (
+  <components.Option {...props}>
+    <div className="flex items-center justify-between gap-2">
+      <div className="min-w-0 flex-1">
+        <p className="truncate">{children}</p>
+        <p className="text-xs text-muted">{props.data.description}</p>
+      </div>
+      <Tooltip defaultOpen={props.data.value === "secret-viewer"}>
+        <TooltipTrigger type="button" aria-label={`View ${props.data.label}`}>
+          <InfoIcon className="size-4 text-muted" />
+        </TooltipTrigger>
+        <TooltipContent side="left">Secrets: Read</TooltipContent>
+      </Tooltip>
+    </div>
+  </components.Option>
+);
 
 /**
  * `FilterableSelect` is the v3 react-select-based dropdown for searchable
@@ -154,6 +188,26 @@ export const Grouped: Story = {
   },
   render: () => (
     <FilterableSelect options={REGION_OPTIONS} groupBy="region" placeholder="Choose a region..." />
+  )
+};
+
+export const WithTooltipOption: Story = {
+  name: "Example: Tooltip Inside Menu",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Option content can open a portaled tooltip above the select menu. This composition documents the overlay order used when an option needs secondary detail."
+      }
+    }
+  },
+  render: () => (
+    <FilterableSelect
+      menuIsOpen
+      options={POLICY_OPTIONS}
+      placeholder="Select additional privileges..."
+      components={{ Option: PolicyOptionRow }}
+    />
   )
 };
 

@@ -64,6 +64,20 @@ const buildSubjectAttributes = (cert: TCertificate) => {
   return attributes;
 };
 
+/**
+ * Policy-allowed options plus any the certificate already carries, so a usage the policy has since
+ * dropped stays visible and removable rather than being submitted from an unrendered checkbox.
+ */
+export const unionUsageOptions = <T extends { value: string }>(
+  allowed: T[],
+  all: readonly T[],
+  presentCsv: string
+): T[] => {
+  const present = presentCsv ? presentCsv.split(",").filter(Boolean) : [];
+  const missing = present.filter((v) => !allowed.some((o) => o.value === v));
+  return [...allowed, ...all.filter((o) => missing.includes(o.value))];
+};
+
 export const buildRenewalFormDefaults = (
   cert: TCertificate,
   constraints: TemplateConstraints
@@ -104,11 +118,13 @@ export const buildRenewalRequestAttributes = ({
   formData: RenewalFormData;
   constraints: TemplateConstraints;
 }): TRenewCertificateAttributes => {
-  const basicConstraints = buildBasicConstraints(formData, constraints);
-
+  // The CSR carries its own basic constraints and the CSR step offers no control over them, so
+  // sending the previous certificate's would silently override what the caller actually signed.
   if (formData.keySource === CertificateRenewalKeySource.Csr) {
-    return { ttl: formData.ttl, ...(basicConstraints && { basicConstraints }) };
+    return { ttl: formData.ttl };
   }
+
+  const basicConstraints = buildBasicConstraints(formData, constraints);
 
   const attributes: TRenewCertificateAttributes = {
     ttl: formData.ttl,

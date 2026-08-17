@@ -1,15 +1,15 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ApiDocsTags, SECRET_VALIDATION_RULES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
-  SecretValidationRuleInputSchema,
-  SecretValidationRuleResponseSchema
+  SecretValidationRuleResponseSchema,
+  SecretValidationRuleSchema
 } from "@app/services/secret-validation-rule/secret-validation-rule-schemas";
-import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSecretValidationRuleRouter = async (server: FastifyZodProvider) => {
@@ -20,8 +20,11 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
     config: { rateLimit: readLimit },
     schema: {
       hide: false,
+      operationId: "listSecretValidationRules",
+      tags: [ApiDocsTags.SecretValidationRules],
+      description: "List Secret Validation Rules",
       params: z.object({
-        projectId: z.string().trim()
+        projectId: z.string().trim().describe(SECRET_VALIDATION_RULES.LIST.projectId)
       }),
       response: {
         200: z.object({
@@ -49,15 +52,24 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,
+      operationId: "createSecretValidationRule",
+      tags: [ApiDocsTags.SecretValidationRules],
+      description: "Create Secret Validation Rule",
       params: z.object({
-        projectId: z.string().trim()
+        projectId: z.string().trim().describe(SECRET_VALIDATION_RULES.CREATE.projectId)
       }),
       body: z.object({
-        name: z.string().trim().min(1).max(100),
-        description: z.string().trim().max(500).nullable().optional(),
-        environmentSlug: z.string().trim().min(1).optional(),
-        secretPath: z.string().trim().min(1),
-        rule: SecretValidationRuleInputSchema
+        name: z.string().trim().min(1).max(100).describe(SECRET_VALIDATION_RULES.CREATE.name),
+        description: z
+          .string()
+          .trim()
+          .max(500)
+          .nullable()
+          .optional()
+          .describe(SECRET_VALIDATION_RULES.CREATE.description),
+        environmentSlug: z.string().trim().min(1).optional().describe(SECRET_VALIDATION_RULES.CREATE.environmentSlug),
+        secretPath: z.string().trim().min(1).describe(SECRET_VALIDATION_RULES.CREATE.secretPath),
+        rule: SecretValidationRuleSchema.describe(SECRET_VALIDATION_RULES.CREATE.rule)
       }),
       response: {
         200: z.object({
@@ -77,8 +89,7 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
         description: req.body.description,
         environmentSlug: req.body.environmentSlug,
         secretPath: req.body.secretPath,
-        type: req.body.rule.type,
-        inputs: req.body.rule.inputs
+        rule: req.body.rule
       });
 
       await server.services.auditLog.createAuditLog({
@@ -116,23 +127,35 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,
+      operationId: "updateSecretValidationRule",
+      tags: [ApiDocsTags.SecretValidationRules],
+      description: "Update Secret Validation Rule",
       params: z.object({
-        projectId: z.string().trim(),
-        ruleId: z.string().uuid()
+        projectId: z.string().trim().describe(SECRET_VALIDATION_RULES.UPDATE.projectId),
+        ruleId: z.string().uuid().describe(SECRET_VALIDATION_RULES.UPDATE.ruleId)
       }),
       body: z.object({
-        name: z.string().trim().min(1).max(100).optional(),
-        description: z.string().trim().max(500).nullable().optional(),
-        environmentSlug: z.string().trim().min(1).nullable().optional(),
-        secretPath: z.string().trim().min(1).optional(),
-        type: z.nativeEnum(SecretValidationRuleType).optional(),
-        // Inputs are validated strictly in the service against the resolved
-        // rule type via `parseSecretValidationRuleInputs`. We can't pick the
-        // right schema here because `type` and `inputs` are sibling fields,
-        // so a union over the per-type input schemas would silently strip
-        // fields (e.g. `providers`) whenever a sibling member also matched.
-        inputs: z.object({}).passthrough().optional(),
-        isActive: z.boolean().optional()
+        name: z.string().trim().min(1).max(100).optional().describe(SECRET_VALIDATION_RULES.UPDATE.name),
+        description: z
+          .string()
+          .trim()
+          .max(500)
+          .nullable()
+          .optional()
+          .describe(SECRET_VALIDATION_RULES.UPDATE.description),
+        environmentSlug: z
+          .string()
+          .trim()
+          .min(1)
+          .nullable()
+          .optional()
+          .describe(SECRET_VALIDATION_RULES.UPDATE.environmentSlug),
+        secretPath: z.string().trim().min(1).optional().describe(SECRET_VALIDATION_RULES.UPDATE.secretPath),
+        // The rule config is replaced as a whole when supplied — `type` and the
+        // per-type fields have to move together for the discriminant to be
+        // meaningful. Omit it to leave the stored config untouched.
+        rule: SecretValidationRuleSchema.optional().describe(SECRET_VALIDATION_RULES.UPDATE.rule),
+        isActive: z.boolean().optional().describe(SECRET_VALIDATION_RULES.UPDATE.isActive)
       }),
       response: {
         200: z.object({
@@ -160,7 +183,7 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
           metadata: {
             ruleId: req.params.ruleId,
             name: req.body.name,
-            type: req.body.type,
+            type: req.body.rule?.type,
             environmentSlug: req.body.environmentSlug,
             secretPath: req.body.secretPath,
             isActive: req.body.isActive
@@ -191,9 +214,12 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,
+      operationId: "deleteSecretValidationRule",
+      tags: [ApiDocsTags.SecretValidationRules],
+      description: "Delete Secret Validation Rule",
       params: z.object({
-        projectId: z.string().trim(),
-        ruleId: z.string().uuid()
+        projectId: z.string().trim().describe(SECRET_VALIDATION_RULES.DELETE.projectId),
+        ruleId: z.string().uuid().describe(SECRET_VALIDATION_RULES.DELETE.ruleId)
       }),
       response: {
         200: z.object({

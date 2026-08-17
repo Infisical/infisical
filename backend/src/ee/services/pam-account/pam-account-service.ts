@@ -217,7 +217,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     ];
 
     const [accessStatusMap, foldersWithApprovalPolicy, permissionsByAccountId] = await Promise.all([
-      deps.pamAccessRequestService.getAccessStatusBatch(ctx.actorId, accountIdsRequiringApproval, projectId),
+      deps.pamAccessRequestService.getAccessStatusBatch(
+        { actorId: ctx.actorId, actor: ctx.actor },
+        accountIdsRequiringApproval,
+        projectId
+      ),
       deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval),
       // Resolve every account's effective permissions in one membership fetch
       getAccountPermissionRulesMap(
@@ -858,13 +862,17 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ...new Set(accountsRequiringApproval.map((a) => a.folderId).filter(Boolean) as string[])
     ];
     const [accessStatusMap, foldersWithApprovalPolicy] = await Promise.all([
-      deps.pamAccessRequestService.getAccessStatusBatch(ctx.actorId, accountIdsRequiringApproval, projectId),
+      deps.pamAccessRequestService.getAccessStatusBatch(
+        { actorId: ctx.actorId, actor: ctx.actor },
+        accountIdsRequiringApproval,
+        projectId
+      ),
       deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval)
     ]);
 
     return {
       accounts: accounts.map((a) => {
-        const { requiresApproval, requireReason } = resolveAccessControls(a.templatePolicies);
+        const { requiresApproval, requireReason, requireMfa } = resolveAccessControls(a.templatePolicies);
         const statusEntry = accessStatusMap.get(a.id);
         const hasPolicyConfigured = a.folderId ? foldersWithApprovalPolicy.has(a.folderId) : false;
         let disabledReason: string | null = null;
@@ -885,6 +893,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           canLaunch: launchAccountIds.has(a.id) || (!!a.folderId && launchFolderIds.has(a.folderId)),
           requiresApproval,
           requireReason,
+          // Machine identities cannot satisfy MFA, so launch rejects them outright (see
+          // pam-session-service). Callers acting as an identity should treat this as unusable.
+          requireMfa,
           accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
           grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
           disabledReason,

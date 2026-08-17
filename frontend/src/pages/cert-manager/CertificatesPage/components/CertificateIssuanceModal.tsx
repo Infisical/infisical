@@ -308,6 +308,7 @@ export const CertificateIssuanceModal = ({
     reset,
     watch,
     setValue,
+    trigger,
     formState,
     formState: { isSubmitting }
   } = useForm<FormData>({
@@ -401,7 +402,8 @@ export const CertificateIssuanceModal = ({
   const { step, setStep, currentStepKey, goBack, goNext, onFormInvalid } = useWizardSteps({
     stepKeys,
     stepFields: STEP_FIELDS,
-    invalidMessage: "Please fix the highlighted fields before requesting."
+    invalidMessage: "Please fix the highlighted fields before requesting.",
+    validateStep: (fields) => trigger(fields as (keyof FormData)[])
   });
 
   const steps = useMemo(() => stepKeys.map((key) => STEP_META[key]), [stepKeys]);
@@ -549,6 +551,13 @@ export const CertificateIssuanceModal = ({
       resetAllState
     ]
   );
+
+  const rowErrorsOf = (fieldErrors: unknown): (string | undefined)[] | undefined =>
+    Array.isArray(fieldErrors)
+      ? (fieldErrors as ({ value?: { message?: string } } | undefined)[]).map(
+          (rowError) => rowError?.value?.message
+        )
+      : undefined;
 
   const selectedProfileReady = Boolean(profileId || actualSelectedProfileId);
 
@@ -723,6 +732,9 @@ export const CertificateIssuanceModal = ({
                 (formState.errors as { subjectAttributes?: { message?: string } }).subjectAttributes
                   ?.message
               }
+              rowErrors={rowErrorsOf(
+                (formState.errors as { subjectAttributes?: unknown }).subjectAttributes
+              )}
             />
           )}
 

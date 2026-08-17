@@ -48,20 +48,26 @@ type Props = {
 export const useWizardSteps = <TStepKey extends string>({
   stepKeys,
   stepFields,
-  invalidMessage
+  invalidMessage,
+  validateStep
 }: {
   stepKeys: readonly TStepKey[];
   stepFields: Record<TStepKey, string[]>;
   invalidMessage: string;
+  /** Gates Continue on the current step's fields, so errors surface where they can be fixed. */
+  validateStep?: (fields: string[]) => Promise<boolean>;
 }) => {
   const [step, setStep] = useState(0);
   const activeStep = Math.min(step, stepKeys.length - 1);
 
-  const goBack = useCallback(() => setStep((s) => Math.max(0, s - 1)), []);
-  const goNext = useCallback(
-    () => setStep((s) => Math.min(stepKeys.length - 1, s + 1)),
-    [stepKeys.length]
-  );
+  const goBack = useCallback(() => setStep(Math.max(0, activeStep - 1)), [activeStep]);
+  const goNext = useCallback(async () => {
+    if (validateStep && !(await validateStep(stepFields[stepKeys[activeStep]]))) {
+      createNotification({ text: "Fix the errors on this step to continue.", type: "error" });
+      return;
+    }
+    setStep(Math.min(stepKeys.length - 1, activeStep + 1));
+  }, [stepKeys, stepFields, activeStep, validateStep]);
 
   const onFormInvalid = useCallback(
     (errors: Record<string, unknown>) => {

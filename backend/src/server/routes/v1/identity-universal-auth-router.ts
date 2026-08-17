@@ -377,7 +377,8 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({
@@ -501,7 +502,8 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({

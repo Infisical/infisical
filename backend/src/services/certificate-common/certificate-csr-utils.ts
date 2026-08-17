@@ -53,8 +53,7 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
   // can distinguish "absent" (use default) from "explicitly set".
   const certificateRequest: TCertificateRequest = {};
   if (subject.commonName) certificateRequest.commonName = subject.commonName;
-  const domainComponents = csrObj.subjectName.getField("DC");
-  if (domainComponents.length > 0) certificateRequest.domainComponents = domainComponents;
+  if (subject.domainComponents?.length) certificateRequest.domainComponents = subject.domainComponents;
   if (subject.organization) certificateRequest.organization = subject.organization;
   if (subject.ou) certificateRequest.organizationalUnit = subject.ou;
   if (subject.locality) certificateRequest.locality = subject.locality;

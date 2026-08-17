@@ -82,6 +82,7 @@ import {
   useGetOrgTrialUrl,
   useLogoutUser
 } from "@app/hooks/api";
+import { appConnectionKeys } from "@app/hooks/api/appConnections";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
@@ -224,6 +225,7 @@ export const Navbar = () => {
     queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
     queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
+    queryClient.removeQueries({ queryKey: appConnectionKeys.all });
 
     await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
     await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
@@ -448,7 +450,10 @@ export const Navbar = () => {
                 </PopoverTrigger>
                 <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
                   <Command>
-                    <CommandInput placeholder="Search organizations..." />
+                    <CommandInput
+                      aria-label="Search organizations"
+                      placeholder="Search organizations..."
+                    />
                     <CommandList>
                       <CommandEmpty>No organizations found.</CommandEmpty>
                       {/* Current Organization */}
