@@ -46,18 +46,22 @@ export const registerApprovalPolicyEndpoints = ({
   requestResponseSchema,
   grantResponseSchema,
   inputsSchema,
-  checkPolicyMatchResponseSchema
+  checkPolicyMatchResponseSchema,
+  allowRequestCreation = true
 }: {
   server: FastifyZodProvider;
   policyType: ApprovalPolicyType;
   createPolicySchema: TCreatePolicySchema;
   updatePolicySchema: TUpdatePolicySchema;
   policyResponseSchema: z.ZodObject<z.ZodRawShape>;
-  createRequestSchema: z.ZodType<TCreateRequestDTO>;
+  createRequestSchema?: z.ZodType<TCreateRequestDTO>;
   requestResponseSchema: z.ZodObject<z.ZodRawShape>;
   grantResponseSchema: z.ZodObject<z.ZodRawShape>;
   inputsSchema: z.ZodType<TApprovalPolicyInputs>;
   checkPolicyMatchResponseSchema: z.ZodObject<z.ZodRawShape>;
+  // Whether callers may open an approval request directly. Policy types whose requests are
+  // only ever created server-side, as part of the flow being gated, must leave this off.
+  allowRequestCreation?: boolean;
 }) => {
   // Policies
   server.route({
@@ -331,67 +335,73 @@ export const registerApprovalPolicyEndpoints = ({
     }
   });
 
-  server.route({
-    method: "POST",
-    url: "/requests",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      operationId: "createApprovalRequest",
-      description: "Create approval request",
-      body: createRequestSchema,
-      response: {
-        200: z.object({
-          request: requestResponseSchema
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      let requesterName: string;
-      let requesterEmail: string;
-      let machineIdentityId: string | undefined;
-
-      if (req.auth.authMode === AuthMode.JWT) {
-        requesterName = `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim();
-        requesterEmail = req.auth.user.email ?? "";
-      } else if (req.auth.authMode === AuthMode.IDENTITY_ACCESS_TOKEN) {
-        requesterName = req.auth.identityName ?? "Machine Identity";
-        requesterEmail = "";
-        machineIdentityId = req.auth.identityId;
-      } else {
-        throw new BadRequestError({ message: "Unsupported auth mode for approval requests." });
-      }
-
-      const { request } = await server.services.approvalPolicy.createRequest(
-        policyType,
-        {
-          requesterName,
-          requesterEmail,
-          machineIdentityId,
-          ...req.body
-        },
-        req.permission
-      );
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: request.projectId,
-        event: {
-          type: EventType.APPROVAL_REQUEST_CREATE,
-          metadata: {
-            policyType,
-            justification: req.body.justification || undefined,
-            requestDuration: req.body.requestDuration || "infinite"
-          }
-        }
-      });
-
-      return { request };
+  if (allowRequestCreation) {
+    if (!createRequestSchema) {
+      throw new Error(`createRequestSchema is required when request creation is enabled for ${policyType}`);
     }
-  });
+
+    server.route({
+      method: "POST",
+      url: "/requests",
+      config: {
+        rateLimit: writeLimit
+      },
+      schema: {
+        operationId: "createApprovalRequest",
+        description: "Create approval request",
+        body: createRequestSchema,
+        response: {
+          200: z.object({
+            request: requestResponseSchema
+          })
+        }
+      },
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      handler: async (req) => {
+        let requesterName: string;
+        let requesterEmail: string;
+        let machineIdentityId: string | undefined;
+
+        if (req.auth.authMode === AuthMode.JWT) {
+          requesterName = `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim();
+          requesterEmail = req.auth.user.email ?? "";
+        } else if (req.auth.authMode === AuthMode.IDENTITY_ACCESS_TOKEN) {
+          requesterName = req.auth.identityName ?? "Machine Identity";
+          requesterEmail = "";
+          machineIdentityId = req.auth.identityId;
+        } else {
+          throw new BadRequestError({ message: "Unsupported auth mode for approval requests." });
+        }
+
+        const { request } = await server.services.approvalPolicy.createRequest(
+          policyType,
+          {
+            requesterName,
+            requesterEmail,
+            machineIdentityId,
+            ...req.body
+          },
+          req.permission
+        );
+
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: request.projectId,
+          event: {
+            type: EventType.APPROVAL_REQUEST_CREATE,
+            metadata: {
+              policyType,
+              justification: req.body.justification || undefined,
+              requestDuration: req.body.requestDuration || "infinite"
+            }
+          }
+        });
+
+        return { request };
+      }
+    });
+  }
 
   server.route({
     method: "GET",
