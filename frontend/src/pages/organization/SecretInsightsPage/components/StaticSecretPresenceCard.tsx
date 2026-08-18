@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { format, parseISO } from "date-fns";
-import { TrendingDownIcon, TrendingUpIcon } from "lucide-react";
+import { KeyIcon, TrendingDownIcon, TrendingUpIcon } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -21,7 +21,9 @@ import {
   CardHeader,
   CardTitle,
   Empty,
+  EmptyDescription,
   EmptyHeader,
+  EmptyMedia,
   EmptyTitle,
   TBadgeProps
 } from "@app/components/v3";
@@ -98,9 +100,15 @@ export const StaticSecretPresenceCard = ({ data }: { data: TOrgStaticSecretUsage
       </CardHeader>
       <CardContent className="flex flex-1 flex-col">
         {weeks.length === 0 && (
-          <Empty className="border-0">
+          <Empty frame="dashed" className="hover:bg-container">
             <EmptyHeader>
-              <EmptyTitle>No secret creation data yet</EmptyTitle>
+              <EmptyMedia variant="icon">
+                <KeyIcon />
+              </EmptyMedia>
+              <EmptyTitle>No secrets created in the past 12 weeks</EmptyTitle>
+              <EmptyDescription>
+                Secrets your projects create appear here, one bar per week.
+              </EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}

@@ -1,6 +1,15 @@
-import { useMemo, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, SearchIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  ChevronUpIcon,
+  FolderIcon,
+  LockIcon,
+  SearchIcon,
+  SearchXIcon
+} from "lucide-react";
 
 import {
   Badge,
@@ -13,7 +22,9 @@ import {
   CardHeader,
   CardTitle,
   Empty,
+  EmptyDescription,
   EmptyHeader,
+  EmptyMedia,
   EmptyTitle,
   InputGroup,
   InputGroupAddon,
@@ -33,6 +44,13 @@ import { useOrganization } from "@app/context";
 import { TOrgProjectInsightWarnings, TOrgProjectsInsights } from "@app/hooks/api";
 
 const COLLAPSED_ROW_COUNT = 4;
+
+type EmptyState = {
+  icon: ReactNode;
+  title: string;
+  description: string;
+  mediaClassName?: string;
+};
 
 enum InsightsView {
   NeedsAttention = "needs-attention",
@@ -75,12 +93,16 @@ export const InsightsCard = ({
   data,
   hasMore,
   onLoadMore,
-  isLoadingMore
+  isLoadingMore,
+  isPlanRestricted = false
 }: {
   data: TOrgProjectsInsights;
   hasMore: boolean;
   onLoadMore: () => void;
   isLoadingMore: boolean;
+  // Without the insights entitlement the row set is empty because nothing was fetched, so the card
+  // must not report the org as healthy
+  isPlanRestricted?: boolean;
 }) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -119,15 +141,56 @@ export const InsightsCard = ({
   const isSearching = search.trim().length > 0;
   const visible = showAll || isSearching ? filtered : filtered.slice(0, COLLAPSED_ROW_COUNT);
 
+  const getDescription = () => {
+    if (isPlanRestricted) return "Upgrade your plan to see project-level issues.";
+    if (isHealthy) return "No projects have outstanding issues right now.";
+    return `${data.projectsWithIssues} of ${data.totalProjects} projects have outstanding issues, ordered by severity.`;
+  };
+
+  const getEmptyState = (): EmptyState => {
+    if (isSearching) {
+      return {
+        icon: <SearchXIcon />,
+        title: "No projects match your search",
+        description: `No project name or slug matches "${search.trim()}".`
+      };
+    }
+
+    if (isPlanRestricted) {
+      return {
+        icon: <LockIcon />,
+        title: "Project insights are not on your current plan",
+        description:
+          "Upgrade to see failed rotations, failed syncs, stale secrets, and duplicated secrets for every project."
+      };
+    }
+
+    if (data.totalProjects === 0) {
+      return {
+        icon: <FolderIcon />,
+        title: "No secrets management projects",
+        description: "Create a secrets management project to see its insights here."
+      };
+    }
+
+    return {
+      icon: <CheckIcon />,
+      title: "All projects are healthy",
+      description: `No failed rotations, failed syncs, stale or duplicated secrets across your ${pluralize(
+        data.totalProjects,
+        "project"
+      )}. New issues will appear here as they are detected.`,
+      mediaClassName: "rounded-full"
+    };
+  };
+
+  const emptyState = filtered.length === 0 ? getEmptyState() : null;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Insights</CardTitle>
-        <CardDescription>
-          {isHealthy
-            ? "You don't have any projects with issues"
-            : `${data.projectsWithIssues} of ${data.totalProjects} projects have outstanding issues, ordered by severity.`}
-        </CardDescription>
+        <CardDescription>{getDescription()}</CardDescription>
         <CardAction className="flex items-center gap-2">
           <Tabs value={view} onValueChange={(next) => setView(next as InsightsView)}>
             <TabsList variant="filled">
@@ -148,17 +211,15 @@ export const InsightsCard = ({
         </CardAction>
       </CardHeader>
       <CardContent>
-        {view === InsightsView.NeedsAttention && modeProjects.length === 0 && !isSearching && (
-          <Empty className="border-0">
+        {/* the framed Empty ships a hover tint for interactive drop targets; this one is static */}
+        {emptyState && (
+          <Empty frame="dashed" className="hover:bg-container">
             <EmptyHeader>
-              <EmptyTitle>You don&apos;t have any projects with issues</EmptyTitle>
-            </EmptyHeader>
-          </Empty>
-        )}
-        {modeProjects.length > 0 && filtered.length === 0 && (
-          <Empty className="border-0">
-            <EmptyHeader>
-              <EmptyTitle>No projects match your search</EmptyTitle>
+              <EmptyMedia variant="icon" className={emptyState.mediaClassName}>
+                {emptyState.icon}
+              </EmptyMedia>
+              <EmptyTitle>{emptyState.title}</EmptyTitle>
+              <EmptyDescription>{emptyState.description}</EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}

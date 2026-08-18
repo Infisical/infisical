@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { TriangleAlertIcon } from "lucide-react";
+import { FingerprintIcon, TriangleAlertIcon } from "lucide-react";
 
 import {
   Alert,
@@ -10,7 +10,9 @@ import {
   CardHeader,
   CardTitle,
   Empty,
+  EmptyDescription,
   EmptyHeader,
+  EmptyMedia,
   EmptyTitle
 } from "@app/components/v3";
 import { IdentityAuthMethod, identityAuthToNameMap, TOrgAuthMethodUsage } from "@app/hooks/api";
@@ -56,7 +58,7 @@ export const AuthMethodsCard = ({ data }: { data: TOrgAuthMethodUsage }) => {
   }, [data]);
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
         <CardTitle>Auth Methods Used to Fetch Secrets</CardTitle>
         <CardDescription>
@@ -65,9 +67,15 @@ export const AuthMethodsCard = ({ data }: { data: TOrgAuthMethodUsage }) => {
       </CardHeader>
       <CardContent>
         {segments.length === 0 && (
-          <Empty className="border-0">
+          <Empty frame="dashed" className="hover:bg-container">
             <EmptyHeader>
-              <EmptyTitle>No secret fetch data yet</EmptyTitle>
+              <EmptyMedia variant="icon">
+                <FingerprintIcon />
+              </EmptyMedia>
+              <EmptyTitle>No secret fetches in the past 7 days</EmptyTitle>
+              <EmptyDescription>
+                Once a machine identity reads a secret, its auth method appears here.
+              </EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}

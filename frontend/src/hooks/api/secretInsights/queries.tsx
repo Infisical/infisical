@@ -246,7 +246,7 @@ export const useGetSecretBlindIndexStatus = (
 // Org-scoped insights hooks. The endpoints have no :projectId — the backend resolves the
 // org from the auth token, so the hooks only take orgId to key the cache.
 
-export const useGetOrgSecretsSummary = (orgId: string) => {
+export const useGetOrgSecretsSummary = (orgId: string, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: secretInsightsKeys.orgSecretsSummary(orgId),
     queryFn: async () => {
@@ -255,12 +255,16 @@ export const useGetOrgSecretsSummary = (orgId: string) => {
       );
       return data.usageInsights;
     },
-    enabled: Boolean(orgId),
+    enabled: Boolean(orgId) && (options?.enabled ?? true),
     staleTime: INSIGHTS_STALE_TIME
   });
 };
 
-export const useGetOrgSecretsProjects = (orgId: string, params: TGetOrgSecretsProjectsDTO = {}) => {
+export const useGetOrgSecretsProjects = (
+  orgId: string,
+  params: TGetOrgSecretsProjectsDTO = {},
+  options?: { enabled?: boolean }
+) => {
   return useInfiniteQuery({
     queryKey: secretInsightsKeys.orgSecretsProjects(orgId, params),
     initialPageParam: 0,
@@ -276,7 +280,7 @@ export const useGetOrgSecretsProjects = (orgId: string, params: TGetOrgSecretsPr
       const nextOffset = lastPage.offset + lastPage.projects.length;
       return nextOffset < lastPage.totalProjects ? nextOffset : undefined;
     },
-    enabled: Boolean(orgId),
+    enabled: Boolean(orgId) && (options?.enabled ?? true),
     staleTime: INSIGHTS_STALE_TIME
   });
 };
@@ -295,7 +299,7 @@ export const useGetOrgAuthMethodDistribution = (orgId: string, options?: { enabl
   });
 };
 
-export const useGetOrgStaticSecretsUsage = (orgId: string) => {
+export const useGetOrgStaticSecretsUsage = (orgId: string, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: secretInsightsKeys.orgStaticSecretsUsage(orgId),
     queryFn: async () => {
@@ -304,7 +308,7 @@ export const useGetOrgStaticSecretsUsage = (orgId: string) => {
       );
       return data.staticSecretUsage;
     },
-    enabled: Boolean(orgId),
+    enabled: Boolean(orgId) && (options?.enabled ?? true),
     staleTime: INSIGHTS_STALE_TIME
   });
 };

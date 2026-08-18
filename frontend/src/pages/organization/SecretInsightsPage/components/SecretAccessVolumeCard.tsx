@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { format, parseISO } from "date-fns";
+import { ActivityIcon } from "lucide-react";
 
 import {
   Card,
@@ -8,7 +9,9 @@ import {
   CardHeader,
   CardTitle,
   Empty,
+  EmptyDescription,
   EmptyHeader,
+  EmptyMedia,
   EmptyTitle
 } from "@app/components/v3";
 import { TOrgSecretAccessVolume } from "@app/hooks/api";
@@ -37,9 +40,15 @@ export const SecretAccessVolumeCard = ({ data }: { data: TOrgSecretAccessVolume 
       </CardHeader>
       <CardContent>
         {chartData.length === 0 && (
-          <Empty className="border-0">
+          <Empty frame="dashed" className="hover:bg-container">
             <EmptyHeader>
-              <EmptyTitle>No secret access data yet</EmptyTitle>
+              <EmptyMedia variant="icon">
+                <ActivityIcon />
+              </EmptyMedia>
+              <EmptyTitle>No secret reads in the past 7 days</EmptyTitle>
+              <EmptyDescription>
+                Every secret read across your projects is counted here, by day.
+              </EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}

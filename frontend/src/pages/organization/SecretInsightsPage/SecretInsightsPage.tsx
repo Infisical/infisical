@@ -1,11 +1,16 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Helmet } from "react-helmet";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { FileTextIcon } from "lucide-react";
+import { FileTextIcon, LockIcon } from "lucide-react";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Skeleton,
   Tooltip,
@@ -13,12 +18,22 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@app/components/v3";
-import { OrgPermissionSubjects, useOrganization, useServerConfig } from "@app/context";
+import {
+  OrgPermissionSubjects,
+  useOrganization,
+  useServerConfig,
+  useSubscription
+} from "@app/context";
 import { OrgPermissionSecretsManagementInsightsActions } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import {
   AuditReportStatus,
+  TOrgAuthMethodUsage,
+  TOrgProjectsInsights,
+  TOrgSecretAccessVolume,
+  TOrgSecretsSummary,
+  TOrgStaticSecretUsage,
   useGetOrgAuditReports,
   useGetOrgAuthMethodDistribution,
   useGetOrgSecretsAccessVolume,
@@ -40,20 +55,39 @@ import {
 const SENT_REPORT_STATUSES = [AuditReportStatus.Completed, AuditReportStatus.Partial];
 const IN_FLIGHT_REPORT_STATUSES = [AuditReportStatus.Pending, AuditReportStatus.Processing];
 
+// Every insights endpoint is gated on the same entitlement, so without it there is nothing to
+// fetch. The cards render from these zeroed payloads and fall back to their own empty states, so
+// the page keeps its shape behind the upgrade prompt instead of collapsing to a blank screen.
+const PLAN_LOCKED_SUMMARY: TOrgSecretsSummary = { activeLeases: 0, users: 0, identities: 0 };
+const PLAN_LOCKED_PROJECTS: TOrgProjectsInsights = {
+  projects: [],
+  totalProjects: 0,
+  projectsWithIssues: 0,
+  offset: 0,
+  limit: 0
+};
+const PLAN_LOCKED_AUTH_METHODS: TOrgAuthMethodUsage = { totalFetches: 0, methods: [] };
+const PLAN_LOCKED_STATIC_SECRETS: TOrgStaticSecretUsage = { weeks: [] };
+const PLAN_LOCKED_ACCESS_VOLUME: TOrgSecretAccessVolume = { days: [] };
+
 export const SecretInsightsPage = withPermission(
   () => {
     const { currentOrg } = useOrganization();
     const { config } = useServerConfig();
+    const { subscription } = useSubscription();
     const isClickhouseEnabled = Boolean(config.isClickhouseAuditLogEnabled);
+    const hasInsightsPlan = Boolean(subscription?.secretAccessInsights);
 
-    const { data: summary, isPending: isSummaryPending } = useGetOrgSecretsSummary(currentOrg.id);
+    const { data: summary, isPending: isSummaryPending } = useGetOrgSecretsSummary(currentOrg.id, {
+      enabled: hasInsightsPlan
+    });
     const {
       data: projectsPages,
       isPending: isProjectsPending,
       hasNextPage: hasMoreProjects,
       fetchNextPage: fetchMoreProjects,
       isFetchingNextPage: isFetchingMoreProjects
-    } = useGetOrgSecretsProjects(currentOrg.id, { limit: 100 });
+    } = useGetOrgSecretsProjects(currentOrg.id, { limit: 100 }, { enabled: hasInsightsPlan });
 
     const projectsInsights = useMemo(() => {
       if (!projectsPages) return undefined;
@@ -76,18 +110,26 @@ export const SecretInsightsPage = withPermission(
       };
     }, [projectsPages]);
     const { data: authMethodUsage, isPending: isAuthMethodsPending } =
-      useGetOrgAuthMethodDistribution(currentOrg.id, { enabled: isClickhouseEnabled });
+      useGetOrgAuthMethodDistribution(currentOrg.id, {
+        enabled: isClickhouseEnabled && hasInsightsPlan
+      });
     const { data: staticSecretUsage, isPending: isStaticSecretsPending } =
-      useGetOrgStaticSecretsUsage(currentOrg.id);
+      useGetOrgStaticSecretsUsage(currentOrg.id, { enabled: hasInsightsPlan });
     const { data: accessVolume, isPending: isAccessVolumePending } = useGetOrgSecretsAccessVolume(
       currentOrg.id,
-      { enabled: isClickhouseEnabled }
+      { enabled: isClickhouseEnabled && hasInsightsPlan }
     );
 
-    const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["requestOrgReport"] as const);
+    const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+      "requestOrgReport",
+      "upgradePlan"
+    ] as const);
     // Reports are generated asynchronously and delivered by email; the list is newest-first
     // and polls while a report is in flight (the backend allows one in-flight report per org).
-    const { data: orgReports } = useGetOrgAuditReports({ offset: 0, limit: 10 });
+    const { data: orgReports } = useGetOrgAuditReports(
+      { offset: 0, limit: 10 },
+      { enabled: hasInsightsPlan }
+    );
     const lastSentReport = orgReports?.reports.find((report) =>
       SENT_REPORT_STATUSES.includes(report.status)
     );
@@ -95,9 +137,26 @@ export const SecretInsightsPage = withPermission(
       orgReports?.reports.some((report) => IN_FLIGHT_REPORT_STATUSES.includes(report.status))
     );
 
-    const isAuthMethodsLoading = isClickhouseEnabled && isAuthMethodsPending;
-    const isAccessVolumeLoading = isClickhouseEnabled && isAccessVolumePending;
-    const showAuthMethodsSlot = isAuthMethodsLoading || Boolean(authMethodUsage);
+    useEffect(() => {
+      if (subscription && !subscription.secretAccessInsights) {
+        handlePopUpOpen("upgradePlan");
+      }
+    }, [subscription]);
+
+    const isSummaryLoading = hasInsightsPlan && isSummaryPending;
+    const isProjectsLoading = hasInsightsPlan && isProjectsPending;
+    const isStaticSecretsLoading = hasInsightsPlan && isStaticSecretsPending;
+    const isAuthMethodsLoading = isClickhouseEnabled && hasInsightsPlan && isAuthMethodsPending;
+    const isAccessVolumeLoading = isClickhouseEnabled && hasInsightsPlan && isAccessVolumePending;
+
+    const summaryData = hasInsightsPlan ? summary : PLAN_LOCKED_SUMMARY;
+    const projectsData = hasInsightsPlan ? projectsInsights : PLAN_LOCKED_PROJECTS;
+    const staticSecretData = hasInsightsPlan ? staticSecretUsage : PLAN_LOCKED_STATIC_SECRETS;
+    const authMethodData = hasInsightsPlan ? authMethodUsage : PLAN_LOCKED_AUTH_METHODS;
+    const accessVolumeData = hasInsightsPlan ? accessVolume : PLAN_LOCKED_ACCESS_VOLUME;
+
+    const showAuthMethodsSlot =
+      isAuthMethodsLoading || (isClickhouseEnabled && Boolean(authMethodData));
 
     return (
       <>
@@ -130,7 +189,9 @@ export const SecretInsightsPage = withPermission(
                         variant="project"
                         size="xs"
                         isDisabled={!isAllowed || hasInFlightReport}
-                        onClick={() => handlePopUpOpen("requestOrgReport")}
+                        onClick={() =>
+                          handlePopUpOpen(hasInsightsPlan ? "requestOrgReport" : "upgradePlan")
+                        }
                       >
                         Generate Report
                       </Button>
@@ -153,21 +214,42 @@ export const SecretInsightsPage = withPermission(
               </div>
             </PageHeader>
             <div className="flex flex-col gap-4 pb-8">
-              {isSummaryPending && (
+              {!hasInsightsPlan && (
+                <Alert variant="info">
+                  <LockIcon />
+                  <AlertTitle>Insights Is Not Included in Your Current Plan</AlertTitle>
+                  <AlertDescription>
+                    <p>
+                      Secret health, access volume, and authentication data stay empty until you
+                      upgrade. Go to{" "}
+                      <Link
+                        to="/organizations/$orgId/billing"
+                        params={{ orgId: currentOrg.id }}
+                        className="inline underline hover:opacity-80"
+                      >
+                        Billing
+                      </Link>{" "}
+                      to change your plan.
+                    </p>
+                  </AlertDescription>
+                </Alert>
+              )}
+              {isSummaryLoading && (
                 <div className="grid gap-4 md:grid-cols-3">
                   <Skeleton className="h-[150px]" />
                   <Skeleton className="h-[150px]" />
                   <Skeleton className="h-[150px]" />
                 </div>
               )}
-              {!isSummaryPending && summary && <SummaryCard summary={summary} />}
-              {isProjectsPending && <Skeleton className="h-[320px]" />}
-              {!isProjectsPending && projectsInsights && (
+              {!isSummaryLoading && summaryData && <SummaryCard summary={summaryData} />}
+              {isProjectsLoading && <Skeleton className="h-[320px]" />}
+              {!isProjectsLoading && projectsData && (
                 <InsightsCard
-                  data={projectsInsights}
+                  data={projectsData}
                   hasMore={hasMoreProjects}
                   onLoadMore={fetchMoreProjects}
                   isLoadingMore={isFetchingMoreProjects}
+                  isPlanRestricted={!hasInsightsPlan}
                 />
               )}
               <div
@@ -176,17 +258,17 @@ export const SecretInsightsPage = withPermission(
                 }
               >
                 {isAuthMethodsLoading && <Skeleton className="h-[320px]" />}
-                {!isAuthMethodsLoading && authMethodUsage && (
-                  <AuthMethodsCard data={authMethodUsage} />
+                {!isAuthMethodsLoading && isClickhouseEnabled && authMethodData && (
+                  <AuthMethodsCard data={authMethodData} />
                 )}
-                {isStaticSecretsPending && <Skeleton className="h-[320px]" />}
-                {!isStaticSecretsPending && staticSecretUsage && (
-                  <StaticSecretPresenceCard data={staticSecretUsage} />
+                {isStaticSecretsLoading && <Skeleton className="h-[320px]" />}
+                {!isStaticSecretsLoading && staticSecretData && (
+                  <StaticSecretPresenceCard data={staticSecretData} />
                 )}
               </div>
               {isAccessVolumeLoading && <Skeleton className="h-[300px]" />}
-              {!isAccessVolumeLoading && accessVolume && (
-                <SecretAccessVolumeCard data={accessVolume} />
+              {!isAccessVolumeLoading && isClickhouseEnabled && accessVolumeData && (
+                <SecretAccessVolumeCard data={accessVolumeData} />
               )}
             </div>
           </div>
@@ -195,6 +277,11 @@ export const SecretInsightsPage = withPermission(
           isOpen={popUp.requestOrgReport.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("requestOrgReport", isOpen)}
           isAuditLogSupported={isClickhouseEnabled}
+        />
+        <UpgradePlanModal
+          isOpen={popUp.upgradePlan.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          text="Your current plan does not include access to secret insights. To unlock this feature, please upgrade your Infisical plan."
         />
       </>
     );

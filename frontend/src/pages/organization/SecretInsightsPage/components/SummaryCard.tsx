@@ -14,7 +14,7 @@ type StatCardProps = {
 };
 
 const StatCard = ({ title, icon, iconVariant, value, suffix, caption }: StatCardProps) => (
-  <Card className="flex-1">
+  <Card className="h-full">
     <CardHeader>
       <CardTitle>{title}</CardTitle>
       <CardAction>
