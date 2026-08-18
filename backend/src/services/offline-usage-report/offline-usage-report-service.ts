@@ -41,6 +41,7 @@ export const offlineUsageReportServiceFactory = ({
       });
     }
 
+    const customerId = licenseService.getCustomerId() as string;
     const licenseId = licenseService.getLicenseId();
 
     const [
@@ -124,7 +125,7 @@ export const offlineUsageReportServiceFactory = ({
     return {
       csvContent,
       signature,
-      filename: `infisical-usage-report-${licenseId}-${new Date().toISOString().split("T")[0]}.csv`
+      filename: `infisical-usage-report-${customerId}-${new Date().toISOString().split("T")[0]}.csv`
     };
   };
 
