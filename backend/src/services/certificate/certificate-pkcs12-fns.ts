@@ -30,7 +30,7 @@ export class Pkcs12ExtractionError extends Error {
   }
 }
 
-export type TPkcs12Entry = {
+type TPkcs12Entry = {
   alias: string | null;
   subject: string;
   commonName: string | null;
