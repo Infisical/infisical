@@ -799,6 +799,10 @@ a.ifx-card__title:hover .ifx-card__chevron {
   color: #ebebeb;
 }
 
+.dark .ifx-card__link:hover {
+  color: var(--ifx-ink);
+}
+
 @media (min-width: 640px) {
   .ifx-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
