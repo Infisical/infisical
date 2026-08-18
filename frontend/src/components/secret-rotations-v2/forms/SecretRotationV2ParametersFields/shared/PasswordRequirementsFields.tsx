@@ -19,9 +19,7 @@ export const PasswordRequirementsFields = ({
 
   return (
     <FieldSet className="gap-3">
-      <FieldLegend variant="label" className="mb-0">
-        Password Requirements
-      </FieldLegend>
+      <FieldLegend variant="label">Password Requirements</FieldLegend>
       <div className="grid grid-cols-2 gap-x-3 gap-y-4">
         <Controller
           control={control}
