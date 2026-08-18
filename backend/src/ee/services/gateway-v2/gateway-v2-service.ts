@@ -10,6 +10,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
+import { getGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
@@ -986,6 +987,27 @@ export const gatewayV2ServiceFactory = ({
     await $checkGatewayHealth(gateway.id);
   };
 
+  const reportLoad = async ({
+    orgPermission,
+    activeChannels
+  }: {
+    orgPermission: OrgServiceActor;
+    activeChannels: number;
+  }) => {
+    const gateway =
+      orgPermission.type === ActorType.GATEWAY
+        ? await gatewayV2DAL.findById(orgPermission.id)
+        : await gatewayV2DAL.findOne({ orgId: orgPermission.orgId, identityId: orgPermission.id });
+
+    if (!gateway || gateway.orgId !== orgPermission.orgId) {
+      throw new NotFoundError({ message: `Gateway ${orgPermission.id} not found.` });
+    }
+
+    // Deliberately no heartbeat side effect: liveness stays with /heartbeat so a gateway cannot look
+    // healthy purely by reporting load, and so this stays a single Redis write.
+    await getGatewayLoadTracker()?.recordReportedLoad(gateway.id, activeChannels);
+  };
+
   const deleteGatewayById = async ({ orgPermission, id }: { orgPermission: OrgServiceActor; id: string }) => {
     const gateway = await gatewayV2DAL.findOne({ id, orgId: orgPermission.orgId });
     if (!gateway) {
@@ -1321,6 +1343,7 @@ export const gatewayV2ServiceFactory = ({
   return {
     listGateways,
     registerGateway,
+    reportLoad,
     getPlatformConnectionDetailsByGatewayId,
     getPAMConnectionDetails,
     deleteGatewayById,

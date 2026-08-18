@@ -259,6 +259,11 @@ export const gatewayPoolServiceFactory = ({
   };
 
   const selectGatewayFromPool = async ({ poolId, exclude, filter, unavailableMessage }: TSelectGatewayFromPoolDTO) => {
+    const targetPool = await gatewayPoolDAL.findById(poolId);
+    if (!targetPool) {
+      throw new NotFoundError({ message: `Gateway pool with ID ${poolId} not found` });
+    }
+
     const healthyGateways = await gatewayPoolMembershipDAL.findHealthyGatewaysByPoolId(poolId);
 
     const eligible = healthyGateways
@@ -294,7 +299,12 @@ export const gatewayPoolServiceFactory = ({
     if (!selected)
       throw new BadRequestError({ message: unavailableMessage ?? "Gateway pool has no healthy gateways." });
 
-    await loadTracker?.reserve(selected.id);
+    // Bookkeeping must never be able to fail a selection, whatever the tracker does internally.
+    try {
+      await loadTracker?.reserve(selected.id);
+    } catch (err) {
+      logger.warn({ err, poolId }, `Failed to reserve gateway capacity [poolId=${poolId}]`);
+    }
 
     logger.info(
       { poolId, selectedGatewayId: selected.id },
@@ -344,7 +354,7 @@ export const gatewayPoolServiceFactory = ({
       }
       tried.add(selected.id);
 
-      const gatewayAttempt = { transportFailed: false };
+      const gatewayAttempt = { transportFailed: false, tunnelEstablished: false };
       try {
         return {
           result: await runGatewayAttempt(gatewayAttempt, () => operation(selected.id)),
@@ -353,7 +363,9 @@ export const gatewayPoolServiceFactory = ({
       } catch (err) {
         // Providers rewrap gateway errors in their own BadRequestError, so the async-local flag is
         // the only reliable signal that nothing reached the target.
-        if (!gatewayAttempt.transportFailed && !(err instanceof GatewayTransportError)) throw err;
+        const retryable =
+          (gatewayAttempt.transportFailed || err instanceof GatewayTransportError) && !gatewayAttempt.tunnelEstablished;
+        if (!retryable) throw err;
         lastError = err;
         logger.warn(
           { err, poolId, gatewayId: selected.id, attempt },

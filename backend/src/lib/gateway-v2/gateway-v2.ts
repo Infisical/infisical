@@ -12,7 +12,7 @@ import { getConfig } from "../config/env";
 import { BadRequestError, GatewayTransportError } from "../errors";
 import { GatewayProxyProtocol } from "../gateway/types";
 import { logger } from "../logger";
-import { markAttemptTransportFailure } from "./gateway-attempt-context";
+import { markAttemptTransportFailure, markAttemptTunnelEstablished } from "./gateway-attempt-context";
 import { getGatewayLoadTracker } from "./gateway-load-tracker";
 
 interface IGatewayRelayServer {
@@ -200,6 +200,7 @@ export const setupRelayServer = async ({
           }
 
           establishedChannel = true;
+          markAttemptTunnelEstablished();
 
           if (longLived) {
             // Disable the 30s idle-activity timeout that was set during connection establishment.
@@ -312,15 +313,27 @@ export const withGatewayV2Proxy = async <T>(
 ): Promise<T> => {
   const { gatewayId, protocol, relayHost, gateway, relay, httpsAgent, longLived } = options;
 
-  const { port, cleanup, getRelayError, hasEstablishedChannel } = await setupRelayServer({
-    gatewayId,
-    protocol,
-    relayHost,
-    gateway,
-    relay,
-    httpsAgent,
-    longLived
-  });
+  let relayServer;
+  try {
+    relayServer = await setupRelayServer({
+      gatewayId,
+      protocol,
+      relayHost,
+      gateway,
+      relay,
+      httpsAgent,
+      longLived
+    });
+  } catch (err) {
+    // The local listener never came up, so no tunnel was attempted and nothing reached the target.
+    markAttemptTransportFailure();
+    throw new GatewayTransportError({
+      message: err instanceof Error ? err.message : String(err),
+      gatewayId
+    });
+  }
+
+  const { port, cleanup, getRelayError, hasEstablishedChannel } = relayServer;
 
   try {
     // Execute the callback with the allocated port

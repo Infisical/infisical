@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 export type TGatewayAttempt = {
   transportFailed: boolean;
+  tunnelEstablished: boolean;
 };
 
 const storage = new AsyncLocalStorage<TGatewayAttempt>();
@@ -22,4 +23,13 @@ export const runGatewayAttempt = async <T>(attempt: TGatewayAttempt, fn: () => P
 export const markAttemptTransportFailure = () => {
   const attempt = storage.getStore();
   if (attempt) attempt.transportFailed = true;
+};
+
+/**
+ * Once any tunnel in this attempt comes up, the target may have been reached, so the attempt is no
+ * longer safe to replay even if an earlier tunnel in the same attempt failed and was swallowed.
+ */
+export const markAttemptTunnelEstablished = () => {
+  const attempt = storage.getStore();
+  if (attempt) attempt.tunnelEstablished = true;
 };

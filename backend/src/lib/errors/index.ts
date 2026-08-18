@@ -127,7 +127,9 @@ export class GatewayTransportError extends BadRequestError {
   gatewayId?: string;
 
   constructor({ message, gatewayId }: { message?: string; gatewayId?: string }) {
-    super({ message: message ?? "Failed to reach the gateway", name: "GatewayTransportError" });
+    // Deliberately keeps the BadRequest name so the serialised `error` field is unchanged for
+    // callers. Retry decisions use instanceof, never the name.
+    super({ message: message ?? "Failed to reach the gateway" });
     this.gatewayId = gatewayId;
   }
 }

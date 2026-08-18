@@ -1,8 +1,19 @@
+import { TGatewayScore } from "@app/lib/gateway-v2/gateway-load-tracker";
+
 export type TSelectableGateway = { id: string };
 
-// Two members this close are treated as equally loaded, since cross-pod counts are published
-// asynchronously and routinely disagree by one.
-const SCORE_TIE_BAND = 1;
+// Only exact ties are randomised. A reservation is worth exactly +1, so any wider band would cancel
+// it out and re-shortlist the member a concurrent selection just claimed, which is the stampede the
+// reservation exists to prevent.
+const SCORE_TIE_BAND = 0;
+
+export const pickRandomGateway = <T extends TSelectableGateway>(
+  candidates: T[],
+  random: () => number = Math.random
+): T | undefined => {
+  if (candidates.length === 0) return undefined;
+  return candidates[Math.floor(random() * candidates.length)];
+};
 
 /**
  * Picks the least-loaded member, breaking between the two lowest at random.
@@ -13,11 +24,20 @@ const SCORE_TIE_BAND = 1;
  */
 export const chooseLeastLoadedGateway = <T extends TSelectableGateway>(
   candidates: T[],
-  scores: Map<string, number>,
+  scores: Map<string, TGatewayScore>,
   random: () => number = Math.random
 ): T | undefined => {
   if (candidates.length === 0) return undefined;
   if (candidates.length === 1) return candidates[0];
+
+  // A member too old to report its own count is scored only on the channels this platform opened,
+  // which is a strictly lower number than a reporting peer's true occupancy. Comparing the two would
+  // make the un-upgraded member look idle and pull traffic toward it for the whole rollout, so a
+  // mixed pool gets no load awareness at all rather than a biased guess.
+  const reportedCount = candidates.filter((c) => scores.get(c.id)?.reported).length;
+  if (reportedCount > 0 && reportedCount < candidates.length) {
+    return pickRandomGateway(candidates, random);
+  }
 
   // Shuffle before ranking. An idle pool scores every member zero, and a deterministic tie-break
   // would then always shortlist the same two, leaving every member past the second with no traffic
@@ -28,23 +48,15 @@ export const chooseLeastLoadedGateway = <T extends TSelectableGateway>(
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
 
-  const ranked = shuffled.sort((a, b) => (scores.get(a.id) ?? 0) - (scores.get(b.id) ?? 0));
+  const scoreOf = (id: string) => scores.get(id)?.score ?? 0;
+  const ranked = shuffled.sort((a, b) => scoreOf(a.id) - scoreOf(b.id));
 
-  // Only shortlist the runner-up when it is genuinely comparable. Always taking the two lowest would
-  // hand a two-member pool a coin flip regardless of load, and would still send half the traffic to a
-  // near-saturated member in a pool scored {0, 99, 100}. The band absorbs the off-by-one that stale
-  // cross-pod counts produce, which is the case the random draw exists for.
-  const best = scores.get(ranked[0].id) ?? 0;
-  const runnerUp = scores.get(ranked[1].id) ?? 0;
+  // Only shortlist the runner-up when it ties. Always taking the two lowest would hand a two-member
+  // pool a coin flip regardless of load, and would still send half the traffic to a near-saturated
+  // member in a pool scored {0, 99, 100}.
+  const best = scoreOf(ranked[0].id);
+  const runnerUp = scoreOf(ranked[1].id);
   const shortlist = runnerUp - best <= SCORE_TIE_BAND ? ranked.slice(0, 2) : [ranked[0]];
 
   return shortlist[Math.floor(random() * shortlist.length)];
-};
-
-export const pickRandomGateway = <T extends TSelectableGateway>(
-  candidates: T[],
-  random: () => number = Math.random
-): T | undefined => {
-  if (candidates.length === 0) return undefined;
-  return candidates[Math.floor(random() * candidates.length)];
 };

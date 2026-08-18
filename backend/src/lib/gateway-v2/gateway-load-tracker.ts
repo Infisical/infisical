@@ -9,8 +9,10 @@ import { logger } from "../logger";
 // span a relay dial plus two TLS handshakes, and it is released explicitly: left to expire on its
 // own the counter would behave like "selections in the last N seconds", which is request-count
 // round-robin rather than the occupancy signal this is supposed to be.
-const RESERVATION_TTL_SECONDS = 20;
-const RESERVATION_HOLD_MS = 5_000;
+const RESERVATION_TTL_SECONDS = 240;
+// Backstop only, for a selection whose channel never opens. The relay dial allows 100s and the
+// gateway handshake 120s, so releasing sooner would reopen the window the reservation covers.
+const RESERVATION_HOLD_MS = 230_000;
 const SUSPECT_TTL_SECONDS = 60;
 const LOAD_HASH_TTL_SECONDS = 600;
 
@@ -22,19 +24,34 @@ const PUBLISH_REFRESH_MS = 20_000;
 
 const podId = crypto.randomUUID();
 
+export type TGatewayScore = {
+  score: number;
+  /** False when this member is too old to report its own count, so its score is on a different scale. */
+  reported: boolean;
+};
+
 type TGatewayLoadTracker = {
+  recordReportedLoad: (gatewayId: string, activeChannels: number) => Promise<void>;
   reserve: (gatewayId: string) => Promise<void>;
   channelOpened: (gatewayId: string) => void;
   channelClosed: (gatewayId: string) => void;
   markSuspect: (gatewayId: string) => Promise<void>;
-  getScores: (gatewayIds: string[]) => Promise<Map<string, number>>;
+  getScores: (gatewayIds: string[]) => Promise<Map<string, TGatewayScore>>;
   getSuspect: (gatewayIds: string[]) => Promise<Set<string>>;
   shutdown: () => void;
 };
 
 let tracker: TGatewayLoadTracker | undefined;
 
+// A gateway's own count is authoritative: it is taken at the one place every channel must pass
+// through, so it sees work the platform never proxied (a PAM CLI session dials the relay itself) and
+// any future caller too. The per-pod counters below only cover platform-initiated channels and exist
+// as a fallback for gateways too old to report.
+const REPORTED_LOAD_TTL_SECONDS = 60;
+const REPORTED_LOAD_MAX_AGE_MS = 35_000;
+
 const loadKey = KeyStorePrefixes.GatewayLoad;
+const reportedKey = KeyStorePrefixes.GatewayReportedLoad;
 const reservationKey = KeyStorePrefixes.GatewayLoadReservation;
 const suspectKey = KeyStorePrefixes.GatewaySuspect;
 
@@ -42,9 +59,12 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
   const openChannels = new Map<string, number>();
   const pendingPublish = new Set<string>();
   const reservationTimers = new Set<NodeJS.Timeout>();
+  const pendingReservations = new Map<string, NodeJS.Timeout[]>();
   let debounceTimer: NodeJS.Timeout | undefined;
 
-  const publish = async (gatewayId: string) => {
+  const publishChain = new Map<string, Promise<void>>();
+
+  const publishNow = async (gatewayId: string) => {
     const count = openChannels.get(gatewayId) ?? 0;
     try {
       // Holding nothing means dropping the field rather than writing a zero, so the hash only ever
@@ -58,6 +78,15 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
     } catch (err) {
       logger.debug({ err, gatewayId }, `Failed to publish gateway load [gatewayId=${gatewayId}]`);
     }
+  };
+
+  // Overlapping flushes must not interleave, or a hashSet for count 1 can land after the hashDelete
+  // for count 0 and leave this pod's field claiming load it does not hold.
+  const publish = (gatewayId: string) => {
+    const prev = publishChain.get(gatewayId) ?? Promise.resolve();
+    const next = prev.then(() => publishNow(gatewayId));
+    publishChain.set(gatewayId, next);
+    return next;
   };
 
   const flushPending = () => {
@@ -84,8 +113,33 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
   }, PUBLISH_REFRESH_MS);
   refreshTimer.unref();
 
+  const recordReportedLoad = async (gatewayId: string, activeChannels: number) => {
+    await keyStore.setItemWithExpiry(
+      reportedKey(gatewayId),
+      REPORTED_LOAD_TTL_SECONDS,
+      `${activeChannels}:${Date.now()}`
+    );
+  };
+
+  const releaseReservation = async (gatewayId: string) => {
+    try {
+      await keyStore.decrementByOrDelete(reservationKey(gatewayId));
+    } catch (err) {
+      logger.debug({ err, gatewayId }, `Failed to release gateway reservation [gatewayId=${gatewayId}]`);
+    }
+  };
+
   const channelOpened = (gatewayId: string) => {
     openChannels.set(gatewayId, (openChannels.get(gatewayId) ?? 0) + 1);
+    // The channel now carries the load the reservation was standing in for. Holding both would
+    // double count the member for the rest of the backstop window.
+    const pending = pendingReservations.get(gatewayId);
+    const timer = pending?.shift();
+    if (timer) {
+      clearTimeout(timer);
+      reservationTimers.delete(timer);
+      void releaseReservation(gatewayId);
+    }
     schedulePublish(gatewayId);
   };
 
@@ -99,14 +153,6 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
     schedulePublish(gatewayId);
   };
 
-  const releaseReservation = async (gatewayId: string) => {
-    try {
-      await keyStore.decrementByOrDelete(reservationKey(gatewayId));
-    } catch (err) {
-      logger.debug({ err, gatewayId }, `Failed to release gateway reservation [gatewayId=${gatewayId}]`);
-    }
-  };
-
   const reserve = async (gatewayId: string) => {
     try {
       await keyStore.incrementByWithExpiry(reservationKey(gatewayId), 1, RESERVATION_TTL_SECONDS);
@@ -117,10 +163,16 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
     // The key TTL is only a backstop for a pod that dies holding reservations.
     const timer = setTimeout(() => {
       reservationTimers.delete(timer);
+      const queue = pendingReservations.get(gatewayId);
+      const idx = queue?.indexOf(timer) ?? -1;
+      if (queue && idx >= 0) queue.splice(idx, 1);
       void releaseReservation(gatewayId);
     }, RESERVATION_HOLD_MS);
     timer.unref();
     reservationTimers.add(timer);
+    const queue = pendingReservations.get(gatewayId);
+    if (queue) queue.push(timer);
+    else pendingReservations.set(gatewayId, [timer]);
   };
 
   const markSuspect = async (gatewayId: string) => {
@@ -137,33 +189,50 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
   };
 
   const getScores = async (gatewayIds: string[]) => {
-    const scores = new Map<string, number>();
+    const scores = new Map<string, TGatewayScore>();
     if (gatewayIds.length === 0) return scores;
 
-    const [published, reservations] = await Promise.all([
+    const [published, reservations, reported] = await Promise.all([
       Promise.all(gatewayIds.map((id) => keyStore.hashGetAll(loadKey(id)))),
-      keyStore.getItemsPrimary(gatewayIds.map((id) => reservationKey(id)))
+      keyStore.getItemsPrimary(gatewayIds.map((id) => reservationKey(id))),
+      keyStore.getItemsPrimary(gatewayIds.map((id) => reportedKey(id)))
     ]);
 
-    const cutoff = Date.now() - PUBLISHED_COUNT_MAX_AGE_MS;
+    const now = Date.now();
+    const publishedCutoff = now - PUBLISHED_COUNT_MAX_AGE_MS;
+    const reportedCutoff = now - REPORTED_LOAD_MAX_AGE_MS;
+
+    const parseStamped = (raw: string | null, cutoff: number) => {
+      if (!raw) return undefined;
+      const [countStr, tsStr] = raw.split(":");
+      const count = Number(countStr);
+      const at = Number(tsStr);
+      if (!Number.isFinite(count) || !Number.isFinite(at) || at < cutoff) return undefined;
+      return count;
+    };
 
     gatewayIds.forEach((gatewayId, idx) => {
-      const fields = Object.entries(published[idx] ?? {})
-        // This pod's in-memory count is always fresher than what it last published.
-        .filter(([fieldPodId]) => fieldPodId !== podId);
+      // Never sum the two views: the gateway's own count already includes the channels this pod
+      // opened, so adding the per-pod counters would double count platform traffic.
+      const reportedOccupancy = parseStamped(reported[idx], reportedCutoff);
+      let occupancy = reportedOccupancy;
 
-      let total = 0;
-      for (const [, raw] of fields) {
-        const [countStr, tsStr] = raw.split(":");
-        const count = Number(countStr);
-        const publishedAt = Number(tsStr);
-        if (Number.isFinite(count) && Number.isFinite(publishedAt) && publishedAt >= cutoff) {
-          total += count;
+      if (occupancy === undefined) {
+        const fields = Object.entries(published[idx] ?? {})
+          // This pod's in-memory count is always fresher than what it last published.
+          .filter(([fieldPodId]) => fieldPodId !== podId);
+
+        occupancy = 0;
+        for (const [, raw] of fields) {
+          occupancy += parseStamped(raw, publishedCutoff) ?? 0;
         }
+        occupancy += openChannels.get(gatewayId) ?? 0;
       }
-      total += openChannels.get(gatewayId) ?? 0;
-      total += Number(reservations[idx] ?? 0) || 0;
-      scores.set(gatewayId, total);
+
+      scores.set(gatewayId, {
+        score: occupancy + (Number(reservations[idx] ?? 0) || 0),
+        reported: reportedOccupancy !== undefined
+      });
     });
 
     return scores;
@@ -183,10 +252,12 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
     clearInterval(refreshTimer);
     if (debounceTimer) clearTimeout(debounceTimer);
     for (const timer of reservationTimers) clearTimeout(timer);
+    pendingReservations.clear();
     reservationTimers.clear();
   };
 
   tracker = {
+    recordReportedLoad,
     reserve,
     channelOpened,
     channelClosed,

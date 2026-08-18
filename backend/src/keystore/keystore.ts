@@ -83,6 +83,7 @@ export const KeyStorePrefixes = {
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
   GatewayLoad: (gatewayId: string) => `gateway-load:${gatewayId}` as const,
+  GatewayReportedLoad: (gatewayId: string) => `gateway-reported-load:${gatewayId}` as const,
   GatewayLoadReservation: (gatewayId: string) => `gateway-reservation:${gatewayId}` as const,
   GatewaySuspect: (gatewayId: string) => `gateway-suspect:${gatewayId}` as const,
   ActiveSSEConnectionsSet: (projectId: string, identityId: string) =>

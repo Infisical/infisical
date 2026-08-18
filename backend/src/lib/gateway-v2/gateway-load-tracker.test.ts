@@ -32,8 +32,8 @@ describe("gatewayLoadTracker", () => {
   test("scores an idle gateway at zero", async () => {
     const tracker = initGatewayLoadTracker(inMemoryKeyStore());
     const scores = await tracker.getScores([GW_A, GW_B]);
-    expect(scores.get(GW_A)).toBe(0);
-    expect(scores.get(GW_B)).toBe(0);
+    expect(scores.get(GW_A)?.score).toBe(0);
+    expect(scores.get(GW_B)?.score).toBe(0);
     tracker.shutdown();
   });
 
@@ -43,12 +43,12 @@ describe("gatewayLoadTracker", () => {
     tracker.channelOpened(GW_A);
     tracker.channelOpened(GW_A);
     tracker.channelOpened(GW_B);
-    expect((await tracker.getScores([GW_A, GW_B])).get(GW_A)).toBe(2);
-    expect((await tracker.getScores([GW_A, GW_B])).get(GW_B)).toBe(1);
+    expect((await tracker.getScores([GW_A, GW_B])).get(GW_A)?.score).toBe(2);
+    expect((await tracker.getScores([GW_A, GW_B])).get(GW_B)?.score).toBe(1);
 
     tracker.channelClosed(GW_A);
     tracker.channelClosed(GW_A);
-    expect((await tracker.getScores([GW_A])).get(GW_A)).toBe(0);
+    expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(0);
 
     tracker.shutdown();
   });
@@ -59,13 +59,31 @@ describe("gatewayLoadTracker", () => {
 
     await tracker.reserve(GW_A);
     // Without this the second concurrent selection would read zero and stampede the same gateway.
-    expect((await tracker.getScores([GW_A, GW_B])).get(GW_A)).toBe(1);
-    expect((await tracker.getScores([GW_A, GW_B])).get(GW_B)).toBe(0);
+    expect((await tracker.getScores([GW_A, GW_B])).get(GW_A)?.score).toBe(1);
+    expect((await tracker.getScores([GW_A, GW_B])).get(GW_B)?.score).toBe(0);
 
     tracker.shutdown();
   });
 
-  test("releases reservations so repeated selections do not accumulate into round-robin", async () => {
+  test("hands the reservation off to the channel instead of double counting", async () => {
+    const keyStore = inMemoryKeyStore();
+    const tracker = initGatewayLoadTracker(keyStore);
+
+    await tracker.reserve(GW_A);
+    expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(1);
+
+    // The channel now carries the load the reservation stood in for, so the score must stay at 1
+    // rather than counting both.
+    tracker.channelOpened(GW_A);
+    expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(1);
+
+    tracker.channelClosed(GW_A);
+    expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(0);
+
+    tracker.shutdown();
+  });
+
+  test("releases a reservation whose channel never opens", async () => {
     const keyStore = inMemoryKeyStore();
     const tracker = initGatewayLoadTracker(keyStore);
 
@@ -73,12 +91,12 @@ describe("gatewayLoadTracker", () => {
       // eslint-disable-next-line no-await-in-loop
       await tracker.reserve(GW_A);
     }
-    expect((await tracker.getScores([GW_A])).get(GW_A)).toBe(10);
+    expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(10);
 
-    // Left to expire on their own these would keep counting and turn the score into
-    // "selections in the last N seconds", which is request-count round-robin.
-    await vi.advanceTimersByTimeAsync(6_000);
-    expect((await tracker.getScores([GW_A])).get(GW_A)).toBe(0);
+    // Left to accumulate these would turn the score into "selections in the last N seconds", which
+    // is request-count round-robin rather than occupancy.
+    await vi.advanceTimersByTimeAsync(240_000);
+    expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(0);
 
     tracker.shutdown();
   });
@@ -90,7 +108,7 @@ describe("gatewayLoadTracker", () => {
     await keyStore.hashSet(KeyStorePrefixes.GatewayLoad(GW_A), "other-pod", `5:${Date.now()}`);
     tracker.channelOpened(GW_A);
 
-    expect((await tracker.getScores([GW_A])).get(GW_A)).toBe(6);
+    expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(6);
     tracker.shutdown();
   });
 
@@ -100,7 +118,7 @@ describe("gatewayLoadTracker", () => {
 
     await keyStore.hashSet(KeyStorePrefixes.GatewayLoad(GW_A), "dead-pod", `9:${Date.now() - 120_000}`);
 
-    expect((await tracker.getScores([GW_A])).get(GW_A)).toBe(0);
+    expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(0);
     tracker.shutdown();
   });
 
@@ -110,7 +128,7 @@ describe("gatewayLoadTracker", () => {
 
     await keyStore.hashSet(KeyStorePrefixes.GatewayLoad(GW_A), "bad-pod", "not-a-count");
 
-    expect((await tracker.getScores([GW_A])).get(GW_A)).toBe(0);
+    expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(0);
     tracker.shutdown();
   });
 
@@ -136,7 +154,74 @@ describe("gatewayLoadTracker", () => {
     tracker.channelOpened(GW_A);
     await flushPublishes();
 
-    expect((await tracker.getScores([GW_A])).get(GW_A)).toBe(1);
+    expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(1);
+    tracker.shutdown();
+  });
+
+  test("prefers the gateway's own count over the platform's partial view", async () => {
+    const tracker = initGatewayLoadTracker(inMemoryKeyStore());
+
+    // The platform only ever sees channels it opened itself. A PAM CLI session dials the relay
+    // directly, so without the gateway's own count this member would score 0 and look idle.
+    tracker.channelOpened(GW_A);
+    await tracker.recordReportedLoad(GW_A, 50);
+
+    expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(50);
+
+    tracker.shutdown();
+  });
+
+  test("does not sum its own view into the gateway's count", async () => {
+    const tracker = initGatewayLoadTracker(inMemoryKeyStore());
+
+    // The reported 3 already includes the 3 this pod opened; summing would say 6.
+    tracker.channelOpened(GW_A);
+    tracker.channelOpened(GW_A);
+    tracker.channelOpened(GW_A);
+    await tracker.recordReportedLoad(GW_A, 3);
+
+    expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(3);
+
+    tracker.shutdown();
+  });
+
+  test("still adds reservations on top of a reported count", async () => {
+    const tracker = initGatewayLoadTracker(inMemoryKeyStore());
+
+    // A reservation covers a channel the gateway has not seen yet, so it is additive.
+    await tracker.recordReportedLoad(GW_A, 4);
+    await tracker.reserve(GW_A);
+
+    expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(5);
+
+    tracker.shutdown();
+  });
+
+  test("falls back to the platform's view for a gateway too old to report, and flags the scale", async () => {
+    const tracker = initGatewayLoadTracker(inMemoryKeyStore());
+
+    tracker.channelOpened(GW_A);
+    tracker.channelOpened(GW_A);
+    await tracker.recordReportedLoad(GW_B, 7);
+
+    const scores = await tracker.getScores([GW_A, GW_B]);
+    expect(scores.get(GW_A)).toEqual({ score: 2, reported: false });
+    expect(scores.get(GW_B)).toEqual({ score: 7, reported: true });
+
+    tracker.shutdown();
+  });
+
+  test("falls back when a gateway stops reporting", async () => {
+    const tracker = initGatewayLoadTracker(inMemoryKeyStore());
+
+    await tracker.recordReportedLoad(GW_A, 40);
+    tracker.channelOpened(GW_A);
+    expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(40);
+
+    // Past the freshness window the stale 40 must not pin the member out of rotation forever.
+    await vi.advanceTimersByTimeAsync(40_000);
+    expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(1);
+
     tracker.shutdown();
   });
 

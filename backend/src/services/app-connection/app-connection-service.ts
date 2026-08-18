@@ -209,7 +209,7 @@ export type TAppConnectionServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
-    "pickHealthyGateway" | "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId" | "runWithPoolFailover"
+    "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId" | "runWithPoolFailover"
   >;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
@@ -614,7 +614,7 @@ export const appConnectionServiceFactory = ({
 
     // Validation only dials the target and reads back, so retrying it on another member is safe.
     let validationGatewayId: string | null | undefined = gatewayId;
-    let validatedCredentials;
+    let validatedCredentials: Awaited<ReturnType<typeof runValidation>>;
     if (gatewayPoolId) {
       const outcome = await gatewayPoolService.runWithPoolFailover({ poolId: gatewayPoolId }, runValidation);
       validatedCredentials = outcome.result;
