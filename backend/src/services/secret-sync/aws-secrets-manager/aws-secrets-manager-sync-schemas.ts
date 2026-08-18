@@ -66,7 +66,7 @@ const tagFieldCharacterValidator = characterValidator([
   CharacterType.At
 ]);
 
-const AwsSecretsManagerSyncOptionsSchema = z.object({
+export const AwsSecretsManagerSyncOptionsSchema = z.object({
   keyId: z
     .string()
     .min(1, "Invalid KMS Key ID")

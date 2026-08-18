@@ -52,7 +52,7 @@ const AwsParameterStoreSyncDestinationConfigSchema = z.object({
     .describe(SecretSyncs.DESTINATION_CONFIG.AWS_PARAMETER_STORE.path)
 });
 
-const AwsParameterStoreSyncOptionsSchema = z.object({
+export const AwsParameterStoreSyncOptionsSchema = z.object({
   keyId: z
     .string()
     .min(1, "Invalid KMS Key ID")

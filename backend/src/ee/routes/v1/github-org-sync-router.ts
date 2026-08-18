@@ -1,12 +1,13 @@
 import { z } from "zod";
 
 import { GithubOrgSyncConfigsSchema } from "@app/db/schemas";
-import { CharacterType, zodValidateCharacters } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+import { GithubOrgNameCreateSchema, GithubOrgNamePatchSchema } from "./github-org-sync-schema";
 
 const SanitizedGithubOrgSyncSchema = GithubOrgSyncConfigsSchema.pick({
   isActive: true,
@@ -17,7 +18,6 @@ const SanitizedGithubOrgSyncSchema = GithubOrgSyncConfigsSchema.pick({
   githubOrgName: true
 });
 
-const githubOrgNameValidator = zodValidateCharacters([CharacterType.AlphaNumeric, CharacterType.Hyphen]);
 export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
@@ -28,7 +28,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
-        githubOrgName: githubOrgNameValidator(z.string().trim(), "GitHub Org Name"),
+        githubOrgName: GithubOrgNameCreateSchema,
         githubOrgAccessToken: z.string().trim().max(1000).optional(),
         isActive: z.boolean().default(false)
       }),
@@ -69,11 +69,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     schema: {
       body: z
         .object({
-          githubOrgName: z
-            .string()
-            .trim()
-            .min(1, "GitHub Org Name is required")
-            .pipe(githubOrgNameValidator(z.string(), "GitHub Org Name")),
+          githubOrgName: GithubOrgNamePatchSchema,
           githubOrgAccessToken: z.string().trim().max(1000),
           isActive: z.boolean()
         })
