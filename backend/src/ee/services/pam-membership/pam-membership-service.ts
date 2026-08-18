@@ -2,7 +2,10 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, RESOURCE_SCOPE, ResourceType, TemporaryPermissionMode } from "@app/db/schemas";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionPamResourceActions,
@@ -12,6 +15,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { ms } from "@app/lib/ms";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "@app/services/approval-policy/approval-policy-enums";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { PamIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -24,6 +28,8 @@ import { PamMemberKind, PamProductRole, PamResourceRole } from "../pam/pam-enums
 import { getResourceIdsWithActions, TActorContext } from "../pam/pam-permission";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { terminatePamSessionsWithoutLaunchAccess, TPamSessionActor } from "../pam-session/pam-session-access-fns";
+import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import {
   TAddPamAccountMemberDTO,
   TAddPamFolderMemberDTO,
@@ -43,17 +49,28 @@ import {
 type TPamMembershipServiceFactoryDep = {
   membershipDAL: Pick<
     TMembershipDALFactory,
-    "create" | "find" | "findById" | "delete" | "deleteById" | "findResourceMembershipsForActor" | "transaction"
+    | "create"
+    | "find"
+    | "findById"
+    | "delete"
+    | "deleteById"
+    | "findResourceMembershipsForActor"
+    | "findResourceMembershipsForActors"
+    | "transaction"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteStepApproversBySubject">;
   projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById">;
-  pamAccountDAL: Pick<TPamAccountDALFactory, "findById">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findById" | "find">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   groupDAL: Pick<TGroupDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById" | "find">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
 };
 
@@ -89,10 +106,14 @@ export const pamMembershipServiceFactory = ({
   projectAccessRequestDAL,
   pamFolderDAL,
   pamAccountDAL,
+  pamSessionDAL,
   userDAL,
   groupDAL,
+  userGroupMembershipDAL,
+  identityGroupMembershipDAL,
   identityDAL,
   permissionService,
+  gatewayV2Service,
   usageMeteringService
 }: TPamMembershipServiceFactoryDep) => {
   // Shared helpers
@@ -249,6 +270,47 @@ export const pamMembershipServiceFactory = ({
         };
       })
     );
+  };
+
+  // Removing or demoting a membership does nothing on its own to the sessions the member is already
+  // running, so every path that narrows someone's access closes the sessions that access was holding open.
+  // Call this last inside the membership transaction, so the re-check sees the write; it returns the
+  // tunnel-cancellation callback for the caller to fire after COMMIT.
+  const closeSessionsLosingAccess = async (
+    projectId: string,
+    subject: { userId?: string; groupId?: string; identityId?: string } & TActorContext,
+    tx: Knex
+  ): Promise<() => void> => {
+    const actors: TPamSessionActor[] = [];
+    if (subject.userId) {
+      actors.push({ type: ActorType.USER, id: subject.userId });
+    } else if (subject.identityId) {
+      // Machine identities can launch CLI sessions, so an identity membership has sessions to close too.
+      actors.push({ type: ActorType.IDENTITY, id: subject.identityId });
+    } else if (subject.groupId) {
+      // The group held the membership, so its members are the ones losing access through it — and a group
+      // carries both user and machine-identity members, each inheriting its resource access.
+      const userMembers = await userGroupMembershipDAL.find({ groupId: subject.groupId }, { tx });
+      const identityMembers = await identityGroupMembershipDAL.find({ groupId: subject.groupId }, { tx });
+      actors.push(
+        ...userMembers.map((member) => ({ type: ActorType.USER as const, id: member.userId })),
+        ...identityMembers.map((member) => ({ type: ActorType.IDENTITY as const, id: member.identityId }))
+      );
+    }
+    if (actors.length === 0) return () => {};
+
+    return terminatePamSessionsWithoutLaunchAccess({
+      projectId,
+      actors,
+      actorId: subject.actorId,
+      membershipDAL,
+      membershipRoleDAL,
+      pamAccountDAL,
+      pamSessionDAL,
+      userDAL,
+      gatewayV2Service,
+      tx
+    });
   };
 
   const upsertRole = async (membershipId: string, role: string, tx: Knex) => {
@@ -426,6 +488,13 @@ export const pamMembershipServiceFactory = ({
       return true;
     });
 
+    if (unresolved.length) {
+      const rejected = unresolved.map((el) => `'${el}'`).join(", ");
+      throw new BadRequestError({
+        message: `Cannot add ${rejected} to Privileged Access Manager because they are not an active member of this organization. Invite them to the organization first.`
+      });
+    }
+
     const memberships = await membershipDAL.transaction(async (tx) => {
       const results: { membershipId: string; userId: string; role: string; createdAt: Date }[] = [];
       for (const { userId } of toCreate) {
@@ -459,7 +528,7 @@ export const pamMembershipServiceFactory = ({
       usageMeteringService.emitForProject(projectId, PamIdentities.key);
     }
 
-    return { memberships, skipped, unresolved };
+    return { memberships, skipped };
   };
 
   const assertNotLastAdmin = async (projectId: string, membershipId: string, tx?: Knex) => {
@@ -550,6 +619,8 @@ export const pamMembershipServiceFactory = ({
       }
     }
 
+    let sendSessionCancellations: () => void = () => {};
+
     const result = await membershipDAL.transaction(async (tx) => {
       const [membership] = await membershipDAL.find(
         { scope: AccessScope.Project, scopeProjectId: projectId, [column]: id },
@@ -594,6 +665,9 @@ export const pamMembershipServiceFactory = ({
 
       await membershipDAL.deleteById(membership.id, tx);
 
+      // Leaving the product cascaded every folder and account membership above, so all launch access is gone.
+      sendSessionCancellations = await closeSessionsLosingAccess(projectId, dto, tx);
+
       return {
         membershipId: membership.id,
         userId: kind === PamMemberKind.User ? id : undefined,
@@ -601,6 +675,8 @@ export const pamMembershipServiceFactory = ({
         identityId: kind === PamMemberKind.Identity ? id : undefined
       };
     });
+
+    sendSessionCancellations();
 
     usageMeteringService.emitForProject(projectId, PamIdentities.key);
     return result;
@@ -722,7 +798,9 @@ export const pamMembershipServiceFactory = ({
 
     const { column, id, kind } = resolveActorColumn(dto);
 
-    return membershipDAL.transaction(async (tx) => {
+    let sendSessionCancellations: () => void = () => {};
+
+    const result = await membershipDAL.transaction(async (tx) => {
       const [membership] = await membershipDAL.find(
         { ...resourceScope(projectId, resourceType, resourceId), [column]: id },
         { tx }
@@ -735,6 +813,9 @@ export const pamMembershipServiceFactory = ({
 
       await upsertRole(membership.id, role, tx);
 
+      // A demotion (Connector to Auditor, say) drops LaunchSessions without removing the membership.
+      sendSessionCancellations = await closeSessionsLosingAccess(projectId, dto, tx);
+
       return {
         membershipId: membership.id,
         [resourceKey]: resourceId,
@@ -744,6 +825,10 @@ export const pamMembershipServiceFactory = ({
         role
       };
     });
+
+    sendSessionCancellations();
+
+    return result;
   };
 
   const removeResourceMember = async (
@@ -773,10 +858,16 @@ export const pamMembershipServiceFactory = ({
       });
     }
 
+    let sendSessionCancellations: () => void = () => {};
+
     await membershipDAL.transaction(async (tx) => {
       await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
       await membershipDAL.deleteById(membership.id, tx);
+
+      sendSessionCancellations = await closeSessionsLosingAccess(projectId, dto, tx);
     });
+
+    sendSessionCancellations();
 
     return {
       membershipId: membership.id,
@@ -850,6 +941,8 @@ export const pamMembershipServiceFactory = ({
       });
     }
 
+    let sendSessionCancellations: () => void = () => {};
+
     await membershipDAL.transaction(async (tx) => {
       await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
       await membershipDAL.deleteById(membership.id, tx);
@@ -866,7 +959,12 @@ export const pamMembershipServiceFactory = ({
           tx
         );
       }
+
+      // Folder access reaches every account in the folder, so this can strip launch access on any of them.
+      sendSessionCancellations = await closeSessionsLosingAccess(projectId, dto, tx);
     });
+
+    sendSessionCancellations();
 
     return {
       membershipId: membership.id,

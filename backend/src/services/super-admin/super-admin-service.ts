@@ -555,6 +555,7 @@ export const superAdminServiceFactory = ({
 
     const organization = await orgService.createOrganization({
       userId: userInfo.user.id,
+      userEmail: userInfo.user.email,
       orgName: initialOrganizationName
     });
 
@@ -619,6 +620,7 @@ export const superAdminServiceFactory = ({
 
     const organization = await orgService.createOrganization({
       userId: userInfo.user.id,
+      userEmail: userInfo.user.email,
       orgName: initialOrganizationName
     });
 
@@ -884,7 +886,13 @@ export const superAdminServiceFactory = ({
     }
 
     const { organization, users: usersToEmail } = await orgDAL.transaction(async (tx) => {
-      const org = await orgService.createOrganization({ orgName: name }, tx);
+      const org = await orgService.createOrganization(
+        {
+          orgName: name,
+          userEmail: serverAdmin?.email ?? serverAdmin?.username // identities can be server admins so we can't require this
+        },
+        tx
+      );
 
       const users: Pick<TUsers, "id" | "firstName" | "lastName" | "email" | "username" | "isAccepted">[] = [];
 

@@ -71,6 +71,7 @@ const ApplicationSelectInner = ({
         <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
           <Command shouldFilter={false}>
             <CommandInput
+              aria-label="Search applications"
               placeholder="Search applications..."
               value={search}
               onValueChange={setSearch}
