@@ -428,9 +428,14 @@ Draining is at-least-once: a shard is trimmed (`XTRIM MINID`) only after the Pos
 - **Count**, on the write path — `MAXLEN ~` 100k entries per shard.
 - **Age**, at the top of every cron run — each shard is trimmed to a 30-minute retention window before it is read. This trim sits *outside* the drain's error scope deliberately: a publish path that throws on every tick still has to age entries out, or the shard parks at its `MAXLEN` cap with nothing bounding how long buffered analytics sits in Redis. It is why a broken drain costs 30 minutes of product analytics instead of unbounded Redis memory.
 
-Shards are reached only by iterating `POSTHOG_AGGREGATED_EVENTS` × the 30 buckets, so a shard stops being trimmed the moment it leaves that product: removing an event type from the list, lowering the bucket count, or rolling back past this layout all orphan live shards. **The cron therefore refreshes a 1-hour `EXPIRE` on every shard it visits**, which is what reaps those orphans. Two properties make that safe to rely on:
+Shards are reached only by iterating `POSTHOG_AGGREGATED_EVENTS` × the 30 buckets, so a shard stops being trimmed the moment it leaves that product: removing an event type from the list, lowering the bucket count, or rolling back past this layout all orphan live shards. **Every shard therefore carries a 1-hour `EXPIRE`**, which is what reaps those orphans. It is set two ways, and both are needed:
 
-- **The TTL must stay above the retention window.** `XADD` neither clears nor refreshes a key's TTL, so on a shard that is still being written the expiry is a second, coarser deadline racing the age trim. At 1 hour against 30 minutes the age trim always wins, and the TTL only ever fires on a shard the cron no longer visits. Shortening it toward the retention window, or lengthening the cron's 10-minute interval past it, would start deleting shards out from under live writers.
+- **On the write path**, in the same `MULTI` as the `XADD`, so a shard has an age bound from the moment it is created. Relying on the cron alone leaves a window where a freshly created shard has no TTL at all — and an instance whose cron never runs (a rollback, an event type dropped from the list, telemetry disabled on the reader side) would keep that shard forever.
+- **On every cron run**, refreshed on each shard it visits, so a shard the drain is still working keeps its deadline pushed out.
+
+Two properties make the TTL safe to rely on:
+
+- **It must stay above the retention window.** On a shard that is still being written the expiry is a second, coarser deadline racing the age trim. At 1 hour against 30 minutes the age trim always wins, and the TTL only ever fires on a shard that has gone quiet and that the cron no longer visits. Shortening it toward the retention window, or lengthening the cron's 10-minute interval past it, would start deleting shards out from under live writers.
 - **It reaps, it does not migrate.** An orphaned shard's buffered entries are dropped, not drained. To hand an event type off cleanly, leave it in `POSTHOG_AGGREGATED_EVENTS` for one release so the cron empties it first.
 
 Nothing reads the pre-stream `telemetry-event-*` keys, so a deploy that changes this layout drops whatever is still buffered. That is acceptable for product analytics, and it is the reason there is no migration path to maintain.

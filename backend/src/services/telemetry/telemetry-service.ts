@@ -335,7 +335,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
             ...(resolvedOrgName ? { organizationName: resolvedOrgName } : {})
           })
         },
-        TELEMETRY_EVENT_STREAM_MAX_ENTRIES
+        TELEMETRY_EVENT_STREAM_MAX_ENTRIES,
+        TELEMETRY_EVENT_STREAM_KEY_TTL_SECONDS
       );
     } else {
       // Skip groupIdentify entirely when the event is marked anonymous.

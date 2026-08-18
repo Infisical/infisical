@@ -278,7 +278,13 @@ export type TKeyStoreFactory = {
   listRemove: (key: string, count: number, value: string) => Promise<number>;
   listLength: (key: string) => Promise<number>;
   // stream operations
-  streamAdd: (key: string, id: string, fieldValue: Record<string, string>, maxLen?: number) => Promise<string | null>;
+  streamAdd: (
+    key: string,
+    id: string,
+    fieldValue: Record<string, string>,
+    maxLen?: number,
+    expiryInSeconds?: number
+  ) => Promise<string | null>;
   streamRange: (key: string, start: string, end: string, count?: number) => Promise<[string, string[]][]>;
   streamTrim: (key: string, minId: string, inclusive?: boolean) => Promise<number>;
   streamCollect: (
@@ -526,12 +532,31 @@ export const keyStoreFactory = (
   const listLength = async (key: string) => pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).llen(key);
 
   // Stream operations
-  const streamAdd = async (key: string, id: string, fieldValue: Record<string, string>, maxLen = 1_000_000) => {
+  const streamAdd = async (
+    key: string,
+    id: string,
+    fieldValue: Record<string, string>,
+    maxLen = 1_000_000,
+    expiryInSeconds?: number
+  ) => {
     const args: string[] = [];
     for (const [field, value] of Object.entries(fieldValue)) {
       args.push(field, value);
     }
-    return primaryRedis.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
+
+    if (!expiryInSeconds) {
+      return primaryRedis.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
+    }
+
+    const results = await primaryRedis
+      .multi()
+      .xadd(key, "MAXLEN", "~", maxLen, id, ...args)
+      .expire(key, expiryInSeconds)
+      .exec();
+
+    const [addError, entryId] = results?.[0] ?? [null, null];
+    if (addError) throw addError;
+    return (entryId as string | null) ?? null;
   };
 
   const streamRange = async (key: string, start: string, end: string, count?: number) => {

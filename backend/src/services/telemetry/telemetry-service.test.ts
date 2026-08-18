@@ -72,7 +72,13 @@ const createHarness = () => {
     setItemWithExpiryNX: vi.fn<() => Promise<"OK" | null>>(async () => null),
     setExpiry: vi.fn<(key: string, expiryInSeconds: number) => Promise<number>>(async () => 1),
     streamAdd: vi.fn<
-      (key: string, id: string, fieldValue: Record<string, string>, maxLen?: number) => Promise<string | null>
+      (
+        key: string,
+        id: string,
+        fieldValue: Record<string, string>,
+        maxLen?: number,
+        expiryInSeconds?: number
+      ) => Promise<string | null>
     >(async () => "1-0"),
     streamCollect: vi.fn<(key: string) => Promise<{ entries: [string, string[]][]; lastId: string | null }>>(
       async () => ({ entries: [], lastId: null })
@@ -101,12 +107,15 @@ describe("telemetry aggregated event storage", () => {
     await telemetryService.sendPostHogEvents(pulledEvent() as never);
 
     expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
-    const [key, id, fields, maxLen] = keyStore.streamAdd.mock.calls[0];
+    const [key, id, fields, maxLen, expiryInSeconds] = keyStore.streamAdd.mock.calls[0];
     expect(key).toBe(
       `telemetry-agg-stream:${PostHogEventTypes.SecretPulled}:${telemetryService.getBucketForDistinctId("user-1")}`
     );
     expect(id).toBe("*");
     expect(maxLen).toBeGreaterThan(0);
+    // The shard has to carry an age bound from its very first append: nothing else gives it one
+    // until the aggregation cron next visits the key, and that visit may never come.
+    expect(expiryInSeconds).toBe(KEY_TTL_SECONDS);
     expect(JSON.parse(fields.data)).toMatchObject({
       distinctId: "user-1",
       event: PostHogEventTypes.SecretPulled,
