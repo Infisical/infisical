@@ -238,3 +238,42 @@ describe("Folder-scoped privilege permissions", () => {
     await testRedis.del(folderDataKey, folderMarkerKey);
   });
 });
+
+describe("Folder deletion reaps folder-scoped privileges", () => {
+  test("removes the additional_privilege row when the folder itself is deleted", async () => {
+    const folder = await createFolder({ path: "/", name: "rbac-del-leaf" });
+
+    await testDb(TableName.AdditionalPrivilege).insert({
+      name: "e2e-folder-rbac-leaf",
+      actorUserId: userId,
+      projectId,
+      folderId: folder.id,
+      role: SecretFolderRole.Read,
+      permissions: null,
+      isTemporary: false
+    });
+
+    await deleteFolder({ path: "/", id: folder.id });
+
+    expect(await testDb(TableName.AdditionalPrivilege).where({ folderId: folder.id })).toEqual([]);
+  });
+
+  test("removes the additional_privilege row for a child folder when the parent folder is deleted", async () => {
+    const parent = await createFolder({ path: "/", name: "rbac-del-parent" });
+    const child = await createFolder({ path: "/rbac-del-parent", name: "rbac-del-child" });
+
+    await testDb(TableName.AdditionalPrivilege).insert({
+      name: "e2e-folder-rbac-child",
+      actorUserId: userId,
+      projectId,
+      folderId: child.id,
+      role: SecretFolderRole.Read,
+      permissions: null,
+      isTemporary: false
+    });
+
+    await deleteFolder({ path: "/", id: parent.id, forceDelete: true });
+
+    expect(await testDb(TableName.AdditionalPrivilege).where({ folderId: child.id })).toEqual([]);
+  });
+});

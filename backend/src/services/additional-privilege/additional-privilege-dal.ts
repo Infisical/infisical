@@ -115,11 +115,20 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
     }
   };
 
+  const deleteByFolderIds = async (folderIds: string[], tx: Knex) => {
+    if (!folderIds.length) return;
+    for (const chunk of chunkArray(folderIds, 500)) {
+      // eslint-disable-next-line no-await-in-loop
+      await tx(TableName.AdditionalPrivilege).whereIn("folderId", chunk).del();
+    }
+  };
+
   return {
     ...orm,
     findWithAccessApprovalStatus,
     isLinkedToAccessApproval,
     findFolderScopedPrivileges,
-    remapFolderIds
+    remapFolderIds,
+    deleteByFolderIds
   };
 };

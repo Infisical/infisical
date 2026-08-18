@@ -71,7 +71,7 @@ import { TSecretFolderVersionDALFactory } from "./secret-folder-version-dal";
 
 type TSecretFolderServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
-  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "remapFolderIds">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "remapFolderIds" | "deleteByFolderIds">;
   folderDAL: TSecretFolderDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs" | "find">;
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestFolderVersions" | "create" | "insertMany" | "find">;
@@ -146,6 +146,12 @@ export const secretFolderServiceFactory = ({
   reminderService,
   keyStore
 }: TSecretFolderServiceFactoryDep) => {
+  const deleteFolderScopedPrivileges = async (folderIds: string[], tx: Knex) => {
+    if (!folderIds.length) return;
+    const subtree = await folderDAL.findByEnvsDeep({ parentIds: folderIds }, tx);
+    await additionalPrivilegeDAL.deleteByFolderIds([...new Set(subtree.map((folder) => folder.id))], tx);
+  };
+
   const createFolder = async ({
     projectId,
     actor,
@@ -788,6 +794,8 @@ export const secretFolderServiceFactory = ({
         const subfolder = await folderDAL.findOne({ parentId: folderToDelete.id }).catch(() => null);
         if (subfolder) throw error;
       }
+
+      await deleteFolderScopedPrivileges([folderToDelete.id], tx);
 
       const [doc] = await folderDAL.delete(
         {
@@ -1439,6 +1447,8 @@ export const secretFolderServiceFactory = ({
               message: `Folder with ID/name '${idOrName}' not found`
             });
           }
+
+          await deleteFolderScopedPrivileges([folderToDelete.id], tx);
 
           const [doc] = await folderDAL.delete(
             {
