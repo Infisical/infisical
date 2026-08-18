@@ -10,7 +10,8 @@ import { LogsSection } from "@app/pages/organization/AuditLogsPage/components/Lo
 const PKI_SYNC_EVENTS = [
   EventType.PKI_SYNC_SYNC_CERTIFICATES,
   EventType.PKI_SYNC_IMPORT_CERTIFICATES,
-  EventType.PKI_SYNC_REMOVE_CERTIFICATES
+  EventType.PKI_SYNC_REMOVE_CERTIFICATES,
+  EventType.PKI_SYNC_PREFLIGHT_CHECK
 ];
 
 type Props = {

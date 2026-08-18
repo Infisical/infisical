@@ -41,8 +41,6 @@ describe("buildPostSyncCommandPlan", () => {
     { paths: ["/etc/ssl/certs/b.pem"], commonName: "b.example.com" }
   ];
 
-  // A certificate can write some of its files and then fail. Those files are on the host, so the
-  // command is told about them even though their certificate is reported failed.
   test("lists every file actually written, including one whose certificate later failed", () => {
     const plan = buildPostSyncCommandPlan({
       ...baseArgs,
@@ -339,16 +337,15 @@ describe("buildPostSyncCommandFailureMessage", () => {
     expect(message).toBe("Post-sync command failed (exit 42)");
   });
 
-  test("falls back to the error when the command never ran, so there is no exit code", () => {
+  test("does not blame the command, or leak the transport error, when it never ran", () => {
     const message = buildPostSyncCommandFailureMessage({
       status: PkiSyncStatus.Failed,
       durationMs: 10,
       error: "Running a command on the host requires the SSH connection to use a gateway."
     });
 
-    expect(message).toBe(
-      "Post-sync command failed: Running a command on the host requires the SSH connection to use a gateway."
-    );
+    expect(message).toBe("Post-sync command could not run: the destination host could not be reached");
+    expect(message).not.toContain("SSH connection");
   });
 
   test("truncates a long detail so it fits the sync message column", () => {

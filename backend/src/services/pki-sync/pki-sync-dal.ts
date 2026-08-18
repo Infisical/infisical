@@ -338,8 +338,7 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
         .where((builder) => {
           // eslint-disable-next-line @typescript-eslint/no-misused-promises
           void builder
-            .whereNot("syncStatus", PkiSyncStatus.Failed)
-            .orWhereNull("lastSyncMessage")
+            .whereNull("lastSyncMessage")
             .orWhereRaw(`left("lastSyncMessage", ?) = ?`, [failurePrefix.length, failurePrefix]);
         })
         .update({ syncStatus: PkiSyncStatus.Failed, lastSyncMessage: message });

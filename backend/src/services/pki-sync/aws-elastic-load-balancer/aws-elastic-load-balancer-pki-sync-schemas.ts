@@ -27,6 +27,7 @@ const AwsElasticLoadBalancerPkiSyncOptionsSchema = z.object({
   preserveArn: z.boolean().default(true),
   includeRootCa: z.boolean().default(false),
   certificateNameSchema: z.string().optional(),
+  preflightCommand: HostCommandSchema,
   postSyncCommand: HostCommandSchema
 });
 

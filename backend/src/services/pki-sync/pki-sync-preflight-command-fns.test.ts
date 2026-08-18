@@ -3,8 +3,8 @@ import { describe, expect, test, vi } from "vitest";
 import { PkiSyncStatus } from "./pki-sync-enums";
 import { PemCertificateExtension, PkiSyncExportFormat } from "./pki-sync-export-fns";
 import {
-  hostCommandFailurePrefix,
   HostCommandKind,
+  hostCommandMessageSubject,
   renderHostCommandContext,
   toPosixShellLiteral,
   toPowerShellLiteral
@@ -20,7 +20,7 @@ import {
   normalizeNewPreflightCommand,
   PREFLIGHT_COMMAND_TIMEOUT_MS,
   runPreflightCommand,
-  SCHEDULED_PREFLIGHT_FAILURE_PREFIX
+  SCHEDULED_PREFLIGHT_MESSAGE_SUBJECT
 } from "./pki-sync-preflight-command-fns";
 import { TCertificateMap } from "./pki-sync-types";
 
@@ -146,7 +146,6 @@ describe("buildPreflightCommandPlan", () => {
   test("allows run-wide variables for any number of certificates", () => {
     const plan = planFor("echo {{certificateFiles}} in {{certificateDirectory}}", twoCertificates);
 
-    // Only the first has a chain, so the file list is per-certificate rather than a fixed shape.
     expect(plan?.context.certificateFiles).toEqual([
       "/etc/ssl/certs/app.example.com.pem",
       "/etc/ssl/certs/app.example.com.chain.pem",
@@ -274,19 +273,19 @@ describe("the scheduled check owns a prefix distinct from a sync run's", () => {
 
   test("a run's blocked preflight does not match the scheduled prefix, so a later check cannot clear it", () => {
     const fromRun = buildPreflightCommandFailureMessage(failure);
-    expect(fromRun.startsWith(SCHEDULED_PREFLIGHT_FAILURE_PREFIX)).toBe(false);
+    expect(fromRun.startsWith(SCHEDULED_PREFLIGHT_MESSAGE_SUBJECT)).toBe(false);
   });
 
   test("the scheduled check's own message matches, so it can take over and clear it", () => {
     const fromSchedule = buildScheduledPreflightFailureMessage(failure);
-    expect(fromSchedule.startsWith(SCHEDULED_PREFLIGHT_FAILURE_PREFIX)).toBe(true);
+    expect(fromSchedule.startsWith(SCHEDULED_PREFLIGHT_MESSAGE_SUBJECT)).toBe(true);
     expect(fromSchedule).toContain("nginx is down");
   });
 });
 
 describe("preflight failure messages carry the prefix the DAL matches on", () => {
   test("every failure shape starts with the prefix, so a check can take over and clear its own status", () => {
-    const prefix = hostCommandFailurePrefix(HostCommandKind.Preflight);
+    const prefix = hostCommandMessageSubject(HostCommandKind.Preflight);
     const shapes = [
       { status: PkiSyncStatus.Failed as const, exitCode: 3, durationMs: 12, failureDetail: "nginx is down" },
       { status: PkiSyncStatus.Failed as const, exitCode: 1, durationMs: 5 },
@@ -321,14 +320,14 @@ describe("buildPreflightCommandFailureMessage", () => {
     ).toBe("Preflight check failed (exit 1)");
   });
 
-  test("omits the exit code when the command never ran", () => {
+  test("says the check could not run, rather than blaming it, when the host was unreachable", () => {
     expect(
       buildPreflightCommandFailureMessage({
         status: PkiSyncStatus.Failed,
         durationMs: 10_001,
         error: "command timed out after 10s"
       })
-    ).toBe("Preflight check failed: command timed out after 10s");
+    ).toBe("Preflight check could not run: the destination host could not be reached");
   });
 });
 

@@ -102,10 +102,10 @@ export const runPreflightCommand = (args: {
 export const buildPreflightCommandFailureMessage = (result: TPreflightCommandResult): string =>
   buildHostCommandFailureMessage(HostCommandKind.Preflight, result);
 
-export const SCHEDULED_PREFLIGHT_FAILURE_PREFIX = "Scheduled preflight check failed";
+export const SCHEDULED_PREFLIGHT_MESSAGE_SUBJECT = "Scheduled preflight check";
 
 export const buildScheduledPreflightFailureMessage = (result: TPreflightCommandResult): string =>
-  buildHostCommandFailureMessage(HostCommandKind.Preflight, result, SCHEDULED_PREFLIGHT_FAILURE_PREFIX);
+  buildHostCommandFailureMessage(HostCommandKind.Preflight, result, SCHEDULED_PREFLIGHT_MESSAGE_SUBJECT);
 
 export const didPreflightCheckFail = (result: TPreflightCommandResult | undefined): boolean =>
   result?.status === PkiSyncStatus.Failed;

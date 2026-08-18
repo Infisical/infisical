@@ -559,6 +559,9 @@ export const pkiSyncServiceFactory = ({
       effectiveConnection = await appConnectionService.connectAppConnectionById(destinationApp, connectionId, actor);
     }
 
+    const isDestinationConfigChanging =
+      Boolean(destinationConfig) && JSON.stringify(destinationConfig) !== JSON.stringify(pkiSync.destinationConfig);
+
     const storedSyncOptions = pkiSync.syncOptions as Record<string, unknown> | undefined;
     let resolvedSyncOptions = syncOptions;
     if (syncOptions) {
@@ -591,7 +594,7 @@ export const pkiSyncServiceFactory = ({
       pkiSync,
       subscriberName: currentSubscriber?.name,
       actor,
-      isExecutionTargetChanging: Boolean(effectiveConnection),
+      isExecutionTargetChanging: Boolean(effectiveConnection) || isDestinationConfigChanging,
       resolveConnection: async () =>
         effectiveConnection ??
         appConnectionService.connectAppConnectionById(

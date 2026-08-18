@@ -253,19 +253,19 @@ export const runHostCommand = async (args: {
   }
 };
 
-export const hostCommandFailurePrefix = (kind: HostCommandKind): string => `${sentenceCase(kind)} failed`;
+export const hostCommandMessageSubject = (kind: HostCommandKind): string => sentenceCase(kind);
 
 export const buildHostCommandFailureMessage = (
   kind: HostCommandKind,
   result: THostCommandResult,
-  failurePrefix: string = hostCommandFailurePrefix(kind)
+  subject: string = hostCommandMessageSubject(kind)
 ): string => {
   const detail = result.failureDetail ?? firstNonEmptyLine(result.output);
+
   if (result.exitCode === undefined) {
-    const reason = detail ?? result.error;
-    return reason ? `${failurePrefix}: ${truncate(reason, MAX_FAILURE_DETAIL_CHARS)}` : failurePrefix;
+    return `${subject} could not run: the destination host could not be reached`;
   }
 
-  const prefix = `${failurePrefix} (exit ${result.exitCode})`;
+  const prefix = `${subject} failed (exit ${result.exitCode})`;
   return detail ? `${prefix}: ${truncate(detail, MAX_FAILURE_DETAIL_CHARS)}` : prefix;
 };

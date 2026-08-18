@@ -28,7 +28,7 @@ import {
   buildScheduledPreflightFailureMessage,
   didPreflightCheckFail,
   getPreflightCommand,
-  SCHEDULED_PREFLIGHT_FAILURE_PREFIX,
+  SCHEDULED_PREFLIGHT_MESSAGE_SUBJECT,
   TPreflightCommandResult
 } from "./pki-sync-preflight-command-fns";
 import { TCertificateMap, TPkiSyncRaw } from "./pki-sync-types";
@@ -126,7 +126,7 @@ export const pkiSyncPreflightQueueFactory = ({
 
   const $recordCheckResult = async (pkiSync: TPkiSyncRaw, result: TPreflightCommandResult, isFinalAttempt: boolean) => {
     if (!didPreflightCheckFail(result)) {
-      const cleared = await pkiSyncDAL.clearReportedPreflightFailure(pkiSync.id, SCHEDULED_PREFLIGHT_FAILURE_PREFIX);
+      const cleared = await pkiSyncDAL.clearReportedPreflightFailure(pkiSync.id, SCHEDULED_PREFLIGHT_MESSAGE_SUBJECT);
       if (cleared) {
         logger.info(
           `cron[${CronJobName.PkiSyncPreflightCheck}]: host recovered, cleared the reported failure [syncId=${pkiSync.id}]`
@@ -146,7 +146,7 @@ export const pkiSyncPreflightQueueFactory = ({
     const reported = await pkiSyncDAL.reportPreflightFailure(
       pkiSync.id,
       truncateSyncMessage(buildScheduledPreflightFailureMessage(result)),
-      SCHEDULED_PREFLIGHT_FAILURE_PREFIX
+      SCHEDULED_PREFLIGHT_MESSAGE_SUBJECT
     );
     if (!reported) {
       logger.info(
@@ -187,10 +187,7 @@ export const pkiSyncPreflightQueueFactory = ({
       )
       .catch(() => null);
     if (!connectionLock) {
-      logger.info(
-        `cron[${CronJobName.PkiSyncPreflightCheck}]: connection still busy after waiting, deferring to the next run [syncId=${syncId}] [connectionId=${pkiSync.connectionId}]`
-      );
-      return;
+      throw new Error(`Another check is already running on connection ${pkiSync.connectionId}`);
     }
 
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | null = null;
@@ -204,10 +201,7 @@ export const pkiSyncPreflightQueueFactory = ({
           CONNECTION_SLOT_TTL_S
         )) !== -1;
       if (!admittedSlot) {
-        logger.info(
-          `cron[${CronJobName.PkiSyncPreflightCheck}]: connection is at its concurrency limit, skipping [syncId=${syncId}]`
-        );
-        return;
+        throw new Error(`Connection ${pkiSync.connectionId} is at its concurrency limit`);
       }
 
       lock = await keyStore

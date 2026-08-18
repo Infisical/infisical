@@ -14,6 +14,7 @@ export const NutanixPrismCentralPkiSyncConfigSchema = z.object({
 export const NutanixPrismCentralPkiSyncOptionsSchema = z.object({
   canImportCertificates: z.literal(false).default(false),
   canRemoveCertificates: z.literal(false).default(false),
+  preflightCommand: HostCommandSchema,
   postSyncCommand: HostCommandSchema
 });
 
