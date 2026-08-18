@@ -71,6 +71,7 @@ export type TRevokeUaClientSecretDTO = {
 
 export type TClearUaLockoutsDTO = {
   identityId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetUniversalAuthClientSecretByIdDTO = {

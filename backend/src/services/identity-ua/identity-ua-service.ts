@@ -1251,7 +1251,8 @@ export const identityUaServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
-    actorAuthMethod
+    actorAuthMethod,
+    isActorSuperAdmin
   }: TClearUaLockoutsDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -1296,6 +1297,9 @@ export const identityUaServiceFactory = ({
       });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const deleted = await keyStore.deleteItems({
       pattern: KeyStorePrefixes.IdentityLockoutStateByMethodPattern(identityId, IdentityAuthMethod.UNIVERSAL_AUTH)
     });
