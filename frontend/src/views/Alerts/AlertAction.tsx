@@ -9,6 +9,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -17,7 +18,6 @@ import {
   Badge,
   Button,
   Field,
-  FieldLabel,
   Input,
   Label,
   Popover,
@@ -249,12 +249,10 @@ export const AlertAction = ({
               </AlertDialogHeader>
               <AlertDialogConfirmationField>
                 <Field>
-                  <FieldLabel htmlFor="delete-alert-confirmation" size="sm">
-                    <span>
-                      Type &quot;<span className="text-foreground">{existingAlert.name}</span>
-                      &quot; to confirm.
-                    </span>
-                  </FieldLabel>
+                  <AlertDialogConfirmationLabel
+                    htmlFor="delete-alert-confirmation"
+                    confirmationValue={existingAlert.name}
+                  />
                   <Input
                     id="delete-alert-confirmation"
                     value={deleteConfirmation}

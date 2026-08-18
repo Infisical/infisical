@@ -123,7 +123,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       if (req.body.grantPamAccess) {
         try {
           const pamProjectId = await server.services.pamProjectResolver.resolve(req.permission.orgId);
-          const { memberships, unresolved } = await server.services.pamMembership.addProductUserMembers({
+          const { memberships } = await server.services.pamMembership.addProductUserMembers({
             projectId: pamProjectId,
             actorId: req.permission.id,
             actor: req.permission.type,
@@ -133,15 +133,6 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
             emails: req.body.inviteeEmails,
             role: PamProductRole.Member
           });
-
-          // The org invite above creates user records for every email, so leftovers mean
-          // some invitees silently missed the grant (the service skips them without throwing).
-          if (unresolved.length) {
-            logger.error(
-              `Failed to resolve invitees for PAM access [unresolvedCount=${unresolved.length}] [orgId=${req.permission.orgId}]`
-            );
-            pamAccessFailed = true;
-          }
 
           for await (const membership of memberships) {
             await server.services.auditLog.createAuditLog({

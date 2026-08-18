@@ -8,6 +8,7 @@ import { TCertificateBodyDALFactory } from "@app/services/certificate/certificat
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
 import { TPkiCertificateInstallationCertDALFactory } from "./pki-certificate-installation-cert-dal";
 import { TPkiCertificateInstallationDALFactory } from "./pki-certificate-installation-dal";
@@ -32,6 +33,7 @@ type TPkiDiscoveryQueueFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TPkiDiscoveryQueueFactory = ReturnType<typeof pkiDiscoveryQueueFactory>;
@@ -50,7 +52,8 @@ export const pkiDiscoveryQueueFactory = ({
   cronJob,
   gatewayV2Service,
   gatewayV2DAL,
-  gatewayPoolService
+  gatewayPoolService,
+  telemetryService
 }: TPkiDiscoveryQueueFactoryDep) => {
   const startPkiDiscoveryScanQueue = () => {
     queueService.start(QueueName.PkiDiscoveryScan, async (job) => {
@@ -78,7 +81,8 @@ export const pkiDiscoveryQueueFactory = ({
             kmsService,
             gatewayV2Service,
             gatewayV2DAL,
-            gatewayPoolService
+            gatewayPoolService,
+            telemetryService
           };
 
           switch (discoveryType) {

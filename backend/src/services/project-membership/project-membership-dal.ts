@@ -1,13 +1,28 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, TableName, TMemberships, TUserEncryptionKeys } from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus, TableName, TMemberships, TUserEncryptionKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 export type TProjectMembershipDALFactory = ReturnType<typeof projectMembershipDALFactory>;
 
 export const projectMembershipDALFactory = (db: TDbClient) => {
+  // matches memberships holding any of the given roles, by built-in role name or custom role slug. Shared so the
+  // single-project and batch lookups can never disagree about who holds a role.
+  const whereHasAnyRole = (qb: Knex.QueryBuilder, roles: string[]) => {
+    void qb.whereExists((subQuery) => {
+      void subQuery
+        .select("role")
+        .from(TableName.MembershipRole)
+        .leftJoin(TableName.Role, `${TableName.Role}.id`, `${TableName.MembershipRole}.customRoleId`)
+        .whereRaw("??.?? = ??.??", [TableName.MembershipRole, "membershipId", TableName.Membership, "id"])
+        .where((subQb) => {
+          void subQb.whereIn(`${TableName.MembershipRole}.role`, roles).orWhereIn(`${TableName.Role}.slug`, roles);
+        });
+    });
+  };
+
   // special query
   const findAllProjectMembers = async (
     projectId: string,
@@ -37,18 +52,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
             void qb.where(`${TableName.Membership}.id`, filter.id);
           }
           if (filter.roles && filter.roles.length > 0) {
-            void qb.whereExists((subQuery) => {
-              void subQuery
-                .select("role")
-                .from(TableName.MembershipRole)
-                .leftJoin(TableName.Role, `${TableName.Role}.id`, `${TableName.MembershipRole}.customRoleId`)
-                .whereRaw("??.?? = ??.??", [TableName.MembershipRole, "membershipId", TableName.Membership, "id"])
-                .where((subQb) => {
-                  void subQb
-                    .whereIn(`${TableName.MembershipRole}.role`, filter.roles as string[])
-                    .orWhereIn(`${TableName.Role}.slug`, filter.roles as string[]);
-                });
-            });
+            whereHasAnyRole(qb, filter.roles);
           }
         })
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
@@ -73,7 +77,8 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           db.ref("temporaryAccessStartTime").withSchema(TableName.MembershipRole),
           db.ref("temporaryAccessEndTime").withSchema(TableName.MembershipRole),
           db.ref("name").as("projectName").withSchema(TableName.Project),
-          db.ref("isActive").withSchema("orgMembership")
+          db.ref("isActive").withSchema("orgMembership"),
+          db.ref("status").withSchema("orgMembership").as("orgMembershipStatus")
         )
         .where({ isGhost: false })
         .orderBy(`${TableName.Users}.username` as "username");
@@ -90,7 +95,8 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           userId,
           projectName,
           createdAt,
-          isActive
+          isActive,
+          orgMembershipStatus
         }) => ({
           id,
           userId,
@@ -105,7 +111,8 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
             // public key is not used anymore as well
             publicKey: "",
             isGhost,
-            isOrgMembershipActive: isActive ?? true
+            isOrgMembershipActive: isActive ?? true,
+            isOrgMembershipPending: orgMembershipStatus === OrgMembershipStatus.Invited
           },
           project: {
             id: projectId,
@@ -154,6 +161,49 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all project members" });
+    }
+  };
+
+  const findProjectMembersByProjectIds = async (
+    projectIds: string[],
+    filter: { roles?: string[]; orgId?: string } = {}
+  ) => {
+    if (projectIds.length === 0) return [];
+
+    try {
+      const docs = await db
+        .replicaNode()(TableName.Membership)
+        .whereIn(`${TableName.Membership}.scopeProjectId`, projectIds)
+        .where({ [`${TableName.Membership}.scope` as "scope"]: AccessScope.Project })
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
+        .join<TMemberships>(db(TableName.Membership).as("orgMembership"), (qb) => {
+          qb.on(`${TableName.Users}.id`, "=", `orgMembership.actorUserId`)
+            .andOn(`orgMembership.scopeOrgId`, "=", `${TableName.Project}.orgId`)
+            .andOn("orgMembership.scope", db.raw("?", [AccessScope.Organization]));
+        })
+        .where({ isGhost: false })
+        .where({ [`${TableName.Membership}.isActive` as "isActive"]: true })
+        .where(`orgMembership.isActive`, true)
+        .where(`orgMembership.status`, OrgMembershipStatus.Accepted)
+        .where((qb) => {
+          if (filter.orgId) {
+            void qb.where(`${TableName.Project}.orgId`, filter.orgId);
+          }
+          if (filter.roles && filter.roles.length > 0) {
+            whereHasAnyRole(qb, filter.roles);
+          }
+        })
+        .select(
+          db.ref("scopeProjectId").withSchema(TableName.Membership).as("projectId"),
+          db.ref("id").withSchema(TableName.Users).as("userId"),
+          db.ref("email").withSchema(TableName.Users)
+        );
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project members by project ids" });
     }
   };
 
@@ -425,6 +475,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
 
   return {
     findAllProjectMembers,
+    findProjectMembersByProjectIds,
     findProjectGhostUser,
     findMembershipsByUsername,
     findProjectMembershipsByUserId,

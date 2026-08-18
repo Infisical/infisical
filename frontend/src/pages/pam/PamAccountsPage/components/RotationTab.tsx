@@ -101,7 +101,7 @@ const RotationAccountPicker = ({
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Search accounts..." />
+          <CommandInput aria-label="Search accounts" placeholder="Search accounts..." />
           <CommandList>
             {isPending ? (
               <div className="p-2">

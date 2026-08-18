@@ -147,7 +147,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         organizationId: req.permission.orgId,
         properties: {
           caType: CaType.INTERNAL,
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: ca.projectId
         }
       });
 

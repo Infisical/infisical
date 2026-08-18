@@ -730,6 +730,7 @@
                     "pages": [
                       "integrations/secret-syncs/overview",
                       "integrations/secret-syncs",
+                      "integrations/secret-syncs/native-integrations-migration",
                       {
                         "group": "Cloud Providers",
                         "pages": [
@@ -2997,6 +2998,15 @@
                       "api-reference/endpoints/secret-rotations/windows-local-account/reconcile"
                     ]
                   }
+                ]
+              },
+              {
+                "group": "Secret Validation Rules",
+                "pages": [
+                  "api-reference/endpoints/secret-validation-rules/list",
+                  "api-reference/endpoints/secret-validation-rules/create",
+                  "api-reference/endpoints/secret-validation-rules/update",
+                  "api-reference/endpoints/secret-validation-rules/delete"
                 ]
               },
               {

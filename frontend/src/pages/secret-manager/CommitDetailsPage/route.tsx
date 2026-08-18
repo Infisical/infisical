@@ -33,11 +33,14 @@ export const Route = createFileRoute(
           links: context.project.environments.map((el) => ({
             label: el.name,
             link: linkOptions({
-              to: "/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug",
+              to: "/organizations/$orgId/projects/secret-management/$projectId/overview",
               params: {
                 orgId: params.orgId,
-                projectId: params.projectId,
-                envSlug: el.slug
+                projectId: params.projectId
+              },
+              search: {
+                secretPath: search.secretPath,
+                environments: [el.slug]
               }
             })
           }))

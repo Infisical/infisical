@@ -450,7 +450,10 @@ export const Navbar = () => {
                 </PopoverTrigger>
                 <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
                   <Command>
-                    <CommandInput placeholder="Search organizations..." />
+                    <CommandInput
+                      aria-label="Search organizations"
+                      placeholder="Search organizations..."
+                    />
                     <CommandList>
                       <CommandEmpty>No organizations found.</CommandEmpty>
                       {/* Current Organization */}
