@@ -40,14 +40,19 @@ export type TInsightsDALFactory = ReturnType<typeof insightsDALFactory>;
 export const insightsDALFactory = (db: TDbClient) => {
   const findProjectWarningsForOrg = async (
     orgId: string,
-    { offset, limit, staleBefore }: { offset: number; limit: number; staleBefore: Date },
+    {
+      offset,
+      limit,
+      staleBefore,
+      onlyWithIssues
+    }: { offset: number; limit: number; staleBefore: Date; onlyWithIssues?: boolean },
     tx?: Knex
   ): Promise<{ projects: TSecretsProjectWarning[]; totalProjects: number; projectsWithIssues: number }> => {
     try {
       const conn = tx || db.replicaNode();
       const weights = PROJECT_WARNING_SEVERITY_WEIGHTS;
 
-      const rows = await conn
+      const query = conn
         // Every secret-manager project of the org, returned even with zero issues
         .with("org_projects", (qb) =>
           qb
@@ -191,6 +196,10 @@ export const insightsDALFactory = (db: TDbClient) => {
         .orderByRaw(`"severityScore" desc, "projectName" asc, "projectId" asc`)
         .offset(offset)
         .limit(limit);
+
+      if (onlyWithIssues) void query.whereRaw(`"severityScore" > 0`);
+
+      const rows = await query;
 
       const typedRows = rows as unknown as TProjectWarningRow[];
 

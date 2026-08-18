@@ -3102,6 +3102,7 @@ export const registerRoutes = async (
     projectDAL,
     projectBotService,
     userDAL,
+    orgDAL,
     queueService
   });
   // Registers the BullMQ worker that generates the CSVs and emails them.

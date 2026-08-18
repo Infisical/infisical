@@ -3,6 +3,8 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import {
   AccessScope,
+  ProjectType,
+  ProjectVersion,
   TableName,
   TIdentityAlicloudAuths,
   TIdentityAwsAuths,
@@ -698,5 +700,41 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { find, findOne, countAllOrgIdentities, searchIdentities };
+  const countSecretManagerProjectIdentities = async (orgId: string, tx?: Knex) => {
+    try {
+      const conn = tx || db.replicaNode();
+
+      const projectIdentities = conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.isActive`, true)
+        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .where(`${TableName.Project}.type`, ProjectType.SecretManager)
+        .where(`${TableName.Project}.version`, ProjectVersion.V3)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .leftJoin(
+          TableName.IdentityGroupMembership,
+          `${TableName.IdentityGroupMembership}.groupId`,
+          `${TableName.Membership}.actorGroupId`
+        )
+        .select(
+          db.raw(`coalesce(??, ??) as "identityId"`, [
+            `${TableName.Membership}.actorIdentityId`,
+            `${TableName.IdentityGroupMembership}.identityId`
+          ])
+        );
+
+      const count = await conn
+        .from(projectIdentities.as("project_identities"))
+        .join(TableName.Identity, `${TableName.Identity}.id`, "project_identities.identityId")
+        .countDistinct(`${TableName.Identity}.id`)
+        .first();
+
+      return Number(count?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "countSecretManagerProjectIdentities" });
+    }
+  };
+
+  return { find, findOne, countAllOrgIdentities, countSecretManagerProjectIdentities, searchIdentities };
 };

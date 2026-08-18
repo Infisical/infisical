@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { TableName } from "@app/db/schemas";
 import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { TInsightsDALFactory } from "@app/ee/services/insights/insights-dal";
@@ -11,7 +10,6 @@ import {
   toUtcDateString,
   VALUE_EVENT_TYPES
 } from "@app/ee/services/insights/insights-fns";
-import { TSecretsProjectWarning } from "@app/ee/services/insights/insights-types";
 import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
@@ -24,8 +22,8 @@ export type TOrgAuditReportGeneratorDALs = {
     "findProjectWarningsForOrg" | "findSecretCreationsByWeekForOrg" | "countSecretCreationsForOrg"
   >;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "countLeasesForOrg">;
-  orgDAL: Pick<TOrgDALFactory, "countAllOrgMembers">;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countAllOrgIdentities">;
+  orgDAL: Pick<TOrgDALFactory, "countSecretManagerProjectMembers">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countSecretManagerProjectIdentities">;
   // Undefined when the instance has no ClickHouse configured. Reports that need it are rejected at
   // request time; the run-time throw below is a defensive fallback for config changes in between.
   clickhouseAuditLogDAL?: Pick<TClickHouseAuditLogDALFactory, "countByDateForOrg" | "countByIdentityAuthMethodForOrg">;
@@ -58,10 +56,8 @@ const usageSummaryReport: TOrgReportDefinition = {
   run: async ({ orgId, dal }) => {
     const [activeLeases, users, machineIdentities] = await Promise.all([
       dal.dynamicSecretLeaseDAL.countLeasesForOrg(orgId),
-      dal.orgDAL.countAllOrgMembers(orgId),
-      dal.identityOrgMembershipDAL.countAllOrgIdentities({
-        [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId
-      })
+      dal.orgDAL.countSecretManagerProjectMembers(orgId),
+      dal.identityOrgMembershipDAL.countSecretManagerProjectIdentities(orgId)
     ]);
 
     return {
@@ -72,8 +68,6 @@ const usageSummaryReport: TOrgReportDefinition = {
   }
 };
 
-const NEEDS_ATTENTION_PAGE_SIZE = 500;
-
 const needsAttentionReport: TOrgReportDefinition = {
   type: OrgAuditReportType.OrgNeedsAttention,
   label: "Needs Attention",
@@ -82,34 +76,14 @@ const needsAttentionReport: TOrgReportDefinition = {
     const staleBefore = new Date();
     staleBefore.setDate(staleBefore.getDate() - STALE_SECRET_THRESHOLD_DAYS);
 
-    const projectsWithIssues: TSecretsProjectWarning[] = [];
-    // One page beyond the row cap so a full-capacity result can still be detected as truncated.
-    const rowCapPages = Math.ceil(MAX_AUDIT_REPORT_ROWS / NEEDS_ATTENTION_PAGE_SIZE) + 1;
-    let maxPages = rowCapPages;
+    const { projects } = await dal.insightsDAL.findProjectWarningsForOrg(orgId, {
+      offset: 0,
+      limit: MAX_AUDIT_REPORT_ROWS + 1,
+      staleBefore,
+      onlyWithIssues: true
+    });
 
-    // The DAL orders by severityScore desc, so the first zero-severity project marks the end of the
-    // projects with outstanding issues — everything after it is clean and stays out of the report.
-    for (let page = 0; page < maxPages; page += 1) {
-      // eslint-disable-next-line no-await-in-loop
-      const { projects, projectsWithIssues: issueCount } = await dal.insightsDAL.findProjectWarningsForOrg(orgId, {
-        offset: page * NEEDS_ATTENTION_PAGE_SIZE,
-        limit: NEEDS_ATTENTION_PAGE_SIZE,
-        staleBefore
-      });
-
-      if (page === 0) {
-        maxPages = Math.min(rowCapPages, Math.max(1, Math.ceil(issueCount / NEEDS_ATTENTION_PAGE_SIZE)));
-      }
-
-      const firstCleanIndex = projects.findIndex((project) => project.severityScore === 0);
-      projectsWithIssues.push(...(firstCleanIndex === -1 ? projects : projects.slice(0, firstCleanIndex)));
-
-      const reachedCleanProjects = firstCleanIndex !== -1;
-      const reachedLastPage = projects.length < NEEDS_ATTENTION_PAGE_SIZE;
-      if (reachedCleanProjects || reachedLastPage || projectsWithIssues.length > MAX_AUDIT_REPORT_ROWS) break;
-    }
-
-    const { items, truncated } = applyRowCap(projectsWithIssues);
+    const { items, truncated } = applyRowCap(projects);
 
     return {
       columns: [

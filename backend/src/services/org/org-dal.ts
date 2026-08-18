@@ -6,6 +6,8 @@ import {
   OrganizationsSchema,
   OrgMembershipRole,
   OrgMembershipStatus,
+  ProjectType,
+  ProjectVersion,
   TableName,
   TMemberships,
   TMembershipsInsert,
@@ -32,6 +34,10 @@ import { ActorType } from "../auth/auth-type";
 import { OrgAuthMethod, TOrgWithSubOrgs } from "./org-types";
 
 export type TOrgDALFactory = ReturnType<typeof orgDALFactory>;
+
+interface CountResult {
+  count: string;
+}
 
 export const orgDALFactory = (db: TDbClient) => {
   const orgOrm = ormify(db, TableName.Organization);
@@ -526,10 +532,6 @@ export const orgDALFactory = (db: TDbClient) => {
   // TODO(sub-org): updated this logic later
   const countAllOrgMembers = async (orgId: string) => {
     try {
-      interface CountResult {
-        count: string;
-      }
-
       const count = await db
         .replicaNode()(TableName.Membership)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
@@ -544,6 +546,43 @@ export const orgDALFactory = (db: TDbClient) => {
       return parseInt((count as unknown as CountResult).count || "0", 10);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count all org members" });
+    }
+  };
+
+  const countSecretManagerProjectMembers = async (orgId: string) => {
+    try {
+      const projectUsers = db
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.isActive`, true)
+        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .where(`${TableName.Project}.type`, ProjectType.SecretManager)
+        .where(`${TableName.Project}.version`, ProjectVersion.V3)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .leftJoin(
+          TableName.UserGroupMembership,
+          `${TableName.UserGroupMembership}.groupId`,
+          `${TableName.Membership}.actorGroupId`
+        )
+        .select(
+          db.raw(`coalesce(??, ??) as "userId"`, [
+            `${TableName.Membership}.actorUserId`,
+            `${TableName.UserGroupMembership}.userId`
+          ])
+        );
+
+      const count = await db
+        .replicaNode()
+        .from(projectUsers.as("project_users"))
+        .join(TableName.Users, `${TableName.Users}.id`, "project_users.userId")
+        .where(`${TableName.Users}.isGhost`, false)
+        .countDistinct(`${TableName.Users}.id`)
+        .first();
+
+      return Number((count as unknown as CountResult)?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count secret manager project members" });
     }
   };
 
@@ -1021,6 +1060,7 @@ export const orgDALFactory = (db: TDbClient) => {
     findOrgByProjectId,
     findAllOrgMembers,
     countAllOrgMembers,
+    countSecretManagerProjectMembers,
     listSubOrganizations,
     listOrganizationsWithSubOrgs,
     findOrgById,

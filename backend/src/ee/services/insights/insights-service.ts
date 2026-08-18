@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 // import geoip from "geoip-lite";
-import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope, TableName } from "@app/db/schemas";
+import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
@@ -87,8 +87,8 @@ export type TInsightsServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
-  orgDAL: Pick<TOrgDALFactory, "countAllOrgMembers">;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countAllOrgIdentities">;
+  orgDAL: Pick<TOrgDALFactory, "countSecretManagerProjectMembers">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countSecretManagerProjectIdentities">;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "countLeasesForOrg">;
   insightsDAL: Pick<
     TInsightsDALFactory,
@@ -133,6 +133,8 @@ const checkInsightsPermission = async (
 
   return { permission };
 };
+
+const PROJECT_WARNINGS_CHUNK_SIZE = 1000;
 
 export const insightsServiceFactory = ({
   permissionService,
@@ -582,19 +584,16 @@ export const insightsServiceFactory = ({
 
     const [activeLeases, users, identities] = await Promise.all([
       dynamicSecretLeaseDAL.countLeasesForOrg(dto.orgId),
-      orgDAL.countAllOrgMembers(dto.orgId),
-      identityOrgMembershipDAL.countAllOrgIdentities({
-        [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: dto.orgId
-      })
+      orgDAL.countSecretManagerProjectMembers(dto.orgId),
+      identityOrgMembershipDAL.countSecretManagerProjectIdentities(dto.orgId)
     ]);
 
     return { activeLeases, users, identities };
   };
 
-  const getSecretsProjects = async (dto: TGetSecretsProjectWarningsDTO): Promise<TSecretsProjectWarnings> => {
-    await assertOrgInsightsRead(dto);
+  const $getProjectWarningsChunk = async (orgId: string, chunkIndex: number) => {
+    const cacheKey = KeyStorePrefixes.InsightsCache(orgId, `project-warnings:chunk:${chunkIndex}`);
 
-    const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, `project-warnings:${dto.offset}:${dto.limit}`);
     return withCache({
       keyStore,
       key: cacheKey,
@@ -603,15 +602,38 @@ export const insightsServiceFactory = ({
         const staleBefore = new Date();
         staleBefore.setDate(staleBefore.getDate() - STALE_SECRET_THRESHOLD_DAYS);
 
-        const { projects, totalProjects, projectsWithIssues } = await insightsDAL.findProjectWarningsForOrg(dto.orgId, {
-          offset: dto.offset,
-          limit: dto.limit,
+        return insightsDAL.findProjectWarningsForOrg(orgId, {
+          offset: chunkIndex * PROJECT_WARNINGS_CHUNK_SIZE,
+          limit: PROJECT_WARNINGS_CHUNK_SIZE,
           staleBefore
         });
-
-        return { projects, totalProjects, projectsWithIssues, offset: dto.offset, limit: dto.limit };
       }
     });
+  };
+
+  const getSecretsProjects = async (dto: TGetSecretsProjectWarningsDTO): Promise<TSecretsProjectWarnings> => {
+    await assertOrgInsightsRead(dto);
+
+    const chunkIndex = Math.floor(dto.offset / PROJECT_WARNINGS_CHUNK_SIZE);
+    const chunk = await $getProjectWarningsChunk(dto.orgId, chunkIndex);
+
+    const windowStart = dto.offset - chunkIndex * PROJECT_WARNINGS_CHUNK_SIZE;
+    let projects = chunk.projects.slice(windowStart, windowStart + dto.limit);
+
+    if (projects.length < dto.limit && chunk.projects.length === PROJECT_WARNINGS_CHUNK_SIZE) {
+      const nextChunk = await $getProjectWarningsChunk(dto.orgId, chunkIndex + 1);
+      projects = projects.concat(nextChunk.projects.slice(0, dto.limit - projects.length));
+    }
+
+    const totals = chunk.projects.length > 0 || chunkIndex === 0 ? chunk : await $getProjectWarningsChunk(dto.orgId, 0);
+
+    return {
+      projects,
+      totalProjects: totals.totalProjects,
+      projectsWithIssues: totals.projectsWithIssues,
+      offset: dto.offset,
+      limit: dto.limit
+    };
   };
 
   const getOrgAccessVolume = async (dto: TOrgInsightsDTO): Promise<TOrgAccessVolume> => {
