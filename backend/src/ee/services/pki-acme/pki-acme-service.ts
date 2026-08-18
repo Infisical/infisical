@@ -52,7 +52,10 @@ import {
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
+import {
+  applyProfileDefaultsForPolicyCheck,
+  resolveEffectiveTtl
+} from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TAcmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -1078,7 +1081,7 @@ export const pkiAcmeServiceFactory = ({
     };
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       policy.id,
-      updatedCertificateRequest
+      applyProfileDefaultsForPolicyCheck(updatedCertificateRequest, profile.defaults)
     );
     if (!validationResult.isValid) {
       throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
@@ -1260,7 +1263,7 @@ export const pkiAcmeServiceFactory = ({
 
             const validationResult = await certificatePolicyService.validateCertificateRequest(
               policy.id,
-              certificateRequest
+              applyProfileDefaultsForPolicyCheck(certificateRequest, profile.defaults)
             );
             if (!validationResult.isValid) {
               throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });

@@ -3,6 +3,7 @@ import RE2 from "re2";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 
+import { mapEnumsForValidation } from "../certificate-common/certificate-utils";
 import { TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
 
 export const parseTtlToDays = (ttl: string): number => {
@@ -102,29 +103,29 @@ export const resolveEffectiveTtl = ({
   });
 };
 
+type TDefaultableCertificateRequest = {
+  commonName?: string;
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+  domainComponents?: string[];
+  keyAlgorithm?: string;
+  signatureAlgorithm?: string;
+  keyUsages?: string[];
+  extendedKeyUsages?: string[];
+  basicConstraints?: { isCA: boolean; pathLength?: number };
+  altNames?: { type: string; value: string }[];
+};
+
 /**
  * Applies profile defaults to certificate request
  * Request values always take precedence over defaults.
  * For scalar fields, key-presence distinguishes "omitted" (use default) from "explicitly set/cleared".
  * For keyUsages/extendedKeyUsages/basicConstraints, replace strategy: request array wins entirely if present.
  */
-export const applyProfileDefaults = <
-  T extends {
-    commonName?: string;
-    organization?: string;
-    organizationalUnit?: string;
-    country?: string;
-    state?: string;
-    locality?: string;
-    domainComponents?: string[];
-    keyAlgorithm?: string;
-    signatureAlgorithm?: string;
-    keyUsages?: string[];
-    extendedKeyUsages?: string[];
-    basicConstraints?: { isCA: boolean; pathLength?: number };
-    altNames?: { type: string; value: string }[];
-  }
->(
+export const applyProfileDefaults = <T extends TDefaultableCertificateRequest>(
   request: T,
   defaults: TCertificateProfileDefaults | null | undefined
 ): T => {
@@ -152,3 +153,16 @@ export const applyProfileDefaults = <
     altNames
   };
 };
+
+/**
+ * For the certificate policy check only. The result must never be forwarded to a CA: DigiCert and
+ * GoDaddy take a commonName alongside the CSR and fall back to the first SAN when it is empty, so a
+ * defaulted common name would replace the identifier the client just validated.
+ *
+ * Enum mapping runs after the merge because `defaults` is JSONB, so older profiles can hold legacy
+ * usage names the policy would not match.
+ */
+export const applyProfileDefaultsForPolicyCheck = <T extends TDefaultableCertificateRequest>(
+  request: T,
+  defaults: TCertificateProfileDefaults | null | undefined
+) => mapEnumsForValidation(applyProfileDefaults(request, defaults));
