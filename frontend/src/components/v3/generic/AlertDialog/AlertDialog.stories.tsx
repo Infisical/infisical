@@ -1,14 +1,12 @@
-import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { LogOutIcon, TrashIcon } from "lucide-react";
 
 import { Button } from "../Button";
-import { Input } from "../Input";
-import { Label } from "../Label";
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -191,45 +189,30 @@ export const SmallSize: Story = {
 
 const CONFIRMATION_KEYWORD = "delete";
 
-const TypedConfirmationStory = () => {
-  const [confirmation, setConfirmation] = useState("");
-  const isConfirmed = confirmation === CONFIRMATION_KEYWORD;
-
-  return (
-    <AlertDialog onOpenChange={(open) => !open && setConfirmation("")}>
-      <AlertDialogTrigger asChild>
-        <Button variant="danger">
-          <TrashIcon />
-          Delete project
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete project?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will permanently remove the project and all of its secrets, integrations, and audit
-            history. This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="alert-dialog-confirmation">Type &quot;delete&quot; to confirm</Label>
-          <Input
-            id="alert-dialog-confirmation"
-            value={confirmation}
-            onChange={(e) => setConfirmation(e.target.value)}
-            autoComplete="off"
-          />
-        </div>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="danger" disabled={!isConfirmed}>
-            Delete project
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-};
+const TypedConfirmationStory = () => (
+  <AlertDialog confirmationValue={CONFIRMATION_KEYWORD}>
+    <AlertDialogTrigger asChild>
+      <Button variant="danger">
+        <TrashIcon />
+        Delete project
+      </Button>
+    </AlertDialogTrigger>
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Delete project?</AlertDialogTitle>
+        <AlertDialogDescription>
+          This will permanently remove the project and all of its secrets, integrations, and audit
+          history. This action cannot be undone.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogConfirmationField />
+      <AlertDialogFooter>
+        <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <AlertDialogAction variant="danger">Delete project</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+);
 
 export const TypedConfirmation: Story = {
   name: "Example: Typed Confirmation",

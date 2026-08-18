@@ -1,6 +1,6 @@
 import { UserPlusIcon } from "lucide-react";
 
-import { AssumePrivilegesModal } from "@app/components/assume-privileges";
+import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
@@ -101,7 +101,7 @@ export const MembersSection = () => {
         onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
         onDeleteApproved={handleRemoveUser}
       />
-      <AssumePrivilegesModal
+      <AssumePrivilegesDialog
         isOpen={popUp.assumePrivileges.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
         actorType={ActorType.USER}

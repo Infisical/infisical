@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon, InfoIcon, ShieldIcon } from "lucide-react";
 
-import { AssumePrivilegesModal } from "@app/components/assume-privileges";
+import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -377,12 +377,13 @@ const Page = () => {
             open={popUp.removeIdentity.isOpen}
             title={`Remove ${identityMembershipDetails.identity.name} from ${isPam ? "PAM" : "the project"}?`}
             description={`The machine identity will lose access to ${isPam ? "PAM" : "this project"} but remain available in its organization.`}
+            descriptionAsAlert
             confirmationText="remove"
             actionLabel="Remove"
             onOpenChange={(isOpen) => handlePopUpToggle("removeIdentity", isOpen)}
             onConfirm={onRemoveIdentitySubmit}
           />
-          <AssumePrivilegesModal
+          <AssumePrivilegesDialog
             isOpen={popUp.assumePrivileges.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
             actorType={ActorType.IDENTITY}
@@ -407,7 +408,7 @@ const Page = () => {
           )}
         </>
       ) : (
-        <Empty className="py-12">
+        <Empty>
           <EmptyHeader>
             <EmptyTitle>Machine identity not found</EmptyTitle>
             <EmptyDescription>

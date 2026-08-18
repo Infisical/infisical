@@ -123,10 +123,10 @@ export const ProjectIdentityDetailsSection = ({
                         navigator.clipboard.writeText(identity.id);
                         setCopyTextId("Copied");
                       }}
-                      variant="ghost"
+                      variant={isCopyingId ? "ghost" : "ghost-muted"}
                       size="xs"
                     >
-                      {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                      {isCopyingId ? <CheckIcon /> : <ClipboardListIcon />}
                     </IconButton>
                   </TooltipTrigger>
                   <TooltipContent>

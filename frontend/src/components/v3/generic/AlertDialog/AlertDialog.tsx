@@ -4,9 +4,58 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 import { cn } from "../../utils";
 import { Button } from "../Button";
 import { DIALOG_CONTENT_WIDTH_CLASSNAME } from "../Dialog";
+import { Field, FieldLabel } from "../Field";
+import { Input } from "../Input";
 
-function AlertDialog({ ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
-  return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />;
+type AlertDialogConfirmationContextValue = {
+  confirmationValue?: string;
+  inputValue: string;
+  isConfirmed: boolean;
+  setInputValue: React.Dispatch<React.SetStateAction<string>>;
+};
+
+const AlertDialogConfirmationContext = React.createContext<AlertDialogConfirmationContextValue>({
+  inputValue: "",
+  isConfirmed: true,
+  setInputValue: () => undefined
+});
+
+type AlertDialogProps = React.ComponentProps<typeof AlertDialogPrimitive.Root> & {
+  confirmationValue?: string;
+};
+
+function AlertDialog(alertDialogProps: AlertDialogProps) {
+  const hasConfirmation = Object.prototype.hasOwnProperty.call(
+    alertDialogProps,
+    "confirmationValue"
+  );
+  const { confirmationValue, onOpenChange, ...props } = alertDialogProps;
+  const [inputValue, setInputValue] = React.useState("");
+  const isConfirmed =
+    !hasConfirmation || (confirmationValue !== undefined && inputValue === confirmationValue);
+  const confirmationContextValue = React.useMemo(
+    () => ({ confirmationValue, inputValue, isConfirmed, setInputValue }),
+    [confirmationValue, inputValue, isConfirmed]
+  );
+
+  React.useEffect(() => {
+    if (props.open === false) setInputValue("");
+  }, [props.open]);
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) setInputValue("");
+    onOpenChange?.(open);
+  };
+
+  return (
+    <AlertDialogConfirmationContext.Provider value={confirmationContextValue}>
+      <AlertDialogPrimitive.Root
+        data-slot="alert-dialog"
+        onOpenChange={handleOpenChange}
+        {...props}
+      />
+    </AlertDialogConfirmationContext.Provider>
+  );
 }
 
 function AlertDialogTrigger({
@@ -77,7 +126,7 @@ function AlertDialogFooter({ className, ...props }: React.ComponentProps<"div">)
     <div
       data-slot="alert-dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-row flex-wrap justify-end gap-2 rounded-b-xl border-t border-border p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2",
+        "-mx-4 -mb-4 flex flex-row flex-wrap justify-end gap-2 rounded-b-xl border-t border-border bg-container p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2",
         className
       )}
       {...props}
@@ -130,9 +179,67 @@ function AlertDialogDescription({
   );
 }
 
-function AlertDialogConfirmationField({ className, ...props }: React.ComponentProps<"div">) {
+function AlertDialogConfirmationLabel({
+  className,
+  confirmationValue,
+  ...props
+}: Omit<React.ComponentProps<typeof FieldLabel>, "children"> & {
+  confirmationValue: React.ReactNode;
+}) {
   return (
-    <div data-slot="alert-dialog-confirmation-field" className={cn("mt-4", className)} {...props} />
+    <FieldLabel
+      data-slot="alert-dialog-confirmation-label"
+      size="sm"
+      className={cn("gap-0", className)}
+      {...props}
+    >
+      <span>
+        Type &quot;<span className="font-medium text-foreground">{confirmationValue}</span>&quot; to
+        confirm.
+      </span>
+    </FieldLabel>
+  );
+}
+
+function AlertDialogConfirmationField({
+  className,
+  inputProps,
+  onConfirm
+}: {
+  className?: string;
+  inputProps?: Omit<React.ComponentProps<typeof Input>, "value" | "onChange">;
+  onConfirm?: () => void;
+}) {
+  const inputId = React.useId();
+  const { confirmationValue, inputValue, isConfirmed, setInputValue } = React.useContext(
+    AlertDialogConfirmationContext
+  );
+
+  return (
+    <div data-slot="alert-dialog-confirmation-field" className={cn("mt-4", className)}>
+      <Field>
+        <AlertDialogConfirmationLabel
+          htmlFor={inputProps?.id ?? inputId}
+          confirmationValue={confirmationValue}
+        />
+        <Input
+          autoComplete="off"
+          autoFocus
+          placeholder={confirmationValue}
+          {...inputProps}
+          id={inputProps?.id ?? inputId}
+          value={inputValue}
+          onChange={(event) => setInputValue(event.target.value)}
+          onKeyDown={(event) => {
+            inputProps?.onKeyDown?.(event);
+            if (!event.defaultPrevented && event.key === "Enter" && isConfirmed && onConfirm) {
+              event.preventDefault();
+              onConfirm();
+            }
+          }}
+        />
+      </Field>
+    </div>
   );
 }
 
@@ -149,6 +256,8 @@ function AlertDialogAction({
     React.ComponentProps<typeof Button>,
     "variant" | "size" | "isFullWidth" | "isDisabled" | "isPending"
   >) {
+  const { isConfirmed } = React.useContext(AlertDialogConfirmationContext);
+
   // Invert the asChild composition: Radix's Action lends its close-on-click behaviour to the real
   // Button, so Button renders a native <button> and its isPending spinner works (a Slot child would
   // strip it). Button forbids isPending together with asChild for exactly that reason.
@@ -160,7 +269,7 @@ function AlertDialogAction({
         size={size}
         isPending={isPending}
         isFullWidth={isFullWidth}
-        isDisabled={isDisabled}
+        isDisabled={isDisabled || !isConfirmed}
         className={cn(className)}
         {...props}
       />
@@ -193,6 +302,7 @@ export {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,

@@ -401,7 +401,7 @@ export const IdentityRoleDetailsSection = ({
         open={popUp.modifyRole.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("modifyRole", isOpen)}
       >
-        <SheetContent className="flex flex-col sm:max-w-xl">
+        <SheetContent className="sm:max-w-xl">
           <SheetHeader>
             <SheetTitle>Roles</SheetTitle>
             <SheetDescription>

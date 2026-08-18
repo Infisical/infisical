@@ -42,10 +42,7 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  Field,
-  FieldLabel,
   IconButton,
-  Input,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -105,7 +102,6 @@ const RelayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
 export const RelayTab = withPermission(
   () => {
     const [search, setSearch] = useState("");
-    const [deleteConfirmation, setDeleteConfirmation] = useState("");
     const { data: relays, isPending: isRelaysLoading } = useGetRelays();
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";
@@ -304,10 +300,8 @@ export const RelayTab = withPermission(
           )}
           <AlertDialog
             open={popUp.deleteRelay.isOpen}
-            onOpenChange={(open) => {
-              if (!open) setDeleteConfirmation("");
-              handlePopUpToggle("deleteRelay", open);
-            }}
+            confirmationValue={(popUp.deleteRelay.data as { name?: string })?.name || "relay"}
+            onOpenChange={(open) => handlePopUpToggle("deleteRelay", open)}
           >
             <AlertDialogContent>
               <AlertDialogHeader>
@@ -316,27 +310,11 @@ export const RelayTab = withPermission(
                   This permanently removes the relay from your organization.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogConfirmationField>
-                <Field>
-                  <FieldLabel htmlFor="delete-relay-confirmation" size="sm">
-                    <span>
-                      Type &quot;
-                      <span className="text-foreground">
-                        {(popUp.deleteRelay.data as { name?: string })?.name || "relay"}
-                      </span>
-                      &quot; to confirm.
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    id="delete-relay-confirmation"
-                    value={deleteConfirmation}
-                    onChange={(event) => setDeleteConfirmation(event.target.value)}
-                    placeholder={(popUp.deleteRelay.data as { name?: string })?.name || "relay"}
-                    autoComplete="off"
-                    autoFocus
-                  />
-                </Field>
-              </AlertDialogConfirmationField>
+              <AlertDialogConfirmationField
+                inputProps={{
+                  placeholder: (popUp.deleteRelay.data as { name?: string })?.name || "relay"
+                }}
+              />
               <Alert variant="danger" appearance="borderless">
                 <AlertDescription>Deleting this relay cannot be undone.</AlertDescription>
               </Alert>
@@ -345,10 +323,6 @@ export const RelayTab = withPermission(
                 <AlertDialogAction
                   variant="danger"
                   isPending={deleteRelayById.isPending}
-                  isDisabled={
-                    deleteConfirmation !==
-                    ((popUp.deleteRelay.data as { name?: string })?.name || "relay")
-                  }
                   onClick={(event) => {
                     event.preventDefault();
                     handleDeleteRelay();

@@ -217,7 +217,7 @@ const IdentityRoleAssignmentRow = ({
               <SelectTrigger id={selectId} className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent position="popper" className="z-[70]">
+              <SelectContent position="popper">
                 {getRolesForSelect(field.value).map(({ name, slug, id }) => {
                   const isAssignable = assignableRoleSlugs.has(slug);
                   return (
@@ -261,7 +261,6 @@ const IdentityRoleAssignmentRow = ({
           </Tooltip>
           <PopoverContent
             side="right"
-            className="z-[70]"
             onWheel={(event) => event.stopPropagation()}
             onOpenAutoFocus={(event) => event.preventDefault()}
           >
@@ -299,9 +298,8 @@ const IdentityRoleAssignmentRow = ({
       <IconButton
         type="button"
         size="md"
-        variant="outline"
+        variant="danger"
         aria-label="Remove role"
-        className="shrink-0 hover:border-danger/40 hover:bg-danger/10 hover:text-danger"
         isDisabled={isEditDisabled || !canRemove}
         onClick={onRemove}
       >
@@ -460,7 +458,6 @@ export const IdentityRoleModify = ({ identityProjectMembership, onClose }: Props
             <Button
               type="button"
               variant="outline"
-              className="self-start"
               isDisabled={!isAllowed || isEditDisabled || filteredRoles.length === 0}
               onClick={() => {
                 if (filteredRoles.length === 0) return;

@@ -1,6 +1,8 @@
-import { FormEvent, ReactNode, useEffect, useId, useState } from "react";
+import { ReactNode, useState } from "react";
 
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -9,10 +11,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-  Field,
-  FieldLabel,
-  Input
+  AlertDialogTitle
 } from "@app/components/v3";
 
 type Props = {
@@ -24,6 +23,7 @@ type Props = {
   actionLabel: string;
   onConfirm: () => Promise<void>;
   isDisabled?: boolean;
+  descriptionAsAlert?: boolean;
 };
 
 export const IdentityActionConfirmationDialog = ({
@@ -34,19 +34,13 @@ export const IdentityActionConfirmationDialog = ({
   confirmationText,
   actionLabel,
   onConfirm,
-  isDisabled
+  isDisabled,
+  descriptionAsAlert = false
 }: Props) => {
-  const inputId = useId();
-  const [confirmation, setConfirmation] = useState("");
   const [isPending, setIsPending] = useState(false);
-  const isConfirmed = confirmation === confirmationText;
-
-  useEffect(() => {
-    if (!open) setConfirmation("");
-  }, [open]);
 
   const handleConfirm = async () => {
-    if (!isConfirmed || isPending || isDisabled) return;
+    if (isPending || isDisabled) return;
 
     setIsPending(true);
     try {
@@ -59,14 +53,10 @@ export const IdentityActionConfirmationDialog = ({
     }
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    handleConfirm().catch(() => undefined);
-  };
-
   return (
     <AlertDialog
       open={open}
+      confirmationValue={confirmationText}
       onOpenChange={(nextOpen) => {
         if (!isPending) onOpenChange(nextOpen);
       }}
@@ -74,31 +64,24 @@ export const IdentityActionConfirmationDialog = ({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
+          {descriptionAsAlert ? (
+            <AlertDialogDescription asChild>
+              <Alert variant="warning" appearance="borderless">
+                <AlertDescription>{description}</AlertDescription>
+              </Alert>
+            </AlertDialogDescription>
+          ) : (
+            <AlertDialogDescription>{description}</AlertDialogDescription>
+          )}
         </AlertDialogHeader>
-        <form onSubmit={handleSubmit}>
-          <AlertDialogConfirmationField>
-            <Field>
-              <FieldLabel htmlFor={inputId}>
-                Type &quot;{confirmationText}&quot; to confirm
-              </FieldLabel>
-              <Input
-                id={inputId}
-                value={confirmation}
-                onChange={(event) => setConfirmation(event.target.value)}
-                autoComplete="off"
-                autoFocus
-              />
-            </Field>
-          </AlertDialogConfirmationField>
-        </form>
+        <AlertDialogConfirmationField onConfirm={() => handleConfirm().catch(() => undefined)} />
         <AlertDialogFooter>
           <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             type="button"
             variant="danger"
             isPending={isPending}
-            isDisabled={!isConfirmed || isDisabled}
+            isDisabled={isDisabled}
             onClick={(event) => {
               event.preventDefault();
               handleConfirm().catch(() => undefined);

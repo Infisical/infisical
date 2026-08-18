@@ -9,16 +9,16 @@ import {
   MoreHorizontalIcon,
   PlusIcon,
   SearchIcon,
-  TrashIcon,
-  XIcon
+  TrashIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { AssumePrivilegesModal } from "@app/components/assume-privileges";
+import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
+  Blur,
   Button,
   Card,
   CardAction,
@@ -49,6 +49,7 @@ import {
   Pagination,
   ProjectIcon,
   Skeleton,
+  Spinner,
   SubOrgIcon,
   Table,
   TableBody,
@@ -344,9 +345,7 @@ export const IdentityTab = withProjectPermission(
                         <TableHead>Managed by</TableHead>
                         <TableHead className="w-5">
                           {isFetching ? (
-                            <span role="status" aria-label="Refreshing machine identities">
-                              <Skeleton className="size-4 rounded-full" />
-                            </span>
+                            <Spinner size="xs" label="Refreshing machine identities" />
                           ) : null}
                         </TableHead>
                       </TableRow>
@@ -592,7 +591,7 @@ export const IdentityTab = withProjectPermission(
                                               });
                                             }}
                                           >
-                                            {identityProjectId ? <TrashIcon /> : <XIcon />}
+                                            {identityProjectId && <TrashIcon />}
                                             {/* eslint-disable-next-line no-nested-ternary */}
                                             {identityProjectId
                                               ? "Delete Machine Identity"
@@ -616,23 +615,10 @@ export const IdentityTab = withProjectPermission(
                           <TableRow key={`hid-identity-${i + 1}`}>
                             <TableCell>No Access</TableCell>
                             <TableCell colSpan={4}>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  {/* eslint-disable jsx-a11y/no-noninteractive-tabindex */}
-                                  <span
-                                    tabIndex={0}
-                                    aria-label="Restricted machine identity"
-                                    className="inline-flex items-center gap-2 rounded-md border border-border bg-container px-2 py-1 text-sm text-muted"
-                                  >
-                                    <LockIcon className="size-3.5" />
-                                    <span aria-hidden="true">••••••••••••</span>
-                                  </span>
-                                  {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-md">
-                                  You do not have permission to view this machine identity.
-                                </TooltipContent>
-                              </Tooltip>
+                              <Blur
+                                aria-label="Restricted machine identity"
+                                tooltipText="You do not have permission to view this machine identity."
+                              />
                             </TableCell>
                           </TableRow>
                         ))}
@@ -668,6 +654,7 @@ export const IdentityTab = withProjectPermission(
               ? "This permanently deletes the project machine identity and revokes its access. This cannot be undone."
               : `The machine identity will lose access to this ${productLabel.toLowerCase()} but remain available in its organization.`
           }
+          descriptionAsAlert={!popUp.deleteIdentity.data?.isProjectIdentity}
           confirmationText="confirm"
           actionLabel={popUp.deleteIdentity.data?.isProjectIdentity ? "Delete" : "Remove"}
           onOpenChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
@@ -708,7 +695,7 @@ export const IdentityTab = withProjectPermission(
               />
             );
           })()}
-        <AssumePrivilegesModal
+        <AssumePrivilegesDialog
           isOpen={popUp.assumePrivileges.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
           actorType={ActorType.IDENTITY}
