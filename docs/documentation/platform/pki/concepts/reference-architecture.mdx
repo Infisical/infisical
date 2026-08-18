@@ -22,7 +22,7 @@ Certificate Manager has four building blocks.
 | [Certificate Authority](/documentation/platform/pki/ca/overview) | The authority that signs certificates. Either private, created inside Infisical, or external, such as Let's Encrypt or DigiCert. | Product Admins |
 | [Certificate Policy](/documentation/platform/pki/settings/policies) | The rules a certificate must follow: which domain names are allowed, how long it stays valid, which key algorithms are permitted. | Product Admins |
 | [Certificate Profile](/documentation/platform/pki/settings/profiles) | One CA and one policy combined into a reusable template. This is what teams request certificates from. | Product Admins |
-| [Application](/documentation/platform/pki/applications/overview) | A team's workspace for one service. Profiles are attached to it, and its members issue certificates through it. | Teams |
+| [Application](/documentation/platform/pki/applications/overview) | A team's workspace for one service. Profiles are attached to it, and its members issue certificates through it. | Created by Product Admins, run by teams |
 
 They connect in one direction:
 
@@ -100,7 +100,7 @@ Certificate Manager
     └── auth-service-dev       dev-tls-server
 ```
 
-Product Admins build the first three layers once. Teams own the fourth.
+Product Admins build the first three layers once, then create each Application and attach its profile. Teams operate the fourth.
 
 ## Build the shared infrastructure
 
@@ -199,7 +199,7 @@ Product Admins build the first three layers once. Teams own the fourth.
     | `payments-api-staging` | `staging-tls-server` | `payments-team` as Operator |
     | `payments-api-dev` | `dev-tls-server` | `payments-team` as Operator |
 
-    Two things change across the rows. The attached profile decides what the team can produce. The membership decides who can produce it, so in production the wider team has read-only access and only the on-call rotation can issue.
+    Two things change across the rows. The attached profile decides what the team can produce. The membership decides who can produce it, so in production the wider team is read-only and issuance is limited to the on-call rotation and the deployment pipeline's identity.
 
     Users, groups, and machine identities can all be members. Prefer groups, so access follows your directory instead of a hand-maintained list, and give each pipeline its own identity per environment, as `ci-payments-prod` does above.
   </Step>
@@ -266,7 +266,7 @@ Product Admins build the first three layers once. Teams own the fourth.
 
 **Replacing one environment's CA leaves the others alone.** Replace the development CA, reissue development certificates, and every environment with its own CA is untouched. Environments that share the replaced CA are reissued with it.
 
-**A new service needs no new infrastructure.** Create its three Applications, attach the profiles that already exist, and the team configures its own enrollment. No new CA, policy, or profile, and no Product Admin involved.
+**A new service needs no new infrastructure.** A Product Admin creates its three Applications and attaches the profiles that already exist. No new CA, no new policy, and no new profile, and the team configures its own enrollment from there.
 
 ## When you need full separation
 
