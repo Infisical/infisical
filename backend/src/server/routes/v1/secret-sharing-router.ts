@@ -107,12 +107,29 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }
     },
     handler: async (req) => {
-      return req.server.services.secretSharing.getSharedSecretById(
+      const sharedSecret = await req.server.services.secretSharing.getSharedSecretById(
         req.params.id,
         req.permission?.orgId,
         req.permission?.id,
         req.permission?.type
       );
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SharedSecretLinkOpened,
+          distinctId: req.permission?.id ? getTelemetryDistinctId(req) : `anonymous-${req.params.id}`,
+          anonymous: !req.permission?.id,
+          organizationId: sharedSecret.orgId ?? undefined,
+          properties: {
+            sharedSecretId: req.params.id,
+            accessType: sharedSecret.accessType as SecretSharingAccessType,
+            expiresAt: sharedSecret.expiresAt.toISOString(),
+            hasPassword: sharedSecret.isPasswordProtected
+          }
+        })
+        .catch(() => {});
+
+      return sharedSecret;
     }
   });
 
