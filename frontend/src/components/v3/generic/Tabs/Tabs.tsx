@@ -91,7 +91,7 @@ const TabsList = React.forwardRef<
       data-scrollable-start={scrollEdges.start}
       data-scrollable-end={scrollEdges.end}
       className={cn(
-        "scroll-edge-fade group/tabs-list no-scrollbar text-muted-foreground inline-flex w-fit max-w-full shrink-0 justify-center rounded-md data-[orientation=horizontal]:h-9 data-[orientation=horizontal]:overflow-x-auto data-[orientation=horizontal]:overflow-y-hidden data-[orientation=horizontal]:overscroll-x-contain data-[orientation=vertical]:h-fit data-[orientation=vertical]:flex-col data-[style=filled]:items-center data-[style=filled]:pb-[3px] data-[style=underline]:items-stretch data-[style=underline]:rounded-none",
+        "scroll-edge-fade group/tabs-list no-scrollbar text-muted-foreground inline-flex w-fit max-w-full shrink-0 justify-center rounded-md data-[orientation=horizontal]:h-9 data-[orientation=horizontal]:overflow-x-auto data-[orientation=horizontal]:overflow-y-hidden data-[orientation=horizontal]:overscroll-x-contain data-[orientation=vertical]:h-fit data-[orientation=vertical]:flex-col data-[style=filled]:items-center data-[style=filled]:pb-[3px] data-[style=underline]:w-full data-[style=underline]:items-stretch data-[style=underline]:rounded-none",
         tabsListVariants[tabsListStyleByVariant[variant]],
         className
       )}
@@ -113,6 +113,7 @@ const TabsTrigger = React.forwardRef<
       "px-1.5 py-0.5 text-sm whitespace-nowrap text-foreground/60 transition-colors data-[orientation=vertical]:w-full",
       "data-[orientation=vertical]:px-2 data-[orientation=vertical]:py-1.5",
       "data-[orientation=horizontal]:group-data-[style=underline]/tabs-list:px-3",
+      "data-[orientation=horizontal]:group-data-[style=underline]/tabs-list:flex-none",
       "data-[orientation=horizontal]:group-data-[style=filled]/tabs-list:h-[calc(100%-1px)] data-[orientation=horizontal]:group-data-[style=filled]/tabs-list:px-3 data-[orientation=horizontal]:group-data-[style=filled]/tabs-list:py-0.5",
       "hover:text-foreground data-[orientation=vertical]:justify-start",
       "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50",
