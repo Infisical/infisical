@@ -80,6 +80,41 @@ export type TRevokeCertDTO = {
   revocationReason: string;
 };
 
+export type TExtractPkcs12DTO = {
+  pkcs12: string;
+  password: string;
+  applicationId?: string;
+};
+
+export type TPkcs12Entry = {
+  alias: string | null;
+  subject: string;
+  commonName: string | null;
+  keyAlgorithm: string;
+  serialNumber: string;
+  notBefore: string;
+  notAfter: string;
+  fingerprintSha256: string;
+  chainWarning: string | null;
+  certificatePem: string;
+  chainPem?: string;
+  privateKeyPem?: string;
+};
+
+export type TExtractPkcs12Response = {
+  entries: TPkcs12Entry[];
+};
+
+export type TImportPkcs12EntriesDTO = {
+  entries: TPkcs12Entry[];
+  applicationId?: string;
+};
+
+export type TImportPkcs12EntriesResult = {
+  entry: TPkcs12Entry;
+  error?: string;
+};
+
 export type TImportCertificateDTO = {
   certificatePem: string;
   privateKeyPem?: string;

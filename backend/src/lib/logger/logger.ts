@@ -54,6 +54,8 @@ const redactedKeys = [
   "identityAccessToken",
   "token",
   "privateKey",
+  "privateKeyPem",
+  "pkcs12",
   "serverPrivateKey",
   "plainPrivateKey",
   "plainProjectKey",

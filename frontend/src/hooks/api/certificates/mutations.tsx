@@ -11,8 +11,12 @@ import {
   TCertificate,
   TDeleteCertDTO,
   TDownloadPkcs12DTO,
+  TExtractPkcs12DTO,
+  TExtractPkcs12Response,
   TImportCertificateDTO,
   TImportCertificateResponse,
+  TImportPkcs12EntriesDTO,
+  TImportPkcs12EntriesResult,
   TRenewCertificateDTO,
   TRenewCertificateResponse,
   TRevokeCertDTO,
@@ -105,6 +109,64 @@ export const useImportCertificate = () => {
       queryClient.invalidateQueries({
         queryKey: ["cert-dashboard-stats"]
       });
+    }
+  });
+};
+
+// Reads a keystore and hands back its contents for review. Nothing is created, and nothing is
+// cached: the response carries private keys.
+export const useExtractPkcs12 = () =>
+  useMutation<TExtractPkcs12Response, object, TExtractPkcs12DTO>({
+    meta: { handledErrorCodes: ["BadRequest"] },
+    mutationFn: async (body) => {
+      const { data } = await apiRequest.post<TExtractPkcs12Response>(
+        "/api/v1/cert-manager/certificates/pkcs12/extract",
+        body
+      );
+      return data;
+    }
+  });
+
+// Imports the entries chosen from a keystore, one at a time, and reports the outcome of each.
+// It resolves even when some entries fail, because a keystore whose third certificate is already
+// in the project should still import the other two. Failures are returned rather than thrown so
+// the global handler does not raise a toast per entry on top of the summary the dialog renders.
+export const useImportPkcs12Entries = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TImportPkcs12EntriesResult[], object, TImportPkcs12EntriesDTO>({
+    mutationFn: async ({ entries, applicationId }) => {
+      const results: TImportPkcs12EntriesResult[] = [];
+
+      await entries.reduce<Promise<void>>(async (prev, entry) => {
+        await prev;
+        try {
+          await apiRequest.post<TImportCertificateResponse>(
+            "/api/v1/cert-manager/certificates/import-certificate",
+            {
+              certificatePem: entry.certificatePem,
+              ...(entry.chainPem ? { chainPem: entry.chainPem } : {}),
+              ...(entry.privateKeyPem ? { privateKeyPem: entry.privateKeyPem } : {}),
+              applicationId
+            }
+          );
+          results.push({ entry });
+        } catch (err) {
+          results.push({
+            entry,
+            error:
+              (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+              "Could not import this certificate."
+          });
+        }
+      }, Promise.resolve());
+
+      return results;
+    },
+    onSuccess: (results) => {
+      if (results.some((result) => !result.error)) {
+        queryClient.invalidateQueries({ queryKey: projectKeys.allProjectCertificates() });
+        queryClient.invalidateQueries({ queryKey: ["cert-dashboard-stats"] });
+      }
     }
   });
 };

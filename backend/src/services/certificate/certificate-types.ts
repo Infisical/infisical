@@ -152,6 +152,14 @@ export type TImportCertDTO = {
   chainPem?: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TExtractPkcs12DTO = {
+  projectId: string;
+  applicationId?: string;
+
+  pkcs12: string;
+  password: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TGetCertPrivateKeyDTO = {
   id?: string;
   serialNumber?: string;

@@ -2121,6 +2121,28 @@ export const CERTIFICATES = {
     privateKey:
       "The PEM-encoded private key associated with the imported certificate. Returned only when a private key was supplied at import.",
     serialNumber: "The serial number of the imported certificate."
+  },
+  EXTRACT_PKCS12: {
+    pkcs12: "The base64-encoded PKCS#12 keystore (.p12 or .pfx) to read.",
+    password: "The password protecting the keystore. Pass an empty string for a keystore without one.",
+    applicationId: "The ID of the Application the certificates will be imported into.",
+
+    entries: "The certificate and private key pairs found in the keystore.",
+    alias: "The friendly name the keystore records for this entry, if it has one.",
+    subject: "The distinguished name of the certificate.",
+    commonName: "The common name of the certificate, if it has one.",
+    keyAlgorithm: "The algorithm and size of the private key, such as 'RSA 2048' or 'ECDSA P-256'.",
+    entrySerialNumber: "The serial number of the certificate.",
+    notBefore: "The date the certificate becomes valid.",
+    notAfter: "The date the certificate expires.",
+    fingerprintSha256: "The SHA-256 fingerprint of the certificate.",
+    chainWarning:
+      "Set when no usable issuer chain was found in the keystore, in which case the certificate is returned on its own.",
+    entryCertificatePem: "The PEM-encoded certificate, ready to pass to the import endpoint.",
+    entryChainPem:
+      "The PEM-encoded issuer chain, ordered from the closest issuer outwards. Absent when none was found.",
+    entryPrivateKeyPem:
+      "The PEM-encoded private key belonging to this certificate. Absent for a keystore that holds certificates only."
   }
 };
 

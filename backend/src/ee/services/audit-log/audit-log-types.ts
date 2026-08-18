@@ -393,6 +393,7 @@ export enum EventType {
   GET_CERT_PRIVATE_KEY = "get-cert-private-key",
   GET_CERT_BUNDLE = "get-cert-bundle",
   EXPORT_CERT_PKCS12 = "export-cert-pkcs12",
+  EXTRACT_CERT_PKCS12 = "extract-cert-pkcs12",
   CREATE_PKI_ALERT = "create-pki-alert",
   GET_PKI_ALERT = "get-pki-alert",
   UPDATE_PKI_ALERT = "update-pki-alert",
@@ -3120,6 +3121,16 @@ interface GetCertPkcs12 {
     certId: string;
     cn: string;
     serialNumber: string;
+  };
+}
+
+interface ExtractCertPkcs12 {
+  type: EventType.EXTRACT_CERT_PKCS12;
+  metadata: {
+    entryCount: number;
+    // Truncated: these come from the uploaded keystore, not from us.
+    subjects: string[];
+    applicationId?: string;
   };
 }
 
@@ -7206,6 +7217,7 @@ export type Event =
   | GetCertPrivateKey
   | GetCertBundle
   | GetCertPkcs12
+  | ExtractCertPkcs12
   | CreatePkiAlert
   | GetPkiAlert
   | UpdatePkiAlert
