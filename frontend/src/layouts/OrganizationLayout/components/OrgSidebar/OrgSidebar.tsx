@@ -29,8 +29,11 @@ export const OrgSidebar = () => {
   // paths with no $type route param, so fall back to parsing the product slug from the pathname.
   const effectiveTypeSlug = typeSlug ?? parseProjectSlugFromPath(pathname);
   const projectType = effectiveTypeSlug ? urlSlugToProjectType(effectiveTypeSlug) : null;
+  const isOnProductSettings = pathname.includes("/product-settings");
   const isOnProjectTypeListing =
-    !isInsideProject && Boolean(projectType) && hasIntermediateProjectsView(projectType!);
+    !isInsideProject &&
+    Boolean(projectType) &&
+    (hasIntermediateProjectsView(projectType!) || isOnProductSettings);
   const { isSubOrganization } = useOrganization();
 
   let scope: "project" | "sub-org" | "org" | "pam" = "org";
