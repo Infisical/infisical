@@ -6,6 +6,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SECRET_SHARING } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { unique } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -27,6 +28,12 @@ import { SanitizedSecretSharingSchema } from "../sanitizedSchemas";
 
 const ALLOWED_IMAGE_CONTENT_TYPES = ["image/png", "image/jpeg"];
 const MAX_IMAGE_SIZE = 1 * 1024 * 1024; // 1MB
+
+// The share id in the link is itself the bearer credential for the unauthenticated
+// access endpoint, so telemetry carries only its digest: the funnel can still
+// correlate and dedupe by share without a live token leaving the API.
+const hashShareIdForTelemetry = (shareId: string) =>
+  crypto.nativeCrypto.createHash("sha256").update(shareId).digest("hex");
 
 export const registerSecretSharingRouter = async (server: FastifyZodProvider) => {
   // Allow multipart file uploads
@@ -114,14 +121,16 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         req.permission?.type
       );
 
+      const sharedSecretIdHash = hashShareIdForTelemetry(req.params.id);
+
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.SharedSecretLinkOpened,
-          distinctId: req.permission?.id ? getTelemetryDistinctId(req) : `anonymous-${req.params.id}`,
+          distinctId: req.permission?.id ? getTelemetryDistinctId(req) : `anonymous-${sharedSecretIdHash}`,
           anonymous: !req.permission?.id,
           organizationId: sharedSecret.orgId ?? undefined,
           properties: {
-            sharedSecretId: req.params.id,
+            sharedSecretIdHash,
             accessType: sharedSecret.accessType as SecretSharingAccessType,
             expiresAt: sharedSecret.expiresAt.toISOString(),
             hasPassword: sharedSecret.isPasswordProtected
@@ -183,18 +192,20 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         });
       }
 
+      const sharedSecretIdHash = hashShareIdForTelemetry(req.params.id);
+
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SharedSecretViewed,
-        distinctId: req.permission?.id ? getTelemetryDistinctId(req) : `anonymous-${req.params.id}`,
+        distinctId: req.permission?.id ? getTelemetryDistinctId(req) : `anonymous-${sharedSecretIdHash}`,
         // Suppress person-record creation for unauthenticated viewers — the
-        // `anonymous-<shareId>` distinctId is synthesised per share and has
+        // `anonymous-<shareIdHash>` distinctId is synthesised per share and has
         // no continuity with any real user or identity, so creating a
         // PostHog person for it inflates the person count without adding
         // any analytical value.
         anonymous: !req.permission?.id,
         organizationId: sharedSecret.orgId ?? undefined,
         properties: {
-          sharedSecretId: req.params.id,
+          sharedSecretIdHash,
           accessType: sharedSecret.accessType as SecretSharingAccessType
         }
       });

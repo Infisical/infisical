@@ -718,7 +718,7 @@ export type TSecretSharedEvent = {
 export type TSharedSecretViewedEvent = {
   event: PostHogEventTypes.SharedSecretViewed;
   properties: {
-    sharedSecretId: string;
+    sharedSecretIdHash: string;
     accessType: SecretSharingAccessType;
   };
 };
@@ -726,7 +726,7 @@ export type TSharedSecretViewedEvent = {
 export type TSharedSecretLinkOpenedEvent = {
   event: PostHogEventTypes.SharedSecretLinkOpened;
   properties: {
-    sharedSecretId: string;
+    sharedSecretIdHash: string;
     accessType: SecretSharingAccessType;
     expiresAt: string;
     hasPassword: boolean;
