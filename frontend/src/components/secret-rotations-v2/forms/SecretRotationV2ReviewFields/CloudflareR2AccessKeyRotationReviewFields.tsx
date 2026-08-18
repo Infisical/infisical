@@ -1,6 +1,6 @@
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/v2";
+import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
 import { Badge } from "@app/components/v3";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
@@ -24,8 +24,8 @@ export const CloudflareR2AccessKeyRotationReviewFields = () => {
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
-        <GenericFieldLabel label="Token Name">{parameters.name}</GenericFieldLabel>
-        <GenericFieldLabel label="Buckets">
+        <ReviewField label="Token Name">{parameters.name}</ReviewField>
+        <ReviewField label="Buckets">
           <div className="flex flex-wrap items-center gap-2">
             {parameters.buckets.map((bucket) => (
               <Badge key={r2BucketKey(bucket)} variant="neutral">
@@ -33,24 +33,20 @@ export const CloudflareR2AccessKeyRotationReviewFields = () => {
               </Badge>
             ))}
           </div>
-        </GenericFieldLabel>
-        <GenericFieldLabel label="Access Level">
+        </ReviewField>
+        <ReviewField label="Access Level">
           {CLOUDFLARE_R2_ACCESS_LEVEL_MAP[parameters.accessLevel]}
-        </GenericFieldLabel>
+        </ReviewField>
         {Boolean(parameters.allowedIps?.length) && (
-          <GenericFieldLabel label="Allowed IPs">
-            {parameters.allowedIps?.join(", ")}
-          </GenericFieldLabel>
+          <ReviewField label="Allowed IPs">{parameters.allowedIps?.join(", ")}</ReviewField>
         )}
         {Boolean(parameters.disallowedIps?.length) && (
-          <GenericFieldLabel label="Disallowed IPs">
-            {parameters.disallowedIps?.join(", ")}
-          </GenericFieldLabel>
+          <ReviewField label="Disallowed IPs">{parameters.disallowedIps?.join(", ")}</ReviewField>
         )}
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
-        <GenericFieldLabel label="Access Key ID">{accessKeyId}</GenericFieldLabel>
-        <GenericFieldLabel label="Secret Access Key">{secretAccessKey}</GenericFieldLabel>
+        <ReviewField label="Access Key ID">{accessKeyId}</ReviewField>
+        <ReviewField label="Secret Access Key">{secretAccessKey}</ReviewField>
       </SecretRotationReviewSection>
     </>
   );

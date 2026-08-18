@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from "./AlertDialog";
+import { DiscardChangesAlertDialog } from "./DiscardChangesAlertDialog";
 
 /**
  * AlertDialogs are modal confirmation dialogs for irreversible or high-consequence actions —
@@ -150,6 +151,38 @@ export const WithMedia: Story = {
       </AlertDialogContent>
     </AlertDialog>
   )
+};
+
+const DiscardChangesStory = () => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        Close Editor
+      </Button>
+      <DiscardChangesAlertDialog
+        open={open}
+        onOpenChange={setOpen}
+        onDiscard={() => setOpen(false)}
+        title="Discard Changes?"
+        description="Your unsaved changes to this configuration will be lost."
+      />
+    </>
+  );
+};
+
+export const DiscardChanges: Story = {
+  name: "Example: Discard Changes",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use `DiscardChangesAlertDialog` when dismissing an editor or setup flow would remove unsaved form changes. The owning feature remains responsible for dirty state and reset behavior."
+      }
+    }
+  },
+  render: () => <DiscardChangesStory />
 };
 
 export const SmallSize: Story = {
