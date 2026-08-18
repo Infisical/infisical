@@ -191,14 +191,23 @@ export const SmallSize: Story = {
   )
 };
 
-const CONFIRMATION_KEYWORD = "delete";
+const PROJECT_NAME = "production-api";
 
 const TypedConfirmationStory = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const [confirmation, setConfirmation] = useState("");
-  const isConfirmed = confirmation === CONFIRMATION_KEYWORD;
+  const isConfirmed = confirmation === PROJECT_NAME;
 
   return (
-    <AlertDialog onOpenChange={(open) => !open && setConfirmation("")}>
+    <AlertDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (isPending) return;
+        setIsOpen(open);
+        if (!open) setConfirmation("");
+      }}
+    >
       <AlertDialogTrigger asChild>
         <Button variant="danger">
           <TrashIcon />
@@ -217,19 +226,35 @@ const TypedConfirmationStory = () => {
           <Field>
             <AlertDialogConfirmationLabel
               htmlFor="alert-dialog-confirmation"
-              confirmationValue={CONFIRMATION_KEYWORD}
+              confirmationValue={PROJECT_NAME}
             />
             <Input
               id="alert-dialog-confirmation"
               value={confirmation}
               onChange={(e) => setConfirmation(e.target.value)}
+              placeholder={PROJECT_NAME}
               autoComplete="off"
+              autoFocus
             />
           </Field>
         </AlertDialogConfirmationField>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="danger" isDisabled={!isConfirmed}>
+          <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="danger"
+            isPending={isPending}
+            isDisabled={!isConfirmed}
+            onClick={async (event) => {
+              event.preventDefault();
+              setIsPending(true);
+              await new Promise((resolve) => {
+                setTimeout(resolve, 800);
+              });
+              setIsPending(false);
+              setIsOpen(false);
+              setConfirmation("");
+            }}
+          >
             Delete project
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -244,7 +269,7 @@ export const TypedConfirmation: Story = {
     docs: {
       description: {
         story:
-          "Compose `AlertDialogConfirmationField`, `Field`, and `AlertDialogConfirmationLabel` with an `Input` that requires either a fixed keyword or the resource name before the destructive action is enabled. Pass that required value to `confirmationValue` so the label owns the confirmation sentence and styling."
+          "Require the resource name for high-consequence deletion. Pass it to `confirmationValue`, mirror it in the input placeholder, focus the input when the dialog opens, and clear it on close. During an asynchronous action, prevent the default close, show `isPending`, and disable cancellation until the operation completes. A fixed keyword can be used when no stable resource name is available."
       }
     }
   },

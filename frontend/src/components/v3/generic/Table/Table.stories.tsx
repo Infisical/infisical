@@ -3,7 +3,6 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
   BoxIcon as ProjectIcon,
   ChevronDownIcon,
-  ChevronsUpDownIcon,
   CopyIcon,
   EditIcon,
   MoreHorizontalIcon,
@@ -21,6 +20,7 @@ import {
   Pagination
 } from "@app/components/v3/generic";
 
+import { cn } from "../../utils";
 import {
   Table,
   TableBody,
@@ -268,13 +268,23 @@ const SortableHeadersExample = () => {
   const [sort, setSort] = useState<{
     column: SortableColumn;
     direction: Exclude<TableSortDirection, "none">;
-  } | null>({ column: "name", direction: "ascending" });
+  } | null>(null);
 
   const getSortDirection = (column: SortableColumn): TableSortDirection =>
     sort?.column === column ? sort.direction : "none";
 
   const handleSortChange = (column: SortableColumn, direction: TableSortDirection) => {
     setSort(direction === "none" ? null : { column, direction });
+  };
+
+  const getSortIconClassName = (column: SortableColumn) => {
+    const direction = getSortDirection(column);
+
+    return cn(
+      "transition-transform",
+      direction === "descending" && "rotate-180",
+      direction === "none" && "opacity-30"
+    );
   };
 
   const sortedIdentities = identities.slice(0, 4);
@@ -300,27 +310,21 @@ const SortableHeadersExample = () => {
             onSortChange={(direction) => handleSortChange("name", direction)}
           >
             Name
-            <ChevronDownIcon
-              className={getSortDirection("name") === "descending" ? "rotate-180" : undefined}
-            />
+            <ChevronDownIcon className={getSortIconClassName("name")} />
           </TableHead>
           <TableHead
             sortDirection={getSortDirection("role")}
             onSortChange={(direction) => handleSortChange("role", direction)}
           >
             Role
-            <ChevronsUpDownIcon
-              className={getSortDirection("role") === "none" ? "opacity-30" : undefined}
-            />
+            <ChevronDownIcon className={getSortIconClassName("role")} />
           </TableHead>
           <TableHead
             sortDirection={getSortDirection("managedBy")}
             onSortChange={(direction) => handleSortChange("managedBy", direction)}
           >
             Managed by
-            <ChevronsUpDownIcon
-              className={getSortDirection("managedBy") === "none" ? "opacity-30" : undefined}
-            />
+            <ChevronDownIcon className={getSortIconClassName("managedBy")} />
           </TableHead>
         </TableRow>
       </TableHeader>
