@@ -1,57 +1,45 @@
 package api
 
 import (
-	"context"
-	"fmt"
 	"log/slog"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/go-chi/chi/v5"
 
-	"github.com/infisical/api/internal/config"
-	"github.com/infisical/api/internal/database/pg"
-	"github.com/infisical/api/internal/ee/services/license"
-	"github.com/infisical/api/internal/keystore"
-	"github.com/infisical/api/internal/queue"
-	"github.com/infisical/api/internal/services/kms"
+	"github.com/infisical/api/internal/server/api/shared"
+	"github.com/infisical/api/internal/services"
+	"github.com/infisical/api/internal/services/auth/apiauth"
 )
 
-// Infra holds the external infrastructure dependencies.
-type Infra struct {
-	Logger   *slog.Logger
-	Config   *config.Config
-	DB       pg.DB
-	Redis    redis.UniversalClient
-	HSM      kms.HsmService
-	License  *license.Service
-	KeyStore keystore.KeyStore
-	Queue    *queue.Service
+// NewErrorHandler re-exports shared.NewErrorHandler for convenience.
+var NewErrorHandler = shared.NewErrorHandler
+
+// Router wraps chi.Router with service dependencies.
+type Router struct {
+	chi.Router
+	logger   *slog.Logger
+	services *services.Services
+	auth     *apiauth.ApiAuthenticator
 }
 
-// Services holds all initialized services for the API.
-type Services struct {
-	Platform      *PlatformServices
-	SecretManager *SecretManagerServices
-}
+// NewRouter creates a new router with all routes registered.
+func NewRouter(logger *slog.Logger, svc *services.Services) *Router {
+	auth := apiauth.NewApiAuthenticator(
+		logger,
+		svc.Infra().DB,
+		svc.Infra().Config.AuthSecret,
+		svc.Infra().KeyStore,
+		svc.AssumePrivilege,
+		NewErrorHandler(logger),
+	)
 
-// NewServices creates all services for the API.
-// Returns a cleanup function that should be called during graceful shutdown.
-func NewServices(ctx context.Context, infra *Infra) (*Services, func(), error) {
-	platformSvc, err := newPlatformServices(ctx, infra)
-	if err != nil {
-		return nil, nil, fmt.Errorf("platform services: %w", err)
+	r := &Router{
+		Router:   chi.NewRouter(),
+		logger:   logger,
+		services: svc,
+		auth:     auth,
 	}
 
-	secretManagerSvc := newSecretManagerServices(ctx, infra, platformSvc)
+	r.registerSecretsRoutes()
 
-	services := &Services{
-		Platform:      platformSvc,
-		SecretManager: secretManagerSvc,
-	}
-
-	cleanup := func() {
-		platformSvc.KMS.Close()
-		platformSvc.License.Close()
-	}
-
-	return services, cleanup, nil
+	return r
 }

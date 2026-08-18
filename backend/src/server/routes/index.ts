@@ -2167,6 +2167,7 @@ export const registerRoutes = async (
     keyStore,
     licenseService,
     folderDAL,
+    secretDAL: secretV2BridgeDAL,
     accessApprovalPolicyEnvironmentDAL,
     secretApprovalPolicyEnvironmentDAL: sapEnvironmentDAL
   });
