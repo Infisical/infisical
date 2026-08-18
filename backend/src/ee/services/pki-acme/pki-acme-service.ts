@@ -1076,9 +1076,8 @@ export const pkiAcmeServiceFactory = ({
             })
           }
     };
-    // Defaults are merged for the policy check only. The CSR we forward stays untouched, since
-    // DigiCert and GoDaddy fall back to the first SAN when the commonName is empty and a defaulted
-    // one would replace the identifier the client just validated.
+    // Policy check only. DigiCert and GoDaddy fall back to the first SAN when commonName is empty,
+    // so forwarding a defaulted one would replace the identifier the client just validated.
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       policy.id,
       applyProfileDefaults(updatedCertificateRequest, profile.defaults)
