@@ -451,7 +451,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
         description: `${imported} of ${outcomes.length} certificate${outcomes.length === 1 ? "" : "s"} imported.`
       };
     }
-    if (entries)
+    if (entries && format === "pkcs12")
       return {
         title: "Review & Import",
         description: `${entries.length} certificate${entries.length === 1 ? "" : "s"} found in this keystore. Choose which to import.`
@@ -477,7 +477,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
       );
     }
 
-    if (entries) {
+    if (entries && format === "pkcs12") {
       return (
         <DialogFooter>
           <Button variant="outline" onClick={() => handlePopUpToggle("certificateImport", false)}>
