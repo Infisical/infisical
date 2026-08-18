@@ -288,11 +288,11 @@ export const auditReportServiceFactory = ({
     return presentAuditReport(report);
   };
 
-  const deleteReport = async (auditReportId: string, actor: TAuditReportServiceActor) => {
+  const deleteReport = async (auditReportId: string, projectId: string, actor: TAuditReportServiceActor) => {
     const report = await auditReportDAL.findById(auditReportId);
 
     // An org-scoped report id presents as not found on the project endpoints (and vice versa).
-    if (!report?.projectId) {
+    if (!report?.projectId || report.projectId !== projectId) {
       throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
     }
 
