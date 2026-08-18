@@ -1720,20 +1720,6 @@ export const registerRoutes = async (
   const pamFolderDAL = pamFolderDALFactory(db);
   const pamFolderNotificationConfigDAL = pamFolderNotificationConfigDALFactory(db);
 
-  const pamMembershipService = pamMembershipServiceFactory({
-    membershipDAL,
-    membershipRoleDAL,
-    approvalPolicyDAL,
-    projectAccessRequestDAL,
-    pamFolderDAL,
-    pamAccountDAL,
-    userDAL,
-    groupDAL,
-    identityDAL,
-    permissionService,
-    usageMeteringService
-  });
-
   const certManagerInstanceService = certManagerInstanceServiceFactory({
     db,
     orgDAL,
@@ -1859,6 +1845,26 @@ export const registerRoutes = async (
   const pamSessionDAL = pamSessionDALFactory(db);
   const pamSessionEventChunkDAL = pamSessionEventChunkDALFactory(db);
 
+  // Wired after pamSessionDAL/gatewayV2Service: narrowing a member's access has to close the PAM
+  // sessions that access was holding open.
+  const pamMembershipService = pamMembershipServiceFactory({
+    membershipDAL,
+    membershipRoleDAL,
+    approvalPolicyDAL,
+    projectAccessRequestDAL,
+    pamFolderDAL,
+    pamAccountDAL,
+    pamSessionDAL,
+    userDAL,
+    groupDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL,
+    identityDAL,
+    permissionService,
+    gatewayV2Service,
+    usageMeteringService
+  });
+
   const pamSessionExpirationService = pamSessionExpirationServiceFactory({
     queueService,
     pamSessionDAL,
@@ -1911,6 +1917,8 @@ export const registerRoutes = async (
     pamAccountTemplateDAL,
     membershipDAL,
     membershipRoleDAL,
+    pamSessionDAL,
+    userDAL,
     permissionService,
     kmsService,
     gatewayV2DAL,
@@ -3620,7 +3628,8 @@ export const registerRoutes = async (
     cronJob,
     gatewayV2Service,
     gatewayV2DAL,
-    gatewayPoolService
+    gatewayPoolService,
+    telemetryService
   });
 
   const pkiDiscoveryService = pkiDiscoveryServiceFactory({
