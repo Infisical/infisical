@@ -30,18 +30,25 @@ export const PkiSyncImportCertificatesModal = ({ isOpen, onOpenChange, pkiSync }
   const destinationName = PKI_SYNC_MAP[destination].name;
 
   const handleTriggerImportCertificates = async () => {
-    await triggerImportCertificates.mutateAsync({
-      syncId,
-      destination,
-      projectId
-    });
+    try {
+      await triggerImportCertificates.mutateAsync({
+        syncId,
+        destination,
+        projectId
+      });
 
-    createNotification({
-      text: `Successfully triggered certificate import for ${destinationName} Certificate Sync`,
-      type: "success"
-    });
+      createNotification({
+        text: `Successfully triggered certificate import for ${destinationName} Certificate Sync`,
+        type: "success"
+      });
 
-    onOpenChange(false);
+      onOpenChange(false);
+    } catch {
+      createNotification({
+        text: `Failed to import certificates from ${destinationName}`,
+        type: "error"
+      });
+    }
   };
 
   return (
@@ -60,7 +67,10 @@ export const PkiSyncImportCertificatesModal = ({ isOpen, onOpenChange, pkiSync }
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={handleTriggerImportCertificates}
+            onClick={async (event) => {
+              event.preventDefault();
+              await handleTriggerImportCertificates();
+            }}
             isPending={triggerImportCertificates.isPending}
           >
             Import Certificates
