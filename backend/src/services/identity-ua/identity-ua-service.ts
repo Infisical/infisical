@@ -848,7 +848,8 @@ export const identityUaServiceFactory = ({
     ttl,
     actorAuthMethod,
     description,
-    numUsesLimit
+    numUsesLimit,
+    isActorSuperAdmin
   }: TCreateUaClientSecretDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -926,6 +927,9 @@ export const identityUaServiceFactory = ({
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const appCfg = getConfig();
     const clientSecret = crypto.randomBytes(32).toString("hex");
     const clientSecretHash = await crypto.hashing().createHash(clientSecret, appCfg.SALT_ROUNDS);
@@ -1137,7 +1141,8 @@ export const identityUaServiceFactory = ({
     actor,
     actorOrgId,
     actorAuthMethod,
-    clientSecretId
+    clientSecretId,
+    isActorSuperAdmin
   }: TRevokeUaClientSecretDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -1223,6 +1228,9 @@ export const identityUaServiceFactory = ({
         });
       }
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     // Insert the revocation marker BEFORE flipping isClientSecretRevoked. If
     // the flip fails, tokens are already dead and a retry safely re-flips the
     // bit; flipping first would leave the secret flagged but tokens authentic.

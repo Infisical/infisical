@@ -15,6 +15,14 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }));
 
+// `vi.mock` factories are hoisted above imports — the spy they reference must come from `vi.hoisted`.
+// Stubbing the config read rather than the guard itself keeps the real instance-admin check under test.
+const { getServerCfgMock } = vi.hoisted(() => ({ getServerCfgMock: vi.fn() }));
+
+vi.mock("@app/services/super-admin/super-admin-service", () => ({
+  getServerCfg: getServerCfgMock
+}));
+
 const ORG_ID = "org-1";
 const PROJECT_ID = "project-1";
 const IDENTITY_ID = "identity-1";
@@ -39,7 +47,8 @@ const createService = ({
   const identityDAL = {
     findOne: vi.fn().mockResolvedValue(existingIdentity),
     transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(TX)),
-    deleteById: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: "ident" })
+    deleteById: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: "ident" }),
+    updateById: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: "renamed" })
   };
 
   const service = identityV2ServiceFactory({
@@ -77,7 +86,10 @@ const createService = ({
 };
 
 describe("deleteIdentity alert cleanup", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getServerCfgMock.mockResolvedValue({ adminIdentityIds: [] });
+  });
 
   test("reaps the identity's alerts in every org, in the same transaction as the row delete", async () => {
     const { service, identityDAL, deleteAlertsForDeletedResource } = createService();
@@ -127,5 +139,51 @@ describe("deleteIdentity alert cleanup", () => {
     await expect(service.deleteIdentity(buildDto())).rejects.toThrow(`Identity with id ${IDENTITY_ID} not found`);
 
     expect(deleteAlertsForDeletedResource).not.toHaveBeenCalled();
+  });
+});
+
+describe("instance admin identities are protected on the v2 surface", () => {
+  const INSTANCE_ADMIN_ERROR =
+    "You are attempting to modify an instance admin identity. This requires elevated instance admin privileges";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getServerCfgMock.mockResolvedValue({ adminIdentityIds: [IDENTITY_ID] });
+  });
+
+  test("delete is refused for a non instance admin actor, and nothing is reaped", async () => {
+    const { service, identityDAL, deleteAlertsForDeletedResource } = createService();
+
+    await expect(service.deleteIdentity(buildDto())).rejects.toThrow(INSTANCE_ADMIN_ERROR);
+
+    expect(identityDAL.deleteById).not.toHaveBeenCalled();
+    expect(deleteAlertsForDeletedResource).not.toHaveBeenCalled();
+  });
+
+  test("update is refused for a non instance admin actor", async () => {
+    const { service, identityDAL } = createService();
+
+    await expect(service.updateIdentity({ ...buildDto(), data: { name: "renamed" } } as never)).rejects.toThrow(
+      INSTANCE_ADMIN_ERROR
+    );
+
+    expect(identityDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("an instance admin actor is allowed through", async () => {
+    const { service, identityDAL } = createService();
+
+    await service.deleteIdentity({ ...buildDto(), isActorSuperAdmin: true });
+
+    expect(identityDAL.deleteById).toHaveBeenCalledWith(IDENTITY_ID, TX);
+  });
+
+  test("the guard is inert when no instance admin identities are configured", async () => {
+    getServerCfgMock.mockResolvedValue({ adminIdentityIds: [] });
+    const { service, identityDAL } = createService();
+
+    await service.deleteIdentity(buildDto());
+
+    expect(identityDAL.deleteById).toHaveBeenCalledWith(IDENTITY_ID, TX);
   });
 });

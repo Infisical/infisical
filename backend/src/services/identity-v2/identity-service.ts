@@ -37,6 +37,7 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
+import { validateIdentityUpdateForSuperAdminPrivileges } from "@app/services/super-admin/super-admin-fns";
 
 import { ActorType } from "../auth/auth-type";
 import { getIdentityActiveLockoutAuthMethods } from "../identity/identity-fns";
@@ -322,6 +323,8 @@ export const identityV2ServiceFactory = ({
     const factory = scopeFactory[scopeData.scope];
 
     await factory.onUpdateIdentityGuard(dto);
+    await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
+
     const existingIdentity = await identityDAL.findOne({
       id: dto.selector.identityId,
       orgId: dto.permission.orgId,
@@ -375,6 +378,7 @@ export const identityV2ServiceFactory = ({
     const factory = scopeFactory[scopeData.scope];
 
     await factory.onDeleteIdentityGuard(dto);
+    await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
 
     const existingIdentity = await identityDAL.findOne({
       id: dto.selector.identityId,
