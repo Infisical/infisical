@@ -505,7 +505,7 @@
                 "group": "Manage secrets",
                 "pages": [
                   {
-                    "group": "Organize",
+                    "group": "Organization",
                     "pages": [
                       "documentation/platform/secrets-mgmt/project",
                       "documentation/platform/folder",
@@ -513,14 +513,14 @@
                     ]
                   },
                   {
-                    "group": "Version",
+                    "group": "Versioning",
                     "pages": [
                       "documentation/platform/secret-versioning",
                       "documentation/platform/pit-recovery"
                     ]
                   },
                   {
-                    "group": "Manage access",
+                    "group": "Access control",
                     "pages": [
                       "documentation/platform/secret-validation-rules",
                       "documentation/platform/pr-workflows",
@@ -528,7 +528,7 @@
                     ]
                   },
                   {
-                    "group": "Monitor",
+                    "group": "Monitoring",
                     "pages": [
                       "documentation/platform/insights",
                       "documentation/platform/webhooks"
