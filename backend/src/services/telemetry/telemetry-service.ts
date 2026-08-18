@@ -50,6 +50,9 @@ const TELEMETRY_BUCKET_NAMES = Array.from(
   (_, i) => `bucket-${i.toString().padStart(2, "0")}`
 );
 
+const TELEMETRY_EVENT_STREAM_BATCH_SIZE = 10_000;
+const TELEMETRY_EVENT_STREAM_MAX_ENTRIES = 50_000;
+
 type AggregatedEventData = Record<string, unknown>;
 type SingleEventData = {
   distinctId: string;
@@ -63,7 +66,7 @@ export type TTelemetryServiceFactory = ReturnType<typeof telemetryServiceFactory
 export type TTelemetryServiceFactoryDep = {
   keyStore: Pick<
     TKeyStoreFactory,
-    "incrementBy" | "deleteItemsByKeyIn" | "setItemWithExpiry" | "setItemWithExpiryNX" | "getKeysByPattern" | "getItems"
+    "incrementBy" | "setItemWithExpiryNX" | "streamAdd" | "streamCollect" | "streamTrim"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -81,10 +84,8 @@ const getBucketForDistinctId = (distinctId: string): string => {
   return TELEMETRY_BUCKET_NAMES[bucketIndex];
 };
 
-export const createTelemetryEventKey = (event: string, distinctId: string): string => {
-  const bucketId = getBucketForDistinctId(distinctId);
-  return KeyStorePrefixes.TelemetryEvent(event, bucketId, distinctId, crypto.nativeCrypto.randomUUID());
-};
+const getTelemetryEventStreamKey = (event: string, distinctId: string): string =>
+  KeyStorePrefixes.TelemetryAggregatedEventStream(event, getBucketForDistinctId(distinctId));
 
 export enum DeploymentType {
   USCloud = "us-cloud",
@@ -319,18 +320,15 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     const resolvedOrgName = event.organizationName ?? requestContext.get(RequestContextKey.OrgName);
 
     if (POSTHOG_AGGREGATED_EVENTS.includes(event.event)) {
-      const eventKey = createTelemetryEventKey(event.event, event.distinctId);
-      await keyStore.setItemWithExpiry(
-        eventKey,
-        KeyStoreTtls.TelemetryAggregatedEventInSeconds,
-        JSON.stringify({
+      await keyStore.streamAdd(getTelemetryEventStreamKey(event.event, event.distinctId), "*", {
+        data: JSON.stringify({
           distinctId: event.distinctId,
           event: event.event,
           properties: event.properties,
           organizationId: event.organizationId,
           ...(resolvedOrgName ? { organizationName: resolvedOrgName } : {})
         })
-      );
+      });
     } else {
       // Skip groupIdentify entirely when the event is marked anonymous.
       //
@@ -461,118 +459,132 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     return aggregatedData;
   };
 
-  const processBucketEvents = async (eventType: string, bucketId: string) => {
+  const parseEventPayloads = (payloads: (string | null)[], context: string): SingleEventData[] => {
+    const parsed: SingleEventData[] = [];
+    for (const payload of payloads) {
+      if (payload) {
+        try {
+          parsed.push(JSON.parse(payload) as SingleEventData);
+        } catch (error) {
+          logger.error(error, `Skipping unparseable telemetry event [${context}]`);
+        }
+      }
+    }
+    return parsed;
+  };
+
+  const publishAggregatedEvents = async (
+    eventType: string,
+    events: SingleEventData[],
+    orgsIdentifyAttempted: Set<string>
+  ) => {
+    if (!postHog || events.length === 0) return;
+
+    const eventsGrouped = new Map<string, SingleEventData[]>();
+
+    const breakdownDimensions = AGGREGATION_BREAKDOWN_DIMENSIONS[eventType as PostHogEventTypes] || [];
+
+    events.forEach((event) => {
+      const breakdownValues: Record<string, string> = {};
+      if (breakdownDimensions.length > 0 && event.properties) {
+        const props = event.properties as Record<string, unknown>;
+        for (const dim of breakdownDimensions) {
+          if (props[dim] !== undefined && props[dim] !== null) {
+            breakdownValues[dim] = String(props[dim]);
+          }
+        }
+      }
+      const key = JSON.stringify({ id: event.distinctId, org: event.organizationId, ...breakdownValues });
+      if (!eventsGrouped.has(key)) {
+        eventsGrouped.set(key, []);
+      }
+      eventsGrouped.get(key)!.push(event);
+    });
+
+    const instanceId = await getInstanceId();
+
+    for (const [eventsKey, groupedEvents] of eventsGrouped) {
+      const key = JSON.parse(eventsKey) as { id: string; org?: string; [dim: string]: string | undefined };
+      if (key.org && !orgsIdentifyAttempted.has(key.org)) {
+        orgsIdentifyAttempted.add(key.org);
+        try {
+          const groupIdentifyCacheKey = KeyStorePrefixes.TelemetryGroupIdentify(key.org);
+          // eslint-disable-next-line no-await-in-loop
+          const wasSet = await keyStore.setItemWithExpiryNX(
+            groupIdentifyCacheKey,
+            KeyStoreTtls.TelemetryGroupIdentifyInSeconds,
+            "1"
+          );
+          if (wasSet) {
+            // eslint-disable-next-line no-await-in-loop
+            const groupProperties = await getOrgGroupProperties(key.org, groupedEvents[0]?.organizationName);
+            postHog.groupIdentify({
+              groupType: "organization",
+              groupKey: key.org,
+              properties: groupProperties,
+              distinctId: key.id
+            });
+          }
+        } catch (error) {
+          logger.error(error, "Failed to identify PostHog organization");
+        }
+      }
+      const properties = aggregateGroupProperties(groupedEvents, breakdownDimensions);
+
+      for (const dim of breakdownDimensions) {
+        if (key[dim] !== undefined) {
+          properties[dim] = key[dim];
+        }
+      }
+
+      if (key.org) {
+        properties.orgId = key.org;
+      }
+
+      if (instanceId) {
+        properties.instanceId = instanceId;
+      }
+
+      postHog.capture({
+        event: `${eventType} aggregated`,
+        distinctId: key.id,
+        properties,
+        ...(key.org ? { groups: { organization: key.org } } : {})
+      });
+    }
+  };
+
+  const processBucketEvents = async (eventType: string, bucketId: string, orgsIdentifyAttempted: Set<string>) => {
     if (!postHog) return 0;
 
+    const streamKey = KeyStorePrefixes.TelemetryAggregatedEventStream(eventType, bucketId);
+
     try {
-      const bucketPattern = KeyStorePrefixes.TelemetryEventByBucketPattern(eventType, bucketId);
-      const bucketKeys = await keyStore.getKeysByPattern(bucketPattern);
+      const { entries, lastId } = await keyStore.streamCollect(
+        streamKey,
+        TELEMETRY_EVENT_STREAM_BATCH_SIZE,
+        TELEMETRY_EVENT_STREAM_MAX_ENTRIES
+      );
 
-      if (bucketKeys.length === 0) return 0;
+      if (entries.length === 0 || !lastId) return 0;
 
-      const bucketEvents = await keyStore.getItems(bucketKeys);
-      let bucketEventsParsed: SingleEventData[] = [];
-
-      try {
-        bucketEventsParsed = bucketEvents
-          .filter((event) => event !== null)
-          .map((event) => JSON.parse(event as string) as SingleEventData);
-      } catch (error) {
-        logger.error(error, `Failed to parse bucket events for ${eventType} in ${bucketId}`);
-        return 0;
+      if (entries.length >= TELEMETRY_EVENT_STREAM_MAX_ENTRIES) {
+        logger.warn(
+          `Telemetry aggregation hit the collection ceiling for bucket ${bucketId} of ${eventType} [collected=${entries.length}] [maxEntries=${TELEMETRY_EVENT_STREAM_MAX_ENTRIES}] — the shard is backing up; the oldest entries risk being dropped by the Redis MAXLEN cap`
+        );
       }
 
-      const eventsGrouped = new Map<string, SingleEventData[]>();
+      const events = parseEventPayloads(
+        entries.map(([, fields]) => fields[1]),
+        `event=${eventType} bucket=${bucketId}`
+      );
 
-      const breakdownDimensions = AGGREGATION_BREAKDOWN_DIMENSIONS[eventType as PostHogEventTypes] || [];
+      await publishAggregatedEvents(eventType, events, orgsIdentifyAttempted);
 
-      bucketEventsParsed.forEach((event) => {
-        const breakdownValues: Record<string, string> = {};
-        if (breakdownDimensions.length > 0 && event.properties) {
-          const props = event.properties as Record<string, unknown>;
-          for (const dim of breakdownDimensions) {
-            if (props[dim] !== undefined && props[dim] !== null) {
-              breakdownValues[dim] = String(props[dim]);
-            }
-          }
-        }
-        const key = JSON.stringify({ id: event.distinctId, org: event.organizationId, ...breakdownValues });
-        if (!eventsGrouped.has(key)) {
-          eventsGrouped.set(key, []);
-        }
-        eventsGrouped.get(key)!.push(event);
-      });
+      await keyStore.streamTrim(streamKey, lastId, true);
 
-      if (eventsGrouped.size === 0) return 0;
-
-      // Cache org group properties per orgId to avoid redundant DB/API calls
-      // when multiple users share the same org within a bucket
-      const orgPropertiesCache = new Map<string, Record<string, unknown>>();
-
-      const instanceId = await getInstanceId();
-
-      for (const [eventsKey, events] of eventsGrouped) {
-        const key = JSON.parse(eventsKey) as { id: string; org?: string; [dim: string]: string | undefined };
-        if (key.org) {
-          try {
-            // Dedup groupIdentify across all paths: only fire once per org per hour
-            const groupIdentifyCacheKey = KeyStorePrefixes.TelemetryGroupIdentify(key.org);
-            // eslint-disable-next-line no-await-in-loop
-            const wasSet = await keyStore.setItemWithExpiryNX(
-              groupIdentifyCacheKey,
-              KeyStoreTtls.TelemetryGroupIdentifyInSeconds,
-              "1"
-            );
-            if (wasSet) {
-              let groupProperties = orgPropertiesCache.get(key.org);
-              if (!groupProperties) {
-                const orgName = events[0]?.organizationName;
-                // eslint-disable-next-line no-await-in-loop
-                groupProperties = await getOrgGroupProperties(key.org, orgName);
-                orgPropertiesCache.set(key.org, groupProperties);
-              }
-              postHog.groupIdentify({
-                groupType: "organization",
-                groupKey: key.org,
-                properties: groupProperties,
-                distinctId: key.id
-              });
-            }
-          } catch (error) {
-            logger.error(error, "Failed to identify PostHog organization");
-          }
-        }
-        const properties = aggregateGroupProperties(events, breakdownDimensions);
-
-        // Attach breakdown dimension values as flat properties on the aggregated event
-        for (const dim of breakdownDimensions) {
-          if (key[dim] !== undefined) {
-            properties[dim] = key[dim];
-          }
-        }
-
-        // Always attach orgId as a flat property so aggregated events are filterable by organization
-        if (key.org) {
-          properties.orgId = key.org;
-        }
-
-        if (instanceId) {
-          properties.instanceId = instanceId;
-        }
-
-        postHog.capture({
-          event: `${eventType} aggregated`,
-          distinctId: key.id,
-          properties,
-          ...(key.org ? { groups: { organization: key.org } } : {})
-        });
-      }
-
-      // Clean up processed data for this bucket
-      await keyStore.deleteItemsByKeyIn(bucketKeys);
-
-      logger.info(`Processed ${bucketEventsParsed.length} events from bucket ${bucketId} for ${eventType}`);
-      return bucketEventsParsed.length;
+      logger.info(`Processed ${events.length} events from bucket ${bucketId} for ${eventType}`);
+      return events.length;
     } catch (error) {
       logger.error(error, `Failed to process bucket ${bucketId} for ${eventType}`);
       return 0;
@@ -584,6 +596,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   const processAggregatedEvents = async () => {
     if (!postHog) return;
 
+    const orgsIdentifyAttempted = new Set<string>();
+
     for (const eventType of POSTHOG_AGGREGATED_EVENTS) {
       let totalProcessed = 0;
       logger.info(`Starting bucket processing for ${eventType}`);
@@ -591,7 +605,9 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       for (let i = 0; i < TELEMETRY_BUCKET_NAMES.length; i += BUCKET_CONCURRENCY) {
         const batch = TELEMETRY_BUCKET_NAMES.slice(i, i + BUCKET_CONCURRENCY);
         // eslint-disable-next-line no-await-in-loop
-        const results = await Promise.all(batch.map((bucketId) => processBucketEvents(eventType, bucketId)));
+        const results = await Promise.all(
+          batch.map((bucketId) => processBucketEvents(eventType, bucketId, orgsIdentifyAttempted))
+        );
         totalProcessed += results.reduce((sum, n) => sum + n, 0);
       }
 

@@ -166,9 +166,8 @@ export const KeyStorePrefixes = {
     `lockout:identity:${identityId}:${authMethod}:*` as const,
   IdentityLockoutStatePattern: (identityId: string) => `lockout:identity:${identityId}:*` as const,
 
-  TelemetryEvent: (event: string, bucketId: string, distinctId: string, uuid: string) =>
-    `telemetry-event-${event}-${bucketId}-${distinctId}-${uuid}` as const,
-  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const,
+  TelemetryAggregatedEventStream: (event: string, bucketId: string) =>
+    `telemetry-agg-stream:${event}:${bucketId}` as const,
 
   AuditLogStreamFlushDebounce: (streamId: string) => `audit-log-stream:${streamId}:flush-debounce` as const,
   AuditLogIngestConsumerLock: "audit-log-ingest:consumer-lock" as const
@@ -223,7 +222,6 @@ export const KeyStoreTtls = {
   StepUpMfaLockoutInSeconds: 300, // 5 minutes - temporary lockout after too many failed step-up attempts
   TelemetryGroupIdentifyInSeconds: 3600, // 1 hour
   TelemetryAuditLogsViewedInSeconds: 3600, // 1 hour
-  TelemetryAggregatedEventInSeconds: 1800, // 30 minutes
   SecretEtagInSeconds: 900, // 15 minutes
   PkiAcmeNonceInSeconds: 300, // 5 minutes
   GatewayRelayCredentialInSeconds: 600, // 10 minutes - TURN credential lifetime

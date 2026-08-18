@@ -412,6 +412,17 @@ The gate has to sit at the call site because **a `DROP` aggregation does not bou
 - Adding a new label means adding it to the allowlist in `telemetry-attributes.ts`. Only add **bounded** keys (fixed enums / static route templates), and document why.
 - `http.route` must be the parameterized template (`req.routeOptions.url`), never the raw request path.
 
+### PostHog Product Analytics
+
+Separate from the OpenTelemetry metrics above. `src/services/telemetry/telemetry-service.ts` captures product events; the events listed in `POSTHOG_AGGREGATED_EVENTS` are too high-volume to send one-per-occurrence, so they are buffered in Redis and rolled up by the `TelemetryAggregatedEvents` cron every 10 minutes.
+
+**Buffered events live in one Redis stream per (event type, bucket)** — `telemetry-agg-stream:<event>:<bucket>`, 30 buckets, bucket chosen by hashing the `distinctId`. Two invariants hold that shape together:
+
+- **Never discover buffered events by pattern.** The previous layout wrote one Redis key per event and the cron found them with `getKeysByPattern` per (event type, bucket), so each run cost `events × buckets` full keyspace walks — 240 walks over a ~440k-key keyspace, ~73s of Redis engine CPU every 10 minutes, and it grew every time an event was added to the aggregation list. The stream layout is read by key, so the cost tracks the number of pending events instead of the size of the keyspace. Adding an event type to `POSTHOG_AGGREGATED_EVENTS` must stay free of keyspace scans.
+- **A `distinctId` must always hash to the same bucket.** Each shard is aggregated independently, so a `distinctId` split across shards produces one aggregated PostHog event per shard instead of one overall.
+
+Draining is at-least-once: a shard is trimmed (`XTRIM MINID`) only after its batch has been handed to PostHog, so a failed run retries on the next tick. Growth is bounded by the `MAXLEN` cap on write, not by a TTL. Nothing reads the pre-stream keys, so a deploy that changes this layout drops whatever is still buffered — acceptable for product analytics, and the reason there is no migration path to maintain.
+
 ### Database Configuration
 
 Knex config in `src/db/knexfile.ts`. Loads `.env.migration` then `.env`. Supports `DB_CONNECTION_URI` or individual host/port/user/name/password fields. Optional SSL via `DB_ROOT_CERT` (base64-encoded CA cert). Connection pool: min 2, max 10. Migrations table: `infisical_migrations`. Separate audit log DB supported via `auditlog-migration:*` scripts. ClickHouse for analytics (optional).
