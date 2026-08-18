@@ -24,6 +24,7 @@ type Props = {
   onConfirm: () => Promise<void>;
   isDisabled?: boolean;
   descriptionAsAlert?: boolean;
+  descriptionAlertVariant?: "warning" | "danger";
 };
 
 export const IdentityActionConfirmationDialog = ({
@@ -35,7 +36,8 @@ export const IdentityActionConfirmationDialog = ({
   actionLabel,
   onConfirm,
   isDisabled,
-  descriptionAsAlert = false
+  descriptionAsAlert = false,
+  descriptionAlertVariant = "warning"
 }: Props) => {
   const [isPending, setIsPending] = useState(false);
 
@@ -66,7 +68,7 @@ export const IdentityActionConfirmationDialog = ({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           {descriptionAsAlert ? (
             <AlertDialogDescription asChild>
-              <Alert variant="warning" appearance="borderless">
+              <Alert variant={descriptionAlertVariant} appearance="borderless">
                 <AlertDescription>{description}</AlertDescription>
               </Alert>
             </AlertDialogDescription>

@@ -654,7 +654,10 @@ export const IdentityTab = withProjectPermission(
               ? "This permanently deletes the project machine identity and revokes its access. This cannot be undone."
               : `The machine identity will lose access to this ${productLabel.toLowerCase()} but remain available in its organization.`
           }
-          descriptionAsAlert={!popUp.deleteIdentity.data?.isProjectIdentity}
+          descriptionAsAlert
+          descriptionAlertVariant={
+            popUp.deleteIdentity.data?.isProjectIdentity ? "danger" : "warning"
+          }
           confirmationText="confirm"
           actionLabel={popUp.deleteIdentity.data?.isProjectIdentity ? "Delete" : "Remove"}
           onOpenChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}

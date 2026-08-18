@@ -393,6 +393,8 @@ const Page = () => {
             open={popUp.deleteIdentity.isOpen}
             title={`Delete ${identity?.name || "machine identity"}?`}
             description="This permanently deletes the project machine identity and revokes its access. This cannot be undone."
+            descriptionAsAlert
+            descriptionAlertVariant="danger"
             confirmationText="confirm"
             actionLabel="Delete"
             onOpenChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
