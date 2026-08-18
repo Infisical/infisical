@@ -1,9 +1,9 @@
 import { TFeatureSet } from "@app/ee/services/license/license-types";
 
+import { TEntitlementsResponse } from "../license-client-types";
 import { FEATURE_MAPPINGS } from "./feature-mapping";
-import { TEntitlementsResponse } from "./license-client-types";
 
-// Builds a plan-shaped TFeatureSet from the License Server entitlement set so getPlan can serve it
+// Builds a v1-shaped TFeatureSet from the v2 entitlement set so getPlan can serve v2 in "on" mode
 // without changing its callers. Starts from the passed base (free-tier defaults) and overlays each
 // mapped feature; a key v2 omits or returns null for keeps the base value. Base is passed in (not
 // imported from license-fns) to avoid a license-service <-> license-fns import cycle.

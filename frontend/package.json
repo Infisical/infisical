@@ -148,6 +148,7 @@
     "@storybook/addon-a11y": "^9.1.9",
     "@storybook/addon-docs": "^9.1.9",
     "@storybook/react-vite": "^9.1.9",
+    "storybook": "^9.1.19",
     "@stylistic/eslint-plugin": "^2.12.1",
     "@tailwindcss/postcss": "^4.1.14",
     "@tanstack/eslint-plugin-router": "^1.87.6",

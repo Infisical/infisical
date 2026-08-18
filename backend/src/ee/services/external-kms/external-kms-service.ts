@@ -17,6 +17,7 @@ import { TExternalKmsDALFactory } from "./external-kms-dal";
 import {
   TCreateExternalKmsDTO,
   TDeleteExternalKmsDTO,
+  TFetchGcpKmsKeysDTO,
   TGetExternalKmsByIdDTO,
   TGetExternalKmsBySlugDTO,
   TListExternalKmsDTO,
@@ -471,7 +472,31 @@ export const externalKmsServiceFactory = ({
     }
   };
 
-  const fetchGcpKeys = async ({ credential, gcpRegion }: Pick<TExternalKmsGcpSchema, "credential" | "gcpRegion">) => {
+  const fetchGcpKeys = async ({
+    credential,
+    gcpRegion,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }: TFetchGcpKmsKeysDTO) => {
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.externalKms) {
+      throw new BadRequestError({
+        message: "Failed to fetch GCP KMS keys due to plan restriction. Upgrade to the Enterprise plan."
+      });
+    }
+
     const externalKms = await GcpKmsProviderFactory({ inputs: { credential, gcpRegion, keyName: "" } });
     try {
       return await externalKms.getKeysList();

@@ -81,7 +81,7 @@ export const projectAssignmentSchema = z.object({
         .array()
         .optional()
     })
-    .optional(),
+    .nullish(),
   projects: z
     .array(
       z.object({

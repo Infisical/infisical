@@ -102,11 +102,11 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
         )
       : groupMemberships;
 
-    const ordered = filtered?.sort((a, b) =>
+    const ordered = [...filtered].sort((a, b) =>
       a.group.name.toLowerCase().localeCompare(b.group.name.toLowerCase())
     );
 
-    return orderDirection === OrderByDirection.ASC ? ordered : ordered?.reverse();
+    return orderDirection === OrderByDirection.ASC ? ordered : ordered.reverse();
   }, [search, groupMemberships, orderBy, orderDirection]);
 
   useResetPageHelper({
@@ -128,6 +128,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={isCertManager ? "Search groups..." : "Search project groups..."}
+            aria-label={isCertManager ? "Search groups" : "Search project groups"}
           />
         </InputGroup>
       </div>
@@ -154,7 +155,11 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-1/3" onClick={toggleOrderDirection}>
+                <TableHead
+                  className="w-1/3"
+                  aria-sort={orderDirection === OrderByDirection.ASC ? "ascending" : "descending"}
+                  onClick={toggleOrderDirection}
+                >
                   Name
                   <ChevronDownIcon
                     className={twMerge(
@@ -165,7 +170,9 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                 </TableHead>
                 <TableHead>{`${productLabel} Role`}</TableHead>
                 <TableHead>Added on</TableHead>
-                <TableHead className="w-5" />
+                <TableHead className="w-5">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -198,7 +205,9 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                         role="button"
                         tabIndex={0}
                         onKeyDown={(evt) => {
-                          if (evt.key === "Enter") {
+                          if (evt.currentTarget !== evt.target) return;
+                          if (evt.key === "Enter" || evt.key === " ") {
+                            evt.preventDefault();
                             navigate({
                               to: `${getProjectBaseURL(currentProject.type)}/groups/$groupId` as const,
                               params: {
@@ -243,6 +252,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                               <IconButton
                                 variant="ghost"
                                 size="xs"
+                                aria-label={`Actions for ${name}`}
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <MoreHorizontalIcon />

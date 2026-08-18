@@ -4,7 +4,9 @@ import { cva, type VariantProps } from "cva";
 import { cn } from "../../utils";
 
 const alertVariants = cva(
-  "relative grid min-h-9 w-full grid-cols-[0_1fr] items-center gap-y-1 rounded-md border px-3 py-2.5 text-sm has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] has-[>svg]:gap-x-3 [&>svg]:size-4 [&>svg]:text-current",
+  // min-h-9 replaces a flex item's automatic minimum size, so without shrink-0 a multi-line alert
+  // in a height-constrained flex column collapses to 36px and its text paints over the next sibling.
+  "relative grid min-h-9 w-full shrink-0 grid-cols-[0_1fr] items-center gap-y-1 rounded-md border px-3 py-2.5 text-sm has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] has-[>svg]:gap-x-3 [&>svg]:size-4 [&>svg]:text-current",
   {
     variants: {
       variant: {

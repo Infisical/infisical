@@ -80,6 +80,7 @@ export const registerSignerSigningRouter = async (server: FastifyZodProvider) =>
         organizationId: req.permission.orgId,
         properties: {
           orgId: req.permission.orgId,
+          projectId: result.projectId,
           signerId: req.params.signerId
         }
       });

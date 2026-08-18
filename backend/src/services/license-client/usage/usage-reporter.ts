@@ -60,17 +60,32 @@ export const usageReporterFactory = (serverUrl: string, getBearerToken: () => Pr
   }
 });
 
-// Returns null when the license server is unconfigured, which keeps usage reporting inert. A
-// self-hosted license exchanges its key for a short-lived JWT at the token endpoint and reports with
-// that bearer; cloud mints a short-lived RS256 service JWT signed with the service key (the same scheme
-// the rest of the license client uses). The raw key/signing key is never sent as the bearer.
+// Returns null when the v2 license server is disabled or unconfigured, which keeps usage reporting
+// inert. A self-hosted v2 license exchanges its key for a short-lived JWT at the token endpoint (on
+// LICENSE_SERVER_URL) and reports with that bearer; cloud mints a short-lived RS256 service JWT signed
+// with the service key (the same scheme the rest of the v2 client uses). The raw key/signing key is
+// never sent as the bearer.
 export const buildUsageReporter = (
-  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_SERVICE_KEY" | "LICENSE_SERVER_URL" | "LICENSE_KEY">
+  envConfig: Pick<
+    TEnvConfig,
+    | "LICENSE_SERVER_V2_MODE"
+    | "LICENSE_SERVER_V2_URL"
+    | "LICENSE_SERVER_V2_SERVICE_KEY"
+    | "LICENSE_SERVER_URL"
+    | "LICENSE_KEY"
+  >
 ): TUsageReporter | null => {
-  // One host serves both the self-hosted token endpoint and the usage API.
-  const serverUrl = envConfig.LICENSE_SERVER_URL;
+  if (envConfig.LICENSE_SERVER_V2_MODE === "off") {
+    return null;
+  }
+
+  // Self-hosted sets only LICENSE_SERVER_URL (that one host now serves both the token endpoint and the
+  // v2 API after the DNS switch); cloud sets LICENSE_SERVER_V2_URL. Accept either as the v2 API base.
+  const serverUrl = envConfig.LICENSE_SERVER_V2_URL || envConfig.LICENSE_SERVER_URL;
   if (!serverUrl) {
-    logger.warn("usage-reporter: LICENSE_SERVER_URL is not set; usage reporting disabled");
+    logger.warn(
+      "usage-reporter: enabled but neither LICENSE_SERVER_V2_URL nor LICENSE_SERVER_URL is set; usage reporting disabled"
+    );
     return null;
   }
 
@@ -91,7 +106,11 @@ export const buildUsageReporter = (
   // and use that. Cloud sets no LICENSE_KEY, so it falls through to the service-JWT path below.
   const licenseKey = envConfig.LICENSE_KEY;
   if (licenseKey) {
-    const tokenProvider = createSelfHostedTokenProvider(licenseKey, { serverUrl });
+    if (!envConfig.LICENSE_SERVER_URL) {
+      logger.warn("usage-reporter: self-hosted key set but LICENSE_SERVER_URL is missing; usage reporting disabled");
+      return null;
+    }
+    const tokenProvider = createSelfHostedTokenProvider(licenseKey, { serverUrl: envConfig.LICENSE_SERVER_URL });
     return usageReporterFactory(serverUrl, () => tokenProvider.getToken());
   }
 

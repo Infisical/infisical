@@ -57,13 +57,13 @@ const createFakeKeyStore = () => {
 };
 
 describe("usageMeteringService.emit (org-scoped)", () => {
-  test("does nothing when no license server is configured", async () => {
+  test("does nothing when the v2 license server is disabled", async () => {
     const queue = makeQueueMock();
     const svc = usageMeteringServiceFactory({
       queueService: { queue },
       keyStore: createFakeKeyStore(),
       projectDAL: { findById: vi.fn() },
-      licenseClient: { isEnabled: () => false }
+      envConfig: { LICENSE_SERVER_V2_MODE: "off" }
     });
 
     svc.emit(ORG_ID, IdentitiesMeter.key);
@@ -78,7 +78,7 @@ describe("usageMeteringService.emit (org-scoped)", () => {
       queueService: { queue },
       keyStore: createFakeKeyStore(),
       projectDAL: { findById: vi.fn() },
-      licenseClient: { isEnabled: () => true }
+      envConfig: { LICENSE_SERVER_V2_MODE: "read-compare" }
     });
 
     svc.emit(ORG_ID, IdentitiesMeter.key);
@@ -101,7 +101,7 @@ describe("usageMeteringService.emit (org-scoped)", () => {
       queueService: { queue },
       keyStore: createFakeKeyStore(),
       projectDAL: { findById: vi.fn() },
-      licenseClient: { isEnabled: () => true }
+      envConfig: { LICENSE_SERVER_V2_MODE: "read-compare" }
     });
 
     expect(() => svc.emit(ORG_ID, IdentitiesMeter.key)).not.toThrow();
@@ -117,7 +117,7 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
       queueService: { queue },
       keyStore: createFakeKeyStore(),
       projectDAL: { findById } as never,
-      licenseClient: { isEnabled: () => true }
+      envConfig: { LICENSE_SERVER_V2_MODE: "read-compare" }
     });
 
     svc.emitForProject(PROJECT_ID, PamIdentities.key);
@@ -136,7 +136,7 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
       queueService: { queue },
       keyStore: createFakeKeyStore(),
       projectDAL: { findById: vi.fn(async () => undefined) } as never,
-      licenseClient: { isEnabled: () => true }
+      envConfig: { LICENSE_SERVER_V2_MODE: "read-compare" }
     });
 
     svc.emitForProject(PROJECT_ID, PamIdentities.key);
@@ -152,7 +152,7 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
       queueService: { queue },
       keyStore: createFakeKeyStore(),
       projectDAL: { findById },
-      licenseClient: { isEnabled: () => false }
+      envConfig: { LICENSE_SERVER_V2_MODE: "off" }
     });
 
     svc.emitForProject(PROJECT_ID, PamIdentities.key);
@@ -164,13 +164,13 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
 });
 
 describe("usageMeteringService.reconcile (demand-driven)", () => {
-  test("does nothing when no license server is configured", async () => {
+  test("does nothing when the v2 license server is disabled", async () => {
     const queue = makeQueueMock();
     const svc = usageMeteringServiceFactory({
       queueService: { queue },
       keyStore: createFakeKeyStore(),
       projectDAL: { findById: vi.fn() },
-      licenseClient: { isEnabled: () => false }
+      envConfig: { LICENSE_SERVER_V2_MODE: "off" }
     });
 
     svc.reconcile(ORG_ID);
@@ -186,7 +186,7 @@ describe("usageMeteringService.reconcile (demand-driven)", () => {
       queueService: { queue },
       keyStore,
       projectDAL: { findById: vi.fn() },
-      licenseClient: { isEnabled: () => true }
+      envConfig: { LICENSE_SERVER_V2_MODE: "on" }
     });
 
     svc.reconcile(ORG_ID);
@@ -202,29 +202,27 @@ describe("usageMeteringService.reconcile (demand-driven)", () => {
 });
 
 describe("buildUsageReporter", () => {
-  test("is null without a license server URL", () => {
-    expect(buildUsageReporter({ LICENSE_SERVER_URL: "" })).toBeNull();
+  test("is null when disabled", () => {
+    expect(
+      buildUsageReporter({ LICENSE_SERVER_V2_MODE: "off", LICENSE_SERVER_URL: "https://license.example.com" })
+    ).toBeNull();
   });
 
-  test("is null when no credential is configured", () => {
-    expect(buildUsageReporter({ LICENSE_SERVER_URL: "https://license.example.com" })).toBeNull();
+  test("is null when enabled but unconfigured", () => {
+    expect(
+      buildUsageReporter({ LICENSE_SERVER_V2_MODE: "read-compare", LICENSE_SERVER_URL: "https://license.example.com" })
+    ).toBeNull();
   });
 
-  test("is a reporter with the cloud service key", () => {
+  test("is a reporter when enabled and configured", () => {
     const reporter = buildUsageReporter({
+      LICENSE_SERVER_V2_MODE: "read-compare",
+      LICENSE_SERVER_V2_URL: "https://license.example.com",
       LICENSE_SERVER_V2_SERVICE_KEY: "svc-key",
       LICENSE_SERVER_URL: "https://license.example.com"
     });
     expect(reporter).not.toBeNull();
     expect(typeof reporter?.reportSnapshots).toBe("function");
-  });
-
-  test("is a reporter with a self-hosted license key", () => {
-    const reporter = buildUsageReporter({
-      LICENSE_KEY: "infisical_lk_test",
-      LICENSE_SERVER_URL: "https://license.example.com"
-    });
-    expect(reporter).not.toBeNull();
   });
 });
 
