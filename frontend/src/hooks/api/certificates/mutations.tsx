@@ -113,8 +113,6 @@ export const useImportCertificate = () => {
   });
 };
 
-// Reads a keystore and hands back its contents for review. Nothing is created, and nothing is
-// cached: the response carries private keys.
 export const useExtractPkcs12 = () =>
   useMutation<TExtractPkcs12Response, object, TExtractPkcs12DTO>({
     meta: { handledErrorCodes: ["BadRequest"] },
@@ -127,10 +125,8 @@ export const useExtractPkcs12 = () =>
     }
   });
 
-// Imports the entries chosen from a keystore, one at a time, and reports the outcome of each.
-// It resolves even when some entries fail, because a keystore whose third certificate is already
-// in the project should still import the other two. Failures are returned rather than thrown so
-// the global handler does not raise a toast per entry on top of the summary the dialog renders.
+// Failures are returned rather than thrown, so one bad entry neither aborts the rest nor raises a
+// toast from the global error handler.
 export const useImportPkcs12Entries = () => {
   const queryClient = useQueryClient();
   return useMutation<TImportPkcs12EntriesResult[], object, TImportPkcs12EntriesDTO>({

@@ -14,9 +14,8 @@ describe("runPkcs12Extraction", () => {
   });
 
   test("gives up on a keystore built to be expensive to open", async () => {
-    // 2.6KB, five million key-derivation rounds. Parsed inline this blocks the event loop for over
-    // a minute, and a wrong password costs the same because the integrity check runs the same
-    // derivation, so the bound has to be a wall clock rather than an inspection of the file.
+    // 2.6KB with five million key-derivation rounds, which parsed inline blocks the event loop for
+    // over a minute.
     const started = Date.now();
 
     await expect(run(fixtures.hostileIterations, "test")).rejects.toThrow(/takes too long to open/);

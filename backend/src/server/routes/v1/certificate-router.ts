@@ -1591,13 +1591,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // Reads an uploaded keystore and returns what is inside it; it stores nothing. This is an action
-  // rather than a resource, so it deviates from REST deliberately, in the same way as its
-  // neighbours /import-certificate and /:id/revoke.
+  // An action rather than a resource, so a deliberate REST deviation, as with /import-certificate.
   server.route({
     method: "POST",
-    // A keystore is small, but base64 plus the JSON envelope still clears Fastify's 1MB default,
-    // which would reject the body before schema validation could name the problem.
     bodyLimit: MAX_PKCS12_BODY_LIMIT_BYTES,
     url: "/pkcs12/extract",
     config: {
@@ -1611,7 +1607,6 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       description: "Read the certificates and private keys held in a PKCS#12 keystore",
       body: z.object({
         pkcs12: createBase64Schema("pkcs12", MAX_PKCS12_BYTES).describe(CERTIFICATES.EXTRACT_PKCS12.pkcs12),
-        // Keystores exported without a password are common, so an empty string is valid here.
         password: z.string().max(1024).describe(CERTIFICATES.EXTRACT_PKCS12.password),
         applicationId: z.string().trim().uuid().optional().describe(CERTIFICATES.EXTRACT_PKCS12.applicationId)
       }),

@@ -3128,7 +3128,6 @@ interface ExtractCertPkcs12 {
   type: EventType.EXTRACT_CERT_PKCS12;
   metadata: {
     entryCount: number;
-    // Truncated: these come from the uploaded keystore, not from us.
     subjects: string[];
     applicationId?: string;
   };

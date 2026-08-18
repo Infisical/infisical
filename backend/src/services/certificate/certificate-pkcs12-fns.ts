@@ -4,12 +4,8 @@ import * as x509 from "@peculiar/x509";
 import forge from "node-forge";
 import RE2 from "re2";
 
-// This module is loaded inside a worker thread, so it must not reach into services, DALs or
-// anything that touches config at import time. Keep the imports above to leaf libraries only.
-
-// Deliberately a const object rather than an enum: this module is loaded by the extraction worker,
-// which in development is read straight off disk by Node's type stripping. That rejects enums and
-// anything else non-erasable.
+// The extraction worker imports this module directly, and in development Node strips its types
+// without a compiler: no enums or other non-erasable TypeScript anywhere this module reaches.
 export const Pkcs12ErrorCode = {
   NotAKeystore: "not_a_keystore",
   BadPassword: "bad_password",
@@ -45,8 +41,6 @@ export type TPkcs12Entry = {
   chainWarning: string | null;
   certificatePem: string;
   chainPem?: string;
-  // Absent for a keystore that holds certificates only, which imports the same way a certificate
-  // pasted into the PEM form without a key does.
   privateKeyPem?: string;
 };
 
@@ -58,13 +52,8 @@ const MAX_KEY_BAGS = 20;
 const MAX_CERT_BAGS = 100;
 const MAX_CHAIN_DEPTH = 10;
 
-// Every reason a chain is missing leads to the same outcome, so they read the same. Which reason it
-// was stays in the shape of the result: no chainPem.
 const CHAIN_WARNING = "No usable issuer chain was found in the keystore, so this will be imported on its own.";
 
-// Subject and serial come from the uploaded file and have no useful bound of their own. A
-// certificate with dozens of subject attributes would otherwise fail the response schema, which
-// surfaces as a 500 rather than as anything the caller can act on.
 const MAX_SUBJECT_LENGTH = 2048;
 const MAX_SERIAL_LENGTH = 256;
 const MAX_ALIAS_LENGTH = 1024;
@@ -76,11 +65,8 @@ const bagAttribute = (bag: forge.pkcs12.Bag, name: "friendlyName" | "localKeyId"
   return values?.length ? values[0] : null;
 };
 
-/**
- * forge cannot build key or certificate objects for EC (and anything else non-RSA): it leaves
- * `bag.key` / `bag.cert` null and hands back the decrypted ASN.1 instead. Reading the ASN.1 is
- * what makes EC, Ed25519 and PQC keystores work, so never consume the parsed objects directly.
- */
+// forge leaves `bag.key` / `bag.cert` null for anything non-RSA and hands back the decrypted ASN.1
+// instead, so never consume its parsed objects: the ASN.1 is what makes EC, Ed25519 and PQC work.
 const certBagToPem = (bag: forge.pkcs12.Bag) => {
   const asn1 = bag.cert ? forge.pki.certificateToAsn1(bag.cert) : bag.asn1;
   if (!asn1) return null;
@@ -88,8 +74,6 @@ const certBagToPem = (bag: forge.pkcs12.Bag) => {
 };
 
 const keyBagToPem = (bag: forge.pkcs12.Bag) => {
-  // bag.asn1 is already a PKCS#8 PrivateKeyInfo; an RSA key parsed into an object has to be
-  // wrapped back into one so both paths hand out the same PEM type.
   const asn1 = bag.asn1 ?? (bag.key ? forge.pki.wrapRsaPrivateKey(forge.pki.privateKeyToAsn1(bag.key)) : null);
   if (!asn1) return null;
   return toPem("PRIVATE KEY", forge.asn1.toDer(asn1).getBytes());
@@ -123,10 +107,6 @@ const EC_CURVE_LABELS: Record<string, string> = {
   secp256k1: "secp256k1"
 };
 
-/**
- * Label the key from the private key object rather than from the certificate's WebCrypto
- * algorithm name, which reads as "RSASSA-PKCS1-v1_5" and degrades to a bare OID for PQC.
- */
 const describeKey = (key: crypto.KeyObject) => {
   const type = key.asymmetricKeyType ?? "unknown";
   const details = key.asymmetricKeyDetails;
@@ -166,8 +146,6 @@ const parseCertBags = (certBags: forge.pkcs12.Bag[]) => {
     try {
       const cert = new x509.X509Certificate(pem);
       const fingerprint = sha256Fingerprint(Buffer.from(cert.rawData));
-      // keytool writes one copy of each CA certificate per entry, so the same certificate shows
-      // up several times in a bundle.
       if (!byFingerprint.has(fingerprint)) {
         byFingerprint.set(fingerprint, {
           pem,
@@ -178,8 +156,7 @@ const parseCertBags = (certBags: forge.pkcs12.Bag[]) => {
         });
       }
     } catch {
-      // A certificate we cannot parse is not something we can import; the keystore's other
-      // entries are still usable.
+      // A malformed entry must not fail the rest.
     }
   });
 
@@ -213,25 +190,15 @@ const parseKeyBags = (keyBags: forge.pkcs12.Bag[]) => {
   return keys;
 };
 
-/**
- * Pair on the public key rather than on localKeyId. A mangled or duplicated localKeyId otherwise
- * pairs a key with the wrong certificate, which only surfaces later as a confusing "private key
- * does not match certificate" at import. localKeyId is used only to break ties.
- */
 const findLeafForKey = (key: TParsedKey, certs: TParsedCert[]) => {
   const matches = certs.filter((c) => Buffer.from(c.cert.publicKey.rawData).toString("hex") === key.spki);
   if (matches.length <= 1) return matches[0] ?? null;
   return matches.find((c) => c.localKeyId && c.localKeyId === key.localKeyId) ?? matches[0];
 };
 
-/**
- * Walk from the leaf to the root by signature, not by matching issuer and subject names. A
- * keystore that has been through a CA renewal carries two intermediates with the same subject and
- * different keys, and picking by name silently produces a chain that fails verification at import.
- *
- * `signatureOnly` is required: the default also checks validity dates, so an expired certificate
- * would lose its chain entirely.
- */
+// Issuers are matched by signature, not by name: a keystore that has been through a CA renewal
+// carries two intermediates with the same subject, and picking by name builds a chain that fails at
+// import. `signatureOnly` matters too, or an expired certificate loses its chain here.
 const buildChain = async (leaf: TParsedCert, certs: TParsedCert[]) => {
   const chain: TParsedCert[] = [];
   const visited = new Set<string>([leaf.fingerprint]);
@@ -242,7 +209,6 @@ const buildChain = async (leaf: TParsedCert, certs: TParsedCert[]) => {
     const subject = current;
     if (subject.cert.subject === subject.cert.issuer) break;
 
-    // Name matches first: this only orders the search, the signature decides.
     const candidates = certs
       .filter((c) => !visited.has(c.fingerprint))
       .sort((a, b) => {
@@ -255,11 +221,9 @@ const buildChain = async (leaf: TParsedCert, certs: TParsedCert[]) => {
     // eslint-disable-next-line no-restricted-syntax
     for (const candidate of candidates) {
       // eslint-disable-next-line no-await-in-loop
-      const signed = await subject.cert.verify({ publicKey: candidate.cert.publicKey, signatureOnly: true }).catch(
-        // A key type WebCrypto cannot verify (ML-DSA, secp256k1) is not a failed match, it is an
-        // unanswerable question; treat it as no match and let the caller warn.
-        () => false
-      );
+      const signed = await subject.cert
+        .verify({ publicKey: candidate.cert.publicKey, signatureOnly: true })
+        .catch(() => false);
       if (signed) {
         issuer = candidate;
         break;
@@ -298,14 +262,12 @@ export const extractPkcs12Entries = async ({
   try {
     p12 = forge.pkcs12.pkcs12FromAsn1(asn1, password);
   } catch (err) {
-    // forge aborts the whole parse on a bag type it does not model (secret keys from keytool, for
-    // one). Stripping those bags would mean re-encoding the authSafe, which invalidates the MAC
-    // and would let any password through, so the keystore is refused by name instead.
+    // Skipping the bags forge cannot model would mean re-encoding the authSafe, invalidating the
+    // MAC and letting any password through. Refuse the keystore instead.
     if (err instanceof Error && err.message.includes("Unsupported PKCS#12 SafeBag type")) {
       throw new Pkcs12ExtractionError(Pkcs12ErrorCode.UnsupportedEntries);
     }
-    // Everything from here on is a decryption failure of some kind. MAC-less keystores surface a
-    // wrong password as an ASN.1 error, so this must not be reported as a corrupt file.
+    // A MAC-less keystore surfaces a wrong password as an ASN.1 error, so this is not "corrupt".
     throw new Pkcs12ExtractionError(Pkcs12ErrorCode.BadPassword);
   }
 
@@ -326,8 +288,6 @@ export const extractPkcs12Entries = async ({
     certificatePem: cert.pem
   });
 
-  // A keystore holding only certificates is a trust store. The PEM form accepts a certificate
-  // without a private key, so this does too: each certificate becomes its own entry, flat.
   if (!keys.length) {
     if (keyBags.length) throw new Pkcs12ExtractionError(Pkcs12ErrorCode.NoPairs, keyBags.length);
     if (!certs.length) throw new Pkcs12ExtractionError(Pkcs12ErrorCode.NoEntries);
@@ -347,19 +307,14 @@ export const extractPkcs12Entries = async ({
     const leaf = findLeafForKey(key, certs);
     const pairId = leaf ? `${leaf.fingerprint}:${key.spki}` : null;
 
-    // The same pair stored under two aliases is one certificate; importing it twice would just
-    // fail on the duplicate serial.
     if (leaf && pairId && !seenPairs.has(pairId)) {
       seenPairs.add(pairId);
 
       // eslint-disable-next-line no-await-in-loop
       const { chain, truncated } = await buildChain(leaf, certs);
 
-      // The import endpoint verifies each link including validity dates, and it checks the dates of
-      // every certificate whose signature it verifies: the leaf and every chain member except the
-      // last. An expired certificate in any of those positions makes the whole chain fail there, so
-      // the entry is sent on its own instead. The last chain member is only used as a verifying key,
-      // so its own expiry does not matter.
+      // importCert date-checks every certificate whose signature it verifies, so one expired member
+      // would fail the whole chain. Send the entry on its own instead.
       const dateChecked = [leaf, ...chain.slice(0, -1)];
       const anyExpired = dateChecked.some((c) => c.cert.notAfter.getTime() < Date.now());
       const keepChain = chain.length > 0 && !anyExpired && !truncated;

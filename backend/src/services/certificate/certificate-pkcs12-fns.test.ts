@@ -40,7 +40,6 @@ describe("extractPkcs12Entries", () => {
 
     expect(entries).toHaveLength(1);
     expect(entries[0].keyAlgorithm).toBe("ECDSA P-256");
-    // The proof that the ASN.1 fallback produced usable material rather than a plausible blob.
     expect(() => crypto.createPrivateKey(entries[0].privateKeyPem ?? "")).not.toThrow();
   });
 
@@ -71,7 +70,6 @@ describe("extractPkcs12Entries chain building", () => {
     const { entries } = await extract(fixtures.sharedCaBundle, "test");
 
     expect(entries).toHaveLength(2);
-    // Consuming certificates globally would leave the second entry chainless.
     entries.forEach((entry) => {
       expect(countCertsIn(entry.chainPem ?? "")).toBe(2);
       expect(entry.chainWarning).toBeNull();
@@ -79,7 +77,6 @@ describe("extractPkcs12Entries chain building", () => {
   });
 
   test("picks the issuer that signed, not the one whose name matches", async () => {
-    // Two intermediates share a subject name; only one signed the leaf.
     const { entries } = await extract(fixtures.renewedCa, "test");
 
     expect(entries).toHaveLength(1);
@@ -88,7 +85,6 @@ describe("extractPkcs12Entries chain building", () => {
   });
 
   test("imports a keystore of certificates with no private keys, like the PEM form does", async () => {
-    // The PEM form accepts a certificate without a key, so a trust store is not an error here.
     const { entries } = await extract(fixtures.truststore, "changeit");
 
     expect(entries.length).toBeGreaterThan(0);
@@ -99,9 +95,6 @@ describe("extractPkcs12Entries chain building", () => {
   });
 
   test("returns an expired certificate without its chain, and says why", async () => {
-    // The import endpoint verifies the leaf against its issuer including validity dates, so an
-    // expired certificate sent with a chain is always rejected. Returning it alone is the only
-    // form of it that imports.
     const { entries } = await extract(fixtures.expiredLeaf, "test");
 
     expect(entries).toHaveLength(1);
@@ -111,9 +104,6 @@ describe("extractPkcs12Entries chain building", () => {
   });
 
   test("drops the chain when an issuer in it has expired, not just the leaf", async () => {
-    // The import endpoint date-checks every certificate whose signature it verifies, which includes
-    // chain members. A valid leaf under an expired intermediate would otherwise come back with a
-    // chain that import always rejects as a broken trust chain.
     const { entries } = await extract(fixtures.expiredIntermediate, "test");
 
     expect(entries).toHaveLength(1);
@@ -131,8 +121,6 @@ describe("extractPkcs12Entries chain building", () => {
   });
 
   test("collapses the same pair stored under two aliases", async () => {
-    // keytool happily holds one key and certificate under several aliases. Returning it twice would
-    // give two entries the same fingerprint, which the dialog uses as the identity of a row.
     const { entries } = await extract(fixtures.duplicateAliases, "changeit");
 
     expect(entries).toHaveLength(1);
@@ -149,9 +137,7 @@ describe("extractPkcs12Entries chain building", () => {
 });
 
 describe("extractPkcs12Entries produces entries the import endpoint accepts", () => {
-  // Extraction is only useful if what comes out survives importCert's own validation. These mirror
-  // the checks in certificate-service.ts: the chain is verified link by link *including validity
-  // dates*, and the private key has to sign something the certificate can verify.
+  // Mirrors importCert's own validation.
   const splitPem = (pem: string) => pem.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) ?? [];
 
   const assertImportable = async (entry: { certificatePem: string; chainPem?: string; privateKeyPem?: string }) => {
@@ -200,8 +186,6 @@ describe("extractPkcs12Entries failures", () => {
   });
 
   test("reports a wrong password on a MAC-less keystore as a password problem too", async () => {
-    // Without an integrity MAC the failure surfaces as an ASN.1 error, which must not be reported
-    // to the user as a corrupt file.
     await expectFailure(fixtures.noMac, "not-the-password", Pkcs12ErrorCode.BadPassword);
   });
 
@@ -210,7 +194,6 @@ describe("extractPkcs12Entries failures", () => {
   });
 
   test("reports entry types we cannot read, rather than failing as corrupt", async () => {
-    // A keytool keystore carrying a secret key alongside its key pairs.
     await expectFailure(fixtures.secretKeyBag, "changeit", Pkcs12ErrorCode.UnsupportedEntries);
   });
 });

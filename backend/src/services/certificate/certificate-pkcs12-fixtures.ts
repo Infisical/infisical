@@ -1,20 +1,7 @@
 /* eslint-disable */
-// Base64 PKCS#12 keystores used by certificate-pkcs12-fns.test.ts. Regenerate with openssl 3.x and
-// keytool. Passwords differ per keystore and are declared alongside each one in the test.
-//
-//   # a two-level CA, a leaf, and the keystores built from them
-//   openssl req -x509 -newkey rsa:2048 -nodes -keyout ca.key -out ca.crt -days 3650 -subj "/CN=Test Root CA"
-//   openssl req -newkey rsa:2048 -nodes -keyout int.key -out int.csr -subj "/CN=Test Intermediate CA"
-//   openssl x509 -req -in int.csr -CA ca.crt -CAkey ca.key -days 1825 -out int.crt \
-//     -extfile <(printf "basicConstraints=critical,CA:TRUE\nkeyUsage=critical,keyCertSign,cRLSign")
-//   openssl pkcs12 -export -inkey leaf.key -in leaf.crt -certfile chain.pem -out rsa-modern.p12   # AES-256/PBES2
-//   openssl pkcs12 -export -legacy ...                                                            # RC2-40/3DES
-//   openssl pkcs12 -export -nomac ...                                                             # no integrity MAC
-//   openssl pkcs12 -export -iter 5000000 ...                                                      # hostile
-//   keytool -importkeystore ...        # multi-entry; -genseckey adds the secret key entry
-//
-// The keystores are committed rather than generated at test time so the suite needs no openssl,
-// no keytool and no key generation to run.
+// Committed rather than generated so the suite needs no openssl, keytool or key generation.
+// Regenerate with openssl 3.x (-legacy for RC2-40/3DES, -nomac for no integrity MAC, -iter 5000000
+// for the hostile one) and keytool (-importkeystore for multi-entry, -genseckey for the secret key).
 
 export const rsaModern = 
   "MIIJ9wIBAzCCCaUGCSqGSIb3DQEHAaCCCZYEggmSMIIJjjCCA/oGCSqGSIb3DQEHBqCCA+swggPnAgEAMIID4AYJKoZIhvcNAQcBMF8GCSqGSI" +

@@ -709,11 +709,6 @@ export const certificateServiceFactory = ({
     };
   };
 
-  /**
-   * Read a PKCS#12 keystore and hand back the certificates, chains and private keys it holds, so
-   * the caller can import them. Nothing is stored: this is gated on the same Import permission as
-   * the import itself, so it can never reach a keystore the caller could not import anyway.
-   */
   const extractPkcs12 = async ({
     projectId,
     applicationId,

@@ -83,8 +83,7 @@ type TImportOutcome = {
   error?: string;
 };
 
-// Reading the file in one go and spreading it into String.fromCharCode overflows the call stack
-// around a megabyte, which is inside the size we accept.
+// Spreading the whole buffer into String.fromCharCode overflows the stack near a megabyte.
 const toBase64 = (buffer: ArrayBuffer) => {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -123,9 +122,6 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
     resolver: zodResolver(schema)
   });
 
-  // Prefilling from a keystore calls reset(values), which makes those values the form's new
-  // defaults — so a bare reset() would restore the previous keystore's certificate and private key
-  // instead of clearing them.
   const clearFields = () => reset({ certificatePem: "", chainPem: "", privateKeyPem: "" });
 
   const resetAll = () => {
@@ -228,8 +224,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
   const isOpen = Boolean(popUp?.certificateImport?.isOpen);
   const wasOpen = useRef(isOpen);
   useEffect(() => {
-    // Radix fires onOpenChange only for interactions it owns, so a dialog closed by one of our own
-    // buttons never reaches the handler below. Clearing on the way in covers every close path.
+    // Radix fires onOpenChange only for its own interactions, so our footer buttons never reach it.
     if (isOpen && !wasOpen.current) resetAll();
     wasOpen.current = isOpen;
   });
@@ -279,8 +274,6 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
 
   const failures = outcomes?.filter((outcome) => outcome.error) ?? [];
 
-  // Every entry the user selected gets a row, and every row carries a description, so a success and
-  // a failure are the same shape and nothing is left to infer.
   const renderOutcomes = () => (
     <ItemGroup className="gap-2">
       {outcomes?.map((outcome, index) => (
@@ -394,8 +387,6 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
           placeholder="Leave blank if the keystore has no password"
         />
       </Field>
-      {/* The failure can belong to either field above (a file we cannot read, a password that does
-          not open it), so it is reported once for the pair rather than under one of them. */}
       {keystoreError && (
         <Field data-invalid>
           <FieldError>{keystoreError}</FieldError>
@@ -428,7 +419,6 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
 
     if (outcomes) return renderOutcomes();
 
-    // Viewing an existing certificate reuses this dialog, and there is nothing to import then.
     if (cert) return renderPemFields();
 
     return (
@@ -443,10 +433,6 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
           </form>
         </TabsContent>
         <TabsContent value="pkcs12">
-          {/* One presentation whether the keystore holds one pair or five. The certificates are
-              never pushed into the PEM fields: nobody reviews base64, and the table says what each
-              certificate actually is. A keystore with nothing importable is refused by the
-              endpoint, so there is no empty state to render. */}
           {entries ? renderEntriesTable() : renderKeystorePicker()}
         </TabsContent>
       </Tabs>
@@ -478,7 +464,6 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
   const renderFooter = () => {
     if (certificateDetails || cert) return null;
 
-    // The keystore step has its own action in the body, and no form for a submit button to target.
     if (format === "pkcs12" && !entries) return null;
 
     if (outcomes) {

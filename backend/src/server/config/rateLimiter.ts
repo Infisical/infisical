@@ -99,9 +99,7 @@ export const invalidateCacheLimit: RateLimitOptions = {
   keyGenerator: (req) => req.realIp
 };
 
-// Opening a PKCS#12 keystore is CPU work whose cost the uploaded file chooses, through its
-// key-derivation round count. A worker and a timeout keep any single request bounded; this keeps a
-// caller from spending the extraction workers back to back.
+// Opening a keystore is CPU work whose cost the uploaded file chooses
 export const pkcs12ExtractionLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",

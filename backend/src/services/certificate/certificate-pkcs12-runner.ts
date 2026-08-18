@@ -6,24 +6,15 @@ import { logger } from "@app/lib/logger";
 
 import { Pkcs12ErrorCode, TExtractPkcs12Result, TPkcs12ErrorCode } from "./certificate-pkcs12-fns";
 
-// Two clocks. The keystore only controls how long *decryption* takes, so that is what gets the
-// tight budget. Starting the thread and loading its modules is our cost, not the file's, and on a
-// cold or busy host it can take seconds — charging that to the file produced false "takes too long"
-// failures on ordinary keystores. The startup ceiling is generous and only catches a stuck thread.
+// The uploaded file picks its own decryption cost through its key-derivation round count, and
+// node-forge decrypts synchronously, so extraction runs in a worker under a wall clock. Only
+// decryption gets the tight budget: charging thread startup to the file failed ordinary keystores.
 const DECRYPTION_TIMEOUT_MS = 3_000;
 const STARTUP_TIMEOUT_MS = 30_000;
 const MAX_CONCURRENT_EXTRACTIONS = 2;
-// Queue a little, then refuse. Waiting is not free: each caller holds its keystore in memory for
-// the whole wait, and a queue that only grows turns a burst into a slow failure for everyone
-// instead of a fast one for the callers past the line.
+// Each waiter holds its keystore in memory for the whole wait.
 const MAX_QUEUED_EXTRACTIONS = 8;
 
-// The keystore itself chooses how much work its own decryption costs, through the PBKDF2 iteration
-// count, and node-forge decrypts synchronously. A 2.6KB keystore built with five million rounds
-// blocks the event loop for over a minute, and a wrong password costs exactly the same because the
-// integrity check runs the same derivation. No pre-flight inspection can bound this: the rounds for
-// a shrouded key bag are inside the encrypted blob and only become readable once the outer layer is
-// already decrypted. So the work runs on a worker with a wall clock, and too many at once queue.
 let inFlight = 0;
 const waiting: (() => void)[] = [];
 
@@ -50,16 +41,13 @@ const releaseSlot = () => {
   waiting.shift()?.();
 };
 
-// In development the server runs straight off the TypeScript sources; in production it runs the
-// ESM build, where every source file has a sibling .mjs. Anchor on this module's own extension so
-// both resolve without a build-time special case.
+// Dev runs the TypeScript sources, production the ESM build; anchor on this module's own extension.
 const isRunningFromSource = __filename.endsWith(".ts");
 const moduleExtension = isRunningFromSource ? ".ts" : ".mjs";
 const workerPath = path.join(__dirname, `certificate-pkcs12-worker${moduleExtension}`);
 const extractionModulePath = path.join(__dirname, `certificate-pkcs12-fns${moduleExtension}`);
 
-// Loading a .ts file directly makes Node sniff the module type and warn about it on every spawn,
-// which would bury the dev log. The build output is unambiguous, so only silence the source path.
+// Node sniffs the module type of a .ts file and warns on every spawn, burying the dev log.
 const workerExecArgv = isRunningFromSource ? ["--no-warnings"] : undefined;
 
 type TWorkerResponse =
