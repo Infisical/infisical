@@ -70,11 +70,8 @@ export const SecretRotationV2SecretsMappingFields = () => {
   const Component = COMPONENT_MAP[rotationType];
 
   return (
-    <>
-      <p className="mb-4 text-sm text-bunker-300">
-        Map the rotated credentials to secrets in your Infisical project.
-      </p>
+    <div className="space-y-4">
       <Component />
-    </>
+    </div>
   );
 };
