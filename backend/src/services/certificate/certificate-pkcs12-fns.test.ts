@@ -200,6 +200,10 @@ describe("extractPkcs12Entries failures", () => {
     await expectFailure(fixtures.noMac, "not-the-password", Pkcs12ErrorCode.BadPassword);
   });
 
+  test("refuses a keystore that declares an absurd key-derivation cost", async () => {
+    await expectFailure(fixtures.hostileIterations, "test", Pkcs12ErrorCode.TooExpensive);
+  });
+
   test("reports a file that is not a keystore", async () => {
     await expectFailure(Buffer.from("this is not a keystore").toString("base64"), "test", Pkcs12ErrorCode.NotAKeystore);
   });

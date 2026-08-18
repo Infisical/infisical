@@ -6,39 +6,24 @@ import { logger } from "@app/lib/logger";
 
 import { Pkcs12ErrorCode, TExtractPkcs12Result, TPkcs12ErrorCode } from "./certificate-pkcs12-fns";
 
-// The uploaded file picks its own decryption cost through its key-derivation round count, and
-// node-forge decrypts synchronously, so extraction runs in a worker under a wall clock. Only
-// decryption gets the tight budget: charging thread startup to the file failed ordinary keystores.
-const DECRYPTION_TIMEOUT_MS = 3_000;
-const STARTUP_TIMEOUT_MS = 30_000;
+// Cost is refused up front by the extraction itself, so this is only a backstop for anything that
+// check cannot see, and node-forge decrypts synchronously so it has to run off the event loop.
+const EXTRACTION_TIMEOUT_MS = 15_000;
 const MAX_CONCURRENT_EXTRACTIONS = 2;
-// Each waiter holds its keystore in memory for the whole wait.
-const MAX_QUEUED_EXTRACTIONS = 8;
 
 let inFlight = 0;
-const waiting: (() => void)[] = [];
 
-const acquireSlot = async () => {
-  if (inFlight < MAX_CONCURRENT_EXTRACTIONS) {
-    inFlight += 1;
-    return;
-  }
-
-  if (waiting.length >= MAX_QUEUED_EXTRACTIONS) {
+const acquireSlot = () => {
+  if (inFlight >= MAX_CONCURRENT_EXTRACTIONS) {
     throw new BadRequestError({
       message: "Too many keystores are being read right now. Try again in a moment."
     });
   }
-
-  await new Promise<void>((resolve) => {
-    waiting.push(resolve);
-  });
   inFlight += 1;
 };
 
 const releaseSlot = () => {
   inFlight -= 1;
-  waiting.shift()?.();
 };
 
 // Dev runs the TypeScript sources, production the ESM build; anchor on this module's own extension.
@@ -51,7 +36,6 @@ const extractionModulePath = path.join(__dirname, `certificate-pkcs12-fns${modul
 const workerExecArgv = isRunningFromSource ? ["--no-warnings"] : undefined;
 
 type TWorkerResponse =
-  | { ready: true }
   | { ok: true; result: TExtractPkcs12Result }
   | { ok: false; code?: TPkcs12ErrorCode; count?: number; unexpected?: string };
 
@@ -65,6 +49,8 @@ const errorMessage = (code: TPkcs12ErrorCode, count?: number) => {
       return `This keystore contains ${count ?? "too many"} entries, which is more than we can import at once.`;
     case Pkcs12ErrorCode.NoEntries:
       return "This keystore contains no certificates or private keys.";
+    case Pkcs12ErrorCode.TooExpensive:
+      return "This keystore asks for an unusually high number of key-derivation rounds, so we will not open it.";
     case Pkcs12ErrorCode.NoPairs:
       return `This keystore contains ${count ?? "some"} private key${count === 1 ? "" : "s"}, but none of them match a certificate in the file.`;
     case Pkcs12ErrorCode.BadPassword:
@@ -80,7 +66,7 @@ export const runPkcs12Extraction = async ({
   pkcs12: Buffer;
   password: string;
 }): Promise<TExtractPkcs12Result> => {
-  await acquireSlot();
+  acquireSlot();
 
   try {
     return await new Promise<TExtractPkcs12Result>((resolve, reject) => {
@@ -90,31 +76,21 @@ export const runPkcs12Extraction = async ({
       });
 
       let settled = false;
-      let timer: NodeJS.Timeout | undefined;
+      let timer: NodeJS.Timeout;
       const finish = (fn: () => void) => {
         if (settled) return;
         settled = true;
-        if (timer) clearTimeout(timer);
+        clearTimeout(timer);
         void worker.terminate();
         fn();
       };
 
-      const startClock = (ms: number, message: string) => {
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(() => finish(() => reject(new BadRequestError({ message }))), ms);
-      };
-
-      startClock(STARTUP_TIMEOUT_MS, "Could not read this keystore.");
+      timer = setTimeout(
+        () => finish(() => reject(new BadRequestError({ message: "Could not read this keystore." }))),
+        EXTRACTION_TIMEOUT_MS
+      );
 
       worker.on("message", (message: TWorkerResponse) => {
-        if ("ready" in message) {
-          startClock(
-            DECRYPTION_TIMEOUT_MS,
-            "This keystore takes too long to open. It may use an unusually high number of key-derivation rounds."
-          );
-          return;
-        }
-
         finish(() => {
           if (message.ok) {
             resolve(message.result);

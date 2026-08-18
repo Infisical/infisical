@@ -13,13 +13,13 @@ describe("runPkcs12Extraction", () => {
     expect(entries).toHaveLength(2);
   });
 
-  test("gives up on a keystore built to be expensive to open", async () => {
+  test("refuses a keystore built to be expensive to open, without decrypting it", async () => {
     // 2.6KB with five million key-derivation rounds, which parsed inline blocks the event loop for
-    // over a minute.
+    // over a minute. The count is read from the file, so this costs nothing.
     const started = Date.now();
 
-    await expect(run(fixtures.hostileIterations, "test")).rejects.toThrow(/takes too long to open/);
+    await expect(run(fixtures.hostileIterations, "test")).rejects.toThrow(/key-derivation rounds/);
 
-    expect(Date.now() - started).toBeLessThan(6_000);
+    expect(Date.now() - started).toBeLessThan(3_000);
   }, 15_000);
 });

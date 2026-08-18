@@ -17,9 +17,6 @@ type TExtractionModule = {
 const run = async () => {
   const mod = (await import(modulePath)) as TExtractionModule;
 
-  // Starts the parent's decryption clock, so thread startup is not charged to the file.
-  parentPort?.postMessage({ ready: true });
-
   try {
     const result = await mod.extractPkcs12Entries({ pkcs12: Buffer.from(pkcs12, "base64"), password });
     parentPort?.postMessage({ ok: true, result });

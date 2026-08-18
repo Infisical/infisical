@@ -11,6 +11,7 @@ export const Pkcs12ErrorCode = {
   BadPassword: "bad_password",
   UnsupportedEntries: "unsupported_entries",
   TooManyBags: "too_many_bags",
+  TooExpensive: "too_expensive",
   NoEntries: "no_entries",
   NoPairs: "no_pairs"
 } as const;
@@ -49,7 +50,7 @@ export type TExtractPkcs12Result = {
   entries: TPkcs12Entry[];
 };
 
-const MAX_KEY_BAGS = 20;
+const MAX_KEY_BAGS = 8;
 const MAX_CERT_BAGS = 100;
 const MAX_CHAIN_DEPTH = 10;
 
@@ -261,6 +262,61 @@ const buildChain = async (leaf: TParsedCert, certs: TParsedCert[]) => {
   return { chain, truncated };
 };
 
+// A keystore states its own key-derivation cost in the clear, so an expensive one is refused before
+// any decryption happens rather than by running out of time. PBKDF2 and the PKCS#12 PBE algorithms
+// all carry the count as the first integer of their parameters.
+const ITERATION_PARAM_OIDS = new Set([
+  "1.2.840.113549.1.5.12",
+  "1.2.840.113549.1.12.1.1",
+  "1.2.840.113549.1.12.1.2",
+  "1.2.840.113549.1.12.1.3",
+  "1.2.840.113549.1.12.1.4",
+  "1.2.840.113549.1.12.1.5",
+  "1.2.840.113549.1.12.1.6"
+]);
+
+const MAX_KDF_ITERATIONS = 1_000_000;
+
+const asn1Integer = (node: forge.asn1.Asn1) => {
+  if (typeof node.value !== "string") return 0;
+  try {
+    return forge.asn1.derToInteger(node.value);
+  } catch {
+    // Wider than an iteration count ever is, so it is not one.
+    return 0;
+  }
+};
+
+const declaredIterations = (node: forge.asn1.Asn1): number => {
+  if (!Array.isArray(node.value)) return 0;
+  const children = node.value;
+  let max = 0;
+
+  const [first, second, third] = children;
+  if (first?.type === forge.asn1.Type.OID && typeof first.value === "string" && Array.isArray(second?.value)) {
+    if (ITERATION_PARAM_OIDS.has(forge.asn1.derToOid(first.value))) {
+      const count = second.value.find((param) => param.type === forge.asn1.Type.INTEGER);
+      if (count) max = Math.max(max, asn1Integer(count));
+    }
+  }
+
+  // MacData: the digest, its salt, then the count.
+  if (
+    children.length === 3 &&
+    Array.isArray(first?.value) &&
+    second?.type === forge.asn1.Type.OCTETSTRING &&
+    third?.type === forge.asn1.Type.INTEGER
+  ) {
+    max = Math.max(max, asn1Integer(third));
+  }
+
+  children.forEach((child) => {
+    max = Math.max(max, declaredIterations(child));
+  });
+
+  return max;
+};
+
 export const extractPkcs12Entries = async ({
   pkcs12,
   password
@@ -273,6 +329,10 @@ export const extractPkcs12Entries = async ({
     asn1 = forge.asn1.fromDer(forge.util.createBuffer(pkcs12.toString("binary")));
   } catch {
     throw new Pkcs12ExtractionError(Pkcs12ErrorCode.NotAKeystore);
+  }
+
+  if (declaredIterations(asn1) > MAX_KDF_ITERATIONS) {
+    throw new Pkcs12ExtractionError(Pkcs12ErrorCode.TooExpensive);
   }
 
   let p12: forge.pkcs12.Pkcs12Pfx;
