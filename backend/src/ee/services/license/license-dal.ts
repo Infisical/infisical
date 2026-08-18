@@ -2,7 +2,6 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { AccessScope, ProjectType, TableName } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
 
 export type TLicenseDALFactory = ReturnType<typeof licenseDALFactory>;
 
@@ -176,31 +175,19 @@ export const licenseDALFactory = (db: TDbClient) => {
   };
 
   const countOfOrgMembers = async (orgId: string | null, tx?: Knex) => {
-    try {
-      const { users } = await countBillableOrgActors(orgId, tx);
-      return users;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Count of Org Members" });
-    }
+    const { users } = await countBillableOrgActors(orgId, tx);
+    return users;
   };
 
   const countOfOrgIdentities = async (orgId: string | null, tx?: Knex) => {
-    try {
-      const { identities } = await countBillableOrgActors(orgId, tx);
-      return identities;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Count of Org Identities" });
-    }
+    const { identities } = await countBillableOrgActors(orgId, tx);
+    return identities;
   };
 
   const countOrgUsersAndIdentities = async (orgId: string | null, tx?: Knex) => {
-    try {
-      const { users, identities } = await countBillableOrgActors(orgId, tx);
-      return users + identities;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Count of Org Users + Identities" });
-    }
+    const { users, identities } = await countBillableOrgActors(orgId, tx);
+    return users + identities;
   };
 
-  return { countOfOrgMembers, countOrgUsersAndIdentities, countOfOrgIdentities };
+  return { countBillableOrgActors, countOfOrgMembers, countOrgUsersAndIdentities, countOfOrgIdentities };
 };

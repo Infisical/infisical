@@ -93,7 +93,10 @@ type TSuperAdminServiceFactoryDep = {
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
-  licenseService: Pick<TLicenseServiceFactory, "onPremFeatures" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<
+    TLicenseServiceFactory,
+    "onPremFeatures" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount"
+  >;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
   invalidateCacheQueue: TInvalidateCacheQueueFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -894,6 +897,17 @@ export const superAdminServiceFactory = ({
         tx
       );
 
+      const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
+      if (!isEnterpriseBypass && plan?.identityLimit) {
+        const { identitiesUsed } = await licenseService.getOrgSeatUsage(org.id, tx);
+        if (identitiesUsed >= plan.identityLimit) {
+          throw new BadRequestError({
+            name: "InviteUser",
+            message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
+          });
+        }
+      }
+
       const users: Pick<TUsers, "id" | "firstName" | "lastName" | "email" | "username" | "isAccepted">[] = [];
 
       for await (const inviteeEmail of inviteAdminEmails) {
@@ -927,15 +941,6 @@ export const superAdminServiceFactory = ({
             },
             tx
           );
-        }
-
-        const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
-        if (!isEnterpriseBypass && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
-          // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
-          throw new BadRequestError({
-            name: "InviteUser",
-            message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
-          });
         }
 
         const membership = await orgDAL.createMembership(

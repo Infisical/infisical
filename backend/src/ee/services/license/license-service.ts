@@ -48,6 +48,7 @@ import {
   TOrgPlanDTO,
   TOrgPlansTableDTO,
   TOrgPmtMethodsDTO,
+  TOrgSeatUsage,
   TPlanBillingInfo,
   TStartOrgTrialDTO,
   TUpdateOrgBillingDetailsDTO
@@ -125,9 +126,6 @@ export const licenseServiceFactory = ({
         throw new BadRequestError({ message: "License Server v2 entitlements are unavailable" });
       }
       const currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
-
-      currentPlan.membersUsed = await licenseDAL.countOfOrgMembers(null);
-      currentPlan.identitiesUsed = await licenseDAL.countOrgUsersAndIdentities(null);
 
       onPremFeatures = currentPlan;
       logger.info("Successfully synced self-hosted license features from License Server v2");
@@ -222,8 +220,22 @@ export const licenseServiceFactory = ({
     }
   };
 
+  const getOrgSeatUsage = async (orgId: string, tx?: Knex): Promise<TOrgSeatUsage> => {
+    let scopedOrgId: string | null = null;
+    if (instanceType === InstanceType.Cloud) {
+      const org = tx
+        ? await orgDAL.findRootOrgDetails(orgId, tx)
+        : await requestMemoize(requestMemoKeys.orgFindRootOrgDetails(orgId), () => orgDAL.findRootOrgDetails(orgId));
+      if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+      scopedOrgId = org.id;
+    }
+
+    const { users, identities } = await licenseDAL.countBillableOrgActors(scopedOrgId, tx);
+    return { membersUsed: users, identitiesUsed: users + identities };
+  };
+
   // Fetches the org's cloud plan fresh (v2 entitlements projected into the v1 shape, or the v1 plan),
-  // enriches it with live usage counts, writes it to the plan cache, and returns it. Throws on any
+  // enriches it with the live project count, writes it to the plan cache, and returns it. Throws on any
   // failure — it never persists the free-tier fallback itself, so callers control that decision.
   const fetchAndCacheCloudPlan = async (orgId: string): Promise<TFeatureSet> => {
     const org = await requestMemoize(requestMemoKeys.orgFindRootOrgDetails(orgId), () =>
@@ -246,37 +258,14 @@ export const licenseServiceFactory = ({
     } else {
       const {
         data: { currentPlan: v1Plan }
-      } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
-        `/api/license-server/v1/customers/${org.customerId}/cloud-plan`
-      );
-      currentPlan = v1Plan;
+      } = await licenseServerCloudApi.request.get<{
+        currentPlan: TFeatureSet & { membersUsed?: number; identitiesUsed?: number };
+      }>(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`);
+      const { membersUsed, identitiesUsed, ...planWithoutUsage } = v1Plan;
+      currentPlan = planWithoutUsage;
     }
 
     currentPlan.workspacesUsed = await projectDAL.countOfBillableOrgProjects(rootOrgId);
-
-    const membersUsed = await licenseDAL.countOfOrgMembers(rootOrgId);
-    currentPlan.membersUsed = membersUsed;
-    const identityUsed = await licenseDAL.countOrgUsersAndIdentities(rootOrgId);
-
-    // Seat sync targets the v1 license server only; v2 derives usage from registered counters.
-    if (
-      envConfig.LICENSE_SERVER_V2_MODE !== "on" &&
-      currentPlan?.identitiesUsed &&
-      currentPlan.identitiesUsed !== identityUsed
-    ) {
-      try {
-        await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
-          quantity: membersUsed,
-          quantityIdentities: identityUsed
-        });
-      } catch (error) {
-        logger.error(
-          error,
-          `Update seats used: encountered an error when updating plan for customer [customerId=${org.customerId}]`
-        );
-      }
-    }
-    currentPlan.identitiesUsed = identityUsed;
 
     await keyStore.setItemWithExpiry(
       KeyStorePrefixes.LicenseCloudPlan(org.id),
@@ -408,20 +397,14 @@ export const licenseServiceFactory = ({
     usageMeteringService?.emit(rootOrgId, UserIdentities.key);
 
     if (isV1CloudKey()) {
-      const quantity = await licenseDAL.countOfOrgMembers(rootOrgId, tx);
-      const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(rootOrgId, tx);
       if (org?.customerId) {
+        const { users, identities } = await licenseDAL.countBillableOrgActors(rootOrgId, tx);
         await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
-          quantity,
-          quantityIdentities
+          quantity: users,
+          quantityIdentities: users + identities
         });
       }
       await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(rootOrgId));
-    } else if (instanceType === InstanceType.EnterpriseOnPrem) {
-      // Self-hosted reports usage asynchronously via the usage-snapshot queue, not a synchronous seat
-      // patch; keep the in-memory counts current so limit checks are accurate until the next sync.
-      onPremFeatures.membersUsed = await licenseDAL.countOfOrgMembers(null, tx);
-      onPremFeatures.identitiesUsed = await licenseDAL.countOrgUsersAndIdentities(null, tx);
     }
     await refreshPlan(rootOrgId);
   };
@@ -471,7 +454,7 @@ export const licenseServiceFactory = ({
     if (refreshCache) {
       await refreshPlan(rootOrgId);
     }
-    const plan = await getPlan(rootOrgId, projectId);
+    const plan = getPlan(rootOrgId, projectId);
     return plan;
   };
 
@@ -1062,6 +1045,7 @@ export const licenseServiceFactory = ({
       return onPremFeatures;
     },
     getPlan,
+    getOrgSeatUsage,
     getCustomerId,
     getLicenseId,
     invalidateGetPlan,

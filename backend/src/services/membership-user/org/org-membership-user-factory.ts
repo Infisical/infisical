@@ -35,7 +35,7 @@ type TOrgMembershipUserScopeFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
@@ -119,12 +119,14 @@ export const newOrgMembershipUserFactory = ({
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
     const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
-    if (!isEnterpriseBypass && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
-      // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
-      throw new BadRequestError({
-        name: "InviteUser",
-        message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
-      });
+    if (!isEnterpriseBypass && plan?.identityLimit) {
+      const { identitiesUsed } = await licenseService.getOrgSeatUsage(dto.permission.orgId);
+      if (identitiesUsed >= plan.identityLimit) {
+        throw new BadRequestError({
+          name: "InviteUser",
+          message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
+        });
+      }
     }
 
     const org = await requestMemoize(requestMemoKeys.orgFindById(dto.permission.orgId), () =>

@@ -1,7 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
-import { TLicenseDALFactory } from "@app/ee/services/license/license-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -48,8 +47,7 @@ type TIdentityServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
-  licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
@@ -70,7 +68,6 @@ export const identityServiceFactory = ({
   identityProjectDAL,
   permissionService,
   licenseService,
-  licenseDAL,
   keyStore,
   orgDAL,
   membershipIdentityDAL,
@@ -141,12 +138,11 @@ export const identityServiceFactory = ({
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateIdentity(orgId)]);
 
       // Check identity limit inside the transaction after acquiring the lock
-      // We count directly from the database to get the accurate count, not the cached plan value
       const plan = await licenseService.getPlan(orgId);
       const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
       if (!isEnterpriseBypass && plan?.identityLimit) {
-        const currentIdentityCount = await licenseDAL.countOrgUsersAndIdentities(orgId, tx);
-        if (currentIdentityCount >= plan.identityLimit) {
+        const { identitiesUsed } = await licenseService.getOrgSeatUsage(orgId, tx);
+        if (identitiesUsed >= plan.identityLimit) {
           throw new BadRequestError({
             message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
           });

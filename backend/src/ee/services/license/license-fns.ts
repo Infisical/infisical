@@ -62,11 +62,9 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   maxInternalCas: null,
   maxPamAccounts: null,
   memberLimit: null,
-  membersUsed: 0,
   environmentLimit: null,
   environmentsUsed: 0,
   identityLimit: null,
-  identitiesUsed: 0,
   dynamicSecret: false,
   secretVersioning: true,
   pitRecovery: false,
@@ -203,14 +201,16 @@ export const setupLicenseRequestWithStore = (
 };
 
 export const throwOnPlanSeatLimitReached = async (
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage">,
   orgId: string,
   type?: UserAliasType
 ) => {
   const plan = await licenseService.getPlan(orgId);
   const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
+  if (isEnterpriseBypass || !plan?.identityLimit) return;
 
-  if (!isEnterpriseBypass && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+  const { identitiesUsed } = await licenseService.getOrgSeatUsage(orgId);
+  if (identitiesUsed >= plan.identityLimit) {
     // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
     throw new BadRequestError({
       message: `Failed to create new member${type ? ` via ${type.toUpperCase()}` : ""} due to member limit reached. Upgrade plan to add more members.`
