@@ -36,8 +36,6 @@ export type TPkcs12Entry = {
   commonName: string | null;
   altNames: string | null;
   keyAlgorithm: string;
-  serialNumber: string;
-  notBefore: string;
   notAfter: string;
   fingerprintSha256: string;
   chainWarning: string | null;
@@ -57,7 +55,6 @@ const MAX_CHAIN_DEPTH = 10;
 const CHAIN_WARNING = "No usable issuer chain was found in the keystore, so this will be imported on its own.";
 
 const MAX_SUBJECT_LENGTH = 2048;
-const MAX_SERIAL_LENGTH = 256;
 const MAX_ALIAS_LENGTH = 1024;
 
 const toPem = (type: string, derBytes: string) => forge.pem.encode({ type, body: derBytes });
@@ -374,8 +371,6 @@ export const extractPkcs12Entries = async ({
     subject: cert.cert.subject.slice(0, MAX_SUBJECT_LENGTH),
     commonName: cert.cert.subjectName.getField("CN")[0]?.slice(0, MAX_SUBJECT_LENGTH) ?? null,
     altNames: readAltNames(cert.cert),
-    serialNumber: cert.cert.serialNumber.slice(0, MAX_SERIAL_LENGTH),
-    notBefore: cert.cert.notBefore.toISOString(),
     notAfter: cert.cert.notAfter.toISOString(),
     fingerprintSha256: cert.fingerprint,
     certificatePem: cert.pem

@@ -1620,8 +1620,6 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
                 commonName: z.string().max(1024).nullable().describe(CERTIFICATES.EXTRACT_PKCS12.commonName),
                 altNames: z.string().max(2048).nullable().describe(CERTIFICATES.EXTRACT_PKCS12.altNames),
                 keyAlgorithm: z.string().max(64).describe(CERTIFICATES.EXTRACT_PKCS12.keyAlgorithm),
-                serialNumber: z.string().max(256).describe(CERTIFICATES.EXTRACT_PKCS12.entrySerialNumber),
-                notBefore: z.string().describe(CERTIFICATES.EXTRACT_PKCS12.notBefore),
                 notAfter: z.string().describe(CERTIFICATES.EXTRACT_PKCS12.notAfter),
                 fingerprintSha256: z.string().max(256).describe(CERTIFICATES.EXTRACT_PKCS12.fingerprintSha256),
                 chainWarning: z.string().max(512).nullable().describe(CERTIFICATES.EXTRACT_PKCS12.chainWarning),

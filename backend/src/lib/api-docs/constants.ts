@@ -2133,8 +2133,6 @@ export const CERTIFICATES = {
     commonName: "The common name of the certificate, if it has one.",
     altNames: "The subject alternative names of the certificate, comma separated, if it has any.",
     keyAlgorithm: "The algorithm and size of the private key, such as 'RSA 2048' or 'ECDSA P-256'.",
-    entrySerialNumber: "The serial number of the certificate.",
-    notBefore: "The date the certificate becomes valid.",
     notAfter: "The date the certificate expires.",
     fingerprintSha256: "The SHA-256 fingerprint of the certificate.",
     chainWarning:

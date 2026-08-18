@@ -116,7 +116,6 @@ describe("extractPkcs12Entries chain building", () => {
     const { entries } = await extract(fixtures.notYetValidLeaf, "test");
 
     expect(entries).toHaveLength(1);
-    expect(new Date(entries[0].notBefore).getTime()).toBeGreaterThan(Date.now());
     expect(entries[0].chainPem).toBeUndefined();
     expect(entries[0].chainWarning).toContain("No usable issuer chain");
   });

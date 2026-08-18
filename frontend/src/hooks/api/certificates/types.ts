@@ -92,8 +92,6 @@ export type TPkcs12Entry = {
   commonName: string | null;
   altNames: string | null;
   keyAlgorithm: string;
-  serialNumber: string;
-  notBefore: string;
   notAfter: string;
   fingerprintSha256: string;
   chainWarning: string | null;
