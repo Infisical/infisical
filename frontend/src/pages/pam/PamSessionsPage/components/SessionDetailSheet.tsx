@@ -65,8 +65,8 @@ const decodeBase64Utf8 = (b64: string): string => {
 // Only reached for recordings written before gateways rendered the terminal themselves, which the `rendered` flag distinguishes.
 const LEGACY_ANSI_ESCAPE_REGEX = new RegExp(
   [
-    "\u001B[\\]PX^_][\\s\\S]*?(?:\u0007|\u001B\\\\|$)",
-    "[\u001B\u009B]\\[[0-?]*[ -/]*[@-~]",
+    "\u001B[\\]PX^_][\\s\\S]*?(?:\u0007|\u001B\\\\)",
+    "(?:\u001B\\[|\u009B)[0-?]*[ -/]*[@-~]",
     "\u001B[()*+\\-./][ -~]",
     "\u001B[@-Z\\\\-_]"
   ].join("|"),
