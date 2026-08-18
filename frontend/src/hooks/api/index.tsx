@@ -11,6 +11,7 @@ export * from "./auditLogStreams";
 export * from "./auditReports";
 export * from "./auth";
 export * from "./billingV2";
+export * from "./blastRadius";
 export * from "./bots";
 export * from "./ca";
 export * from "./certificateCleanup";

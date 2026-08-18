@@ -1,0 +1,118 @@
+---
+title: "Blast Radius"
+sidebarTitle: "Blast Radius"
+description: "See everyone who can read a secret, everywhere its value has been distributed, and what breaks if you rotate it."
+---
+
+<Note>
+  Blast Radius is a paid feature.
+
+  On Infisical Cloud it is available on the Pro and Enterprise plans. If you're self-hosting Infisical, contact sales@infisical.com to acquire a license.
+</Note>
+
+Blast Radius answers the question that stops teams from rotating credentials: *if I change this value, what happens?*
+
+It opens on a single secret and shows three things at once. On the left, every user, machine identity, and group entitled to read it, and **why** each one is. In the middle, the secret. On the right, everywhere the value has travelled: secret syncs, folders that import the path, secrets that reference it, and projects it has been shared into.
+
+Everything on the page is computed from data Infisical already collects. There is nothing to configure.
+
+## Opening Blast Radius
+
+From a Secrets Management project:
+
+- Open the **Secrets** overview, then choose **View Blast Radius** from a secret's row menu.
+- Or open the **Insights** tab and click any row in **Most Exposed Secrets**.
+
+Either way it opens as a wide panel over the page you were on, so you keep your place and can look at several secrets in a row. The view also has its own address, so the URL is shareable: during an incident, pasting the link gives everyone the same picture of one secret.
+
+## Reading the graph
+
+Two conventions carry the whole view.
+
+**Solid edges are observed. Dashed edges are entitled but unused.** A solid line means that principal actually read the secret inside the activity window, and its thickness reflects how often. A dashed line means the access exists but nothing has exercised it. A screen full of dashed lines is a picture of over-provisioning.
+
+**Ghost readers sit at the bottom of the left column, with no edge to the secret.** These are principals that read the value inside the window and **cannot read it today**: removed from a group, expired access, removed from the project, or deleted outright. They still hold the value. They have no edge because they have no current path, and they are the strongest argument for rotating.
+
+Click any principal to focus its path. Its details open in a popover next to the node, so the explanation sits beside the thing it explains rather than across the panel.
+
+### Why a principal has access
+
+**Show access path** in the popover renders the chain that grants access, ending in the rule that actually matched:
+
+```
+maya@acme.io  can read the value
+
+  Member of group     SRE
+  Group holds role    prod-reader
+  Matched rule        secretPath  $glob  "/prod/**"
+                      environment $eq    "prod"
+```
+
+If access arrives by more than one route, every route is listed, because removing one leaves the others.
+
+## Read activity and what it can prove
+
+Activity comes from audit logs, and it is reported precisely:
+
+- **`this secret`** means the read named this secret, so it is attributed exactly. That covers a client asking for the key by name, and a person revealing the value in the web UI.
+- **`folder-level`** means the reads came from a bulk fetch of the folder that did not record which secrets it returned. Those counts are shown with a leading `~` and cannot be attributed to one key. Bulk reads now record what they returned, so `folder-level` applies to history from before that and fades out as your retention window rolls forward.
+
+Two absences are different findings and are labelled differently. **No reads in 30d** means nothing was recorded in the window. **Last read 46 days ago, outside the window** means the principal did read it, before the window began, which usually means it is holding a stale value.
+
+<Note>
+  Read activity is bounded by your plan's audit log retention. "No reads" always means "none inside the window we can see", never "never". The window in use is shown in the legend.
+</Note>
+
+### Who was behind a machine identity
+
+An identity is a credential, not a person. Where the auth method can prove what used it, Blast Radius says so:
+
+- **AWS** shows the IAM role or user that was assumed.
+- **Kubernetes** shows the service account, as `namespace/name`.
+- **OIDC** shows the claims that matter — for GitHub Actions, the repository and workflow, with the person who triggered it on hover.
+
+If several callers share one identity, each distinct one is listed, because that fan-out is usually the finding.
+
+<Note>
+  Token Auth and Universal Auth cannot prove anything about the caller: whoever holds the credential is indistinguishable from whoever was meant to. Those identities show no caller at all, and that absence is the honest answer rather than missing data.
+</Note>
+
+Read activity is separately permissioned. A viewer without audit log access still sees entitlements and destinations, but every edge is drawn dashed and the exposure score reads **Unavailable** rather than being computed from half its inputs.
+
+## Exposure score
+
+A single number from 0 to 100, shown with the arithmetic behind it: the largest drivers are listed with the points each one contributed, so you can see why the number is what it is rather than being asked to trust it. It weighs how many principals can read the value, how many of them never do, how widely the value has been distributed, the health of those destinations, how long the value has gone unchanged, and whether any ghost readers hold it.
+
+| Band | Score |
+| --- | --- |
+| Low | 0 to 29 |
+| Elevated | 30 to 59 |
+| High | 60 to 84 |
+| Critical | 85 to 100 |
+
+The score describes the secret, not what you are currently looking at, so filtering the graph never changes it.
+
+## Simulating a rotation
+
+**Simulate Rotation** answers both halves of the question, because both are usually true at once.
+
+- **Will break** lists what actually stops working: a failing sync, a sync that has to be pushed by hand, a consumer whose last read predates the current value.
+- **Why it is overdue anyway** lists the reasons to do it regardless: ghost readers holding the value, no automatic rotation configured, a value that has not changed in a year.
+- **Worth knowing** covers non-blocking consequences, such as an environment that imports the path and will change at the same moment.
+- **Will update automatically** is the reassuring half: healthy syncs, references that resolve, and consumers that fetch at request time.
+
+Nothing is changed by running a simulation.
+
+## Most Exposed Secrets
+
+The **Insights** page ranks the most exposed secrets in the project using the same score, so you can start from the worst one rather than from a secret you already had in mind. Rows link straight into the graph.
+
+## Large projects
+
+On a project with hundreds of principals the view stays readable without hiding anything from the numbers:
+
+- Every entitled principal is drawn. The graph never folds them into a summary node, because on a secret nobody has read that would collapse the whole column into one box and show you nothing.
+- If the graph reaches its drawing limit, the legend states how many are not drawn and how that remainder splits between those with and without reads, with a **Draw more** control. Nothing is hidden from the counts, only from the canvas.
+- Filters apply to the whole set before the page is drawn, so paging through a filtered graph walks the filtered set.
+
+Switch to **Table** mode for a dense, sortable list with the same information, including the precision, client, and caller columns.

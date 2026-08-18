@@ -16,6 +16,7 @@ import {
   GitBranchIcon,
   HistoryIcon,
   MessageSquareIcon,
+  NetworkIcon,
   PencilLineIcon,
   SaveIcon,
   TagsIcon,
@@ -80,6 +81,7 @@ import {
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission,
   useSubscription
@@ -93,6 +95,7 @@ import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
+import { BlastRadiusSheet } from "@app/pages/secret-manager/BlastRadiusPage/components/BlastRadiusSheet";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
@@ -217,6 +220,7 @@ export const SecretEditTableRow = ({
   ] as const);
 
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
   const batchStore = useBatchStoreApi();
 
@@ -339,6 +343,7 @@ export const SecretEditTableRow = ({
   >(null);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const [isAccessInsightsOpen, setIsAccessInsightsOpen] = useState(false);
+  const [isBlastRadiusOpen, setIsBlastRadiusOpen] = useState(false);
   const [isSecretReferenceOpen, setIsSecretReferenceOpen] = useState(false);
 
   const toggleModal = useCallback(() => {
@@ -1640,6 +1645,40 @@ export const SecretEditTableRow = ({
                       : "Create Secret to View Access"}
                 </TooltipContent>
               </Tooltip>
+              <Tooltip
+                open={isPendingBatchChange || isImportedSecret || isCreatable ? undefined : false}
+                disableHoverableContent
+              >
+                <TooltipTrigger className="block w-full">
+                  <DropdownMenuItem
+                    className="px-2.5 py-1.5 text-xs"
+                    onClick={() => {
+                      if (!subscription?.secretAccessInsights) {
+                        handlePopUpOpen("accessInsightsUpgrade");
+                        return;
+                      }
+
+                      // The dropdown closes in the same tick it selects, and Radix treats that
+                      // teardown as an outside-press on anything opened synchronously. Defer a tick so
+                      // the drawer opens after the menu has finished dismissing.
+                      setTimeout(() => setIsBlastRadiusOpen(true), 0);
+                    }}
+                    isDisabled={
+                      isPendingBatchChange || !secretId || isCreatable || isImportedSecret
+                    }
+                  >
+                    <NetworkIcon />
+                    View Blast Radius
+                  </DropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  {isPendingBatchChange
+                    ? "Discard Pending Changes First"
+                    : isImportedSecret
+                      ? "Cannot View Blast Radius for Imported Secret"
+                      : "Create Secret to View Blast Radius"}
+                </TooltipContent>
+              </Tooltip>
 
               <div className="my-1" />
               <DropdownMenuLabel className="px-2.5 py-0.5 text-[10px]">Manage</DropdownMenuLabel>
@@ -1923,6 +1962,15 @@ export const SecretEditTableRow = ({
           )}
         </SheetContent>
       </Sheet>
+      <BlastRadiusSheet
+        isOpen={isBlastRadiusOpen}
+        onOpenChange={setIsBlastRadiusOpen}
+        projectId={currentProject.id}
+        orgId={currentOrg.id}
+        secretKey={secretName}
+        environment={environment}
+        secretPath={secretPath}
+      />
       <UpgradePlanModal
         isOpen={popUp.accessInsightsUpgrade.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("accessInsightsUpgrade", isOpen)}

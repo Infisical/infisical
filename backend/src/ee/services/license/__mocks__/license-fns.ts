@@ -27,6 +27,7 @@ export const getDefaultOnPremFeatures = () => {
     customAlerts: false,
     auditLogs: false,
     auditLogsRetentionDays: 0,
+    secretAccessInsights: true,
     samlSSO: true,
     oidcSSO: true,
     scim: true,

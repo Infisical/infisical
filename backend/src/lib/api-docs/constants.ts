@@ -1372,6 +1372,32 @@ export const RAW_SECRETS = {
     includeAllEntities:
       "When true, includes all project users, identities, and groups in the response, even those without any access to the secret."
   },
+  GET_BLAST_RADIUS: {
+    secretName: "The name of the secret to get the blast radius for.",
+    projectId: "The ID of the project where the secret is located.",
+    environment: "The slug of the environment where the secret is located.",
+    secretPath: "The folder path where the secret is located.",
+    window: "The activity window to report read activity over.",
+    include: "The legs of the blast radius to compute. Omit to compute all of them.",
+    principalLimit: "The maximum number of principals to return in this page.",
+    principalOffset: "The number of principals to skip before this page.",
+    principalOrder: "The order principals are paged in. Defaults to those with no reads first.",
+    principalAccess: "Filter principals by the strongest permission they hold on the secret.",
+    principalUsage: "Filter principals by whether they have read the secret inside the window."
+  },
+  GET_EXPOSURE_RANKING: {
+    projectId: "The ID of the project to rank secrets in.",
+    environment: "Restrict the ranking to a single environment.",
+    window: "The activity window used when scoring each secret.",
+    limit: "The maximum number of secrets to return."
+  },
+  SIMULATE_ROTATION: {
+    secretName: "The name of the secret to simulate a rotation for.",
+    projectId: "The ID of the project where the secret is located.",
+    environment: "The slug of the environment where the secret is located.",
+    secretPath: "The folder path where the secret is located.",
+    window: "The activity window used to judge whether consumers are holding a stale value."
+  },
   DUPLICATE_SECRET: {
     projectId: "The ID of the project containing the secret.",
     sourceEnvironment: "The slug of the source environment.",

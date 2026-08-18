@@ -358,7 +358,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           metadata: {
             environment,
             secretPath: req.query.secretPath,
-            numberOfSecrets: secrets.length
+            numberOfSecrets: secrets.length,
+            secretIds: secrets.map((secret) => secret.id)
           }
         }
       });
@@ -1054,7 +1055,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           metadata: {
             environment: req.query.environment,
             secretPath: req.query.secretPath,
-            numberOfSecrets: secrets.length
+            numberOfSecrets: secrets.length,
+            secretIds: secrets.map((secret) => secret.id)
           }
         }
       });

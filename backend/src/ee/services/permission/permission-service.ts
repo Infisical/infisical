@@ -79,7 +79,8 @@ import {
   TBuildOrgPermissionDTO,
   TBuildProjectPermissionDTO,
   TGetServiceTokenProjectPermissionArg,
-  TPermissionServiceFactory
+  TPermissionServiceFactory,
+  TProjectPermissionGrantSource
 } from "./permission-service-types";
 import {
   buildServiceTokenProjectPermission,
@@ -1311,11 +1312,196 @@ export const permissionServiceFactory = ({
     return { sources };
   };
 
+  // Resolves each actor's access into the individual sources that grant it, one ability per source,
+  // instead of the single merged ability `getProjectPermissions` returns. A merged ability answers
+  // "can they?"; this answers "through which role, group, or privilege?".
+  //
+  // Only ever call this for actors already known to have the access in question (resolve that with the
+  // merged ability first). Per-source abilities cannot see a forbid rule contributed by a *different*
+  // source, so on their own they would report access that the merged ability denies.
+  const getProjectPermissionSources: TPermissionServiceFactory["getProjectPermissionSources"] = async ({
+    projectId,
+    orgId,
+    actors,
+    groupIds = []
+  }) => {
+    const actorSources: Record<string, TProjectPermissionGrantSource[]> = {};
+    const groupSources: Record<string, TProjectPermissionGrantSource[]> = {};
+
+    const buildSourceAbility = (
+      rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
+      interpolation?: { id: string; username: string; metadata: { key: string; value: string }[] }
+    ) => {
+      if (!interpolation) {
+        return createMongoAbility<ProjectPermissionSet>(rules, { conditionsMatcher });
+      }
+
+      const templatedRules = handlebarsClient.compile(JSON.stringify(rules), { data: false });
+      const metadataKeyValuePair = escapeHandlebarsMissingDict(
+        objectify(
+          interpolation.metadata,
+          (i) => i.key,
+          (i) => i.value
+        ),
+        "identity.metadata"
+      );
+      const interpolatedRules = templatedRules(
+        {
+          identity: {
+            id: interpolation.id,
+            username: interpolation.username,
+            metadata: metadataKeyValuePair
+          }
+        },
+        { data: false }
+      );
+
+      return createMongoAbility<ProjectPermissionSet>(
+        JSON.parse(interpolatedRules) as RawRuleOf<MongoAbility<ProjectPermissionSet>>[],
+        { conditionsMatcher }
+      );
+    };
+
+    // Each actor needs its own membership read, so walk them in small batches: the pool is ~10
+    // connections per instance and a wide Promise.all here would starve the rest of the request.
+    const ACTOR_BATCH_SIZE = 5;
+    const actorMemberships: {
+      actorId: string;
+      username: string;
+      memberships: Awaited<ReturnType<typeof permissionDAL.getPermission>>;
+    }[] = [];
+    for (let i = 0; i < actors.length; i += ACTOR_BATCH_SIZE) {
+      const batch = actors.slice(i, i + ACTOR_BATCH_SIZE);
+      // eslint-disable-next-line no-await-in-loop
+      const resolved = await Promise.all(
+        batch.map(async (actor) => ({
+          actorId: actor.id,
+          username: actor.username,
+          memberships: await permissionDAL.getPermission({
+            scopeData: { scope: AccessScope.Project, orgId, projectId },
+            actorId: actor.id,
+            actorType: actor.type
+          })
+        }))
+      );
+      actorMemberships.push(...resolved);
+    }
+
+    const inheritedGroupIds = new Set<string>();
+    actorMemberships.forEach(({ memberships }) => {
+      memberships.forEach((membership) => {
+        if (membership.actorGroupId) inheritedGroupIds.add(membership.actorGroupId);
+      });
+    });
+
+    const groupNameById: Record<string, string> = {};
+    const groupIdsToName = [...new Set([...inheritedGroupIds, ...groupIds])];
+    if (groupIdsToName.length) {
+      const groups = await groupDAL.find({ $in: { id: groupIdsToName } });
+      groups.forEach((group) => {
+        groupNameById[group.id] = group.name;
+      });
+    }
+
+    const privilegeNameById: Record<string, string> = {};
+    if (actors.length) {
+      const privileges = await additionalPrivilegeDAL.find({ projectId });
+      privileges.forEach((privilege) => {
+        privilegeNameById[privilege.id] = privilege.name;
+      });
+    }
+
+    actorMemberships.forEach(({ actorId, username, memberships }) => {
+      const sources: TProjectPermissionGrantSource[] = [];
+      const metadata = memberships.find((membership) => membership.metadata?.length)?.metadata ?? [];
+
+      memberships.forEach((membership) => {
+        const groupId = membership.actorGroupId ?? undefined;
+        const isGroupInherited = Boolean(groupId);
+
+        (membership.roles ?? []).filter(isActiveRole).forEach((role) => {
+          const isCustom = role.role === ProjectMembershipRole.Custom;
+          const rules = buildProjectPermissionRules([
+            { role: role.role, permissions: isCustom ? role.permissions : [] }
+          ]);
+
+          sources.push({
+            id: role.id,
+            kind: isGroupInherited ? "groupRole" : "role",
+            name: isCustom ? role.customRoleName || role.customRoleSlug || "Custom" : role.role,
+            roleSlug: isCustom ? (role.customRoleSlug ?? undefined) : role.role,
+            groupId,
+            groupName: groupId ? groupNameById[groupId] : undefined,
+            isTemporary: Boolean(role.isTemporary),
+            temporaryAccessEndTime: role.temporaryAccessEndTime?.toISOString(),
+            permission: buildSourceAbility(rules, { id: actorId, username, metadata })
+          });
+        });
+
+        // Additional privileges attach to the actor, not to a group, so a group-inherited
+        // membership row would double-count them.
+        if (isGroupInherited) return;
+
+        (membership.additionalPrivileges ?? []).filter(isActiveRole).forEach((privilege) => {
+          const rules = buildProjectPermissionRules([
+            { role: ProjectMembershipRole.Custom, permissions: privilege.permissions }
+          ]);
+
+          sources.push({
+            id: privilege.id,
+            kind: "additionalPrivilege",
+            name: privilegeNameById[privilege.id] || "Additional Privilege",
+            isTemporary: Boolean(privilege.isTemporary),
+            temporaryAccessEndTime: privilege.temporaryAccessEndTime?.toISOString(),
+            permission: buildSourceAbility(rules, { id: actorId, username, metadata })
+          });
+        });
+      });
+
+      actorSources[actorId] = sources;
+    });
+
+    if (groupIds.length) {
+      const groupPermissions = await permissionDAL.getProjectGroupPermissions(projectId);
+      groupPermissions
+        .filter((groupPermission) => groupIds.includes(groupPermission.groupId))
+        .forEach((groupPermission) => {
+          const sources: TProjectPermissionGrantSource[] = [];
+
+          [...(groupPermission.roles ?? []), ...(groupPermission.groupRoles ?? [])]
+            .filter(isActiveRole)
+            .forEach((role) => {
+              const isCustom = role.role === ProjectMembershipRole.Custom;
+              const rules = buildProjectPermissionRules([
+                { role: role.role, permissions: isCustom ? role.permissions : [] }
+              ]);
+
+              sources.push({
+                id: role.id,
+                kind: "groupRole",
+                name: isCustom ? role.customRoleSlug || "Custom" : role.role,
+                roleSlug: isCustom ? (role.customRoleSlug ?? undefined) : role.role,
+                groupId: groupPermission.groupId,
+                groupName: groupNameById[groupPermission.groupId] ?? groupPermission.username,
+                isTemporary: Boolean(role.isTemporary),
+                temporaryAccessEndTime: role.temporaryAccessEndTime?.toISOString(),
+                permission: buildSourceAbility(rules)
+              });
+            });
+
+          groupSources[groupPermission.groupId] = sources;
+        });
+    }
+
+    return { actorSources, groupSources };
+  };
+
   return {
     getOrgPermission,
     getProjectPermission,
     getResourcePermission,
     getProjectPermissions,
+    getProjectPermissionSources,
     getOrgPermissionByRoles,
     getProjectPermissionByRoles,
     checkGroupProjectPermission,

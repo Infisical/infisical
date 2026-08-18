@@ -21,6 +21,36 @@ type TAggregateQuery = {
   endDate: string;
 };
 
+export type TSecretReadActivityQuery = {
+  orgId: string;
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  secretId: string;
+  // Only used to attribute rows written before the secret id was recorded; see applySecretReadFilters.
+  secretKey: string;
+  startDate: string;
+  endDate: string;
+};
+
+export type TSecretReadActivityRow = {
+  actor: string;
+  actorId: string | null;
+  label: string | null;
+  authMethod: string | null;
+  clients: (string | null)[] | null;
+  // A single-secret read names the key it returned; a bulk read only names the folder, so the two
+  // counts cannot be added together and are kept apart all the way to the UI.
+  exactReadCount: number;
+  folderReadCount: number;
+  lastReadAt: Date;
+  // The auth details of whatever was behind a machine identity, one entry per distinct caller. Only AWS,
+  // Kubernetes and OIDC auth record these; token auth has nothing to record.
+  awsCallers: unknown[] | null;
+  kubernetesCallers: unknown[] | null;
+  oidcCallers: unknown[] | null;
+};
+
 export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "find"> {
   pruneAuditLog: () => Promise<void>;
   getApproximateRowCount: () => Promise<number>;
@@ -42,6 +72,11 @@ export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "
     tx?: knex.Knex
   ) => Promise<{ date: string; actor: string; actorMetadata: unknown; count: number }[]>;
   countByIpAddress: (arg: TAggregateQuery, tx?: knex.Knex) => Promise<{ ipAddress: string; count: number }[]>;
+  aggregateSecretReadActivity: (arg: TSecretReadActivityQuery, tx?: knex.Knex) => Promise<TSecretReadActivityRow[]>;
+  findLastSecretReadBefore: (
+    arg: Omit<TSecretReadActivityQuery, "startDate"> & { floorDate: string },
+    tx?: knex.Knex
+  ) => Promise<{ actor: string; actorId: string | null; lastReadAt: Date }[]>;
   countByAuthMethod: (
     arg: TAggregateQuery,
     tx?: knex.Knex
@@ -394,6 +429,144 @@ export const auditLogDALFactory = (db: TDbClient) => {
     return rows as { ipAddress: string; count: number }[];
   };
 
+  // Every actor that read one secret path in a window, with how it read (single-key versus bulk),
+  // what client it used, and when it last did. This is the observed half of blast radius; the
+  // entitlement half comes from the permission service.
+  const ACTOR_ID_SQL = `COALESCE(
+    "${TableName.AuditLog}"."actorMetadata"->>'userId',
+    "${TableName.AuditLog}"."actorMetadata"->>'identityId',
+    "${TableName.AuditLog}"."actorMetadata"->>'serviceId'
+  )`;
+
+  // Every way the value of one secret can leave the API. Only the bulk read is folder-precision; the
+  // rest name the secret they returned, including the two dashboard events, which are how a person
+  // reading a value in the web UI shows up at all.
+  const SECRET_READ_EVENT_TYPES = [
+    EventType.GET_SECRETS,
+    EventType.GET_SECRET,
+    EventType.DASHBOARD_GET_SECRET_VALUE,
+    EventType.DASHBOARD_GET_SECRET_VERSION_VALUE
+  ];
+
+  // Precision is a property of the row, not of the event type: a bulk read that recorded `secretIds`
+  // names this secret exactly, while one written before that field existed can only prove it covered the
+  // folder. So only the second kind is folder precision, and everything else is exact.
+  const FOLDER_PRECISION_SQL = `("${TableName.AuditLog}"."eventType" = ?
+    AND "${TableName.AuditLog}"."eventMetadata"->'secretIds' IS NULL)`;
+
+  const applySecretReadFilters = (
+    qb: knex.Knex.QueryBuilder,
+    {
+      orgId,
+      projectId,
+      environment,
+      secretPath,
+      secretId,
+      secretKey
+    }: Omit<TSecretReadActivityQuery, "startDate" | "endDate">
+  ) =>
+    qb
+      .where(`${TableName.AuditLog}.orgId`, orgId)
+      .where(`${TableName.AuditLog}.projectId`, projectId)
+      .whereIn(`${TableName.AuditLog}.eventType`, SECRET_READ_EVENT_TYPES)
+      // Four branches, in order of what the row can prove about itself:
+      //   1. A single read that names the secret by id. Matching on the id rather than the key survives
+      //      a rename, and a version-value read carries no path to match on anyway.
+      //   2. A bulk read that recorded which secrets it returned, so it names this one exactly.
+      //   3. A bulk read from before `secretIds` was recorded: it only proves it covered the folder, so
+      //      it matches on the path and is counted as folder precision.
+      //   4. A single read from before `secretId` was recorded, falling back to path + key so that
+      //      history is attributed rather than silently dropped. A fallback rather than an extra match:
+      //      keys get reused, so a row that can identify itself by id must not also be matched by a key
+      //      it no longer has.
+      .whereRaw(
+        `(
+           "${TableName.AuditLog}"."eventMetadata"->>'secretId' = ?
+           OR "${TableName.AuditLog}"."eventMetadata"->'secretIds' @> ?::jsonb
+           OR (${FOLDER_PRECISION_SQL}
+             AND "${TableName.AuditLog}"."eventMetadata"->>'environment' = ?
+             AND "${TableName.AuditLog}"."eventMetadata"->>'secretPath' = ?)
+           OR ("${TableName.AuditLog}"."eventMetadata"->>'secretId' IS NULL
+             AND "${TableName.AuditLog}"."eventMetadata"->>'secretKey' = ?
+             AND "${TableName.AuditLog}"."eventMetadata"->>'environment' = ?
+             AND "${TableName.AuditLog}"."eventMetadata"->>'secretPath' = ?)
+         )`,
+        [
+          secretId,
+          JSON.stringify([secretId]),
+          EventType.GET_SECRETS,
+          environment,
+          secretPath,
+          secretKey,
+          environment,
+          secretPath
+        ]
+      );
+
+  const aggregateSecretReadActivity: TAuditLogDALFactory["aggregateSecretReadActivity"] = async (
+    { startDate, endDate, ...filters },
+    tx
+  ) => {
+    const rows = (await applySecretReadFilters((tx || db.replicaNode())(TableName.AuditLog), filters)
+      .whereRaw(`"${TableName.AuditLog}"."createdAt" >= ?::timestamptz`, [startDate])
+      .whereRaw(`"${TableName.AuditLog}"."createdAt" < ?::timestamptz`, [endDate])
+      .select(
+        `${TableName.AuditLog}.actor`,
+        db.raw(`${ACTOR_ID_SQL} as "actorId"`),
+        db.raw(`COUNT(*) FILTER (WHERE NOT ${FOLDER_PRECISION_SQL})::int as "exactReadCount"`, [
+          EventType.GET_SECRETS
+        ]),
+        db.raw(`COUNT(*) FILTER (WHERE ${FOLDER_PRECISION_SQL})::int as "folderReadCount"`, [EventType.GET_SECRETS]),
+        db.raw(`MAX("${TableName.AuditLog}"."createdAt") as "lastReadAt"`),
+        db.raw(`ARRAY_REMOVE(ARRAY_AGG(DISTINCT "${TableName.AuditLog}"."userAgentType"), NULL) as "clients"`),
+        // The newest metadata blob wins: a renamed user or a re-authenticated identity should read
+        // as its current label rather than whatever it was called on the first request in the window.
+        db.raw(
+          `(ARRAY_AGG(COALESCE(
+             "${TableName.AuditLog}"."actorMetadata"->>'email',
+             "${TableName.AuditLog}"."actorMetadata"->>'username',
+             "${TableName.AuditLog}"."actorMetadata"->>'name'
+           ) ORDER BY "${TableName.AuditLog}"."createdAt" DESC))[1] as "label"`
+        ),
+        db.raw(
+          `(ARRAY_AGG("${TableName.AuditLog}"."actorMetadata"->>'authMethod' ORDER BY "${TableName.AuditLog}"."createdAt" DESC))[1] as "authMethod"`
+        ),
+        // Distinct rather than newest: one identity is often shared by several callers (two workflows, two
+        // pods), and collapsing them to the last one would hide exactly the fan-out worth seeing.
+        db.raw(
+          `ARRAY_REMOVE(ARRAY_AGG(DISTINCT "${TableName.AuditLog}"."actorMetadata"->'aws'), NULL) as "awsCallers"`
+        ),
+        db.raw(
+          `ARRAY_REMOVE(ARRAY_AGG(DISTINCT "${TableName.AuditLog}"."actorMetadata"->'kubernetes'), NULL) as "kubernetesCallers"`
+        ),
+        db.raw(
+          `ARRAY_REMOVE(ARRAY_AGG(DISTINCT "${TableName.AuditLog}"."actorMetadata"->'oidc'), NULL) as "oidcCallers"`
+        )
+      )
+      .groupByRaw(`"${TableName.AuditLog}"."actor", ${ACTOR_ID_SQL}`)
+      .timeout(1000 * 30)) as unknown as TSecretReadActivityRow[];
+
+    return rows;
+  };
+
+  // "No reads in 30d" and "last read 46 days ago" are different findings, and only the second one
+  // tells you a consumer is holding a stale value. This reaches back past the window to tell them
+  // apart, bounded by the caller's retention floor so it cannot turn into a full-table scan.
+  const findLastSecretReadBefore: TAuditLogDALFactory["findLastSecretReadBefore"] = async (
+    { endDate, floorDate, ...filters },
+    tx
+  ) => {
+    const rows = (await applySecretReadFilters((tx || db.replicaNode())(TableName.AuditLog), filters)
+      .whereRaw(`"${TableName.AuditLog}"."createdAt" >= ?::timestamptz`, [floorDate])
+      .whereRaw(`"${TableName.AuditLog}"."createdAt" < ?::timestamptz`, [endDate])
+      .select(`${TableName.AuditLog}.actor`, db.raw(`${ACTOR_ID_SQL} as "actorId"`))
+      .select(db.raw(`MAX("${TableName.AuditLog}"."createdAt") as "lastReadAt"`))
+      .groupByRaw(`"${TableName.AuditLog}"."actor", ${ACTOR_ID_SQL}`)
+      .timeout(1000 * 30)) as unknown as { actor: string; actorId: string | null; lastReadAt: Date }[];
+
+    return rows;
+  };
+
   const countByAuthMethod = async (
     {
       orgId,
@@ -433,6 +606,8 @@ export const auditLogDALFactory = (db: TDbClient) => {
     find,
     countByDateAndActor,
     countByIpAddress,
-    countByAuthMethod
+    countByAuthMethod,
+    aggregateSecretReadActivity,
+    findLastSecretReadBefore
   };
 };
