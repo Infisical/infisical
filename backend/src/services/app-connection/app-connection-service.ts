@@ -687,8 +687,6 @@ export const appConnectionServiceFactory = ({
       let connection: TAppConnectionRaw;
 
       if (params.isPlatformManagedCredentials) {
-        // Reuses the member validation actually succeeded on, and deliberately does not fail over:
-        // this rotates the credential on the target, so a retry could apply the change twice.
         connection = await TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM[app](
           {
             app,
@@ -976,8 +974,6 @@ export const appConnectionServiceFactory = ({
 
         let connection: TAppConnectionRaw;
         if (params.isPlatformManagedCredentials) {
-          // Reuses the member validation actually succeeded on, and deliberately does not fail over:
-          // this rotates the credential on the target, so a retry could apply the change twice.
           connection = await TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM[app](
             {
               app,

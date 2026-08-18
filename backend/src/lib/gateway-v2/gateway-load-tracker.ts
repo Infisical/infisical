@@ -46,10 +46,6 @@ type TGatewayLoadTracker = {
 
 let tracker: TGatewayLoadTracker | undefined;
 
-// A gateway's own count is authoritative: it is taken at the one place every channel must pass
-// through, so it sees work the platform never proxied (a PAM CLI session dials the relay itself) and
-// any future caller too. The per-pod counters below only cover platform-initiated channels and exist
-// as a fallback for gateways too old to report.
 const REPORTED_LOAD_TTL_SECONDS = 60;
 const REPORTED_LOAD_MAX_AGE_MS = 35_000;
 
