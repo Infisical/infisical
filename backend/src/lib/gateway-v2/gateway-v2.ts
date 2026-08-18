@@ -14,6 +14,7 @@ import { GatewayProxyProtocol } from "../gateway/types";
 import { logger } from "../logger";
 import { markAttemptTransportFailure, markAttemptTunnelEstablished } from "./gateway-attempt-context";
 import { getGatewayLoadTracker } from "./gateway-load-tracker";
+import { isGatewayTransportFailure } from "./gateway-retry";
 
 interface IGatewayRelayServer {
   server: net.Server;
@@ -349,10 +350,7 @@ export const withGatewayV2Proxy = async <T>(
       errorMessage = (err.response?.data as { message: string }).message;
     }
 
-    // Retryable only when no tunnel ever came up, so the target cannot have seen anything. The relay
-    // error list is shared by every channel this proxy served and is never cleared, so a single
-    // transient setup failure would otherwise keep marking later target-side errors as retryable.
-    if (relayErrorMessage && !hasEstablishedChannel()) {
+    if (isGatewayTransportFailure({ relayError: relayErrorMessage, establishedChannel: hasEstablishedChannel() })) {
       markAttemptTransportFailure();
       await getGatewayLoadTracker()?.markSuspect(gatewayId);
       throw new GatewayTransportError({ message: errorMessage, gatewayId });

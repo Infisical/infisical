@@ -5,6 +5,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, GatewayTransportError, NotFoundError } from "@app/lib/errors";
 import { runGatewayAttempt } from "@app/lib/gateway-v2/gateway-attempt-context";
 import { getGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
+import { isAttemptRetryable } from "@app/lib/gateway-v2/gateway-retry";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -363,8 +364,11 @@ export const gatewayPoolServiceFactory = ({
       } catch (err) {
         // Providers rewrap gateway errors in their own BadRequestError, so the async-local flag is
         // the only reliable signal that nothing reached the target.
-        const retryable =
-          (gatewayAttempt.transportFailed || err instanceof GatewayTransportError) && !gatewayAttempt.tunnelEstablished;
+        const retryable = isAttemptRetryable({
+          transportFailed: gatewayAttempt.transportFailed,
+          tunnelEstablished: gatewayAttempt.tunnelEstablished,
+          isTransportError: err instanceof GatewayTransportError
+        });
         if (!retryable) throw err;
         lastError = err;
         logger.warn(
