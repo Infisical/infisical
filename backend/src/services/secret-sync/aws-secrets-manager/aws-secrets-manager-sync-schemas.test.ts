@@ -9,8 +9,7 @@ describe("AwsSecretsManagerSyncOptionsSchema", () => {
 
   test("preserves character validation for non-empty tag values", () => {
     expect(
-      AwsSecretsManagerSyncOptionsSchema.safeParse({ tags: [{ key: "environment", value: "invalid%value" }] })
-        .success
+      AwsSecretsManagerSyncOptionsSchema.safeParse({ tags: [{ key: "environment", value: "invalid%value" }] }).success
     ).toBe(false);
   });
 });
