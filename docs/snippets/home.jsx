@@ -109,41 +109,46 @@ export const HomeSteps = ({ steps }) => {
   );
 };
 
-export const HomeStack = ({ items }) => (
-  <div className="ifx-stack">
-    {items.map((item) => (
-      <a key={item.href} className="ifx-stack__tile" href={item.href}>
-        {item.logo ? (
-          <img
-            className={`ifx-stack__logo${
-              item.adapt ? ` ifx-stack__logo--adapt-${item.adapt}` : ""
-            }`}
-            src={item.logo}
-            alt=""
-            aria-hidden="true"
-          />
-        ) : (
-          <svg
-            className="ifx-stack__logo ifx-stack__glyph"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <rect x="3" y="3" width="7" height="7" />
-            <rect x="14" y="3" width="7" height="7" />
-            <rect x="3" y="14" width="7" height="7" />
-            <rect x="14" y="14" width="7" height="7" />
-          </svg>
-        )}
-        <span className="ifx-stack__label">{item.label}</span>
-      </a>
-    ))}
-  </div>
-);
+export const HomeStack = ({ items }) => {
+  const path = typeof window === "undefined" ? "" : window.location.pathname;
+  const base = path === "/docs" || path.startsWith("/docs/") ? "/docs" : "";
+
+  return (
+    <div className="ifx-stack">
+      {items.map((item) => (
+        <a key={item.href} className="ifx-stack__tile" href={item.href}>
+          {item.logo ? (
+            <img
+              className={`ifx-stack__logo${
+                item.adapt ? ` ifx-stack__logo--adapt-${item.adapt}` : ""
+              }`}
+              src={`${base}${item.logo}`}
+              alt=""
+              aria-hidden="true"
+            />
+          ) : (
+            <svg
+              className="ifx-stack__logo ifx-stack__glyph"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+            </svg>
+          )}
+          <span className="ifx-stack__label">{item.label}</span>
+        </a>
+      ))}
+    </div>
+  );
+};
 
 export const Mark = ({ children }) => <span className="ifx-mark">{children}</span>;
 
