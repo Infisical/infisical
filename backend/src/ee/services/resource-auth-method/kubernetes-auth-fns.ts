@@ -166,7 +166,10 @@ export const validateKubernetesConfigReachable = async ({
       },
       {
         "Content-Type": "application/json",
-        ...(tokenReviewerJwt ? { Authorization: `Bearer ${tokenReviewerJwt}` } : {})
+        // The gateway reviews with its own service account, so ours would be both ignored at the
+        // far end and exposed to whichever gateway was chosen. The login path omits it for the
+        // same reason, and the preservation guard exempts this mode on the strength of it.
+        ...(!isGatewayReviewer && tokenReviewerJwt ? { Authorization: `Bearer ${tokenReviewerJwt}` } : {})
       }
     );
   } catch (err) {

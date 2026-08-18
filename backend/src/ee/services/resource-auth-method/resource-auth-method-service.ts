@@ -749,8 +749,6 @@ export const resourceAuthMethodServiceFactory = ({
         // field, and read the stored token off the wire.
         // Gateway review mode is exempt: the gateway reviews with its own service account, so the
         // stored token is not sent anywhere and there is no endpoint for it to leak to.
-        const isGatewayReviewer = authMethod.tokenReviewMode === KubernetesTokenReviewMode.Gateway;
-
         const { decryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId: actor.orgId
@@ -759,13 +757,10 @@ export const resourceAuthMethodServiceFactory = ({
           ? decryptor({ cipherTextBlob: stored.encryptedKubernetesCaCertificate }).toString()
           : undefined;
 
-        // Everything that decides where the token ends up, and who could read it in transit. The
-        // host alone is not enough: routing it through a different gateway, trusting a different
-        // CA, or turning verification off all redirect it somewhere it was never validated against.
+        // Everything that decides where the reviewer token would be sent, and who could read it in
+        // transit. The host alone is not enough: the review mode, the proxying gateway, the trusted
+        // CA and TLS verification all move it somewhere it was never validated against.
         const destinationChanged =
-          // The review mode counts. Gateway mode is exempt from this guard, so without it an
-          // editor could park a new host under gateway mode, then switch back to API mode with
-          // that host already stored and have the preserved token sent there.
           (stored?.tokenReviewMode ?? KubernetesTokenReviewMode.Api) !==
             (authMethod.tokenReviewMode ?? KubernetesTokenReviewMode.Api) ||
           stored?.kubernetesHost !== authMethod.kubernetesHost ||
@@ -773,22 +768,17 @@ export const resourceAuthMethodServiceFactory = ({
           (stored?.gatewayPoolId ?? null) !== (authMethod.gatewayPoolId ?? null) ||
           stored?.verifyTlsCertificate !== authMethod.verifyTlsCertificate ||
           (authMethod.caCertificate !== undefined && authMethod.caCertificate !== (storedCa ?? ""));
-        if (
-          !isGatewayReviewer &&
-          stored?.encryptedKubernetesTokenReviewerJwt &&
-          effectiveReviewer === undefined &&
-          destinationChanged
-        ) {
-          throw new BadRequestError({
-            message:
-              "Re-enter the token reviewer JWT when changing the review mode, the Kubernetes host, the reviewing gateway, the CA certificate, or TLS verification. Reset it instead to remove it. The stored token is never sent to a destination it was not validated against."
-          });
-        }
 
+        // The CA is public key material, so it always carries over.
         if (effectiveCa === undefined && storedCa !== undefined) {
           effectiveCa = storedCa;
         }
-        if (effectiveReviewer === undefined && stored?.encryptedKubernetesTokenReviewerJwt) {
+
+        // The stored reviewer token is kept either way; it is only *used* against a destination it
+        // has already been validated against. Editing the host therefore saves fine, it just skips
+        // the reviewer probe until the token is supplied again. Mirrors how PAM account updates
+        // test only with credentials sent in the request.
+        if (effectiveReviewer === undefined && !destinationChanged && stored?.encryptedKubernetesTokenReviewerJwt) {
           effectiveReviewer = decryptor({ cipherTextBlob: stored.encryptedKubernetesTokenReviewerJwt }).toString();
         }
       }
