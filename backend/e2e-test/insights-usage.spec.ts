@@ -8,15 +8,19 @@ import {
   AccessScope,
   OrgMembershipStatus,
   ProjectType,
+  ProjectVersion,
   TableName,
   TDynamicSecretLeasesInsert,
   TDynamicSecretsInsert,
+  TGroupsInsert,
   TIdentitiesInsert,
+  TIdentityGroupMembershipInsert,
   TMembershipsInsert,
   TOrganizationsInsert,
   TProjectEnvironmentsInsert,
   TProjectsInsert,
   TSecretFoldersInsert,
+  TUserGroupMembershipInsert,
   TUsersInsert
 } from "@app/db/schemas";
 import { dynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
@@ -35,20 +39,38 @@ const ORG_ID = randomUUID();
 const OTHER_ORG_ID = randomUUID();
 const suffix = randomUUID().slice(0, 8);
 
+// Users and identities are counted from memberships of live SecretManager V3 projects, so every actor
+// below is placed to exercise exactly one rule of that count.
 const ids = {
-  // users: only uCounted satisfies accepted + active + non-ghost
-  uCounted: randomUUID(),
+  // Counted: a direct membership, and one that only exists through a group.
+  uDirect: randomUUID(),
+  uViaGroup: randomUUID(),
+  // Excluded, one user per filter.
   uGhost: randomUUID(),
-  uInvited: randomUUID(),
-  uDeactivated: randomUUID(),
-  // identities: only the two with an org-scoped membership count
-  iOrgA: randomUUID(),
-  iOrgB: randomUUID(),
-  iProjectOnly: randomUUID()
+  uInactive: randomUUID(),
+  uOrgScopeOnly: randomUUID(),
+  uOtherProductType: randomUUID(),
+  uDeletedProject: randomUUID(),
+  uLegacyProject: randomUUID(),
+  uOtherOrg: randomUUID(),
+  // Identities mirror the user cases; the identity count has no ghost equivalent.
+  iDirect: randomUUID(),
+  iViaGroup: randomUUID(),
+  iInactive: randomUUID(),
+  iOrgScopeOnly: randomUUID(),
+  iOtherProductType: randomUUID(),
+  iDeletedProject: randomUUID(),
+  iLegacyProject: randomUUID(),
+  iOtherOrg: randomUUID()
 };
 
-// One project per lease-visibility rule, so each filter in countLeasesForOrg is exercised
-// independently. Only `counted` may contribute.
+const groupIds = {
+  users: randomUUID(),
+  identities: randomUUID()
+};
+
+// One project per visibility rule, so each filter is exercised independently. Only `counted` may
+// contribute to any of the three metrics.
 const scopes = {
   counted: { projectId: randomUUID(), envId: randomUUID(), folderId: randomUUID(), dynamicSecretId: randomUUID() },
   otherProductType: {
@@ -64,6 +86,12 @@ const scopes = {
     dynamicSecretId: randomUUID()
   },
   deletedEnvironment: {
+    projectId: randomUUID(),
+    envId: randomUUID(),
+    folderId: randomUUID(),
+    dynamicSecretId: randomUUID()
+  },
+  legacyVersion: {
     projectId: randomUUID(),
     envId: randomUUID(),
     folderId: randomUUID(),
@@ -89,7 +117,7 @@ const insightsService = insightsServiceFactory({
 
 const actor = (orgId: string): TOrgInsightsDTO => ({
   actor: ActorType.USER,
-  actorId: ids.uCounted,
+  actorId: ids.uDirect,
   actorAuthMethod: AuthMethod.EMAIL,
   actorOrgId: orgId,
   orgId
@@ -106,6 +134,31 @@ const lease = (dynamicSecretId: string): TDynamicSecretLeasesInsert & { id: stri
   };
 };
 
+type TActorRef = Pick<TMembershipsInsert, "actorUserId" | "actorIdentityId" | "actorGroupId">;
+
+const projectMembership = (
+  projectId: string,
+  actorRef: TActorRef,
+  overrides: Partial<TMembershipsInsert> = {}
+): TMembershipsInsert & { id: string } => ({
+  id: randomUUID(),
+  scope: AccessScope.Project,
+  scopeOrgId: ORG_ID,
+  scopeProjectId: projectId,
+  isActive: true,
+  ...actorRef,
+  ...overrides
+});
+
+const orgMembership = (actorRef: TActorRef): TMembershipsInsert & { id: string } => ({
+  id: randomUUID(),
+  scope: AccessScope.Organization,
+  scopeOrgId: ORG_ID,
+  status: OrgMembershipStatus.Accepted,
+  isActive: true,
+  ...actorRef
+});
+
 describe("insights secrets usage insights", () => {
   beforeAll(async () => {
     // The generated *Insert types omit the immutable `id` key, and TS's excess-property check only
@@ -117,34 +170,48 @@ describe("insights secrets usage insights", () => {
     await testDb(TableName.Organization).insert(orgRows);
 
     const userRows: (TUsersInsert & { id: string })[] = [
-      { id: ids.uCounted, username: `counted-${suffix}`, isAccepted: true, isGhost: false },
+      { id: ids.uDirect, username: `direct-${suffix}`, isAccepted: true, isGhost: false },
+      { id: ids.uViaGroup, username: `via-group-${suffix}`, isAccepted: true, isGhost: false },
       { id: ids.uGhost, username: `ghost-${suffix}`, isAccepted: true, isGhost: true },
-      { id: ids.uInvited, username: `invited-${suffix}`, isAccepted: false, isGhost: false },
-      { id: ids.uDeactivated, username: `deactivated-${suffix}`, isAccepted: true, isGhost: false }
+      { id: ids.uInactive, username: `inactive-${suffix}`, isAccepted: true, isGhost: false },
+      { id: ids.uOrgScopeOnly, username: `org-scope-only-${suffix}`, isAccepted: true, isGhost: false },
+      { id: ids.uOtherProductType, username: `other-product-${suffix}`, isAccepted: true, isGhost: false },
+      { id: ids.uDeletedProject, username: `deleted-project-${suffix}`, isAccepted: true, isGhost: false },
+      { id: ids.uLegacyProject, username: `legacy-project-${suffix}`, isAccepted: true, isGhost: false },
+      { id: ids.uOtherOrg, username: `other-org-${suffix}`, isAccepted: true, isGhost: false }
     ];
     await testDb(TableName.Users).insert(userRows);
 
     const identityRows: (TIdentitiesInsert & { id: string })[] = [
-      { id: ids.iOrgA, name: `identity-a-${suffix}`, orgId: ORG_ID },
-      { id: ids.iOrgB, name: `identity-b-${suffix}`, orgId: ORG_ID },
-      { id: ids.iProjectOnly, name: `identity-project-${suffix}`, orgId: ORG_ID }
+      { id: ids.iDirect, name: `identity-direct-${suffix}`, orgId: ORG_ID },
+      { id: ids.iViaGroup, name: `identity-via-group-${suffix}`, orgId: ORG_ID },
+      { id: ids.iInactive, name: `identity-inactive-${suffix}`, orgId: ORG_ID },
+      { id: ids.iOrgScopeOnly, name: `identity-org-scope-${suffix}`, orgId: ORG_ID },
+      { id: ids.iOtherProductType, name: `identity-other-product-${suffix}`, orgId: ORG_ID },
+      { id: ids.iDeletedProject, name: `identity-deleted-project-${suffix}`, orgId: ORG_ID },
+      { id: ids.iLegacyProject, name: `identity-legacy-project-${suffix}`, orgId: ORG_ID },
+      { id: ids.iOtherOrg, name: `identity-other-org-${suffix}`, orgId: OTHER_ORG_ID }
     ];
     await testDb(TableName.Identity).insert(identityRows);
 
+    // Every project other than `legacyVersion` is V3, so each exclusion below is caused by the one
+    // rule it is named for rather than by the version filter.
     const projectRows: (TProjectsInsert & { id: string })[] = [
       {
         id: scopes.counted.projectId,
         name: `sm-${suffix}`,
         slug: `sm-${suffix}`,
         orgId: ORG_ID,
-        type: ProjectType.SecretManager
+        type: ProjectType.SecretManager,
+        version: ProjectVersion.V3
       },
       {
         id: scopes.otherProductType.projectId,
         name: `pam-${suffix}`,
         slug: `pam-${suffix}`,
         orgId: ORG_ID,
-        type: ProjectType.PAM
+        type: ProjectType.PAM,
+        version: ProjectVersion.V3
       },
       {
         id: scopes.deletedProject.projectId,
@@ -152,6 +219,7 @@ describe("insights secrets usage insights", () => {
         slug: `sm-del-${suffix}`,
         orgId: ORG_ID,
         type: ProjectType.SecretManager,
+        version: ProjectVersion.V3,
         deleteAfter: new Date()
       },
       {
@@ -159,14 +227,24 @@ describe("insights secrets usage insights", () => {
         name: `sm-del-env-${suffix}`,
         slug: `sm-del-env-${suffix}`,
         orgId: ORG_ID,
-        type: ProjectType.SecretManager
+        type: ProjectType.SecretManager,
+        version: ProjectVersion.V3
+      },
+      {
+        id: scopes.legacyVersion.projectId,
+        name: `sm-legacy-${suffix}`,
+        slug: `sm-legacy-${suffix}`,
+        orgId: ORG_ID,
+        type: ProjectType.SecretManager,
+        version: ProjectVersion.V1
       },
       {
         id: scopes.otherOrg.projectId,
         name: `sm-other-org-${suffix}`,
         slug: `sm-other-org-${suffix}`,
         orgId: OTHER_ORG_ID,
-        type: ProjectType.SecretManager
+        type: ProjectType.SecretManager,
+        version: ProjectVersion.V3
       }
     ];
     await testDb(TableName.Project).insert(projectRows);
@@ -200,50 +278,46 @@ describe("insights secrets usage insights", () => {
     }));
     await testDb(TableName.DynamicSecret).insert(dynamicSecretRows);
 
+    const groupRows: (TGroupsInsert & { id: string })[] = [
+      { id: groupIds.users, orgId: ORG_ID, name: `group-users-${suffix}`, slug: `group-users-${suffix}` },
+      { id: groupIds.identities, orgId: ORG_ID, name: `group-ids-${suffix}`, slug: `group-ids-${suffix}` }
+    ];
+    await testDb(TableName.Groups).insert(groupRows);
+
+    // uDirect and iDirect are in the group as well as holding a direct membership: the count has to
+    // reach the group members without double counting anyone who arrives on both paths.
+    const userGroupRows: (TUserGroupMembershipInsert & { id: string })[] = [
+      { id: randomUUID(), groupId: groupIds.users, userId: ids.uDirect },
+      { id: randomUUID(), groupId: groupIds.users, userId: ids.uViaGroup }
+    ];
+    await testDb(TableName.UserGroupMembership).insert(userGroupRows);
+
+    const identityGroupRows: (TIdentityGroupMembershipInsert & { id: string })[] = [
+      { id: randomUUID(), groupId: groupIds.identities, identityId: ids.iDirect },
+      { id: randomUUID(), groupId: groupIds.identities, identityId: ids.iViaGroup }
+    ];
+    await testDb(TableName.IdentityGroupMembership).insert(identityGroupRows);
+
     const membershipRows: (TMembershipsInsert & { id: string })[] = [
       // Users.
-      {
-        id: randomUUID(),
-        scope: AccessScope.Organization,
-        scopeOrgId: ORG_ID,
-        actorUserId: ids.uCounted,
-        status: OrgMembershipStatus.Accepted,
-        isActive: true
-      },
-      {
-        id: randomUUID(),
-        scope: AccessScope.Organization,
-        scopeOrgId: ORG_ID,
-        actorUserId: ids.uGhost,
-        status: OrgMembershipStatus.Accepted,
-        isActive: true
-      },
-      {
-        id: randomUUID(),
-        scope: AccessScope.Organization,
-        scopeOrgId: ORG_ID,
-        actorUserId: ids.uInvited,
-        status: OrgMembershipStatus.Invited,
-        isActive: true
-      },
-      {
-        id: randomUUID(),
-        scope: AccessScope.Organization,
-        scopeOrgId: ORG_ID,
-        actorUserId: ids.uDeactivated,
-        status: OrgMembershipStatus.Accepted,
-        isActive: false
-      },
+      projectMembership(scopes.counted.projectId, { actorUserId: ids.uDirect }),
+      projectMembership(scopes.counted.projectId, { actorGroupId: groupIds.users }),
+      projectMembership(scopes.counted.projectId, { actorUserId: ids.uGhost }),
+      projectMembership(scopes.counted.projectId, { actorUserId: ids.uInactive }, { isActive: false }),
+      orgMembership({ actorUserId: ids.uOrgScopeOnly }),
+      projectMembership(scopes.otherProductType.projectId, { actorUserId: ids.uOtherProductType }),
+      projectMembership(scopes.deletedProject.projectId, { actorUserId: ids.uDeletedProject }),
+      projectMembership(scopes.legacyVersion.projectId, { actorUserId: ids.uLegacyProject }),
+      projectMembership(scopes.otherOrg.projectId, { actorUserId: ids.uOtherOrg }, { scopeOrgId: OTHER_ORG_ID }),
       // Identities.
-      { id: randomUUID(), scope: AccessScope.Organization, scopeOrgId: ORG_ID, actorIdentityId: ids.iOrgA },
-      { id: randomUUID(), scope: AccessScope.Organization, scopeOrgId: ORG_ID, actorIdentityId: ids.iOrgB },
-      {
-        id: randomUUID(),
-        scope: AccessScope.Project,
-        scopeOrgId: ORG_ID,
-        scopeProjectId: scopes.counted.projectId,
-        actorIdentityId: ids.iProjectOnly
-      }
+      projectMembership(scopes.counted.projectId, { actorIdentityId: ids.iDirect }),
+      projectMembership(scopes.counted.projectId, { actorGroupId: groupIds.identities }),
+      projectMembership(scopes.counted.projectId, { actorIdentityId: ids.iInactive }, { isActive: false }),
+      orgMembership({ actorIdentityId: ids.iOrgScopeOnly }),
+      projectMembership(scopes.otherProductType.projectId, { actorIdentityId: ids.iOtherProductType }),
+      projectMembership(scopes.deletedProject.projectId, { actorIdentityId: ids.iDeletedProject }),
+      projectMembership(scopes.legacyVersion.projectId, { actorIdentityId: ids.iLegacyProject }),
+      projectMembership(scopes.otherOrg.projectId, { actorIdentityId: ids.iOtherOrg }, { scopeOrgId: OTHER_ORG_ID })
     ];
     await testDb(TableName.Membership).insert(membershipRows);
 
@@ -254,6 +328,7 @@ describe("insights secrets usage insights", () => {
       lease(scopes.otherProductType.dynamicSecretId),
       lease(scopes.deletedProject.dynamicSecretId),
       lease(scopes.deletedEnvironment.dynamicSecretId),
+      lease(scopes.legacyVersion.dynamicSecretId),
       lease(scopes.otherOrg.dynamicSecretId)
     ]);
   });
@@ -285,6 +360,9 @@ describe("insights secrets usage insights", () => {
       )
       .delete();
     await testDb(TableName.Membership).whereIn("scopeOrgId", orgIds).delete();
+    await testDb(TableName.UserGroupMembership).whereIn("groupId", Object.values(groupIds)).delete();
+    await testDb(TableName.IdentityGroupMembership).whereIn("groupId", Object.values(groupIds)).delete();
+    await testDb(TableName.Groups).whereIn("id", Object.values(groupIds)).delete();
     await testDb(TableName.Project).whereIn("orgId", orgIds).delete();
     await testDb(TableName.Identity).whereIn("orgId", orgIds).delete();
     await testDb(TableName.Users).whereIn("id", Object.values(ids)).delete();
@@ -294,12 +372,12 @@ describe("insights secrets usage insights", () => {
   test("returns the three usage counts for the organization", async () => {
     const insights = await insightsService.getSecretsUsageInsights(actor(ORG_ID));
 
-    // uCounted only: the ghost, the invited and the deactivated membership are all excluded.
-    expect(insights.users).toBe(1);
-    // iOrgA + iOrgB: iProjectOnly has no org-scoped membership.
+    // uDirect and uViaGroup. uDirect holds both a direct and a group membership and is counted once.
+    expect(insights.users).toBe(2);
+    // iDirect and iViaGroup, on the same two paths.
     expect(insights.identities).toBe(2);
-    // The two leases in the live SecretManager project. The PAM project, the soft-deleted project,
-    // the soft-deleted environment and the other org each contribute nothing.
+    // The two leases in the live SecretManager V3 project. The PAM project, the soft-deleted
+    // project, the soft-deleted environment, the V1 project and the other org each contribute nothing.
     expect(insights.activeLeases).toBe(2);
   });
 

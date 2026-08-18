@@ -85,6 +85,24 @@ export const projectScopedInsightsDepStubs: Pick<
   }
 };
 
+// getSecretsUsageInsights is the only method that reads these three counts, and it has its own spec.
+// The other org-wide specs supply these so an accidental call fails loudly instead of asserting
+// against a zero a stub invented.
+export const usageInsightsDepStubs: Pick<
+  TInsightsServiceFactoryDep,
+  "orgDAL" | "identityOrgMembershipDAL" | "dynamicSecretLeaseDAL"
+> = {
+  orgDAL: {
+    countSecretManagerProjectMembers: unreachable("orgDAL.countSecretManagerProjectMembers")
+  },
+  identityOrgMembershipDAL: {
+    countSecretManagerProjectIdentities: unreachable("identityOrgMembershipDAL.countSecretManagerProjectIdentities")
+  },
+  dynamicSecretLeaseDAL: {
+    countLeasesForOrg: unreachable("dynamicSecretLeaseDAL.countLeasesForOrg")
+  }
+};
+
 // Every org-wide insight is gated on the same org read permission plus the same plan entitlement, so specs
 // share one set of stubs for that gate and flip the two toggles to exercise the two rejection paths.
 export const buildOrgInsightsGateStubs = () => {

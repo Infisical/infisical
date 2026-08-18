@@ -724,10 +724,9 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           ])
         );
 
-      const count = await conn
-        .from(projectIdentities.as("project_identities"))
-        .join(TableName.Identity, `${TableName.Identity}.id`, "project_identities.identityId")
-        .countDistinct(`${TableName.Identity}.id`)
+      const count = await conn(TableName.Identity)
+        .whereIn(`${TableName.Identity}.id`, projectIdentities)
+        .countDistinct<{ count: string }[]>(`${TableName.Identity}.id as count`)
         .first();
 
       return Number(count?.count ?? 0);

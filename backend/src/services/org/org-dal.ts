@@ -573,14 +573,13 @@ export const orgDALFactory = (db: TDbClient) => {
         );
 
       const count = await db
-        .replicaNode()
-        .from(projectUsers.as("project_users"))
-        .join(TableName.Users, `${TableName.Users}.id`, "project_users.userId")
+        .replicaNode()(TableName.Users)
         .where(`${TableName.Users}.isGhost`, false)
-        .countDistinct(`${TableName.Users}.id`)
+        .whereIn(`${TableName.Users}.id`, projectUsers)
+        .countDistinct<{ count: string }[]>(`${TableName.Users}.id as count`)
         .first();
 
-      return Number((count as unknown as CountResult)?.count ?? 0);
+      return Number(count?.count ?? 0);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count secret manager project members" });
     }

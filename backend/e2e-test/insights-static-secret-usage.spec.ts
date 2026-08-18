@@ -20,7 +20,12 @@ import { insightsServiceFactory } from "@app/ee/services/insights/insights-servi
 import { TOrgInsightsDTO } from "@app/ee/services/insights/insights-types";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
-import { buildOrgInsightsGateStubs, passThroughKeyStore, projectScopedInsightsDepStubs } from "./testUtils/insights";
+import {
+  buildOrgInsightsGateStubs,
+  passThroughKeyStore,
+  projectScopedInsightsDepStubs,
+  usageInsightsDepStubs
+} from "./testUtils/insights";
 
 declare const testDb: Knex;
 
@@ -90,9 +95,7 @@ const insightsService = insightsServiceFactory({
   ...projectScopedInsightsDepStubs,
   permissionService,
   licenseService,
-  orgDAL: { countAllOrgMembers: async () => 0 },
-  identityOrgMembershipDAL: { countAllOrgIdentities: async () => 0 },
-  dynamicSecretLeaseDAL: { countLeasesForOrg: async () => 0 },
+  ...usageInsightsDepStubs,
   insightsDAL: insightsDALFactory(testDb),
   keyStore: passThroughKeyStore
 });

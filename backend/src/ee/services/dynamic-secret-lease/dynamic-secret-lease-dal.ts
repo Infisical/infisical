@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { DynamicSecretLeasesSchema, ProjectType, TableName } from "@app/db/schemas";
+import { DynamicSecretLeasesSchema, ProjectType, ProjectVersion, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 
@@ -74,6 +74,7 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
         .where(`${TableName.Project}.orgId`, orgId)
         .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.SecretManager)
+        .where(`${TableName.Project}.version`, ProjectVersion.V3)
         .count(`${TableName.DynamicSecretLease}.id as count`)
         .first()) as { count: string } | undefined;
 
