@@ -614,13 +614,14 @@ export const orgDALFactory = (db: TDbClient) => {
           conn.ref("firstName").withSchema(TableName.Users),
           conn.ref("lastName").withSchema(TableName.Users),
           conn.ref("id").withSchema(TableName.Users).as("userId"),
-          conn.ref("publicKey").withSchema(TableName.UserEncryptionKey)
+          conn.ref("publicKey").withSchema(TableName.UserEncryptionKey),
+          conn.ref("isActive").withSchema(TableName.Membership)
         )
         .where({ isGhost: false });
 
-      return members.map(({ username, email, firstName, lastName, userId, publicKey, ...data }) => ({
+      return members.map(({ username, email, firstName, lastName, userId, publicKey, isActive, ...data }) => ({
         ...data,
-        user: { username, email, firstName, lastName, id: userId, publicKey }
+        user: { username, email, firstName, lastName, id: userId, publicKey, isActive }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find org members by role" });

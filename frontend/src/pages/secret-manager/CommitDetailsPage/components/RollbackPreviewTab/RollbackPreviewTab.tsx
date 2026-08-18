@@ -293,7 +293,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-8xl justify-center bg-bunker-800 pt-2 pb-4 text-white">
+    <div className="mx-auto flex w-full max-w-8xl justify-center pt-2 pb-4 text-white">
       <ProjectPermissionCan
         renderGuardBanner
         I={ProjectPermissionCommitsActions.PerformRollback}

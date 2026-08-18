@@ -33,7 +33,7 @@ export const PersonalTabGroup = ({ selectedTab, onTabChange }: Props) => {
       onValueChange={(value) => onTabChange(value as PersonalSettingsTab)}
       className="mt-8"
     >
-      <TabsList variant="admin" aria-label="Personal settings sections">
+      <TabsList variant="filled" aria-label="Personal settings sections">
         {tabs.map(({ name, key, icon: Icon }) => (
           <TabsTrigger value={key} key={key}>
             {Icon && <Icon aria-hidden className="text-warning" />}
