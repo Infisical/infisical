@@ -1,0 +1,95 @@
+.scroll-edge-fade {
+  --scroll-edge-fade-size: 2rem;
+}
+
+.scroll-edge-fade[data-scroll-edge-axis="vertical"][data-scrollable-start="true"][data-scrollable-end="true"] {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black var(--scroll-edge-fade-size),
+    black calc(100% - var(--scroll-edge-fade-size)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black var(--scroll-edge-fade-size),
+    black calc(100% - var(--scroll-edge-fade-size)),
+    transparent
+  );
+}
+
+.scroll-edge-fade[data-scroll-edge-axis="vertical"][data-scrollable-start="true"][data-scrollable-end="false"] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black var(--scroll-edge-fade-size));
+  mask-image: linear-gradient(to bottom, transparent, black var(--scroll-edge-fade-size));
+}
+
+.scroll-edge-fade[data-scroll-edge-axis="vertical"][data-scrollable-start="false"][data-scrollable-end="true"] {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black calc(100% - var(--scroll-edge-fade-size)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    black calc(100% - var(--scroll-edge-fade-size)),
+    transparent
+  );
+}
+
+.scroll-edge-fade[data-scroll-edge-axis="horizontal"][data-scrollable-start="true"][data-scrollable-end="true"] {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black var(--scroll-edge-fade-size),
+    black calc(100% - var(--scroll-edge-fade-size)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black var(--scroll-edge-fade-size),
+    black calc(100% - var(--scroll-edge-fade-size)),
+    transparent
+  );
+}
+
+.scroll-edge-fade[data-scroll-edge-axis="horizontal"][data-scrollable-start="true"][data-scrollable-end="false"] {
+  -webkit-mask-image: linear-gradient(to right, transparent, black var(--scroll-edge-fade-size));
+  mask-image: linear-gradient(to right, transparent, black var(--scroll-edge-fade-size));
+}
+
+.scroll-edge-fade[data-scroll-edge-axis="horizontal"][data-scrollable-start="false"][data-scrollable-end="true"] {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    black calc(100% - var(--scroll-edge-fade-size)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    black calc(100% - var(--scroll-edge-fade-size)),
+    transparent
+  );
+}
+
+.scroll-edge-fade:dir(rtl)[data-scroll-edge-axis="horizontal"][data-scrollable-start="true"][data-scrollable-end="false"] {
+  -webkit-mask-image: linear-gradient(
+    to left,
+    transparent,
+    black var(--scroll-edge-fade-size)
+  );
+  mask-image: linear-gradient(to left, transparent, black var(--scroll-edge-fade-size));
+}
+
+.scroll-edge-fade:dir(rtl)[data-scroll-edge-axis="horizontal"][data-scrollable-start="false"][data-scrollable-end="true"] {
+  -webkit-mask-image: linear-gradient(
+    to left,
+    black calc(100% - var(--scroll-edge-fade-size)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to left,
+    black calc(100% - var(--scroll-edge-fade-size)),
+    transparent
+  );
+}
