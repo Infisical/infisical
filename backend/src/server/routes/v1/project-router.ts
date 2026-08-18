@@ -42,6 +42,7 @@ import {
   SanitizedUserSchema
 } from "../sanitizedSchemas";
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
+import { ProjectAccessRequestCommentSchema } from "./project-access-request-schema";
 
 const projectWithEnv = SanitizedProjectSchema.merge(
   z.object({
@@ -1094,25 +1095,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim()
       }),
       body: z.object({
-        comment: z
-          .string()
-          .trim()
-          .max(2500)
-          .refine(
-            (val) =>
-              characterValidator([
-                CharacterType.AlphaNumeric,
-                CharacterType.Hyphen,
-                CharacterType.Comma,
-                CharacterType.Fullstop,
-                CharacterType.Spaces,
-                CharacterType.Exclamation
-              ])(val),
-            {
-              message: "Invalid pattern: only alphanumeric characters, spaces, -.!, are allowed."
-            }
-          )
-          .optional()
+        comment: ProjectAccessRequestCommentSchema
       }),
       response: {
         200: z.object({
