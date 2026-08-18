@@ -25,3 +25,5 @@ export enum PkiSyncAction {
   ImportCertificates = "import-certificates",
   RemoveCertificates = "remove-certificates"
 }
+
+export const PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT = 3;

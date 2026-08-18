@@ -21,12 +21,14 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { buildCertificateMap } from "./pki-sync-certificate-map-fns";
 import { hydratePkiSyncCredentials } from "./pki-sync-credentials-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
+import { PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT } from "./pki-sync-enums";
 import { PkiSyncFns, truncateSyncMessage } from "./pki-sync-fns";
-import { commandNeedsCertificateData, hostCommandFailurePrefix, HostCommandKind } from "./pki-sync-host-command-fns";
+import { commandNeedsCertificateData } from "./pki-sync-host-command-fns";
 import {
-  buildPreflightCommandFailureMessage,
+  buildScheduledPreflightFailureMessage,
   didPreflightCheckFail,
   getPreflightCommand,
+  SCHEDULED_PREFLIGHT_FAILURE_PREFIX,
   TPreflightCommandResult
 } from "./pki-sync-preflight-command-fns";
 import { TCertificateMap, TPkiSyncRaw } from "./pki-sync-types";
@@ -43,6 +45,8 @@ const CRON_HANDLER_TIMEOUT_MS = 60 * 1000;
 
 const PREFLIGHT_LOCK_TTL_MS = 60 * 1000;
 
+const CONNECTION_SLOT_TTL_S = 5 * 60;
+
 const CONNECTION_LOCK_RETRY = { retryCount: 10, retryDelay: 3_000, retryJitter: 500 };
 
 type TPkiSyncPreflightQueueFactoryDep = {
@@ -52,7 +56,7 @@ type TPkiSyncPreflightQueueFactoryDep = {
     TPkiSyncDALFactory,
     "findPkiSyncsWithPreflightCommand" | "reportPreflightFailure" | "clearReportedPreflightFailure" | "findById"
   >;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   projectDAL: TProjectDALFactory;
   kmsService: Pick<
@@ -121,10 +125,8 @@ export const pkiSyncPreflightQueueFactory = ({
   };
 
   const $recordCheckResult = async (pkiSync: TPkiSyncRaw, result: TPreflightCommandResult, isFinalAttempt: boolean) => {
-    const failurePrefix = hostCommandFailurePrefix(HostCommandKind.Preflight);
-
     if (!didPreflightCheckFail(result)) {
-      const cleared = await pkiSyncDAL.clearReportedPreflightFailure(pkiSync.id, failurePrefix);
+      const cleared = await pkiSyncDAL.clearReportedPreflightFailure(pkiSync.id, SCHEDULED_PREFLIGHT_FAILURE_PREFIX);
       if (cleared) {
         logger.info(
           `cron[${CronJobName.PkiSyncPreflightCheck}]: host recovered, cleared the reported failure [syncId=${pkiSync.id}]`
@@ -143,8 +145,8 @@ export const pkiSyncPreflightQueueFactory = ({
 
     const reported = await pkiSyncDAL.reportPreflightFailure(
       pkiSync.id,
-      truncateSyncMessage(buildPreflightCommandFailureMessage(result)),
-      failurePrefix
+      truncateSyncMessage(buildScheduledPreflightFailureMessage(result)),
+      SCHEDULED_PREFLIGHT_FAILURE_PREFIX
     );
     if (!reported) {
       logger.info(
@@ -192,15 +194,18 @@ export const pkiSyncPreflightQueueFactory = ({
     }
 
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | null = null;
+    let admittedSlot = false;
     let result;
     try {
-      const syncJobsInFlight = Number.parseInt(
-        (await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(pkiSync.connectionId))) || "0",
-        10
-      );
-      if (syncJobsInFlight > 0) {
+      admittedSlot =
+        (await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
+          KeyStorePrefixes.AppConnectionConcurrentJobs(pkiSync.connectionId),
+          PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT,
+          CONNECTION_SLOT_TTL_S
+        )) !== -1;
+      if (!admittedSlot) {
         logger.info(
-          `cron[${CronJobName.PkiSyncPreflightCheck}]: connection is busy syncing, skipping [syncId=${syncId}] [inFlight=${syncJobsInFlight}]`
+          `cron[${CronJobName.PkiSyncPreflightCheck}]: connection is at its concurrency limit, skipping [syncId=${syncId}]`
         );
         return;
       }
@@ -224,7 +229,13 @@ export const pkiSyncPreflightQueueFactory = ({
 
       await $recordCheckResult(pkiSync, result, isFinalAttempt);
     } finally {
-      await Promise.allSettled([lock?.release(), connectionLock.release()]);
+      await Promise.allSettled([
+        admittedSlot
+          ? keyStore.decrementByOrDelete(KeyStorePrefixes.AppConnectionConcurrentJobs(pkiSync.connectionId))
+          : undefined,
+        lock?.release(),
+        connectionLock.release()
+      ]);
     }
 
     await auditLogService.createAuditLog({
@@ -232,7 +243,14 @@ export const pkiSyncPreflightQueueFactory = ({
       actor: { type: ActorType.PLATFORM, metadata: {} },
       event: {
         type: EventType.PKI_SYNC_PREFLIGHT_CHECK,
-        metadata: { syncId, command, ranAt: new Date(), result }
+        metadata: {
+          syncId,
+          syncName: pkiSync.name,
+          destination: pkiSync.destination,
+          command,
+          ranAt: new Date(),
+          result
+        }
       }
     });
   };

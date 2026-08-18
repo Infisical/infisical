@@ -29,7 +29,7 @@ import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
 import { buildCertificateMap } from "./pki-sync-certificate-map-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
-import { PkiSyncStatus } from "./pki-sync-enums";
+import { PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
 import { enterprisePkiSyncCheck, parsePkiSyncErrorMessage, PkiSyncFns, truncateSyncMessage } from "./pki-sync-fns";
 import {
@@ -87,8 +87,6 @@ const JITTER_MS = 10 * 1000;
 const REQUEUE_MS = 30 * 1000;
 const REQUEUE_LIMIT = 30;
 
-const CONNECTION_CONCURRENCY_LIMIT = 3;
-
 const getRequeueDelay = (failureCount?: number) => {
   const jitter = Math.random() * JITTER_MS;
   if (!failureCount) return jitter;
@@ -139,7 +137,7 @@ export const pkiSyncQueueFactory = ({
 
     if (Number.isNaN(count)) return false;
 
-    return count >= CONNECTION_CONCURRENCY_LIMIT;
+    return count >= PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT;
   };
 
   const $incrementConnectionConcurrencyCount = async (connectionId: string) => {

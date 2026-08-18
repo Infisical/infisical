@@ -15,10 +15,12 @@ import {
   buildPreflightCommandFailureMessage,
   buildPreflightCommandPlan,
   buildPreflightFailureSyncResult,
+  buildScheduledPreflightFailureMessage,
   didPreflightCheckFail,
   normalizeNewPreflightCommand,
   PREFLIGHT_COMMAND_TIMEOUT_MS,
-  runPreflightCommand
+  runPreflightCommand,
+  SCHEDULED_PREFLIGHT_FAILURE_PREFIX
 } from "./pki-sync-preflight-command-fns";
 import { TCertificateMap } from "./pki-sync-types";
 
@@ -259,6 +261,26 @@ describe("buildPreflightCommandPlan with nothing linked to the sync", () => {
 
     const withDirectory = buildPreflightCommandPlan({ ...base, command: "test -w {{certificateDirectory}}" });
     expect(withDirectory?.context.certificateDirectory).toBe("/etc/ssl");
+  });
+});
+
+describe("the scheduled check owns a prefix distinct from a sync run's", () => {
+  const failure = {
+    status: PkiSyncStatus.Failed as const,
+    exitCode: 3,
+    durationMs: 12,
+    failureDetail: "nginx is down"
+  };
+
+  test("a run's blocked preflight does not match the scheduled prefix, so a later check cannot clear it", () => {
+    const fromRun = buildPreflightCommandFailureMessage(failure);
+    expect(fromRun.startsWith(SCHEDULED_PREFLIGHT_FAILURE_PREFIX)).toBe(false);
+  });
+
+  test("the scheduled check's own message matches, so it can take over and clear it", () => {
+    const fromSchedule = buildScheduledPreflightFailureMessage(failure);
+    expect(fromSchedule.startsWith(SCHEDULED_PREFLIGHT_FAILURE_PREFIX)).toBe(true);
+    expect(fromSchedule).toContain("nginx is down");
   });
 });
 

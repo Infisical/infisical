@@ -4556,6 +4556,8 @@ interface PkiSyncPreflightCheckEvent {
   type: EventType.PKI_SYNC_PREFLIGHT_CHECK;
   metadata: {
     syncId: string;
+    syncName: string;
+    destination: string;
     command: string;
     ranAt: Date;
     result?: TPreflightCommandResult;

@@ -255,15 +255,17 @@ export const runHostCommand = async (args: {
 
 export const hostCommandFailurePrefix = (kind: HostCommandKind): string => `${sentenceCase(kind)} failed`;
 
-export const buildHostCommandFailureMessage = (kind: HostCommandKind, result: THostCommandResult): string => {
+export const buildHostCommandFailureMessage = (
+  kind: HostCommandKind,
+  result: THostCommandResult,
+  failurePrefix: string = hostCommandFailurePrefix(kind)
+): string => {
   const detail = result.failureDetail ?? firstNonEmptyLine(result.output);
   if (result.exitCode === undefined) {
     const reason = detail ?? result.error;
-    return reason
-      ? `${hostCommandFailurePrefix(kind)}: ${truncate(reason, MAX_FAILURE_DETAIL_CHARS)}`
-      : hostCommandFailurePrefix(kind);
+    return reason ? `${failurePrefix}: ${truncate(reason, MAX_FAILURE_DETAIL_CHARS)}` : failurePrefix;
   }
 
-  const prefix = `${hostCommandFailurePrefix(kind)} (exit ${result.exitCode})`;
+  const prefix = `${failurePrefix} (exit ${result.exitCode})`;
   return detail ? `${prefix}: ${truncate(detail, MAX_FAILURE_DETAIL_CHARS)}` : prefix;
 };
