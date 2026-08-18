@@ -276,7 +276,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretShared,
-        distinctId: `anonymous-${sharedSecret.id}`,
+        distinctId: `anonymous-${hashShareIdForTelemetry(sharedSecret.id)}`,
         // The public share endpoint is unauthenticated and the distinctId
         // is unique per share, so creating a PostHog person for each share
         // would inflate the person count by one record per share forever.
