@@ -10,7 +10,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -120,13 +120,19 @@ export const auditReportServiceFactory = ({
       return emails;
     }
 
-    // Default to the requesting user's own email.
-    const user = await userDAL.findById(actor.id);
-    if (user?.email) {
-      return [user.email];
+    if (!(await canRecipientReadInsights(actor.id))) {
+      throw new ForbiddenRequestError({
+        message:
+          "You do not have permission to view insights, so this report cannot be sent to you. Add recipients who can view insights, or ask an administrator for insights access."
+      });
     }
 
-    throw new BadRequestError({ message: "At least one email recipient is required" });
+    const user = await userDAL.findById(actor.id);
+    if (!user?.email) {
+      throw new BadRequestError({ message: "At least one email recipient is required" });
+    }
+
+    return [user.email];
   };
 
   const generateReport = async (dto: TRequestAuditReportDTO, actor: TAuditReportServiceActor) => {
@@ -256,7 +262,7 @@ export const auditReportServiceFactory = ({
     return { reports: reports.map(presentAuditReport), totalCount };
   };
 
-  const getReportById = async (auditReportId: string, actor: TAuditReportServiceActor) => {
+  const getReportById = async (auditReportId: string, projectId: string, actor: TAuditReportServiceActor) => {
     const plan = await licenseService.getPlan(actor.orgId);
     if (!plan.secretAccessInsights) {
       throw new BadRequestError({
@@ -267,7 +273,7 @@ export const auditReportServiceFactory = ({
     const report = await auditReportDAL.findById(auditReportId);
 
     // An org-scoped report id presents as not found on the project endpoints (and vice versa).
-    if (!report?.projectId) {
+    if (!report?.projectId || report.projectId !== projectId) {
       throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
     }
 
@@ -343,11 +349,10 @@ export const auditReportServiceFactory = ({
 
     const reportConfigs = $buildReportConfigs(dto.reports);
 
-    // Reports the instance cannot produce are rejected before anything is persisted, instead of
-    // failing at generation time and wasting the org's concurrent-report slot.
     const appCfg = getConfig();
+    const isClickhouseAuditLogEnabled = Boolean(appCfg.isClickHouseConfigured && appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED);
     const unsupported = reportConfigs.filter(
-      (config) => ORG_AUDIT_REPORT_DEFINITIONS[config.type].requiresClickhouse && !appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED
+      (config) => ORG_AUDIT_REPORT_DEFINITIONS[config.type].requiresClickhouse && !isClickhouseAuditLogEnabled
     );
     if (unsupported.length) {
       const labels = unsupported.map((config) => `'${ORG_AUDIT_REPORT_DEFINITIONS[config.type].label}'`).join(", ");

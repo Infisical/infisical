@@ -749,7 +749,11 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const report = await server.services.auditReport.getReportById(req.params.reportId, req.permission);
+      const report = await server.services.auditReport.getReportById(
+        req.params.reportId,
+        req.params.projectId,
+        req.permission
+      );
       await server.services.auditLog.createAuditLog({
         projectId: report.projectId,
         event: {

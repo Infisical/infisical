@@ -545,7 +545,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
     ]
   },
   [OrgPermissionSubjects.ProjectTemplates]: {
-    title: "Project Templates",
+    title: "Secrets Management Project Templates",
     description: "Manage reusable templates applied when creating new projects",
     actions: [
       {
@@ -914,7 +914,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
     ]
   },
   [OrgPermissionSubjects.SecretShare]: {
-    title: "Secret Share",
+    title: "Secrets Management Secret Sharing",
     description: "Configure settings for sharing secrets externally",
     actions: [
       {
@@ -946,7 +946,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
     ]
   },
   [OrgPermissionSubjects.HoneyTokens]: {
-    title: "Honey Tokens",
+    title: "Secrets Management Honey Tokens",
     description: "Configure honey token setup for the organization",
     actions: [
       {
