@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { CircleAlertIcon, RefreshCwIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -46,7 +46,6 @@ import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
 import { getRequesterStatus } from "@app/lib/fn/requesterStatus";
-import { OrgAccessControlTabSections } from "@app/types/org";
 
 const addMemberFormSchema = z.object({
   orgMemberships: z
@@ -320,20 +319,6 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                           <p>
                             Invite new users to your organization by typing out their email address.
                           </p>
-                          {!projectInviteList.list.length && (
-                            <Button asChild variant="outline" size="xs">
-                              <Link
-                                to="/organizations/$orgId/access-management"
-                                params={{ orgId }}
-                                search={{
-                                  selectedTab: OrgAccessControlTabSections.Member,
-                                  action: "invite-members"
-                                }}
-                              >
-                                Invite users to your organization
-                              </Link>
-                            </Button>
-                          )}
                         </>
                       )}
                       onCreateOption={(inputValue) =>
