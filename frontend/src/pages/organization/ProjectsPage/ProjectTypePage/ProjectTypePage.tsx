@@ -402,13 +402,7 @@ const MyProjectsForType = ({
     return (
       <Card
         key={workspace.id}
-        role="button"
-        tabIndex={0}
-        onClick={() => navigateToProject(workspace)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") navigateToProject(workspace);
-        }}
-        className={`group h-full cursor-pointer bg-container transition-all duration-200 ease-out ${tileStyle.cardHoverClassName}`}
+        className={`group relative h-full cursor-pointer bg-container transition-all duration-200 ease-out ${tileStyle.cardHoverClassName}`}
       >
         <CardHeader>
           <div className="flex min-w-0 items-start gap-3">
@@ -416,15 +410,24 @@ const MyProjectsForType = ({
               <WorkspaceIcon className="size-5.5 shrink-0 text-accent transition-colors duration-200 ease-out group-hover:text-project" />
             </div>
             <div className="min-w-0 flex-1">
-              <CardDescription className="truncate text-base font-semibold text-foreground">
-                {workspace.name}
+              <CardDescription className="text-base font-semibold text-foreground">
+                {/* The name is the card's link, so the accessible name comes from visible text
+                    rather than a duplicated label, and its stretched pseudo-element covers the
+                    card. Siblings raised above it (CardAction) stay outside the anchor. */}
+                <Link
+                  to={getProjectHomePage(workspace.type, workspace.environments)}
+                  params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
+                  className="block truncate outline-0 after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                >
+                  {workspace.name}
+                </Link>
               </CardDescription>
               <p className="truncate text-sm leading-5 text-muted">
                 {getProjectTitle(workspace.type)}
               </p>
             </div>
           </div>
-          <CardAction>{renderFavoriteButton(workspace)}</CardAction>
+          <CardAction className="relative z-10">{renderFavoriteButton(workspace)}</CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p className="line-clamp-2 text-sm leading-relaxed text-accent">
