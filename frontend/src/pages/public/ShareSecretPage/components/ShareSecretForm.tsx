@@ -195,7 +195,7 @@ export const ShareSecretForm = ({
 
   if (secretLink === null)
     return (
-      <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-5">
         {!isPublic && (
           <Controller
             control={control}
@@ -332,11 +332,11 @@ export const ShareSecretForm = ({
         )}
 
         {(!isPublic || maxSharedSecretViewLimit === null || isLimitingView) && (
-          <Accordion type="single" collapsible variant="ghost">
+          <Accordion type="single" collapsible variant="default" className="mt-1">
             <AccordionItem value="advance-settings">
               <AccordionTrigger>Advanced Settings</AccordionTrigger>
-              <AccordionContent className="flex flex-col gap-y-4">
-                <div className="flex w-full items-end gap-2 overflow-visible">
+              <AccordionContent className="flex flex-col gap-y-5">
+                <div className="grid w-full gap-4 overflow-visible sm:grid-cols-2">
                   {maxSharedSecretViewLimit === null && (
                     <Controller
                       control={control}
@@ -485,9 +485,9 @@ export const ShareSecretForm = ({
             </AccordionItem>
           </Accordion>
         )}
-        <div className="flex w-full justify-end">
+        <div className="flex w-full flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           {isPublic && (
-            <Badge variant="ghost" className="mt-auto mr-auto">
+            <Badge variant="ghost" className="mr-auto">
               <img
                 src="/images/logotransparent_trimmed.png"
                 alt="Infisical"
@@ -500,6 +500,7 @@ export const ShareSecretForm = ({
             size="md"
             variant="project"
             type="submit"
+            className="w-full sm:w-auto"
             isPending={isSubmitting}
             isDisabled={isSubmitting}
           >
@@ -511,27 +512,39 @@ export const ShareSecretForm = ({
 
   if (secretLink === "")
     return (
-      <>
-        <div className="relative flex items-center justify-center rounded-lg border border-border bg-container p-4 pr-6 text-foreground/85">
-          <Check className="mr-2 size-4 text-success" />
-          <span>Shared secret link has been emailed to select users.</span>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start gap-3 rounded-lg border border-success/20 bg-success/5 p-4 text-success">
+          <Check className="mt-0.5 size-4 shrink-0" />
+          <div className="flex flex-col gap-1">
+            <p className="font-medium">Secret link sent</p>
+            <p className="text-sm text-success/80">
+              The shared secret link has been emailed to the selected recipients.
+            </p>
+          </div>
         </div>
         <Button className="w-full" variant="project" size="lg" onClick={() => setSecretLink(null)}>
           Share Another Secret
           <ForwardIcon />
         </Button>
-      </>
+      </div>
     );
 
   return (
-    <>
-      <div className="relative flex items-center justify-between rounded-md border border-border bg-container p-2 pr-5 pl-3 text-base text-label">
-        <p className="mr-4 break-all">{secretLink}</p>
+    <div className="flex flex-col gap-4">
+      <div className="flex items-start gap-3 rounded-lg border border-success/20 bg-success/5 p-4 text-success">
+        <Check className="mt-0.5 size-4 shrink-0" />
+        <div className="flex flex-col gap-1">
+          <p className="font-medium">Secret link created</p>
+          <p className="text-sm text-success/80">The link was copied to your clipboard.</p>
+        </div>
+      </div>
+      <div className="flex items-start gap-3 rounded-md border border-border bg-container p-3 text-label">
+        <p className="min-w-0 flex-1 font-mono text-sm break-all">{secretLink}</p>
         <IconButton
-          aria-label="copy icon"
+          aria-label="Copy shared secret link"
           variant="ghost-muted"
           size="sm"
-          className="absolute top-1 right-1"
+          className="shrink-0"
           onClick={() => {
             navigator.clipboard.writeText(secretLink || "");
             setCopyTextSecret("Copied");
@@ -544,6 +557,6 @@ export const ShareSecretForm = ({
         Share Another Secret
         <ForwardIcon />
       </Button>
-    </>
+    </div>
   );
 };

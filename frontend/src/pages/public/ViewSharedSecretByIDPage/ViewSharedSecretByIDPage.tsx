@@ -8,7 +8,14 @@ import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
 import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
 import { createNotification } from "@app/components/notifications";
-import { Card, CardContent, CardHeader, CardTitle, PageLoader } from "@app/components/v3";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  PageLoader
+} from "@app/components/v3";
 import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -281,6 +288,7 @@ export const ViewSharedSecretByIDPage = () => {
         <Card className="w-full max-w-xl">
           <CardHeader>
             <CardTitle>View shared secret</CardTitle>
+            <CardDescription>Reveal the value only when you are ready to use it.</CardDescription>
           </CardHeader>
           <CardContent>{secretContent}</CardContent>
         </Card>

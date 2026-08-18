@@ -51,7 +51,7 @@ export const SecretShareInfo = ({ secret, brandingTheme }: Props) => {
       {timeRemaining && (
         <div className="flex items-center gap-2">
           <Clock className="size-3.5 shrink-0" style={iconStyle} />
-          <span>Expires on {timeRemaining}</span>
+          <span>Access expires on {timeRemaining}</span>
         </div>
       )}
       {viewsRemaining !== null && (

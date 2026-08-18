@@ -55,7 +55,7 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
         </p>
         <div className="ml-1 flex shrink-0 items-start gap-2 self-start">
           <IconButton
-            aria-label="copy icon"
+            aria-label="Copy shared secret value"
             variant="ghost"
             size="sm"
             onClick={() => {
@@ -71,7 +71,7 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
             )}
           </IconButton>
           <IconButton
-            aria-label="toggle visibility"
+            aria-label={isVisible ? "Hide shared secret value" : "Reveal shared secret value"}
             variant="ghost"
             size="sm"
             onClick={() => setIsVisible.toggle()}

@@ -1,11 +1,4 @@
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle
-} from "@app/components/v3";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { ShareSecretForm } from "@app/pages/public/ShareSecretPage/components";
@@ -21,18 +14,18 @@ type Props = {
 export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
   return (
-    <Dialog
+    <Sheet
       open={popUp?.createSharedSecret?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("createSharedSecret", isOpen);
       }}
     >
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Share a Secret</DialogTitle>
-          <DialogDescription>Securely share one off secrets with your team.</DialogDescription>
-        </DialogHeader>
-        <DialogBody>
+      <SheetContent className="flex h-full max-h-full flex-col gap-0 sm:max-w-2xl">
+        <SheetHeader className="border-b">
+          <SheetTitle>Share a Secret</SheetTitle>
+          <SheetDescription>Securely share one off secrets with your team.</SheetDescription>
+        </SheetHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <ShareSecretForm
             isPublic={false}
             value={(popUp.createSharedSecret.data as { value?: string })?.value}
@@ -42,8 +35,8 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
             maxSharedSecretLifetime={currentOrg?.maxSharedSecretLifetime}
             maxSharedSecretViewLimit={currentOrg?.maxSharedSecretViewLimit}
           />
-        </DialogBody>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 };

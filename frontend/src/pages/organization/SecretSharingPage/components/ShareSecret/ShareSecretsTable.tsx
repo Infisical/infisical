@@ -1,6 +1,10 @@
 import { useState } from "react";
 
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -34,7 +38,7 @@ type Props = {
 export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const { isPending, data } = useGetSharedSecrets({
+  const { isPending, isError, data, refetch } = useGetSharedSecrets({
     offset: (page - 1) * perPage,
     limit: perPage
   });
@@ -42,7 +46,18 @@ export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
 
   return (
     <div>
-      {(isPending || hasSecrets) && (
+      {isError && (
+        <Alert variant="danger">
+          <AlertTitle>Could not load shared secrets</AlertTitle>
+          <AlertDescription>
+            <span>Refresh the list and try again.</span>
+            <Button size="sm" variant="outline" onClick={() => refetch()}>
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {!isError && (isPending || hasSecrets) && (
         <Table>
           <TableHeader>
             <TableRow>
@@ -84,7 +99,7 @@ export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
           onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
         />
       )}
-      {!isPending && !data?.secrets?.length && (
+      {!isPending && !isError && !data?.secrets?.length && (
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>No secrets shared yet</EmptyTitle>
