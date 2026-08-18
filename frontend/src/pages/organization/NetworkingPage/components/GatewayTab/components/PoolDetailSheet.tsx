@@ -12,6 +12,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -24,7 +25,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Field,
-  FieldLabel,
   FilterableSelect,
   IconButton,
   Input,
@@ -308,15 +308,12 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
             </AlertDialogHeader>
             <AlertDialogConfirmationField>
               <Field>
-                <FieldLabel htmlFor="remove-gateway-confirmation" size="sm">
-                  <span>
-                    Type &quot;
-                    <span className="text-foreground">
-                      {(popUp.removeGateway.data as { name: string } | undefined)?.name}
-                    </span>
-                    &quot; to confirm.
-                  </span>
-                </FieldLabel>
+                <AlertDialogConfirmationLabel
+                  htmlFor="remove-gateway-confirmation"
+                  confirmationValue={
+                    (popUp.removeGateway.data as { name: string } | undefined)?.name
+                  }
+                />
                 <Input
                   id="remove-gateway-confirmation"
                   value={removeConfirmation}

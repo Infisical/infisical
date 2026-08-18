@@ -297,7 +297,13 @@ export const PamSessionsPage = () => {
                           <HighlightText text={session.actorName} highlight={search} />
                         </span>
                         <span className="text-xs text-muted">
-                          <HighlightText text={session.actorEmail} highlight={search} />
+                          {/* identityId is SET NULL on identity deletion; a machine session with a
+                              deleted identity has neither actor FK and an empty actorEmail */}
+                          {session.identityId || (!session.userId && !session.actorEmail) ? (
+                            "Machine Identity"
+                          ) : (
+                            <HighlightText text={session.actorEmail} highlight={search} />
+                          )}
                         </span>
                       </div>
                     </TableCell>

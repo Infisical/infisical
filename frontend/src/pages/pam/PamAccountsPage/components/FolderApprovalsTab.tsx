@@ -57,6 +57,7 @@ import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 
 import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
+import { getRequesterSubtitle } from "../../components/requesterDisplay";
 import { FolderNotificationsSection } from "./FolderNotificationsSection";
 
 type ApproverEntry = { type: PamApproverType; id: string };
@@ -462,7 +463,9 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                         <TableCell className="h-[50px]">
                           <div className="flex flex-col">
                             <span className="text-sm font-medium">{request.requesterName}</span>
-                            <span className="text-xs text-muted">{request.requesterEmail}</span>
+                            <span className="text-xs text-muted">
+                              {getRequesterSubtitle(request)}
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell className="text-sm">

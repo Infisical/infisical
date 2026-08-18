@@ -1,19 +1,25 @@
 import { CertPolicyState } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
+/**
+ * A domain_component rule's values are comma-joined ordered sequences ("corp,example,com"), one per
+ * entry. Every other attribute type takes plain patterns.
+ */
+export type TSubjectRule = {
+  type:
+    | "common_name"
+    | "organization"
+    | "country"
+    | "state"
+    | "locality"
+    | "organizational_unit"
+    | "domain_component";
+  allowed?: string[];
+  required?: string[];
+  denied?: string[];
+};
+
 export type TCertificatePolicyRule = {
-  subject?: Array<{
-    type:
-      | "common_name"
-      | "organization"
-      | "country"
-      | "state"
-      | "locality"
-      | "organizational_unit"
-      | "domain_component";
-    allowed?: string[];
-    required?: string[];
-    denied?: string[];
-  }>;
+  subject?: TSubjectRule[];
   sans?: Array<{
     type: "dns_name" | "ip_address" | "email" | "uri" | "upn";
     allowed?: string[];

@@ -1,10 +1,10 @@
 ---
 title: "Architecture"
 sidebarTitle: "Architecture"
-description: "How PAM connects users to your infrastructure securely."
+description: "How PAM connects people and machines to your infrastructure securely."
 ---
 
-PAM uses a proxy-based architecture. Users never connect directly to your databases or servers — everything goes through the [Gateway](/documentation/platform/gateways/overview). This keeps your infrastructure isolated while providing secure, auditable access.
+PAM uses a proxy-based architecture. Nothing connects directly to your databases or servers: everything goes through the [Gateway](/documentation/platform/gateways/overview). This keeps your infrastructure isolated while providing secure, auditable access.
 
 ## Components
 
@@ -12,22 +12,25 @@ PAM uses a proxy-based architecture. Users never connect directly to your databa
 
 **Gateway** — a lightweight service you deploy in your private network. It proxies connections to your databases and servers, injects credentials, and records sessions.
 
-**Client** — the user's browser (Web Access) or CLI. Connects to the Gateway through an encrypted tunnel.
+**Client** — a user's browser (Web Access) or the CLI. Connects to the Gateway through an encrypted tunnel. An [AI agent](/documentation/platform/pam/ai-agents/overview) connects through the CLI, which holds the tunnel on its behalf.
+
+**Actor** — the user or [machine identity](/documentation/platform/identities/machine-identities) the session belongs to. Permissions, policies, and the audit trail all follow the actor.
 
 ## How a Connection Works
 
-When a user connects to an [account](/documentation/platform/pam/accounts/overview):
+When an actor connects to an [account](/documentation/platform/pam/accounts/overview):
 
-1. **User requests access** — clicks Launch in the browser or runs the CLI command
-2. **Infisical checks permissions** — verifies the user has a [membership](/documentation/platform/pam/concepts/access-control) with the right role
-3. **[Template](/documentation/platform/pam/templates/overview) rules are enforced** — MFA, reason requirement, etc.
-4. **Connection is established** — an encrypted tunnel is created between the client and Gateway
-5. **Gateway fetches credentials** — retrieves them from Infisical
-6. **Gateway connects to the target** — using the credentials
-7. **Traffic flows through the Gateway** — user interacts with the database/server
-8. **Session is recorded** — Gateway captures and uploads session activity
+1. **Access is requested** — a user clicks Launch in the browser, or the CLI command runs
+2. **Infisical checks permissions** — verifies the actor has a [membership](/documentation/platform/pam/concepts/access-control) with the right role
+3. **[Template](/documentation/platform/pam/templates/overview) rules are enforced** — MFA, reason requirement, session duration
+4. **Approval is checked** — a gated account also needs an approved [access request](/documentation/platform/pam/access-requests/overview)
+5. **Connection is established** — an encrypted tunnel is created between the client and Gateway
+6. **Gateway fetches credentials** — retrieves them from Infisical
+7. **Gateway connects to the target** — using the credentials
+8. **Traffic flows through the Gateway** — the actor interacts with the database/server
+9. **Session is recorded** — Gateway captures and uploads session activity, attributed to the actor
 
-The user never sees the credentials. The database/server never sees the user directly.
+The actor never sees the credentials. The database/server never sees the actor directly.
 
 ## Network Security
 

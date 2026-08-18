@@ -73,7 +73,10 @@ type Props = {
 export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
   const { projectId, currentProject } = useProject();
   const { subscription } = useSubscription();
-  const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(projectId);
+  const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(
+    projectId,
+    currentProject?.type
+  );
   const { permission } = useProjectPermission();
   const {
     popUp: upgradePlanPopUp,

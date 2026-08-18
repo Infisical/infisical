@@ -290,6 +290,7 @@ export const registerCertificateProfilesRouter = async (
         organizationId: req.permission.orgId,
         properties: {
           orgId: req.permission.orgId,
+          projectId: certificateProfile.projectId,
           issuerType: certificateProfile.issuerType
         }
       });
@@ -684,6 +685,17 @@ export const registerCertificateProfilesRouter = async (
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertificateProfileUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: certificateProfile.projectId,
+          profileId: certificateProfile.id
+        }
+      });
+
       return { certificateProfile };
     }
   });
@@ -737,7 +749,8 @@ export const registerCertificateProfilesRouter = async (
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: certificateProfile.projectId
         }
       });
 

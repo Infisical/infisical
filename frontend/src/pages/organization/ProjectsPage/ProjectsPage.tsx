@@ -45,7 +45,7 @@ export const ProjectsPage = () => {
   }
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col justify-start bg-bunker-800 px-6">
+    <div className="mx-auto flex max-w-8xl flex-col justify-start px-6">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
         <link rel="icon" href="/infisical.ico" />

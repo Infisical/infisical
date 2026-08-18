@@ -3,12 +3,14 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { LogOutIcon, TrashIcon } from "lucide-react";
 
 import { Button } from "../Button";
+import { Field } from "../Field";
 import { Input } from "../Input";
-import { Label } from "../Label";
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -222,14 +224,23 @@ export const SmallSize: Story = {
   )
 };
 
-const CONFIRMATION_KEYWORD = "delete";
+const PROJECT_NAME = "production-api";
 
 const TypedConfirmationStory = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const [confirmation, setConfirmation] = useState("");
-  const isConfirmed = confirmation === CONFIRMATION_KEYWORD;
+  const isConfirmed = confirmation === PROJECT_NAME;
 
   return (
-    <AlertDialog onOpenChange={(open) => !open && setConfirmation("")}>
+    <AlertDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (isPending) return;
+        setIsOpen(open);
+        if (!open) setConfirmation("");
+      }}
+    >
       <AlertDialogTrigger asChild>
         <Button variant="danger">
           <TrashIcon />
@@ -244,18 +255,39 @@ const TypedConfirmationStory = () => {
             history. This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="alert-dialog-confirmation">Type &quot;delete&quot; to confirm</Label>
-          <Input
-            id="alert-dialog-confirmation"
-            value={confirmation}
-            onChange={(e) => setConfirmation(e.target.value)}
-            autoComplete="off"
-          />
-        </div>
+        <AlertDialogConfirmationField>
+          <Field>
+            <AlertDialogConfirmationLabel
+              htmlFor="alert-dialog-confirmation"
+              confirmationValue={PROJECT_NAME}
+            />
+            <Input
+              id="alert-dialog-confirmation"
+              value={confirmation}
+              onChange={(e) => setConfirmation(e.target.value)}
+              placeholder={PROJECT_NAME}
+              autoComplete="off"
+              autoFocus
+            />
+          </Field>
+        </AlertDialogConfirmationField>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="danger" disabled={!isConfirmed}>
+          <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="danger"
+            isPending={isPending}
+            isDisabled={!isConfirmed}
+            onClick={async (event) => {
+              event.preventDefault();
+              setIsPending(true);
+              await new Promise((resolve) => {
+                setTimeout(resolve, 800);
+              });
+              setIsPending(false);
+              setIsOpen(false);
+              setConfirmation("");
+            }}
+          >
             Delete project
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -270,7 +302,7 @@ export const TypedConfirmation: Story = {
     docs: {
       description: {
         story:
-          "Add an `Input` between the header and footer that requires the user to type a keyword before the destructive action is enabled. Use this pattern for tier-two destructive actions (delete account, delete project) where an extra deliberate step reduces accidental loss. The input clears whenever the dialog closes."
+          "Require the resource name for high-consequence deletion. Pass it to `confirmationValue`, mirror it in the input placeholder, focus the input when the dialog opens, and clear it on close. During an asynchronous action, prevent the default close, show `isPending`, and disable cancellation until the operation completes. A fixed keyword can be used when no stable resource name is available."
       }
     }
   },

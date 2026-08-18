@@ -4,17 +4,7 @@ import { Check, Clock, ShieldCheck, X } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
-import {
-  Button,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  TextArea,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
-} from "@app/components/v3";
+import { Button, TextArea, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { useUser } from "@app/context";
 import {
   PamAccessRequestDecision,
@@ -28,6 +18,7 @@ import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
 import { formatDuration } from "../../components/formatDuration";
 import { PamDetailSheet } from "../../components/PamDetailSheet";
+import { isMachineIdentityRequest } from "../../components/requesterDisplay";
 
 type Props = {
   request: TPamAccessRequest | null;
@@ -117,7 +108,9 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
         typeBadge={status.label}
         metadata={[
           { label: "Requester", value: request?.requesterName ?? "-" },
-          { label: "Email", value: request?.requesterEmail ?? "-" },
+          request && isMachineIdentityRequest(request)
+            ? { label: "Actor", value: "Machine Identity" }
+            : { label: "Email", value: request?.requesterEmail ?? "-" },
           { label: "Folder", value: request?.folderName ?? "-" },
           ...(request?.host ? [{ label: "Host", value: request.host }] : []),
           {
@@ -135,86 +128,78 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
           { label: "Reason", value: requestData?.reason || "No reason provided" }
         ]}
       >
-        <Tabs defaultValue="review" className="flex h-full flex-col">
-          <TabsList variant="pam" className="shrink-0 bg-popover">
-            <TabsTrigger value="review">
-              <Check className="size-4" />
-              Review
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="review" className="m-0 flex flex-1 flex-col p-6">
-            <div className="flex flex-1 flex-col gap-6">
-              {isPending && (
-                <div>
-                  <p className="mb-2 text-sm font-medium text-foreground">Approval comment</p>
-                  <TextArea
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    rows={4}
-                    placeholder="Optional context for the requester"
-                  />
-                  <p className="mt-1.5 text-xs text-muted">
-                    Visible to the requester and recorded in audit logs
-                  </p>
-                </div>
-              )}
-
+        <div className="flex h-full flex-1 flex-col p-6">
+          <div className="flex flex-1 flex-col gap-6">
+            {isPending && (
               <div>
-                <p className="mb-2 text-sm font-medium text-foreground">Access duration</p>
-                <div className="flex items-center gap-2 rounded-md border border-border bg-container px-3 py-2.5 text-sm text-foreground">
-                  <Clock className="size-4 text-muted" />
-                  {formatDuration(requestData?.duration)}
-                </div>
-              </div>
-
-              {!isPending && !canRevoke && (
-                <p className="text-sm text-muted">
-                  This request has been {status.label.toLowerCase()} and can no longer be actioned.
+                <p className="mb-2 text-sm font-medium text-foreground">Approval comment</p>
+                <TextArea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  rows={4}
+                  placeholder="Optional context for the requester"
+                />
+                <p className="mt-1.5 text-xs text-muted">
+                  Visible to the requester and recorded in audit logs
                 </p>
-              )}
-            </div>
-
-            {(isPending || canRevoke) && (
-              <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-                {isPending && (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleReview(PamAccessRequestDecision.Rejected)}
-                      isPending={reviewMutation.isPending}
-                    >
-                      <X className="mr-1.5 size-4" />
-                      Deny
-                    </Button>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div>
-                          <Button
-                            variant="pam"
-                            onClick={() => handleReview(PamAccessRequestDecision.Approved)}
-                            isPending={reviewMutation.isPending}
-                            isDisabled={isOwnRequest}
-                          >
-                            <Check className="mr-1.5 size-4" />
-                            Approve
-                          </Button>
-                        </div>
-                      </TooltipTrigger>
-                      {isOwnRequest && (
-                        <TooltipContent>You cannot approve your own request</TooltipContent>
-                      )}
-                    </Tooltip>
-                  </>
-                )}
-                {canRevoke && (
-                  <Button variant="danger" onClick={() => setIsRevokeConfirmOpen(true)}>
-                    Revoke Access
-                  </Button>
-                )}
               </div>
             )}
-          </TabsContent>
-        </Tabs>
+
+            <div>
+              <p className="mb-2 text-sm font-medium text-foreground">Access duration</p>
+              <div className="flex items-center gap-2 rounded-md border border-border bg-container px-3 py-2.5 text-sm text-foreground">
+                <Clock className="size-4 text-muted" />
+                {formatDuration(requestData?.duration)}
+              </div>
+            </div>
+
+            {!isPending && !canRevoke && (
+              <p className="text-sm text-muted">
+                This request has been {status.label.toLowerCase()} and can no longer be actioned.
+              </p>
+            )}
+          </div>
+
+          {(isPending || canRevoke) && (
+            <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+              {isPending && (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleReview(PamAccessRequestDecision.Rejected)}
+                    isPending={reviewMutation.isPending}
+                  >
+                    <X className="mr-1.5 size-4" />
+                    Deny
+                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <Button
+                          variant="pam"
+                          onClick={() => handleReview(PamAccessRequestDecision.Approved)}
+                          isPending={reviewMutation.isPending}
+                          isDisabled={isOwnRequest}
+                        >
+                          <Check className="mr-1.5 size-4" />
+                          Approve
+                        </Button>
+                      </div>
+                    </TooltipTrigger>
+                    {isOwnRequest && (
+                      <TooltipContent>You cannot approve your own request</TooltipContent>
+                    )}
+                  </Tooltip>
+                </>
+              )}
+              {canRevoke && (
+                <Button variant="danger" onClick={() => setIsRevokeConfirmOpen(true)}>
+                  Revoke Access
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </PamDetailSheet>
     </>
   );

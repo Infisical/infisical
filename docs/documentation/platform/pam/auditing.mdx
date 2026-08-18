@@ -19,10 +19,12 @@ PAM logs every action — who accessed what, who changed what, and when. This au
 
 Each event includes:
 - **Timestamp** — when it happened
-- **Actor** — who did it (user, email, IP address)
+- **Actor** — who did it: a user (name, email, IP address) or a [machine identity](/documentation/platform/identities/machine-identities), named as it is named in your organization
 - **Action** — what was done
 - **Target** — what was affected
 - **Details** — relevant context (e.g., what changed)
+
+An identity has no email address, so its events show **Machine Identity** where a person's email would be. Everything an [AI agent](/documentation/platform/pam/ai-agents/overview) does is logged the same way a person's activity is.
 
 ## Viewing Audit Logs
 
@@ -51,7 +53,7 @@ Audit logs are retained according to your organization's policy. Events are immu
 
 **Change tracking** — Filter by event type to see configuration changes (template updates, membership changes).
 
-**User activity reports** — Filter by actor to see everything a specific user did.
+**Activity reports** — Filter by actor to see everything a specific user or machine identity did.
 
 ## Next Steps
 

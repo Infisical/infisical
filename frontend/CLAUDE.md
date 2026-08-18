@@ -36,7 +36,7 @@ Middleware pages in `src/pages/middlewares/`: `authenticate.tsx` (auth guard + r
 
 - **`src/pages/`** — Route-level components organized by product feature (secret-manager, cert-manager, kms, pam, secret-scanning, organization, project, admin, auth). Each has `route.tsx` + page component + local `components/`.
 - **`src/views/`** — Reusable page-level UI composed into multiple pages. Pages import views with configuration props.
-- **`src/components/v3/`** — Latest shared UI component library (preferred). Contains `generic/` (Accordion, Alert, Button, Dialog, Select, Table, etc.) and `platform/` (domain-specific components). **Always use v3 components for new code.** Only use v2 components when a v3 equivalent does not exist.
+- **`src/components/v3/`** — Latest shared UI component library (preferred). Contains `generic/` (Accordion, Alert, Button, Dialog, Select, Table, etc.) and `platform/` (domain-specific components such as `PageHeader` and scope icons). **Always use v3 components for new code.** Only use v2 components when a v3 equivalent does not exist.
 - **`src/components/v2/`** — Legacy shared UI components built on Radix UI primitives + Tailwind. Uses `cva` (class-variance-authority) for variants and `tailwind-merge` for class conflict resolution. Being superseded by v3 — do not use for new features if a v3 alternative exists.
 
 ### API Layer (React Query + Axios)

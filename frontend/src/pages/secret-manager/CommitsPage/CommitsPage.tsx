@@ -53,7 +53,7 @@ export const CommitsPage = () => {
   };
 
   return (
-    <div className="mx-auto mb-4 flex h-full w-full max-w-8xl justify-center bg-bunker-800 text-white">
+    <div className="mx-auto mb-4 flex h-full w-full max-w-8xl justify-center text-white">
       <div className="w-full">
         <Link
           to="/organizations/$orgId/projects/secret-management/$projectId/overview"

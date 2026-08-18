@@ -10,6 +10,9 @@
   "styling": {
     "codeblocks": "dark"
   },
+  "thumbnails": {
+    "appearance": "light"
+  },
   "favicon": "/favicon.ico",
   "contextual": {
     "options": [
@@ -727,6 +730,7 @@
                     "pages": [
                       "integrations/secret-syncs/overview",
                       "integrations/secret-syncs",
+                      "integrations/secret-syncs/native-integrations-migration",
                       {
                         "group": "Cloud Providers",
                         "pages": [
@@ -1136,6 +1140,7 @@
                     ]
                   },
                   "documentation/platform/pam/access-requests/overview",
+                  "documentation/platform/pam/ai-agents/overview",
                   {
                     "group": "Credential Rotation",
                     "pages": [
@@ -1198,7 +1203,10 @@
                   "cli/commands/secrets",
                   "cli/commands/agent-proxy",
                   "cli/commands/dynamic-secrets",
-                  "cli/commands/pam",
+                  {
+                    "group": "infisical pam",
+                    "pages": ["cli/commands/pam", "cli/commands/pam-agentic"]
+                  },
                   "cli/commands/gateway",
                   "cli/commands/kmip",
                   "cli/commands/relay",
@@ -2990,6 +2998,15 @@
                       "api-reference/endpoints/secret-rotations/windows-local-account/reconcile"
                     ]
                   }
+                ]
+              },
+              {
+                "group": "Secret Validation Rules",
+                "pages": [
+                  "api-reference/endpoints/secret-validation-rules/list",
+                  "api-reference/endpoints/secret-validation-rules/create",
+                  "api-reference/endpoints/secret-validation-rules/update",
+                  "api-reference/endpoints/secret-validation-rules/delete"
                 ]
               },
               {
