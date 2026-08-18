@@ -18,12 +18,15 @@ export async function up(knex: Knex): Promise<void> {
       t.string("allowedAudience", 255).notNullable().defaultTo("");
       t.boolean("verifyTlsCertificate").notNullable().defaultTo(true);
       t.string("tokenReviewMode", 32).notNullable().defaultTo("api");
-      // RESTRICT rather than SET NULL: nulling the proxy would leave a config that cannot
-      // authenticate, failing at the next login instead of at the delete the user chose.
+      // Blocks deleting a gateway another one reviews through, rather than nulling the reference
+      // and leaving a config that cannot authenticate. NO ACTION rather than RESTRICT because
+      // RESTRICT is not deferrable in Postgres even when declared so, and the check has to run at
+      // COMMIT: deleting an org cascades away both the reviewer gateway and the config pointing at
+      // it, so a statement-time check fires before the cascade has removed the referencer.
       t.uuid("gatewayV2Id").nullable();
-      t.foreign("gatewayV2Id").references("id").inTable(TableName.GatewayV2).onDelete("RESTRICT");
+      t.foreign("gatewayV2Id").references("id").inTable(TableName.GatewayV2).deferrable("deferred");
       t.uuid("gatewayPoolId").nullable();
-      t.foreign("gatewayPoolId").references("id").inTable(TableName.GatewayPool).onDelete("RESTRICT");
+      t.foreign("gatewayPoolId").references("id").inTable(TableName.GatewayPool).deferrable("deferred");
       t.timestamps(true, true, true);
     });
 
