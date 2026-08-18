@@ -4,12 +4,9 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { CodeSigningScopeField } from "@app/services/approval-policy/code-signing/code-signing-policy-enums";
 import {
   CODE_SIGNING_SCOPE_API_DESCRIPTION,
-  CodeSigningRequestSchema,
   CodeSigningScopeInputSchema,
-  RemoveCodeSigningScopeFieldsSchema,
   SigningWindowDurationSchema
 } from "@app/services/approval-policy/code-signing/code-signing-policy-schemas";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -150,53 +147,6 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
       });
 
       return result;
-    }
-  });
-
-  server.route({
-    method: "PATCH",
-    url: "/:signerId/requests/:requestId/scope",
-    config: { rateLimit: writeLimit },
-    schema: {
-      hide: false,
-      operationId: "removeSignerRequestScopeFields",
-      tags: [ApiDocsTags.PkiSigners],
-      description: "Stop enforcing scope parameters on a pending signing request. Open to the approvers deciding it.",
-      params: SignerRequestParamsSchema,
-      body: RemoveCodeSigningScopeFieldsSchema,
-      response: {
-        200: z.object({
-          request: CodeSigningRequestSchema,
-          removedFields: z.array(z.nativeEnum(CodeSigningScopeField))
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const { request, removedFields } = await server.services.signerPolicy.removeRequestScopeFields({
-        signerId: req.params.signerId,
-        requestId: req.params.requestId,
-        removeFields: req.body.removeFields,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: await server.services.pkiSigner.getProjectIdForSigner(req.params.signerId),
-        event: {
-          type: EventType.PKI_SIGNER_REMOVE_REQUEST_SCOPE_FIELDS,
-          metadata: {
-            signerId: req.params.signerId,
-            requestId: req.params.requestId,
-            removedFields
-          }
-        }
-      });
-
-      return { request, removedFields };
     }
   });
 

@@ -4,8 +4,7 @@ import {
   commandsMatch,
   getCodeSigningScopeMismatches,
   normalizeCodeSigningScope,
-  redactCommandCredentials,
-  removeCodeSigningScopeFields
+  redactCommandCredentials
 } from "./code-signing-policy-fns";
 
 const DIGEST = "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9";
@@ -243,38 +242,5 @@ describe("redactCommandCredentials", () => {
     const observed = buildObservedSigningContext({ clientMetadata: { command: raw }, dataHash: "d" });
     expect(getCodeSigningScopeMismatches(bound, observed)).toEqual([]);
     expect(bound?.command).not.toContain("hunter2");
-  });
-});
-
-describe("removeCodeSigningScopeFields", () => {
-  const scope = {
-    [CodeSigningScopeField.Command]: "signtool sign app.exe",
-    [CodeSigningScopeField.Hostname]: "build-01",
-    [CodeSigningScopeField.DataHash]: DIGEST
-  };
-
-  test("takes out the named parameters and keeps the rest", () => {
-    const result = removeCodeSigningScopeFields(scope, [CodeSigningScopeField.DataHash]);
-
-    expect(result.removed).toEqual([CodeSigningScopeField.DataHash]);
-    expect(result.scope).toEqual({
-      [CodeSigningScopeField.Command]: "signtool sign app.exe",
-      [CodeSigningScopeField.Hostname]: "build-01"
-    });
-  });
-
-  // Removing twice must land in the same place, so a retried call is not an error.
-  test("a parameter the scope does not declare is not reported as removed", () => {
-    const result = removeCodeSigningScopeFields(scope, [CodeSigningScopeField.IpAddress]);
-
-    expect(result.removed).toEqual([]);
-    expect(result.scope).toEqual(scope);
-  });
-
-  test("removing every parameter leaves no scope at all", () => {
-    const result = removeCodeSigningScopeFields(scope, Object.values(CodeSigningScopeField));
-
-    expect(result.scope).toBeUndefined();
-    expect(result.removed).toHaveLength(3);
   });
 });

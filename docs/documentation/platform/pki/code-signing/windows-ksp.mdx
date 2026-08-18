@@ -125,6 +125,7 @@ $env:INFISICAL_TOKEN = "<your-access-token>"
 | `cache.signer_ttl_seconds` | No | `300` | How long to reuse the list of Signers. |
 | `approval.signing_duration` | No | None | Ask for an access window of this length when signing is denied for want of approved access (`30m`, `8h`, `2d`). The provider accepts 1m to 30d as a sanity check; the real limit is the Signer's approval policy. The window starts when the request is approved, so time spent waiting for an approver does not eat into it. |
 | `approval.signing_count` | No | None | Ask for access good for this many signing operations. |
+| `approval.exclude_scope_fields` | No | None | Signing parameters to leave out of the requests the provider opens, so one approval covers any value of them. Any of `command`, `signing_application`, `signing_application_hash`, `hostname`, `os_username`, `data_hash`. An unknown name is rejected at startup. |
 | `log_level` | No | `info` | How much detail to log: `trace`, `debug`, `info`, `warn`, or `error`. |
 | `log_file` | No | `%ProgramData%\Infisical\ksp.log` | Where to write the log. `signtool` has no window to print to, so the plug-in writes here by default. |
 
@@ -208,8 +209,32 @@ The request is [scoped](/documentation/platform/pki/code-signing/approvals#scopi
 <Note>
   The first signing attempt **still fails**, because an approver has to act on the request. Once approved, run the same command again and it succeeds.
 
-  The approval covers that exact command and artifact, so a different artifact, a changed argument, or reordered flags needs a new request. Widen the scope in Infisical when one approval should cover a batch.
+  The approval covers that exact command and artifact, so a different artifact, a changed argument, or reordered flags needs a new request. A request's parameters are fixed once it is open, so when they are wrong the request is rejected and reopened rather than edited. To have one approval cover a batch, leave the parameters that vary out of the request from the start.
 </Note>
+
+### Leaving parameters out of a request
+
+Every parameter on a request has to match at signing time, so a request that names the artifact digest covers exactly one artifact. When a run should cover a series of builds instead, name the parameters that vary in `approval.exclude_scope_fields` and the provider leaves them off every request it opens:
+
+```json
+{
+  "approval": {
+    "signing_duration": "8h",
+    "signing_count": 10,
+    "exclude_scope_fields": ["data_hash"]
+  }
+}
+```
+
+`data_hash` is the usual one. A timestamped signature changes the digest between runs even for the same file, so pinning it means a fresh approval for every build. The other names are `command`, `signing_application`, `signing_application_hash`, `hostname` and `os_username`.
+
+Leave out only what genuinely varies, and be aware that dropping a parameter widens the approval further than the machine you configured it on. An approval belongs to the identity that asked for it, not to a host, so once `hostname` is excluded the same approval covers that identity signing from anywhere its credentials are installed.
+
+<Warning>
+  Excluding every parameter leaves the request with no scope at all. The resulting approval permits any command, on any machine, against any artifact, for the whole of its window and signature count, which is the same access you would have with no scoping at all. Excluding `data_hash` alone is almost always what a build pipeline needs.
+</Warning>
+
+An excluded parameter is still recorded on the signing operation, so the command, machine, account and artifact digest behind every signature stay available to auditors even when they no longer constrain the approval.
 
 ### Example CI workflow
 

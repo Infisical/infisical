@@ -813,7 +813,6 @@ export enum EventType {
   PKI_SIGNER_REQUEST_TO_SIGN = "pki-signer-request-to-sign",
   PKI_SIGNER_PRE_APPROVE_SIGNING = "pki-signer-pre-approve-signing",
   PKI_SIGNER_REVOKE_REQUEST = "pki-signer-revoke-request",
-  PKI_SIGNER_REMOVE_REQUEST_SCOPE_FIELDS = "pki-signer-remove-request-scope-fields",
   ADD_PKI_SIGNER_MEMBER = "add-pki-signer-member",
   UPDATE_PKI_SIGNER_MEMBER = "update-pki-signer-member",
   REMOVE_PKI_SIGNER_MEMBER = "remove-pki-signer-member",
@@ -4813,15 +4812,6 @@ interface PkiSignerRevokeRequestEvent {
   };
 }
 
-interface PkiSignerRemoveRequestScopeFieldsEvent {
-  type: EventType.PKI_SIGNER_REMOVE_REQUEST_SCOPE_FIELDS;
-  metadata: {
-    signerId: string;
-    requestId: string;
-    removedFields: string[];
-  };
-}
-
 interface AddPkiSignerMemberEvent {
   type: EventType.ADD_PKI_SIGNER_MEMBER;
   metadata: {
@@ -7409,7 +7399,6 @@ export type Event =
   | PkiSignerRequestToSignEvent
   | PkiSignerPreApproveSigningEvent
   | PkiSignerRevokeRequestEvent
-  | PkiSignerRemoveRequestScopeFieldsEvent
   | AddPkiSignerMemberEvent
   | UpdatePkiSignerMemberEvent
   | RemovePkiSignerMemberEvent

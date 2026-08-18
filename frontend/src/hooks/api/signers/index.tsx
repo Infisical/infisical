@@ -12,7 +12,6 @@ export {
   useReissueSignerCertificate,
   useRemoveSignerGroupMember,
   useRemoveSignerIdentityMember,
-  useRemoveSignerRequestScopeFields,
   useRemoveSignerUserMember,
   useRequestToSign,
   useRevokeSignerRequest,

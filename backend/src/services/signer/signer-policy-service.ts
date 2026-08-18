@@ -8,7 +8,7 @@ import {
   ResourcePermissionSignerActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 
 import {
@@ -20,8 +20,7 @@ import {
   ApprovalPolicyScope,
   ApprovalPolicyType,
   ApprovalRequestGrantStatus,
-  ApprovalRequestStatus,
-  ApproverType
+  ApprovalRequestStatus
 } from "../approval-policy/approval-policy-enums";
 import {
   TApprovalRequestDALFactory,
@@ -31,10 +30,7 @@ import {
 } from "../approval-policy/approval-request-dal";
 import { createApprovalRequestWithSteps, notifyStepApprovers } from "../approval-policy/approval-request-fns";
 import { CodeSigningScopeField } from "../approval-policy/code-signing/code-signing-policy-enums";
-import {
-  normalizeCodeSigningScope,
-  removeCodeSigningScopeFields
-} from "../approval-policy/code-signing/code-signing-policy-fns";
+import { normalizeCodeSigningScope } from "../approval-policy/code-signing/code-signing-policy-fns";
 import { TCodeSigningRequestData, TCodeSigningScope } from "../approval-policy/code-signing/code-signing-policy-types";
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -49,7 +45,6 @@ import {
   TGetSignerPolicyDTO,
   TListSignerRequestsDTO,
   TPreApproveSigningDTO,
-  TRemoveSignerRequestScopeFieldsDTO,
   TRequestToSignDTO,
   TRevokeSignerRequestDTO,
   TSignerRequestStatusFilter,
@@ -63,7 +58,7 @@ type TSignerPolicyServiceFactoryDep = {
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "create" | "delete">;
   approvalRequestDAL: Pick<
     TApprovalRequestDALFactory,
-    "create" | "find" | "findById" | "findByIdForUpdate" | "findStepsByRequestId" | "updateById" | "transaction"
+    "create" | "find" | "findById" | "findStepsByRequestId" | "updateById" | "transaction"
   >;
   signerRequestDAL: TSignerRequestDALFactory;
   approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create">;
@@ -71,7 +66,7 @@ type TSignerPolicyServiceFactoryDep = {
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "create" | "find" | "updateById">;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "findGroupMembershipsByUserIdInOrg">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -779,96 +774,6 @@ export const signerPolicyServiceFactory = ({
     return result;
   };
 
-  const removeRequestScopeFields = async (dto: TRemoveSignerRequestScopeFieldsDTO) => {
-    const signer = await $loadSignerOrThrow(signerDAL, dto.signerId);
-    await $assertResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId,
-      ResourcePermissionSignerActions.Read
-    );
-
-    const request = await approvalRequestDAL.findById(dto.requestId);
-    if (!request || request.scopeId !== signer.id || request.type !== ApprovalPolicyType.CertCodeSigning) {
-      throw new NotFoundError({ message: `Request with ID '${dto.requestId}' not found on this signer.` });
-    }
-    if (request.status !== ApprovalRequestStatus.Pending) {
-      throw new BadRequestError({
-        message: `This request is ${request.status}. Scope parameters can only be removed while a request is pending review.`
-      });
-    }
-
-    const requestData = (request.requestData as { requestData?: TCodeSigningRequestData } | null)?.requestData;
-    const scope = requestData?.scope;
-    if (!scope || !Object.values(scope).some(Boolean)) {
-      throw new BadRequestError({ message: "This request has no scope parameters to remove." });
-    }
-
-    const steps = await approvalRequestDAL.findStepsByRequestId(dto.requestId);
-    const currentStep = steps.find((step) => step.stepNumber === request.currentStep);
-
-    if (currentStep?.approvals.length) {
-      throw new BadRequestError({
-        message:
-          "This request already has an approval on its current step. Reject it and open a new request to sign with different parameters."
-      });
-    }
-
-    const groupIds = new Set(
-      dto.actor === ActorType.USER && dto.actorOrgId
-        ? (await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(dto.actorId, dto.actorOrgId)).map(
-            (membership) => membership.groupId
-          )
-        : []
-    );
-    const isApprover = Boolean(
-      dto.actor === ActorType.USER &&
-        currentStep?.approvers.some(
-          (approver) =>
-            (approver.type === ApproverType.User && approver.id === dto.actorId) ||
-            (approver.type === ApproverType.Group && groupIds.has(approver.id))
-        )
-    );
-    if (!isApprover) {
-      throw new ForbiddenRequestError({
-        message: "Only an approver on this request can remove its scope parameters."
-      });
-    }
-
-    const { request: updatedRow, removedFields } = await approvalRequestDAL.transaction(async (tx) => {
-      const locked = await approvalRequestDAL.findByIdForUpdate(dto.requestId, tx);
-      if (!locked || locked.status !== ApprovalRequestStatus.Pending) {
-        throw new BadRequestError({ message: "This request is no longer pending review." });
-      }
-
-      const lockedBlob = locked.requestData as { version: number; requestData: TCodeSigningRequestData };
-      const lockedScope = lockedBlob.requestData.scope;
-      const { scope: remainingScope, removed } = lockedScope
-        ? removeCodeSigningScopeFields(lockedScope, dto.removeFields)
-        : { scope: undefined, removed: [] };
-
-      const updatedRequest = await approvalRequestDAL.updateById(
-        dto.requestId,
-        {
-          requestData: {
-            ...lockedBlob,
-            requestData: { ...lockedBlob.requestData, scope: remainingScope }
-          }
-        },
-        tx
-      );
-
-      return { request: updatedRequest, removedFields: removed };
-    });
-
-    const updatedBlob = updatedRow.requestData as { version: 1; requestData: TCodeSigningRequestData };
-
-    return { request: { ...updatedRow, requestData: updatedBlob, steps }, removedFields };
-  };
-
   const revokeRequest = async (dto: TRevokeSignerRequestDTO) => {
     const signer = await $loadSignerOrThrow(signerDAL, dto.signerId);
     await $assertResourcePermission(
@@ -915,7 +820,6 @@ export const signerPolicyServiceFactory = ({
     listRequests,
     requestToSign,
     preApproveSigning,
-    removeRequestScopeFields,
     revokeRequest
   };
 };

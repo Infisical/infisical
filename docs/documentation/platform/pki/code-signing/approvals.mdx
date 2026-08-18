@@ -132,15 +132,11 @@ The [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) and
   Filling in a digest by hand is fiddly, because a sign call carries a digest rather than the file, so the value to declare is the hash of the bytes the call submits and not `sha256sum yourfile`. If you are calling the API directly, see the [Sign API reference](/api-reference/endpoints/code-signing/signers/sign).
 </Note>
 
-### Removing a parameter from a request
+### When the scope needs to change
 
-A scoped request is not fixed once it is open. While it is still pending review, an approver deciding it can stop enforcing any parameter on it, from the **Request Scope** panel on the request. The requester cannot: widening is a reviewer's decision, and the requester is often the signing client itself. The parameters left in place still have to match at signing time.
+A request's scope is fixed once it is open. Nobody edits it during review, including the approvers: an approval means the parameters shown on the request, so if they are wrong the request is rejected and a new one is opened with the parameters you want.
 
-This is what makes a digest-scoped request usable for a pipeline that signs on every build. A client opens its request pinned to the artifact it was denied on, someone drops **Data Digest**, and the approval that follows covers that command on that machine for any artifact until the window or the signature count runs out.
-
-<Warning>
-  Removing a parameter widens what the approval will cover, so it is recorded in the audit log against whoever did it. Once a request is approved its scope is fixed: the access record enforces exactly the parameters that were left in place, and loosening it further means a new request.
-</Warning>
+For a pipeline that signs a different artifact on every run, do not fight this per request. Tell the signing client which parameters to leave out in the first place, with `approval.exclude_scope_fields` in the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module#leaving-parameters-out-of-a-request) or the [Windows KSP](/documentation/platform/pki/code-signing/windows-ksp#leaving-parameters-out-of-a-request). Excluding `data_hash` is the common case: a timestamped signature changes the digest between runs even for the same file, so pinning it would mean a fresh approval for every build. Exclude one parameter at a time. Each one you drop widens what the approval covers, and because an approval belongs to the identity rather than to a machine, excluding all of them grants that identity any signature it asks for until the window or count runs out.
 
 ## Access lifecycle
 

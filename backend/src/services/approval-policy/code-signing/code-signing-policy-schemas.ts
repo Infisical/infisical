@@ -73,16 +73,6 @@ export const CodeSigningScopeInputSchema = CodeSigningScopeSchema.strict();
 export const CODE_SIGNING_SCOPE_API_DESCRIPTION =
   "Optional parameters to scope this approval to (command, signingApplication, signingApplicationHash, hostname, osUsername, ipAddress, dataHash). Every value declared here must match at signing time or the sign call is denied; parameters left out are not restricted. A command must match exactly, apart from whitespace, so a different order of options is a different command. ipAddress is compared against the address the sign call arrives from and dataHash against the digest of the submitted payload, so those two hold even if a caller reports something else.";
 
-export const RemoveCodeSigningScopeFieldsSchema = z.object({
-  removeFields: z
-    .array(z.nativeEnum(CodeSigningScopeField))
-    .min(1)
-    .max(Object.keys(CodeSigningScopeField).length)
-    .describe(
-      "Scope parameters to stop enforcing on this request, for example ['dataHash'] so the approval covers the same command and machine for any payload. Parameters left in place still have to match at signing time, and naming one the request does not declare has no effect."
-    )
-});
-
 export const CodeSigningPolicyConstraintsSchema = z
   .object({
     maxWindowDuration: SigningWindowDurationSchema.optional(),

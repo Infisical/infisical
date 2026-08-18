@@ -1,37 +1,20 @@
-import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { faBan, faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { XIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ConfirmActionModal, ContentLoader, EmptyState } from "@app/components/v2";
-import {
-  Badge,
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  IconButton
-} from "@app/components/v3";
-import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
+import { Badge, Button } from "@app/components/v3";
+import { useOrganization, useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import {
-  ApprovalPolicyScope,
-  ApprovalPolicyType,
-  ApproverType
-} from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
   ApprovalRequestStatus,
-  ApprovalRequestStepStatus,
   CertRequestRequestData,
   CodeSigningRequestData,
   useCancelApprovalRequest
@@ -40,8 +23,7 @@ import { useGetPkiApplicationById } from "@app/hooks/api/pkiApplications";
 import {
   CodeSigningScopeField,
   codeSigningScopeFieldLabels,
-  MONOSPACED_SCOPE_FIELDS,
-  useRemoveSignerRequestScopeFields
+  MONOSPACED_SCOPE_FIELDS
 } from "@app/hooks/api/signers";
 
 import {
@@ -56,33 +38,12 @@ const ROUTE_ID =
 const CodeSigningDetailsSection = ({
   requestData,
   requesterName,
-  requesterEmail,
-  requestId,
-  canEditScope
+  requesterEmail
 }: {
   requestData: CodeSigningRequestData;
   requesterName?: string;
   requesterEmail?: string;
-  requestId: string;
-  canEditScope: boolean;
 }) => {
-  const removeScopeFields = useRemoveSignerRequestScopeFields();
-  const [fieldToRemove, setFieldToRemove] = useState<CodeSigningScopeField | null>(null);
-
-  const handleRemove = async () => {
-    if (!fieldToRemove) return;
-    try {
-      await removeScopeFields.mutateAsync({
-        signerId: requestData.signerId,
-        requestId,
-        removeFields: [fieldToRemove]
-      });
-      setFieldToRemove(null);
-    } catch {
-      // The mutation cache reports the failure
-    }
-  };
-
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -136,71 +97,24 @@ const CodeSigningDetailsSection = ({
               {Object.values(CodeSigningScopeField)
                 .filter((field) => requestData.scope?.[field])
                 .map((field) => (
-                  <div key={field} className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <span className="text-xs text-mineshaft-400">
-                        {codeSigningScopeFieldLabels[field]}
-                      </span>
-                      <p
-                        className={twMerge(
-                          "text-sm break-all text-mineshaft-100",
-                          MONOSPACED_SCOPE_FIELDS.includes(field) && "font-mono text-xs"
-                        )}
-                      >
-                        {requestData.scope?.[field]}
-                      </p>
-                    </div>
-                    {canEditScope && (
-                      <IconButton
-                        variant="ghost"
-                        size="sm"
-                        className="shrink-0"
-                        aria-label={`Stop enforcing ${codeSigningScopeFieldLabels[field]}`}
-                        onClick={() => setFieldToRemove(field)}
-                      >
-                        <XIcon className="size-4" />
-                      </IconButton>
-                    )}
+                  <div key={field}>
+                    <span className="text-xs text-mineshaft-400">
+                      {codeSigningScopeFieldLabels[field]}
+                    </span>
+                    <p
+                      className={twMerge(
+                        "text-sm break-all text-mineshaft-100",
+                        MONOSPACED_SCOPE_FIELDS.includes(field) && "font-mono text-xs"
+                      )}
+                    >
+                      {requestData.scope?.[field]}
+                    </p>
                   </div>
                 ))}
             </div>
           </div>
         )}
       </div>
-
-      <Dialog
-        open={Boolean(fieldToRemove)}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) setFieldToRemove(null);
-        }}
-      >
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              {fieldToRemove
-                ? `Stop enforcing ${codeSigningScopeFieldLabels[fieldToRemove]}?`
-                : "Stop enforcing this parameter?"}
-            </DialogTitle>
-            <DialogDescription>
-              Signing will be allowed whatever value this parameter takes. The other parameters
-              still have to match.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setFieldToRemove(null)} className="flex-1">
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              onClick={handleRemove}
-              isPending={removeScopeFields.isPending}
-              className="flex-1"
-            >
-              Stop enforcing
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
@@ -211,8 +125,6 @@ const PageContent = () => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { user: currentUser } = useUser();
-  const { memberships } = useProjectPermission();
-  const userGroupIds = memberships.map((membership) => membership.actorGroupId).filter(Boolean);
   const cancelApprovalRequest = useCancelApprovalRequest();
   const navigate = useNavigate();
   const { handlePopUpOpen, handlePopUpToggle, popUp } = usePopUp(["cancelRequest"]);
@@ -395,23 +307,11 @@ const PageContent = () => {
   const renderDetailsSection = () => {
     if (isCodeSigning) {
       const reqData = request.requestData.requestData as CodeSigningRequestData;
-      const currentStep = request.steps.find(
-        (step) => step.status === ApprovalRequestStepStatus.InProgress
-      );
-      const isCurrentStepApprover = Boolean(
-        currentStep?.approvers.some((approver) =>
-          approver.type === ApproverType.User
-            ? approver.id === currentUser?.id
-            : userGroupIds.includes(approver.id)
-        )
-      );
       return (
         <CodeSigningDetailsSection
           requestData={reqData}
           requesterName={request.requesterName}
           requesterEmail={request.requesterEmail}
-          requestId={request.id}
-          canEditScope={request.status === ApprovalRequestStatus.Pending && isCurrentStepApprover}
         />
       );
     }

@@ -521,9 +521,4 @@ export type TPreApproveSigningDTO = {
   requestedWindowDuration?: string;
   scope?: TCodeSigningScope;
 };
-export type TRemoveSignerRequestScopeFieldsDTO = {
-  signerId: string;
-  requestId: string;
-  removeFields: CodeSigningScopeField[];
-};
 export type TRevokeSignerRequestDTO = { signerId: string; requestId: string };

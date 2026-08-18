@@ -46,26 +46,6 @@ export const normalizeCodeSigningScope = (scope: TCodeSigningScope | undefined):
   return hasAny ? declared : undefined;
 };
 
-/**
- * The scope with the named parameters taken out. Removing a parameter widens what the approval will
- * cover, so this only ever runs on a pending request and never on an issued grant.
- */
-export const removeCodeSigningScopeFields = (
-  scope: TCodeSigningScope,
-  fields: readonly CodeSigningScopeField[]
-): { scope: TCodeSigningScope | undefined; removed: CodeSigningScopeField[] } => {
-  const removed = Object.values(CodeSigningScopeField).filter(
-    (field) => fields.includes(field) && Boolean(scope[field])
-  );
-
-  const remaining: TCodeSigningScope = {};
-  Object.values(CodeSigningScopeField).forEach((field) => {
-    if (scope[field] && !removed.includes(field)) remaining[field] = scope[field];
-  });
-
-  return { scope: Object.keys(remaining).length ? remaining : undefined, removed };
-};
-
 export type TObservedSigningContext = {
   [CodeSigningScopeField.Command]?: string;
   [CodeSigningScopeField.SigningApplication]?: string;
