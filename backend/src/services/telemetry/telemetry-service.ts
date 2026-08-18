@@ -54,6 +54,7 @@ const TELEMETRY_EVENT_STREAM_BATCH_SIZE = 10_000;
 const TELEMETRY_EVENT_STREAM_COLLECT_CEILING = 50_000;
 const TELEMETRY_EVENT_STREAM_MAX_ENTRIES = 100_000;
 const TELEMETRY_EVENT_STREAM_RETENTION_MS = 30 * 60 * 1000;
+const TELEMETRY_EVENT_STREAM_KEY_TTL_SECONDS = 60 * 60;
 
 type AggregatedEventData = Record<string, unknown>;
 type SingleEventData = {
@@ -68,7 +69,7 @@ export type TTelemetryServiceFactory = ReturnType<typeof telemetryServiceFactory
 export type TTelemetryServiceFactoryDep = {
   keyStore: Pick<
     TKeyStoreFactory,
-    "incrementBy" | "setItemWithExpiryNX" | "streamAdd" | "streamCollect" | "streamTrim"
+    "incrementBy" | "setItemWithExpiryNX" | "setExpiry" | "streamAdd" | "streamCollect" | "streamTrim"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -466,9 +467,10 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     return aggregatedData;
   };
 
-  const parseEventPayloads = (payloads: (string | null)[], context: string): SingleEventData[] => {
+  const parseEventPayloads = (entries: [string, string[]][], context: string): SingleEventData[] => {
     const parsed: SingleEventData[] = [];
-    for (const payload of payloads) {
+    for (const [, fields] of entries) {
+      const payload = fields[1];
       if (payload) {
         try {
           parsed.push(JSON.parse(payload) as SingleEventData);
@@ -561,10 +563,36 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
+  const collectShardEvents = async (streamKey: string, eventType: string, bucketId: string) => {
+    const { entries, lastId } = await keyStore.streamCollect(
+      streamKey,
+      TELEMETRY_EVENT_STREAM_BATCH_SIZE,
+      TELEMETRY_EVENT_STREAM_COLLECT_CEILING
+    );
+
+    if (entries.length >= TELEMETRY_EVENT_STREAM_COLLECT_CEILING) {
+      logger.warn(
+        `Telemetry aggregation hit the collection ceiling for bucket ${bucketId} of ${eventType} [collected=${entries.length}] [ceiling=${TELEMETRY_EVENT_STREAM_COLLECT_CEILING}] [maxLen=${TELEMETRY_EVENT_STREAM_MAX_ENTRIES}] — the shard is backing up; the excess is dropped once it ages past the retention window or the stream hits its MAXLEN cap`
+      );
+    }
+
+    return {
+      events: parseEventPayloads(entries, `event=${eventType} bucket=${bucketId}`),
+      collected: entries.length,
+      lastId
+    };
+  };
+
   const processBucketEvents = async (eventType: string, bucketId: string, orgsIdentifyAttempted: Set<string>) => {
     if (!postHog) return 0;
 
     const streamKey = KeyStorePrefixes.TelemetryAggregatedEventStream(eventType, bucketId);
+
+    try {
+      await keyStore.setExpiry(streamKey, TELEMETRY_EVENT_STREAM_KEY_TTL_SECONDS);
+    } catch (error) {
+      logger.error(error, `Failed to refresh key expiry on bucket ${bucketId} for ${eventType}`);
+    }
 
     try {
       await keyStore.streamTrim(streamKey, `${Date.now() - TELEMETRY_EVENT_STREAM_RETENTION_MS}-0`);
@@ -573,24 +601,9 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
 
     try {
-      const { entries, lastId } = await keyStore.streamCollect(
-        streamKey,
-        TELEMETRY_EVENT_STREAM_BATCH_SIZE,
-        TELEMETRY_EVENT_STREAM_COLLECT_CEILING
-      );
+      const { events, collected, lastId } = await collectShardEvents(streamKey, eventType, bucketId);
 
-      if (entries.length === 0 || !lastId) return 0;
-
-      if (entries.length >= TELEMETRY_EVENT_STREAM_COLLECT_CEILING) {
-        logger.warn(
-          `Telemetry aggregation hit the collection ceiling for bucket ${bucketId} of ${eventType} [collected=${entries.length}] [ceiling=${TELEMETRY_EVENT_STREAM_COLLECT_CEILING}] [maxLen=${TELEMETRY_EVENT_STREAM_MAX_ENTRIES}] — the shard is backing up; the excess is dropped once it ages past the retention window or the stream hits its MAXLEN cap`
-        );
-      }
-
-      const events = parseEventPayloads(
-        entries.map(([, fields]) => fields[1]),
-        `event=${eventType} bucket=${bucketId}`
-      );
+      if (collected === 0 || !lastId) return 0;
 
       await publishAggregatedEvents(eventType, events, orgsIdentifyAttempted);
 
@@ -604,7 +617,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
   };
 
-  const BUCKET_CONCURRENCY = 5;
+  const BUCKET_CONCURRENCY = 2;
 
   const processAggregatedEvents = async () => {
     if (!postHog) return;

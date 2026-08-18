@@ -40,6 +40,7 @@ vi.mock("posthog-node", () => ({
 import { POSTHOG_AGGREGATED_EVENTS, telemetryServiceFactory } from "./telemetry-service";
 
 const RETENTION_MS = 30 * 60 * 1000;
+const KEY_TTL_SECONDS = 60 * 60;
 const BUCKET_COUNT = 30;
 const SHARD_COUNT = POSTHOG_AGGREGATED_EVENTS.length * BUCKET_COUNT;
 
@@ -68,6 +69,7 @@ const createHarness = () => {
   const keyStore = {
     incrementBy: vi.fn<(key: string, value: number) => Promise<number>>(async () => 1),
     setItemWithExpiryNX: vi.fn<() => Promise<"OK" | null>>(async () => null),
+    setExpiry: vi.fn<(key: string, expiryInSeconds: number) => Promise<number>>(async () => 1),
     streamAdd: vi.fn<
       (key: string, id: string, fieldValue: Record<string, string>, maxLen?: number) => Promise<string | null>
     >(async () => "1-0"),
@@ -242,6 +244,78 @@ describe("telemetry aggregated event storage", () => {
     // otherwise grow until MAXLEN evicts it, with nothing bounding how long it sits in Redis.
     expect(drainTrims(keyStore)).toHaveLength(0);
     expect(retentionTrims(keyStore)).toHaveLength(SHARD_COUNT);
+  });
+
+  test("bounds how many shards it holds in memory at once", async () => {
+    const { keyStore, telemetryService } = createHarness();
+
+    // The per-shard collection ceiling only bounds the cron's footprint if the number of shards
+    // in flight is bounded too, and nothing else in the run observes that.
+    let inFlight = 0;
+    let peakInFlight = 0;
+    keyStore.streamCollect.mockImplementation(async () => {
+      inFlight += 1;
+      peakInFlight = Math.max(peakInFlight, inFlight);
+      await Promise.resolve();
+      inFlight -= 1;
+      return collectResult([pulledEvent()]);
+    });
+
+    await telemetryService.processAggregatedEvents();
+
+    expect(keyStore.streamCollect).toHaveBeenCalledTimes(SHARD_COUNT);
+    expect(peakInFlight).toBeGreaterThan(0);
+    expect(peakInFlight).toBeLessThanOrEqual(2);
+  });
+
+  test("refreshes the key expiry on every shard so an orphaned shard self-cleans", async () => {
+    const { keyStore, telemetryService } = createHarness();
+
+    await telemetryService.processAggregatedEvents();
+
+    const { calls } = keyStore.setExpiry.mock;
+    expect(calls).toHaveLength(SHARD_COUNT);
+    expect(new Set(calls.map(([key]) => key)).size).toBe(SHARD_COUNT);
+    // The TTL only ever reaps a shard this run no longer visits. On a shard that is still written,
+    // the age trim has to be what drops entries, so the TTL must outlive the retention window.
+    for (const [, ttlSeconds] of calls) {
+      expect(ttlSeconds).toBe(KEY_TTL_SECONDS);
+      expect(ttlSeconds * 1000).toBeGreaterThan(RETENTION_MS);
+    }
+  });
+
+  test("refreshes the key expiry even when publishing fails", async () => {
+    const { keyStore, telemetryService } = createHarness();
+
+    keyStore.streamCollect.mockResolvedValueOnce(collectResult([pulledEvent()]));
+    postHogClient.capture.mockImplementationOnce(() => {
+      throw new Error("posthog down");
+    });
+
+    await telemetryService.processAggregatedEvents();
+
+    expect(drainTrims(keyStore)).toHaveLength(0);
+    expect(keyStore.setExpiry).toHaveBeenCalledTimes(SHARD_COUNT);
+  });
+
+  test("drains a shard whose expiry refresh fails", async () => {
+    const { keyStore, telemetryService } = createHarness();
+    const bucketId = telemetryService.getBucketForDistinctId("user-1");
+    const streamKey = `telemetry-agg-stream:${PostHogEventTypes.SecretPulled}:${bucketId}`;
+
+    keyStore.setExpiry.mockImplementation(async (key) => {
+      if (key === streamKey) throw new Error("redis hiccup");
+      return 1;
+    });
+    keyStore.streamCollect.mockImplementation(async (key) =>
+      key === streamKey ? collectResult([pulledEvent()], "3-0") : { entries: [], lastId: null }
+    );
+
+    await telemetryService.processAggregatedEvents();
+
+    expect(postHogClient.capture).toHaveBeenCalledTimes(1);
+    expect(retentionTrims(keyStore)).toHaveLength(SHARD_COUNT);
+    expect(drainTrims(keyStore)).toEqual([[streamKey, "3-0", true]]);
   });
 
   test("drains a shard whose retention trim fails", async () => {
