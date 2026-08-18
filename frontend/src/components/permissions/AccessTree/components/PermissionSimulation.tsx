@@ -67,7 +67,7 @@ export const PermissionSimulation = ({
       position="top-left"
       className={`group flex flex-col gap-2 pr-4 pb-4 ${expand ? "" : "cursor-pointer"}`}
     >
-      <div className="flex w-[20rem] flex-col gap-1.5 rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-2 font-inter text-gray-200">
+      <div className="flex w-[20rem] flex-col gap-1.5 rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-2 font-inter text-foreground">
         <div>
           <div className="flex w-full items-center justify-between">
             <span className="text-sm">Permission Simulation</span>

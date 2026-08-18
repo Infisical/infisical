@@ -23,7 +23,7 @@ const iconButtonVariants = cva(
     variants: {
       colorSchema: {
         primary: ["bg-primary", "text-black", "border-primary hover:opacity-80"],
-        secondary: ["bg-mineshaft", "text-gray-300", "border-mineshaft hover:bg-bunker-400"],
+        secondary: ["bg-mineshaft", "text-label", "border-mineshaft hover:bg-bunker-400"],
         danger: ["bg-[#973939]", "text-white", "border-red"]
       },
       variant: {

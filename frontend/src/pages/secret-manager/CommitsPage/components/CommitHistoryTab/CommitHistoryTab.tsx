@@ -38,7 +38,7 @@ const CommitItem = ({
       }}
       className="w-full border border-b-0 border-mineshaft-600 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md last:border-b"
     >
-      <div className="flex gap-2 px-4 py-3 transition-colors duration-200 hover:bg-zinc-800">
+      <div className="flex gap-2 px-4 py-3 transition-colors duration-200 hover:bg-container-hover">
         <div className="flex min-w-0 flex-1 flex-col items-start">
           <p className="block w-full truncate text-left text-sm text-mineshaft-100">
             {commit.message || <span className="text-mineshaft-400 italic">No message</span>}

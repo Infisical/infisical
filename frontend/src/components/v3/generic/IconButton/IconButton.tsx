@@ -40,10 +40,10 @@ const iconButtonVariants = cva(
         pam: "border-product-pam/30 bg-product-pam/25 text-foreground hover:bg-product-pam/30 hover:border-product-pam/35 data-[state=open]:bg-product-pam/30 data-[state=open]:border-product-pam/35"
       },
       size: {
-        xs: "h-7 w-7 [&>svg]:size-4 rounded-sm [&>svg]:stroke-[1.75]",
-        sm: "h-8 w-8 [&>svg]:size-4 [&>svg]:stroke-[1.5]",
-        md: "h-9 w-9 [&>svg]:size-4 [&>svg]:stroke-[1.5]",
-        lg: "h-10 w-10 [&>svg]:size-7 [&>svg]:stroke-[1.5]"
+        xs: "size-control-xs [&>svg]:size-icon-md rounded-sm [&>svg]:stroke-[1.75]",
+        sm: "size-control-sm [&>svg]:size-icon-md [&>svg]:stroke-[1.5]",
+        md: "size-control-md [&>svg]:size-icon-md [&>svg]:stroke-[1.5]",
+        lg: "size-control-lg [&>svg]:size-icon-xl [&>svg]:stroke-[1.5]"
       },
       isPending: {
         true: "text-transparent"

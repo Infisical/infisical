@@ -177,7 +177,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
   if (!selectedCommitId) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <p className="text-gray-400">Select a commit to view rollback preview</p>
+        <p className="text-muted">Select a commit to view rollback preview</p>
       </div>
     );
   }
@@ -202,12 +202,12 @@ export const RollbackPreviewTab = (): JSX.Element => {
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center">
               <FontAwesomeIcon icon={faFolder} className="mr-2 text-yellow-500" />
-              <span className="font-medium text-white">
+              <span className="font-medium text-foreground">
                 {currentFolderChanges.folderPath || currentFolderChanges.folderName}
               </span>
             </div>
             {currentFolderChanges.changes.length > 0 && (
-              <span className="ml-2 rounded-full bg-mineshaft-600 px-2 py-0.5 text-xs text-gray-300">
+              <span className="ml-2 rounded-full bg-mineshaft-600 px-2 py-0.5 text-xs text-label">
                 {currentFolderChanges.changes.length}
               </span>
             )}
@@ -217,7 +217,9 @@ export const RollbackPreviewTab = (): JSX.Element => {
         {deepRollback && nestedFolderChanges.length > 0 && (
           <>
             <div className="border-b border-mineshaft-600 bg-mineshaft-800 px-4 py-2">
-              <span className="text-sm font-medium text-white">Child folders to be restored</span>
+              <span className="text-sm font-medium text-foreground">
+                Child folders to be restored
+              </span>
             </div>
             {nestedFolderChanges.map((folder) => (
               <div
@@ -230,12 +232,12 @@ export const RollbackPreviewTab = (): JSX.Element => {
                 <div className="flex items-center justify-between px-4 py-2">
                   <div className="flex items-center">
                     <FontAwesomeIcon icon={faFolder} className="mr-2 text-yellow-500" size="sm" />
-                    <span className="max-w-[150px] truncate text-sm font-medium text-white">
+                    <span className="max-w-[150px] truncate text-sm font-medium text-foreground">
                       {folder.folderPath || folder.folderName}
                     </span>
                   </div>
                   {folder.changes.length > 0 && (
-                    <span className="rounded-full bg-mineshaft-600 px-2 py-0.5 text-xs text-gray-300">
+                    <span className="rounded-full bg-mineshaft-600 px-2 py-0.5 text-xs text-label">
                       {folder.changes.length}
                     </span>
                   )}
@@ -262,7 +264,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
     if (!selectedFolder || selectedFolderChanges.length === 0) {
       return (
         <div className="flex h-[70vh] w-full items-center justify-center border border-mineshaft-600">
-          <p className="text-gray-400">No changes in selected folder</p>
+          <p className="text-muted">No changes in selected folder</p>
         </div>
       );
     }
@@ -293,7 +295,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-8xl justify-center bg-bunker-800 pt-2 pb-4 text-white">
+    <div className="mx-auto flex w-full max-w-8xl justify-center bg-bunker-800 pt-2 pb-4 text-foreground">
       <ProjectPermissionCan
         renderGuardBanner
         I={ProjectPermissionCommitsActions.PerformRollback}

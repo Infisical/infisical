@@ -666,7 +666,7 @@ export const CreatePkiAlertV2FormSteps = ({
 
                       return (
                         <Tr>
-                          <Td colSpan={3} className="py-8 text-center text-gray-400">
+                          <Td colSpan={3} className="py-8 text-center text-muted">
                             No certificates currently match this alert&apos;s criteria
                           </Td>
                         </Tr>

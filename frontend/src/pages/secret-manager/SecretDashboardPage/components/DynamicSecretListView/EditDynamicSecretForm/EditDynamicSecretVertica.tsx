@@ -428,7 +428,7 @@ export const EditDynamicSecretVerticaForm = ({
 
                         <div className="space-y-2">
                           <h4 className="text-sm font-medium">Minimum Required Character Counts</h4>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-muted">
                             {(() => {
                               const total = Object.values(
                                 watch("inputs.passwordRequirements.required") || {}

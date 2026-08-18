@@ -70,7 +70,7 @@ export type MenuGroupProps = {
 
 export const MenuGroup = ({ children, title, className }: MenuGroupProps): JSX.Element => (
   <>
-    <li className={twMerge("px-2 pt-3 text-xs font-medium text-gray-400 uppercase", className)}>
+    <li className={twMerge("px-2 pt-3 text-xs font-medium text-muted uppercase", className)}>
       {title}
     </li>
     {children}

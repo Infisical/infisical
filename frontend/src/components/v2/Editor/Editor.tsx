@@ -21,7 +21,7 @@ function onError(error: Error) {
 }
 
 const inputVariants = cva(
-  "input w-full py-1.5 text-gray-400 placeholder:text-sm placeholder-gray-500/50 outline-hidden focus:ring-2 hover:ring-bunker-400/60 duration-100",
+  "input w-full py-1.5 text-muted placeholder:text-sm placeholder:text-muted/50 outline-hidden focus:ring-2 hover:ring-bunker-400/60 duration-100",
   {
     variants: {
       size: {
@@ -35,7 +35,7 @@ const inputVariants = cva(
         false: ""
       },
       variant: {
-        filled: ["bg-mineshaft-900", "text-gray-400"],
+        filled: ["bg-mineshaft-900", "text-muted"],
         outline: ["bg-transparent"],
         plain: "bg-transparent outline-hidden"
       },
@@ -63,7 +63,7 @@ const inputParentContainerVariants = cva("inline-flex font-inter items-center bo
       false: ""
     },
     variant: {
-      filled: ["bg-bunker-800", "text-gray-400"],
+      filled: ["bg-bunker-800", "text-muted"],
       outline: ["bg-transparent"],
       plain: "border-none"
     }

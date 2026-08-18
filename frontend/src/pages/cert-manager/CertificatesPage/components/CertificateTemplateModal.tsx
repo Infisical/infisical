@@ -224,7 +224,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
         <form onSubmit={handleSubmit(onFormSubmit)}>
           {certTemplate && (
             <FormControl label="Certificate Template ID">
-              <Input value={certTemplate.id} isDisabled className="bg-white/[0.07]" />
+              <Input value={certTemplate.id} isDisabled className="bg-foreground/5" />
             </FormControl>
           )}
           <Controller

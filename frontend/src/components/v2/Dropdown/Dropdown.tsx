@@ -161,7 +161,7 @@ export const DropdownMenuSeparator = forwardRef<
   <DropdownMenuPrimitive.Separator
     ref={ref}
     {...props}
-    className={twMerge("m-1 h-px bg-gray-700", className)}
+    className={twMerge("m-1 h-px bg-border", className)}
   />
 ));
 

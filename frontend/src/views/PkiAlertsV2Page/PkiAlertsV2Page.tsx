@@ -121,7 +121,7 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
 
     return (
       <Tr>
-        <Td colSpan={6} className="py-8 text-center text-gray-400">
+        <Td colSpan={6} className="py-8 text-center text-muted">
           {search ? "No alerts found matching your search." : "No PKI alerts configured yet."}
         </Td>
       </Tr>
@@ -145,7 +145,7 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
           <div className="relative w-full">
             <FontAwesomeIcon
               icon={faSearch}
-              className="absolute top-1/2 left-3 -translate-y-1/2 transform text-gray-400"
+              className="absolute top-1/2 left-3 -translate-y-1/2 transform text-muted"
             />
             <Input
               placeholder="Search alerts..."

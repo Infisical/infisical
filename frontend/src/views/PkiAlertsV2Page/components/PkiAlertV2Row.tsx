@@ -57,7 +57,7 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
     <Tr>
       <Td>
         <div className="flex items-center gap-2">
-          <div className="font-medium text-gray-200">{alert.name}</div>
+          <div className="font-medium text-foreground">{alert.name}</div>
           {alert.description && (
             <Tooltip content={alert.description}>
               <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
@@ -66,14 +66,14 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
         </div>
       </Td>
       <Td>
-        <span className="text-gray-300">{formatEventType(alert.eventType)}</span>
+        <span className="text-label">{formatEventType(alert.eventType)}</span>
       </Td>
       <Td>
         <Badge variant={alert.enabled ? "success" : "neutral"}>
           {alert.enabled ? "Enabled" : "Disabled"}
         </Badge>
       </Td>
-      <Td className="text-gray-300">
+      <Td className="text-label">
         {alert.eventType === PkiAlertEventTypeV2.EXPIRATION ? (
           formatAlertBefore(alert.alertBefore)
         ) : (

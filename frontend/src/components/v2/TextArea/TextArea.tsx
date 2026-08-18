@@ -11,7 +11,7 @@ type Props = {
 };
 
 const textAreaVariants = cva(
-  "textarea w-full p-2 focus:ring-2 ring-primary-800 outline-hidden border text-gray-400 font-inter placeholder-gray-500/50",
+  "textarea w-full p-2 focus:ring-2 ring-primary-800 outline-hidden border text-muted font-inter placeholder:text-muted/50",
   {
     variants: {
       size: {
@@ -25,7 +25,7 @@ const textAreaVariants = cva(
         false: ""
       },
       variant: {
-        filled: ["bg-mineshaft-900", "text-gray-400"],
+        filled: ["bg-mineshaft-900", "text-muted"],
         outline: ["bg-transparent"],
         plain: "bg-transparent outline-hidden"
       },

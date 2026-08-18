@@ -350,7 +350,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
               {isInfisicalCloud() ? (
                 <>
                   <div className="mb-2">Account Recovery Required</div>
-                  <div className="mb-2 text-gray-300">
+                  <div className="mb-2 text-label">
                     Contact support with valid proof of account ownership to initiate recovery
                   </div>
                   <div className="mt-1">support@infisical.com</div>
@@ -358,7 +358,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
               ) : (
                 <>
                   <div className="mb-2">Account Recovery Required</div>
-                  <div className="text-gray-300">
+                  <div className="text-label">
                     Contact your instance administrator with valid proof of account ownership to
                     initiate recovery
                   </div>

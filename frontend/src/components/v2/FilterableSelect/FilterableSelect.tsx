@@ -88,7 +88,7 @@ export const FilterableSelect = <T,>({
           twMerge(
             isFocused ? "border-primary-400/50" : "border-mineshaft-600",
             `w-full rounded-md border bg-mineshaft-900 p-0.5 font-inter text-mineshaft-200 ${
-              isDisabled ? "cursor-not-allowed!" : "hover:cursor-pointer hover:border-gray-400"
+              isDisabled ? "cursor-not-allowed!" : "hover:cursor-pointer hover:border-border"
             } `
           ),
         placeholder: () =>

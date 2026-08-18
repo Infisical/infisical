@@ -46,14 +46,14 @@ export const SecretSearchInput = ({
                   />
                 </Combobox.Button>
               </Tooltip>
-              <div className="relative inline-flex w-full items-center rounded-md rounded-l-none border border-mineshaft-500 bg-bunker-800 font-inter text-gray-400">
+              <div className="relative inline-flex w-full items-center rounded-md rounded-l-none border border-mineshaft-500 bg-bunker-800 font-inter text-muted">
                 <Combobox.Input
                   onKeyDown={(e) => {
                     if (activeIndex === 0 && e.key === "Enter") setIsOpen(true);
                   }}
                   autoComplete="off"
                   className={twMerge(
-                    "input text-md h-[2.3rem] w-full rounded-md rounded-l-none bg-mineshaft-800 py-1.5 pl-2.5 text-gray-400 placeholder-mineshaft-50/50 outline-hidden duration-200 placeholder:text-sm hover:ring-bunker-400/60 focus:bg-mineshaft-700/80 focus:ring-1 focus:ring-primary-400/50",
+                    "input text-md h-[2.3rem] w-full rounded-md rounded-l-none bg-mineshaft-800 py-1.5 pl-2.5 text-muted placeholder-mineshaft-50/50 outline-hidden duration-200 placeholder:text-sm hover:ring-bunker-400/60 focus:bg-mineshaft-700/80 focus:ring-1 focus:ring-primary-400/50",
                     hasSearch ? "pr-8" : "pr-2.5"
                   )}
                   placeholder={

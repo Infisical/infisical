@@ -65,7 +65,7 @@ export type StepProps = {
 
 export const Step = ({ title, description }: StepProps) => {
   return (
-    <div className="flex flex-col text-gray-300">
+    <div className="flex flex-col text-label">
       <div className="text-sm font-medium">{title}</div>
       {description && <div className="text-xs">{description}</div>}
     </div>

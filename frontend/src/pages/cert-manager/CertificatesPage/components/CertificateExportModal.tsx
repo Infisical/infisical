@@ -169,9 +169,7 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
       <ModalContent title="Export Certificate">
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <div className="space-y-4">
-            <p className="text-sm text-gray-400">
-              Choose the format for exporting your certificate
-            </p>
+            <p className="text-sm text-muted">Choose the format for exporting your certificate</p>
 
             <Controller
               control={control}

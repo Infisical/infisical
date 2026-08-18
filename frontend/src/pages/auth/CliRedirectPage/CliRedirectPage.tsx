@@ -42,7 +42,7 @@ export const CliRedirectPage = () => {
         <title>Infisical CLI | Login Successful!</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <AuthPagePanel className="flex flex-col items-center space-y-4 text-gray-200">
+      <AuthPagePanel className="flex flex-col items-center space-y-4 text-foreground">
         {cliToken ? (
           <>
             <div className="pb-4">

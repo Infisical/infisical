@@ -15,7 +15,7 @@ export const HoverCardContent = ({ children, className, ...props }: HoverCardCon
     <HoverCardPrimitive.Content
       {...props}
       className={twMerge(
-        "relative w-64 rounded-md bg-mineshaft-600 fill-mineshaft-600 p-4 pt-6 font-inter text-gray-200 shadow-md",
+        "relative w-64 rounded-md bg-mineshaft-600 fill-mineshaft-600 p-4 pt-6 font-inter text-foreground shadow-md",
         className
       )}
     >

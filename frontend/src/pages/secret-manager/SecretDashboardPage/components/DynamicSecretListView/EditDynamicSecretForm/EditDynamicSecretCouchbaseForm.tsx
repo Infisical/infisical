@@ -710,7 +710,7 @@ export const EditDynamicSecretCouchbaseForm = ({
                     label="API Key"
                   >
                     <SecretInput
-                      containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                      containerClassName="text-muted group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
                       value={value}
                       valueAlwaysHidden
                       rows={1}
@@ -784,7 +784,7 @@ export const EditDynamicSecretCouchbaseForm = ({
 
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium">Minimum Required Character Counts</h4>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-muted">
                           {(() => {
                             const total = Object.values(
                               watch("inputs.passwordRequirements.required") || {}

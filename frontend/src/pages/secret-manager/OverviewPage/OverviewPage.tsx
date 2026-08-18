@@ -2796,7 +2796,7 @@ const OverviewPageContent = () => {
                       to={ROUTE_PATHS.SecretManager.ApprovalPage.path}
                       params={{ orgId, projectId }}
                       search={{ selectedTab: "approval-requests", requestId: "" }}
-                      className="ml-auto flex shrink-0 items-center gap-1 text-xs text-white underline underline-offset-2"
+                      className="ml-auto flex shrink-0 items-center gap-1 text-xs text-foreground underline underline-offset-2"
                     >
                       Review
                       <ChevronRightIcon className="mt-px size-4" />
@@ -3875,9 +3875,9 @@ const OverviewPageContent = () => {
               {replicateCreateCount > 1 ? "s" : ""} to this environment?
             </div>
           ) : (
-            <div className="flex flex-col text-gray-300">
+            <div className="flex flex-col text-label">
               <div>Your project already contains the following {replicateUpdateCount} secrets:</div>
-              <div className="mt-2 text-sm text-gray-400">
+              <div className="mt-2 text-sm text-muted">
                 {(popUp?.confirmReplicateUpload?.data as TSecOverwriteOpt)?.update
                   ?.map((sec) => sec.secretKey)
                   .join(", ")}

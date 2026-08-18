@@ -35,7 +35,7 @@ export const OrganizationLayout = () => {
     <>
       <Banner />
       <SidebarProvider
-        className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-bunker-800 transition-all`}
+        className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-bunker-800`}
       >
         <Navbar />
         <div className="flex min-h-0 flex-1 overflow-hidden">

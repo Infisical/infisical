@@ -32,9 +32,7 @@ export type TableProps = {
 };
 
 export const Table = ({ children, className }: TableProps): JSX.Element => (
-  <table
-    className={twMerge("w-full bg-mineshaft-800 p-2 text-left text-sm text-gray-300", className)}
-  >
+  <table className={twMerge("w-full bg-mineshaft-800 p-2 text-left text-sm text-label", className)}>
     {children}
   </table>
 );

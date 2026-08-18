@@ -25,7 +25,7 @@ export const AlertingPage = () => {
   const hasV1Alerts = v1AlertsData?.alerts && v1AlertsData.alerts.length > 0;
 
   return (
-    <div className="mx-auto flex h-full flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex h-full flex-col justify-between bg-bunker-800 text-foreground">
       <Helmet>
         <title>{t("common.head-title", { title: "Alerting" })}</title>
       </Helmet>

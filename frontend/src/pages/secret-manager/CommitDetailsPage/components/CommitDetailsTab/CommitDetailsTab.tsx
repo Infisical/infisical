@@ -313,10 +313,10 @@ export const CommitDetailsTab = ({
                   >
                     <div className="flex items-center space-x-3">
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-white">
+                        <span className="text-sm font-medium text-foreground">
                           Roll back to this commit
                         </span>
-                        <span className="text-xs leading-snug break-words whitespace-normal text-gray-400">
+                        <span className="text-xs leading-snug break-words whitespace-normal text-muted">
                           Return this folder to its exact state at the time of this commit,
                           discarding all other changes made after it
                         </span>
@@ -330,8 +330,8 @@ export const CommitDetailsTab = ({
                 >
                   <div className="flex items-center space-x-3">
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-white">Revert changes</span>
-                      <span className="text-xs leading-snug break-words whitespace-normal text-gray-400">
+                      <span className="text-sm font-medium text-foreground">Revert changes</span>
+                      <span className="text-xs leading-snug break-words whitespace-normal text-muted">
                         Will restore to the previous version of affected resources
                       </span>
                     </div>

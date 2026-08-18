@@ -3,6 +3,7 @@ import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 
 import { NotificationContainer } from "@app/components/notifications";
 import { TooltipProvider } from "@app/components/v2";
+import { ThemeProvider } from "@app/components/v3/platform/ThemeProvider";
 import { adminQueryKeys, fetchServerConfig } from "@app/hooks/api/admin/queries";
 import { TServerConfig } from "@app/hooks/api/admin/types";
 import { authKeys } from "@app/hooks/api/auth/queries";
@@ -16,12 +17,14 @@ type TRouterContext = {
 
 const RootPage = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Outlet />
-        <NotificationContainer />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Outlet />
+          <NotificationContainer />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 };
 

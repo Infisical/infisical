@@ -56,7 +56,7 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <div className="h-full">
-        <div className="mx-auto h-full w-full max-w-8xl bg-bunker-800 text-white">
+        <div className="mx-auto h-full w-full max-w-8xl bg-bunker-800 text-foreground">
           <Button
             variant="ghost"
             type="button"

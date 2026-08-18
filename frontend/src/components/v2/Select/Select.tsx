@@ -102,7 +102,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
                 {isLoading ? (
                   <div className="flex items-center justify-center">
                     <Spinner size="xs" />
-                    <span className="ml-2 text-xs text-gray-500">Loading...</span>
+                    <span className="ml-2 text-xs text-muted">Loading...</span>
                   </div>
                 ) : (
                   children
@@ -138,7 +138,7 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
         className={twMerge(
           "relative mb-0.5 cursor-pointer items-center truncate overflow-hidden rounded-md py-2 pr-4 pl-10 text-sm outline-hidden transition-all select-none hover:bg-mineshaft-500 data-highlighted:bg-mineshaft-700/80",
           isSelected && "bg-primary",
-          isDisabled && "cursor-not-allowed text-gray-600 opacity-80 hover:bg-transparent!",
+          isDisabled && "cursor-not-allowed text-muted opacity-80 hover:bg-transparent!",
           className
         )}
         ref={forwardedRef}
@@ -174,7 +174,7 @@ export const SelectClear = forwardRef<HTMLDivElement, SelectClearProps>(
           "relative mb-0.5 flex cursor-pointer items-center rounded-md py-2 pr-4 pl-10 text-sm outline-hidden transition-all select-none hover:bg-mineshaft-500 data-highlighted:bg-mineshaft-700/80",
           isSelected && "bg-primary",
           isDisabled &&
-            "cursor-not-allowed text-gray-600 hover:bg-transparent hover:text-mineshaft-600",
+            "cursor-not-allowed text-muted hover:bg-transparent hover:text-mineshaft-600",
           className
         )}
         ref={forwardedRef}

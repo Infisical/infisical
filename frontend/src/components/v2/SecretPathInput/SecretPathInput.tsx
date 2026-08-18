@@ -142,7 +142,7 @@ const SecretPathInputBase = ({
             maxHeight: "var(--radix-select-content-available-height)"
           }}
         >
-          <div className="max-h-[25vh] thin-scrollbar w-full flex-col items-center justify-center overflow-y-auto rounded-md text-white">
+          <div className="max-h-[25vh] thin-scrollbar w-full flex-col items-center justify-center overflow-y-auto rounded-md text-foreground">
             {suggestions.map((suggestion, i) => (
               <div
                 tabIndex={0}
@@ -158,7 +158,7 @@ const SecretPathInputBase = ({
               >
                 <div
                   className={`${
-                    highlightedIndex === i ? "bg-gray-600" : ""
+                    highlightedIndex === i ? "bg-container-hover" : ""
                   } text-md relative mb-0.5 flex w-full cursor-pointer items-center justify-between rounded-md px-2 py-1 outline-hidden transition-all select-none hover:bg-mineshaft-500 data-highlighted:bg-mineshaft-500`}
                 >
                   <div className="flex gap-2">

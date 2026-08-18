@@ -73,7 +73,7 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
                 return (
                   <div
                     key={el.id}
-                    className="flex items-center gap-8 rounded-md bg-mineshaft-700 px-4 py-3 text-gray-200"
+                    className="flex items-center gap-8 rounded-md bg-mineshaft-700 px-4 py-3 text-foreground"
                   >
                     <div className="group flex grow flex-col">
                       <div className="truncate text-sm transition-colors">{el.username}</div>

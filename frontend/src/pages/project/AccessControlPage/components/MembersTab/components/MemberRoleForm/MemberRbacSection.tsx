@@ -226,7 +226,7 @@ export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) 
                       side="right"
                       sideOffset={12}
                       hideCloseBtn
-                      className="border border-gray-600 pt-4"
+                      className="border border-border pt-4"
                     >
                       <div className="flex flex-col space-y-4">
                         <div className="border-b border-b-gray-700 pb-2 text-sm text-mineshaft-300">

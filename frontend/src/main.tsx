@@ -6,6 +6,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import NProgress from "nprogress";
 
 import { Lottie } from "./components/v2";
+import { initializeTheme } from "./components/v3/platform/ThemeProvider";
 import { queryClient } from "./hooks/api/reactQuery";
 import { initializePlatform } from "./lib/fn/platform";
 import { ErrorPage } from "./pages/public/ErrorPage/ErrorPage";
@@ -29,6 +30,7 @@ import "./translation";
 // for passing in lng and translations on init/
 
 initializePlatform();
+initializeTheme();
 
 // Configure Lottie player to use local WASM file
 setWasmUrl(lottieWasmUrl);

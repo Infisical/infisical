@@ -36,7 +36,7 @@ export const FormLabel = ({
   >
     {label}
     {isRequired && <span className="ml-1 text-red">*</span>}
-    {isOptional && <span className="ml-1 text-xs text-gray-500 italic">- Optional</span>}
+    {isOptional && <span className="ml-1 text-xs text-muted italic">- Optional</span>}
     {icon && !tooltipText && (
       <span className="ml-2 cursor-default text-mineshaft-300 hover:text-mineshaft-200">
         {icon}

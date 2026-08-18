@@ -16,7 +16,6 @@ import {
   SearchIcon,
   StarIcon
 } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -597,12 +596,7 @@ const MyProjectsForType = ({
   }
 
   return (
-    <Card
-      className={twMerge(
-        projectsViewMode === ProjectsViewMode.GRID ? "border-transparent bg-transparent p-0" : "",
-        "transition-all duration-100"
-      )}
-    >
+    <Card>
       <CardHeader>
         <Toolbar
           searchFilter={searchFilter}
@@ -1023,7 +1017,13 @@ const Toolbar = ({
         <Tooltip>
           <TooltipTrigger tabIndex={-1} asChild>
             <span className="cursor-not-allowed">
-              <IconButton variant="outline" size="sm" aria-label="Grid view" isDisabled>
+              <IconButton
+                variant="outline"
+                size="sm"
+                aria-label="Grid view"
+                className="rounded-r-none"
+                isDisabled
+              >
                 <LayoutGridIcon />
               </IconButton>
             </span>

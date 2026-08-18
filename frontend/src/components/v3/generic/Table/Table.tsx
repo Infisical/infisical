@@ -88,8 +88,8 @@ function TableHead({
     <th
       data-slot="table-head"
       className={cn(
-        "h-[30px] border-x-0 border-t-0 border-b border-border px-3 text-left align-middle text-xs whitespace-nowrap text-accent select-none [&:has([role=checkbox])]:pr-0",
-        "has-[>svg]:cursor-pointer [&>svg]:ml-1 [&>svg]:inline-block [&>svg:not([class*='size-'])]:size-4",
+        "h-table-header border-x-0 border-t-0 border-b border-border px-3 text-left align-middle text-xs whitespace-nowrap text-accent select-none [&:has([role=checkbox])]:pr-0",
+        "has-[>svg]:cursor-pointer [&>svg]:ml-1 [&>svg]:inline-block [&>svg:not([class*='size-'])]:size-icon-md",
         isTruncatable && "truncate",
         className
       )}
@@ -125,7 +125,7 @@ function TableCell({
     <td
       data-slot="table-cell"
       className={cn(
-        "h-[40px] border-b border-border px-3 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>svg]:size-4",
+        "h-table-row border-b border-border px-3 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>svg]:size-icon-md",
         isTruncatable && "max-w-0 truncate",
         className
       )}

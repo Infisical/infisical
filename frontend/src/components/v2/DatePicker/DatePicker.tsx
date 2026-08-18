@@ -153,7 +153,7 @@ export const DatePicker = ({
               type="time"
               value={displayUtc ? localTimeToUTC(timeValue) : timeValue}
               onChange={handleTimeChange}
-              className="bg-mineshaft-700 text-white scheme-dark"
+              className="bg-mineshaft-700 text-foreground scheme-dark"
             />
           </div>
         )}

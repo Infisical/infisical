@@ -153,7 +153,7 @@ export const ProjectTemplateEditRoleForm = ({
             </div>
           )}
         </div>
-        <div className="mt-2 border-b border-gray-800 p-4 pt-2 first:rounded-t-md last:rounded-b-md">
+        <div className="mt-2 border-b border-border p-4 pt-2 first:rounded-t-md last:rounded-b-md">
           {isDisabled ? (
             <div className="flex flex-col">
               <span className="text-lg font-medium">{role?.name}</span>

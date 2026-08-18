@@ -10,7 +10,7 @@ export const SidebarHeader = () => {
       <div className="mr-2 flex h-8 w-8 items-center justify-center rounded-md bg-primary">
         {currentOrg?.name.charAt(0)}
       </div>
-      <div className="flex grow flex-col text-white">
+      <div className="flex grow flex-col text-foreground">
         <div className="max-w-36 truncate text-sm font-medium text-ellipsis capitalize">
           {currentOrg?.name}
         </div>

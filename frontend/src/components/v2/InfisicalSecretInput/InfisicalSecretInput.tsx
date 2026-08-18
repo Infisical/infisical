@@ -511,7 +511,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
               />
             ) : (
               <div
-                className="h-full w-full flex-col items-center justify-center rounded-md text-white"
+                className="h-full w-full flex-col items-center justify-center rounded-md text-foreground"
                 ref={popoverContentRef}
               >
                 {suggestions.map((item, i) => {
@@ -520,7 +520,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                   const isNoMatchMessage = item.slug === "__no_match__";
 
                   if (isNoMatchMessage) {
-                    entryIcon = <FontAwesomeIcon icon={faSearch} className="text-gray-400" />;
+                    entryIcon = <FontAwesomeIcon icon={faSearch} className="text-muted" />;
                     subText = "No results";
                   } else if (item.type === ReferenceType.SECRET) {
                     entryIcon = <FontAwesomeIcon icon={faKey} className="text-bunker-300" />;
@@ -544,7 +544,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                         <div className="flex w-full items-start gap-2">
                           <div className="mt-1 flex items-center">{entryIcon}</div>
                           <div className="text-md w-10/12 truncate text-left">
-                            <span className="text-gray-400">{item.label}</span>
+                            <span className="text-muted">{item.label}</span>
                             <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
                               {subText}
                             </div>

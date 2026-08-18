@@ -30,7 +30,7 @@ const buttonVariants = cva(
     variants: {
       colorSchema: {
         primary: ["bg-primary", "text-black", "border-primary bg-opacity-90 hover:bg-opacity-100"],
-        secondary: ["bg-mineshaft", "text-gray-300", "border-mineshaft hover:bg-opacity-80"],
+        secondary: ["bg-mineshaft", "text-label", "border-mineshaft hover:bg-opacity-80"],
         danger: ["bg-red!", "text-white!", "border-red! hover:!bg-opacity-90"],
         gray: ["bg-bunker-500", "text-bunker-200"]
       },
@@ -45,7 +45,7 @@ const buttonVariants = cva(
         link: "text-primary p-0! bg-transparent outline-hidden border-none"
       },
       isDisabled: {
-        true: "bg-mineshaft-700 border border-mineshaft-600 text-white opacity-50 cursor-not-allowed",
+        true: "bg-mineshaft-700 border border-mineshaft-600 text-foreground opacity-50 cursor-not-allowed",
         false: "border"
       },
       isFullWidth: {
@@ -90,7 +90,7 @@ const buttonVariants = cva(
         colorSchema: "secondary",
         variant: "star",
         className:
-          "bg-mineshaft-700 border border-mineshaft-600 hover:bg-mineshaft hover:text-white"
+          "bg-mineshaft-700 border border-mineshaft-600 hover:bg-mineshaft hover:text-foreground"
       },
       {
         colorSchema: "danger",

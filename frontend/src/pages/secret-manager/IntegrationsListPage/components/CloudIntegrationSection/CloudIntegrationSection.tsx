@@ -103,7 +103,7 @@ export const CloudIntegrationSection = ({
         <div className="flex w-full flex-col justify-between gap-4 whitespace-nowrap lg:flex-row lg:items-end lg:gap-8">
           <div className="flex-1">
             <h1 className="text-3xl font-medium">{t("integrations.cloud-integrations")}</h1>
-            <p className="text-base text-gray-400">{t("integrations.click-to-start")}</p>
+            <p className="text-base text-muted">{t("integrations.click-to-start")}</p>
           </div>
           <Input
             value={search}
@@ -176,7 +176,7 @@ export const CloudIntegrationSection = ({
                     alt="integration logo"
                   />
                   <div
-                    className={`mt-2 max-w-xs text-center text-sm font-medium text-gray-300 duration-200 group-hover:text-gray-200 ${isSyncAvailable ? "mb-4" : ""}`}
+                    className={`mt-2 max-w-xs text-center text-sm font-medium text-label duration-200 group-hover:text-foreground ${isSyncAvailable ? "mb-4" : ""}`}
                   >
                     {cloudIntegration.name}
                   </div>

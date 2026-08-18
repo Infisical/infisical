@@ -42,7 +42,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
               className="mt-auto"
               alt={`${name} logo`}
             />
-            <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
+            <div className="mt-auto max-w-xs text-center text-xs font-medium text-label duration-200 group-hover:text-foreground">
               {name}
             </div>
           </button>
@@ -81,7 +81,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
       >
         <div className="group relative flex h-28 flex-col items-center justify-center rounded-md border border-dashed border-mineshaft-600 bg-mineshaft-800 p-4 hover:bg-mineshaft-900/50">
           <FontAwesomeIcon className="mt-auto text-3xl" icon={faWrench} />
-          <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
+          <div className="mt-auto max-w-xs text-center text-xs font-medium text-label duration-200 group-hover:text-foreground">
             Coming Soon
           </div>
         </div>

@@ -123,7 +123,7 @@ export const PreviewSection = () => {
                     Infisical
                   </span>
                 </h2>
-                <p className="mt-4 text-gray-400">
+                <p className="mt-4 text-muted">
                   Get unlimited members, projects, RBAC, smart alerts, and so much more.
                 </p>
               </div>
@@ -167,7 +167,7 @@ export const PreviewSection = () => {
       {!isPending && subscription && data && (
         <div className="mb-6 flex">
           <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-            <p className="mb-2 text-gray-400">Current plan</p>
+            <p className="mb-2 text-muted">Current plan</p>
             <p className="mb-8 text-2xl font-medium text-mineshaft-50">
               {`${formatPlanSlug(subscription.slug)} ${
                 subscription.status === "trialing" ? "(Trial)" : ""
@@ -197,7 +197,7 @@ export const PreviewSection = () => {
           </div>
           {subscription.slug !== SubscriptionPlanTypes.Enterprise ? (
             <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-              <p className="mb-2 text-gray-400">Price</p>
+              <p className="mb-2 text-muted">Price</p>
               <p className="mb-8 text-2xl font-medium text-mineshaft-50">
                 {subscription.status === "trialing" ? (
                   "$0.00 / month"
@@ -219,7 +219,7 @@ export const PreviewSection = () => {
             </div>
           ) : null}
           <div className="flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-            <p className="mb-2 text-gray-400">Subscription renews on</p>
+            <p className="mb-2 text-muted">Subscription renews on</p>
             <p className="mb-8 text-2xl font-medium text-mineshaft-50">
               {data.currentPeriodEnd ? formatDate(data.currentPeriodEnd) : "-"}
             </p>

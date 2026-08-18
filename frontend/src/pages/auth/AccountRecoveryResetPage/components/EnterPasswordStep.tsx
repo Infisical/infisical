@@ -93,7 +93,7 @@ export const EnterPasswordStep = ({ verificationToken, onComplete, onBack }: Pro
       <h1 className="bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
         Enter new password
       </h1>
-      <p className="w-max justify-center text-center text-sm text-gray-400">
+      <p className="w-max justify-center text-center text-sm text-muted">
         Make sure you save it somewhere safe.
       </p>
       <div className="mt-8 w-full">

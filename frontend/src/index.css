@@ -1,8 +1,15 @@
+/* Imports and Tailwind configuration */
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./legacy.css";
 
+/* Tailwind directives */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Content sources */
 @source not "../public";
 
+/* Font-face declarations */
 @font-face {
   font-family: "Alliance No. 2";
   src:
@@ -14,14 +21,16 @@
   font-display: swap;
 }
 
-/*
-  The default border color has changed to `currentcolor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
+/* Runtime defaults */
+:root {
+  font-family: var(--font-inter);
+  color-scheme: dark;
+}
 
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
+/* Compatibility styles */
+/* Tailwind v4 defaults borders to currentcolor; this preserves the v3 border color behavior. */
+
+/* Base/reset styles */
 @layer base {
   *,
   ::after,
@@ -33,6 +42,13 @@
 
   html {
     @apply overflow-hidden;
+  }
+
+  html,
+  body,
+  #root {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
   }
 
   /* Override browser/password-manager autofill styling for dark theme */
@@ -56,187 +72,178 @@
   }
 }
 
-:root {
-  font-family: var(--font-inter);
-  --foreground: oklch(0.985 0 0);
-  --background: oklch(0.145 0 0);
+@theme {
+  /* Semantic color tokens */
+  /* Surface, content, structure, status, scope, and resource roles */
+  --color-background: oklch(0.2147 0.0058 285.9);
+  --color-foreground: oklch(0.9401 0.0000 0);
+  --color-success: oklch(0.7459 0.1812 152.3);
+  --color-info: oklch(0.7125 0.0784 209.6);
+  --color-warning: oklch(0.8358 0.1690 91.8);
+  --color-danger: oklch(0.6307 0.1940 29.4);
+  --color-org: oklch(0.7326 0.1542 240.3);
+  --color-sub-org: oklch(0.9040 0.2224 136.0);
+  --color-project: oklch(0.9067 0.1908 113.8);
+  --color-product-sm: oklch(0.9067 0.1908 113.8);
+  --color-product-pki: oklch(0.7293 0.1528 58.2);
+  --color-product-kms: oklch(0.8469 0.1561 171.0);
+  --color-product-ss: oklch(0.6324 0.2260 308.1);
+  --color-product-pam: oklch(0.6582 0.2336 12.9);
+  --color-admin: oklch(0.8102 0.0111 286.1);
+  --color-neutral: oklch(0.7506 0.0031 264.5);
+  --color-border: oklch(0.2937 0.0074 274.7);
+  --color-label: oklch(0.7506 0.0031 264.5);
+  --color-muted: oklch(0.5487 0.0048 271.3);
+  --color-popover: oklch(0.1984 0.0037 229.0);
+  --color-ring: oklch(0.3048 0.0077 264.5);
+  --color-card: oklch(0.2077 0.0050 248.1);
+  --color-accent: oklch(0.5951 0.0029 228.8);
+  --color-container: oklch(0.2252 0.0049 248.0);
+  --color-container-hover: oklch(0.2465 0.0048 248.0);
+
+  /* Sidebar */
+  --color-sidebar: oklch(0.2147 0.0058 285.9);
+  --color-sidebar-foreground: oklch(0.9401 0.0000 0);
+  --color-sidebar-border: oklch(0.2937 0.0074 274.7);
+  --color-sidebar-accent: oklch(0.2395 0.0059 271.2);
+  --color-sidebar-accent-foreground: oklch(0.9401 0.0000 0);
+  --color-sidebar-ring: oklch(0.3048 0.0077 264.5);
+
+  /* secret management product colors */
+  --color-folder: oklch(0.6356 0.0983 87.6);
+  --color-secret: oklch(0.5951 0.0029 228.8);
+  --color-dynamic-secret: oklch(0.5891 0.1078 69.1);
+  --color-import: oklch(0.5593 0.0666 223.3);
+  --color-secret-rotation: oklch(0.4864 0.0588 260.2);
+  --color-override: oklch(0.4697 0.0894 308.5);
+  --color-proxied-service: oklch(0.5149 0.1474 306.2);
 }
 
+/* Semantic typography tokens */
 @theme {
-  --breakpoint-dashboard: 1400px;
-
-  /* Fonts */
-  --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
   --font-alliance:
     "Alliance No. 2", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
   --font-inter: "Inter", sans-serif;
   --font-jetbrains-mono: "JetBrains Mono", monospace;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
   --text-2xs: 0.7rem;
   --text-2xs--line-height: 1rem;
-  --max-width-8xl: 88rem; /* 1408px */
-
-  /* Colors v2 */
-  --color-background: #19191c;
-  --color-foreground: #ebebeb;
-  --color-success: #2ecc71;
-  --color-info: #63b0bd;
-  --color-warning: #f1c40f;
-  --color-danger: #e74c3c;
-  --color-org: #30b3ff;
-  --color-sub-org: #96ff59;
-  --color-project: #e0ed34;
-  --color-product-sm: #e0ed34;
-  --color-product-pki: #ed8c34;
-  --color-product-kms: #34edbf;
-  --color-product-ss: #b056f0;
-  --color-product-pam: #ff3568;
-  --color-admin: #c0c0c8;
-  --color-neutral: #adaeb0;
-  --color-border: #2b2c30;
-  --color-label: #adaeb0;
-  --color-muted: #707174;
-  --color-popover: #141617;
-  --color-ring: #2d2f33;
-  --color-card: #16181a;
-  --color-accent: #7d7f80;
-  --color-container: #1a1c1e;
-  --color-container-hover: #1f2123;
-
-  /* Sidebar */
-  --color-sidebar: #19191c;
-  --color-sidebar-foreground: #ebebeb;
-  --color-sidebar-border: #2b2c30;
-  --color-sidebar-accent: #1e1f22;
-  --color-sidebar-accent-foreground: #ebebeb;
-  --color-sidebar-ring: #2d2f33;
-
-  /* secret management product colors */
-  --color-folder: #a4873e;
-  --color-secret: #7d7f80;
-  --color-dynamic-secret: #a6702b;
-  --color-import: #457d91;
-  --color-secret-rotation: #4c6081;
-  --color-override: #694c81;
-  --color-proxied-service: #7d4ca9;
-
-  /*legacy color schema */
-  --color-org-v1: #30b3ff;
-  --color-namespace-v1: #96ff59;
-
-  /* Primary */
-  --color-primary-50: #fffff5;
-  --color-primary-100: #fcfce8;
-  --color-primary-200: #f8faca;
-  --color-primary-300: #f4f7ab;
-  --color-primary-400: #ecf26d;
-  --color-primary-500: #e0ed34;
-  --color-primary-600: #c2d62b;
-  --color-primary-700: #97b31d;
-  --color-primary-800: #708f13;
-  --color-primary-900: #4d6b0b;
-  --color-primary: #e0ed34;
-
-  /* Grey + Misc */
-  --color-grey: #0d1117;
-  --color-githubblack: #020409;
-  --color-blue1: #3498db;
-  --color-blue2: #130f40;
-  --color-orange: #f39c12;
-
-  /* Mineshaft */
-  --color-mineshaft-50: #f5f5f5;
-  --color-mineshaft-100: #ebebeb;
-  --color-mineshaft-200: #ccccce;
-  --color-mineshaft-300: #adaeb0;
-  --color-mineshaft-400: #707174;
-  --color-mineshaft-500: #323439;
-  --color-mineshaft-600: #2d2f33;
-  --color-mineshaft-700: #26272b;
-  --color-mineshaft-800: #1e1f22;
-  --color-mineshaft-900: #19191c;
-  --color-mineshaft: #323439;
-
-  /* Chicago */
-  --color-chicago-50: #f7f7f7;
-  --color-chicago-100: #efefef;
-  --color-chicago-200: #d6d6d7;
-  --color-chicago-300: #bdbebf;
-  --color-chicago-400: #8c8d8e;
-  --color-chicago-500: #5b5c5e;
-  --color-chicago-600: #525355;
-  --color-chicago-700: #444547;
-  --color-chicago-800: #373738;
-  --color-chicago-900: #2d2d2e;
-  --color-chicago: #5b5c5e;
-
-  /* Bunker */
-  --color-bunker-50: #f3f4f4;
-  --color-bunker-100: #e8e8e9;
-  --color-bunker-200: #c5c6c8;
-  --color-bunker-300: #a2a4a6;
-  --color-bunker-400: #5d5f64;
-  --color-bunker-500: #171b21;
-  --color-bunker-600: #15181e;
-  --color-bunker-700: #111419;
-  --color-bunker-800: #0e1014;
-  --color-bunker-900: #0b0d10;
-  --color-bunker: #171b21;
-
-  /* Yellow */
-  --color-yellow-50: #fefcf3;
-  --color-yellow-100: #fef9e7;
-  --color-yellow-200: #fcf0c3;
-  --color-yellow-300: #f9e79f;
-  --color-yellow-400: #f5d657;
-  --color-yellow-500: #f1c40f;
-  --color-yellow-600: #d9b00e;
-  --color-yellow-700: #b5930b;
-  --color-yellow-800: #917609;
-  --color-yellow-900: #766007;
-  --color-yellow: #f1c40f;
-
-  /* Red */
-  --color-red-50: #fef6f5;
-  --color-red-100: #fdedec;
-  --color-red-200: #f9d2ce;
-  --color-red-300: #f5b7b1;
-  --color-red-400: #ee8277;
-  --color-red-500: #e74c3c;
-  --color-red-600: #d04436;
-  --color-red-700: #ad392d;
-  --color-red-800: #8b2e24;
-  --color-red-900: #71251d;
-  --color-red: #e74c3c;
-
-  /* Green */
-  --color-green-50: #f5fcf8;
-  --color-green-100: #eafaf1;
-  --color-green-200: #cbf2dc;
-  --color-green-300: #abebc6;
-  --color-green-400: #6ddb9c;
-  --color-green-500: #2ecc71;
-  --color-green-600: #29b866;
-  --color-green-700: #239955;
-  --color-green-800: #1c7a44;
-  --color-green-900: #176437;
-  --color-green: #2ecc71;
-
-  /* Blue */
-  --color-blue-50: #f2f8ff;
-  --color-blue-100: #e6f1ff;
-  --color-blue-200: #bfdbff;
-  --color-blue-300: #99c5ff;
-  --color-blue-400: #4d9aff;
-  --color-blue-500: #006eff;
-  --color-blue-600: #0063e6;
-  --color-blue-700: #0053bf;
-  --color-blue-800: #004299;
-  --color-blue-900: #00367d;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.25rem;
+  --text-body-md: 1rem;
+  --text-body-md--line-height: 1.5rem;
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.75rem;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1rem;
+  --text-heading-sm: 1.125rem;
+  --text-heading-sm--line-height: 1.5rem;
+  --text-heading-md: 1.25rem;
+  --text-heading-md--line-height: 1.75rem;
+  --text-heading-lg: 1.5rem;
+  --text-heading-lg--line-height: 2rem;
+  --text-display: 2.25rem;
+  --text-display--line-height: 2.5rem;
 }
 
+/* Semantic radius tokens */
+@theme {
+  --radius-control: var(--radius-md);
+  --radius-card: var(--radius-lg);
+  --radius-popover: var(--radius-md);
+  --radius-dialog: var(--radius-lg);
+}
+
+/* Component sizing tokens
+ * Icons: xs for badges/compact buttons, sm for standard buttons, md for rows and controls,
+ * lg for prominent standalone icons, and xl for large icon controls.
+ * Heights: badge minimums are 18px; compact/default controls are 28/32/36/40px; menu
+ * rows are 28px or 36px; table headers and rows are 30px and 40px.
+ * Local composition spacing should continue to use Tailwind's standard gap/padding utilities.
+ */
+@theme {
+  --spacing-icon-xs: calc(var(--spacing) * 3);
+  --spacing-icon-sm: calc(var(--spacing) * 3.5);
+  --spacing-icon-md: calc(var(--spacing) * 4);
+  --spacing-icon-lg: calc(var(--spacing) * 5);
+  --spacing-icon-xl: calc(var(--spacing) * 7);
+  --spacing-badge: calc(var(--spacing) * 4.5);
+  --spacing-control-xs: calc(var(--spacing) * 7);
+  --spacing-control-sm: calc(var(--spacing) * 8);
+  --spacing-control-md: calc(var(--spacing) * 9);
+  --spacing-control-lg: calc(var(--spacing) * 10);
+  --spacing-button-xs: var(--spacing-control-xs);
+  --spacing-button-sm: var(--spacing-control-sm);
+  --spacing-button-md: var(--spacing-control-md);
+  --spacing-button-lg: var(--spacing-control-lg);
+  --spacing-row-sm: calc(var(--spacing) * 7);
+  --spacing-row-md: calc(var(--spacing) * 9);
+  --spacing-table-header: calc(var(--spacing) * 7.5);
+  --spacing-table-row: calc(var(--spacing) * 10);
+  --breakpoint-dashboard: 1400px;
+  --max-width-8xl: 88rem;
+}
+
+/* Dark/light theme overrides */
+html[data-theme="light"] {
+  color-scheme: light;
+
+  /* Semantic surfaces and text */
+  --color-background: oklch(0.9702 0.0000 0);
+  --color-foreground: oklch(0.2147 0.0058 285.9);
+  --color-success: oklch(0.5273 0.1371 150.1);
+  --color-info: oklch(0.5198 0.0936 223.1);
+  --color-warning: oklch(0.5538 0.1207 66.4);
+  --color-danger: oklch(0.5054 0.1905 27.5);
+  --color-neutral: oklch(0.4420 0.0035 264.5);
+  --color-border: oklch(0.8764 0.0014 286.4);
+  --color-label: oklch(0.4420 0.0035 264.5);
+  --color-muted: oklch(0.5487 0.0048 271.3);
+  --color-popover: oklch(1.0000 0.0000 0);
+  --color-ring: oklch(0.5487 0.0048 271.3);
+  --color-card: oklch(1.0000 0.0000 0);
+  --color-accent: oklch(0.4746 0.0034 264.5);
+  --color-container: oklch(0.9761 0.0000 0);
+  --color-container-hover: oklch(0.9521 0.0000 0);
+
+  /* Scope and product accents tuned for light surfaces */
+  --color-org: oklch(0.5364 0.2136 259.5);
+  --color-sub-org: oklch(0.6036 0.1440 152.6);
+  --color-project: oklch(0.6046 0.1440 123.9);
+  --color-product-sm: oklch(0.6046 0.1440 123.9);
+  --color-product-pki: oklch(0.5806 0.1400 54.0);
+  --color-product-kms: oklch(0.5279 0.0970 172.3);
+  --color-product-ss: oklch(0.4908 0.1979 307.4);
+  --color-product-pam: oklch(0.5432 0.2015 13.8);
+  --color-admin: oklch(0.4420 0.0035 264.5);
+  --color-primary: oklch(0.6046 0.1440 123.9);
+
+  /* Sidebar */
+  --color-sidebar: oklch(0.9702 0.0000 0);
+  --color-sidebar-foreground: oklch(0.2147 0.0058 285.9);
+  --color-sidebar-border: oklch(0.8764 0.0014 286.4);
+  --color-sidebar-accent: oklch(0.9521 0.0000 0);
+  --color-sidebar-accent-foreground: oklch(0.2147 0.0058 285.9);
+  --color-sidebar-ring: oklch(0.5487 0.0048 271.3);
+
+  /* Resource accents */
+  --color-folder: oklch(0.5226 0.0930 88.0);
+  --color-secret: oklch(0.4420 0.0035 264.5);
+  --color-dynamic-secret: oklch(0.4969 0.0992 67.8);
+  --color-import: oklch(0.4817 0.0660 224.6);
+  --color-secret-rotation: oklch(0.4299 0.0621 260.7);
+  --color-override: oklch(0.4138 0.0991 310.2);
+  --color-proxied-service: oklch(0.4447 0.1461 309.7);
+}
+
+/* Platform overrides */
 /* iOS Safari zooms the viewport when focusing an input whose font-size is below 16px.
    Bumping the type scale on detected iOS devices keeps form controls at/above that
    threshold to prevent the zoom while preserving their relationship to surrounding text. */
@@ -246,6 +253,7 @@ html[data-platform="ios"] {
   --text-base: 1.125rem;
 }
 
+/* Custom utilities */
 @utility min-table-row {
   width: 1%;
   white-space: nowrap;
@@ -343,12 +351,13 @@ html[data-platform="ios"] {
   }
 
   &::-webkit-scrollbar-thumb {
-    background-color: gray;
+    background-color: var(--color-muted);
   }
   scrollbar-width: thin;
-  scrollbar-color: #39393d transparent;
+  scrollbar-color: var(--color-border) transparent;
 }
 
+/* Animation/keyframes */
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -509,6 +518,7 @@ html[data-platform="ios"] {
   );
 }
 
+/* Compatibility styles */
 #nprogress .bar {
   background: var(--color-primary-400);
 }
@@ -517,7 +527,7 @@ html[data-platform="ios"] {
   content: attr(placeholder);
   position: absolute;
   top: 0.5rem;
-  @apply text-sm text-gray-500 opacity-50;
+  @apply text-sm text-muted opacity-50;
 }
 
 /* Hide the default number input spin buttons */

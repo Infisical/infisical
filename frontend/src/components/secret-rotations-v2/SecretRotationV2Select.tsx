@@ -37,7 +37,7 @@ export const SecretRotationV2Select = ({ onSelect }: Props) => {
                 className="mt-auto"
                 alt={`${name} logo`}
               />
-              <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
+              <div className="mt-auto max-w-xs text-center text-xs font-medium text-label duration-200 group-hover:text-foreground">
                 {name}
               </div>
             </button>

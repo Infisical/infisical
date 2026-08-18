@@ -40,15 +40,15 @@ const InputField = ({
   if (isStatic === true) {
     return (
       <div className="my-2 flex w-full max-w-md flex-col justify-center md:my-4">
-        <p className="mb-0.5 text-sm font-medium text-gray-400">{label}</p>
-        {text && <p className="mb-2 text-xs text-gray-400">{text}</p>}
+        <p className="mb-0.5 text-sm font-medium text-muted">{label}</p>
+        {text && <p className="mb-2 text-xs text-muted">{text}</p>}
         <input
           onChange={(e) => onChangeHandler(e.target.value)}
           type={type}
           placeholder={placeholder}
           value={value}
           required={isRequired}
-          className="text-md w-full min-w-16 rounded-md border border-gray-600 bg-bunker-800 p-2 text-gray-400 outline-hidden"
+          className="text-md w-full min-w-16 rounded-md border border-border bg-bunker-800 p-2 text-muted outline-hidden"
           name={name}
           readOnly
           autoComplete={autoComplete}
@@ -75,11 +75,11 @@ const InputField = ({
           required={isRequired}
           className={`${
             blurred
-              ? "text-bunker-800 group-hover:text-gray-400 focus:text-gray-400 active:text-gray-400"
+              ? "text-bunker-800 group-hover:text-muted focus:text-muted active:text-muted"
               : ""
           } ${
             error ? "focus:ring-red/50" : "focus:ring-primary/50"
-          } text-md peer relative w-full min-w-16 rounded-md bg-mineshaft-900 p-2 text-gray-400 outline-hidden duration-200 focus:ring-4`}
+          } text-md peer relative w-full min-w-16 rounded-md bg-mineshaft-900 p-2 text-muted outline-hidden duration-200 focus:ring-4`}
           name={name}
           spellCheck="false"
           autoComplete={autoComplete}
@@ -91,7 +91,7 @@ const InputField = ({
             onClick={() => {
               setPasswordVisible(!passwordVisible);
             }}
-            className="absolute mr-3 cursor-pointer self-end text-gray-400"
+            className="absolute mr-3 cursor-pointer self-end text-muted"
           >
             {passwordVisible ? (
               <FontAwesomeIcon icon={faEyeSlash} />
@@ -101,7 +101,7 @@ const InputField = ({
           </button>
         )}
         {blurred && (
-          <div className="peer absolute flex h-10 w-fit max-w-xl items-center overflow-hidden rounded-md text-clip text-gray-400/50 group-hover:!hidden peer-hover:hidden peer-focus:hidden peer-active:invisible">
+          <div className="peer absolute flex h-10 w-fit max-w-xl items-center overflow-hidden rounded-md text-clip text-muted/50 group-hover:!hidden peer-hover:hidden peer-focus:hidden peer-active:invisible">
             <p className="ml-2" />
             {value
               .split("")

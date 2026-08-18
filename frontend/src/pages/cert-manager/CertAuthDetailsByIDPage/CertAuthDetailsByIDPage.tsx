@@ -103,7 +103,7 @@ const Page = () => {
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-foreground">
       {data && (
         <ProjectPermissionCan
           I={ProjectPermissionCertificateAuthorityActions.Read}

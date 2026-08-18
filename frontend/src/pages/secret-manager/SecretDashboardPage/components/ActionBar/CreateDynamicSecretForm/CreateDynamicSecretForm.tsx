@@ -261,7 +261,7 @@ export const CreateDynamicSecretForm = ({
                 {DYNAMIC_SECRET_LIST.map(({ icon, provider, title }) => (
                   <div
                     key={`dynamic-secret-provider-${provider}`}
-                    className="flex h-30 w-42 cursor-pointer flex-col items-center space-y-4 rounded-sm border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
+                    className="flex h-30 w-42 cursor-pointer flex-col items-center space-y-4 rounded-sm border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-foreground"
                     role="button"
                     tabIndex={0}
                     onClick={() => {
