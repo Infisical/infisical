@@ -1,6 +1,18 @@
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@app/components/v3";
+import { useState } from "react";
+
+import {
+  Button,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { useTimedReset } from "@app/hooks";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import type { SharedSecretResultActions } from "@app/pages/public/ShareSecretPage/components";
 import { ShareSecretForm } from "@app/pages/public/ShareSecretPage/components";
 
 type Props = {
@@ -13,10 +25,16 @@ type Props = {
 
 export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
+  const [resultActions, setResultActions] = useState<SharedSecretResultActions | null>(null);
+  const [, isCopyingLink, setCopyingLink] = useTimedReset<string>({
+    initialState: "Copy shared link"
+  });
+
   return (
     <Sheet
       open={popUp?.createSharedSecret?.isOpen}
       onOpenChange={(isOpen) => {
+        if (!isOpen) setResultActions(null);
         handlePopUpToggle("createSharedSecret", isOpen);
       }}
     >
@@ -34,8 +52,34 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
             }
             maxSharedSecretLifetime={currentOrg?.maxSharedSecretLifetime}
             maxSharedSecretViewLimit={currentOrg?.maxSharedSecretViewLimit}
+            onResultActionsChange={setResultActions}
           />
         </div>
+        {resultActions && (
+          <SheetFooter className="flex-col border-t sm:flex-row">
+            <Button
+              className="w-full sm:flex-1"
+              variant="project"
+              size="lg"
+              onClick={resultActions.createMore}
+            >
+              Create more
+            </Button>
+            {resultActions.hasLink && resultActions.copyLink && (
+              <Button
+                className="w-full sm:flex-1"
+                variant="outline"
+                size="lg"
+                onClick={() => {
+                  resultActions.copyLink?.();
+                  setCopyingLink("Copied");
+                }}
+              >
+                {isCopyingLink ? "Copied" : "Copy shared link"}
+              </Button>
+            )}
+          </SheetFooter>
+        )}
       </SheetContent>
     </Sheet>
   );

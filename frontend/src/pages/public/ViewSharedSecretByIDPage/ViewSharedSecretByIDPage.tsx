@@ -3,15 +3,17 @@ import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import { addSeconds, formatISO } from "date-fns";
+import { KeyRoundIcon } from "lucide-react";
 
 import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
 import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
 import { createNotification } from "@app/components/notifications";
 import {
+  Button,
   Card,
   CardContent,
-  CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   PageLoader
@@ -287,10 +289,31 @@ export const ViewSharedSecretByIDPage = () => {
       <div className="relative z-10 my-auto flex flex-col items-center py-10">
         <Card className="w-full max-w-xl">
           <CardHeader>
-            <CardTitle>View shared secret</CardTitle>
-            <CardDescription>Reveal the value only when you are ready to use it.</CardDescription>
+            <CardTitle className="font-alliance text-2xl font-normal">View shared secret</CardTitle>
           </CardHeader>
-          <CardContent>{secretContent}</CardContent>
+          <CardContent className="-mt-4 flex flex-col gap-2">
+            {secret && (
+              <SecretContainer
+                description="Reveal the value when you're ready to use it."
+                secret={secret}
+                brandingTheme={brandingTheme}
+              />
+            )}
+            {!secret && secretContent}
+          </CardContent>
+          {secret && (
+            <CardFooter className="px-0 pt-0">
+              <Button
+                className="w-full"
+                variant="project"
+                size="lg"
+                onClick={() => window.open("/share-secret", "_blank", "noopener")}
+              >
+                <KeyRoundIcon />
+                Share your own secret
+              </Button>
+            </CardFooter>
+          )}
         </Card>
       </div>
       <AuthPageFooter />
