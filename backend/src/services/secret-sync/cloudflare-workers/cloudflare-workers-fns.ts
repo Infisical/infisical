@@ -2,7 +2,9 @@ import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
@@ -11,9 +13,14 @@ import { TCloudflareWorkersSyncWithCredentials } from "./cloudflare-workers-type
 
 const CLOUDFLARE_UNDEPLOYED_VERSION_ERROR_CODE = 10215;
 const CLOUDFLARE_SECRET_TYPE = "secret_text";
+// Cloudflare rejects secrets-bulk requests carrying more than 100 secrets (error code 100160).
+const CLOUDFLARE_BULK_SECRETS_LIMIT = 100;
 
-type TCloudflareErrorResponse = {
+type TCloudflareApiResponse = {
+  result?: unknown;
+  success?: boolean;
   errors?: Array<{ code: number; message: string }>;
+  messages?: string[];
 };
 
 type TCloudflareSecretMetadata = {
@@ -42,20 +49,53 @@ const $validateJsonBindings = (
   }
 };
 
-const throwOnUndeployedVersionError = (err: unknown) => {
-  if (
-    err instanceof AxiosError &&
-    (err.response?.data as TCloudflareErrorResponse)?.errors?.some(
-      (e) => e.code === CLOUDFLARE_UNDEPLOYED_VERSION_ERROR_CODE
-    )
-  ) {
-    throw new BadRequestError({
-      message:
-        "Cloudflare rejected the secret update because the latest Worker version is not deployed; deploy the latest Worker version, then retry the secret sync."
-    });
+const $getCloudflareErrors = (data: unknown): Array<{ code: number; message: string }> => {
+  if (typeof data !== "object" || data === null) return [];
+  const { errors } = data as TCloudflareApiResponse;
+  if (!Array.isArray(errors)) return [];
+  return errors.filter((error) => typeof error?.message === "string");
+};
+
+const $throwCloudflareError = (
+  errors: Array<{ code: number; message: string }>,
+  cause: unknown,
+  secretKey?: string
+): never => {
+  const message = errors.some((e) => e.code === CLOUDFLARE_UNDEPLOYED_VERSION_ERROR_CODE)
+    ? "Cloudflare rejected the secret update because the latest Worker version is not deployed; deploy the latest Worker version, then retry the secret sync."
+    : errors.map((e) => e.message).join(". ");
+
+  throw new SecretSyncError({
+    message,
+    error: cause,
+    secretKey,
+    shouldRetry: false
+  });
+};
+
+const throwOnCloudflareRequestError = (err: unknown, secretKey?: string): never => {
+  if (err instanceof AxiosError) {
+    const errors = $getCloudflareErrors(err.response?.data);
+    if (errors.length > 0) {
+      $throwCloudflareError(errors, err, secretKey);
+    }
   }
 
   throw err;
+};
+
+const $validateCloudflareResponse = (data: unknown) => {
+  if (typeof data !== "object" || data === null) return;
+  if ((data as TCloudflareApiResponse).success === false) {
+    const errors = $getCloudflareErrors(data);
+    if (errors.length > 0) {
+      $throwCloudflareError(errors, undefined);
+    }
+    throw new SecretSyncError({
+      message: "Cloudflare returned an unsuccessful response without error details.",
+      shouldRetry: false
+    });
+  }
 };
 
 type TCloudflareBindings = {
@@ -183,7 +223,7 @@ export const CloudflareWorkersSyncFns = {
           new Blob([JSON.stringify({ bindings: updatedBindings })], { type: "application/json" })
         );
 
-        await request.patch(
+        const { data: settingsPatchData } = await request.patch<TCloudflareApiResponse>(
           `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/settings`,
           formData,
           {
@@ -192,6 +232,7 @@ export const CloudflareWorkersSyncFns = {
             }
           }
         );
+        $validateCloudflareResponse(settingsPatchData);
       }
 
       // Build the bulk secrets payload using JSON Merge Patch (RFC 7396):
@@ -223,20 +264,31 @@ export const CloudflareWorkersSyncFns = {
         }
       }
 
-      if (Object.keys(bulkSecrets).length > 0) {
-        await request.patch(
-          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets-bulk`,
-          { secrets: bulkSecrets },
-          {
-            headers: {
-              Authorization: `Bearer ${apiToken}`,
-              "Content-Type": "application/json"
+      for await (const batch of chunkArray(Object.entries(bulkSecrets), CLOUDFLARE_BULK_SECRETS_LIMIT)) {
+        const batchSecrets = Object.create(null) as typeof bulkSecrets;
+        for (const [key, val] of batch) {
+          batchSecrets[key] = val;
+        }
+
+        const [firstSecretKey] = batch[0];
+        try {
+          const { data } = await request.patch<TCloudflareApiResponse>(
+            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets-bulk`,
+            { secrets: batchSecrets },
+            {
+              headers: {
+                Authorization: `Bearer ${apiToken}`,
+                "Content-Type": "application/json"
+              }
             }
-          }
-        );
+          );
+          $validateCloudflareResponse(data);
+        } catch (err) {
+          throwOnCloudflareRequestError(err, firstSecretKey);
+        }
       }
     } catch (err) {
-      throwOnUndeployedVersionError(err);
+      throwOnCloudflareRequestError(err);
     }
 
     if (!secretSync.syncOptions.disableSecretDeletion) {
@@ -286,7 +338,7 @@ export const CloudflareWorkersSyncFns = {
             }
           );
         } catch (err) {
-          throwOnUndeployedVersionError(err);
+          throwOnCloudflareRequestError(err);
         }
       }
     }
@@ -326,23 +378,29 @@ export const CloudflareWorkersSyncFns = {
     const bindingTypeToRemove = secretsToRemove.filter((s) => s.type !== CLOUDFLARE_SECRET_TYPE);
 
     try {
-      if (secretTypeToRemove.length > 0) {
+      for await (const batch of chunkArray(secretTypeToRemove, CLOUDFLARE_BULK_SECRETS_LIMIT)) {
         // Null-prototype object so secret names like "__proto__" are stored as regular properties.
         const bulkSecrets: Record<string, null> = Object.create(null) as Record<string, null>;
-        for (const secret of secretTypeToRemove) {
+        for (const secret of batch) {
           bulkSecrets[secret.key] = null;
         }
 
-        await request.patch(
-          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets-bulk`,
-          { secrets: bulkSecrets },
-          {
-            headers: {
-              Authorization: `Bearer ${apiToken}`,
-              "Content-Type": "application/json"
+        const firstSecretKey = batch[0].key;
+        try {
+          const { data } = await request.patch<TCloudflareApiResponse>(
+            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets-bulk`,
+            { secrets: bulkSecrets },
+            {
+              headers: {
+                Authorization: `Bearer ${apiToken}`,
+                "Content-Type": "application/json"
+              }
             }
-          }
-        );
+          );
+          $validateCloudflareResponse(data);
+        } catch (err) {
+          throwOnCloudflareRequestError(err, firstSecretKey);
+        }
       }
 
       if (bindingTypeToRemove.length > 0) {
@@ -370,7 +428,7 @@ export const CloudflareWorkersSyncFns = {
           new Blob([JSON.stringify({ bindings: filteredBindings })], { type: "application/json" })
         );
 
-        await request.patch(
+        const { data: settingsPatchData } = await request.patch<TCloudflareApiResponse>(
           `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/settings`,
           formData,
           {
@@ -379,9 +437,10 @@ export const CloudflareWorkersSyncFns = {
             }
           }
         );
+        $validateCloudflareResponse(settingsPatchData);
       }
     } catch (err) {
-      throwOnUndeployedVersionError(err);
+      throwOnCloudflareRequestError(err);
     }
   }
 };
