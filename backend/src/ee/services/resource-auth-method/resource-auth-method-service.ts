@@ -741,14 +741,9 @@ export const resourceAuthMethodServiceFactory = ({
       // config than the one a gateway later logs in with.
       let effectiveCa = authMethod.caCertificate;
       let effectiveReviewer = authMethod.tokenReviewerJwt;
+      let destinationChanged = false;
       if (!isMethodChange && current && (effectiveCa === undefined || effectiveReviewer === undefined)) {
         const stored = await resourceKubernetesAuthDAL.findOne({ authMethodId: current.id });
-        // The reviewer token is a live cluster credential and the probe sends it as a bearer
-        // token, so it must never travel to an endpoint it was not validated against. Someone with
-        // edit access could otherwise point the host at a server they control, omit the write-only
-        // field, and read the stored token off the wire.
-        // Gateway review mode is exempt: the gateway reviews with its own service account, so the
-        // stored token is not sent anywhere and there is no endpoint for it to leak to.
         const { decryptor } = await kmsService.createCipherPairWithDataKey({
           type: KmsDataKey.Organization,
           orgId: actor.orgId
@@ -760,7 +755,7 @@ export const resourceAuthMethodServiceFactory = ({
         // Everything that decides where the reviewer token would be sent, and who could read it in
         // transit. The host alone is not enough: the review mode, the proxying gateway, the trusted
         // CA and TLS verification all move it somewhere it was never validated against.
-        const destinationChanged =
+        destinationChanged =
           (stored?.tokenReviewMode ?? KubernetesTokenReviewMode.Api) !==
             (authMethod.tokenReviewMode ?? KubernetesTokenReviewMode.Api) ||
           stored?.kubernetesHost !== authMethod.kubernetesHost ||
@@ -774,10 +769,7 @@ export const resourceAuthMethodServiceFactory = ({
           effectiveCa = storedCa;
         }
 
-        // The stored reviewer token is kept either way; it is only *used* against a destination it
-        // has already been validated against. Editing the host therefore saves fine, it just skips
-        // the reviewer probe until the token is supplied again. Mirrors how PAM account updates
-        // test only with credentials sent in the request.
+        // Only reuse the stored token against a destination it has already been validated against.
         if (effectiveReviewer === undefined && !destinationChanged && stored?.encryptedKubernetesTokenReviewerJwt) {
           effectiveReviewer = decryptor({ cipherTextBlob: stored.encryptedKubernetesTokenReviewerJwt }).toString();
         }
@@ -807,7 +799,11 @@ export const resourceAuthMethodServiceFactory = ({
 
       encryptedKubernetesSecrets = await encryptKubernetesSecrets(actor.orgId, {
         caCertificate: authMethod.caCertificate ?? (isMethodChange ? "" : undefined),
-        tokenReviewerJwt: authMethod.tokenReviewerJwt ?? (isMethodChange ? "" : undefined)
+        // Dropped rather than carried over when the destination moves. Keeping it would have the
+        // next login send a credential the operator never authorised for that address, and refusing
+        // the save instead just walls off an ordinary host edit. The response reports it as no
+        // longer configured, so the change is visible rather than silent.
+        tokenReviewerJwt: authMethod.tokenReviewerJwt ?? (isMethodChange || destinationChanged ? "" : undefined)
       });
     }
 
