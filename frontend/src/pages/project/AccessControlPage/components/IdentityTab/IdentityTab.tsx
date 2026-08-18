@@ -613,13 +613,19 @@ export const IdentityTab = withProjectPermission(
                         data?.totalCount !== 0 &&
                         Array.from(Array(noAccessIdentityCount)).map((_e, i) => (
                           <TableRow key={`hid-identity-${i + 1}`}>
-                            <TableCell>No Access</TableCell>
-                            <TableCell colSpan={4}>
-                              <Blur
-                                aria-label="Restricted machine identity"
-                                tooltipText="You do not have permission to view this machine identity."
-                              />
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <LockIcon className="size-4 text-muted" aria-hidden="true" />
+                                <Blur
+                                  className="w-min p-0"
+                                  aria-label="Restricted machine identity"
+                                  tooltipText="You do not have permission to view this machine identity."
+                                />
+                              </div>
                             </TableCell>
+                            <TableCell className="text-muted">—</TableCell>
+                            <TableCell className="text-muted">—</TableCell>
+                            <TableCell />
                           </TableRow>
                         ))}
                     </TableBody>
