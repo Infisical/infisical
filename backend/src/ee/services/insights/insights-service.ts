@@ -134,7 +134,7 @@ const checkInsightsPermission = async (
   return { permission };
 };
 
-const PROJECT_WARNINGS_CHUNK_SIZE = 1000;
+export const PROJECT_WARNINGS_CHUNK_SIZE = 1000;
 
 export const insightsServiceFactory = ({
   permissionService,
