@@ -7,5 +7,6 @@ export const CHEF_PKI_SYNC_LIST_OPTION = {
   destination: PkiSync.Chef,
   canImportCertificates: false,
   canRemoveCertificates: true,
-  canRunPostSyncCommand: false
+  canRunPostSyncCommand: false,
+  canRunPreflightCommand: false
 } as const;

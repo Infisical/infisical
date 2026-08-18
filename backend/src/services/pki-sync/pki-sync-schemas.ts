@@ -3,12 +3,12 @@ import { z } from "zod";
 
 import { buildCertificateNameSchemaTestName } from "./pki-sync-certificate-name-fns";
 import { PkiSync } from "./pki-sync-enums";
-import { POST_SYNC_COMMAND_MAX_LENGTH } from "./pki-sync-post-sync-command-fns";
+import { HOST_COMMAND_MAX_LENGTH } from "./pki-sync-host-command-fns";
 
-export const PostSyncCommandSchema = z
+export const HostCommandSchema = z
   .string()
   .trim()
-  .max(POST_SYNC_COMMAND_MAX_LENGTH, `Command must be at most ${POST_SYNC_COMMAND_MAX_LENGTH} characters`)
+  .max(HOST_COMMAND_MAX_LENGTH, `Command must be at most ${HOST_COMMAND_MAX_LENGTH} characters`)
   .nullable()
   .optional();
 
@@ -18,7 +18,8 @@ export const BasePkiSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
   includeRootCa: z.boolean().default(false),
   preserveItemOnRenewal: z.boolean().default(true),
-  postSyncCommand: PostSyncCommandSchema
+  preflightCommand: HostCommandSchema,
+  postSyncCommand: HostCommandSchema
 });
 
 // Builds a destination's certificateNameSchema validator. The compiled name must match the

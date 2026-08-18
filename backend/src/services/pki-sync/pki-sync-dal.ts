@@ -9,7 +9,7 @@ import {
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
 
-import { PkiSync } from "./pki-sync-enums";
+import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 
 export type TPkiSyncDALFactory = ReturnType<typeof pkiSyncDALFactory>;
 
@@ -331,8 +331,59 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     }
   };
 
+  const reportPreflightFailure = async (syncId: string, message: string, failurePrefix: string) => {
+    try {
+      return await db(TableName.PkiSync)
+        .where({ id: syncId })
+        .where((builder) => {
+          // eslint-disable-next-line @typescript-eslint/no-misused-promises
+          void builder
+            .whereNot("syncStatus", PkiSyncStatus.Failed)
+            .orWhereNull("lastSyncMessage")
+            .orWhereRaw(`left("lastSyncMessage", ?) = ?`, [failurePrefix.length, failurePrefix]);
+        })
+        .update({ syncStatus: PkiSyncStatus.Failed, lastSyncMessage: message });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Report preflight failure - PKI Sync" });
+    }
+  };
+
+  const clearReportedPreflightFailure = async (syncId: string, failurePrefix: string) => {
+    try {
+      return await db(TableName.PkiSync)
+        .where({ id: syncId })
+        .whereRaw(`left("lastSyncMessage", ?) = ?`, [failurePrefix.length, failurePrefix])
+        .update({
+          syncStatus: db.raw(`CASE WHEN "lastSyncedAt" IS NULL THEN ? ELSE ? END`, [
+            PkiSyncStatus.Pending,
+            PkiSyncStatus.Succeeded
+          ]) as unknown as string,
+          lastSyncMessage: null
+        });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Clear reported preflight failure - PKI Sync" });
+    }
+  };
+
+  const findPkiSyncsWithPreflightCommand = async () => {
+    try {
+      return (await db
+        .replicaNode()(TableName.PkiSync)
+        .join(TableName.Project, `${TableName.PkiSync}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .select(`${TableName.PkiSync}.id`, `${TableName.PkiSync}.destination`)
+        .whereRaw(`("${TableName.PkiSync}"."syncOptions" ->> 'preflightCommand') IS NOT NULL`)
+        .orderBy(`${TableName.PkiSync}.createdAt`, "asc")) as Array<{ id: string; destination: string }>;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find PKI syncs with a preflight command" });
+    }
+  };
+
   return {
     ...pkiSyncOrm,
+    reportPreflightFailure,
+    clearReportedPreflightFailure,
+    findPkiSyncsWithPreflightCommand,
     findByProjectId,
     findByProjectIdWithSubscribers,
     findBySubscriberId,

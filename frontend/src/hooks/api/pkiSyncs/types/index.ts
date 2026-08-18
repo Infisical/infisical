@@ -19,6 +19,7 @@ export type TPkiSyncOption = {
   canImportCertificates: boolean;
   canRemoveCertificates: boolean;
   canRunPostSyncCommand?: boolean;
+  canRunPreflightCommand?: boolean;
   maxCertificates?: number;
   enterprise?: boolean;
   defaultCertificateNameSchema?: string;

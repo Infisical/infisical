@@ -1,5 +1,5 @@
 import { AppConnection } from "@app/hooks/api/appConnections";
-import { PkiSync, PostSyncCommandVariable } from "@app/hooks/api/pkiSyncs";
+import { HostCommandVariable, PkiSync, PkiSyncStatus } from "@app/hooks/api/pkiSyncs";
 
 export const PKI_SYNC_MAP: Record<
   PkiSync,
@@ -150,15 +150,48 @@ export const VALUE_SYNC_OPTION_FIELDS = [
   { key: "group", label: "Group" }
 ] as const;
 
-export const POST_SYNC_COMMAND_VARIABLE_DESCRIPTIONS: Record<PostSyncCommandVariable, string> = {
-  [PostSyncCommandVariable.CertificatePath]: "Full path of the certificate file delivered this run",
-  [PostSyncCommandVariable.CertificateDirectory]: "The destination directory",
-  [PostSyncCommandVariable.CertificateFiles]: "Every path written this run, one per line",
-  [PostSyncCommandVariable.CommonName]: "The certificate's common name",
-  [PostSyncCommandVariable.Pkcs12Password]: "The PKCS#12 export password"
+export const POST_SYNC_COMMAND_VARIABLE_DESCRIPTIONS: Record<HostCommandVariable, string> = {
+  [HostCommandVariable.CertificatePath]: "Full path of the certificate file delivered this run",
+  [HostCommandVariable.CertificateDirectory]: "The destination directory",
+  [HostCommandVariable.CertificateFiles]: "Every path written this run, one per line",
+  [HostCommandVariable.CommonName]: "The certificate's common name",
+  [HostCommandVariable.Pkcs12Password]: "The PKCS#12 export password"
 };
 
-export const SINGLE_CERTIFICATE_POST_SYNC_COMMAND_VARIABLES = [
-  PostSyncCommandVariable.CertificatePath,
-  PostSyncCommandVariable.CommonName
+export const PREFLIGHT_COMMAND_VARIABLE_DESCRIPTIONS: Record<HostCommandVariable, string> = {
+  [HostCommandVariable.CertificatePath]: "Full path of the certificate file this run will write",
+  [HostCommandVariable.CertificateDirectory]: "The directory the sync is about to write to",
+  [HostCommandVariable.CertificateFiles]: "Every path this run will write, one per line",
+  [HostCommandVariable.CommonName]: "The certificate's common name",
+  [HostCommandVariable.Pkcs12Password]: "The PKCS#12 export password"
+};
+
+const SINGLE_CERTIFICATE_HOST_COMMAND_VARIABLES = [
+  HostCommandVariable.CertificatePath,
+  HostCommandVariable.CommonName
 ];
+
+export const buildHostCommandTooltipDescriptions = (
+  descriptions: Record<HostCommandVariable, string>
+): Record<string, string> =>
+  Object.fromEntries(
+    Object.values(HostCommandVariable).map((variable) => [
+      variable,
+      SINGLE_CERTIFICATE_HOST_COMMAND_VARIABLES.includes(variable)
+        ? `${descriptions[variable]}. Single-certificate syncs only`
+        : descriptions[variable]
+    ])
+  );
+
+export const getPkiSyncFailureMessage = (
+  status: PkiSyncStatus | null | undefined,
+  message: string | null | undefined
+): string | null => {
+  if (status !== PkiSyncStatus.Failed || !message) return null;
+
+  try {
+    return JSON.stringify(JSON.parse(message), null, 2);
+  } catch {
+    return message;
+  }
+};

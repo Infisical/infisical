@@ -75,6 +75,7 @@ const PkiSyncOptionsSchema = z.object({
   canImportCertificates: z.boolean(),
   canRemoveCertificates: z.boolean(),
   canRunPostSyncCommand: z.boolean().optional(),
+  canRunPreflightCommand: z.boolean().optional(),
   maxCertificates: z.number().optional(),
   defaultCertificateNameSchema: z.string().optional(),
   forbiddenCharacters: z.string().optional(),

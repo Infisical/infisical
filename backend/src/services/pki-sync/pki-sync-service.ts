@@ -31,13 +31,24 @@ import {
   getPkiSyncProviderCapabilities,
   listPkiSyncOptions
 } from "./pki-sync-fns";
+import {
+  findSingleCertificateHostCommandVariables,
+  formatHostCommandVariables,
+  HostCommandKind
+} from "./pki-sync-host-command-fns";
 import { PKI_SYNC_CONNECTION_MAP, PKI_SYNC_NAME_MAP } from "./pki-sync-maps";
 import {
   applyPostSyncCommandUpdate,
-  findSingleCertificatePostSyncCommandVariables,
-  formatPostSyncCommandVariables,
-  normalizeNewPostSyncCommand
+  getPostSyncCommand,
+  normalizeNewPostSyncCommand,
+  POST_SYNC_COMMAND_OPTION_KEY
 } from "./pki-sync-post-sync-command-fns";
+import {
+  applyPreflightCommandUpdate,
+  getPreflightCommand,
+  normalizeNewPreflightCommand,
+  PREFLIGHT_COMMAND_OPTION_KEY
+} from "./pki-sync-preflight-command-fns";
 import { TPkiSyncQueueFactory } from "./pki-sync-queue";
 import {
   TAddCertificatesToPkiSyncDTO,
@@ -129,29 +140,39 @@ export const pkiSyncServiceFactory = ({
     return permission.can(action, ResourcePermissionSub.PkiSyncs);
   };
 
-  /**
-   * Rejects a command the sync could never run: a destination with no shell to open, or a connection
-   * with no gateway to run it through. Checked at write time so the operator finds out while
-   * configuring rather than on the next sync.
-   */
-  const $assertPostSyncCommandIsSupported = (
+  const $assertHostCommandsAreSupported = (
     destination: PkiSync,
     syncOptions: Record<string, unknown> | undefined,
     connection: { gatewayId?: string | null; gatewayPoolId?: string | null } | undefined
   ) => {
-    if (!syncOptions?.postSyncCommand) return;
+    const capabilities = getPkiSyncProviderCapabilities(destination);
+    const hasGateway = Boolean(connection?.gatewayId || connection?.gatewayPoolId);
 
-    if (!getPkiSyncProviderCapabilities(destination).canRunPostSyncCommand) {
-      throw new BadRequestError({
-        message: `A post-sync command cannot be set for ${PKI_SYNC_NAME_MAP[destination]} PKI sync destination`
-      });
-    }
+    const configuredCommands = [
+      {
+        kind: HostCommandKind.Preflight,
+        command: syncOptions?.[PREFLIGHT_COMMAND_OPTION_KEY],
+        isSupportedByDestination: capabilities.canRunPreflightCommand
+      },
+      {
+        kind: HostCommandKind.PostSync,
+        command: syncOptions?.[POST_SYNC_COMMAND_OPTION_KEY],
+        isSupportedByDestination: capabilities.canRunPostSyncCommand
+      }
+    ].filter(({ command }) => Boolean(command));
 
-    if (connection?.gatewayId || connection?.gatewayPoolId) return;
+    configuredCommands.forEach(({ kind, isSupportedByDestination }) => {
+      if (!isSupportedByDestination) {
+        throw new BadRequestError({
+          message: `A ${kind} cannot be set for ${PKI_SYNC_NAME_MAP[destination]} PKI sync destination`
+        });
+      }
 
-    throw new BadRequestError({
-      message:
-        "A post-sync command runs through a gateway. Configure the sync's App Connection to use a gateway, or clear the command."
+      if (!hasGateway) {
+        throw new BadRequestError({
+          message: `A ${kind} runs through a gateway. Configure the sync's App Connection to use a gateway, or clear the command.`
+        });
+      }
     });
   };
 
@@ -189,7 +210,8 @@ export const pkiSyncServiceFactory = ({
     return permission;
   };
 
-  const $assertMaySetPostSyncCommand = async (
+  const $assertMaySetHostCommand = async (
+    actions: { project: ProjectPermissionPkiSyncActions; resource: ResourcePermissionPkiSyncActions },
     nextCommand: unknown,
     currentCommand: unknown,
     pkiSync: { projectId: string; applicationId?: string | null; name: string },
@@ -199,13 +221,48 @@ export const pkiSyncServiceFactory = ({
     if (nextCommand === currentCommand) return;
     if (!nextCommand && !currentCommand) return;
 
-    await $assertSyncAction(
-      ProjectPermissionPkiSyncActions.SetPostSyncCommand,
-      ResourcePermissionPkiSyncActions.SetPostSyncCommand,
-      pkiSync,
-      subscriberName,
-      actor
+    await $assertSyncAction(actions.project, actions.resource, pkiSync, subscriberName, actor);
+  };
+
+  const HOST_COMMAND_ACTIONS = {
+    [PREFLIGHT_COMMAND_OPTION_KEY]: {
+      project: ProjectPermissionPkiSyncActions.SetPreflightCommand,
+      resource: ResourcePermissionPkiSyncActions.SetPreflightCommand
+    },
+    [POST_SYNC_COMMAND_OPTION_KEY]: {
+      project: ProjectPermissionPkiSyncActions.SetPostSyncCommand,
+      resource: ResourcePermissionPkiSyncActions.SetPostSyncCommand
+    }
+  } as const;
+
+  const $assertHostCommandWrite = async (args: {
+    destination: PkiSync;
+    nextSyncOptions: Record<string, unknown> | undefined;
+    storedSyncOptions: Record<string, unknown> | undefined;
+    pkiSync: { projectId: string; applicationId?: string | null; name: string };
+    subscriberName: string | undefined;
+    actor: OrgServiceActor;
+    resolveConnection: () => Promise<{ gatewayId?: string | null; gatewayPoolId?: string | null } | undefined>;
+  }) => {
+    const { destination, nextSyncOptions, storedSyncOptions, pkiSync, subscriberName, actor, resolveConnection } = args;
+
+    await Promise.all(
+      Object.entries(HOST_COMMAND_ACTIONS).map(([optionKey, actions]) =>
+        $assertMaySetHostCommand(
+          actions,
+          nextSyncOptions?.[optionKey],
+          storedSyncOptions?.[optionKey],
+          pkiSync,
+          subscriberName,
+          actor
+        )
+      )
     );
+
+    const hasCommand = Object.keys(HOST_COMMAND_ACTIONS).some((optionKey) => nextSyncOptions?.[optionKey]);
+    if (!hasCommand) return;
+
+    $assertHostCommandsAreSupported(destination, nextSyncOptions, await resolveConnection());
   };
 
   const validateCertificatesForSync = async (
@@ -280,16 +337,20 @@ export const pkiSyncServiceFactory = ({
       });
     }
 
-    const singleCertificateVariables = findSingleCertificatePostSyncCommandVariables(
-      syncOptions?.postSyncCommand as string | undefined
-    );
-    if (singleCertificateVariables.length > 0) {
-      throw new BadRequestError({
-        message: `This sync's post-sync command uses ${formatPostSyncCommandVariables(
-          singleCertificateVariables
-        )}. A variable that names one certificate can only be used on a sync with a single certificate linked. Use {{certificateFiles}} or {{certificateDirectory}} to write a command that covers every certificate in the run.`
-      });
-    }
+    [
+      { kind: HostCommandKind.Preflight, command: getPreflightCommand(syncOptions) },
+      { kind: HostCommandKind.PostSync, command: getPostSyncCommand(syncOptions) }
+    ].forEach(({ kind, command }) => {
+      const singleCertificateVariables = findSingleCertificateHostCommandVariables(command);
+
+      if (singleCertificateVariables.length > 0) {
+        throw new BadRequestError({
+          message: `This sync's ${kind} uses ${formatHostCommandVariables(
+            singleCertificateVariables
+          )}. A variable that names one certificate can only be used on a sync with a single certificate linked. Use {{certificateFiles}} or {{certificateDirectory}} to write a command that covers every certificate in the run.`
+        });
+      }
+    });
   };
 
   const createPkiSync = async (
@@ -343,19 +404,22 @@ export const pkiSyncServiceFactory = ({
     const connection = await appConnectionService.connectAppConnectionById(destinationApp, connectionId, actor);
 
     const providerCapabilities = getPkiSyncProviderCapabilities(destination);
-    const resolvedSyncOptions = normalizeNewPostSyncCommand({
-      ...providerCapabilities,
-      ...syncOptions
-    });
-
-    await $assertMaySetPostSyncCommand(
-      syncOptions?.postSyncCommand,
-      undefined,
-      { projectId, applicationId, name },
-      undefined,
-      actor
+    const resolvedSyncOptions = normalizeNewPreflightCommand(
+      normalizeNewPostSyncCommand({
+        ...providerCapabilities,
+        ...syncOptions
+      })
     );
-    $assertPostSyncCommandIsSupported(destination, resolvedSyncOptions, connection);
+
+    await $assertHostCommandWrite({
+      destination,
+      nextSyncOptions: resolvedSyncOptions,
+      storedSyncOptions: undefined,
+      pkiSync: { projectId, applicationId, name },
+      subscriberName: undefined,
+      actor,
+      resolveConnection: async () => connection
+    });
 
     if (certificateIds.length > 0) {
       assertWithinCertificateLimit(destination, certificateIds.length);
@@ -482,6 +546,7 @@ export const pkiSyncServiceFactory = ({
       effectiveConnection = await appConnectionService.connectAppConnectionById(destinationApp, connectionId, actor);
     }
 
+    const storedSyncOptions = pkiSync.syncOptions as Record<string, unknown> | undefined;
     let resolvedSyncOptions = syncOptions;
     if (syncOptions) {
       const providerCapabilities = getPkiSyncProviderCapabilities(pkiSync.destination);
@@ -498,34 +563,29 @@ export const pkiSyncServiceFactory = ({
         });
       }
 
-      resolvedSyncOptions = applyPostSyncCommandUpdate(
-        { ...providerCapabilities, ...syncOptions },
-        (pkiSync.syncOptions as Record<string, unknown> | undefined)?.postSyncCommand
+      resolvedSyncOptions = applyPreflightCommandUpdate(
+        applyPostSyncCommandUpdate({ ...providerCapabilities, ...syncOptions }, storedSyncOptions?.postSyncCommand),
+        storedSyncOptions?.preflightCommand
       );
     }
 
     const effectiveSyncOptions = (resolvedSyncOptions ?? pkiSync.syncOptions) as Record<string, unknown> | undefined;
 
-    await $assertMaySetPostSyncCommand(
-      effectiveSyncOptions?.postSyncCommand,
-      (pkiSync.syncOptions as Record<string, unknown> | undefined)?.postSyncCommand,
+    await $assertHostCommandWrite({
+      destination: pkiSync.destination,
+      nextSyncOptions: effectiveSyncOptions,
+      storedSyncOptions,
       pkiSync,
-      currentSubscriber?.name,
-      actor
-    );
-
-    if (effectiveSyncOptions?.postSyncCommand) {
-      $assertPostSyncCommandIsSupported(
-        pkiSync.destination,
-        effectiveSyncOptions,
+      subscriberName: currentSubscriber?.name,
+      actor,
+      resolveConnection: async () =>
         effectiveConnection ??
-          (await appConnectionService.connectAppConnectionById(
-            getDestinationAppType(pkiSync.destination),
-            pkiSync.connectionId,
-            actor
-          ))
-      );
-    }
+        appConnectionService.connectAppConnectionById(
+          getDestinationAppType(pkiSync.destination),
+          pkiSync.connectionId,
+          actor
+        )
+    });
 
     if (certificateIds !== undefined) {
       if (certificateIds.length > 0) {

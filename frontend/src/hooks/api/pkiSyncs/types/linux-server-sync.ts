@@ -17,6 +17,7 @@ export type TLinuxServerPkiSync = TRootPkiSync & {
     privateKeyFileMode?: string;
     owner?: string;
     group?: string;
+    preflightCommand?: string | null;
     postSyncCommand?: string | null;
   };
   connection: {

@@ -44,6 +44,7 @@ import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-a
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 import { TPostSyncCommandResult } from "@app/services/pki-sync/pki-sync-post-sync-command-fns";
+import { TPreflightCommandResult } from "@app/services/pki-sync/pki-sync-preflight-command-fns";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import {
   TCreateSecretSyncDTO,
@@ -579,6 +580,7 @@ export enum EventType {
   PKI_SYNC_SYNC_CERTIFICATES = "pki-sync-sync-certificates",
   PKI_SYNC_IMPORT_CERTIFICATES = "pki-sync-import-certificates",
   PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
+  PKI_SYNC_PREFLIGHT_CHECK = "pki-sync-preflight-check",
   PKI_SYNC_SET_DEFAULT_CERTIFICATE = "pki-sync-set-default-certificate",
   PKI_SYNC_CLEAR_DEFAULT_CERTIFICATE = "pki-sync-clear-default-certificate",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
@@ -4503,6 +4505,7 @@ interface CreatePkiSyncEvent {
     connectionId?: string;
     hasCredentials?: boolean;
     hasPostSyncCommand?: boolean;
+    hasPreflightCommand?: boolean;
   };
 }
 
@@ -4513,6 +4516,7 @@ interface UpdatePkiSyncEvent {
     name: string;
     applicationId?: string;
     hasPostSyncCommand?: boolean;
+    hasPreflightCommand?: boolean;
   };
 }
 
@@ -4533,6 +4537,7 @@ interface PkiSyncSyncCertificatesEvent {
     syncMessage: string | null;
     jobId: string;
     jobRanAt: Date;
+    preflightCheck?: { command: string; result?: TPreflightCommandResult };
     postSyncCommand?: { command: string; result?: TPostSyncCommandResult };
   };
 }
@@ -4544,6 +4549,16 @@ interface PkiSyncImportCertificatesEvent {
     importMessage: string | null;
     jobId: string;
     jobRanAt: Date;
+  };
+}
+
+interface PkiSyncPreflightCheckEvent {
+  type: EventType.PKI_SYNC_PREFLIGHT_CHECK;
+  metadata: {
+    syncId: string;
+    command: string;
+    ranAt: Date;
+    result?: TPreflightCommandResult;
   };
 }
 
@@ -7370,6 +7385,7 @@ export type Event =
   | DeletePkiSyncEvent
   | PkiSyncSyncCertificatesEvent
   | PkiSyncImportCertificatesEvent
+  | PkiSyncPreflightCheckEvent
   | PkiSyncRemoveCertificatesEvent
   | PkiSyncSetDefaultCertificateEvent
   | PkiSyncClearDefaultCertificateEvent
