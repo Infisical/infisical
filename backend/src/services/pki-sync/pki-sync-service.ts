@@ -216,10 +216,12 @@ export const pkiSyncServiceFactory = ({
     currentCommand: unknown,
     pkiSync: { projectId: string; applicationId?: string | null; name: string },
     subscriberName: string | undefined,
-    actor: OrgServiceActor
+    actor: OrgServiceActor,
+    isExecutionTargetChanging: boolean
   ) => {
-    if (nextCommand === currentCommand) return;
-    if (!nextCommand && !currentCommand) return;
+    const isCommandChanging = nextCommand !== currentCommand && Boolean(nextCommand || currentCommand);
+    const isCommandBeingRetargeted = Boolean(nextCommand) && isExecutionTargetChanging;
+    if (!isCommandChanging && !isCommandBeingRetargeted) return;
 
     await $assertSyncAction(actions.project, actions.resource, pkiSync, subscriberName, actor);
   };
@@ -242,9 +244,19 @@ export const pkiSyncServiceFactory = ({
     pkiSync: { projectId: string; applicationId?: string | null; name: string };
     subscriberName: string | undefined;
     actor: OrgServiceActor;
+    isExecutionTargetChanging?: boolean;
     resolveConnection: () => Promise<{ gatewayId?: string | null; gatewayPoolId?: string | null } | undefined>;
   }) => {
-    const { destination, nextSyncOptions, storedSyncOptions, pkiSync, subscriberName, actor, resolveConnection } = args;
+    const {
+      destination,
+      nextSyncOptions,
+      storedSyncOptions,
+      pkiSync,
+      subscriberName,
+      actor,
+      isExecutionTargetChanging = false,
+      resolveConnection
+    } = args;
 
     await Promise.all(
       Object.entries(HOST_COMMAND_ACTIONS).map(([optionKey, actions]) =>
@@ -254,7 +266,8 @@ export const pkiSyncServiceFactory = ({
           storedSyncOptions?.[optionKey],
           pkiSync,
           subscriberName,
-          actor
+          actor,
+          isExecutionTargetChanging
         )
       )
     );
@@ -578,6 +591,7 @@ export const pkiSyncServiceFactory = ({
       pkiSync,
       subscriberName: currentSubscriber?.name,
       actor,
+      isExecutionTargetChanging: Boolean(effectiveConnection),
       resolveConnection: async () =>
         effectiveConnection ??
         appConnectionService.connectAppConnectionById(
