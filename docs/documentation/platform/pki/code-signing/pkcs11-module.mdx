@@ -119,7 +119,8 @@ export INFISICAL_CONFIG=/path/to/your/pkcs11.conf
 | `cache.signer_ttl_seconds` | No | `300` | How long the list of Signers is cached. |
 | `approval.signing_duration` | No | None | Auto-request signing access with this window when no active access exists. Valid range: `1m` to `30d`. |
 | `approval.signing_count` | No | None | Auto-request signing access for this many signatures when no active access exists. |
-| `approval.exclude_scope_fields` | No | None | Signing parameters to leave out of the requests the module opens, so one approval covers any value of them. Any of `command`, `signing_application`, `signing_application_hash`, `hostname`, `os_username`, `data_hash`. An unknown name is rejected at startup. |
+| `approval.exclude_scope_fields` | No | None | Signing parameters to leave out of the requests the module opens, so one approval covers any value of them. Any of `command`, `signing_application`, `signing_application_hash`, `hostname`, `os_username`, `ip_address`, `data_hash`. An unknown name is rejected at startup. |
+| `approval.ip_address` | No | None | Pin the requests the module opens to this address instead of the one Infisical sees them arrive from, which is what it uses when this is unset. It does not have to be this machine's, so you can name a build agent's egress address. |
 | `log_level` | No | `info` | One of `trace`, `debug`, `info`, `warn`, `error`. |
 | `log_file` | No | stderr | Optional path to a log file. |
 
@@ -212,7 +213,7 @@ The request is [scoped](/documentation/platform/pki/code-signing/approvals#scopi
 
 ### Leaving parameters out of a request
 
-Every parameter on a request has to match at signing time, so a request that names the artifact digest covers exactly one artifact. When a run should cover a series of builds instead, name the parameters that vary in `approval.exclude_scope_fields` and the module leaves them off every request it opens:
+Every parameter on a request has to match at signing time, so a request that names the artifact digest covers exactly one artifact. To have one approval cover a series of builds, name the parameters that vary in `approval.exclude_scope_fields` and the module leaves them off every request it opens:
 
 ```json
 {
@@ -224,7 +225,7 @@ Every parameter on a request has to match at signing time, so a request that nam
 }
 ```
 
-`data_hash` is the usual one. A timestamped signature changes the digest between runs even for the same file, so pinning it means a fresh approval for every build. The other names are `command`, `signing_application`, `signing_application_hash`, `hostname` and `os_username`.
+`data_hash` is the usual one. A timestamped signature changes the digest between runs even for the same file, so pinning it means a fresh approval for every build. The other names are `command`, `signing_application`, `signing_application_hash`, `hostname`, `os_username` and `ip_address`.
 
 Leave out only what genuinely varies, and be aware that dropping a parameter widens the approval further than the machine you configured it on. An approval belongs to the identity that asked for it, not to a host, so once `hostname` is excluded the same approval covers that identity signing from anywhere its credentials are installed.
 
@@ -233,6 +234,25 @@ Leave out only what genuinely varies, and be aware that dropping a parameter wid
 </Warning>
 
 An excluded parameter is still recorded on the signing operation, so the command, machine, account and artifact digest behind every signature stay available to auditors even when they no longer constrain the approval.
+
+### Scoping by address
+
+The address is the one parameter the module cannot observe, because what counts is the address Infisical receives the sign call from, after any NAT or proxy in between. Infisical fills it in from the request itself, the same value it records in the audit log, so requests are scoped by address without any configuration.
+
+Two settings change that:
+
+```json
+{
+  "approval": {
+    "ip_address": "203.0.113.10",
+    "exclude_scope_fields": ["ip_address"]
+  }
+}
+```
+
+`ip_address` pins a different address than the request came from, which is how you tie an approval to a build agent's egress address from elsewhere. Excluding `ip_address` leaves signing unrestricted by address, which is what a fleet behind a rotating NAT pool needs, since a pinned address would stop matching between runs. Setting both leaves the address unscoped, because excluding wins.
+
+Infisical always compares against the address it sees, never one a caller reports, so neither setting can widen access beyond what the approval already allows.
 
 ### Example CI workflow
 
@@ -247,7 +267,9 @@ For fully unattended CI, have an Administrator **pre-approve** signing access vi
 
 ## Troubleshooting
 
-Turn on debug logging in the config first. It'll usually tell you exactly what went wrong:
+If the module fails before it can log anything, it prints the reason to stderr prefixed `infisical-pkcs11:`. That covers a config file it cannot read, since the log path lives in the file that just failed, and PKCS#11 gives the calling tool nothing but a generic `CKR_GENERAL_ERROR`.
+
+For everything else, turn on debug logging in the config first. It'll usually tell you exactly what went wrong:
 
 ```json
 {

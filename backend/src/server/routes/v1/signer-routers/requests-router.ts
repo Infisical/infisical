@@ -6,6 +6,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import {
   CODE_SIGNING_SCOPE_API_DESCRIPTION,
+  CodeSigningRequestScopeInputSchema,
   CodeSigningScopeInputSchema,
   SigningWindowDurationSchema
 } from "@app/services/approval-policy/code-signing/code-signing-policy-schemas";
@@ -73,7 +74,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         requestedWindowDuration: SigningWindowDurationSchema.optional().describe(
           "How long the approval stays usable once it is granted, for example '4h'. The window starts when the request is approved."
         ),
-        scope: CodeSigningScopeInputSchema.optional().describe(CODE_SIGNING_SCOPE_API_DESCRIPTION)
+        scope: CodeSigningRequestScopeInputSchema.optional().describe(CODE_SIGNING_SCOPE_API_DESCRIPTION)
       })
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -84,7 +85,8 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        ipAddress: req.realIp
       });
 
       await server.services.auditLog.createAuditLog({

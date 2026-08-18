@@ -70,8 +70,12 @@ export const CodeSigningScopeSchema = z.object({
 
 export const CodeSigningScopeInputSchema = CodeSigningScopeSchema.strict();
 
+export const CodeSigningRequestScopeInputSchema = CodeSigningScopeSchema.extend({
+  [CodeSigningScopeField.IpAddress]: CodeSigningScopeSchema.shape[CodeSigningScopeField.IpAddress].nullable()
+}).strict();
+
 export const CODE_SIGNING_SCOPE_API_DESCRIPTION =
-  "Optional parameters to scope this approval to (command, signingApplication, signingApplicationHash, hostname, osUsername, ipAddress, dataHash). Every value declared here must match at signing time or the sign call is denied; parameters left out are not restricted. A command must match exactly, apart from whitespace, so a different order of options is a different command. ipAddress is compared against the address the sign call arrives from and dataHash against the digest of the submitted payload, so those two hold even if a caller reports something else.";
+  "Optional parameters to scope this approval to (command, signingApplication, signingApplicationHash, hostname, osUsername, ipAddress, dataHash). Every value declared here must match at signing time or the sign call is denied; parameters left out are not restricted. A command must match exactly, apart from whitespace, so a different order of options is a different command. ipAddress is compared against the address the sign call arrives from and dataHash against the digest of the submitted payload, so those two hold even if a caller reports something else. A machine identity that declares a scope without naming ipAddress has it filled in with the address the request arrives from; send null to leave signing unrestricted by address.";
 
 export const CodeSigningPolicyConstraintsSchema = z
   .object({

@@ -125,7 +125,8 @@ $env:INFISICAL_TOKEN = "<your-access-token>"
 | `cache.signer_ttl_seconds` | No | `300` | How long to reuse the list of Signers. |
 | `approval.signing_duration` | No | None | Ask for an access window of this length when signing is denied for want of approved access (`30m`, `8h`, `2d`). The provider accepts 1m to 30d as a sanity check; the real limit is the Signer's approval policy. The window starts when the request is approved, so time spent waiting for an approver does not eat into it. |
 | `approval.signing_count` | No | None | Ask for access good for this many signing operations. |
-| `approval.exclude_scope_fields` | No | None | Signing parameters to leave out of the requests the provider opens, so one approval covers any value of them. Any of `command`, `signing_application`, `signing_application_hash`, `hostname`, `os_username`, `data_hash`. An unknown name is rejected at startup. |
+| `approval.exclude_scope_fields` | No | None | Signing parameters to leave out of the requests the provider opens, so one approval covers any value of them. Any of `command`, `signing_application`, `signing_application_hash`, `hostname`, `os_username`, `ip_address`, `data_hash`. An unknown name is rejected at startup. |
+| `approval.ip_address` | No | None | Pin the requests the provider opens to this address instead of the one Infisical sees them arrive from, which is what it uses when this is unset. It does not have to be this machine's, so you can name a build agent's egress address. |
 | `log_level` | No | `info` | How much detail to log: `trace`, `debug`, `info`, `warn`, or `error`. |
 | `log_file` | No | `%ProgramData%\Infisical\ksp.log` | Where to write the log. `signtool` has no window to print to, so the plug-in writes here by default. |
 
@@ -214,7 +215,7 @@ The request is [scoped](/documentation/platform/pki/code-signing/approvals#scopi
 
 ### Leaving parameters out of a request
 
-Every parameter on a request has to match at signing time, so a request that names the artifact digest covers exactly one artifact. When a run should cover a series of builds instead, name the parameters that vary in `approval.exclude_scope_fields` and the provider leaves them off every request it opens:
+Every parameter on a request has to match at signing time, so a request that names the artifact digest covers exactly one artifact. To have one approval cover a series of builds, name the parameters that vary in `approval.exclude_scope_fields` and the provider leaves them off every request it opens:
 
 ```json
 {
@@ -226,7 +227,7 @@ Every parameter on a request has to match at signing time, so a request that nam
 }
 ```
 
-`data_hash` is the usual one. A timestamped signature changes the digest between runs even for the same file, so pinning it means a fresh approval for every build. The other names are `command`, `signing_application`, `signing_application_hash`, `hostname` and `os_username`.
+`data_hash` is the usual one. A timestamped signature changes the digest between runs even for the same file, so pinning it means a fresh approval for every build. The other names are `command`, `signing_application`, `signing_application_hash`, `hostname`, `os_username` and `ip_address`.
 
 Leave out only what genuinely varies, and be aware that dropping a parameter widens the approval further than the machine you configured it on. An approval belongs to the identity that asked for it, not to a host, so once `hostname` is excluded the same approval covers that identity signing from anywhere its credentials are installed.
 
@@ -235,6 +236,25 @@ Leave out only what genuinely varies, and be aware that dropping a parameter wid
 </Warning>
 
 An excluded parameter is still recorded on the signing operation, so the command, machine, account and artifact digest behind every signature stay available to auditors even when they no longer constrain the approval.
+
+### Scoping by address
+
+The address is the one parameter the provider cannot observe, because what counts is the address Infisical receives the sign call from, after any NAT or proxy in between. Infisical fills it in from the request itself, the same value it records in the audit log, so requests are scoped by address without any configuration.
+
+Two settings change that:
+
+```json
+{
+  "approval": {
+    "ip_address": "203.0.113.10",
+    "exclude_scope_fields": ["ip_address"]
+  }
+}
+```
+
+`ip_address` pins a different address than the request came from, which is how you tie an approval to a build agent's egress address from elsewhere. Excluding `ip_address` leaves signing unrestricted by address, which is what a fleet behind a rotating NAT pool needs, since a pinned address would stop matching between runs. Setting both leaves the address unscoped, because excluding wins.
+
+Infisical always compares against the address it sees, never one a caller reports, so neither setting can widen access beyond what the approval already allows.
 
 ### Example CI workflow
 
@@ -252,6 +272,9 @@ For fully unattended CI, have an Administrator [pre-approve signing](/documentat
 The plug-in writes a log to `%ProgramData%\Infisical\ksp.log`. `signtool` itself only shows a short error code, so this log is the best place to see what actually went wrong and how to fix it. For more detail, set `log_level` to `debug`.
 
 <AccordionGroup>
+  <Accordion title="signtool fails immediately and the log you configured is empty">
+    The config file could not be read, so the log path named inside it is unknown too. The reason is written to the default log at `%ProgramData%\Infisical\ksp.log` instead, and it names the setting at fault: an `exclude_scope_fields` entry that is not a signing parameter, an `ip_address` that is not an address, or invalid JSON. A UTF-8 byte order mark counts as invalid JSON, so write the file with `[IO.File]::WriteAllText` rather than `Set-Content -Encoding utf8`.
+  </Accordion>
   <Accordion title="signtool says 'Invalid provider specified' right after setup">
     Windows has not picked up the new plug-in yet. **Restart the computer once** and try again.
   </Accordion>

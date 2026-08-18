@@ -8,6 +8,7 @@ import {
   CodeSigningPolicySchema,
   CodeSigningRequestGrantSchema,
   CodeSigningRequestSchema,
+  CodeSigningRequestScopeInputSchema,
   CodeSigningScopeSchema
 } from "./code-signing-policy-schemas";
 
@@ -22,3 +23,4 @@ export type TCodeSigningRequestData = z.infer<typeof CodeSigningPolicyRequestDat
 export type TCodeSigningGrantAttributes = z.infer<typeof CodeSigningRequestGrantSchema>["attributes"];
 
 export type TCodeSigningScope = z.infer<typeof CodeSigningScopeSchema>;
+export type TCodeSigningRequestScopeInput = z.infer<typeof CodeSigningRequestScopeInputSchema>;

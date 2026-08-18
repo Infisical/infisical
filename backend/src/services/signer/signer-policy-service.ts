@@ -31,7 +31,11 @@ import {
 import { createApprovalRequestWithSteps, notifyStepApprovers } from "../approval-policy/approval-request-fns";
 import { CodeSigningScopeField } from "../approval-policy/code-signing/code-signing-policy-enums";
 import { normalizeCodeSigningScope } from "../approval-policy/code-signing/code-signing-policy-fns";
-import { TCodeSigningRequestData, TCodeSigningScope } from "../approval-policy/code-signing/code-signing-policy-types";
+import {
+  TCodeSigningRequestData,
+  TCodeSigningRequestScopeInput,
+  TCodeSigningScope
+} from "../approval-policy/code-signing/code-signing-policy-types";
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
@@ -104,6 +108,22 @@ const $loadSignerOrThrow = async (signerDAL: TSignerPolicyServiceFactoryDep["sig
     });
   }
   return signer;
+};
+
+const $resolveRequestedScope = (
+  scope: TCodeSigningRequestScopeInput | undefined,
+  actor: ActorType,
+  requestIpAddress: string | undefined
+): TCodeSigningScope | undefined => {
+  if (!scope) return undefined;
+
+  const { [CodeSigningScopeField.IpAddress]: declaredIpAddress, ...rest } = scope;
+  if (declaredIpAddress === null) return rest;
+  if (declaredIpAddress !== undefined) return { ...rest, [CodeSigningScopeField.IpAddress]: declaredIpAddress };
+  if (actor === ActorType.IDENTITY && requestIpAddress) {
+    return { ...rest, [CodeSigningScopeField.IpAddress]: requestIpAddress };
+  }
+  return rest;
 };
 
 export const signerPolicyServiceFactory = ({
@@ -593,7 +613,7 @@ export const signerPolicyServiceFactory = ({
       requestedSignings: dto.requestedSignings,
       requestedWindowDuration: dto.requestedWindowDuration
     });
-    const scope = normalizeCodeSigningScope(dto.scope);
+    const scope = normalizeCodeSigningScope($resolveRequestedScope(dto.scope, dto.actor, dto.ipAddress));
 
     if (scope) {
       const duplicate = await $findDuplicatePendingRequest({
