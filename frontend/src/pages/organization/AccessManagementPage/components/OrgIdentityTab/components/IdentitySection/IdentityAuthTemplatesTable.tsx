@@ -45,6 +45,7 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
+  MachineIdentityAuthMethod,
   TEMPLATE_UI_LABELS,
   useGetIdentityAuthTemplates
 } from "@app/hooks/api/identityAuthTemplates";
@@ -200,7 +201,7 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen, onEmptyStateChange
                   )}
                 />
               </TableHead>
-              <TableHead>URL</TableHead>
+              <TableHead>Host / URL</TableHead>
               <TableHead className="w-5" />
             </TableRow>
           </TableHeader>
@@ -229,7 +230,11 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen, onEmptyStateChange
                   <TableCell>
                     <span className="uppercase">{template.authMethod}</span>
                   </TableCell>
-                  <TableCell isTruncatable>{template.templateFields.url}</TableCell>
+                  <TableCell isTruncatable>
+                    {template.authMethod === MachineIdentityAuthMethod.KUBERNETES
+                      ? template.templateFields.kubernetesHost || "Gateway"
+                      : template.templateFields.url}
+                  </TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

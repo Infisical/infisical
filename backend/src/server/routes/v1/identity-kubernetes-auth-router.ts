@@ -5,7 +5,6 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, KUBERNETES_AUTH } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -13,6 +12,11 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
+import {
+  kubernetesHostSchema,
+  rejectTemplateManagedKubernetesFields,
+  superRefineKubernetesConnectionFields
+} from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-validators";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -32,7 +36,8 @@ const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.pick(
   allowedAudience: true,
   gatewayId: true,
   gatewayPoolId: true,
-  verifyTlsCertificate: true
+  verifyTlsCertificate: true,
+  templateId: true
 }).extend({
   caCert: z.string(),
   tokenReviewerJwt: z.string().optional().nullable()
@@ -164,40 +169,21 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       }),
       body: z
         .object({
-          kubernetesHost: z
-            .string()
-            .trim()
-            .min(1)
-            .nullable()
-            .describe(KUBERNETES_AUTH.ATTACH.kubernetesHost)
-            .refine(
-              (val) => {
-                if (val === null) return true;
-
-                return characterValidator([
-                  CharacterType.Alphabets,
-                  CharacterType.Numbers,
-                  CharacterType.Colon,
-                  CharacterType.Period,
-                  CharacterType.ForwardSlash,
-                  CharacterType.Hyphen
-                ])(val);
-              },
-              {
-                message:
-                  "Kubernetes host must only contain alphabets, numbers, colons, periods, hyphen, and forward slashes."
-              }
-            ),
+          templateId: z.string().uuid().optional().describe(KUBERNETES_AUTH.ATTACH.templateId),
+          kubernetesHost: kubernetesHostSchema.nullish().describe(KUBERNETES_AUTH.ATTACH.kubernetesHost),
           caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.ATTACH.caCert),
           verifyTlsCertificate: z.boolean().optional().describe(KUBERNETES_AUTH.ATTACH.verifyTlsCertificate),
           tokenReviewerJwt: z.string().trim().optional().describe(KUBERNETES_AUTH.ATTACH.tokenReviewerJwt),
+          // no zod defaults on tokenReviewMode/allowedAudience: a default would make them
+          // indistinguishable from caller-supplied values, so template attaches could not
+          // reject them; the service defaults them (api / "") on the custom path
           tokenReviewMode: z
             .nativeEnum(IdentityKubernetesAuthTokenReviewMode)
-            .default(IdentityKubernetesAuthTokenReviewMode.Api)
+            .optional()
             .describe(KUBERNETES_AUTH.ATTACH.tokenReviewMode),
           allowedNamespaces: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNamespaces), // TODO: validation
           allowedNames: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNames),
-          allowedAudience: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedAudience),
+          allowedAudience: z.string().trim().max(1000).optional().describe(KUBERNETES_AUTH.ATTACH.allowedAudience),
           gatewayId: z.string().uuid().optional().nullable().describe(KUBERNETES_AUTH.ATTACH.gatewayId),
           gatewayPoolId: z.string().uuid().optional().nullable(),
           accessTokenTrustedIps: z
@@ -230,30 +216,10 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             .describe(KUBERNETES_AUTH.ATTACH.accessTokenNumUsesLimit)
         })
         .superRefine((data, ctx) => {
-          if (data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && !data.kubernetesHost) {
-            ctx.addIssue({
-              path: ["kubernetesHost"],
-              code: z.ZodIssueCode.custom,
-              message: "When token review mode is set to API, a Kubernetes host must be provided"
-            });
-          }
-          if (
-            data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
-            !data.gatewayId &&
-            !data.gatewayPoolId
-          ) {
-            ctx.addIssue({
-              path: ["gatewayId"],
-              code: z.ZodIssueCode.custom,
-              message: "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
-            });
-          }
-          if (data.gatewayId && data.gatewayPoolId) {
-            ctx.addIssue({
-              path: ["gatewayPoolId"],
-              code: z.ZodIssueCode.custom,
-              message: "Cannot specify both a gateway and a gateway pool"
-            });
+          if (data.templateId) {
+            rejectTemplateManagedKubernetesFields(data, ctx);
+          } else {
+            superRefineKubernetesConnectionFields(data, ctx);
           }
 
           if (data.accessTokenTTL > data.accessTokenMaxTTL) {
@@ -261,30 +227,6 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
               path: ["accessTokenTTL"],
               code: z.ZodIssueCode.custom,
               message: "Access Token TTL cannot be greater than Access Token Max TTL."
-            });
-          }
-          if (
-            data.verifyTlsCertificate &&
-            data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-            !data.caCert?.length
-          ) {
-            ctx.addIssue({
-              path: ["caCert"],
-              code: z.ZodIssueCode.custom,
-              message:
-                "A CA certificate is required when TLS certificate verification is enabled. Either paste the Kubernetes API server's CA certificate or disable verification."
-            });
-          }
-          if (
-            data.verifyTlsCertificate === false &&
-            data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
-            data.caCert?.length
-          ) {
-            ctx.addIssue({
-              path: ["verifyTlsCertificate"],
-              code: z.ZodIssueCode.custom,
-              message:
-                "TLS certificate verification cannot be disabled when a CA certificate is provided. Either remove the CA certificate or enable verification."
             });
           }
         }),
@@ -312,6 +254,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           type: EventType.ADD_IDENTITY_KUBERNETES_AUTH,
           metadata: {
             identityId: identityKubernetesAuth.identityId,
+            templateId: identityKubernetesAuth.templateId,
             kubernetesHost: identityKubernetesAuth.kubernetesHost ?? "",
             allowedNamespaces: identityKubernetesAuth.allowedNamespaces,
             allowedNames: identityKubernetesAuth.allowedNames,
@@ -364,31 +307,8 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       }),
       body: z
         .object({
-          kubernetesHost: z
-            .string()
-            .trim()
-            .min(1)
-            .nullable()
-            .optional()
-            .describe(KUBERNETES_AUTH.UPDATE.kubernetesHost)
-            .refine(
-              (val) => {
-                if (!val) return true;
-
-                return characterValidator([
-                  CharacterType.Alphabets,
-                  CharacterType.Numbers,
-                  CharacterType.Colon,
-                  CharacterType.Period,
-                  CharacterType.ForwardSlash,
-                  CharacterType.Hyphen
-                ])(val);
-              },
-              {
-                message:
-                  "Kubernetes host must only contain alphabets, numbers, colons, periods, hyphen, and forward slashes."
-              }
-            ),
+          templateId: z.string().uuid().nullable().optional().describe(KUBERNETES_AUTH.UPDATE.templateId),
+          kubernetesHost: kubernetesHostSchema.nullish().describe(KUBERNETES_AUTH.UPDATE.kubernetesHost),
           caCert: z.string().trim().optional().describe(KUBERNETES_AUTH.UPDATE.caCert),
           verifyTlsCertificate: z.boolean().optional().describe(KUBERNETES_AUTH.UPDATE.verifyTlsCertificate),
           tokenReviewerJwt: z.string().trim().nullable().optional().describe(KUBERNETES_AUTH.UPDATE.tokenReviewerJwt),
@@ -398,7 +318,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             .describe(KUBERNETES_AUTH.UPDATE.tokenReviewMode),
           allowedNamespaces: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNamespaces), // TODO: validation
           allowedNames: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNames),
-          allowedAudience: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedAudience),
+          allowedAudience: z.string().trim().max(1000).optional().describe(KUBERNETES_AUTH.UPDATE.allowedAudience),
           gatewayId: z.string().uuid().optional().nullable().describe(KUBERNETES_AUTH.UPDATE.gatewayId),
           gatewayPoolId: z.string().uuid().optional().nullable(),
           accessTokenTrustedIps: z
@@ -431,24 +351,28 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
             .describe(KUBERNETES_AUTH.UPDATE.accessTokenMaxTTL)
         })
         .superRefine((data, ctx) => {
-          if (
-            data.tokenReviewMode &&
-            data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
-            !data.gatewayId &&
-            !data.gatewayPoolId
-          ) {
-            ctx.addIssue({
-              path: ["gatewayId"],
-              code: z.ZodIssueCode.custom,
-              message: "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
-            });
-          }
-          if (data.gatewayId && data.gatewayPoolId) {
-            ctx.addIssue({
-              path: ["gatewayPoolId"],
-              code: z.ZodIssueCode.custom,
-              message: "Cannot specify both a gateway and a gateway pool"
-            });
+          if (data.templateId) {
+            rejectTemplateManagedKubernetesFields(data, ctx);
+          } else {
+            if (
+              data.tokenReviewMode &&
+              data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
+              !data.gatewayId &&
+              !data.gatewayPoolId
+            ) {
+              ctx.addIssue({
+                path: ["gatewayId"],
+                code: z.ZodIssueCode.custom,
+                message: "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
+              });
+            }
+            if (data.gatewayId && data.gatewayPoolId) {
+              ctx.addIssue({
+                path: ["gatewayPoolId"],
+                code: z.ZodIssueCode.custom,
+                message: "Cannot specify both a gateway and a gateway pool"
+              });
+            }
           }
           if (data.accessTokenMaxTTL && data.accessTokenTTL ? data.accessTokenTTL > data.accessTokenMaxTTL : false) {
             ctx.addIssue({
@@ -482,6 +406,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           type: EventType.UPDATE_IDENTITY_KUBENETES_AUTH,
           metadata: {
             identityId: identityKubernetesAuth.identityId,
+            templateId: identityKubernetesAuth.templateId,
             kubernetesHost: identityKubernetesAuth.kubernetesHost ?? "",
             allowedNamespaces: identityKubernetesAuth.allowedNamespaces,
             allowedNames: identityKubernetesAuth.allowedNames,

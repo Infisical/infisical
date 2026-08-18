@@ -12,17 +12,22 @@ import {
   OrganizationActionScope,
   TIdentityKubernetesAuthsUpdate
 } from "@app/db/schemas";
+import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
+import { IdentityAuthTemplateMethod } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
+import { TKubernetesTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionGatewayActions,
   OrgPermissionGatewayPoolActions,
   OrgPermissionIdentityActions,
+  OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import {
@@ -90,6 +95,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
     "create" | "findOne" | "transaction" | "updateById" | "delete"
   >;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
+  identityAuthTemplateDAL: Pick<TIdentityAuthTemplateDALFactory, "findByIdAndOrgId">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
@@ -118,6 +124,7 @@ const GATEWAY_AUTH_DEFAULT_HOST = "https://kubernetes.default.svc.cluster.local"
 export const identityKubernetesAuthServiceFactory = ({
   identityDAL,
   identityKubernetesAuthDAL,
+  identityAuthTemplateDAL,
   membershipIdentityDAL,
   keyStore,
   identityAccessTokenDAL,
@@ -770,28 +777,29 @@ export const identityKubernetesAuthServiceFactory = ({
     }
   };
 
-  const attachKubernetesAuth = async ({
-    identityId,
-    gatewayId,
-    gatewayPoolId,
-    kubernetesHost,
-    caCert,
-    verifyTlsCertificate,
-    tokenReviewerJwt,
-    tokenReviewMode,
-    allowedNamespaces,
-    allowedNames,
-    allowedAudience,
-    accessTokenTTL,
-    accessTokenMaxTTL,
-    accessTokenNumUsesLimit,
-    accessTokenTrustedIps,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId,
-    isActorSuperAdmin
-  }: TAttachKubernetesAuthDTO) => {
+  const attachKubernetesAuth = async (dto: TAttachKubernetesAuthDTO) => {
+    const {
+      identityId,
+      templateId,
+      allowedNamespaces,
+      allowedNames,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps,
+      actorId,
+      actorAuthMethod,
+      actor,
+      actorOrgId,
+      isActorSuperAdmin
+    } = dto;
+    let { gatewayId, gatewayPoolId, kubernetesHost, caCert, verifyTlsCertificate, tokenReviewerJwt, allowedAudience } =
+      dto;
+    let { tokenReviewMode } = dto;
+    // the route leaves these two optional (no zod default) so template-managed values can
+    // be detected and rejected when a template is used; default them for the custom path
+    tokenReviewMode = tokenReviewMode ?? IdentityKubernetesAuthTokenReviewMode.Api;
+    allowedAudience = allowedAudience ?? "";
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -842,6 +850,50 @@ export const identityKubernetesAuthServiceFactory = ({
         OrgPermissionSubjects.Identity
       );
     }
+
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.scopeOrgId
+    });
+
+    let template: TIdentityAuthTemplates | undefined;
+    if (templateId) {
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+        OrgPermissionSubjects.MachineIdentityAuthTemplate
+      );
+
+      template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.scopeOrgId);
+      if (!template || template.authMethod !== IdentityAuthTemplateMethod.KUBERNETES) {
+        throw new NotFoundError({ message: `Kubernetes auth template with ID '${templateId}' not found` });
+      }
+
+      const templateFields = JSON.parse(
+        decryptor({ cipherTextBlob: template.templateFields }).toString()
+      ) as TKubernetesTemplateFields;
+
+      kubernetesHost = templateFields.kubernetesHost ?? null;
+      caCert = templateFields.caCert || undefined;
+      tokenReviewerJwt = templateFields.tokenReviewerJwt || undefined;
+      tokenReviewMode = templateFields.tokenReviewMode;
+      gatewayId = templateFields.gatewayId ?? null;
+      gatewayPoolId = templateFields.gatewayPoolId ?? null;
+      verifyTlsCertificate = templateFields.verifyTlsCertificate ?? Boolean(templateFields.caCert?.length);
+      allowedAudience = templateFields.allowedAudience ?? "";
+    } else if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api && !kubernetesHost) {
+      throw new BadRequestError({
+        message: "When token review mode is set to API, a Kubernetes host must be provided"
+      });
+    }
+
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
@@ -895,18 +947,22 @@ export const identityKubernetesAuthServiceFactory = ({
         isGatewayV1 = false;
       }
 
-      const { permission: orgPermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
+      // when the gateway comes from a template, attaching the gateway was authorized at
+      // template authoring time, so the actor only needs the attach-template permission
+      if (!template) {
+        const { permission: orgPermission } = await permissionService.getOrgPermission({
+          scope: OrganizationActionScope.Any,
+          actor,
+          actorId,
+          orgId: identityMembershipOrg.scopeOrgId,
+          actorAuthMethod,
+          actorOrgId
+        });
+        ForbiddenError.from(orgPermission).throwUnlessCan(
+          OrgPermissionGatewayActions.AttachGateways,
+          OrgPermissionSubjects.Gateway
+        );
+      }
 
       if (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
         const gatewayExecutor = $createGatewayValidationRequest(gatewayId);
@@ -933,18 +989,20 @@ export const identityKubernetesAuthServiceFactory = ({
         });
       }
 
-      const { permission: orgPermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayPoolActions.AttachGatewayPools,
-        OrgPermissionSubjects.GatewayPool
-      );
+      if (!template) {
+        const { permission: orgPermission } = await permissionService.getOrgPermission({
+          scope: OrganizationActionScope.Any,
+          actor,
+          actorId,
+          orgId: identityMembershipOrg.scopeOrgId,
+          actorAuthMethod,
+          actorOrgId
+        });
+        ForbiddenError.from(orgPermission).throwUnlessCan(
+          OrgPermissionGatewayPoolActions.AttachGatewayPools,
+          OrgPermissionSubjects.GatewayPool
+        );
+      }
 
       const pool = await gatewayPoolDAL.findById(gatewayPoolId);
       if (!pool || pool.orgId !== identityMembershipOrg.scopeOrgId) {
@@ -989,11 +1047,6 @@ export const identityKubernetesAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.scopeOrgId
-    });
-
     let resolvedGatewayId: string | null | undefined = null;
     let resolvedGatewayV2Id: string | null | undefined = null;
     if (!gatewayPoolId && gatewayId) {
@@ -1012,13 +1065,15 @@ export const identityKubernetesAuthServiceFactory = ({
           tokenReviewMode,
           allowedNamespaces,
           allowedNames,
-          allowedAudience,
+          // narrowing from the early default does not survive into this closure
+          allowedAudience: allowedAudience ?? "",
           accessTokenMaxTTL,
           accessTokenTTL,
           accessTokenNumUsesLimit,
           gatewayId: resolvedGatewayId,
           gatewayV2Id: resolvedGatewayV2Id,
           gatewayPoolId: gatewayPoolId ?? null,
+          templateId: template?.id ?? null,
           verifyTlsCertificate: resolvedVerifyTlsCertificate,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
           encryptedKubernetesTokenReviewerJwt: tokenReviewerJwt
@@ -1040,28 +1095,25 @@ export const identityKubernetesAuthServiceFactory = ({
     };
   };
 
-  const updateKubernetesAuth = async ({
-    identityId,
-    kubernetesHost,
-    caCert,
-    verifyTlsCertificate,
-    tokenReviewerJwt,
-    tokenReviewMode,
-    allowedNamespaces,
-    allowedNames,
-    allowedAudience,
-    gatewayId,
-    gatewayPoolId,
-    accessTokenTTL,
-    accessTokenMaxTTL,
-    accessTokenNumUsesLimit,
-    accessTokenTrustedIps,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId,
-    isActorSuperAdmin
-  }: TUpdateKubernetesAuthDTO) => {
+  const updateKubernetesAuth = async (dto: TUpdateKubernetesAuthDTO) => {
+    const {
+      identityId,
+      templateId,
+      allowedNamespaces,
+      allowedNames,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps,
+      actorId,
+      actorAuthMethod,
+      actor,
+      actorOrgId,
+      isActorSuperAdmin
+    } = dto;
+    let { kubernetesHost, caCert, verifyTlsCertificate, tokenReviewerJwt, allowedAudience, gatewayId, gatewayPoolId } =
+      dto;
+    let { tokenReviewMode } = dto;
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -1118,6 +1170,65 @@ export const identityKubernetesAuthServiceFactory = ({
         OrgPermissionSubjects.Identity
       );
     }
+
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.scopeOrgId
+    });
+
+    let template: TIdentityAuthTemplates | undefined;
+    // the UI re-sends the current templateId on every save of a linked identity, so only a
+    // link CHANGE requires the attach-template permission; a re-assert must stay editable
+    // for actors that hold identity EditAuth alone
+    if (templateId && templateId !== identityKubernetesAuth.templateId) {
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+        OrgPermissionSubjects.MachineIdentityAuthTemplate
+      );
+
+      template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.scopeOrgId);
+      if (!template || template.authMethod !== IdentityAuthTemplateMethod.KUBERNETES) {
+        throw new NotFoundError({ message: `Kubernetes auth template with ID '${templateId}' not found` });
+      }
+
+      const templateFields = JSON.parse(
+        decryptor({ cipherTextBlob: template.templateFields }).toString()
+      ) as TKubernetesTemplateFields;
+
+      kubernetesHost = templateFields.kubernetesHost ?? null;
+      caCert = templateFields.caCert ?? "";
+      tokenReviewerJwt = templateFields.tokenReviewerJwt || null;
+      tokenReviewMode = templateFields.tokenReviewMode;
+      gatewayId = templateFields.gatewayId ?? null;
+      gatewayPoolId = templateFields.gatewayPoolId ?? null;
+      verifyTlsCertificate = templateFields.verifyTlsCertificate ?? Boolean(templateFields.caCert?.length);
+      allowedAudience = templateFields.allowedAudience ?? "";
+    } else if (templateId === undefined && identityKubernetesAuth.templateId) {
+      const hasTemplateManagedFieldChanges =
+        kubernetesHost !== undefined ||
+        caCert !== undefined ||
+        verifyTlsCertificate !== undefined ||
+        tokenReviewerJwt !== undefined ||
+        tokenReviewMode !== undefined ||
+        allowedAudience !== undefined ||
+        gatewayId !== undefined ||
+        gatewayPoolId !== undefined;
+      if (hasTemplateManagedFieldChanges) {
+        throw new BadRequestError({
+          message:
+            "This identity's Kubernetes auth connection settings are managed by an auth template. Update the template to change them, or unlink the template by setting templateId to null."
+        });
+      }
+    }
+
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
@@ -1158,18 +1269,20 @@ export const identityKubernetesAuthServiceFactory = ({
         isGatewayV1 = false;
       }
 
-      const { permission: orgPermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
+      if (!template) {
+        const { permission: orgPermission } = await permissionService.getOrgPermission({
+          scope: OrganizationActionScope.Any,
+          actor,
+          actorId,
+          orgId: identityMembershipOrg.scopeOrgId,
+          actorAuthMethod,
+          actorOrgId
+        });
+        ForbiddenError.from(orgPermission).throwUnlessCan(
+          OrgPermissionGatewayActions.AttachGateways,
+          OrgPermissionSubjects.Gateway
+        );
+      }
     }
 
     // Handle gateway pool permission check
@@ -1179,18 +1292,20 @@ export const identityKubernetesAuthServiceFactory = ({
           message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
         });
       }
-      const { permission: orgPermission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayPoolActions.AttachGatewayPools,
-        OrgPermissionSubjects.GatewayPool
-      );
+      if (!template) {
+        const { permission: orgPermission } = await permissionService.getOrgPermission({
+          scope: OrganizationActionScope.Any,
+          actor,
+          actorId,
+          orgId: identityMembershipOrg.scopeOrgId,
+          actorAuthMethod,
+          actorOrgId
+        });
+        ForbiddenError.from(orgPermission).throwUnlessCan(
+          OrgPermissionGatewayPoolActions.AttachGatewayPools,
+          OrgPermissionSubjects.GatewayPool
+        );
+      }
 
       const pool = await gatewayPoolDAL.findById(gatewayPoolId);
       if (!pool || pool.orgId !== identityMembershipOrg.scopeOrgId) {
@@ -1232,11 +1347,6 @@ export const identityKubernetesAuthServiceFactory = ({
     } else {
       effectiveGatewayId = identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId;
     }
-
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.scopeOrgId
-    });
 
     let effectiveCaCert: string | undefined;
     if (caCert !== undefined) {
@@ -1351,6 +1461,9 @@ export const identityKubernetesAuthServiceFactory = ({
       allowedNamespaces,
       allowedNames,
       allowedAudience,
+      // tri-state passthrough: undefined keeps the current link, null unlinks, a uuid links
+      // (a re-assert of the current id skips the template load above, so template is unset)
+      templateId,
       gatewayId: shouldUpdateGatewayId ? gatewayIdValue : undefined,
       gatewayV2Id: shouldUpdateGatewayId ? gatewayV2IdValue : undefined,
       gatewayPoolId: gatewayPoolIdValue,

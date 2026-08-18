@@ -7,17 +7,24 @@ import {
   TEMPLATE_SUCCESS_MESSAGES,
   TEMPLATE_VALIDATION_MESSAGES
 } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
+import {
+  kubernetesTemplateFieldsBaseSchema,
+  kubernetesTemplateFieldsCreateSchema,
+  ldapTemplateFieldsSchema
+} from "@app/ee/services/identity-auth-template/identity-auth-template-schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-const ldapTemplateFieldsSchema = z.object({
-  url: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.URL_REQUIRED),
-  bindDN: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.BIND_DN_REQUIRED),
-  bindPass: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.BIND_PASSWORD_REQUIRED),
-  searchBase: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.SEARCH_BASE_REQUIRED),
-  ldapCaCertificate: z.string().trim().optional()
-});
+const templateNameSchema = z
+  .string()
+  .trim()
+  .min(1, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_REQUIRED)
+  .max(64, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_MAX_LENGTH);
+
+// template credential fields (LDAP bindPass, Kubernetes tokenReviewerJwt) are stripped
+// server-side and never appear in responses
+const templateFieldsResponseSchema = z.record(z.string(), z.unknown());
 
 export const registerIdentityTemplateRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -35,15 +42,18 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
           bearerAuth: []
         }
       ],
-      body: z.object({
-        name: z
-          .string()
-          .trim()
-          .min(1, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_REQUIRED)
-          .max(64, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_MAX_LENGTH),
-        authMethod: z.nativeEnum(IdentityAuthTemplateMethod),
-        templateFields: ldapTemplateFieldsSchema
-      }),
+      body: z.discriminatedUnion("authMethod", [
+        z.object({
+          name: templateNameSchema,
+          authMethod: z.literal(IdentityAuthTemplateMethod.LDAP),
+          templateFields: ldapTemplateFieldsSchema
+        }),
+        z.object({
+          name: templateNameSchema,
+          authMethod: z.literal(IdentityAuthTemplateMethod.KUBERNETES),
+          templateFields: kubernetesTemplateFieldsCreateSchema
+        })
+      ]),
       response: {
         200: IdentityAuthTemplatesSchema.extend({
           templateFields: z.record(z.string(), z.unknown())
@@ -96,13 +106,12 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
         templateId: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_ID_REQUIRED)
       }),
       body: z.object({
-        name: z
-          .string()
-          .trim()
-          .min(1, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_REQUIRED)
-          .max(64, TEMPLATE_VALIDATION_MESSAGES.TEMPLATE_NAME_MAX_LENGTH)
-          .optional(),
-        templateFields: ldapTemplateFieldsSchema.partial().optional()
+        name: templateNameSchema.optional(),
+        // strict partials so the union can discriminate by field names; the service
+        // validates the patch against the template's actual auth method
+        templateFields: z
+          .union([ldapTemplateFieldsSchema.partial().strict(), kubernetesTemplateFieldsBaseSchema.partial().strict()])
+          .optional()
       }),
       response: {
         200: IdentityAuthTemplatesSchema.extend({
@@ -206,7 +215,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
       }),
       response: {
         200: IdentityAuthTemplatesSchema.extend({
-          templateFields: ldapTemplateFieldsSchema
+          templateFields: templateFieldsResponseSchema
         })
       }
     },
@@ -246,7 +255,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
       response: {
         200: z.object({
           templates: IdentityAuthTemplatesSchema.extend({
-            templateFields: ldapTemplateFieldsSchema
+            templateFields: templateFieldsResponseSchema
           }).array(),
           totalCount: z.number()
         })
@@ -287,7 +296,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
       }),
       response: {
         200: IdentityAuthTemplatesSchema.extend({
-          templateFields: ldapTemplateFieldsSchema
+          templateFields: templateFieldsResponseSchema
         }).array()
       }
     },

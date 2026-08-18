@@ -236,14 +236,16 @@ export const IdentityLdapAuthForm = ({
   const { mutateAsync: addMutateAsync } = useAddIdentityLdapAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityLdapAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
-  const { data: templates, isPending: isTemplatesPending } = useGetAvailableTemplates(
-    MachineIdentityAuthMethod.LDAP
-  );
   const { permission } = useOrgPermission();
 
   const canAttachTemplates = permission.can(
     OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
     OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
+
+  const { data: templates, isPending: isTemplatesPending } = useGetAvailableTemplates(
+    MachineIdentityAuthMethod.LDAP,
+    { enabled: canAttachTemplates && Boolean(subscription?.machineIdentityAuthTemplates) }
   );
 
   const { data } = useGetIdentityLdapAuth(identityId ?? "", {
@@ -288,7 +290,7 @@ export const IdentityLdapAuthForm = ({
     () => [
       {
         group: "Configuration",
-        label: "Custom configuration",
+        label: "Custom Configuration",
         value: "custom"
       },
       ...(templates ?? []).map((template) => ({
@@ -564,11 +566,16 @@ export const IdentityLdapAuthForm = ({
                         onChange("template");
                         setValue("templateId", template.id);
                         clearErrors("templateId");
-                        setValue("url", template.templateFields.url);
-                        setValue("bindDN", template.templateFields.bindDN);
-                        setValue("bindPass", template.templateFields.bindPass);
-                        setValue("searchBase", template.templateFields.searchBase);
-                        setValue("ldapCaCertificate", template.templateFields.ldapCaCertificate);
+                        setValue("url", template.templateFields.url ?? "");
+                        setValue("bindDN", template.templateFields.bindDN ?? "");
+                        // bindPass is write-only: the picker feed never returns it, and the
+                        // attach flow resolves it server-side from the template
+                        setValue("bindPass", template.templateFields.bindPass ?? "");
+                        setValue("searchBase", template.templateFields.searchBase ?? "");
+                        setValue(
+                          "ldapCaCertificate",
+                          template.templateFields.ldapCaCertificate ?? ""
+                        );
                       }}
                     />
                     <FieldError>{error?.message || errors.templateId?.message}</FieldError>
