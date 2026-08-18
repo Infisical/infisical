@@ -607,6 +607,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
       await publishAggregatedEvents(eventType, events, orgsIdentifyAttempted);
 
+      await postHog.flush();
+
       await keyStore.streamTrim(streamKey, lastId, true);
 
       logger.info(`Processed ${events.length} events from bucket ${bucketId} for ${eventType}`);

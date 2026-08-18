@@ -29,6 +29,7 @@ const postHogClient = {
   capture: vi.fn(),
   groupIdentify: vi.fn(),
   identify: vi.fn(),
+  flush: vi.fn(async () => undefined),
   shutdown: vi.fn(async () => undefined)
 };
 
@@ -190,6 +191,41 @@ describe("telemetry aggregated event storage", () => {
 
     await telemetryService.processAggregatedEvents();
 
+    expect(drainTrims(keyStore)).toHaveLength(0);
+  });
+
+  test("confirms delivery with the SDK before trimming the drained entries", async () => {
+    const { keyStore, telemetryService } = createHarness();
+    const order: string[] = [];
+
+    keyStore.streamCollect.mockResolvedValueOnce(collectResult([pulledEvent()], "3-0"));
+    postHogClient.capture.mockImplementation(() => {
+      order.push("capture");
+    });
+    postHogClient.flush.mockImplementation(async () => {
+      order.push("flush");
+    });
+    keyStore.streamTrim.mockImplementation(async (_key, _minId, inclusive) => {
+      if (inclusive) order.push("trim");
+      return 0;
+    });
+
+    await telemetryService.processAggregatedEvents();
+
+    // `capture` only enqueues in memory, so trimming before the flush resolves would drop the only
+    // durable copy of the batch while it is still undelivered.
+    expect(order).toEqual(["capture", "flush", "trim"]);
+  });
+
+  test("leaves the shard untrimmed when the delivery flush fails, so the batch is retried", async () => {
+    const { keyStore, telemetryService } = createHarness();
+
+    keyStore.streamCollect.mockResolvedValueOnce(collectResult([pulledEvent()]));
+    postHogClient.flush.mockRejectedValueOnce(new Error("posthog batch rejected"));
+
+    await telemetryService.processAggregatedEvents();
+
+    expect(postHogClient.capture).toHaveBeenCalledTimes(1);
     expect(drainTrims(keyStore)).toHaveLength(0);
   });
 
