@@ -310,7 +310,7 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
           <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
             <div className="order-1 ml-3">Key Usage</div>
           </AccordionTrigger>
-          <AccordionContent>
+          <AccordionContent className="p-6">
             <Controller
               control={control}
               name="keyUsages"

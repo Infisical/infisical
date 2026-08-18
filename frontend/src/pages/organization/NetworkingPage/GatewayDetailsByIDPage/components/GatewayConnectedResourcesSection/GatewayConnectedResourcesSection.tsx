@@ -103,7 +103,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">App Connections</span>
                   <Badge variant="neutral">{resources?.appConnections.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
+                <AccordionContent className="p-6">
                   <ItemGroup>
                     {resources?.appConnections.map((c) => (
                       <ResourceRow
@@ -127,7 +127,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">Dynamic Secrets</span>
                   <Badge variant="neutral">{resources?.dynamicSecrets.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
+                <AccordionContent className="p-6">
                   <ItemGroup>
                     {resources?.dynamicSecrets.map((d) => (
                       <ResourceRow
@@ -153,7 +153,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">Kubernetes Auth</span>
                   <Badge variant="neutral">{resources?.kubernetesAuths.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
+                <AccordionContent className="p-6">
                   <ItemGroup>
                     {resources?.kubernetesAuths.map((a) => (
                       <ResourceRow
@@ -175,7 +175,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">PKI Discovery</span>
                   <Badge variant="neutral">{resources?.pkiDiscoveryConfigs.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
+                <AccordionContent className="p-6">
                   <ItemGroup>
                     {resources?.pkiDiscoveryConfigs.map((c) => (
                       <ResourceRow

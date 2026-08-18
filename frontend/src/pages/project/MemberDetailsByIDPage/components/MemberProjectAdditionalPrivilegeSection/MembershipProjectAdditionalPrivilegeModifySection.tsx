@@ -45,7 +45,6 @@ import {
   filterByGrantConditions,
   getMemberAssignPrivilegesConditions
 } from "@app/lib/fn/permission";
-import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
 import {
   GeneralPermissionPolicies,
   PermissionScope
@@ -59,6 +58,8 @@ import {
   rolePermission2Form
 } from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
 import { renderConditionalComponents } from "@app/pages/project/RoleDetailsBySlugPage/components/RolePermissionsSection";
+
+import { MembershipAddPoliciesButton } from "./MembershipAddPoliciesButton";
 
 type Props = {
   privilegeId?: string;
@@ -325,7 +326,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                             type="button"
                             variant={durationVariant}
                             isDisabled={isFormDisabled}
-                            className="w-full capitalize"
+                            className="capitalize"
                           >
                             {isTemporary && <ClockIcon className="size-4" />}
                             {text}
@@ -462,7 +463,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                     </Button>
                   )}
                   {currentProject && (
-                    <AddPoliciesButton
+                    <MembershipAddPoliciesButton
                       isDisabled={isFormDisabled}
                       projectType={currentProject.type}
                       projectId={projectId}

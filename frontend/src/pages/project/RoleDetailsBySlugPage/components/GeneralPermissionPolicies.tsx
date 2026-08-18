@@ -289,7 +289,7 @@ export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
           )}
         </div>
       </AccordionTrigger>
-      <AccordionContent className="!p-0">
+      <AccordionContent className="p-6">
         <div key={`select-${subject}-type`} className="flex flex-col space-y-3 bg-container p-3">
           {fields.map((el, rootIndex) => {
             const isInverted = watch(`permissions.${subject}.${rootIndex}.inverted` as any);

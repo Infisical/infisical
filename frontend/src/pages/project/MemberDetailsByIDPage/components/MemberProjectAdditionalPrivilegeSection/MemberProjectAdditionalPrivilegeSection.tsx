@@ -21,7 +21,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -492,9 +491,11 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
               Remove additional privilege &quot;
               {(popUp?.deletePrivilege?.data as { slug: string; id: string })?.slug}&quot;?
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              This policy will no longer grant additional access to this user.
-            </AlertDialogDescription>
+            <Alert variant="danger" appearance="borderless">
+              <AlertDescription>
+                This policy will no longer grant additional access to this user.
+              </AlertDescription>
+            </Alert>
           </AlertDialogHeader>
           <Field>
             <FieldLabel htmlFor="remove-member-privilege-confirmation">
@@ -539,9 +540,11 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
             <AlertDialogTitle>
               Revoke access for &quot;{(popUp?.revokeAccess?.data as { slug: string })?.slug}&quot;?
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              This will revoke the access approval request and remove its associated privilege.
-            </AlertDialogDescription>
+            <Alert variant="danger" appearance="borderless">
+              <AlertDescription>
+                This will revoke the access approval request and remove its associated privilege.
+              </AlertDescription>
+            </Alert>
           </AlertDialogHeader>
           <Field>
             <FieldLabel htmlFor="revoke-member-access-confirmation">

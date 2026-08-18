@@ -296,7 +296,7 @@ export const EditDynamicSecretRedisProviderForm = ({
             <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
               <AccordionItem value="advance-statements">
                 <AccordionTrigger>Modify Redis Statements</AccordionTrigger>
-                <AccordionContent>
+                <AccordionContent className="p-6">
                   <Controller
                     control={control}
                     name="usernameTemplate"

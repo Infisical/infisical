@@ -371,7 +371,7 @@ export const EditDynamicSecretClickHouseForm = ({
                   <AccordionTrigger>
                     Creation, Revocation & Renew Statements (optional)
                   </AccordionTrigger>
-                  <AccordionContent>
+                  <AccordionContent className="p-6">
                     <Controller
                       control={control}
                       name="usernameTemplate"
@@ -456,7 +456,7 @@ export const EditDynamicSecretClickHouseForm = ({
               <Accordion type="multiple" className="mt-4 mb-2 w-full bg-mineshaft-700">
                 <AccordionItem value="password-config">
                   <AccordionTrigger>Password Configuration (optional)</AccordionTrigger>
-                  <AccordionContent>
+                  <AccordionContent className="p-6">
                     <div className="mb-4 text-sm text-mineshaft-300">
                       Set constraints on the generated database password
                     </div>

@@ -112,7 +112,7 @@ export const RelayConnectedGatewaysSection = ({ relayId }: { relayId: string }) 
                     <span className="flex-1">{label}</span>
                     <Badge variant={variant}>{items.length}</Badge>
                   </AccordionTrigger>
-                  <AccordionContent className="group-data-[variant=default]/accordion:p-3">
+                  <AccordionContent className="p-6">
                     <ItemGroup>
                       {items.map((g) => (
                         <Item asChild variant="outline" size="xs" key={g.id}>

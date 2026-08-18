@@ -24,7 +24,6 @@ import {
   AlertDialogConfirmationField,
   AlertDialogConfirmationLabel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -312,9 +311,11 @@ export const Page = () => {
                   Remove {memberDisplayName} from the{" "}
                   {isCertManager ? "certificate manager" : "project"}?
                 </AlertDialogTitle>
-                <AlertDialogDescription>
-                  This user will lose access granted by this membership. This cannot be undone.
-                </AlertDialogDescription>
+                <Alert variant="danger" appearance="borderless">
+                  <AlertDescription>
+                    This user will lose access granted by this membership. This cannot be undone.
+                  </AlertDescription>
+                </Alert>
               </AlertDialogHeader>
               <AlertDialogConfirmationField>
                 <Field>

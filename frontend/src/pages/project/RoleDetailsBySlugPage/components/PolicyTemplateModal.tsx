@@ -143,7 +143,7 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
                 <span className="text-sm leading-3 text-mineshaft-400">{description}</span>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="border-t border-mineshaft-600">
+            <AccordionContent className="border-t border-mineshaft-600 p-6">
               <div className="max-h-80 thin-scrollbar overflow-y-auto">
                 <span className="text-mineshaft-300">Grants the following permissions:</span>
                 <div className="grid grid-cols-2 gap-4 py-2">

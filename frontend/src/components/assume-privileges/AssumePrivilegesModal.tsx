@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
   AlertDialogConfirmationLabel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -76,12 +77,14 @@ export const AssumePrivilegesModal = ({ isOpen, onOpenChange, actorType, actorId
         onOpenChange(open);
       }}
     >
-      <AlertDialogContent className="max-w-xl">
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Do you want to assume privileges of this {noun}?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will set your privileges to those of the {noun} for the next hour.
-          </AlertDialogDescription>
+          <Alert variant="project" appearance="borderless">
+            <AlertDescription>
+              This will set your privileges to those of the {noun} for the next hour.
+            </AlertDescription>
+          </Alert>
         </AlertDialogHeader>
         <form
           onSubmit={(e) => {

@@ -240,7 +240,7 @@ export const EditDynamicSecretAwsElastiCacheProviderForm = ({
               <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
                 <AccordionItem value="advance-statements">
                   <AccordionTrigger>Modify ElastiCache Statements</AccordionTrigger>
-                  <AccordionContent>
+                  <AccordionContent className="p-6">
                     <Controller
                       control={control}
                       name="usernameTemplate"

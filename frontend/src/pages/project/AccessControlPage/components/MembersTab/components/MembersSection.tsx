@@ -5,13 +5,14 @@ import { AssumePrivilegesModal } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
   AlertDialogConfirmationLabel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -143,9 +144,11 @@ export const MembersSection = () => {
             <AlertDialogTitle>
               Remove {removeMemberUsername || "this user"} from the {productLabel.toLowerCase()}?
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              This user will lose access granted by this membership. This cannot be undone.
-            </AlertDialogDescription>
+            <Alert variant="danger" appearance="borderless">
+              <AlertDescription>
+                This user will lose access granted by this membership. This cannot be undone.
+              </AlertDescription>
+            </Alert>
           </AlertDialogHeader>
           <AlertDialogConfirmationField>
             <Field>

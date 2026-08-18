@@ -8,11 +8,12 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageLoader } from "@app/components/v3";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -412,9 +413,11 @@ export const MemberRoleDetailsSection = ({
             <AlertDialogTitle>
               Remove role &quot;{(popUp?.deleteRole?.data as TProjectRole)?.slug}&quot;?
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              This role will no longer grant access to this user.
-            </AlertDialogDescription>
+            <Alert variant="danger" appearance="borderless">
+              <AlertDescription>
+                This role will no longer grant access to this user.
+              </AlertDescription>
+            </Alert>
           </AlertDialogHeader>
           <Field>
             <FieldLabel htmlFor="remove-member-role-confirmation">
