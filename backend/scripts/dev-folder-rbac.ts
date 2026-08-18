@@ -324,7 +324,8 @@ const cmdAddUser = async (db: Knex, flags: TFlags) => {
   const project = await resolveProject(db, projectRef);
   // no-access by default on purpose: it makes the folder grant the only thing
   // giving this user access, so the role under test is what you are observing.
-  const projectRole = typeof flags["project-role"] === "string" ? flags["project-role"] : ProjectMembershipRole.NoAccess;
+  const projectRole =
+    typeof flags["project-role"] === "string" ? flags["project-role"] : ProjectMembershipRole.NoAccess;
 
   let projectMembership = await db(TableName.Membership)
     .where({ scope: AccessScope.Project, scopeProjectId: project.id, actorUserId: user.id })
@@ -357,12 +358,9 @@ const cmdGrant = async (db: Knex, flags: TFlags) => {
   const project = await resolveProject(db, requireFlag(flags, "project"));
   const folder = await resolveFolder(db, project.id, requireFlag(flags, "env"), requireFlag(flags, "path"));
 
-  // The database no longer enforces one grant per actor per folder (that is
-  // deliberate — see the migration), so this stands in for the service-layer
-  // check and updates in place instead of stacking duplicates.
-  const existing = await db(TableName.AdditionalPrivilege)
-    .where({ actorUserId: user.id, folderId: folder.id })
-    .first();
+  // Unique index additional_privileges_unique_user_folder forbids a second row for
+  // the same actor+folder, so update in place instead of inserting a duplicate.
+  const existing = await db(TableName.AdditionalPrivilege).where({ actorUserId: user.id, folderId: folder.id }).first();
 
   if (existing) {
     await db(TableName.AdditionalPrivilege).where("id", existing.id).update({ role });
@@ -398,9 +396,7 @@ const cmdRevoke = async (db: Knex, flags: TFlags) => {
 
   const project = await resolveProject(db, requireFlag(flags, "project"));
   const folder = await resolveFolder(db, project.id, requireFlag(flags, "env"), requireFlag(flags, "path"));
-  const deleted = await db(TableName.AdditionalPrivilege)
-    .where({ actorUserId: user.id, folderId: folder.id })
-    .del();
+  const deleted = await db(TableName.AdditionalPrivilege).where({ actorUserId: user.id, folderId: folder.id }).del();
   console.log(`revoked ${deleted} grant(s) on ${folder.envSlug}:${folder.path}`);
 };
 

@@ -3,16 +3,23 @@ import { ForbiddenError, MongoAbility, PureAbility, RawRuleOf, subject } from "@
 import handlebars from "handlebars";
 import { z } from "zod";
 
-import { TOrganizations } from "@app/db/schemas";
+import { SecretFolderRole, TOrganizations } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
-import { BadRequestError, ForbiddenRequestError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ForbiddenRequestError,
+  NotFoundError,
+  PermissionBoundaryError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorAuthMethod, ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
+import { FOLDER_SCOPED_DENY_RULES, SECRET_FOLDER_ROLE_PERMISSIONS } from "./default-roles";
 import { OrgPermissionSet } from "./org-permission";
-import { TCachedFolderScopedPrivileges } from "./permission-service-types";
+import { TCachedFolderScopedPrivileges, TProjectFolderScopedPrivilege } from "./permission-service-types";
 import {
   ActionAllowedConditions,
   ProjectPermissionGroupActions,
@@ -484,6 +491,33 @@ export const fetchFolderScopedPrivileges = async (
       ];
     })
   };
+};
+
+export const buildFolderScopedPrivilegeRules = (
+  privileges: TProjectFolderScopedPrivilege[]
+): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => {
+  const scopedGrants = privileges.map((privilege) => {
+    if (!Object.values(SecretFolderRole).includes(privilege.role as SecretFolderRole)) {
+      throw new NotFoundError({
+        name: "FolderRoleInvalid",
+        message: `Folder access role '${privilege.role}' on grant with ID '${privilege.id}' not found`
+      });
+    }
+    return {
+      role: privilege.role as SecretFolderRole,
+      conditions: { environment: privilege.environmentSlug, secretPath: privilege.secretPath }
+    };
+  });
+
+  const withConditions = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[], conditions: object) =>
+    rules.map((rule) => ({ ...rule, conditions }) as RawRuleOf<MongoAbility<ProjectPermissionSet>>);
+
+  // first we deny all tthe defined paths, and later we just allow the ones that the role has access.
+  // on CASL, the last match rule wins, so this works as expected.
+  return [
+    ...scopedGrants.flatMap(({ conditions }) => withConditions(FOLDER_SCOPED_DENY_RULES, conditions)),
+    ...scopedGrants.flatMap(({ role, conditions }) => withConditions(SECRET_FOLDER_ROLE_PERMISSIONS[role], conditions))
+  ];
 };
 
 export {

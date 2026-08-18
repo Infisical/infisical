@@ -71,6 +71,7 @@ import {
 } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
 import {
+  buildFolderScopedPrivilegeRules,
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,
   fetchFolderScopedPrivileges,
@@ -136,7 +137,11 @@ const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
 const resolvePamProjectRoleRules = (role: string) =>
   role === ProjectMembershipRole.Admin ? pamProjectAdminPermissions : pamProjectMemberPermissions;
 
-const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDTO, projectType?: string) => {
+export const buildProjectPermissionRules = (
+  projectUserRoles: TBuildProjectPermissionDTO,
+  projectType?: string,
+  folderScopedPrivileges?: TProjectFolderScopedPrivilege[]
+) => {
   const rules = expandLegacyForbidActions(
     projectUserRoles
       .map(({ role, permissions }) => {
@@ -169,6 +174,13 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
       })
       .reduce((prev, curr) => prev.concat(curr), [] as RawRuleOf<MongoAbility<ProjectPermissionSet>>[])
   ).sort((a, b) => Number(Boolean(a.inverted)) - Number(Boolean(b.inverted)));
+
+  // Appended after the sort so the folder rules end the array: CASL gives the last matching rule
+  // precedence, which is what lets the per-path folder deny/allow pairs override the base roles at
+  // the granted folder while leaving every other path untouched.
+  if (folderScopedPrivileges?.length) {
+    rules.push(...buildFolderScopedPrivilegeRules(folderScopedPrivileges));
+  }
 
   return rules;
 };
@@ -711,7 +723,7 @@ export const permissionServiceFactory = ({
         );
       }
 
-      const rules = buildProjectPermissionRules(permissionFromRoles, projectDetails.type);
+      const rules = buildProjectPermissionRules(permissionFromRoles, projectDetails.type, folderScopedPrivileges);
       const templatedRules = handlebarsClient.compile(JSON.stringify(rules), { data: false });
       const unescapedMetadata = objectify(
         permissionData?.[0]?.metadata,

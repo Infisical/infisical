@@ -821,6 +821,15 @@ const applyFolderReadRules = (can: TProjectCan) => {
   can([ProjectPermissionSecretActions.ReadValue], ProjectPermissionSub.Secrets);
   can([ProjectPermissionCommitsActions.Read], ProjectPermissionSub.Commits);
   can([ProjectPermissionDynamicSecretActions.Lease], ProjectPermissionSub.DynamicSecrets);
+  can(
+    [
+      ProjectPermissionSecretEventActions.SubscribeToCreationEvents,
+      ProjectPermissionSecretEventActions.SubscribeToUpdateEvents,
+      ProjectPermissionSecretEventActions.SubscribeToDeleteEvents,
+      ProjectPermissionSecretEventActions.SubscribeToImportMutationEvents
+    ],
+    ProjectPermissionSub.SecretEventSubscriptions
+  );
 };
 
 const applyFolderEditRules = (can: TProjectCan) => {
@@ -919,6 +928,109 @@ export const SECRET_FOLDER_ROLE_PERMISSIONS: Record<SecretFolderRole, RawRuleOf<
     [SecretFolderRole.Manage]: folderManagePermissions,
     [SecretFolderRole.FullAccess]: folderFullAccessPermissions
   };
+
+const buildFolderScopedDenyRules = () => {
+  const { cannot, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
+
+  cannot(
+    [
+      ProjectPermissionSecretActions.DescribeAndReadValue,
+      ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.ReadValue,
+      ProjectPermissionSecretActions.Create,
+      ProjectPermissionSecretActions.Edit,
+      ProjectPermissionSecretActions.Delete
+    ],
+    ProjectPermissionSub.Secrets
+  );
+  cannot(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.SecretFolders
+  );
+  cannot(
+    [
+      ProjectPermissionActions.Read,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Delete
+    ],
+    ProjectPermissionSub.SecretImports
+  );
+  cannot(
+    [
+      ProjectPermissionDynamicSecretActions.ReadRootCredential,
+      ProjectPermissionDynamicSecretActions.CreateRootCredential,
+      ProjectPermissionDynamicSecretActions.EditRootCredential,
+      ProjectPermissionDynamicSecretActions.DeleteRootCredential,
+      ProjectPermissionDynamicSecretActions.Lease
+    ],
+    ProjectPermissionSub.DynamicSecrets
+  );
+  cannot(
+    [
+      ProjectPermissionSecretSyncActions.Read,
+      ProjectPermissionSecretSyncActions.Create,
+      ProjectPermissionSecretSyncActions.Edit,
+      ProjectPermissionSecretSyncActions.Delete,
+      ProjectPermissionSecretSyncActions.SyncSecrets,
+      ProjectPermissionSecretSyncActions.ImportSecrets,
+      ProjectPermissionSecretSyncActions.RemoveSecrets
+    ],
+    ProjectPermissionSub.SecretSyncs
+  );
+  cannot(
+    [
+      ProjectPermissionSecretRotationActions.Read,
+      ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
+      ProjectPermissionSecretRotationActions.Create,
+      ProjectPermissionSecretRotationActions.Edit,
+      ProjectPermissionSecretRotationActions.Delete,
+      ProjectPermissionSecretRotationActions.RotateSecrets
+    ],
+    ProjectPermissionSub.SecretRotation
+  );
+  cannot(
+    [
+      ProjectPermissionSecretEventActions.SubscribeToCreationEvents,
+      ProjectPermissionSecretEventActions.SubscribeToUpdateEvents,
+      ProjectPermissionSecretEventActions.SubscribeToDeleteEvents,
+      ProjectPermissionSecretEventActions.SubscribeToImportMutationEvents
+    ],
+    ProjectPermissionSub.SecretEventSubscriptions
+  );
+  cannot(
+    [ProjectPermissionCommitsActions.Read, ProjectPermissionCommitsActions.PerformRollback],
+    ProjectPermissionSub.Commits
+  );
+  cannot(
+    [
+      ProjectPermissionHoneyTokenActions.Read,
+      ProjectPermissionHoneyTokenActions.ReadCredentials,
+      ProjectPermissionHoneyTokenActions.Create,
+      ProjectPermissionHoneyTokenActions.Edit,
+      ProjectPermissionHoneyTokenActions.Reset,
+      ProjectPermissionHoneyTokenActions.Revoke
+    ],
+    ProjectPermissionSub.HoneyTokens
+  );
+  cannot(
+    [
+      ProjectPermissionProjectFolderGrantActions.ReadGrant,
+      ProjectPermissionProjectFolderGrantActions.CreateGrant,
+      ProjectPermissionProjectFolderGrantActions.RevokeGrant
+    ],
+    ProjectPermissionSub.ProjectFolderGrant
+  );
+
+  return rules;
+};
+
+export const FOLDER_SCOPED_DENY_RULES = buildFolderScopedDenyRules();
 
 const buildApplicationAdminPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);

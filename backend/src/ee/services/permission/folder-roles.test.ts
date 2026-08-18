@@ -9,6 +9,7 @@ import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionManageAccessActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSecretEventActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "./project-permission";
@@ -51,6 +52,12 @@ describe("Secret folder roles", () => {
 
       expect(list.can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets)).toBe(true);
       expect(list.can(ProjectPermissionSecretActions.ReadValue, ProjectPermissionSub.Secrets)).toBe(false);
+      expect(
+        list.can(
+          ProjectPermissionSecretEventActions.SubscribeToCreationEvents,
+          ProjectPermissionSub.SecretEventSubscriptions
+        )
+      ).toBe(false);
     });
 
     test("Read can read values and lease dynamic secrets, but not mutate", () => {
@@ -59,6 +66,12 @@ describe("Secret folder roles", () => {
       expect(read.can(ProjectPermissionSecretActions.ReadValue, ProjectPermissionSub.Secrets)).toBe(true);
       expect(read.can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits)).toBe(true);
       expect(read.can(ProjectPermissionDynamicSecretActions.Lease, ProjectPermissionSub.DynamicSecrets)).toBe(true);
+      expect(
+        read.can(
+          ProjectPermissionSecretEventActions.SubscribeToCreationEvents,
+          ProjectPermissionSub.SecretEventSubscriptions
+        )
+      ).toBe(true);
       expect(read.can(ProjectPermissionSecretActions.Edit, ProjectPermissionSub.Secrets)).toBe(false);
     });
 

@@ -1,9 +1,12 @@
+import { subject } from "@casl/ability";
+
 import { ActionProjectType, SecretFolderRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { keyStoreFactory, KeyStorePrefixes } from "@app/keystore/keystore";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
@@ -181,6 +184,25 @@ describe("Folder-scoped privilege permissions", () => {
       })
     ]);
 
+    // the seed user is a project admin: the read grant must override admin at the granted path
+    // (readValue yes, edit no) while leaving every other path on the base admin permissions
+    const grantedPath = { environment: seedData1.environment.slug, secretPath: "/rbac-a/rbac-b" };
+    expect(
+      before.permission.can(
+        ProjectPermissionSecretActions.ReadValue,
+        subject(ProjectPermissionSub.Secrets, grantedPath)
+      )
+    ).toBe(true);
+    expect(
+      before.permission.can(ProjectPermissionSecretActions.Edit, subject(ProjectPermissionSub.Secrets, grantedPath))
+    ).toBe(false);
+    expect(
+      before.permission.can(
+        ProjectPermissionSecretActions.Edit,
+        subject(ProjectPermissionSub.Secrets, { environment: seedData1.environment.slug, secretPath: "/" })
+      )
+    ).toBe(true);
+
     const versionBefore = await getFolderVersion();
 
     await moveFolder({ folderId: folderA.id, destinationPath: "/rbac-dest" });
@@ -207,5 +229,12 @@ describe("Folder-scoped privilege permissions", () => {
 
     await deleteFolder({ path: "/", id: folderDest.id, forceDelete: true });
     expect(await testDb(TableName.AdditionalPrivilege).where({ name: "e2e-folder-rbac" })).toEqual([]);
+
+    const versionAfterDelete = await getFolderVersion();
+    expect(versionAfterDelete).toBeGreaterThan(versionAfter);
+
+    // the folder cache marker lives 15s past the grant's deletion; drop it so later specs sharing
+    // the seed user don't build abilities from the stale folder deny
+    await testRedis.del(folderDataKey, folderMarkerKey);
   });
 });
