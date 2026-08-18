@@ -106,7 +106,10 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
   };
 
   const postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine = async (approvalRequestGrantsDAL, request) => {
-    const requestData = request.requestData.requestData as TCodeSigningRequestData;
+    const requestData = request.requestData.requestData as TCodeSigningRequestData & {
+      requestedWindowStart?: string;
+      requestedWindowEnd?: string;
+    };
 
     const grantAttributes: TCodeSigningGrantAttributes = {
       signerId: requestData.signerId,
@@ -123,6 +126,9 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
       const windowStart = new Date();
       grantAttributes.windowStart = windowStart.toISOString();
       expiresAt = new Date(windowStart.getTime() + ms(requestData.requestedWindowDuration));
+    } else if (requestData.requestedWindowEnd) {
+      grantAttributes.windowStart = requestData.requestedWindowStart ?? new Date().toISOString();
+      expiresAt = new Date(requestData.requestedWindowEnd);
     }
     const scope = normalizeCodeSigningScope(requestData.scope);
     if (scope) {
