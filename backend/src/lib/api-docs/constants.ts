@@ -2131,6 +2131,7 @@ export const CERTIFICATES = {
     alias: "The friendly name the keystore records for this entry, if it has one.",
     subject: "The distinguished name of the certificate.",
     commonName: "The common name of the certificate, if it has one.",
+    altNames: "The subject alternative names of the certificate, comma separated, if it has any.",
     keyAlgorithm: "The algorithm and size of the private key, such as 'RSA 2048' or 'ECDSA P-256'.",
     entrySerialNumber: "The serial number of the certificate.",
     notBefore: "The date the certificate becomes valid.",

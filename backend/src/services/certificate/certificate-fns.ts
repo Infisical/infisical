@@ -159,10 +159,19 @@ export const generatePkcs12FromCertificate = async ({
       throw new BadRequestError({ message: "Password is required for PKCS12 keystore generation" });
     }
 
-    // node-forge doesn't support PQC keys
+    // node-forge only builds keystores from RSA keys, and cannot read PQC keys at all
+    let keyType: string | undefined;
     try {
-      crypto.nativeCrypto.createPrivateKey({ key: privateKey, format: "pem", type: "pkcs8" });
+      keyType = crypto.nativeCrypto.createPrivateKey({
+        key: privateKey,
+        format: "pem",
+        type: "pkcs8"
+      }).asymmetricKeyType;
     } catch {
+      keyType = undefined;
+    }
+
+    if (keyType !== "rsa") {
       throw new BadRequestError({
         message: "PKCS#12 export is not supported for this key type. Use PEM format instead."
       });

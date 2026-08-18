@@ -90,6 +90,7 @@ export type TPkcs12Entry = {
   alias: string | null;
   subject: string;
   commonName: string | null;
+  altNames: string | null;
   keyAlgorithm: string;
   serialNumber: string;
   notBefore: string;

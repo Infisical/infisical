@@ -93,7 +93,8 @@ const toBase64 = (buffer: ArrayBuffer) => {
   return btoa(binary);
 };
 
-const entryLabel = (entry: TPkcs12Entry) => entry.commonName || entry.alias || entry.subject;
+const entryLabel = (entry: TPkcs12Entry) =>
+  entry.altNames || entry.commonName || entry.alias || entry.subject;
 
 export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId }: Props) => {
   const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
@@ -313,7 +314,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
               }
             />
           </TableHead>
-          <TableHead>Subject</TableHead>
+          <TableHead>SAN / CN</TableHead>
           <TableHead className="w-40">Key</TableHead>
           <TableHead className="w-24">Chain</TableHead>
           <TableHead className="w-44">Expires</TableHead>
@@ -337,7 +338,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
             <TableCell className="max-w-0">
               <div className="truncate">{entryLabel(entry)}</div>
             </TableCell>
-            <TableCell>{entry.privateKeyPem ? entry.keyAlgorithm : "—"}</TableCell>
+            <TableCell>{(entry.privateKeyPem && entry.keyAlgorithm) || "—"}</TableCell>
             <TableCell>
               {entry.chainWarning ? (
                 <Tooltip>

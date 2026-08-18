@@ -79,6 +79,21 @@ const keyBagToPem = (bag: forge.pkcs12.Bag) => {
   return toPem("PRIVATE KEY", forge.asn1.toDer(asn1).getBytes());
 };
 
+const readAltNames = (cert: x509.X509Certificate) => {
+  const extension = cert.extensions.find((ext) => ext.type === "2.5.29.17");
+  if (!extension) return null;
+
+  try {
+    const names = new x509.GeneralNames(extension.value);
+    return names.items
+      .map((name) => name.value)
+      .join(", ")
+      .slice(0, MAX_SUBJECT_LENGTH);
+  } catch {
+    return null;
+  }
+};
+
 const sha256Fingerprint = (der: Buffer) => {
   const hex = crypto.createHash("sha256").update(der).digest("hex").toUpperCase();
   return new RE2(".{2}", "g").match(hex)?.join(":") ?? hex;
@@ -120,6 +135,7 @@ const describeKey = (key: crypto.KeyObject) => {
   }
   if (type === "ed25519") return "Ed25519";
   if (type === "ed448") return "Ed448";
+  if (type === "unknown") return "";
   return type.toUpperCase();
 };
 
@@ -281,6 +297,7 @@ export const extractPkcs12Entries = async ({
   const describeCert = (cert: TParsedCert) => ({
     subject: cert.cert.subject.slice(0, MAX_SUBJECT_LENGTH),
     commonName: cert.cert.subjectName.getField("CN")[0]?.slice(0, MAX_SUBJECT_LENGTH) ?? null,
+    altNames: readAltNames(cert.cert),
     serialNumber: cert.cert.serialNumber.slice(0, MAX_SERIAL_LENGTH),
     notBefore: cert.cert.notBefore.toISOString(),
     notAfter: cert.cert.notAfter.toISOString(),
