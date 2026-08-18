@@ -37,13 +37,24 @@ vi.mock("posthog-node", () => ({
 }));
 
 // eslint-disable-next-line import/first
-import { telemetryServiceFactory } from "./telemetry-service";
+import { POSTHOG_AGGREGATED_EVENTS, telemetryServiceFactory } from "./telemetry-service";
+
+const RETENTION_MS = 30 * 60 * 1000;
+const BUCKET_COUNT = 30;
+const SHARD_COUNT = POSTHOG_AGGREGATED_EVENTS.length * BUCKET_COUNT;
 
 // streamCollect returns [entryId, ["data", json]] tuples; the consumer parses fields[1].
 const collectResult = (payloads: Record<string, unknown>[], lastId = "9-0") => ({
   entries: payloads.map((p, i) => [`${i + 1}-0`, ["data", JSON.stringify(p)]] as [string, string[]]),
   lastId
 });
+
+// The drain trim passes `inclusive`; the retention trim that runs on every shard does not.
+const drainTrims = (keyStore: { streamTrim: { mock: { calls: unknown[][] } } }) =>
+  keyStore.streamTrim.mock.calls.filter((call) => call[2] === true);
+
+const retentionTrims = (keyStore: { streamTrim: { mock: { calls: unknown[][] } } }) =>
+  keyStore.streamTrim.mock.calls.filter((call) => call[2] === undefined) as [string, string][];
 
 const pulledEvent = (overrides: Record<string, unknown> = {}) => ({
   distinctId: "user-1",
@@ -133,8 +144,7 @@ describe("telemetry aggregated event storage", () => {
     });
     expect(captures[0].properties).toMatchObject({ count: 2, numberOfSecrets: 7, orgId: "org-1" });
 
-    expect(keyStore.streamTrim).toHaveBeenCalledTimes(1);
-    expect(keyStore.streamTrim).toHaveBeenCalledWith(streamKey, "7-0", true);
+    expect(drainTrims(keyStore)).toEqual([[streamKey, "7-0", true]]);
   });
 
   test("attempts the hourly groupIdentify claim once per org, not once per actor", async () => {
@@ -178,7 +188,7 @@ describe("telemetry aggregated event storage", () => {
 
     await telemetryService.processAggregatedEvents();
 
-    expect(keyStore.streamTrim).not.toHaveBeenCalled();
+    expect(drainTrims(keyStore)).toHaveLength(0);
   });
 
   test("skips an unparseable entry rather than dropping the whole shard", async () => {
@@ -196,5 +206,60 @@ describe("telemetry aggregated event storage", () => {
 
     expect(postHogClient.capture).toHaveBeenCalledTimes(1);
     expect(keyStore.streamTrim).toHaveBeenCalledWith(expect.any(String), "2-0", true);
+  });
+
+  test("ages every shard out to the retention window on each run", async () => {
+    const { keyStore, telemetryService } = createHarness();
+
+    const startedAt = Date.now();
+    await telemetryService.processAggregatedEvents();
+    const trims = retentionTrims(keyStore);
+
+    // Exactly one trim per (event type, bucket), covering every bucket.
+    expect(trims).toHaveLength(SHARD_COUNT);
+    expect(new Set(trims.map(([key]) => key)).size).toBe(SHARD_COUNT);
+    expect(new Set(trims.map(([key]) => key.split(":").pop())).size).toBe(BUCKET_COUNT);
+
+    for (const [, minId] of trims) {
+      const [timestamp, sequence] = minId.split("-");
+      expect(sequence).toBe("0");
+      expect(Number(timestamp)).toBeGreaterThanOrEqual(startedAt - RETENTION_MS);
+      expect(Number(timestamp)).toBeLessThanOrEqual(Date.now() - RETENTION_MS);
+    }
+  });
+
+  test("ages the shard out even when publishing fails", async () => {
+    const { keyStore, telemetryService } = createHarness();
+
+    keyStore.streamCollect.mockResolvedValueOnce(collectResult([pulledEvent()]));
+    postHogClient.capture.mockImplementationOnce(() => {
+      throw new Error("posthog down");
+    });
+
+    await telemetryService.processAggregatedEvents();
+
+    // Retention must not be coupled to the drain: a shard whose publish throws on every tick would
+    // otherwise grow until MAXLEN evicts it, with nothing bounding how long it sits in Redis.
+    expect(drainTrims(keyStore)).toHaveLength(0);
+    expect(retentionTrims(keyStore)).toHaveLength(SHARD_COUNT);
+  });
+
+  test("drains a shard whose retention trim fails", async () => {
+    const { keyStore, telemetryService } = createHarness();
+    const bucketId = telemetryService.getBucketForDistinctId("user-1");
+    const streamKey = `telemetry-agg-stream:${PostHogEventTypes.SecretPulled}:${bucketId}`;
+
+    keyStore.streamTrim.mockImplementation(async (key, _minId, inclusive) => {
+      if (key === streamKey && inclusive === undefined) throw new Error("redis hiccup");
+      return 0;
+    });
+    keyStore.streamCollect.mockImplementation(async (key) =>
+      key === streamKey ? collectResult([pulledEvent()], "3-0") : { entries: [], lastId: null }
+    );
+
+    await telemetryService.processAggregatedEvents();
+
+    expect(postHogClient.capture).toHaveBeenCalledTimes(1);
+    expect(drainTrims(keyStore)).toEqual([[streamKey, "3-0", true]]);
   });
 });

@@ -53,6 +53,7 @@ const TELEMETRY_BUCKET_NAMES = Array.from(
 const TELEMETRY_EVENT_STREAM_BATCH_SIZE = 10_000;
 const TELEMETRY_EVENT_STREAM_COLLECT_CEILING = 50_000;
 const TELEMETRY_EVENT_STREAM_MAX_ENTRIES = 100_000;
+const TELEMETRY_EVENT_STREAM_RETENTION_MS = 30 * 60 * 1000;
 
 type AggregatedEventData = Record<string, unknown>;
 type SingleEventData = {
@@ -566,6 +567,12 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     const streamKey = KeyStorePrefixes.TelemetryAggregatedEventStream(eventType, bucketId);
 
     try {
+      await keyStore.streamTrim(streamKey, `${Date.now() - TELEMETRY_EVENT_STREAM_RETENTION_MS}-0`);
+    } catch (error) {
+      logger.error(error, `Failed to apply retention trim to bucket ${bucketId} for ${eventType}`);
+    }
+
+    try {
       const { entries, lastId } = await keyStore.streamCollect(
         streamKey,
         TELEMETRY_EVENT_STREAM_BATCH_SIZE,
@@ -576,7 +583,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
       if (entries.length >= TELEMETRY_EVENT_STREAM_COLLECT_CEILING) {
         logger.warn(
-          `Telemetry aggregation hit the collection ceiling for bucket ${bucketId} of ${eventType} [collected=${entries.length}] [ceiling=${TELEMETRY_EVENT_STREAM_COLLECT_CEILING}] [maxLen=${TELEMETRY_EVENT_STREAM_MAX_ENTRIES}] — the shard is backing up; once it exceeds the MAXLEN cap the oldest entries are dropped`
+          `Telemetry aggregation hit the collection ceiling for bucket ${bucketId} of ${eventType} [collected=${entries.length}] [ceiling=${TELEMETRY_EVENT_STREAM_COLLECT_CEILING}] [maxLen=${TELEMETRY_EVENT_STREAM_MAX_ENTRIES}] — the shard is backing up; the excess is dropped once it ages past the retention window or the stream hits its MAXLEN cap`
         );
       }
 
