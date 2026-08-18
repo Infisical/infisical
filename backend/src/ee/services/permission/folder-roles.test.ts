@@ -4,12 +4,11 @@ import { SecretFolderRole } from "@app/db/schemas";
 
 import { SECRET_FOLDER_ROLE_PERMISSIONS } from "./default-roles";
 import {
-  ProjectPermissionActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
-  ProjectPermissionManageAccessActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretEventActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "./project-permission";
@@ -79,7 +78,7 @@ describe("Secret folder roles", () => {
       const edit = abilityFor(SecretFolderRole.Edit);
 
       expect(edit.can(ProjectPermissionSecretActions.Create, ProjectPermissionSub.Secrets)).toBe(true);
-      expect(edit.can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretFolders)).toBe(true);
+      expect(edit.can(ProjectPermissionSecretFolderActions.Create, ProjectPermissionSub.SecretFolders)).toBe(true);
       expect(
         edit.can(ProjectPermissionDynamicSecretActions.CreateRootCredential, ProjectPermissionSub.DynamicSecrets)
       ).toBe(false);
@@ -91,19 +90,24 @@ describe("Secret folder roles", () => {
       expect(
         manage.can(ProjectPermissionDynamicSecretActions.CreateRootCredential, ProjectPermissionSub.DynamicSecrets)
       ).toBe(true);
-      expect(manage.can(ProjectPermissionManageAccessActions.Grant, ProjectPermissionSub.ManageAccess)).toBe(false);
+      expect(manage.can(ProjectPermissionSecretFolderActions.ManageAccess, ProjectPermissionSub.SecretFolders)).toBe(
+        false
+      );
     });
 
     test("only Full Access can delegate access", () => {
       const fullAccess = abilityFor(SecretFolderRole.FullAccess);
 
-      expect(fullAccess.can(ProjectPermissionManageAccessActions.Grant, ProjectPermissionSub.ManageAccess)).toBe(true);
-      expect(fullAccess.can(ProjectPermissionManageAccessActions.Revoke, ProjectPermissionSub.ManageAccess)).toBe(true);
+      expect(
+        fullAccess.can(ProjectPermissionSecretFolderActions.ManageAccess, ProjectPermissionSub.SecretFolders)
+      ).toBe(true);
     });
 
     test("no tier can delete a folder", () => {
       LADDER.forEach((role) => {
-        expect(abilityFor(role).can(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretFolders)).toBe(false);
+        expect(
+          abilityFor(role).can(ProjectPermissionSecretFolderActions.Delete, ProjectPermissionSub.SecretFolders)
+        ).toBe(false);
       });
     });
   });

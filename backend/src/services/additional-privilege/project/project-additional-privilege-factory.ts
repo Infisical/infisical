@@ -490,7 +490,8 @@ export const newProjectAdditionalPrivilegesFactory = ({
         const existingPrivilege = await additionalPrivilegeDAL.findOne({
           id: dto.selector.id,
           [dbActorField]: actorId,
-          [scope.key]: scope.value
+          [scope.key]: scope.value,
+          folderId: null
         });
         if (!existingPrivilege) {
           throw new NotFoundError({

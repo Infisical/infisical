@@ -1,18 +1,31 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
+import { AccessScope, SecretFolderRole } from "@app/db/schemas";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
-import { ApiDocsTags, IDENTITY_ADDITIONAL_PRIVILEGE_V2 } from "@app/lib/api-docs";
+import { ApiDocsTags, FOLDER_ACCESS, IDENTITY_ADDITIONAL_PRIVILEGE_V2 } from "@app/lib/api-docs";
 import { NotFoundError } from "@app/lib/errors";
-import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { slugSchema, temporaryPermissionTypeSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { SanitizedFolderAccessSchema } from "@app/server/routes/sanitizedSchema/folder-access";
 import { SanitizedIdentityPrivilegeSchema } from "@app/server/routes/sanitizedSchema/identitiy-additional-privilege";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+
+const identityFolderAccessParamsSchema = z.object({
+  projectId: z.string().trim().min(1).max(64).describe(FOLDER_ACCESS.CREATE.projectId),
+  identityId: z.string().uuid().describe(FOLDER_ACCESS.CREATE.identityId),
+  folderId: z.string().uuid().describe(FOLDER_ACCESS.CREATE.folderId)
+});
+
+const folderAccessCreateTypeSchema = temporaryPermissionTypeSchema(FOLDER_ACCESS.CREATE);
+const folderAccessUpdateTypeSchema = temporaryPermissionTypeSchema(FOLDER_ACCESS.UPDATE);
+
+const identityFolderAccessResponseSchema = SanitizedFolderAccessSchema.extend({
+  identityId: z.string().uuid()
+});
 
 export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -38,25 +51,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         permissions: ProjectPermissionV2Schema.array()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.permission)
           .refine(checkForInvalidPermissionCombination),
-        type: z.discriminatedUnion("isTemporary", [
-          z.object({
-            isTemporary: z.literal(false)
-          }),
-          z.object({
-            isTemporary: z.literal(true),
-            temporaryMode: z
-              .nativeEnum(TemporaryPermissionMode)
-              .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.temporaryMode),
-            temporaryRange: z
-              .string()
-              .refine((val) => ms(val) > 0, "Temporary range must be a positive number")
-              .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.temporaryRange),
-            temporaryAccessStartTime: z
-              .string()
-              .datetime()
-              .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.temporaryAccessStartTime)
-          })
-        ])
+        type: temporaryPermissionTypeSchema(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE)
       }),
       response: {
         200: z.object({
@@ -118,23 +113,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           .optional()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.privilegePermission)
           .refine(checkForInvalidPermissionCombination),
-        type: z.discriminatedUnion("isTemporary", [
-          z.object({ isTemporary: z.literal(false).describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.isTemporary) }),
-          z.object({
-            isTemporary: z.literal(true).describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.isTemporary),
-            temporaryMode: z
-              .nativeEnum(TemporaryPermissionMode)
-              .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.temporaryMode),
-            temporaryRange: z
-              .string()
-              .refine((val) => typeof val === "undefined" || ms(val) > 0, "Temporary range must be a positive number")
-              .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.temporaryRange),
-            temporaryAccessStartTime: z
-              .string()
-              .datetime()
-              .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.temporaryAccessStartTime)
-          })
-        ])
+        type: temporaryPermissionTypeSchema(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE)
       }),
       response: {
         200: z.object({
@@ -409,6 +388,131 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           slug: privilege.name
         }))
       };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/projects/:projectId/identities/:identityId/folder-access/:folderId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "createIdentityFolderAccess",
+      tags: [ApiDocsTags.FolderAccess],
+      description: "Grant a machine identity access to a folder.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: identityFolderAccessParamsSchema,
+      body: z.object({
+        permission: z.nativeEnum(SecretFolderRole).describe(FOLDER_ACCESS.CREATE.permission),
+        type: folderAccessCreateTypeSchema.optional()
+      }),
+      response: {
+        200: z.object({
+          folderAccess: identityFolderAccessResponseSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { folderAccess } = await server.services.folderPermission.createFolderGrant({
+        permission: req.permission,
+        projectId: req.params.projectId,
+        folderId: req.params.folderId,
+        target: { actorId: req.params.identityId, actorType: ActorType.IDENTITY },
+        role: req.body.permission,
+        type: req.body.type
+      });
+
+      return { folderAccess: { ...folderAccess, identityId: req.params.identityId } };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/projects/:projectId/identities/:identityId/folder-access/:folderId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "updateIdentityFolderAccess",
+      tags: [ApiDocsTags.FolderAccess],
+      description: "Update a machine identity's access to a folder.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: identityFolderAccessParamsSchema,
+      body: z
+        .object({
+          permission: z.nativeEnum(SecretFolderRole).optional().describe(FOLDER_ACCESS.UPDATE.permission),
+          type: folderAccessUpdateTypeSchema.optional()
+        })
+        .refine(
+          (body) => body.permission !== undefined || body.type !== undefined,
+          "Provide at least one of 'permission' or 'type' to update"
+        ),
+      response: {
+        200: z.object({
+          folderAccess: identityFolderAccessResponseSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { folderAccess } = await server.services.folderPermission.updateFolderGrant({
+        permission: req.permission,
+        projectId: req.params.projectId,
+        folderId: req.params.folderId,
+        target: { actorId: req.params.identityId, actorType: ActorType.IDENTITY },
+        role: req.body.permission,
+        type: req.body.type
+      });
+
+      return { folderAccess: { ...folderAccess, identityId: req.params.identityId } };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/projects/:projectId/identities/:identityId/folder-access/:folderId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "deleteIdentityFolderAccess",
+      tags: [ApiDocsTags.FolderAccess],
+      description: "Revoke a machine identity's access to a folder.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: identityFolderAccessParamsSchema,
+      response: {
+        200: z.object({
+          folderAccess: identityFolderAccessResponseSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { folderAccess } = await server.services.folderPermission.deleteFolderGrant({
+        permission: req.permission,
+        projectId: req.params.projectId,
+        folderId: req.params.folderId,
+        target: { actorId: req.params.identityId, actorType: ActorType.IDENTITY }
+      });
+
+      return { folderAccess: { ...folderAccess, identityId: req.params.identityId } };
     }
   });
 };

@@ -87,7 +87,7 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
       .where({ projectId })
       .whereNotNull("folderId")
       .where(actorType === ActorType.IDENTITY ? { actorIdentityId: actorId } : { actorUserId: actorId })
-      .select("id", "name", "folderId", "role", "isTemporary", "temporaryAccessStartTime", "temporaryAccessEndTime");
+      .select("id", "name", "folderId", "role", "isTemporary", "temporaryAccessEndTime");
 
     return docs as {
       id: string;
@@ -95,7 +95,6 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
       folderId: string;
       role: string | null;
       isTemporary: boolean;
-      temporaryAccessStartTime: Date | null;
       temporaryAccessEndTime: Date | null;
     }[];
   };

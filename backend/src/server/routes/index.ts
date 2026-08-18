@@ -309,6 +309,7 @@ import { folderCommitDALFactory } from "@app/services/folder-commit/folder-commi
 import { folderCommitQueueServiceFactory } from "@app/services/folder-commit/folder-commit-queue";
 import { folderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { folderCommitChangesDALFactory } from "@app/services/folder-commit-changes/folder-commit-changes-dal";
+import { folderPermissionServiceFactory } from "@app/services/folder-permission/folder-permission-service";
 import { folderTreeCheckpointDALFactory } from "@app/services/folder-tree-checkpoint/folder-tree-checkpoint-dal";
 import { folderTreeCheckpointResourcesDALFactory } from "@app/services/folder-tree-checkpoint-resources/folder-tree-checkpoint-resources-dal";
 import { gitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
@@ -927,6 +928,13 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     userDAL
+  });
+
+  const folderPermissionService = folderPermissionServiceFactory({
+    additionalPrivilegeDAL,
+    secretFolderDAL: folderDAL,
+    permissionService,
+    membershipDAL
   });
 
   const kmsService = kmsServiceFactory({
@@ -4025,6 +4033,7 @@ export const registerRoutes = async (
     membershipGroup: membershipGroupService,
     role: roleService,
     additionalPrivilege: additionalPrivilegeService,
+    folderPermission: folderPermissionService,
     identityProject: identityProjectService,
     convertor: convertorService,
     pkiAlertV2: pkiAlertV2Service,

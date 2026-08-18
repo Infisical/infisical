@@ -22,7 +22,6 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
-  ProjectPermissionManageAccessActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
@@ -34,6 +33,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSecretScanningDataSourceActions,
@@ -88,6 +88,8 @@ const buildAdminPermissionRules = () => {
     [ProjectPermissionActions.Edit, ProjectPermissionActions.Create, ProjectPermissionActions.Delete],
     ProjectPermissionSub.SecretFolders
   );
+
+  can([ProjectPermissionSecretFolderActions.ManageAccess], ProjectPermissionSub.SecretFolders);
 
   can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
 
@@ -898,14 +900,7 @@ const applyFolderManageRules = (can: TProjectCan) => {
 const applyFolderFullAccessRules = (can: TProjectCan) => {
   applyFolderManageRules(can);
 
-  can(
-    [
-      ProjectPermissionManageAccessActions.Read,
-      ProjectPermissionManageAccessActions.Grant,
-      ProjectPermissionManageAccessActions.Revoke
-    ],
-    ProjectPermissionSub.ManageAccess
-  );
+  can([ProjectPermissionSecretFolderActions.ManageAccess], ProjectPermissionSub.SecretFolders);
 };
 
 const buildFolderRoleRules = (applyRules: (can: TProjectCan) => void) => {

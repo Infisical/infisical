@@ -1,18 +1,31 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
+import { AccessScope, SecretFolderRole } from "@app/db/schemas";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
-import { PROJECT_USER_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
+import { ApiDocsTags, FOLDER_ACCESS, PROJECT_USER_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { slugSchema, temporaryPermissionTypeSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { SanitizedFolderAccessSchema } from "@app/server/routes/sanitizedSchema/folder-access";
 import { SanitizedUserProjectAdditionalPrivilegeSchema } from "@app/server/routes/sanitizedSchema/user-additional-privilege";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+
+const userFolderAccessParamsSchema = z.object({
+  projectId: z.string().trim().min(1).max(64).describe(FOLDER_ACCESS.CREATE.projectId),
+  userId: z.string().uuid().describe(FOLDER_ACCESS.CREATE.userId),
+  folderId: z.string().uuid().describe(FOLDER_ACCESS.CREATE.folderId)
+});
+
+const folderAccessCreateTypeSchema = temporaryPermissionTypeSchema(FOLDER_ACCESS.CREATE);
+const folderAccessUpdateTypeSchema = temporaryPermissionTypeSchema(FOLDER_ACCESS.UPDATE);
+
+const userFolderAccessResponseSchema = SanitizedFolderAccessSchema.extend({
+  userId: z.string().uuid()
+});
 
 export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -28,25 +41,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         permissions: ProjectPermissionV2Schema.array()
           .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.permissions)
           .refine(checkForInvalidPermissionCombination),
-        type: z.discriminatedUnion("isTemporary", [
-          z.object({
-            isTemporary: z.literal(false)
-          }),
-          z.object({
-            isTemporary: z.literal(true),
-            temporaryMode: z
-              .nativeEnum(TemporaryPermissionMode)
-              .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.temporaryMode),
-            temporaryRange: z
-              .string()
-              .refine((val) => ms(val) > 0, "Temporary range must be a positive number")
-              .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.temporaryRange),
-            temporaryAccessStartTime: z
-              .string()
-              .datetime()
-              .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.temporaryAccessStartTime)
-          })
-        ])
+        type: temporaryPermissionTypeSchema(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE)
       }),
       response: {
         200: z.object({
@@ -101,23 +96,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
             .optional()
             .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.permissions)
             .refine(checkForInvalidPermissionCombination),
-          type: z.discriminatedUnion("isTemporary", [
-            z.object({ isTemporary: z.literal(false).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.isTemporary) }),
-            z.object({
-              isTemporary: z.literal(true).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.isTemporary),
-              temporaryMode: z
-                .nativeEnum(TemporaryPermissionMode)
-                .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.temporaryMode),
-              temporaryRange: z
-                .string()
-                .refine((val) => typeof val === "undefined" || ms(val) > 0, "Temporary range must be a positive number")
-                .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.temporaryRange),
-              temporaryAccessStartTime: z
-                .string()
-                .datetime()
-                .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.temporaryAccessStartTime)
-            })
-          ])
+          type: temporaryPermissionTypeSchema(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE)
         })
         .partial(),
       response: {
@@ -331,6 +310,131 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
           slug: privilege.name
         }
       };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/projects/:projectId/users/:userId/folder-access/:folderId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "createUserFolderAccess",
+      tags: [ApiDocsTags.FolderAccess],
+      description: "Grant a user access to a folder.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: userFolderAccessParamsSchema,
+      body: z.object({
+        permission: z.nativeEnum(SecretFolderRole).describe(FOLDER_ACCESS.CREATE.permission),
+        type: folderAccessCreateTypeSchema.optional()
+      }),
+      response: {
+        200: z.object({
+          folderAccess: userFolderAccessResponseSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { folderAccess } = await server.services.folderPermission.createFolderGrant({
+        permission: req.permission,
+        projectId: req.params.projectId,
+        folderId: req.params.folderId,
+        target: { actorId: req.params.userId, actorType: ActorType.USER },
+        role: req.body.permission,
+        type: req.body.type
+      });
+
+      return { folderAccess: { ...folderAccess, userId: req.params.userId } };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/projects/:projectId/users/:userId/folder-access/:folderId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "updateUserFolderAccess",
+      tags: [ApiDocsTags.FolderAccess],
+      description: "Update a user's access to a folder.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: userFolderAccessParamsSchema,
+      body: z
+        .object({
+          permission: z.nativeEnum(SecretFolderRole).optional().describe(FOLDER_ACCESS.UPDATE.permission),
+          type: folderAccessUpdateTypeSchema.optional()
+        })
+        .refine(
+          (body) => body.permission !== undefined || body.type !== undefined,
+          "Provide at least one of 'permission' or 'type' to update"
+        ),
+      response: {
+        200: z.object({
+          folderAccess: userFolderAccessResponseSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { folderAccess } = await server.services.folderPermission.updateFolderGrant({
+        permission: req.permission,
+        projectId: req.params.projectId,
+        folderId: req.params.folderId,
+        target: { actorId: req.params.userId, actorType: ActorType.USER },
+        role: req.body.permission,
+        type: req.body.type
+      });
+
+      return { folderAccess: { ...folderAccess, userId: req.params.userId } };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/projects/:projectId/users/:userId/folder-access/:folderId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "deleteUserFolderAccess",
+      tags: [ApiDocsTags.FolderAccess],
+      description: "Revoke a user's access to a folder.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: userFolderAccessParamsSchema,
+      response: {
+        200: z.object({
+          folderAccess: userFolderAccessResponseSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { folderAccess } = await server.services.folderPermission.deleteFolderGrant({
+        permission: req.permission,
+        projectId: req.params.projectId,
+        folderId: req.params.folderId,
+        target: { actorId: req.params.userId, actorType: ActorType.USER }
+      });
+
+      return { folderAccess: { ...folderAccess, userId: req.params.userId } };
     }
   });
 };

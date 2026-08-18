@@ -14,12 +14,12 @@ import {
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionHoneyTokenActions,
-  ProjectPermissionManageAccessActions,
   ProjectPermissionProjectFolderGrantActions,
   ProjectPermissionProxiedServiceActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSet,
@@ -48,12 +48,17 @@ const abilityFor = (roles: { role: string; permissions?: unknown }[], privileges
   );
 
 describe("folder-scoped privilege deny coverage", () => {
+  // Subjects that support a secretPath condition but are deliberately NOT denied at granted folder
+  // paths: no folder role tier re-allows them, so the base project role keeps applying there.
+  const DENY_EXEMPT_SUBJECTS: string[] = [ProjectPermissionSub.ProxiedServices];
+
   // The single source of truth for "which subjects can be scoped by secretPath" is the permission
   // API schema itself, so enumerate it rather than hardcoding the list here.
   const secretPathScopedSubjects = ProjectPermissionV2Schema.options.flatMap((option) => {
     const shape = (option as z.AnyZodObject).shape as Record<string, z.ZodTypeAny | undefined>;
     const subjectValue = (shape.subject as z.ZodLiteral<string>).value;
     if (!(Object.values(ProjectPermissionSub) as string[]).includes(subjectValue)) return [];
+    if (DENY_EXEMPT_SUBJECTS.includes(subjectValue)) return [];
 
     const conditionsSchema = shape.conditions;
     const inner = conditionsSchema instanceof z.ZodOptional ? (conditionsSchema.unwrap() as z.ZodTypeAny) : undefined;
@@ -178,13 +183,30 @@ describe("folder-scoped privilege precedence", () => {
     expect(
       ability.can(ProjectPermissionSecretActions.ReadValue, subject(ProjectPermissionSub.Secrets, grantedPath))
     ).toBe(true);
-    expect(ability.can(ProjectPermissionManageAccessActions.Grant, ProjectPermissionSub.ManageAccess)).toBe(false);
+    expect(
+      ability.can(
+        ProjectPermissionSecretFolderActions.ManageAccess,
+        subject(ProjectPermissionSub.SecretFolders, { environment: "dev", secretPath: "/a/b" })
+      )
+    ).toBe(false);
   });
 
   test("only a full-access grant can delegate access", () => {
     const ability = abilityFor(viewerRoles, [privilege({ role: SecretFolderRole.FullAccess })]);
 
-    expect(ability.can(ProjectPermissionManageAccessActions.Grant, ProjectPermissionSub.ManageAccess)).toBe(true);
+    const grantedPath = { environment: "dev", secretPath: "/a/b" };
+    expect(
+      ability.can(
+        ProjectPermissionSecretFolderActions.ManageAccess,
+        subject(ProjectPermissionSub.SecretFolders, grantedPath)
+      )
+    ).toBe(true);
+    expect(
+      ability.can(
+        ProjectPermissionSecretFolderActions.ManageAccess,
+        subject(ProjectPermissionSub.SecretFolders, { environment: "dev", secretPath: "/other" })
+      )
+    ).toBe(false);
   });
 
   test("two grants on the same path union their tiers", () => {
