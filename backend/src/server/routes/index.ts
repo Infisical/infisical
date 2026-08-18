@@ -766,7 +766,8 @@ export const registerRoutes = async (
     userDAL,
     identityDAL,
     additionalPrivilegeDAL,
-    groupDAL
+    groupDAL,
+    secretFolderDAL: folderDAL
   });
 
   const assumePrivilegeService = assumePrivilegeServiceFactory({
@@ -2292,6 +2293,7 @@ export const registerRoutes = async (
 
   const folderService = secretFolderServiceFactory({
     permissionService,
+    additionalPrivilegeDAL,
     folderDAL,
     folderVersionDAL,
     projectEnvDAL,

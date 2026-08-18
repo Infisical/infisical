@@ -4,11 +4,15 @@ import handlebars from "handlebars";
 import { z } from "zod";
 
 import { TOrganizations } from "@app/db/schemas";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
-import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { ActorAuthMethod, ActorType, AuthMethod } from "@app/services/auth/auth-type";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 import { OrgPermissionSet } from "./org-permission";
+import { TCachedFolderScopedPrivileges } from "./permission-service-types";
 import {
   ActionAllowedConditions,
   ProjectPermissionGroupActions,
@@ -437,6 +441,50 @@ const handlebarsClient = (() => {
 
   return hbs;
 })();
+
+export const getFolderPermissionVersionFingerprint = async (
+  projectId: string,
+  keyStore: Pick<TKeyStoreFactory, "pgGetIntItem">
+) => String((await keyStore.pgGetIntItem(KeyStorePrefixes.ProjectFolderPermissionVersion(projectId))) ?? 0);
+
+export const fetchFolderScopedPrivileges = async (
+  projectId: string,
+  actor: ActorType.USER | ActorType.IDENTITY,
+  actorId: string,
+  {
+    additionalPrivilegeDAL,
+    secretFolderDAL
+  }: {
+    additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "findFolderScopedPrivileges">;
+    secretFolderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
+  }
+): Promise<TCachedFolderScopedPrivileges> => {
+  const rows = await additionalPrivilegeDAL.findFolderScopedPrivileges({ projectId, actorId, actorType: actor });
+  if (!rows.length) return { privileges: [] };
+
+  const foldersWithPath = await secretFolderDAL.findSecretPathByFolderIds(
+    projectId,
+    rows.map((row) => row.folderId)
+  );
+
+  return {
+    privileges: rows.flatMap((row, idx) => {
+      const folder = foldersWithPath[idx];
+      if (!folder || !row.role) return [];
+      return [
+        {
+          id: row.id,
+          folderId: row.folderId,
+          role: row.role,
+          environmentSlug: folder.environmentSlug,
+          secretPath: folder.path,
+          isTemporary: row.isTemporary,
+          temporaryAccessEndTime: row.temporaryAccessEndTime
+        }
+      ];
+    })
+  };
+};
 
 export {
   assertPermissionBoundary,

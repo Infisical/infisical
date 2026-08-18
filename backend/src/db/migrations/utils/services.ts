@@ -20,6 +20,7 @@ import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { roleDALFactory } from "@app/services/role/role-dal";
+import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 
@@ -71,6 +72,7 @@ export const getMigrationEncryptionServices = async ({
   const internalKmsKeyVersionDAL = internalKmsKeyVersionDALFactory(db);
   const additionalPrivilegeDAL = additionalPrivilegeDALFactory(db);
   const groupDAL = groupDALFactory(db);
+  const secretFolderDAL = secretFolderDALFactory(db);
 
   // ----- Service dependencies -----
   const permissionService = permissionServiceFactory({
@@ -82,7 +84,8 @@ export const getMigrationEncryptionServices = async ({
     userDAL,
     identityDAL,
     additionalPrivilegeDAL,
-    groupDAL
+    groupDAL,
+    secretFolderDAL
   });
 
   const licenseService = licenseServiceFactory({

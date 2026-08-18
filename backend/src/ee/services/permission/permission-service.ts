@@ -57,6 +57,7 @@ import {
 } from "@app/services/oauth-client/oauth-scope";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TServiceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -72,14 +73,18 @@ import { TPermissionDALFactory } from "./permission-dal";
 import {
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,
+  fetchFolderScopedPrivileges,
+  getFolderPermissionVersionFingerprint,
   handlebarsClient,
   validateOrgSSO
 } from "./permission-fns";
 import {
   TBuildOrgPermissionDTO,
   TBuildProjectPermissionDTO,
+  TCachedFolderScopedPrivileges,
   TGetServiceTokenProjectPermissionArg,
-  TPermissionServiceFactory
+  TPermissionServiceFactory,
+  TProjectFolderScopedPrivilege
 } from "./permission-service-types";
 import {
   buildServiceTokenProjectPermission,
@@ -282,8 +287,9 @@ type TPermissionServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   roleDAL: Pick<TRoleDALFactory, "find">;
-  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "find">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "find" | "findFolderScopedPrivileges">;
   groupDAL: Pick<TGroupDALFactory, "find">;
+  secretFolderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
 };
 
 export const permissionServiceFactory = ({
@@ -295,7 +301,8 @@ export const permissionServiceFactory = ({
   keyStore,
   roleDAL,
   additionalPrivilegeDAL,
-  groupDAL
+  groupDAL,
+  secretFolderDAL
 }: TPermissionServiceFactoryDep): TPermissionServiceFactory => {
   const getOrgPermission: TPermissionServiceFactory["getOrgPermission"] = async ({
     actor,
@@ -433,7 +440,8 @@ export const permissionServiceFactory = ({
       permission: buildServiceTokenProjectPermission(scopes, serviceToken.permissions),
       memberships: [],
       hasRole: () => false,
-      hasProjectEnforcement: $checkProjectEnforcement(serviceTokenProject)
+      hasProjectEnforcement: $checkProjectEnforcement(serviceTokenProject),
+      folderScopedPrivileges: []
     };
   };
 
@@ -463,6 +471,20 @@ export const permissionServiceFactory = ({
     username: string;
     canBypassSso: boolean;
   };
+
+  // Postgres row expiry for the folder-permission version counter. Must comfortably exceed the 15m
+  // data TTL: an expired row reads as 0 and the next bump re-inserts at 1, so a short expiry lets a
+  // live cached blob's fingerprint collide with the resurrected counter and re-validate stale data.
+  const FOLDER_PERMISSION_VERSION_TTL = "2d";
+
+  const invalidateProjectFolderPermissionCache: TPermissionServiceFactory["invalidateProjectFolderPermissionCache"] =
+    async (projectId, tx) => {
+      await keyStore.pgIncrementBy(KeyStorePrefixes.ProjectFolderPermissionVersion(projectId), {
+        incr: 1,
+        tx,
+        expiry: FOLDER_PERMISSION_VERSION_TTL
+      });
+    };
 
   const $fetchProjectPermissionData = async (
     projectId: string,
@@ -634,6 +656,40 @@ export const permissionServiceFactory = ({
         });
       }
 
+      // Folder-scoped privileges live in their own cache because they need to be outlive the project permission cache
+      let folderScopedPrivileges: TProjectFolderScopedPrivilege[] = [];
+      if (projectDetails.type === ProjectType.SecretManager) {
+        const folderCached = await withCacheFingerprint<TCachedFolderScopedPrivileges>({
+          keyStore,
+          dataKey: KeyStorePrefixes.ProjectFolderPermissionData(projectId, narrowedActor, actorId),
+          markerKey: KeyStorePrefixes.ProjectFolderPermissionMarker(projectId, narrowedActor, actorId),
+          markerTtlSeconds: KeyStoreTtls.ProjectFolderPermissionMarkerTtlSeconds,
+          dataTtlSeconds: KeyStoreTtls.ProjectFolderPermissionDataTtlSeconds,
+          fingerprintFetcher: () => getFolderPermissionVersionFingerprint(projectId, keyStore),
+          dataFetcher: () =>
+            fetchFolderScopedPrivileges(projectId, narrowedActor, actorId, {
+              additionalPrivilegeDAL,
+              secretFolderDAL
+            }),
+          reviver: (parsed: TCachedFolderScopedPrivileges) => {
+            for (const priv of parsed.privileges) {
+              if (priv.temporaryAccessEndTime) {
+                priv.temporaryAccessEndTime = new Date(priv.temporaryAccessEndTime);
+              }
+            }
+          }
+        });
+        folderScopedPrivileges = folderCached.privileges
+          .filter(isActiveRole)
+          .map(({ id, folderId, role, environmentSlug, secretPath }) => ({
+            id,
+            folderId,
+            role,
+            environmentSlug,
+            secretPath
+          }));
+      }
+
       const projectDetailsCtx = {
         id: projectDetails.id,
         name: projectDetails.name,
@@ -694,7 +750,8 @@ export const permissionServiceFactory = ({
         permission,
         memberships: permissionData,
         hasRole,
-        hasProjectEnforcement: $checkProjectEnforcement(projectDetails)
+        hasProjectEnforcement: $checkProjectEnforcement(projectDetails),
+        folderScopedPrivileges
       };
 
       return {
@@ -1320,6 +1377,7 @@ export const permissionServiceFactory = ({
     getProjectPermissionByRoles,
     checkGroupProjectPermission,
     getMembershipPermissionAudit,
-    getIdentityPermissionAudit
+    getIdentityPermissionAudit,
+    invalidateProjectFolderPermissionCache
   };
 };
