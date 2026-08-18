@@ -629,6 +629,7 @@ export enum EventType {
   PROJECT_ASSUME_PRIVILEGE_SESSION_END = "project-assume-privileges-session-end",
 
   GET_PROJECT_PIT_COMMITS = "get-project-pit-commits",
+  GET_PROJECT_PIT_COMMIT_AUTHORS = "get-project-pit-commit-authors",
   GET_PROJECT_PIT_COMMIT_CHANGES = "get-project-pit-commit-changes",
   GET_PROJECT_PIT_COMMIT_COUNT = "get-project-pit-commit-count",
   PIT_ROLLBACK_COMMIT = "pit-rollback-commit",
@@ -5191,6 +5192,18 @@ interface GetProjectPitCommitsEvent {
     limit: string;
     search?: string;
     sort: string;
+    filteredActorId?: string;
+    filteredActorName?: string;
+    filteredActorType?: string;
+  };
+}
+
+interface GetProjectPitCommitAuthorsEvent {
+  type: EventType.GET_PROJECT_PIT_COMMIT_AUTHORS;
+  metadata: {
+    environment: string;
+    path: string;
+    authorCount: string;
   };
 }
 
@@ -7445,6 +7458,7 @@ export type Event =
   | MicrosoftTeamsWorkflowIntegrationListEvent
   | MicrosoftTeamsWorkflowIntegrationUpdateEvent
   | GetProjectPitCommitsEvent
+  | GetProjectPitCommitAuthorsEvent
   | GetProjectPitCommitChangesEvent
   | PitRollbackCommitEvent
   | GetProjectPitCommitCountEvent
