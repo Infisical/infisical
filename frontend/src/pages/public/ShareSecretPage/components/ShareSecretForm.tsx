@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearch } from "@tanstack/react-router";
-import { Check, ClipboardCheck, Copy, ForwardIcon, Info, Lock } from "lucide-react";
+import { Check, ClipboardCheck, Copy, Info, Lock, MessageSquareShare } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
@@ -524,7 +524,7 @@ export const ShareSecretForm = ({
         </div>
         <Button className="w-full" variant="project" size="lg" onClick={() => setSecretLink(null)}>
           Share Another Secret
-          <ForwardIcon />
+          <MessageSquareShare />
         </Button>
       </div>
     );
@@ -555,7 +555,7 @@ export const ShareSecretForm = ({
       </div>
       <Button className="w-full" variant="project" size="lg" onClick={() => setSecretLink(null)}>
         Share Another Secret
-        <ForwardIcon />
+        <MessageSquareShare />
       </Button>
     </div>
   );

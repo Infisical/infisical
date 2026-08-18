@@ -1,4 +1,4 @@
-import { ForwardIcon, Trash2 } from "lucide-react";
+import { MessageSquareShare, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -61,7 +61,7 @@ export const ShareSecretTab = () => {
               handlePopUpOpen("createSharedSecret");
             }}
           >
-            <ForwardIcon />
+            <MessageSquareShare />
             Share Secret
           </Button>
         </CardAction>

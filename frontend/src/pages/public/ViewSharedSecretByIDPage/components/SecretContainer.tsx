@@ -1,4 +1,4 @@
-import { ClipboardCheckIcon, Copy, Eye, EyeOff, ForwardIcon } from "lucide-react";
+import { ClipboardCheckIcon, Copy, Eye, EyeOff, MessageSquareShare } from "lucide-react";
 
 import { Button, IconButton } from "@app/components/v3";
 import { useTimedReset, useToggle } from "@app/hooks";
@@ -90,7 +90,7 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
           onClick={() => window.open("/share-secret", "_blank", "noopener")}
         >
           Share Your Own Secret
-          <ForwardIcon />
+          <MessageSquareShare />
         </Button>
       )}
     </div>
