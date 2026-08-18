@@ -367,5 +367,9 @@ export const RelayTab = withPermission(
       </Card>
     );
   },
-  { action: OrgRelayPermissionActions.ListRelays, subject: OrgPermissionSubjects.Relay }
+  {
+    action: OrgRelayPermissionActions.ListRelays,
+    subject: OrgPermissionSubjects.Relay,
+    accessRestrictedMode: "dialog"
+  }
 );

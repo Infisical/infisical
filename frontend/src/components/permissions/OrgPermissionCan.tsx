@@ -5,6 +5,7 @@ import { Can } from "@casl/react";
 import { TooltipProps } from "@app/components/v2/Tooltip/Tooltip";
 import {
   AccessRestrictedDialog,
+  AccessRestrictedNotice,
   TAccessRestrictedRequirement,
   toPermissionRequirement
 } from "@app/components/v3";
@@ -14,11 +15,17 @@ import { OrgPermissionSet } from "@app/context/OrgPermissionContext/types";
 import { Tooltip } from "../v2";
 
 export const OrgPermissionGuardBanner = ({
-  requirement
+  requirement,
+  accessRestrictedMode = "notice"
 }: {
   requirement?: TAccessRestrictedRequirement;
+  accessRestrictedMode?: "dialog" | "notice";
 }) => {
-  return <AccessRestrictedDialog requirement={requirement} />;
+  return accessRestrictedMode === "dialog" ? (
+    <AccessRestrictedDialog requirement={requirement} />
+  ) : (
+    <AccessRestrictedNotice />
+  );
 };
 
 type Props<T extends AbilityTuple> = {
@@ -27,6 +34,7 @@ type Props<T extends AbilityTuple> = {
   // so when permission is allowed same tooltip will be reused  to show helpertext
   renderTooltip?: boolean;
   allowedLabel?: string;
+  accessRestrictedMode?: "dialog" | "notice";
   renderGuardBanner?: boolean;
   tooltipProps?: Omit<TooltipProps, "children">;
   I: T[0];
@@ -46,6 +54,7 @@ export const OrgPermissionCan: FunctionComponent<Props<OrgPermissionSet>> = ({
   passThrough = true,
   renderTooltip,
   allowedLabel,
+  accessRestrictedMode = "dialog",
   renderGuardBanner,
   tooltipProps,
   ...props
@@ -78,6 +87,7 @@ export const OrgPermissionCan: FunctionComponent<Props<OrgPermissionSet>> = ({
         if (!isAllowed && renderGuardBanner) {
           return (
             <OrgPermissionGuardBanner
+              accessRestrictedMode={accessRestrictedMode}
               requirement={toPermissionRequirement(props.I, "a" in props ? props.a : props.an)}
             />
           );

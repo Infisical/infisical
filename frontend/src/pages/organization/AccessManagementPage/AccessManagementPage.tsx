@@ -147,7 +147,7 @@ export const AccessManagementPage = () => {
           onOpenChange={setIsUpgradePrivilegeSystemModalOpen}
         />
         {visibleTabSections.length === 0 ? (
-          <OrgPermissionGuardBanner />
+          <OrgPermissionGuardBanner accessRestrictedMode="dialog" />
         ) : (
           <Tabs value={activeTab} onValueChange={updateSelectedTab}>
             <TabsList variant={isSubOrganization ? "sub-org" : "org"}>
@@ -158,7 +158,10 @@ export const AccessManagementPage = () => {
               ))}
             </TabsList>
             {isSelectedTabRestricted ? (
-              <OrgPermissionGuardBanner requirement={selectedTabSection?.requirement} />
+              <OrgPermissionGuardBanner
+                accessRestrictedMode="dialog"
+                requirement={selectedTabSection?.requirement}
+              />
             ) : (
               visibleTabSections.map(({ key, component: Component }) => (
                 <TabsContent value={key} key={`org-access-tab-panel-${key}`}>

@@ -45,5 +45,9 @@ export const BillingTabGroup = withPermission(
       </Tabs>
     );
   },
-  { action: OrgPermissionBillingActions.Read, subject: OrgPermissionSubjects.Billing }
+  {
+    action: OrgPermissionBillingActions.Read,
+    subject: OrgPermissionSubjects.Billing,
+    accessRestrictedMode: "dialog"
+  }
 );

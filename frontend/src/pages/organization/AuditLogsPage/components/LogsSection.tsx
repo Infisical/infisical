@@ -311,13 +311,25 @@ const ProjectLogsSectionWithPermission = withProjectPermission(LogsSectionCompon
   subject: ProjectPermissionSub.AuditLogs
 });
 
+const ProjectAuditLogsPageWithPermission = withProjectPermission(LogsSectionComponent, {
+  action: ProjectPermissionAuditLogsActions.Read,
+  subject: ProjectPermissionSub.AuditLogs,
+  accessRestrictedMode: "dialog"
+});
+
 const OrgLogsSectionWithPermission = withPermission(LogsSectionComponent, {
   action: OrgPermissionAuditLogsActions.Read,
   subject: OrgPermissionSubjects.AuditLogs
 });
 
+const OrgAuditLogsPageWithPermission = withPermission(LogsSectionComponent, {
+  action: OrgPermissionAuditLogsActions.Read,
+  subject: OrgPermissionSubjects.AuditLogs,
+  accessRestrictedMode: "dialog"
+});
+
 export const LogsSection = (props: Props) => {
-  const { project } = props;
+  const { pageView, project } = props;
 
   if (project) {
     // PAM uses its own product/resource permission model and scopes audit logs server-side, so the
@@ -326,8 +338,16 @@ export const LogsSection = (props: Props) => {
       return <LogsSectionComponent {...props} />;
     }
 
-    return <ProjectLogsSectionWithPermission {...props} />;
+    return pageView ? (
+      <ProjectAuditLogsPageWithPermission {...props} />
+    ) : (
+      <ProjectLogsSectionWithPermission {...props} />
+    );
   }
 
-  return <OrgLogsSectionWithPermission {...props} />;
+  return pageView ? (
+    <OrgAuditLogsPageWithPermission {...props} />
+  ) : (
+    <OrgLogsSectionWithPermission {...props} />
+  );
 };

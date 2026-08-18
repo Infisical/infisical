@@ -4,6 +4,7 @@ import { Can } from "@casl/react";
 
 import {
   AccessRestrictedDialog,
+  AccessRestrictedNotice,
   TAccessRestrictedRequirement,
   toPermissionRequirement
 } from "@app/components/v3";
@@ -12,11 +13,17 @@ import { ProjectPermissionSet, useProjectPermission } from "@app/context/Project
 import { Tooltip } from "../v2/Tooltip";
 
 export const ProjectPermissionGuardBanner = ({
-  requirement
+  requirement,
+  accessRestrictedMode = "notice"
 }: {
   requirement?: TAccessRestrictedRequirement;
+  accessRestrictedMode?: "dialog" | "notice";
 }) => {
-  return <AccessRestrictedDialog requirement={requirement} />;
+  return accessRestrictedMode === "dialog" ? (
+    <AccessRestrictedDialog requirement={requirement} />
+  ) : (
+    <AccessRestrictedNotice />
+  );
 };
 
 type Props<T extends AbilityTuple> = {
@@ -26,6 +33,7 @@ type Props<T extends AbilityTuple> = {
   renderTooltip?: boolean;
   allowedLabel?: string;
   children: ReactNode | ((isAllowed: boolean, ability: T) => ReactNode);
+  accessRestrictedMode?: "dialog" | "notice";
   passThrough?: boolean;
   I: T[0];
   a: T[1];
@@ -39,6 +47,7 @@ export const ProjectPermissionCan: FunctionComponent<Props<ProjectPermissionSet>
   passThrough = true,
   renderTooltip,
   allowedLabel,
+  accessRestrictedMode = "dialog",
   renderGuardBanner,
   ...props
 }) => {
@@ -52,7 +61,10 @@ export const ProjectPermissionCan: FunctionComponent<Props<ProjectPermissionSet>
 
         if (!isAllowed && renderGuardBanner) {
           return (
-            <ProjectPermissionGuardBanner requirement={toPermissionRequirement(props.I, props.a)} />
+            <ProjectPermissionGuardBanner
+              accessRestrictedMode={accessRestrictedMode}
+              requirement={toPermissionRequirement(props.I, props.a)}
+            />
           );
         }
 
