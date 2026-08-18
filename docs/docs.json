@@ -15,14 +15,7 @@
   },
   "favicon": "/favicon.ico",
   "contextual": {
-    "options": [
-      "assistant",
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "mcp"
-    ]
+    "options": ["assistant", "copy", "view", "chatgpt", "claude", "mcp"]
   },
   "navigation": {
     "tabs": [
@@ -904,7 +897,8 @@
                     "pages": [
                       "documentation/platform/pki/concepts/certificate-lifecycle",
                       "documentation/platform/pki/concepts/certificate-components",
-                      "documentation/platform/pki/concepts/access-control"
+                      "documentation/platform/pki/concepts/access-control",
+                      "documentation/platform/pki/concepts/reference-architecture"
                     ]
                   },
                   {
@@ -3462,15 +3456,11 @@
                   },
                   {
                     "group": "Ona",
-                    "pages": [
-                      "api-reference/endpoints/secret-syncs/ona/create"
-                    ]
+                    "pages": ["api-reference/endpoints/secret-syncs/ona/create"]
                   },
                   {
                     "group": "OVH",
-                    "pages": [
-                      "api-reference/endpoints/secret-syncs/ovh/create"
-                    ]
+                    "pages": ["api-reference/endpoints/secret-syncs/ovh/create"]
                   },
                   {
                     "group": "Qovery",
