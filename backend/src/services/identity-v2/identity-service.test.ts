@@ -186,4 +186,23 @@ describe("instance admin identities are protected on the v2 surface", () => {
 
     expect(identityDAL.deleteById).toHaveBeenCalledWith(IDENTITY_ID, TX);
   });
+
+  test("an out-of-scope instance admin identity is not found, not refused as privileged", async () => {
+    const { service, identityDAL, deleteAlertsForDeletedResource } = createService({ existingIdentity: null });
+
+    await expect(service.deleteIdentity(buildDto())).rejects.toThrow(`Identity with id ${IDENTITY_ID} not found`);
+
+    expect(identityDAL.deleteById).not.toHaveBeenCalled();
+    expect(deleteAlertsForDeletedResource).not.toHaveBeenCalled();
+  });
+
+  test("an out-of-scope instance admin identity is not found on update either", async () => {
+    const { service, identityDAL } = createService({ existingIdentity: null });
+
+    await expect(service.updateIdentity({ ...buildDto(), data: { name: "renamed" } } as never)).rejects.toThrow(
+      `Identity with id ${IDENTITY_ID} not found`
+    );
+
+    expect(identityDAL.updateById).not.toHaveBeenCalled();
+  });
 });
