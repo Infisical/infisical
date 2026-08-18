@@ -1,0 +1,26 @@
+[
+  {
+    "label": "copy .env into new worktree",
+    "command": "cp",
+    "args": ["$ZED_MAIN_GIT_WORKTREE/.env", "$ZED_WORKTREE_ROOT/.env"],
+    "hooks": ["create_worktree"],
+    "reveal": "no_focus",
+    "hide": "on_success"
+  },
+  {
+    "label": "symlink backend node_modules into new worktree",
+    "command": "ln",
+    "args": ["-s", "$ZED_MAIN_GIT_WORKTREE/backend/node_modules", "$ZED_WORKTREE_ROOT/backend/node_modules"],
+    "hooks": ["create_worktree"],
+    "reveal": "no_focus",
+    "hide": "on_success"
+  },
+  {
+    "label": "symlink frontend node_modules into new worktree",
+    "command": "ln",
+    "args": ["-s", "$ZED_MAIN_GIT_WORKTREE/frontend/node_modules", "$ZED_WORKTREE_ROOT/frontend/node_modules"],
+    "hooks": ["create_worktree"],
+    "reveal": "no_focus",
+    "hide": "on_success"
+  }
+]

@@ -66,9 +66,9 @@ export async function up(knex: Knex): Promise<void> {
   const log = (msg: string) => console.log(`[auto domain seeding] ${msg}`);
 
   // Only run for non-cloud (self-hosted) environments
-  // Cloud environments have LICENSE_SERVER_V2_SERVICE_KEY set
-  if (process.env.LICENSE_SERVER_V2_SERVICE_KEY) {
-    log("Skipping — cloud environment (LICENSE_SERVER_V2_SERVICE_KEY set)");
+  // Cloud environments have LICENSE_SERVER_KEY set
+  if (process.env.LICENSE_SERVER_KEY) {
+    log("Skipping — cloud environment (LICENSE_SERVER_KEY set)");
     return;
   }
 

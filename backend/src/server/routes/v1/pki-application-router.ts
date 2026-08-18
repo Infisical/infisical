@@ -77,6 +77,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
         organizationId: req.permission.orgId,
         properties: {
           orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
           applicationId: application.id
         }
       });
@@ -310,6 +311,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
         organizationId: req.permission.orgId,
         properties: {
           orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
           applicationId: application.id
         }
       });
@@ -356,6 +358,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
         organizationId: req.permission.orgId,
         properties: {
           orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
           applicationId: application.id
         }
       });

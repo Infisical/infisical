@@ -106,9 +106,10 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
           applicationId: req.params.applicationId,
-          alertType: alert.eventType,
-          orgId: req.permission.orgId
+          alertType: alert.eventType
         }
       });
 
@@ -159,6 +160,17 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiAlertUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          applicationId: req.params.applicationId
+        }
+      });
+
       return { alert };
     }
   });
@@ -206,8 +218,9 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          applicationId: req.params.applicationId,
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          applicationId: req.params.applicationId
         }
       });
 
