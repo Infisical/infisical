@@ -22,7 +22,7 @@ type TAuditReportQueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
   auditReportDAL: Pick<TAuditReportDALFactory, "findById" | "updateById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "countAllOrgMembers">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "countAllOrgMembers" | "countSecretManagerProjectMembers">;
   smtpService: Pick<TSmtpService, "sendMail">;
 } & TAuditReportGeneratorDALs &
   // orgDAL is declared above with the union of what the worker and the org generators need;
