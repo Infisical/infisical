@@ -1,5 +1,6 @@
-import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SendIcon, TrashIcon } from "lucide-react";
+import { useState } from "react";
+import { Controller, useFormContext, UseFormRegisterReturn, useWatch } from "react-hook-form";
+import { EyeIcon, EyeOffIcon, SendIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -10,6 +11,10 @@ import {
   FieldLabel,
   IconButton,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
   Label,
   Switch
 } from "@app/components/v3";
@@ -35,6 +40,41 @@ type Props = {
 };
 
 const KEEP_PLACEHOLDER = "•••••••• (leave blank to keep)";
+
+const ChannelSecretInput = ({
+  id,
+  placeholder,
+  isError,
+  registration
+}: {
+  id: string;
+  placeholder?: string;
+  isError?: boolean;
+  registration: UseFormRegisterReturn;
+}) => {
+  const [isRevealed, setIsRevealed] = useState(false);
+
+  return (
+    <InputGroup>
+      <InputGroupInput
+        {...registration}
+        id={id}
+        type={isRevealed ? "text" : "password"}
+        placeholder={placeholder}
+        autoComplete="off"
+        aria-invalid={Boolean(isError)}
+      />
+      <InputGroupAddon align="inline-end">
+        <InputGroupButton
+          aria-label={isRevealed ? "Hide value" : "Reveal value"}
+          onClick={() => setIsRevealed((current) => !current)}
+        >
+          {isRevealed ? <EyeOffIcon /> : <EyeIcon />}
+        </InputGroupButton>
+      </InputGroupAddon>
+    </InputGroup>
+  );
+};
 
 export const ChannelCard = ({
   index,
@@ -117,24 +157,27 @@ export const ChannelCard = ({
             <SendIcon className="size-3.5" />
             Send test
           </Button>
-          <Controller
-            control={control}
-            name={`channels.${index}.enabled`}
-            render={({ field }) => (
-              <Label
-                htmlFor={`channel-${index}-enabled`}
-                className="cursor-pointer text-xs font-normal text-muted"
-              >
-                Enabled
+          <div className="flex items-center gap-2">
+            <Label
+              htmlFor={`channel-${index}-enabled`}
+              className="cursor-pointer text-xs font-normal text-muted"
+            >
+              Enabled
+            </Label>
+            <Controller
+              control={control}
+              name={`channels.${index}.enabled`}
+              render={({ field }) => (
                 <Switch
                   id={`channel-${index}-enabled`}
+                  aria-label={`Toggle ${channelLabel} channel`}
                   variant={scopeVariant}
                   checked={field.value}
                   onCheckedChange={field.onChange}
                 />
-              </Label>
-            )}
-          />
+              )}
+            />
+          </div>
           {canRemove && (
             <IconButton aria-label="Remove channel" variant="ghost" size="xs" onClick={onRemove}>
               <TrashIcon className="size-4" />
@@ -142,19 +185,6 @@ export const ChannelCard = ({
           )}
         </div>
       </div>
-
-      <Field>
-        <FieldLabel htmlFor={`channel-${index}-name`}>Name</FieldLabel>
-        <FieldContent>
-          <Input
-            id={`channel-${index}-name`}
-            placeholder="Notify on-call"
-            isError={Boolean(channelErrors?.name)}
-            {...register(`channels.${index}.name`)}
-          />
-          <FieldError errors={[channelErrors?.name]} />
-        </FieldContent>
-      </Field>
 
       {channelType === AlertChannelType.Email && (
         <Field>
@@ -181,16 +211,15 @@ export const ChannelCard = ({
         <Field>
           <FieldLabel htmlFor={`channel-${index}-webhookUrl`}>Webhook URL</FieldLabel>
           <FieldContent>
-            <Input
+            <ChannelSecretInput
               id={`channel-${index}-webhookUrl`}
-              type="password"
               placeholder={
                 isExisting && channel?.hasWebhookUrl
                   ? KEEP_PLACEHOLDER
                   : "https://hooks.slack.com/..."
               }
               isError={Boolean(channelErrors?.webhookUrl)}
-              {...register(`channels.${index}.webhookUrl`)}
+              registration={register(`channels.${index}.webhookUrl`)}
             />
             <FieldError errors={[channelErrors?.webhookUrl]} />
           </FieldContent>
@@ -216,12 +245,11 @@ export const ChannelCard = ({
               Signing secret <span className="text-muted">(optional)</span>
             </FieldLabel>
             <FieldContent>
-              <Input
+              <ChannelSecretInput
                 id={`channel-${index}-signingSecret`}
-                type="password"
                 placeholder={isExisting && channel?.hasSigningSecret ? KEEP_PLACEHOLDER : ""}
                 isError={Boolean(channelErrors?.signingSecret)}
-                {...register(`channels.${index}.signingSecret`)}
+                registration={register(`channels.${index}.signingSecret`)}
               />
               <FieldError errors={[channelErrors?.signingSecret]} />
             </FieldContent>
@@ -233,16 +261,15 @@ export const ChannelCard = ({
         <Field>
           <FieldLabel htmlFor={`channel-${index}-integrationKey`}>Integration key</FieldLabel>
           <FieldContent>
-            <Input
+            <ChannelSecretInput
               id={`channel-${index}-integrationKey`}
-              type="password"
               placeholder={
                 isExisting && channel?.hasIntegrationKey
                   ? KEEP_PLACEHOLDER
                   : "32-character integration key"
               }
               isError={Boolean(channelErrors?.integrationKey)}
-              {...register(`channels.${index}.integrationKey`)}
+              registration={register(`channels.${index}.integrationKey`)}
             />
             <FieldError errors={[channelErrors?.integrationKey]} />
           </FieldContent>

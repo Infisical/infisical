@@ -141,6 +141,7 @@ export type TIssueCertificateFromProfileJobData = {
   state?: string;
   locality?: string;
   applicationId?: string;
+  basicConstraints?: { isCA: boolean; pathLength?: number | null } | null;
 };
 
 type TCertificateIssuanceQueueFactoryDep = {
@@ -346,7 +347,8 @@ export const certificateIssuanceQueueFactory = ({
     country,
     state,
     locality,
-    applicationId
+    applicationId,
+    basicConstraints
   }: TIssueCertificateFromProfileJobData) => {
     const jobData: TIssueCertificateFromProfileJobData = {
       certificateId,
@@ -369,7 +371,8 @@ export const certificateIssuanceQueueFactory = ({
       country,
       state,
       locality,
-      applicationId
+      applicationId,
+      basicConstraints
     };
 
     // ACM DNS validation can take 5–30 minutes; the function is fully idempotent via
@@ -419,7 +422,8 @@ export const certificateIssuanceQueueFactory = ({
       organizationalUnit,
       country,
       state,
-      locality
+      locality,
+      basicConstraints
     } = data;
 
     const setPending = async (message: string) => {
@@ -598,9 +602,7 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const azureResult = await azureAdCsFns.orderCertificate(
-          azureParams as Parameters<typeof azureAdCsFns.orderCertificate>[0]
-        );
+        const azureResult = await azureAdCsFns.orderCertificate(azureParams);
 
         if (await isCancelled()) {
           logger.info(`Cancelled after Azure AD CS order [certificateRequestId=${certificateRequestId}]`);
@@ -656,6 +658,7 @@ export const certificateIssuanceQueueFactory = ({
           isRenewal,
           originalCertificateId,
           template,
+          ...(csr && { csr }),
           isCancelled
         };
 
@@ -666,7 +669,7 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const adcsResult = await adcsFns.orderCertificate(adcsParams as Parameters<typeof adcsFns.orderCertificate>[0]);
+        const adcsResult = await adcsFns.orderCertificate(adcsParams);
 
         if (await isCancelled()) {
           logger.info(
@@ -736,9 +739,7 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const acmResult = await awsAcmPublicCaFns.orderCertificate(
-          acmParams as Parameters<typeof awsAcmPublicCaFns.orderCertificate>[0]
-        );
+        const acmResult = await awsAcmPublicCaFns.orderCertificate(acmParams);
 
         if (await isCancelled()) {
           logger.info(`Cancelled after AWS ACM Public CA order [certificateRequestId=${certificateRequestId}]`);
@@ -782,6 +783,7 @@ export const certificateIssuanceQueueFactory = ({
         const awsPcaParams = {
           caId,
           profileId,
+          idempotencyKey: certificateId,
           commonName: commonName || "",
           altNames: (altNames || []) as Array<{ type: CertSubjectAlternativeNameType; value: string }>,
           keyUsages: keyUsages as CertKeyUsage[],
@@ -797,6 +799,7 @@ export const certificateIssuanceQueueFactory = ({
           country,
           state,
           locality,
+          basicConstraints,
           isCancelled
         };
 
@@ -805,9 +808,7 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const awsPcaResult = await awsPcaFns.orderCertificate(
-          awsPcaParams as Parameters<typeof awsPcaFns.orderCertificate>[0]
-        );
+        const awsPcaResult = await awsPcaFns.orderCertificate(awsPcaParams);
 
         if (await isCancelled()) {
           logger.info(`Cancelled after AWS Private CA order [certificateRequestId=${certificateRequestId}]`);
@@ -1084,9 +1085,7 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
-        const venafiTppResult = await venafiTppFns.orderCertificate(
-          venafiTppParams as Parameters<typeof venafiTppFns.orderCertificate>[0]
-        );
+        const venafiTppResult = await venafiTppFns.orderCertificate(venafiTppParams);
 
         if (await isCancelled()) {
           logger.info(`Cancelled after Venafi TPP order [certificateRequestId=${certificateRequestId}]`);

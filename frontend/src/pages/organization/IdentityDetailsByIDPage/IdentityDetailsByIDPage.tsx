@@ -42,6 +42,7 @@ import { OrgAccessControlTabSections } from "@app/types/org";
 import { IdentityAuthMethodModal } from "../AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
 import { OrgIdentityModal } from "../AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/OrgIdentityModal";
 import {
+  IdentityAlertAction,
   IdentityAuthenticationSection,
   IdentityDetailsSection,
   IdentityProjectsSection
@@ -110,6 +111,9 @@ const Page = () => {
             description={`Configure and manage${isScopeIdentity ? " machine identity and " : " "}${isSubOrganization ? "sub-" : ""}organization access control`}
             title={data.identity.name}
           >
+            {isScopeIdentity && !data.identity.projectId && (
+              <IdentityAlertAction identityId={identityId} identityName={data.identity.name} />
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
@@ -217,7 +221,7 @@ const Page = () => {
         open={popUp?.identity?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("identity", isOpen)}
       >
-        <DialogContent className="max-w-xl overflow-visible">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>
               {`${popUp?.identity?.data ? "Update" : "Create"} Machine Identity`}

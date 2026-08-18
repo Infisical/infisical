@@ -29,6 +29,8 @@ const resolveMeter = (meterName: string): Meter => {
   return meter;
 };
 
+export const resolveCoreMeter = (): Meter => resolveMeter("InfisicalCore");
+
 type LazyMeter = {
   createCounter: (name: string, options?: MetricOptions) => Counter;
   createHistogram: (name: string, options?: MetricOptions) => Histogram;
@@ -57,10 +59,40 @@ const lazyMeter = (meterName: string): LazyMeter => ({
   }
 });
 
+const isTelemetryEnabled = () => getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED;
+
+export const shouldRecordHighCardinalityMetrics = () =>
+  isTelemetryEnabled() && !getConfig().OTEL_DROP_HIGH_CARDINALITY_METERS;
+
+export const highCardinalityMeter = (meterName: string): LazyMeter => {
+  const meter = lazyMeter(meterName);
+
+  return {
+    createCounter: (name, options) => {
+      const counter = meter.createCounter(name, options);
+      return {
+        add: (value: number, attributes?: Attributes) => {
+          if (!shouldRecordHighCardinalityMetrics()) return;
+          counter.add(value, attributes);
+        }
+      } as Counter;
+    },
+    createHistogram: (name, options) => {
+      const histogram = meter.createHistogram(name, options);
+      return {
+        record: (value: number, attributes?: Attributes) => {
+          if (!shouldRecordHighCardinalityMetrics()) return;
+          histogram.record(value, attributes);
+        }
+      } as Histogram;
+    }
+  };
+};
+
 // High-cardinality, per-actor meter, kept on by default for self-hosted (where per-actor visibility is
 // useful and cardinality is bounded by a single org); dropped in multi-tenant/cloud via
 // OTEL_DROP_HIGH_CARDINALITY_METERS. The pre-existing metrics below ship with per-actor labels documented in the docs.
-const infisicalMeter = lazyMeter("Infisical");
+const infisicalMeter = highCardinalityMeter("Infisical");
 
 // The MeterProvider applies a strict attribute allowlist (View in
 // instrumentation.ts) to anything emitted here, dropping high-cardinality labels at the SDK level.
@@ -107,9 +139,7 @@ export const secretReadCounter = infisicalMeter.createCounter("infisical.secret.
 });
 
 export const recordSecretReadMetric = (params: { environment: string; secretPath: string; name?: string }) => {
-  const appCfg = getConfig();
-
-  if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+  if (shouldRecordHighCardinalityMetrics()) {
     const attributes: Record<string, string> = {
       "infisical.environment": params.environment,
       "infisical.secret.path": params.secretPath,
@@ -188,9 +218,7 @@ export const recordKmipOperationMetric = (params: {
   objectId?: string;
   objectName?: string;
 }) => {
-  const appCfg = getConfig();
-
-  if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+  if (shouldRecordHighCardinalityMetrics()) {
     const attributes: Record<string, string> = {
       "infisical.kmip.operation.type": params.operationType,
       "infisical.organization.id": params.orgId,
@@ -229,8 +257,6 @@ export const recordKmipOperationMetric = (params: {
 };
 
 // -- New low-cardinality instruments (InfisicalCore meter) ------------------------------------------
-
-const isTelemetryEnabled = () => getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED;
 
 // Queue worker lifecycle metrics. Wired in queue-service.ts via worker.on('completed' | 'failed' | 'stalled').
 export const queueJobCounter = infisicalCoreMeter.createCounter("infisical.queue.job.count", {
@@ -647,7 +673,7 @@ export const recordAlertDispatchOutcomeMetric = (params: { resourceType: string;
 // installed the real MeterProvider, so we resolve the real meter directly here (observable gauges can't
 // be deferred to first use like counters/histograms — the SDK pulls them on each export).
 export const registerInfrastructureMetrics = (db: Knex) => {
-  const meter = resolveMeter("InfisicalCore");
+  const meter = resolveCoreMeter();
 
   // Build info: constant-value gauge that emits 1 with build identification labels on every export.
   const buildInfoGauge = meter.createObservableGauge("infisical.build.info", {

@@ -132,14 +132,15 @@ const ProjectSelectInner = () => {
         </PopoverTrigger>
         <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
           <Command>
-            <CommandInput placeholder="Search projects..." />
+            <CommandInput aria-label="Search projects" placeholder="Search projects..." />
             <CommandList>
               <CommandEmpty>No projects found.</CommandEmpty>
               <CommandGroup heading="Projects">
                 {projectsSortedByFav.map((workspace) => (
                   <CommandItem
                     key={workspace.id}
-                    value={workspace.name}
+                    value={workspace.id}
+                    keywords={[workspace.name]}
                     onSelect={() => handleSelectProject(workspace.id)}
                     className="gap-2"
                   >

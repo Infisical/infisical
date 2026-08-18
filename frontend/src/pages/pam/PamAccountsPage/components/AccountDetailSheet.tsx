@@ -47,7 +47,6 @@ import {
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useOrganization, useUser } from "@app/context";
-import { useGetIdentityMembershipOrgs } from "@app/hooks/api";
 import { useListAppConnections } from "@app/hooks/api/appConnections";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
@@ -64,6 +63,7 @@ import {
   useGetPamAccountTemplate,
   useListAccountMembers,
   useListFolderMembers,
+  useListPamProductIdentities,
   useListPamResourceRoles,
   usePamAccountActions,
   usePamAccountTypeMap,
@@ -85,6 +85,7 @@ import {
   PamDetailSheet
 } from "../../components/PamDetailSheet";
 import { PAM_ACCOUNT_TABS, visiblePamTabs } from "../../components/pamResourceTabs";
+import { PendingInvitationBadge } from "../../components/PendingInvitationBadge";
 import { RemoveMemberConfirm } from "../../components/RemoveMemberConfirm";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { TabWarningPing } from "../../components/TabWarningPing";
@@ -106,6 +107,7 @@ type ResolvedMember = {
   subtitle: string;
   source: PamMemberSource;
   kind: PamMemberKind;
+  isPendingInvitation?: boolean;
 };
 
 // Maps each accessibility issue to the tab where it can be resolved
@@ -142,13 +144,17 @@ const PermissionsTab = ({
     [orgGroups]
   );
 
-  const { data: orgIdentities } = useGetIdentityMembershipOrgs({ organizationId: currentOrg.id });
+  // Product identity members carry names for both org-level and PAM-scoped identities; the org
+  // identity list excludes project-scoped ones, so it can't resolve PAM-created identities.
+  const { data: productIdentities } = useListPamProductIdentities();
   const identityNameMap = useMemo(
     () =>
       new Map(
-        (orgIdentities?.identityMemberships ?? []).map((im) => [im.identity.id, im.identity.name])
+        (productIdentities ?? []).flatMap((m) =>
+          m.identityId ? [[m.identityId, m.name] as const] : []
+        )
       ),
-    [orgIdentities]
+    [productIdentities]
   );
 
   const removeUser = useRemoveAccountMember();
@@ -195,7 +201,11 @@ const PermissionsTab = ({
             [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ") || ou.user.username;
           return [
             ou.user.id,
-            { name, email: ou.user.email ?? ou.inviteEmail ?? ou.user.username }
+            {
+              name,
+              email: ou.user.email ?? ou.inviteEmail ?? ou.user.username,
+              isPendingInvitation: ou.status === "invited"
+            }
           ] as const;
         })
       ),
@@ -210,7 +220,8 @@ const PermissionsTab = ({
         displayName: info?.name ?? m.userId ?? "Unknown",
         subtitle: info?.email ?? "",
         source: PamMemberSource.Direct,
-        kind: PamMemberKind.User
+        kind: PamMemberKind.User,
+        isPendingInvitation: info?.isPendingInvitation
       };
     });
     const groups = (accountMembers?.groups ?? []).map((m) => ({
@@ -242,7 +253,8 @@ const PermissionsTab = ({
         displayName: info?.name ?? m.userId ?? "Unknown",
         subtitle: info?.email ?? "",
         source: PamMemberSource.Inherited,
-        kind: PamMemberKind.User
+        kind: PamMemberKind.User,
+        isPendingInvitation: info?.isPendingInvitation
       };
     });
     const groups = (folderMembers?.groups ?? []).map((m) => ({
@@ -361,7 +373,10 @@ const PermissionsTab = ({
                     <TableRow key={`direct-${rm.member.membershipId}`} className="[&>td]:h-12">
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-medium text-foreground">{rm.displayName}</span>
+                          <div className="flex items-center gap-x-1.5">
+                            <span className="font-medium text-foreground">{rm.displayName}</span>
+                            <PendingInvitationBadge isPending={Boolean(rm.isPendingInvitation)} />
+                          </div>
                           {rm.subtitle && <span className="text-xs text-muted">{rm.subtitle}</span>}
                         </div>
                       </TableCell>
@@ -457,7 +472,10 @@ const PermissionsTab = ({
                   <TableRow key={`inherited-${rm.member.membershipId}`} className="[&>td]:h-12">
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-medium text-foreground">{rm.displayName}</span>
+                        <div className="flex items-center gap-x-1.5">
+                          <span className="font-medium text-foreground">{rm.displayName}</span>
+                          <PendingInvitationBadge isPending={Boolean(rm.isPendingInvitation)} />
+                        </div>
                         {rm.subtitle && <span className="text-xs text-muted">{rm.subtitle}</span>}
                       </div>
                     </TableCell>

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { KmipClientsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { KmipPermission } from "@app/ee/services/kmip/kmip-enum";
+import { MIN_SERVER_CERT_TTL } from "@app/ee/services/kmip/kmip-service";
 import { KmipClientOrderBy } from "@app/ee/services/kmip/kmip-types";
 import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
@@ -290,7 +291,13 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
-          ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
+          ttl: z.string().refine((val) => {
+            try {
+              return ms(val) >= ms(MIN_SERVER_CERT_TTL);
+            } catch {
+              return false;
+            }
+          }, "TTL must be a valid duration of at least 1 hour (e.g. 12h, 30d, 1y)"),
           csr: z.string().trim().min(1, "CSR cannot be empty").max(4096).optional()
         })
         .refine((data) => data.csr || data.keyAlgorithm, {

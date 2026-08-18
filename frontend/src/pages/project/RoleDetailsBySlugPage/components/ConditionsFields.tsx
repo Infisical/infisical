@@ -13,6 +13,9 @@ import {
   FieldError,
   IconButton,
   Input,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Select,
   SelectContent,
   SelectItem,
@@ -452,16 +455,42 @@ export const ConditionsFields = ({
                               )}
                             />
                             <div>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <InfoIcon className="size-4 text-muted" />
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xs text-wrap">
-                                  {getConditionOperatorHelperInfo(
-                                    condition?.operator as PermissionConditionOperators
-                                  )}
-                                </TooltipContent>
-                              </Tooltip>
+                              {condition?.operator === PermissionConditionOperators.$GLOB ? (
+                                // The glob helper contains inputs for testing patterns, so it
+                                // needs a container that stays open while interacting with it
+                                <Popover>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <PopoverTrigger asChild>
+                                        <IconButton
+                                          aria-label="Glob pattern reference"
+                                          variant="ghost-muted"
+                                          size="xs"
+                                        >
+                                          <InfoIcon />
+                                        </IconButton>
+                                      </PopoverTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Glob pattern reference</TooltipContent>
+                                  </Tooltip>
+                                  <PopoverContent className="w-96">
+                                    {getConditionOperatorHelperInfo(
+                                      condition.operator as PermissionConditionOperators
+                                    )}
+                                  </PopoverContent>
+                                </Popover>
+                              ) : (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <InfoIcon className="size-4 text-muted" />
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs text-wrap">
+                                    {getConditionOperatorHelperInfo(
+                                      condition?.operator as PermissionConditionOperators
+                                    )}
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
                             </div>
                           </div>
                           <div className="grow">

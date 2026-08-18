@@ -1,1 +1,0 @@
-export { HoneyTokenListView } from "./HoneyTokenListView";

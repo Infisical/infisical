@@ -4,7 +4,8 @@ sidebarTitle: "Windows Server"
 description: "Deploy certificates to Windows servers over WinRM."
 ---
 
-import PostSyncCommandPlaceholders from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-placeholders.mdx";
+import PostSyncCommandVariables from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-variables.mdx";
+import PostSyncCommandFlow from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-flow.mdx";
 
 Deploy certificates from Infisical to a directory on a Windows server over WinRM. Files are written atomically so a reader never sees a partially written certificate or key.
 
@@ -15,7 +16,7 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
 ## Prerequisites
 
 - A [Windows (WinRM) Connection](/integrations/app-connections/winrm) with access to the target server
-- An [Infisical Gateway](/documentation/platform/gateways/overview) that can reach the server. Windows delivery always runs through the Gateway.
+- An [Infisical Gateway](/documentation/platform/gateways/overview) that can reach the server. Windows delivery always runs through the Gateway. A [post-sync command](#post-sync-commands) additionally needs the Gateway to be running Infisical CLI v0.43.120 or later.
 - The connection user must be able to write to the destination directory
 
 <Note>
@@ -47,7 +48,7 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
         5. Configure the **Post-Sync Command**, or leave it empty:
-            - **Command**: A PowerShell command run on the server after the sync delivers a certificate, so the service that uses it picks up the new file, for example `Restart-Service -Name "W3SVC"`. [Post-Sync Commands](#post-sync-commands) covers the available placeholders and what happens when the command fails.
+            - **Command**: A PowerShell command run on the server after the sync delivers a certificate, so the service that uses it picks up the new file, for example `Restart-Service -Name "W3SVC"`. [Post-Sync Commands](#post-sync-commands) covers the available variables and what happens when the command fails.
 
         6. Configure the **Details**:
             - **Name**: The name of your sync.
@@ -128,22 +129,11 @@ The field accepts a whole script, so several steps can run in one go: put each o
 
 Your Gateway runs the command, never Infisical. A WinRM Connection already requires a gateway, so nothing extra is needed here.
 
-The command runs on the target server, not on Infisical, and only after the whole delivery has finished:
+<Note>
+  The Gateway must be running Infisical CLI **v0.43.120 or later**. An earlier Gateway has no PowerShell run-command endpoint and rejects the request. Run `infisical --version` on the Gateway host to check, and see [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for how to upgrade.
+</Note>
 
-```mermaid
-sequenceDiagram
-    participant I as Infisical
-    participant G as Gateway
-    participant S as Target server
-    I->>G: Deliver certificate files
-    G->>S: Write files
-    G->>S: Remove files for certificates no longer synced
-    Note over G,S: Only once the server is in its final state
-    I->>G: Run the post-sync command
-    G->>S: Execute as the connection's account
-    S-->>G: Output and outcome
-    G-->>I: Success, or the reason it failed
-```
+<PostSyncCommandFlow />
 
 ### Setting a Command
 
@@ -152,7 +142,7 @@ sequenceDiagram
     Edit the sync and select **Post-Sync Command**.
   </Step>
   <Step title="Write the command">
-    Use a placeholder wherever you need a value from the run:
+    Use a variable wherever you need a value from the run. Typing `{{` in the command field lists the ones available for this sync, so you can pick one instead of remembering the name:
 
     ```powershell
     Import-PfxCertificate -FilePath {{certificatePath}} -CertStoreLocation Cert:\LocalMachine\My -Password (ConvertTo-SecureString {{pkcs12Password}} -AsPlainText -Force)
@@ -163,9 +153,9 @@ sequenceDiagram
   </Step>
 </Steps>
 
-### Available Placeholders
+### Available Variables
 
-<PostSyncCommandPlaceholders />
+<PostSyncCommandVariables />
 
 ### Length Limit
 
