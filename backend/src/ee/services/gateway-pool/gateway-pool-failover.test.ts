@@ -6,13 +6,14 @@ const markSuspect = vi.fn();
 const getSuspect = vi.fn().mockResolvedValue(new Set<string>());
 const getScores = vi.fn();
 const reserve = vi.fn();
+const claimLeastLoaded = vi.fn();
 
 vi.mock("@app/lib/logger", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }));
 
 vi.mock("@app/lib/gateway-v2/gateway-load-tracker", () => ({
-  getGatewayLoadTracker: () => ({ markSuspect, getSuspect, getScores, reserve })
+  getGatewayLoadTracker: () => ({ markSuspect, getSuspect, getScores, reserve, claimLeastLoaded })
 }));
 
 // eslint-disable-next-line import/first
@@ -40,8 +41,10 @@ describe("selectGatewayFromPool under load-tracker failure", () => {
     // clearAllMocks keeps implementations, so a rejection set by one test would leak into the next.
     markSuspect.mockResolvedValue(undefined);
     reserve.mockResolvedValue(undefined);
+    // Without this the load-aware branch throws and every test silently measures the random fallback.
+    claimLeastLoaded.mockImplementation(async (c: { id: string }[]) => c[0]?.id);
     getSuspect.mockResolvedValue(new Set<string>());
-    getScores.mockResolvedValue(new Map(MEMBERS.map((m) => [m.id, { score: 0, reported: true }])));
+    getScores.mockResolvedValue(new Map(MEMBERS.map((m) => [m.id, { score: 0, base: 0, reported: true }])));
   });
 
   test("still selects, and spreads, when Redis reads fail", async () => {
@@ -87,6 +90,34 @@ describe("selectGatewayFromPool under load-tracker failure", () => {
     await expect(svc.selectGatewayFromPool({ poolId: POOL_ID })).resolves.toBeDefined();
   });
 
+  test("actually uses the load-aware claim, not the random fallback", async () => {
+    const svc = buildService();
+    claimLeastLoaded.mockResolvedValue("gw-c");
+
+    for (let i = 0; i < 50; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      expect((await svc.selectGatewayFromPool({ poolId: POOL_ID })).id).toBe("gw-c");
+    }
+    expect(claimLeastLoaded).toHaveBeenCalled();
+    // The atomic claim already reserved, so no separate write should follow it.
+    expect(reserve).not.toHaveBeenCalled();
+  });
+
+  test("keeps the suspect filter when the load path fails", async () => {
+    const svc = buildService();
+    getSuspect.mockResolvedValue(new Set(["gw-a"]));
+    // Anything after the suspect read blowing up must not re-admit the member that just failed.
+    claimLeastLoaded.mockRejectedValue(new Error("EVAL failed"));
+
+    const picked = new Set<string>();
+    for (let i = 0; i < 200; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      picked.add((await svc.selectGatewayFromPool({ poolId: POOL_ID })).id);
+    }
+    expect(picked.has("gw-a")).toBe(false);
+    expect(picked).toEqual(new Set(["gw-b", "gw-c"]));
+  });
+
   test("404s an unknown pool rather than blaming gateway health", async () => {
     const svc = gatewayPoolServiceFactory({
       gatewayPoolDAL: { findById: vi.fn().mockResolvedValue(undefined) },
@@ -101,7 +132,7 @@ describe("selectGatewayFromPool under load-tracker failure", () => {
     } as unknown as TDeps);
 
     await expect(svc.selectGatewayFromPool({ poolId: POOL_ID })).rejects.toThrow(
-      `Gateway pool with ID ${POOL_ID} not found`
+      `Gateway pool with ID '${POOL_ID}' not found`
     );
   });
 
@@ -154,7 +185,7 @@ describe("runWithPoolFailover", () => {
     markSuspect.mockResolvedValue(undefined);
     reserve.mockResolvedValue(undefined);
     getSuspect.mockResolvedValue(new Set<string>());
-    getScores.mockResolvedValue(new Map(MEMBERS.map((m) => [m.id, { score: 0, reported: true }])));
+    getScores.mockResolvedValue(new Map(MEMBERS.map((m) => [m.id, { score: 0, base: 0, reported: true }])));
   });
 
   test("returns the result and the member it ran on", async () => {

@@ -284,6 +284,7 @@ export type TKeyStoreFactory = {
   incrementBy: (key: string, value: number) => Promise<number>;
   incrementByAndRefreshExpiryIfUnderLimit: (key: string, limit: number, expiryInSeconds: number) => Promise<number>;
   decrementByOrDelete: (key: string) => Promise<number>;
+  claimLeastLoaded: (keys: string[], baseOccupancies: number[], expiryInSeconds: number) => Promise<number>;
   incrementByWithExpiry: (key: string, value: number, expiryInSeconds: number) => Promise<number>;
   incrementSeededWithExpiry: (key: string, seed: number, expiryInSeconds: number) => Promise<number>;
   getKeysByPattern: (pattern: string, limit?: number) => Promise<string[]>;
@@ -469,6 +470,45 @@ export const keyStoreFactory = (
 
   const decrementByOrDelete = async (key: string): Promise<number> => {
     const result = await primaryRedis.eval(DECREMENT_OR_DELETE_SCRIPT, 1, key);
+    return Number(result);
+  };
+
+  // Choosing and claiming has to be one round trip. Done as separate read and write calls, every
+  // concurrent selection reads the same minimum before any of them claims it and they all pile onto
+  // the same gateway, which is the stampede the reservation exists to prevent.
+  const CLAIM_LEAST_LOADED_SCRIPT = `
+    local ttl = tonumber(ARGV[#ARGV])
+    local bestIdx = 0
+    local bestTotal = nil
+    for i = 1, #KEYS do
+      local reserved = tonumber(redis.call("GET", KEYS[i]) or "0")
+      local total = tonumber(ARGV[i]) + reserved
+      -- strict less-than, so ties fall to the caller's order (pre-shuffled for a random tie-break)
+      if bestTotal == nil or total < bestTotal then
+        bestTotal = total
+        bestIdx = i
+      end
+    end
+    if bestIdx == 0 then return 0 end
+    redis.call("INCR", KEYS[bestIdx])
+    redis.call("EXPIRE", KEYS[bestIdx], ttl)
+    return bestIdx
+  `;
+
+  /** Returns the 1-based index of the claimed key, or 0 when no keys were given. */
+  const claimLeastLoaded = async (
+    keys: string[],
+    baseOccupancies: number[],
+    expiryInSeconds: number
+  ): Promise<number> => {
+    if (keys.length === 0) return 0;
+    const result = await primaryRedis.eval(
+      CLAIM_LEAST_LOADED_SCRIPT,
+      keys.length,
+      ...keys,
+      ...baseOccupancies.map((n) => String(n)),
+      String(expiryInSeconds)
+    );
     return Number(result);
   };
 
@@ -659,6 +699,7 @@ export const keyStoreFactory = (
     incrementBy,
     incrementByAndRefreshExpiryIfUnderLimit,
     decrementByOrDelete,
+    claimLeastLoaded,
     incrementByWithExpiry,
     incrementSeededWithExpiry,
     acquireLock(resources: string[], duration: number, settings?: Partial<Settings>) {

@@ -1,8 +1,9 @@
 import z from "zod";
 
 import { GatewaysV2Schema } from "@app/db/schemas";
+import { GATEWAYS } from "@app/lib/api-docs";
 import { zodBuffer } from "@app/lib/zod";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { gatewayLoadReportLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -61,34 +62,34 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     }
   });
 
-  // Deliberately separate from /heartbeat: that one probes back through the relay and writes to the
-  // database, which is far too costly to run at the cadence pool selection needs. This only touches
-  // the load tracker's Redis keys.
+  // Separate from /heartbeat because of what its handler costs, not how it is called: a heartbeat
+  // makes the platform dial back through the relay to probe liveness and then writes to Postgres,
+  // which is far too expensive at the cadence pool selection needs. This one only writes a Redis key,
+  // and deliberately does not touch heartbeat, so a gateway cannot look alive by reporting load.
   server.route({
     method: "POST",
     url: "/load",
     config: {
-      rateLimit: writeLimit
+      rateLimit: gatewayLoadReportLimit
     },
     schema: {
       operationId: "gatewayLoadReport",
       body: z.object({
-        activeChannels: z.number().int().min(0).max(1_000_000)
+        activeChannels: z.number().int().min(0).max(1_000_000).describe(GATEWAYS.LOAD_REPORT.activeChannels)
       }),
       response: {
         200: z.object({
-          message: z.string()
+          gatewayId: z.string().uuid().describe(GATEWAYS.LOAD_REPORT.gatewayId),
+          activeChannels: z.number().int().describe(GATEWAYS.LOAD_REPORT.activeChannels)
         })
       }
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      await server.services.gatewayV2.reportLoad({
+      return server.services.gatewayV2.reportLoad({
         orgPermission: req.permission,
         activeChannels: req.body.activeChannels
       });
-
-      return { message: "Successfully reported gateway load" };
     }
   });
 

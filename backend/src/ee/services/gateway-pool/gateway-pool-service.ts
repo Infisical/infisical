@@ -19,7 +19,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
 import { TGatewayPoolDALFactory } from "./gateway-pool-dal";
 import { TGatewayPoolMembershipDALFactory } from "./gateway-pool-membership-dal";
-import { chooseLeastLoadedGateway, pickRandomGateway } from "./gateway-pool-selection-fns";
+import { isPoolComparable, pickRandomGateway, shuffleForTieBreak } from "./gateway-pool-selection-fns";
 import {
   DEFAULT_POOL_FAILOVER_ATTEMPTS,
   TAddGatewayToPoolDTO,
@@ -262,7 +262,7 @@ export const gatewayPoolServiceFactory = ({
   const selectGatewayFromPool = async ({ poolId, exclude, filter, unavailableMessage }: TSelectGatewayFromPoolDTO) => {
     const targetPool = await gatewayPoolDAL.findById(poolId);
     if (!targetPool) {
-      throw new NotFoundError({ message: `Gateway pool with ID ${poolId} not found` });
+      throw new NotFoundError({ message: `Gateway pool with ID '${poolId}' not found` });
     }
 
     const healthyGateways = await gatewayPoolMembershipDAL.findHealthyGatewaysByPoolId(poolId);
@@ -279,6 +279,10 @@ export const gatewayPoolServiceFactory = ({
 
     const loadTracker = getGatewayLoadTracker();
     let selected: (typeof eligible)[number] | undefined;
+    let claimedAtomically = false;
+    // Outlives the try: if anything in the load path fails we still want the suspect filter, or the
+    // fallback would happily hand back the member whose transport just failed.
+    let pool = eligible;
 
     if (loadTracker) {
       try {
@@ -287,24 +291,42 @@ export const gatewayPoolServiceFactory = ({
         // A pool where every member recently failed is still worth attempting: refusing to route is a
         // guaranteed outage, whereas the suspect marks may simply have aged badly.
         const candidates = eligible.filter((gateway) => !suspect.has(gateway.id));
-        const pool = candidates.length > 0 ? candidates : eligible;
+        pool = candidates.length > 0 ? candidates : eligible;
 
         const scores = await loadTracker.getScores(pool.map((gateway) => gateway.id));
-        selected = chooseLeastLoadedGateway(pool, scores);
+
+        if (isPoolComparable(pool, scores)) {
+          // Choose and claim atomically. Reading the minimum and then writing the reservation as two
+          // calls lets every concurrent selection observe the same minimum and pile onto it.
+          const claimed = await loadTracker.claimLeastLoaded(
+            shuffleForTieBreak(pool, Math.random).map((gateway) => ({
+              id: gateway.id,
+              base: scores.get(gateway.id)?.base ?? 0
+            }))
+          );
+          selected = pool.find((gateway) => gateway.id === claimed);
+          if (selected) claimedAtomically = true;
+        } else {
+          // Mixed-version pool: the scales are not comparable, so there is nothing to claim against.
+          selected = pickRandomGateway(pool);
+        }
       } catch (err) {
         logger.warn({ err, poolId }, `Gateway load lookup failed, falling back to random selection [poolId=${poolId}]`);
       }
     }
 
-    if (!selected) selected = pickRandomGateway(eligible);
+    if (!selected) selected = pickRandomGateway(pool);
     if (!selected)
       throw new BadRequestError({ message: unavailableMessage ?? "Gateway pool has no healthy gateways." });
 
     // Bookkeeping must never be able to fail a selection, whatever the tracker does internally.
-    try {
-      await loadTracker?.reserve(selected.id);
-    } catch (err) {
-      logger.warn({ err, poolId }, `Failed to reserve gateway capacity [poolId=${poolId}]`);
+    // The atomic path has already claimed its member.
+    if (!claimedAtomically) {
+      try {
+        await loadTracker?.reserve(selected.id);
+      } catch (err) {
+        logger.warn({ err, poolId }, `Failed to reserve gateway capacity [poolId=${poolId}]`);
+      }
     }
 
     logger.info(

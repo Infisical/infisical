@@ -180,7 +180,7 @@ export const identityKubernetesAuthServiceFactory = ({
             targetPort: inputs.targetPort ?? 443
           });
           if (!details) {
-            throw new NotFoundError({ message: `Connection details for gateway with ID ${gatewayId} not found` });
+            throw new NotFoundError({ message: `Connection details for gateway with ID '${gatewayId}' not found` });
           }
           return $proxyThroughGatewayV2(details);
         }

@@ -3857,6 +3857,11 @@ export const SECRET_SHARING = {
 } as const;
 
 export const GATEWAYS = {
+  LOAD_REPORT: {
+    activeChannels:
+      "Number of channels the gateway is currently serving. Used to route new work to the least busy member of a gateway pool.",
+    gatewayId: "ID of the gateway the report was recorded against."
+  },
   CREATE: {
     name: "Name of the gateway.",
     authMethod:

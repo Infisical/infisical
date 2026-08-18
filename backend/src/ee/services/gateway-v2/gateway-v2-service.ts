@@ -994,18 +994,25 @@ export const gatewayV2ServiceFactory = ({
     orgPermission: OrgServiceActor;
     activeChannels: number;
   }) => {
-    const gateway =
-      orgPermission.type === ActorType.GATEWAY
-        ? await gatewayV2DAL.findById(orgPermission.id)
-        : await gatewayV2DAL.findOne({ orgId: orgPermission.orgId, identityId: orgPermission.id });
+    let gateway;
+    if (orgPermission.type === ActorType.GATEWAY) {
+      gateway = await gatewayV2DAL.findById(orgPermission.id);
+    } else {
+      // Same check heartbeat makes: an identity whose gateway permission was revoked must not keep
+      // submitting occupancy values and steering pool routing.
+      await $validateIdentityAccessToGateway(orgPermission.orgId, orgPermission.id, orgPermission.authMethod);
+      gateway = await gatewayV2DAL.findOne({ orgId: orgPermission.orgId, identityId: orgPermission.id });
+    }
 
     if (!gateway || gateway.orgId !== orgPermission.orgId) {
-      throw new NotFoundError({ message: `Gateway ${orgPermission.id} not found.` });
+      throw new NotFoundError({ message: `Gateway with ID '${orgPermission.id}' not found` });
     }
 
     // Deliberately no heartbeat side effect: liveness stays with /heartbeat so a gateway cannot look
     // healthy purely by reporting load, and so this stays a single Redis write.
     await getGatewayLoadTracker()?.recordReportedLoad(gateway.id, activeChannels);
+
+    return { gatewayId: gateway.id, activeChannels };
   };
 
   const deleteGatewayById = async ({ orgPermission, id }: { orgPermission: OrgServiceActor; id: string }) => {

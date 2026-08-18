@@ -171,13 +171,30 @@ describe("gatewayLoadTracker", () => {
     tracker.shutdown();
   });
 
+  test("adds channels opened since the gateway's last report", async () => {
+    const keyStore = inMemoryKeyStore();
+    const tracker = initGatewayLoadTracker(keyStore);
+
+    await tracker.recordReportedLoad(GW_A, 4);
+    // Reports land every 10s. Without counting what opened since, every selection inside that window
+    // reads the same stale 4 and piles onto this member.
+    await vi.advanceTimersByTimeAsync(1_000);
+    tracker.channelOpened(GW_A);
+    tracker.channelOpened(GW_A);
+
+    expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(6);
+
+    tracker.shutdown();
+  });
+
   test("does not sum its own view into the gateway's count", async () => {
     const tracker = initGatewayLoadTracker(inMemoryKeyStore());
 
-    // The reported 3 already includes the 3 this pod opened; summing would say 6.
+    // The reported 3 already includes the 3 this pod opened before the report; summing would say 6.
     tracker.channelOpened(GW_A);
     tracker.channelOpened(GW_A);
     tracker.channelOpened(GW_A);
+    await vi.advanceTimersByTimeAsync(1_000);
     await tracker.recordReportedLoad(GW_A, 3);
 
     expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(3);
@@ -205,8 +222,8 @@ describe("gatewayLoadTracker", () => {
     await tracker.recordReportedLoad(GW_B, 7);
 
     const scores = await tracker.getScores([GW_A, GW_B]);
-    expect(scores.get(GW_A)).toEqual({ score: 2, reported: false });
-    expect(scores.get(GW_B)).toEqual({ score: 7, reported: true });
+    expect(scores.get(GW_A)).toEqual({ base: 2, score: 2, reported: false });
+    expect(scores.get(GW_B)).toEqual({ base: 7, score: 7, reported: true });
 
     tracker.shutdown();
   });
@@ -222,6 +239,69 @@ describe("gatewayLoadTracker", () => {
     await vi.advanceTimersByTimeAsync(40_000);
     expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(1);
 
+    tracker.shutdown();
+  });
+
+  test("claims the least loaded member and reserves it in the same call", async () => {
+    const tracker = initGatewayLoadTracker(inMemoryKeyStore());
+
+    const claimed = await tracker.claimLeastLoaded([
+      { id: GW_A, base: 9 },
+      { id: GW_B, base: 1 }
+    ]);
+
+    expect(claimed).toBe(GW_B);
+    // Claiming and reserving must be one operation, otherwise concurrent selections all read the
+    // same minimum before any of them writes and every one of them routes to it. The base passed in
+    // is the caller's view; the score here is this gateway's real occupancy plus that reservation.
+    expect((await tracker.getScores([GW_B])).get(GW_B)?.score).toBe(1);
+
+    tracker.shutdown();
+  });
+
+  test("concurrent claims stop piling on once the minimum catches up", async () => {
+    const tracker = initGatewayLoadTracker(inMemoryKeyStore());
+
+    // A unique minimum is the stampede case: read-then-write would send all four to the idle member
+    // because none of them would see the others' claims. Each claim here raises its reservation, so
+    // the traffic moves across once it reaches the busier member's level.
+    const claims = await Promise.all(
+      Array.from({ length: 4 }, () =>
+        tracker.claimLeastLoaded([
+          { id: GW_B, base: 2 },
+          { id: GW_A, base: 0 }
+        ])
+      )
+    );
+
+    expect(claims.filter((c) => c === GW_A)).toHaveLength(3);
+    expect(claims.filter((c) => c === GW_B)).toHaveLength(1);
+
+    tracker.shutdown();
+  });
+
+  test("resolves a tie by the order it is given, so callers control the tie-break", async () => {
+    const tracker = initGatewayLoadTracker(inMemoryKeyStore());
+
+    expect(
+      await tracker.claimLeastLoaded([
+        { id: GW_A, base: 0 },
+        { id: GW_B, base: 0 }
+      ])
+    ).toBe(GW_A);
+    expect(
+      await tracker.claimLeastLoaded([
+        { id: GW_B, base: 0 },
+        { id: GW_A, base: 0 }
+      ])
+    ).toBe(GW_B);
+
+    tracker.shutdown();
+  });
+
+  test("claims nothing when given no candidates", async () => {
+    const tracker = initGatewayLoadTracker(inMemoryKeyStore());
+    expect(await tracker.claimLeastLoaded([])).toBeUndefined();
     tracker.shutdown();
   });
 

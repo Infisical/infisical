@@ -103,6 +103,23 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
     incrementByAndRefreshExpiryIfUnderLimit: async () => {
       return 1;
     },
+    claimLeastLoaded: async (keys, baseOccupancies) => {
+      if (keys.length === 0) return 0;
+      let bestIdx = 0;
+      let bestTotal: number | null = null;
+      keys.forEach((key, i) => {
+        const reserved = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;
+        const total = baseOccupancies[i] + reserved;
+        if (bestTotal === null || total < bestTotal) {
+          bestTotal = total;
+          bestIdx = i + 1;
+        }
+      });
+      const chosen = keys[bestIdx - 1];
+      const current = typeof store[chosen] === "string" ? parseInt(store[chosen] as string, 10) : 0;
+      store[chosen] = String(current + 1);
+      return bestIdx;
+    },
     decrementByOrDelete: async (key) => {
       const current = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;
       const next = current - 1;

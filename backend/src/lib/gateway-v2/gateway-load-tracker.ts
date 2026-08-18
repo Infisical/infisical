@@ -26,6 +26,8 @@ const podId = crypto.randomUUID();
 
 export type TGatewayScore = {
   score: number;
+  /** Occupancy excluding reservations, which the atomic claim reads for itself. */
+  base: number;
   /** False when this member is too old to report its own count, so its score is on a different scale. */
   reported: boolean;
 };
@@ -33,6 +35,7 @@ export type TGatewayScore = {
 type TGatewayLoadTracker = {
   recordReportedLoad: (gatewayId: string, activeChannels: number) => Promise<void>;
   reserve: (gatewayId: string) => Promise<void>;
+  claimLeastLoaded: (candidates: { id: string; base: number }[]) => Promise<string | undefined>;
   channelOpened: (gatewayId: string) => void;
   channelClosed: (gatewayId: string) => void;
   markSuspect: (gatewayId: string) => Promise<void>;
@@ -56,7 +59,9 @@ const reservationKey = KeyStorePrefixes.GatewayLoadReservation;
 const suspectKey = KeyStorePrefixes.GatewaySuspect;
 
 export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoadTracker => {
-  const openChannels = new Map<string, number>();
+  // Open timestamps rather than a bare count, so a channel opened since a gateway's last report can
+  // be added on top of that report instead of being invisible until the next one lands.
+  const openChannels = new Map<string, number[]>();
   const pendingPublish = new Set<string>();
   const reservationTimers = new Set<NodeJS.Timeout>();
   const pendingReservations = new Map<string, NodeJS.Timeout[]>();
@@ -64,8 +69,35 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
 
   const publishChain = new Map<string, Promise<void>>();
 
+  const channelCount = (gatewayId: string) => openChannels.get(gatewayId)?.length ?? 0;
+
+  const releaseReservation = async (gatewayId: string) => {
+    try {
+      await keyStore.decrementByOrDelete(reservationKey(gatewayId));
+    } catch (err) {
+      logger.debug({ err, gatewayId }, `Failed to release gateway reservation [gatewayId=${gatewayId}]`);
+    }
+  };
+
+  // The key TTL is only a backstop for a pod that dies holding reservations; the channel handoff or
+  // this timer is what normally releases them.
+  function trackReservationRelease(gatewayId: string) {
+    const timer = setTimeout(() => {
+      reservationTimers.delete(timer);
+      const queue = pendingReservations.get(gatewayId);
+      const idx = queue?.indexOf(timer) ?? -1;
+      if (queue && idx >= 0) queue.splice(idx, 1);
+      void releaseReservation(gatewayId);
+    }, RESERVATION_HOLD_MS);
+    timer.unref();
+    reservationTimers.add(timer);
+    const queue = pendingReservations.get(gatewayId);
+    if (queue) queue.push(timer);
+    else pendingReservations.set(gatewayId, [timer]);
+  }
+
   const publishNow = async (gatewayId: string) => {
-    const count = openChannels.get(gatewayId) ?? 0;
+    const count = channelCount(gatewayId);
     try {
       // Holding nothing means dropping the field rather than writing a zero, so the hash only ever
       // carries pods with live channels instead of accumulating one entry per restart.
@@ -121,16 +153,10 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
     );
   };
 
-  const releaseReservation = async (gatewayId: string) => {
-    try {
-      await keyStore.decrementByOrDelete(reservationKey(gatewayId));
-    } catch (err) {
-      logger.debug({ err, gatewayId }, `Failed to release gateway reservation [gatewayId=${gatewayId}]`);
-    }
-  };
-
   const channelOpened = (gatewayId: string) => {
-    openChannels.set(gatewayId, (openChannels.get(gatewayId) ?? 0) + 1);
+    const open = openChannels.get(gatewayId);
+    if (open) open.push(Date.now());
+    else openChannels.set(gatewayId, [Date.now()]);
     // The channel now carries the load the reservation was standing in for. Holding both would
     // double count the member for the rest of the backstop window.
     const pending = pendingReservations.get(gatewayId);
@@ -144,12 +170,10 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
   };
 
   const channelClosed = (gatewayId: string) => {
-    const next = (openChannels.get(gatewayId) ?? 0) - 1;
-    if (next > 0) {
-      openChannels.set(gatewayId, next);
-    } else {
-      openChannels.delete(gatewayId);
-    }
+    const open = openChannels.get(gatewayId);
+    // Drops the oldest: only the count and the open times matter, not which socket this was.
+    open?.shift();
+    if (!open?.length) openChannels.delete(gatewayId);
     schedulePublish(gatewayId);
   };
 
@@ -160,19 +184,24 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
       logger.debug({ err, gatewayId }, `Failed to reserve gateway capacity [gatewayId=${gatewayId}]`);
       return;
     }
-    // The key TTL is only a backstop for a pod that dies holding reservations.
-    const timer = setTimeout(() => {
-      reservationTimers.delete(timer);
-      const queue = pendingReservations.get(gatewayId);
-      const idx = queue?.indexOf(timer) ?? -1;
-      if (queue && idx >= 0) queue.splice(idx, 1);
-      void releaseReservation(gatewayId);
-    }, RESERVATION_HOLD_MS);
-    timer.unref();
-    reservationTimers.add(timer);
-    const queue = pendingReservations.get(gatewayId);
-    if (queue) queue.push(timer);
-    else pendingReservations.set(gatewayId, [timer]);
+    trackReservationRelease(gatewayId);
+  };
+
+  /**
+   * Picks and claims in one round trip. Ties fall to the caller's ordering, so the caller shuffles
+   * first to keep the random tie-break that stops every pod choosing the same idle member.
+   */
+  const claimLeastLoaded = async (candidates: { id: string; base: number }[]) => {
+    if (candidates.length === 0) return undefined;
+    const idx = await keyStore.claimLeastLoaded(
+      candidates.map((c) => reservationKey(c.id)),
+      candidates.map((c) => c.base),
+      RESERVATION_TTL_SECONDS
+    );
+    if (idx < 1 || idx > candidates.length) return undefined;
+    const claimed = candidates[idx - 1].id;
+    trackReservationRelease(claimed);
+    return claimed;
   };
 
   const markSuspect = async (gatewayId: string) => {
@@ -214,10 +243,20 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
     gatewayIds.forEach((gatewayId, idx) => {
       // Never sum the two views: the gateway's own count already includes the channels this pod
       // opened, so adding the per-pod counters would double count platform traffic.
-      const reportedOccupancy = parseStamped(reported[idx], reportedCutoff);
+      const rawReported = reported[idx];
+      const reportedOccupancy = parseStamped(rawReported, reportedCutoff);
       let occupancy = reportedOccupancy;
 
-      if (occupancy === undefined) {
+      if (occupancy !== undefined) {
+        // The report is a snapshot up to its own timestamp. Anything this pod opened since then is
+        // not in it yet, and without this every selection inside one report interval reads the same
+        // stale number and piles onto the same member.
+        const reportedAt = Number((rawReported ?? "").split(":")[1]);
+        const openedSinceReport = Number.isFinite(reportedAt)
+          ? (openChannels.get(gatewayId) ?? []).filter((openedAt) => openedAt > reportedAt).length
+          : 0;
+        occupancy += openedSinceReport;
+      } else {
         const fields = Object.entries(published[idx] ?? {})
           // This pod's in-memory count is always fresher than what it last published.
           .filter(([fieldPodId]) => fieldPodId !== podId);
@@ -226,10 +265,11 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
         for (const [, raw] of fields) {
           occupancy += parseStamped(raw, publishedCutoff) ?? 0;
         }
-        occupancy += openChannels.get(gatewayId) ?? 0;
+        occupancy += channelCount(gatewayId);
       }
 
       scores.set(gatewayId, {
+        base: occupancy,
         score: occupancy + (Number(reservations[idx] ?? 0) || 0),
         reported: reportedOccupancy !== undefined
       });
@@ -259,6 +299,7 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
   tracker = {
     recordReportedLoad,
     reserve,
+    claimLeastLoaded,
     channelOpened,
     channelClosed,
     markSuspect,
