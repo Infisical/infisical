@@ -112,6 +112,15 @@ describe("extractPkcs12Entries chain building", () => {
     expect(entries[0].chainWarning).toContain("No usable issuer chain");
   });
 
+  test("drops the chain when the leaf is not valid yet, like it does for expired ones", async () => {
+    const { entries } = await extract(fixtures.notYetValidLeaf, "test");
+
+    expect(entries).toHaveLength(1);
+    expect(new Date(entries[0].notBefore).getTime()).toBeGreaterThan(Date.now());
+    expect(entries[0].chainPem).toBeUndefined();
+    expect(entries[0].chainWarning).toContain("No usable issuer chain");
+  });
+
   test("returns a leaf-only keystore without a chain, and says so", async () => {
     const { entries } = await extract(fixtures.leafOnly, "test");
 
@@ -173,7 +182,8 @@ describe("extractPkcs12Entries produces entries the import endpoint accepts", ()
     ["expiredLeaf", fixtures.expiredLeaf, "test"],
     ["leafOnly", fixtures.leafOnly, "test"],
     ["noMac", fixtures.noMac, "test"],
-    ["expiredIntermediate", fixtures.expiredIntermediate, "test"]
+    ["expiredIntermediate", fixtures.expiredIntermediate, "test"],
+    ["notYetValidLeaf", fixtures.notYetValidLeaf, "test"]
   ])("%s", async (_name, fixture, password) => {
     const { entries } = await extract(fixture, password);
 

@@ -331,11 +331,12 @@ export const extractPkcs12Entries = async ({
       // eslint-disable-next-line no-await-in-loop
       const { chain, truncated } = await buildChain(leaf, certs);
 
-      // importCert date-checks every certificate whose signature it verifies, so one expired member
-      // would fail the whole chain. Send the entry on its own instead.
+      // importCert date-checks every certificate whose signature it verifies, so one member that is
+      // expired or not yet valid would fail the whole chain. Send the entry on its own instead.
+      const now = Date.now();
       const dateChecked = [leaf, ...chain.slice(0, -1)];
-      const anyExpired = dateChecked.some((c) => c.cert.notAfter.getTime() < Date.now());
-      const keepChain = chain.length > 0 && !anyExpired && !truncated;
+      const anyOutOfDate = dateChecked.some((c) => c.cert.notAfter.getTime() < now || c.cert.notBefore.getTime() > now);
+      const keepChain = chain.length > 0 && !anyOutOfDate && !truncated;
 
       entries.push({
         ...describeCert(leaf),
