@@ -10,8 +10,139 @@ export const HomeHero = ({ title, description, aside, children }) => (
   </div>
 );
 
-export const HomeLinks = ({ children }) => (
-  <div className="ifx-links">{children}</div>
+export const HomeSteps = ({ steps }) => {
+  const [tab, setTab] = useState(0);
+  const [copied, setCopied] = useState(null);
+
+  const copy = (command) => {
+    navigator.clipboard.writeText(command);
+    setCopied(command);
+    setTimeout(() => setCopied(null), 1500);
+  };
+
+  const commandRow = (command) => (
+    <div key={command} className="ifx-steps__cmd">
+      <code className="ifx-steps__code">{command}</code>
+      <button
+        type="button"
+        className="ifx-steps__copy"
+        aria-label={`Copy: ${command}`}
+        onClick={() => copy(command)}
+      >
+        {copied === command ? (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        ) : (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="ifx-steps">
+      <ol className="ifx-steps__list">
+        {steps.map((step, i) => (
+          <li key={i} className="ifx-steps__item">
+            <span className="ifx-steps__num">{i + 1}</span>
+            {step.label ? (
+              step.href ? (
+                <a className="ifx-steps__label" href={step.href}>
+                  {step.label}
+                </a>
+              ) : (
+                <span className="ifx-steps__label">{step.label}</span>
+              )
+            ) : null}
+            {step.tabs ? (
+              <>
+                <div className="ifx-steps__tabs">
+                  {step.tabs.map((option, index) => (
+                    <button
+                      key={option.label}
+                      type="button"
+                      className={`ifx-steps__tab${
+                        index === tab ? " ifx-steps__tab--active" : ""
+                      }`}
+                      onClick={() => setTab(index)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                {commandRow(step.tabs[tab].command)}
+              </>
+            ) : step.commands ? (
+              step.commands.map(commandRow)
+            ) : null}
+            {step.content ? (
+              <div className="ifx-steps__content">{step.content}</div>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+};
+
+export const HomeStack = ({ items }) => (
+  <div className="ifx-stack">
+    {items.map((item) => (
+      <a key={item.href} className="ifx-stack__tile" href={item.href}>
+        {item.logo ? (
+          <img
+            className={`ifx-stack__logo${
+              item.adapt ? ` ifx-stack__logo--adapt-${item.adapt}` : ""
+            }`}
+            src={item.logo}
+            alt=""
+            aria-hidden="true"
+          />
+        ) : (
+          <svg
+            className="ifx-stack__logo ifx-stack__glyph"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+            <rect x="14" y="14" width="7" height="7" />
+          </svg>
+        )}
+        <span className="ifx-stack__label">{item.label}</span>
+      </a>
+    ))}
+  </div>
 );
 
 export const Mark = ({ children }) => <span className="ifx-mark">{children}</span>;
@@ -29,13 +160,20 @@ export const HomeSection = ({ title, children }) => (
   </section>
 );
 
-export const HomeGrid = ({ cols = 3, bare, children }) => (
-  <div className={`ifx-grid ifx-grid--${cols}${bare ? " ifx-grid--bare" : ""}`}>
-    {children}
-  </div>
+export const HomeGrid = ({ cols = 3, children }) => (
+  <div className={`ifx-grid ifx-grid--${cols}`}>{children}</div>
 );
 
-export const HomeCard = ({ title, href, icon, product, wide, children }) => {
+export const HomeCard = ({
+  title,
+  href,
+  icon,
+  product,
+  wide,
+  links,
+  panel,
+  children
+}) => {
   // Declared inside the component on purpose: Mintlify evaluates each exported
   // component in isolation, so module-scope bindings are not in scope here.
   const icons = {
@@ -100,45 +238,107 @@ export const HomeCard = ({ title, href, icon, product, wide, children }) => {
     )
   };
 
-  return (
-    <a
-      href={href}
-      className={`ifx-card${product ? ` ifx-card--${product}` : ""}${
-        wide ? " ifx-card--wide" : ""
-      }`}
+  const className = `ifx-card${product ? ` ifx-card--${product}` : ""}${
+    wide ? " ifx-card--wide" : ""
+  }`;
+
+  const iconEl = (
+    <svg
+      className="ifx-card__icon"
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
     >
-      <svg
-        className="ifx-card__icon"
-        width="22"
-        height="22"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        {icons[icon]}
-      </svg>
+      {icons[icon]}
+    </svg>
+  );
+
+  const chevron = (
+    <svg
+      className="ifx-card__chevron"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+
+  const body = children ? (
+    <div className="ifx-card__body">{children}</div>
+  ) : null;
+
+  // The panel arrives already rendered, so the card does not need to know
+  // whether it holds a tile grid or anything else.
+  const linksEl =
+    links && links.length ? (
+      <div className="ifx-card__links">
+        {links.map((link) => (
+          <a key={link.href} className="ifx-card__link" href={link.href}>
+            <span>{link.label}</span>
+            <svg
+              className="ifx-card__arrow"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </a>
+        ))}
+      </div>
+    ) : null;
+
+  // With shortcuts the card cannot be one big anchor, since nesting links
+  // inside a link is invalid, so the title becomes the link instead.
+  if (linksEl || panel) {
+    const main = (
+      <>
+        {iconEl}
+        <a className="ifx-card__title" href={href}>
+          {title}
+          {chevron}
+        </a>
+        {body}
+        {linksEl}
+      </>
+    );
+
+    // The panel needs its own column, so the copy is wrapped to sit beside it.
+    return (
+      <div className={className}>
+        {panel ? <div className="ifx-card__main">{main}</div> : main}
+        {panel}
+      </div>
+    );
+  }
+
+  return (
+    <a href={href} className={className}>
+      {iconEl}
       <span className="ifx-card__title">
         {title}
-        <svg
-          className="ifx-card__chevron"
-          width="15"
-          height="15"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="m9 18 6-6-6-6" />
-        </svg>
+        {chevron}
       </span>
-      {children ? <div className="ifx-card__body">{children}</div> : null}
+      {body}
     </a>
   );
 };
