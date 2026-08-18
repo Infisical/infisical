@@ -100,9 +100,6 @@ If all gateways in a pool are unhealthy when a request is made, the request fail
   <Accordion title="What happens if all gateways in a pool are unhealthy?">
     The request fails with a descriptive error. You should ensure at least one gateway in the pool is online and has a recent heartbeat.
   </Accordion>
-  <Accordion title="Why is my pool not load balancing?">
-    The most common reason is that one or more gateways in the pool are running an older CLI version and do not report their connection count. A pool that mixes reporting and non-reporting gateways chooses at random instead. Upgrade every gateway in the pool.
-  </Accordion>
   <Accordion title="Can a gateway belong to multiple pools?">
     Yes. A gateway can belong to as many pools as needed, as long as it has connectivity to the resources served by each pool.
   </Accordion>
