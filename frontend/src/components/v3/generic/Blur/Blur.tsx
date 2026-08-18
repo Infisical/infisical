@@ -14,7 +14,9 @@ export const Blur = ({ className, tooltipText, tabIndex, ...props }: BlurProps) 
       tabIndex={tabIndex ?? (tooltipText ? 0 : undefined)}
       {...props}
     >
-      <span className="blur-sm">xxxxxxxxxxxx</span>
+      <span aria-hidden="true" className="text-foreground blur-sm select-none">
+        xxxxxxxxxxxx
+      </span>
     </div>
   );
 
