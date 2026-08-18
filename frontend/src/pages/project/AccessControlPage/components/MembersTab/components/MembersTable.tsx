@@ -119,8 +119,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
     orderDirection,
     orderBy,
     setOrderBy,
-    setOrderDirection,
-    toggleOrderDirection
+    setOrderDirection
   } = usePagination<MembersOrderBy>(MembersOrderBy.Name, {
     initPerPage: getUserTablePreference("projectMembersTable", PreferenceKey.PerPage, 20)
   });
@@ -179,14 +178,9 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
     setPage
   });
 
-  const handleSort = (column: MembersOrderBy) => {
-    if (column === orderBy) {
-      toggleOrderDirection();
-      return;
-    }
-
+  const handleSort = (column: MembersOrderBy, direction: "ascending" | "descending" | "none") => {
     setOrderBy(column);
-    setOrderDirection(OrderByDirection.ASC);
+    setOrderDirection(direction === "descending" ? OrderByDirection.DESC : OrderByDirection.ASC);
   };
 
   const getSortDirection = (column: MembersOrderBy) => {
@@ -317,16 +311,9 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
               <TableHeader>
                 <TableRow>
                   <TableHead
-                    className="w-1/3 cursor-pointer"
-                    aria-sort={getSortDirection(MembersOrderBy.Name)}
-                    tabIndex={0}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        handleSort(MembersOrderBy.Name);
-                      }
-                    }}
-                    onClick={() => handleSort(MembersOrderBy.Name)}
+                    className="w-1/3"
+                    sortDirection={getSortDirection(MembersOrderBy.Name)}
+                    onSortChange={(direction) => handleSort(MembersOrderBy.Name, direction)}
                   >
                     Name
                     <ChevronDownIcon
@@ -340,16 +327,9 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     />
                   </TableHead>
                   <TableHead
-                    className="w-1/3 cursor-pointer"
-                    aria-sort={getSortDirection(MembersOrderBy.Email)}
-                    tabIndex={0}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        handleSort(MembersOrderBy.Email);
-                      }
-                    }}
-                    onClick={() => handleSort(MembersOrderBy.Email)}
+                    className="w-1/3"
+                    sortDirection={getSortDirection(MembersOrderBy.Email)}
+                    onSortChange={(direction) => handleSort(MembersOrderBy.Email, direction)}
                   >
                     Email
                     <ChevronDownIcon

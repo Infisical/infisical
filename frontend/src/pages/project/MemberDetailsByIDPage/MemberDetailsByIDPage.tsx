@@ -21,6 +21,8 @@ import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -38,7 +40,6 @@ import {
   EmptyHeader,
   EmptyTitle,
   Field,
-  FieldLabel,
   Input,
   PageHeader,
   PageLoader,
@@ -312,23 +313,28 @@ export const Page = () => {
                   {isCertManager ? "certificate manager" : "project"}?
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This user will lose access granted by this membership.
+                  This user will lose access granted by this membership. This cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <Field>
-                <FieldLabel htmlFor="remove-member-detail-confirmation">
-                  Type &quot;remove&quot; to confirm
-                </FieldLabel>
-                <Input
-                  id="remove-member-detail-confirmation"
-                  value={removeConfirmation}
-                  onChange={(event) => setRemoveConfirmation(event.target.value)}
-                  autoComplete="off"
-                  disabled={removeUserMutation.isPending}
-                />
-              </Field>
+              <AlertDialogConfirmationField>
+                <Field>
+                  <AlertDialogConfirmationLabel
+                    htmlFor="remove-member-detail-confirmation"
+                    confirmationValue="remove"
+                  />
+                  <Input
+                    id="remove-member-detail-confirmation"
+                    value={removeConfirmation}
+                    onChange={(event) => setRemoveConfirmation(event.target.value)}
+                    placeholder="remove"
+                    autoComplete="off"
+                    autoFocus
+                    disabled={removeUserMutation.isPending}
+                  />
+                </Field>
+              </AlertDialogConfirmationField>
               <AlertDialogFooter>
-                <AlertDialogCancel isDisabled={removeUserMutation.isPending}>
+                <AlertDialogCancel variant="outline" isDisabled={removeUserMutation.isPending}>
                   Cancel
                 </AlertDialogCancel>
                 <AlertDialogAction

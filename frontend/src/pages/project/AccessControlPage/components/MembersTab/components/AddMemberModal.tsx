@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { CircleAlertIcon, RefreshCwIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -22,7 +22,6 @@ import {
   DialogTitle,
   Field,
   FieldContent,
-  FieldDescription,
   FieldError,
   FieldLabel,
   FilterableSelect
@@ -47,6 +46,7 @@ import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
 import { getRequesterStatus } from "@app/lib/fn/requesterStatus";
+import { OrgAccessControlTabSections } from "@app/types/org";
 
 const addMemberFormSchema = z.object({
   orgMemberships: z
@@ -305,7 +305,9 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             name="orgMemberships"
             render={({ field }) => (
               <Field>
-                <FieldLabel>{`Invite users to ${productLabel.toLowerCase()}`}</FieldLabel>
+                <FieldLabel className="sr-only">
+                  {`Invite users to ${productLabel.toLowerCase()}`}
+                </FieldLabel>
                 <FieldContent>
                   {canInviteNewMembers ? (
                     <CreatableSelect
@@ -318,6 +320,20 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                           <p>
                             Invite new users to your organization by typing out their email address.
                           </p>
+                          {!projectInviteList.list.length && (
+                            <Button asChild variant="outline" size="xs">
+                              <Link
+                                to="/organizations/$orgId/access-management"
+                                params={{ orgId }}
+                                search={{
+                                  selectedTab: OrgAccessControlTabSections.Member,
+                                  action: "invite-members"
+                                }}
+                              >
+                                Invite users to your organization
+                              </Link>
+                            </Button>
+                          )}
                         </>
                       )}
                       onCreateOption={(inputValue) =>
@@ -366,12 +382,6 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                       isDisabled={!canAddMembers || hasReferenceDataError}
                     />
                   )}
-                  {canInviteNewMembers && (
-                    <FieldDescription>
-                      You can invite new users to your organization by typing out their email
-                      address
-                    </FieldDescription>
-                  )}
                 </FieldContent>
                 <FieldError>{errors.orgMemberships?.[0]?.message}</FieldError>
               </Field>
@@ -382,7 +392,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             name="projectRoleSlugs"
             render={({ field: { onChange, value }, fieldState: { error } }) => (
               <Field>
-                <FieldLabel>Select roles</FieldLabel>
+                <FieldLabel className="sr-only">Select roles</FieldLabel>
                 <FieldContent>
                   <FilterableSelect
                     options={filteredRoles}
@@ -397,9 +407,6 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                     isLoading={isReferenceDataLoading}
                     isDisabled={!canAddMembers || hasReferenceDataError}
                   />
-                  <FieldDescription>
-                    Select the roles that you wish to assign to the users
-                  </FieldDescription>
                 </FieldContent>
                 <FieldError>{error?.message}</FieldError>
               </Field>

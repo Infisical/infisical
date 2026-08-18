@@ -2,17 +2,17 @@ import { useEffect, useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Button,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Field,
-  FieldContent,
-  FieldLabel,
   Input
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
@@ -69,48 +69,61 @@ export const AssumePrivilegesModal = ({ isOpen, onOpenChange, actorType, actorId
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Do you want to assume privileges of this {noun}?</DialogTitle>
-          <DialogDescription>
+    <AlertDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (assumePrivileges.isPending) return;
+        onOpenChange(open);
+      }}
+    >
+      <AlertDialogContent className="max-w-xl">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Do you want to assume privileges of this {noun}?</AlertDialogTitle>
+          <AlertDialogDescription>
             This will set your privileges to those of the {noun} for the next hour.
-          </DialogDescription>
-        </DialogHeader>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             handleConfirm();
           }}
         >
-          <Field>
-            <FieldLabel>
-              Type <span className="font-bold">{CONFIRM_KEY}</span> to perform this action
-            </FieldLabel>
-            <FieldContent>
+          <AlertDialogConfirmationField>
+            <Field>
+              <AlertDialogConfirmationLabel
+                htmlFor="assume-privileges-confirmation"
+                confirmationValue={CONFIRM_KEY}
+              />
               <Input
+                id="assume-privileges-confirmation"
                 value={inputData}
                 onChange={(e) => setInputData(e.target.value)}
-                placeholder={`Type ${CONFIRM_KEY} here`}
+                placeholder={CONFIRM_KEY}
                 autoComplete="off"
+                autoFocus
+                disabled={assumePrivileges.isPending}
               />
-            </FieldContent>
-          </Field>
+            </Field>
+          </AlertDialogConfirmationField>
         </form>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="ghost">Cancel</Button>
-          </DialogClose>
-          <Button
+        <AlertDialogFooter>
+          <AlertDialogCancel variant="outline" isDisabled={assumePrivileges.isPending}>
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
             variant="project"
-            onClick={handleConfirm}
             isPending={assumePrivileges.isPending}
-            isDisabled={!isConfirmed || assumePrivileges.isPending}
+            isDisabled={!isConfirmed}
+            onClick={(event) => {
+              event.preventDefault();
+              handleConfirm();
+            }}
           >
             Confirm
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };

@@ -8,6 +8,8 @@ import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -22,7 +24,6 @@ import {
   CardTitle,
   DocumentationLinkBadge,
   Field,
-  FieldLabel,
   Input,
   Tooltip,
   TooltipContent,
@@ -143,23 +144,30 @@ export const MembersSection = () => {
               Remove {removeMemberUsername || "this user"} from the {productLabel.toLowerCase()}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This user will lose access granted by this membership.
+              This user will lose access granted by this membership. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Field>
-            <FieldLabel htmlFor="remove-project-member-confirmation">
-              Type &quot;remove&quot; to confirm
-            </FieldLabel>
-            <Input
-              id="remove-project-member-confirmation"
-              value={removeConfirmation}
-              onChange={(event) => setRemoveConfirmation(event.target.value)}
-              autoComplete="off"
-              disabled={removeUserMutation.isPending}
-            />
-          </Field>
+          <AlertDialogConfirmationField>
+            <Field>
+              <AlertDialogConfirmationLabel
+                htmlFor="remove-project-member-confirmation"
+                confirmationValue="remove"
+              />
+              <Input
+                id="remove-project-member-confirmation"
+                value={removeConfirmation}
+                onChange={(event) => setRemoveConfirmation(event.target.value)}
+                placeholder="remove"
+                autoComplete="off"
+                autoFocus
+                disabled={removeUserMutation.isPending}
+              />
+            </Field>
+          </AlertDialogConfirmationField>
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={removeUserMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel variant="outline" isDisabled={removeUserMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
               isPending={removeUserMutation.isPending}
