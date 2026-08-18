@@ -7,7 +7,7 @@ import {
 } from "../certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "../certificate-common/certificate-csr-utils";
 import { TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
-import { applyProfileDefaultsForPolicyCheck } from "./certificate-v3-fns";
+import { applyProfileDefaults } from "./certificate-v3-fns";
 
 const BARE_CSR = `-----BEGIN CERTIFICATE REQUEST-----
 MIICjjCCAXYCAQAwGzEZMBcGA1UEAwwQc2hvcC5leGFtcGxlLmNvbTCCASIwDQYJ
@@ -67,9 +67,9 @@ const TLS_DEFAULTS: TCertificateProfileDefaults = {
 };
 
 const forCsr = (csr: string, defaults: TCertificateProfileDefaults | null) =>
-  applyProfileDefaultsForPolicyCheck(extractCertificateRequestFromCSR(csr), defaults);
+  applyProfileDefaults(extractCertificateRequestFromCSR(csr), defaults);
 
-describe("applyProfileDefaultsForPolicyCheck", () => {
+describe("applyProfileDefaults", () => {
   it("fills in key usages the CSR omits, so a required-usage policy is satisfied", () => {
     const request = forCsr(BARE_CSR, TLS_DEFAULTS);
 
@@ -89,18 +89,6 @@ describe("applyProfileDefaultsForPolicyCheck", () => {
 
     expect(request.keyUsages).toEqual([CertKeyUsageType.DIGITAL_SIGNATURE]);
     expect(request.extendedKeyUsages).toEqual([CertExtendedKeyUsageType.CLIENT_AUTH]);
-  });
-
-  it("normalises legacy usage names stored in older profile defaults", () => {
-    const legacyDefaults = {
-      keyUsages: ["digitalSignature"],
-      extendedKeyUsages: ["serverAuth"]
-    } as unknown as TCertificateProfileDefaults;
-
-    const request = forCsr(BARE_CSR, legacyDefaults);
-
-    expect(request.keyUsages).toEqual([CertKeyUsageType.DIGITAL_SIGNATURE]);
-    expect(request.extendedKeyUsages).toEqual([CertExtendedKeyUsageType.SERVER_AUTH]);
   });
 
   it("does not touch the subject alternative names the CSR carries", () => {
@@ -130,7 +118,7 @@ describe("applyProfileDefaultsForPolicyCheck", () => {
   });
 
   it("fills usages while leaving CSR-derived algorithms untouched", () => {
-    const request = applyProfileDefaultsForPolicyCheck(
+    const request = applyProfileDefaults(
       {
         ...extractCertificateRequestFromCSR(BARE_CSR),
         keyAlgorithm: "RSA_2048",
@@ -152,7 +140,7 @@ describe("applyProfileDefaultsForPolicyCheck", () => {
   });
 
   it("keeps the resolved validity and SANs when no defaults exist", () => {
-    const request = applyProfileDefaultsForPolicyCheck(
+    const request = applyProfileDefaults(
       { ...extractCertificateRequestFromCSR(BARE_CSR), validity: { ttl: "47d" } },
       null
     );

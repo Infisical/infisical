@@ -375,32 +375,3 @@ export const SAN_EFFECT_OPTIONS = Object.values(CertSanEffect);
 export const POLICY_STATE_OPTIONS = Object.values(CertPolicyState);
 export const KEY_ALGORITHM_OPTIONS = Object.values(CertKeyAlgorithm);
 export const SIGNATURE_ALGORITHM_OPTIONS = Object.values(CertSignatureAlgorithm);
-
-interface CertificateRequestInput {
-  keyUsages?: string[];
-  extendedKeyUsages?: string[];
-}
-
-export const mapEnumsForValidation = <T extends CertificateRequestInput>(request: T): T => {
-  const mapKeyUsage = (usage: string): string => {
-    try {
-      return mapLegacyKeyUsageToStandard(usage);
-    } catch {
-      return usage;
-    }
-  };
-
-  const mapExtendedKeyUsage = (usage: string): string => {
-    try {
-      return mapLegacyExtendedKeyUsageToStandard(usage);
-    } catch {
-      return usage;
-    }
-  };
-
-  return {
-    ...request,
-    keyUsages: request.keyUsages?.map(mapKeyUsage),
-    extendedKeyUsages: request.extendedKeyUsages?.map(mapExtendedKeyUsage)
-  } as T;
-};

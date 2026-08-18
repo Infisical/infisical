@@ -40,10 +40,7 @@ import { EnrollmentType } from "@app/services/certificate-profile/certificate-pr
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import {
-  applyProfileDefaultsForPolicyCheck,
-  resolveEffectiveTtl
-} from "@app/services/certificate-v3/certificate-v3-fns";
+import { applyProfileDefaults, resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -906,7 +903,7 @@ export const pkiScepServiceFactory = ({
 
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
-      applyProfileDefaultsForPolicyCheck(
+      applyProfileDefaults(
         {
           ...certRequest,
           keyAlgorithm,

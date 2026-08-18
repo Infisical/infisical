@@ -42,8 +42,7 @@ import { copyMetadataFromRequestToCertificate } from "@app/services/resource-met
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
-  CertPolicyState,
-  mapEnumsForValidation
+  CertPolicyState
 } from "../certificate-common/certificate-constants";
 import {
   calculateFinalRenewBeforeDays,
@@ -60,6 +59,7 @@ import {
   buildSubjectAlternativeNamesFromTemplate,
   convertExtendedKeyUsageArrayToLegacy,
   convertKeyUsageArrayToLegacy,
+  mapEnumsForValidation,
   normalizeDateForApi
 } from "../certificate-common/certificate-utils";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";

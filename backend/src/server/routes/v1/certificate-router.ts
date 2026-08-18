@@ -22,10 +22,10 @@ import {
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
   domainComponentsSchema,
-  mapEnumsForValidation,
   subjectAttributeSchema
 } from "@app/services/certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
+import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { TCertificateIssuanceResponse } from "@app/services/certificate-v3/certificate-v3-types";
