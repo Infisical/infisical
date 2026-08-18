@@ -1,0 +1,51 @@
+previews:
+  generation: automatic
+
+databases:
+  - name: infisical-postgres
+    databaseName: infisical
+    user: infisical
+    postgresMajorVersion: "17"
+    plan: basic-256mb
+    ipAllowList: []
+
+services:
+  - type: keyvalue
+    name: infisical-redis
+    plan: starter
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+
+  - type: web
+    name: infisical
+    runtime: docker
+    plan: standard
+    dockerfilePath: ./Dockerfile.standalone-infisical
+    dockerContext: .
+    # SITE_URL is per-preview, and no blueprint field resolves a service's public URL
+    dockerCommand: /bin/sh -c 'SITE_URL="$RENDER_EXTERNAL_URL" ./standalone-entrypoint.sh'
+    healthCheckPath: /api/status
+    # Seeds the super admin + org so a preview is usable without SMTP
+    initialDeployHook: node /backend/scripts/bootstrap-preview.mjs
+    buildFilter:
+      paths:
+        - frontend/**
+      ignoredPaths:
+        - "**/*.md"
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: DB_CONNECTION_URI
+        fromDatabase:
+          name: infisical-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: infisical-redis
+          property: connectionString
+      - fromGroup: infisical-preview
+      - key: BOOTSTRAP_ORG
+        value: preview
+      - key: TELEMETRY_ENABLED
+        value: false
