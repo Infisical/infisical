@@ -13,6 +13,8 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { ActorType } from "@app/services/auth/auth-type";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -39,6 +41,7 @@ type TAuditReportServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgMembersByUsername">;
   queueService: Pick<TQueueServiceFactory, "queue">;
 };
 
@@ -51,6 +54,7 @@ export const auditReportServiceFactory = ({
   projectDAL,
   projectBotService,
   userDAL,
+  orgDAL,
   queueService
 }: TAuditReportServiceFactoryDep) => {
   // Report types and their inputs are validated at the request boundary by the router's discriminated
@@ -70,15 +74,50 @@ export const auditReportServiceFactory = ({
     });
   };
 
+  const $assertRecipientsCanReadInsights = async (
+    emails: string[],
+    orgId: string,
+    canRecipientReadInsights: (recipientUserId: string) => Promise<boolean>
+  ) => {
+    const orgMembers = await orgDAL.findOrgMembersByUsername(orgId, emails);
+
+    const userIdByEmail = new Map<string, string>();
+    orgMembers.forEach((member) => {
+      if (!member.user?.id) return;
+      if (member.username) userIdByEmail.set(member.username.toLowerCase(), member.user.id);
+      if (member.user.email) userIdByEmail.set(member.user.email.toLowerCase(), member.user.id);
+    });
+
+    const checks = await Promise.all(
+      emails.map(async (email) => {
+        const recipientUserId = userIdByEmail.get(email);
+        if (!recipientUserId) return { email, allowed: false };
+        return { email, allowed: await canRecipientReadInsights(recipientUserId) };
+      })
+    );
+
+    const rejectedEmails = checks.filter(({ allowed }) => !allowed).map(({ email }) => `'${email}'`);
+    if (rejectedEmails.length) {
+      throw new BadRequestError({
+        message: `The following recipients cannot receive this report because they are not members of your organization with access to insights: ${rejectedEmails.join(
+          ", "
+        )}. Remove them from the recipient list, or grant them insights access, and try again.`
+      });
+    }
+  };
+
   const $resolveRecipients = async (
     requestedRecipients: string[] | undefined,
-    actor: TAuditReportServiceActor
+    actor: TAuditReportServiceActor,
+    canRecipientReadInsights: (recipientUserId: string) => Promise<boolean>
   ): Promise<string[]> => {
     if (requestedRecipients?.length) {
       if (requestedRecipients.length > MAX_EMAIL_RECIPIENTS) {
         throw new BadRequestError({ message: `A maximum of ${MAX_EMAIL_RECIPIENTS} recipients is allowed` });
       }
-      return [...new Set(requestedRecipients.map((email) => email.trim().toLowerCase()))];
+      const emails = [...new Set(requestedRecipients.map((email) => email.trim().toLowerCase()))];
+      await $assertRecipientsCanReadInsights(emails, actor.orgId, canRecipientReadInsights);
+      return emails;
     }
 
     // Default to the requesting user's own email.
@@ -125,7 +164,25 @@ export const auditReportServiceFactory = ({
     }
 
     const reportConfigs = $buildReportConfigs(dto.reports);
-    const emailRecipients = await $resolveRecipients(dto.emailRecipients, actor);
+    const emailRecipients = await $resolveRecipients(dto.emailRecipients, actor, async (recipientUserId) => {
+      try {
+        const { permission: recipientPermission } = await permissionService.getProjectPermission({
+          actor: ActorType.USER,
+          actorId: recipientUserId,
+          projectId: dto.projectId,
+          actorAuthMethod: null,
+          actorOrgId: actor.orgId,
+          actionProjectType: ActionProjectType.SecretManager
+        });
+        return recipientPermission.can(ProjectPermissionInsightsActions.Read, ProjectPermissionSub.Insights);
+      } catch (error) {
+        logger.debug(
+          { error },
+          `Audit report recipient cannot read project insights [projectId=${dto.projectId}] [userId=${recipientUserId}]`
+        );
+        return false;
+      }
+    });
 
     const report = await auditReportDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AuditReportRequest(dto.projectId)]);
@@ -299,7 +356,28 @@ export const auditReportServiceFactory = ({
       });
     }
 
-    const emailRecipients = await $resolveRecipients(dto.emailRecipients, actor);
+    const emailRecipients = await $resolveRecipients(dto.emailRecipients, actor, async (recipientUserId) => {
+      try {
+        const { permission: recipientPermission } = await permissionService.getOrgPermission({
+          scope: OrganizationActionScope.Any,
+          actor: ActorType.USER,
+          actorId: recipientUserId,
+          orgId: actor.orgId,
+          actorAuthMethod: null,
+          actorOrgId: actor.orgId
+        });
+        return recipientPermission.can(
+          OrgPermissionSecretsManagementInsightsActions.Read,
+          OrgPermissionSubjects.SecretsManagementInsights
+        );
+      } catch (error) {
+        logger.debug(
+          { error },
+          `Audit report recipient cannot read org insights [orgId=${actor.orgId}] [userId=${recipientUserId}]`
+        );
+        return false;
+      }
+    });
 
     const report = await auditReportDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgAuditReportRequest(actor.orgId)]);
