@@ -203,10 +203,11 @@ function AlertDialogConfirmationLabel({
 
 function AlertDialogConfirmationField({
   className,
+  children,
   inputProps,
-  onConfirm
-}: {
-  className?: string;
+  onConfirm,
+  ...props
+}: React.ComponentProps<"div"> & {
   inputProps?: Omit<React.ComponentProps<typeof Input>, "value" | "onChange">;
   onConfirm?: () => void;
 }) {
@@ -216,29 +217,33 @@ function AlertDialogConfirmationField({
   );
 
   return (
-    <div data-slot="alert-dialog-confirmation-field" className={cn("mt-4", className)}>
-      <Field>
-        <AlertDialogConfirmationLabel
-          htmlFor={inputProps?.id ?? inputId}
-          confirmationValue={confirmationValue}
-        />
-        <Input
-          autoComplete="off"
-          autoFocus
-          placeholder={confirmationValue}
-          {...inputProps}
-          id={inputProps?.id ?? inputId}
-          value={inputValue}
-          onChange={(event) => setInputValue(event.target.value)}
-          onKeyDown={(event) => {
-            inputProps?.onKeyDown?.(event);
-            if (!event.defaultPrevented && event.key === "Enter" && isConfirmed && onConfirm) {
-              event.preventDefault();
-              onConfirm();
-            }
-          }}
-        />
-      </Field>
+    <div data-slot="alert-dialog-confirmation-field" className={cn("mt-4", className)} {...props}>
+      {children !== undefined ? (
+        children
+      ) : (
+        <Field>
+          <AlertDialogConfirmationLabel
+            htmlFor={inputProps?.id ?? inputId}
+            confirmationValue={confirmationValue}
+          />
+          <Input
+            autoComplete="off"
+            autoFocus
+            placeholder={confirmationValue}
+            {...inputProps}
+            id={inputProps?.id ?? inputId}
+            value={inputValue}
+            onChange={(event) => setInputValue(event.target.value)}
+            onKeyDown={(event) => {
+              inputProps?.onKeyDown?.(event);
+              if (!event.defaultPrevented && event.key === "Enter" && isConfirmed && onConfirm) {
+                event.preventDefault();
+                onConfirm();
+              }
+            }}
+          />
+        </Field>
+      )}
     </div>
   );
 }
