@@ -106,7 +106,6 @@ export const IdentityTab = withProjectPermission(
       offset,
       limit,
       orderBy,
-      setOrderBy,
       orderDirection,
       setOrderDirection,
       search,
@@ -207,18 +206,6 @@ export const IdentityTab = withProjectPermission(
 
       handlePopUpClose("deleteIdentity");
     };
-    const handleSort = (column: ProjectIdentityOrderBy) => {
-      if (column === orderBy) {
-        setOrderDirection((prev) =>
-          prev === OrderByDirection.ASC ? OrderByDirection.DESC : OrderByDirection.ASC
-        );
-        return;
-      }
-
-      setOrderBy(column);
-      setOrderDirection(OrderByDirection.ASC);
-    };
-
     const noAccessIdentityCount = Math.max(
       (page * perPage > totalCount ? totalCount % perPage : perPage) -
         (data?.identityMemberships?.length || 0),
@@ -326,16 +313,22 @@ export const IdentityTab = withProjectPermission(
                       <TableRow>
                         <TableHead
                           className="w-1/4"
-                          onClick={() => handleSort(ProjectIdentityOrderBy.Name)}
+                          sortDirection={
+                            orderDirection === OrderByDirection.ASC ? "ascending" : "descending"
+                          }
+                          onSortChange={(direction) =>
+                            setOrderDirection(
+                              direction === "descending"
+                                ? OrderByDirection.DESC
+                                : OrderByDirection.ASC
+                            )
+                          }
                         >
                           Name
                           <ChevronDownIcon
                             className={twMerge(
                               "transition-transform",
-                              orderDirection === OrderByDirection.DESC &&
-                                orderBy === ProjectIdentityOrderBy.Name &&
-                                "rotate-180",
-                              orderBy !== ProjectIdentityOrderBy.Name && "opacity-30"
+                              orderDirection === OrderByDirection.DESC && "rotate-180"
                             )}
                           />
                         </TableHead>
