@@ -12,10 +12,10 @@ import { validateCaDateField } from "@app/services/certificate-authority/certifi
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
-  CertSubjectAlternativeNameType
+  CertSubjectAlternativeNameType,
+  mapEnumsForValidation
 } from "@app/services/certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
-import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";

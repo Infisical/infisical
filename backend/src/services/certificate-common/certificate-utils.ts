@@ -39,35 +39,6 @@ export const validatePqcLicense = async ({
   }
 };
 
-interface CertificateRequestInput {
-  keyUsages?: string[];
-  extendedKeyUsages?: string[];
-}
-
-export const mapEnumsForValidation = <T extends CertificateRequestInput>(request: T): T => {
-  const mapKeyUsage = (usage: string): string => {
-    try {
-      return mapLegacyKeyUsageToStandard(usage);
-    } catch {
-      return usage;
-    }
-  };
-
-  const mapExtendedKeyUsage = (usage: string): string => {
-    try {
-      return mapLegacyExtendedKeyUsageToStandard(usage);
-    } catch {
-      return usage;
-    }
-  };
-
-  return {
-    ...request,
-    keyUsages: request.keyUsages?.map(mapKeyUsage),
-    extendedKeyUsages: request.extendedKeyUsages?.map(mapExtendedKeyUsage)
-  } as T;
-};
-
 export const normalizeDateForApi = (date: Date | string | undefined): string | undefined => {
   if (!date) return undefined;
   return date instanceof Date ? date.toISOString() : date;

@@ -68,6 +68,7 @@ import {
   CertificateIssuanceOperation,
   CertKeyUsageType,
   CertPolicyState,
+  mapEnumsForValidation,
   mapExtendedKeyUsageToLegacy,
   mapKeyUsageToLegacy,
   mapLegacyExtendedKeyUsageToStandard,
@@ -96,7 +97,6 @@ import {
   buildSubjectAlternativeNamesFromTemplate,
   convertExtendedKeyUsageArrayToLegacy,
   convertKeyUsageArrayToLegacy,
-  mapEnumsForValidation,
   normalizeDateForApi,
   removeRootCaFromChain,
   validatePqcLicense
