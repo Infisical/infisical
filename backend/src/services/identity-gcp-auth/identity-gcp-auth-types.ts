@@ -29,6 +29,7 @@ export type TUpdateGcpAuthDTO = {
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetGcpAuthDTO = {
@@ -81,4 +82,5 @@ export type TDecodedGcpIamAuthJwt = {
 
 export type TRevokeGcpAuthDTO = {
   identityId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;

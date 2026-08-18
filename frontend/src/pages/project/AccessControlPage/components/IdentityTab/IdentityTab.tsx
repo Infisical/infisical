@@ -513,7 +513,7 @@ export const IdentityTab = withProjectPermission(
                                               </DropdownMenuItem>
                                             ))}
                                             <ProjectPermissionCan
-                                              I={ProjectPermissionActions.Edit}
+                                              I={ProjectPermissionIdentityActions.EditAuth}
                                               a={subject(ProjectPermissionSub.Identity, {
                                                 identityId: id
                                               })}

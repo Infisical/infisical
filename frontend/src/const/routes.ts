@@ -107,10 +107,6 @@ export const ROUTE_PATHS = Object.freeze({
       "/organizations/$orgId/projects/secret-management/$projectId/approval",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/approval"
     ),
-    SecretDashboardPage: setRoute(
-      "/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug"
-    ),
     RollbackPreviewPage: setRoute(
       "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/restore"
