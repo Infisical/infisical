@@ -166,7 +166,6 @@
   }
 }
 
-/* ── Homepage */
 html[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"] {
   color: #515151;
   text-shadow: none;
@@ -176,8 +175,6 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"] {
   color: #9f9f9f;
 }
 
-/* The rules above outrank Tailwind's hover: utility, so the hover colour has
-   to be restored by hand. These match what a normal tab does on hover. */
 html[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hover {
   color: #262626;
 }
@@ -186,10 +183,6 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
   color: #cfcfcf;
 }
 
-/* Every tab carries the underline as a child div, not a pseudo-element. On an
-   inactive tab it is transparent and fills in grey on hover; on the active one
-   it is painted with the primary colour and has no hover state. Repaint rather
-   than hide it, so the homepage tab keeps the same hover bar as its siblings. */
 html[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"] > div {
   background-color: transparent;
 }
@@ -516,9 +509,13 @@ a.ifx-steps__label:hover {
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  padding: 0.625rem 0.75rem;
+  padding: 0.625rem 0;
   text-decoration: none;
   transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.ifx-card__main + .ifx-stack {
+  margin-top: 1.5rem;
 }
 
 .ifx-stack__tile:hover {
@@ -839,6 +836,14 @@ a.ifx-card__title:hover .ifx-card__chevron {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
     column-gap: 3rem;
+  }
+
+  .ifx-stack__tile {
+    padding: 0.625rem 0.75rem;
+  }
+
+  .ifx-card--wide .ifx-card__main + .ifx-stack {
+    margin-top: 0;
   }
 
   .ifx-card--wide .ifx-stack {
