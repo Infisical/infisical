@@ -125,13 +125,7 @@ Starting the proxy in a shell is fine while you are trying it out, but it dies w
 
 ## Resource requirements
 
-The Agent Proxy is light on hardware: 2 vCPU and 4 GB of RAM is a reasonable starting point for a few dozen agents. It keeps all of its state in memory and writes nothing to disk in standalone mode, and its internal caches are bounded, so memory use stays modest as agents connect.
-
-- **CPU** scales with the volume of traffic you route through it, not with the number of agents, because every request is decrypted and re-encrypted. Size CPU against expected throughput.
-- **Connections**: a single instance accepts up to 512 concurrent connections. Beyond that, new connections wait.
-- **API load** is usually the first limit a deployment reaches, ahead of hardware. Polling grows with the number of active agents, and a longer `--poll-interval` reduces it. See [Caching and polling](#caching-and-polling).
-
-As a rough guide, one instance comfortably serves roughly 30 to 50 agents on default settings, and more with a longer poll interval. Treat these figures as guidance rather than benchmarked limits. To grow past one instance, add instances behind a load balancer rather than moving to a larger host: see [High availability](#high-availability). If you set `--log-file`, the proxy appends a line per request and does not rotate the file, so rotate it externally.
+2 vCPU and 4 GB of RAM is a reasonable starting point for a few dozen agents. The proxy keeps its state in memory, so RAM is rarely the driver. CPU tracks the volume of traffic you route through it rather than the number of agents, and a single instance accepts up to 512 concurrent connections. The first limit most deployments reach is the API load from each agent's polling, which a longer poll interval reduces (see [Caching and polling](#caching-and-polling)). As guidance rather than a benchmarked limit, expect one instance to serve roughly 30 to 50 agents; to grow past that, add instances behind a load balancer instead of moving to a larger host (see [High availability](#high-availability)).
 
 ## Network placement
 
