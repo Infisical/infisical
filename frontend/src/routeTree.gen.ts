@@ -89,6 +89,7 @@ import { Route as secretManagerRedirectsRedirectApprovalPageImport } from './pag
 import { Route as projectAuditLogsPageRoutePamImport } from './pages/project/AuditLogsPage/route-pam'
 import { Route as projectAccessControlPageRoutePamImport } from './pages/project/AccessControlPage/route-pam'
 import { Route as organizationSettingsPageOauthCallbackPageRouteImport } from './pages/organization/SettingsPage/OauthCallbackPage/route'
+import { Route as organizationSecretInsightsPageRouteImport } from './pages/organization/SecretInsightsPage/route'
 import { Route as pamPamTemplatesPageRouteImport } from './pages/pam/PamTemplatesPage/route'
 import { Route as pamPamSessionsPageRouteImport } from './pages/pam/PamSessionsPage/route'
 import { Route as pamPamDiscoveryPageRouteImport } from './pages/pam/PamDiscoveryPage/route'
@@ -1073,6 +1074,13 @@ const organizationSettingsPageOauthCallbackPageRouteRoute =
     path: '/oauth/callback',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSettingsRoute,
+  } as any)
+
+const organizationSecretInsightsPageRouteRoute =
+  organizationSecretInsightsPageRouteImport.update({
+    id: '/secret-management/insights',
+    path: '/secret-management/insights',
+    getParentRoute: () => organizationProjectsPageRouteRoute,
   } as any)
 
 const pamPamTemplatesPageRouteRoute = pamPamTemplatesPageRouteImport.update({
@@ -3118,6 +3126,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$orgId/pam/templates'
       preLoaderRoute: typeof pamPamTemplatesPageRouteImport
       parentRoute: typeof pamLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/insights': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/insights'
+      path: '/secret-management/insights'
+      fullPath: '/organizations/$orgId/projects/secret-management/insights'
+      preLoaderRoute: typeof organizationSecretInsightsPageRouteImport
+      parentRoute: typeof organizationProjectsPageRouteImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback'
@@ -5216,6 +5231,7 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretScann
 
 interface organizationProjectsPageRouteRouteChildren {
   organizationProjectsPageProjectTypePageRouteRoute: typeof organizationProjectsPageProjectTypePageRouteRoute
+  organizationSecretInsightsPageRouteRoute: typeof organizationSecretInsightsPageRouteRoute
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsKmipServersRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsKmipServersRouteWithChildren
@@ -5229,6 +5245,8 @@ const organizationProjectsPageRouteRouteChildren: organizationProjectsPageRouteR
   {
     organizationProjectsPageProjectTypePageRouteRoute:
       organizationProjectsPageProjectTypePageRouteRoute,
+    organizationSecretInsightsPageRouteRoute:
+      organizationSecretInsightsPageRouteRoute,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdRoute:
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagerProjectIdRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRoute:
@@ -5750,6 +5768,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/pam/discovery': typeof pamPamDiscoveryPageRouteRoute
   '/organizations/$orgId/pam/sessions': typeof pamPamSessionsPageRouteRoute
   '/organizations/$orgId/pam/templates': typeof pamPamTemplatesPageRouteRoute
+  '/organizations/$orgId/projects/secret-management/insights': typeof organizationSecretInsightsPageRouteRoute
   '/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
   '/organizations/$orgId/pam/access': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRouteWithChildren
   '/organizations/$orgId/pam/access-management': typeof projectAccessControlPageRoutePamRoute
@@ -6014,6 +6033,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/pam/discovery': typeof pamPamDiscoveryPageRouteRoute
   '/organizations/$orgId/pam/sessions': typeof pamPamSessionsPageRouteRoute
   '/organizations/$orgId/pam/templates': typeof pamPamTemplatesPageRouteRoute
+  '/organizations/$orgId/projects/secret-management/insights': typeof organizationSecretInsightsPageRouteRoute
   '/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
   '/organizations/$orgId/pam/access-management': typeof projectAccessControlPageRoutePamRoute
   '/organizations/$orgId/pam/audit-logs': typeof projectAuditLogsPageRoutePamRoute
@@ -6276,6 +6296,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/discovery': typeof pamPamDiscoveryPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/sessions': typeof pamPamSessionsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/templates': typeof pamPamTemplatesPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/insights': typeof organizationSecretInsightsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access-management': typeof projectAccessControlPageRoutePamRoute
@@ -6553,6 +6574,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/pam/discovery'
     | '/organizations/$orgId/pam/sessions'
     | '/organizations/$orgId/pam/templates'
+    | '/organizations/$orgId/projects/secret-management/insights'
     | '/organizations/$orgId/settings/oauth/callback'
     | '/organizations/$orgId/pam/access'
     | '/organizations/$orgId/pam/access-management'
@@ -6816,6 +6838,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/pam/discovery'
     | '/organizations/$orgId/pam/sessions'
     | '/organizations/$orgId/pam/templates'
+    | '/organizations/$orgId/projects/secret-management/insights'
     | '/organizations/$orgId/settings/oauth/callback'
     | '/organizations/$orgId/pam/access-management'
     | '/organizations/$orgId/pam/audit-logs'
@@ -7076,6 +7099,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/discovery'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/sessions'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/templates'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/insights'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access-management'
@@ -7615,6 +7639,7 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId",
       "children": [
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$type",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/insights",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers",
@@ -7801,6 +7826,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/templates": {
       "filePath": "pam/PamTemplatesPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/insights": {
+      "filePath": "organization/SecretInsightsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback": {
       "filePath": "organization/SettingsPage/OauthCallbackPage/route.tsx",

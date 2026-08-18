@@ -385,6 +385,7 @@ const organizationRoutes = route("/organizations/$orgId", [
     index("organization/KmipServersPage/route.tsx"),
     route("/$kmipServerId", "organization/KmipServersPage/KmipServerDetailsByIDPage/route.tsx")
   ]),
+  route("/projects/secret-management/insights", "organization/SecretInsightsPage/route.tsx"),
   route("/projects/secret-management/secret-sharing", [
     index("organization/SecretSharingPage/route.tsx")
   ]),

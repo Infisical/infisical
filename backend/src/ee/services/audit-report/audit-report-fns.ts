@@ -13,6 +13,8 @@ import {
   AuditReportResultEntrySchema,
   AuditReportStatus,
   AuditReportType,
+  OrgAuditReportResultEntrySchema,
+  OrgAuditReportType,
   TGeneratedReport,
   TSecretToValidate
 } from "./audit-report-types";
@@ -90,7 +92,9 @@ const StoredReportConfigsSchema = z.array(
 
 export const presentAuditReport = (report: TAuditReports) => ({
   id: report.id,
-  projectId: report.projectId,
+  // Callers only ever pass project-scoped rows here; org-scoped rows go through
+  // presentOrgAuditReport. The cast preserves the non-null projectId response contract.
+  projectId: report.projectId as string,
   requestedByUserId: report.requestedByUserId ?? null,
   status: z.nativeEnum(AuditReportStatus).parse(report.status),
   reportConfigs: StoredReportConfigsSchema.parse(report.reportConfigs),
@@ -103,6 +107,30 @@ export const presentAuditReport = (report: TAuditReports) => ({
 });
 
 export type TPresentedAuditReport = ReturnType<typeof presentAuditReport>;
+
+const StoredOrgReportConfigsSchema = z.array(
+  z.object({
+    type: z.nativeEnum(OrgAuditReportType),
+    inputs: z.record(z.unknown())
+  })
+);
+
+export const presentOrgAuditReport = (report: TAuditReports) => ({
+  id: report.id,
+  // Callers only ever pass org-scoped rows here (project rows go through presentAuditReport).
+  orgId: report.orgId as string,
+  requestedByUserId: report.requestedByUserId ?? null,
+  status: z.nativeEnum(AuditReportStatus).parse(report.status),
+  reportConfigs: StoredOrgReportConfigsSchema.parse(report.reportConfigs),
+  emailRecipients: report.emailRecipients,
+  resultSummary:
+    report.resultSummary == null ? null : z.array(OrgAuditReportResultEntrySchema).parse(report.resultSummary),
+  errorMessage: report.errorMessage ?? null,
+  createdAt: report.createdAt,
+  updatedAt: report.updatedAt
+});
+
+export type TPresentedOrgAuditReport = ReturnType<typeof presentOrgAuditReport>;
 
 export const evaluateStaticSecretConstraints = (
   constraints: TConstraint[],
