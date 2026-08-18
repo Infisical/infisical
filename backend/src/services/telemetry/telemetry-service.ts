@@ -51,7 +51,8 @@ const TELEMETRY_BUCKET_NAMES = Array.from(
 );
 
 const TELEMETRY_EVENT_STREAM_BATCH_SIZE = 10_000;
-const TELEMETRY_EVENT_STREAM_MAX_ENTRIES = 50_000;
+const TELEMETRY_EVENT_STREAM_COLLECT_CEILING = 50_000;
+const TELEMETRY_EVENT_STREAM_MAX_ENTRIES = 100_000;
 
 type AggregatedEventData = Record<string, unknown>;
 type SingleEventData = {
@@ -320,15 +321,20 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     const resolvedOrgName = event.organizationName ?? requestContext.get(RequestContextKey.OrgName);
 
     if (POSTHOG_AGGREGATED_EVENTS.includes(event.event)) {
-      await keyStore.streamAdd(getTelemetryEventStreamKey(event.event, event.distinctId), "*", {
-        data: JSON.stringify({
-          distinctId: event.distinctId,
-          event: event.event,
-          properties: event.properties,
-          organizationId: event.organizationId,
-          ...(resolvedOrgName ? { organizationName: resolvedOrgName } : {})
-        })
-      });
+      await keyStore.streamAdd(
+        getTelemetryEventStreamKey(event.event, event.distinctId),
+        "*",
+        {
+          data: JSON.stringify({
+            distinctId: event.distinctId,
+            event: event.event,
+            properties: event.properties,
+            organizationId: event.organizationId,
+            ...(resolvedOrgName ? { organizationName: resolvedOrgName } : {})
+          })
+        },
+        TELEMETRY_EVENT_STREAM_MAX_ENTRIES
+      );
     } else {
       // Skip groupIdentify entirely when the event is marked anonymous.
       //
@@ -563,14 +569,14 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       const { entries, lastId } = await keyStore.streamCollect(
         streamKey,
         TELEMETRY_EVENT_STREAM_BATCH_SIZE,
-        TELEMETRY_EVENT_STREAM_MAX_ENTRIES
+        TELEMETRY_EVENT_STREAM_COLLECT_CEILING
       );
 
       if (entries.length === 0 || !lastId) return 0;
 
-      if (entries.length >= TELEMETRY_EVENT_STREAM_MAX_ENTRIES) {
+      if (entries.length >= TELEMETRY_EVENT_STREAM_COLLECT_CEILING) {
         logger.warn(
-          `Telemetry aggregation hit the collection ceiling for bucket ${bucketId} of ${eventType} [collected=${entries.length}] [maxEntries=${TELEMETRY_EVENT_STREAM_MAX_ENTRIES}] — the shard is backing up; the oldest entries risk being dropped by the Redis MAXLEN cap`
+          `Telemetry aggregation hit the collection ceiling for bucket ${bucketId} of ${eventType} [collected=${entries.length}] [ceiling=${TELEMETRY_EVENT_STREAM_COLLECT_CEILING}] [maxLen=${TELEMETRY_EVENT_STREAM_MAX_ENTRIES}] — the shard is backing up; once it exceeds the MAXLEN cap the oldest entries are dropped`
         );
       }
 
