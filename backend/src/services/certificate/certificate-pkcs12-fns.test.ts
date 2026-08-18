@@ -204,6 +204,10 @@ describe("extractPkcs12Entries failures", () => {
     await expectFailure(fixtures.hostileIterations, "test", Pkcs12ErrorCode.TooExpensive);
   });
 
+  test("refuses one that hides the cost on a key inside the safe contents", async () => {
+    await expectFailure(fixtures.hostileNestedIterations, "test", Pkcs12ErrorCode.TooExpensive);
+  });
+
   test("reports a file that is not a keystore", async () => {
     await expectFailure(Buffer.from("this is not a keystore").toString("base64"), "test", Pkcs12ErrorCode.NotAKeystore);
   });

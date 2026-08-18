@@ -8,7 +8,7 @@ import { Pkcs12ErrorCode, TExtractPkcs12Result, TPkcs12ErrorCode } from "./certi
 
 // Cost is refused up front by the extraction itself, so this is only a backstop for anything that
 // check cannot see, and node-forge decrypts synchronously so it has to run off the event loop.
-const EXTRACTION_TIMEOUT_MS = 15_000;
+const EXTRACTION_TIMEOUT_MS = 5_000;
 const MAX_CONCURRENT_EXTRACTIONS = 2;
 
 let inFlight = 0;

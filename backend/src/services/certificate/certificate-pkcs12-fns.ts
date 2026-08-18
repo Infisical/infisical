@@ -264,7 +264,9 @@ const buildChain = async (leaf: TParsedCert, certs: TParsedCert[]) => {
 
 // A keystore states its own key-derivation cost in the clear, so an expensive one is refused before
 // any decryption happens rather than by running out of time. PBKDF2 and the PKCS#12 PBE algorithms
-// all carry the count as the first integer of their parameters.
+// all carry the count as the first integer of their parameters. The counts are summed rather than
+// compared one by one, since the cost of opening the file is the sum of every derivation it asks
+// for. Real keystores are nowhere near the ceiling: openssl writes 2048 and keytool 10000.
 const ITERATION_PARAM_OIDS = new Set([
   "1.2.840.113549.1.5.12",
   "1.2.840.113549.1.12.1.1",
@@ -275,7 +277,8 @@ const ITERATION_PARAM_OIDS = new Set([
   "1.2.840.113549.1.12.1.6"
 ]);
 
-const MAX_KDF_ITERATIONS = 1_000_000;
+const MAX_KDF_ROUNDS = 500_000;
+const MAX_NESTING_DEPTH = 16;
 
 const asn1Integer = (node: forge.asn1.Asn1) => {
   if (typeof node.value !== "string") return 0;
@@ -287,16 +290,28 @@ const asn1Integer = (node: forge.asn1.Asn1) => {
   }
 };
 
-const declaredIterations = (node: forge.asn1.Asn1): number => {
-  if (!Array.isArray(node.value)) return 0;
+const declaredKdfRounds = (node: forge.asn1.Asn1, depth = 0): number => {
+  if (depth > MAX_NESTING_DEPTH) return 0;
+
+  // A PKCS#12 carries its safe contents as DER inside an octet string, and the shrouded key bags
+  // that state the largest counts live in there, so the walk has to open them.
+  if (!Array.isArray(node.value)) {
+    if (node.type !== forge.asn1.Type.OCTETSTRING || typeof node.value !== "string") return 0;
+    try {
+      return declaredKdfRounds(forge.asn1.fromDer(node.value), depth + 1);
+    } catch {
+      return 0;
+    }
+  }
+
   const children = node.value;
-  let max = 0;
+  let total = 0;
 
   const [first, second, third] = children;
   if (first?.type === forge.asn1.Type.OID && typeof first.value === "string" && Array.isArray(second?.value)) {
     if (ITERATION_PARAM_OIDS.has(forge.asn1.derToOid(first.value))) {
       const count = second.value.find((param) => param.type === forge.asn1.Type.INTEGER);
-      if (count) max = Math.max(max, asn1Integer(count));
+      if (count) total += asn1Integer(count);
     }
   }
 
@@ -307,14 +322,14 @@ const declaredIterations = (node: forge.asn1.Asn1): number => {
     second?.type === forge.asn1.Type.OCTETSTRING &&
     third?.type === forge.asn1.Type.INTEGER
   ) {
-    max = Math.max(max, asn1Integer(third));
+    total += asn1Integer(third);
   }
 
   children.forEach((child) => {
-    max = Math.max(max, declaredIterations(child));
+    total += declaredKdfRounds(child, depth + 1);
   });
 
-  return max;
+  return total;
 };
 
 export const extractPkcs12Entries = async ({
@@ -331,7 +346,7 @@ export const extractPkcs12Entries = async ({
     throw new Pkcs12ExtractionError(Pkcs12ErrorCode.NotAKeystore);
   }
 
-  if (declaredIterations(asn1) > MAX_KDF_ITERATIONS) {
+  if (declaredKdfRounds(asn1) > MAX_KDF_ROUNDS) {
     throw new Pkcs12ExtractionError(Pkcs12ErrorCode.TooExpensive);
   }
 
