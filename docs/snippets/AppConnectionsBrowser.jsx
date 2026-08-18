@@ -470,7 +470,7 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect Doppler for migrating data from Doppler to Infisical.",
       category: "DevOps Tools",
-    }, 
+    },
     {
       name: "OVH",
       slug: "ovh",
@@ -590,7 +590,7 @@ export const AppConnectionsBrowser = () => {
       description:
         "Learn how to connect GoDaddy to Infisical for ACME DNS validation.",
       category: "Networking & DNS",
-    }, 
+    },
     {
       name: "Rundeck",
       slug: "rundeck",
@@ -643,7 +643,14 @@ export const AppConnectionsBrowser = () => {
         "Learn how to connect Spacelift to pull secrets from Infisical.",
       category: "DevOps Tools",
     },
-  ].sort(function (a, b) {
+    {
+      name: "Coolify",
+      slug: "coolify",
+      path: "/integrations/app-connections/coolify",
+      description: "Learn how to connect your coolify applications to pull secrets from Infisical.",
+      category: "Hosting",
+    }
+  ].sort(function(a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });
 
@@ -707,11 +714,10 @@ export const AppConnectionsBrowser = () => {
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm ${
-                selectedCategory === category
-                  ? "bg-yellow-100 text-yellow-700 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700"
-                  : "bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200 dark:bg-black dark:text-gray-200 dark:border-gray-700 dark:hover:bg-yellow-950/20 dark:hover:border-yellow-700"
-              }`}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors shadow-sm ${selectedCategory === category
+                ? "bg-yellow-100 text-yellow-700 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700"
+                : "bg-white text-gray-700 border border-gray-200 hover:bg-yellow-50 hover:border-yellow-200 dark:bg-black dark:text-gray-200 dark:border-gray-700 dark:hover:bg-yellow-950/20 dark:hover:border-yellow-700"
+                }`}
             >
               {category}
             </button>

@@ -18,6 +18,7 @@ import { CircleCISyncFields } from "./CircleCISyncFields";
 import { Cloud66SyncFields } from "./Cloud66SyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
 import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
+import { CoolifySyncFields } from "./CoolifySyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { DevinSyncFields } from "./DevinSyncFields";
 import { DigitalOceanAppPlatformSyncFields } from "./DigitalOceanAppPlatformSyncFields";
@@ -154,6 +155,8 @@ export const SecretSyncDestinationFields = () => {
       return <Cloud66SyncFields />;
     case SecretSync.Spacelift:
       return <SpaceliftSyncFields />;
+    case SecretSync.Coolify:
+      return <CoolifySyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

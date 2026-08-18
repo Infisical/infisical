@@ -20,6 +20,7 @@ import { TCircleCIConnection } from "./circleci-connection";
 import { TCloud66Connection } from "./cloud-66-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TConvexConnection } from "./convex-connection";
+import { TCoolifyConnection } from "./coolify-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TDatadogConnection } from "./datadog-connection";
 import { TDbtConnection } from "./dbt-connection";
@@ -103,6 +104,7 @@ export * from "./circleci-connection";
 export * from "./cloud-66-connection";
 export * from "./cloudflare-connection";
 export * from "./convex-connection";
+export * from "./coolify-connection";
 export * from "./databricks-connection";
 export * from "./datadog-connection";
 export * from "./dbt-connection";
@@ -248,7 +250,8 @@ export type TAppConnection =
   | TLiteLLMConnection
   | TFireworksConnection
   | TNutanixPrismCentralConnection
-  | TSpaceliftConnection;
+  | TSpaceliftConnection
+  | TCoolifyConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 
@@ -346,6 +349,7 @@ export type TRotateAppConnectionCredentialsDTO = {
 //   [AppConnection.DigitalOcean]: TDigitalOceanConnection;
 //   [AppConnection.Netlify]: TNetlifyConnection;
 //   [AppConnection.Okta]: TOktaConnection;
+//   [AppConnection.Coolify]: TCoolifyConnection;
 // };
 
 // scott: we will need this once we have individual app connection page

@@ -17,6 +17,7 @@ import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 
 import { AwsParameterStoreSyncOptionsSection } from "./AwsParameterStoreSyncOptionsSection";
 import { AwsSecretsManagerSyncOptionsSection } from "./AwsSecretsManagerSyncOptionsSection";
+import { CoolifySyncOptionsSection } from "./CoolifySyncOptionsSection";
 import { FlyioSyncOptionsSection } from "./FlyioSyncOptionsSection";
 import { QoverySyncOptionsSection } from "./QoverySyncOptionsSection";
 import { RenderSyncOptionsSection } from "./RenderSyncOptionsSection";
@@ -57,6 +58,9 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
       break;
     case SecretSync.Qovery:
       AdditionalSyncOptionsComponent = <QoverySyncOptionsSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Coolify:
+      AdditionalSyncOptionsComponent = <CoolifySyncOptionsSection secretSync={secretSync} />;
       break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
@@ -99,6 +103,7 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
     case SecretSync.Rundeck:
     case SecretSync.HasuraCloud:
     case SecretSync.Cloud66:
+    case SecretSync.Coolify:
       AdditionalSyncOptionsComponent = null;
       break;
     case SecretSync.Spacelift:

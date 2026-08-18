@@ -1,0 +1,95 @@
+---
+title: "Coolify Connection"
+description: "Learn how to configure a Coolify Connection for Infisical."
+---
+
+Infisical supports connecting to Coolify using API Tokens.
+
+## Create API token in Coolify
+
+<Steps>
+    <Step title="Move to Keys & Tokens on Coolify">
+        Navigate to the **Keys & Tokens** page by clicking the tab in the right sidebar.
+        After that select the **API Tokens** tab in the top bar of the page
+        ![Coolify API Tokens Tab](/images/app-connections/coolify/coolify-main-page.png)
+    </Step>
+    <Step title="Create the API Token">
+        Add a description for your token (e.g., "Infisical Integration").
+        Choose appropriate scope permissions based on your requirements.
+        <Note>
+          If you want to use this integration for secret syncing then you must check the **read:sensitive** permission otherwise it will be unable to import existing data
+        </Note>
+        ![Coolify Create API Token](/images/app-connections/coolify/coolify-create-token.png)
+    </Step>
+    <Step title="Copy the API Token">
+        After the creation, the new token will be shown between the form and the list of existing tokens. Copy this token immediately and store it securely, as you won't be able to view it again after leaving the page
+        ![Coolify Copy API Token](/images/app-connections/coolify/coolify-copy-token.png)
+    </Step>
+</Steps>
+## Create Coolify Connection in Infisical
+  <Tabs>
+      <Tab title="Infisical UI">
+          <Steps>
+              <Step title="Navigate to App Connections">
+                  In your Infisical dashboard, go to **Organization Settings** and select the **App Connections** tab.
+                  ![App Connections Tab](/images/app-connections/general/add-connection.png)
+              </Step>
+              <Step title="Add Connection">
+
+                  Click the **+ Add Connection** button and select the **Coolify Connection** option from the available integrations.
+                  ![Select Coolify Connection](/images/app-connections/coolify/coolify-app-connection-option.png)
+              </Step>
+              <Step title="Fill the Coolify Connection Modal">
+                  Complete the Coolify Connection form by entering:
+                  - A descriptive name for the connection
+                  - The API Token you generated in the previous steps
+                  - The URL to reach the Coolify instance you are using
+                  - An optional description for future reference
+                  ![Coolify Connection Modal](/images/app-connections/coolify/coolify-app-connection-modal.png)
+              </Step>
+              <Step title="Connection Created">
+
+                  After clicking Create, your **Coolify Connection** is established and ready to use with your Infisical projects.
+                  ![Coolify Connection Created](/images/app-connections/coolify/coolify-app-connection-created.png)
+              </Step>
+          </Steps>
+      </Tab>
+      <Tab title="API">
+          To create a Coolify Connection, make an API request to the [Create Coolify 
+          Connection](/api-reference/endpoints/app-connections/coolify/create) API endpoint.
+
+          ### Sample request
+
+          ```bash Request
+          curl    --request POST \
+                  --url https://app.infisical.com/api/v1/app-connections/coolify \
+                  --header 'Content-Type: application/json' \
+                  --data '{
+                      "name": "my-coolify-connection",
+                      "method": "api-token",
+                      "credentials": {
+                          "instanceUrl": "...",
+                          "apiToken": "...",
+                      }
+                  }'
+          ```
+
+          ### Sample response
+
+          ```bash Response
+          {
+              "appConnection": {
+                  "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                  "name": "my-coolify-connection",
+                  "version": 123,
+                  "orgId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                  "createdAt": "2025-04-01T05:31:56Z",
+                  "updatedAt": "2025-04-01T05:31:56Z",
+                  "app": "coolify",
+                  "method": "api-token",
+                  "credentials": {}
+              }
+          }
+          ```
+      </Tab>
+  </Tabs>
