@@ -537,7 +537,7 @@
                 ]
               },
               {
-                "group": "Deliver secrets",
+                "group": "Integrations",
                 "pages": [
                   "integrations/all",
                   {
@@ -730,10 +730,10 @@
                 ]
               },
               {
-                "group": "Rotate secrets",
+                "group": "Secret rotation",
                 "pages": [
-                  "documentation/platform/secret-rotation/overview",
                   "integrations/secret-rotations",
+                  "documentation/platform/secret-rotation/overview",
                   {
                     "group": "Databases",
                     "pages": [
@@ -785,10 +785,10 @@
                 ]
               },
               {
-                "group": "Generate dynamic secrets",
+                "group": "Dynamic secrets",
                 "pages": [
-                  "documentation/platform/dynamic-secrets/overview",
                   "integrations/dynamic-secrets",
+                  "documentation/platform/dynamic-secrets/overview",
                   {
                     "group": "Databases",
                     "pages": [
@@ -837,7 +837,7 @@
                 ]
               },
               {
-                "group": "Detect unauthorized access",
+                "group": "Honey tokens",
                 "pages": [
                   "documentation/platform/honey-tokens/overview",
                   {
@@ -850,7 +850,7 @@
                 ]
               },
               {
-                "group": "Broker secrets to AI agents",
+                "group": "Agent Proxy",
                 "pages": [
                   "documentation/platform/agent-proxy/overview",
                   {
