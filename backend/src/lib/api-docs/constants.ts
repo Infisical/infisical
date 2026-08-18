@@ -2843,11 +2843,13 @@ export const AppConnections = {
     },
     OVH: {
       privateKey:
-        "The PEM-encoded private key issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END PRIVATE KEY----- markers).",
+        "The PEM-encoded private key issued by OVHcloud KMS for client certificate authentication (including the -----BEGIN/END PRIVATE KEY----- markers).",
       certificate:
-        "The PEM-encoded public certificate issued by OVH OKMS for client certificate authentication (including the -----BEGIN/END CERTIFICATE----- markers).",
-      okmsDomain: "The OKMS base URL (e.g., 'https://ca-east-bhs.okms.ovh.net').",
-      okmsId: "The OKMS instance identifier from the OVH Control Panel, used as a path segment in all API calls."
+        "The PEM-encoded public certificate issued by OVHcloud KMS for client certificate authentication (including the -----BEGIN/END CERTIFICATE----- markers).",
+      okmsDomain: "The OVHcloud KMS base URL (e.g., 'https://ca-east-bhs.okms.ovh.net').",
+      okmsId:
+        "The OVHcloud KMS instance identifier from the OVH Control Panel, used as a path segment in all API calls.",
+      token: "The access token used to authenticate to the OVHcloud KMS REST API"
     },
     SNOWFLAKE: {
       account: "The Snowflake account identifier (e.g., xy12345.us-east-1).",
@@ -3097,7 +3099,7 @@ export const SecretSyncs = {
       path: "The Hashicorp Vault path to sync secrets to."
     },
     OVH: {
-      path: "The path in OVH OKMS where secrets will be stored as key/value pairs."
+      path: "The path in OVHcloud KMS where secrets will be stored as key/value pairs."
     },
     TEAMCITY: {
       project: "The TeamCity project to sync secrets to.",

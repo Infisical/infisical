@@ -14,7 +14,7 @@ export const OvhSyncDestinationSchema = BaseSecretSyncSchema().merge(
         .transform((val) => val.trim().replace(/^\/+|\/+$/g, ""))
         .refine((val) => /^([a-zA-Z0-9._-]+\/)*[a-zA-Z0-9._-]+$/.test(val), {
           message:
-            "Invalid OVH OKMS path format. Use alphanumerics, dots, dashes, underscores, and single slashes between segments."
+            "Invalid OVHcloud KMS path format. Use alphanumerics, dots, dashes, underscores, and single slashes between segments."
         })
     })
   })

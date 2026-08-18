@@ -10,10 +10,16 @@ import {
   FieldLabel,
   Input,
   SecretInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   OVHConnectionMethod,
@@ -51,14 +57,32 @@ const pemCertificate = z
     message: "Certificate must be in PEM format (starts with -----BEGIN CERTIFICATE-----)"
   });
 
+const okmsDomain = z
+  .string()
+  .trim()
+  .min(1, "KMS rest API endpoint required")
+  .url("KMS rest API endpoint must be a valid URL (e.g. https://eu-west-rbx.okms.ovh.net)")
+  .refine((val) => val.startsWith("https://"), {
+    message: "KMS rest API endpoint must use https"
+  });
+const okmsId = z.string().trim().min(1, "KMS ID required");
+
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
     method: z.literal(OVHConnectionMethod.Certificate),
     credentials: z.object({
       privateKey: pemPrivateKey,
       certificate: pemCertificate,
-      okmsDomain: z.string().trim().min(1, "OKMS domain required"),
-      okmsId: z.string().trim().min(1, "OKMS ID required")
+      okmsDomain,
+      okmsId
+    })
+  }),
+  rootSchema.extend({
+    method: z.literal(OVHConnectionMethod.Token),
+    credentials: z.object({
+      token: z.string().trim().min(1, "Token required"),
+      okmsDomain,
+      okmsId
     })
   })
 ]);
@@ -75,8 +99,9 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
           ...appConnection,
           credentials: {
             ...appConnection.credentials,
-            privateKey: "",
-            certificate: ""
+            ...(appConnection.method === OVHConnectionMethod.Certificate
+              ? { privateKey: "", certificate: "" }
+              : { token: "" })
           }
         }
       : {
@@ -91,7 +116,9 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
         }
   });
 
-  const { handleSubmit, control } = form;
+  const { handleSubmit, control, watch } = form;
+
+  const selectedMethod = watch("method");
 
   return (
     <FormProvider {...form}>
@@ -100,56 +127,110 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
         <Controller
           name="method"
           control={control}
-          render={({ field }) => (
-            <input type="hidden" {...field} value={OVHConnectionMethod.Certificate} />
-          )}
-        />
-        <Controller
-          name="credentials.privateKey"
-          control={control}
-          shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
-              <FieldLabel htmlFor="private-key">
-                Private Key (PEM)
+              <FieldLabel>
+                Method
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm">
-                    Paste the PEM-encoded private key issued by OVH OKMS, including the
-                    -----BEGIN/END PRIVATE KEY----- markers.
+                    The method you would like to use to connect with{" "}
+                    {APP_CONNECTION_MAP[AppConnection.OVH].name}. This field cannot be changed after
+                    creation.
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
-              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                <SelectTrigger className="w-full" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a method..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(OVHConnectionMethod).map((method) => (
+                    <SelectItem value={method} key={method}>
+                      {getAppConnectionMethodDetails(method).name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FieldError errors={[error]} />
             </Field>
           )}
         />
-        <Controller
-          name="credentials.certificate"
-          control={control}
-          shouldUnregister
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field className="mb-4">
-              <FieldLabel htmlFor="certificate">
-                Certificate (PEM)
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-sm">
-                    Paste the PEM-encoded public certificate issued by OVH OKMS, including the
-                    -----BEGIN/END CERTIFICATE----- markers.
-                  </TooltipContent>
-                </Tooltip>
-              </FieldLabel>
-              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-              <FieldError errors={[error]} />
-            </Field>
-          )}
-        />
+        {selectedMethod === OVHConnectionMethod.Certificate ? (
+          <>
+            <Controller
+              name="credentials.privateKey"
+              control={control}
+              shouldUnregister
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="private-key">
+                    Private Key (PEM)
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        Paste the PEM-encoded private key issued by OVHcloud KMS, including the
+                        -----BEGIN/END PRIVATE KEY----- markers.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+            <Controller
+              name="credentials.certificate"
+              control={control}
+              shouldUnregister
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="certificate">
+                    Certificate (PEM)
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        Paste the PEM-encoded public certificate issued by OVHcloud KMS, including
+                        the -----BEGIN/END CERTIFICATE----- markers.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+          </>
+        ) : (
+          <Controller
+            name="credentials.token"
+            control={control}
+            shouldUnregister
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel htmlFor="token">
+                  Token
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      Paste the OVHcloud access token.
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+        )}
         <Controller
           name="credentials.okmsDomain"
           control={control}
@@ -157,20 +238,20 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
           render={({ field, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel htmlFor="okms-domain">
-                OKMS Domain
+                Rest API endpoint
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm">
-                    The OKMS base URL, e.g. &apos;https://ca-east-bhs.okms.ovh.net&apos;.
+                    The OVHcloud KMS base URL, e.g. &apos;https://eu-west-rbx.okms.ovh.net&apos;.
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
               <Input
                 id="okms-domain"
                 {...field}
-                placeholder="https://ca-east-bhs.okms.ovh.net"
+                placeholder="https://eu-west-rbx.okms.ovh.net"
                 isError={Boolean(error?.message)}
               />
               <FieldError errors={[error]} />
@@ -183,23 +264,25 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
             <Field className="mb-4">
-              <FieldLabel htmlFor="okms-id">OKMS ID</FieldLabel>
+              <FieldLabel htmlFor="okms-id">KMS ID</FieldLabel>
               <Input
                 id="okms-id"
                 {...field}
-                placeholder="your-okms-instance-id"
+                placeholder="your-kms-instance-id"
                 isError={Boolean(error?.message)}
               />
               {!error && (
                 <FieldDescription>
-                  Your OKMS instance identifier from the OVH Control Panel.
+                  Your KMS instance identifier from OVHcloud Control Panel.
                 </FieldDescription>
               )}
               <FieldError errors={[error]} />
             </Field>
           )}
         />
-        <AppConnectionFormFooter submitLabel={isUpdate ? "Update Credentials" : "Connect to OVH"} />
+        <AppConnectionFormFooter
+          submitLabel={isUpdate ? "Update Credentials" : "Connect to OVHcloud"}
+        />
       </form>
     </FormProvider>
   );
