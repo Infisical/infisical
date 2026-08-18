@@ -51,8 +51,6 @@ export const getDefaultOnPremFeatures = () => {
   };
 };
 
-export const setupLicenseRequestWithStore = () => {};
-
 export const getLicenseKeyConfig = () => {
   return {
     isValid: false

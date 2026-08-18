@@ -39,6 +39,7 @@ export type TUpdateUaDTO = {
   lockoutThreshold?: number;
   lockoutDurationSeconds?: number;
   lockoutCounterResetSeconds?: number;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetUaDTO = {
@@ -47,6 +48,7 @@ export type TGetUaDTO = {
 
 export type TRevokeUaDTO = {
   identityId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateUaClientSecretDTO = {

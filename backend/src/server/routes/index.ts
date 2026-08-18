@@ -783,9 +783,9 @@ export const registerRoutes = async (
   // is the single read primitive; falls back to feature defaults until the server is configured.
   const licenseClient = licenseClientFactory({ envConfig, keyStore, isOffline: isOfflineLicense });
 
-  // Created before licenseService so the latter can emit the v2 user-seat meter from its
+  // Created before licenseService so the latter can emit the user-seat meter from its
   // updateSubscriptionOrgMemberCount chokepoint.
-  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, keyStore, envConfig });
+  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, keyStore, licenseClient });
 
   const licenseService = licenseServiceFactory({
     permissionService,
@@ -798,8 +798,8 @@ export const registerRoutes = async (
     usageMeteringService
   });
 
-  // Usage metering: counts the metered features and reports them to the License Server. Inert while
-  // LICENSE_SERVER_V2_MODE is off; active in read-compare and on (emitter no-ops / worker no-ops without a reporter).
+  // Usage metering: counts the metered features and reports them to the License Server. Inert when no
+  // license server is configured (emitter no-ops / worker no-ops without a reporter).
   const usageCounterDAL = usageCounterDALFactory(db);
   const meteredFeatures = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: envConfig.isCloud });
   meteredFeatures.forEach(({ feature, count }) => licenseClient.registerCounter(feature, count));
@@ -821,8 +821,8 @@ export const registerRoutes = async (
     source: usageSource
   });
 
-  // Flag-gated v2 billing surface. Drives the catalog, subscription, and entitlement reads off the
-  // real license server via licenseClient; no new tables.
+  // Billing surface. Drives the catalog, subscription, and entitlement reads off the real license
+  // server via licenseClient; no new tables.
   const licenseV2Service = licenseV2ServiceFactory({
     envConfig,
     orgDAL,
@@ -1889,6 +1889,7 @@ export const registerRoutes = async (
     groupDAL,
     userGroupMembershipDAL,
     userDAL,
+    identityDAL,
     pamFolderNotificationConfigDAL,
     workflowIntegrationDAL,
     slackIntegrationDAL,
@@ -2312,7 +2313,8 @@ export const registerRoutes = async (
     secretImportDAL,
     secretV2BridgeService,
     reminderDAL,
-    reminderService
+    reminderService,
+    keyStore
   });
 
   const secretSharingService = secretSharingServiceFactory({
@@ -2477,6 +2479,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     orgDAL,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2505,6 +2508,7 @@ export const registerRoutes = async (
     gatewayV2DAL,
     gatewayDAL,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     gatewayPoolService,
     gatewayPoolDAL,
@@ -2517,6 +2521,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     permissionService,
     licenseService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2528,6 +2533,7 @@ export const registerRoutes = async (
     identityAliCloudAuthDAL,
     licenseService,
     permissionService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2539,6 +2545,7 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     orgDAL,
     identityAccessTokenService
@@ -2551,6 +2558,7 @@ export const registerRoutes = async (
     identityAwsAuthDAL,
     licenseService,
     permissionService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2562,6 +2570,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     permissionService,
     licenseService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2573,6 +2582,7 @@ export const registerRoutes = async (
     identityOciAuthDAL,
     licenseService,
     permissionService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2600,6 +2610,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2612,6 +2623,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     licenseService,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2624,6 +2636,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     licenseService,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });

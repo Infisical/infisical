@@ -1,7 +1,6 @@
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { NotFoundError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -200,13 +199,6 @@ const BillingV2CommitmentChangeSchema = z.object({
 });
 
 export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
-  // Every route is gated on LICENSE_SERVER_V2_MODE="on"; the billing surface is invisible until full v2 cutover.
-  server.addHook("onRequest", async () => {
-    if (!server.services.licenseV2.isEnabled()) {
-      throw new NotFoundError({ message: "License Server v2 is not enabled" });
-    }
-  });
-
   const buildActor = (permission: FastifyRequest["permission"]) => ({
     type: permission.type,
     id: permission.id,

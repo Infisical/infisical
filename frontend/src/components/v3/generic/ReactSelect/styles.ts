@@ -54,7 +54,7 @@ export const selectStyles: StylesConfig<unknown, boolean, GroupBase<unknown>> = 
   }),
   menuPortal: (provided) => ({
     ...provided,
-    zIndex: 99999,
+    zIndex: 60,
     pointerEvents: "auto"
   })
 };

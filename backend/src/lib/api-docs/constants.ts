@@ -2124,6 +2124,19 @@ export const CERTIFICATES = {
   }
 };
 
+const domainComponentRule = (rule: string) =>
+  `Domain component sequences that are ${rule}. Each entry is one sequence, its components comma-joined most specific first: "corp,example,com" matches DC=corp,DC=example,DC=com. A request matches a sequence only when its components line up position by position, so the same labels in another order do not match.`;
+
+const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.`;
+
+export const CERTIFICATE_POLICIES = {
+  SUBJECT_DOMAIN_COMPONENT_RULE: {
+    allowed: domainComponentRule("permitted"),
+    required: domainComponentRule("required"),
+    denied: DOMAIN_COMPONENT_DENIED_RULE
+  }
+};
+
 export const CERTIFICATE_TEMPLATES = {
   CREATE: {
     caId: "The ID of the certificate authority to associate the template with.",
