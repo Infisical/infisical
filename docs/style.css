@@ -195,6 +195,16 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
   background-color: #3f3f3f;
 }
 
+::selection {
+  background-color: #f7fe62;
+  color: #000000;
+}
+
+.dark ::selection {
+  background-color: #f4f73f;
+  color: #000000;
+}
+
 #sidebar-content .sidebar-title {
   font-weight: inherit;
 }
