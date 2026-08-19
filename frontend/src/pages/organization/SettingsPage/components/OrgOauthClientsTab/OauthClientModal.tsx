@@ -288,11 +288,17 @@ export const OauthClientModal = ({
                   <Field>
                     <FieldLabel>Flow</FieldLabel>
                     <Tabs value={value} onValueChange={onChange}>
-                      <TabsList variant="filled" className="w-full">
-                        <TabsTrigger value={OauthClientFlow.AuthorizationCode}>
+                      <TabsList variant="org" aria-label="Flow">
+                        <TabsTrigger
+                          value={OauthClientFlow.AuthorizationCode}
+                          className="data-[orientation=horizontal]:group-data-[style=underline]/tabs-list:flex-1"
+                        >
                           Authorization code
                         </TabsTrigger>
-                        <TabsTrigger value={OauthClientFlow.TokenExchange}>
+                        <TabsTrigger
+                          value={OauthClientFlow.TokenExchange}
+                          className="data-[orientation=horizontal]:group-data-[style=underline]/tabs-list:flex-1"
+                        >
                           Token exchange
                         </TabsTrigger>
                       </TabsList>
