@@ -11,6 +11,7 @@ export * from "./Card";
 export * from "./Checkbox";
 export * from "./CodeBlock";
 export * from "./ColorPicker";
+export * from "./Combobox";
 export * from "./Command";
 export * from "./CopyButton";
 export * from "./DataGrid";

@@ -1,5 +1,4 @@
-import { RoleOption } from "@app/components/roles";
-import { FilterableSelect } from "@app/components/v3";
+import { Combobox } from "@app/components/v3";
 import { useGetProjectRoles } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -61,7 +60,7 @@ export const getSingleSelectedProjectId = (selectedProjects: { id: string }[]) =
 type Props = {
   inputId?: string;
   value?: TProjectRoleOption | null;
-  onChange: (value: unknown) => void;
+  onChange: (value: TProjectRoleOption) => void;
   isError?: boolean;
   selectedProjects: { id: string }[];
   fixedRoles?: TProjectRoleOption[];
@@ -97,18 +96,34 @@ export const ProjectRoleSelect = ({
       : getBuiltInProjectRoles(productType));
 
   return (
-    <FilterableSelect
-      inputId={inputId}
+    <Combobox
+      id={inputId}
       isDisabled={!fixedRoles && selectedProjects.length === 0}
       isLoading={Boolean(singleSelectedProjectId) && isProjectRolesLoading}
       value={value}
-      onChange={onChange}
+      onValueChange={onChange}
       options={projectRoles}
       getOptionValue={(option) => option.slug}
       getOptionLabel={(option) => option.name}
+      getOptionKeywords={(option) => (option.description ? [option.description] : [])}
       placeholder="Select role..."
+      searchPlaceholder="Search roles..."
+      searchAriaLabel="Search project roles"
+      emptyMessage="No project roles found."
       isError={isError}
-      components={{ Option: RoleOption }}
+      modal
+      renderOption={(option) => (
+        <div className="min-w-0">
+          <p className="truncate">{option.name}</p>
+          {option.description ? (
+            <p className="text-xs leading-4 break-words whitespace-normal text-muted">
+              {option.description}
+            </p>
+          ) : (
+            <p className="text-xs leading-4 text-muted/65">No Description</p>
+          )}
+        </div>
+      )}
     />
   );
 };
