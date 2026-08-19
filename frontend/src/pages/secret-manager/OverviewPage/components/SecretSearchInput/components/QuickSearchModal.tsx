@@ -46,7 +46,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useDebounce } from "@app/hooks";
+import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
   useGetProjectSecretsQuickSearch,
   useSearchSecretsByMetadata
@@ -331,6 +331,13 @@ const Content = ({
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, filterTags, showFilter]);
+
+  // a background refetch can shrink the counts and leave the current offset past the data
+  useResetPageHelper({
+    totalCount: pageableResultCount,
+    offset: (page - 1) * perPage,
+    setPage
+  });
 
   const metadataResultsByEnv = useMemo(() => {
     const query = debouncedSearch.trim().toLowerCase();
