@@ -1264,6 +1264,7 @@
           },
           {
             "group": "Organization",
+            "boost": 0.25,
             "pages": [
               {
                 "group": "Organization Users",
@@ -1372,6 +1373,7 @@
           },
           {
             "group": "Project",
+            "boost": 0.25,
             "pages": [
               {
                 "group": "Projects",
@@ -1534,6 +1536,7 @@
           },
           {
             "group": "Shared",
+            "boost": 0.25,
             "pages": [
               {
                 "group": "App Connections",
@@ -2410,6 +2413,7 @@
           },
           {
             "group": "Identity Auth",
+            "boost": 0.25,
             "pages": [
               {
                 "group": "Token Auth",
@@ -2550,6 +2554,7 @@
           },
           {
             "group": "Secrets Management",
+            "boost": 0.25,
             "pages": [
               {
                 "group": "Environments",
@@ -3659,6 +3664,7 @@
           },
           {
             "group": "Certificate Management",
+            "boost": 0.25,
             "pages": [
               {
                 "group": "Applications",
@@ -4111,6 +4117,7 @@
           },
           {
             "group": "Secret Scanning",
+            "boost": 0.25,
             "pages": [
               {
                 "group": "Data Sources",
@@ -4182,6 +4189,7 @@
           },
           {
             "group": "Secret Sharing",
+            "boost": 0.25,
             "pages": [
               {
                 "group": "Shared Secrets",
@@ -4197,6 +4205,7 @@
           },
           {
             "group": "Infisical KMS",
+            "boost": 0.25,
             "pages": [
               {
                 "group": "Keys",
@@ -4239,6 +4248,7 @@
           },
           {
             "group": "KMIP Servers",
+            "boost": 0.25,
             "pages": [
               "api-reference/endpoints/kmip-servers/list",
               "api-reference/endpoints/kmip-servers/get",
@@ -4252,6 +4262,7 @@
           },
           {
             "group": "Gateways",
+            "boost": 0.25,
             "pages": [
               "api-reference/endpoints/gateways/get",
               "api-reference/endpoints/gateways/create",
@@ -4261,6 +4272,7 @@
           },
           {
             "group": "External Migrations",
+            "boost": 0.25,
             "pages": [
               {
                 "group": "Doppler",
@@ -4274,6 +4286,7 @@
           },
           {
             "group": "Other",
+            "boost": 0.25,
             "pages": [
               {
                 "group": "Admin",
