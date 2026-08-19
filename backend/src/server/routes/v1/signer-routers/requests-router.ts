@@ -43,7 +43,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         limit: z.coerce.number().int().min(1).max(100).default(25)
       })
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.signerPolicy.listRequests({
         signerId: req.params.signerId,
@@ -77,7 +77,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         scope: CodeSigningRequestScopeInputSchema.optional().describe(CODE_SIGNING_SCOPE_API_DESCRIPTION)
       })
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const request = await server.services.signerPolicy.requestToSign({
         signerId: req.params.signerId,
@@ -123,7 +123,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         scope: CodeSigningScopeInputSchema.optional().describe(CODE_SIGNING_SCOPE_API_DESCRIPTION)
       })
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.signerPolicy.preApproveSigning({
         signerId: req.params.signerId,
@@ -163,7 +163,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
       description: "Revoke a pending or active signing request",
       params: SignerRequestParamsSchema
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.signerPolicy.revokeRequest({
         signerId: req.params.signerId,

@@ -39,7 +39,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { data: memberships } = await server.services.membershipUser.listMemberships({
@@ -72,7 +72,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { userId } = req.params;
@@ -112,7 +112,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
         200: z.object({ memberships: ProjectMembershipsSchema.omit({ projectId: true }).array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const usernamesAndEmails = [...req.body.emails, ...req.body.usernames];
@@ -183,7 +183,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
       body: RolesUpdateBodySchema,
       response: { 200: z.object({ roles: ProjectUserMembershipRolesSchema.array() }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { userId } = req.params;
@@ -241,7 +241,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
       }),
       response: { 200: z.object({ memberships: ProjectMembershipsSchema.omit({ projectId: true }).array() }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const memberships = await server.services.projectMembership.deleteProjectMemberships({
@@ -293,7 +293,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
       params: z.object({ userId: z.string().trim().uuid() }),
       response: { 200: z.object({ membership: ProjectMembershipsSchema.omit({ projectId: true }) }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { userId } = req.params;

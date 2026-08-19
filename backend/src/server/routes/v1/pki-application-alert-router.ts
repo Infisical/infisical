@@ -41,7 +41,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiAlertV2.listAlerts({
         actor: req.permission.type,
@@ -74,7 +74,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
       body: BasePkiAlertV2Schema,
       response: { 200: z.object({ alert: PkiAlertV2ResponseSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alert = await server.services.pkiAlertV2.createAlert({
         actor: req.permission.type,
@@ -133,7 +133,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
       body: UpdatePkiAlertV2Schema,
       response: { 200: z.object({ alert: PkiAlertV2ResponseSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alert = await server.services.pkiAlertV2.updateAlert({
         actor: req.permission.type,
@@ -190,7 +190,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
       }),
       response: { 200: z.object({ alert: PkiAlertV2ResponseSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alert = await server.services.pkiAlertV2.deleteAlert({
         actor: req.permission.type,
