@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { LogOutIcon, TrashIcon } from "lucide-react";
 
