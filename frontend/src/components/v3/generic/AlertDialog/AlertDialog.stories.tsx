@@ -178,7 +178,7 @@ export const DiscardChanges: Story = {
     docs: {
       description: {
         story:
-          "Use `DiscardChangesAlertDialog` when dismissing an editor or setup flow would remove unsaved form changes. The owning feature remains responsible for dirty state and reset behavior."
+          "Use `DiscardChangesAlertDialog` with `useDiscardChangesGuard` when discarding unsaved form changes. Overlay editors (Sheet/Dialog) wire dismiss/close to `requestDiscard`. In-page editors also pass `blockNavigation: true` so in-app navigations reuse this dialog and refresh/tab close use the native beforeunload prompt. The owning feature remains responsible for dirty state and reset behavior."
       }
     }
   },

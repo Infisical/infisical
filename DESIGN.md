@@ -400,6 +400,15 @@ Pasteable prompt fragments for AI coding agents producing new UI.
 > sentence naming the consequence, ending with "This cannot be undone."
 > Confirm button is variant `danger`. Cancel button is variant `outline`.
 
+**Unsaved changes:**
+
+> Use `DiscardChangesAlertDialog` with `useDiscardChangesGuard`. Title:
+> "Discard Changes?". Description names what will be lost. Confirm is
+> Discard (`danger`); cancel is Keep Editing. Overlay editors intercept
+> close with `requestDiscard`. In-page editors also pass
+> `blockNavigation: true` so leaving the page is confirmed the same way.
+> Do not use `window.confirm`.
+
 **A documentation link in a section:**
 
 > Use `DocumentationLinkBadge` from `@app/components/v3/platform`. Place it

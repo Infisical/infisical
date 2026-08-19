@@ -1,4 +1,4 @@
-import { cloneElement, Fragment, RefObject, useEffect, useMemo } from "react";
+import { cloneElement, Fragment, RefObject, useEffect, useMemo, useRef } from "react";
 import {
   Control,
   Controller,
@@ -58,6 +58,7 @@ type Props<T extends AnyPermissionSubject> = {
   children?: JSX.Element;
   isDisabled?: boolean;
   isOpen?: boolean;
+  onPolicyAdded?: () => void;
   onShowAccessTree?: (subject: string) => void;
   menuPortalContainerRef?: RefObject<HTMLElement | null>;
   subjectScope: PermissionScope;
@@ -202,6 +203,16 @@ const ActionsMultiSelect = ({
   );
 };
 
+const POLICY_META_KEYS = new Set(["inverted", "conditions"]);
+
+const isPolicyUnconfigured = (rules: unknown[]): boolean =>
+  rules.every((rule) => {
+    if (!rule || typeof rule !== "object") return true;
+    return !Object.entries(rule as Record<string, unknown>).some(
+      ([key, value]) => !POLICY_META_KEYS.has(key) && value === true
+    );
+  });
+
 export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
   subject,
   actions,
@@ -212,16 +223,13 @@ export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
   onRemoveLastRule,
   isDisabled,
   isOpen = false,
+  onPolicyAdded,
   onShowAccessTree,
   menuPortalContainerRef,
   subjectScope
 }: Props<T>) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { control, watch, trigger } = useFormContext<any>();
-
-  useEffect(() => {
-    trigger("permissions");
-  }, []);
+  const { control, watch } = useFormContext<any>();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { fields, remove, insert } = useFieldArray<any>({
     control,
@@ -231,6 +239,19 @@ export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
   // scott: this is a hacky work-around to resolve bug of fields not updating UI when removed
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const watchFields = useWatch({ control, name: `permissions.${subject}` as any }) as unknown[];
+  const wasPresentRef = useRef(false);
+  const onPolicyAddedRef = useRef(onPolicyAdded);
+  onPolicyAddedRef.current = onPolicyAdded;
+
+  useEffect(() => {
+    const isPresent = Array.isArray(watchFields) && watchFields.length > 0;
+    const justAdded = isPresent && !wasPresentRef.current;
+    wasPresentRef.current = isPresent;
+
+    if (!justAdded || !onPolicyAddedRef.current || !isPolicyUnconfigured(watchFields)) return;
+
+    onPolicyAddedRef.current();
+  }, [watchFields]);
 
   if (!watchFields || !Array.isArray(watchFields) || watchFields.length === 0) return null;
 

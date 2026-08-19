@@ -1,5 +1,6 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
@@ -57,6 +58,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -121,7 +123,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <Controller
                   control={control}
                   name="name"
-                  render={({ field, fieldState: { error } }) => (
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                     <Field data-invalid={Boolean(error)}>
                       <FieldLabel htmlFor="create-project-role-name">Name</FieldLabel>
                       <Input
@@ -129,6 +131,12 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                         id="create-project-role-name"
                         placeholder="Billing Team"
                         isError={Boolean(error)}
+                        onChange={(e) => {
+                          onChange(e);
+                          setValue("slug", slugify(e.target.value, { lowercase: true }), {
+                            shouldValidate: true
+                          });
+                        }}
                       />
                       <FieldError>{error?.message}</FieldError>
                     </Field>

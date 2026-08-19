@@ -1,5 +1,6 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
@@ -54,12 +55,13 @@ const Content = ({ role, onClose }: ContentProps) => {
   const {
     control,
     handleSubmit,
+    setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
     defaultValues: {
       name: `${role.name} Duplicate`,
       description: "",
-      slug: ""
+      slug: slugify(`${role.name} Duplicate`, { lowercase: true })
     },
     resolver: zodResolver(schema)
   });
@@ -135,7 +137,7 @@ const Content = ({ role, onClose }: ContentProps) => {
             <Controller
               control={control}
               name="name"
-              render={({ field, fieldState: { error } }) => (
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                 <Field data-invalid={Boolean(error)}>
                   <FieldLabel htmlFor="duplicate-project-role-name">Name</FieldLabel>
                   <Input
@@ -143,6 +145,12 @@ const Content = ({ role, onClose }: ContentProps) => {
                     id="duplicate-project-role-name"
                     placeholder="Billing Team"
                     isError={Boolean(error)}
+                    onChange={(e) => {
+                      onChange(e);
+                      setValue("slug", slugify(e.target.value, { lowercase: true }), {
+                        shouldValidate: true
+                      });
+                    }}
                   />
                   <FieldError>{error?.message}</FieldError>
                 </Field>

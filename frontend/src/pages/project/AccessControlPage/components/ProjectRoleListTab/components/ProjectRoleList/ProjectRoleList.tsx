@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
@@ -46,7 +46,8 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  type TableSortDirection
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -106,10 +107,9 @@ export const ProjectRoleList = () => {
     handlePopUpClose("deleteRole");
   };
 
+  const [activeSort, setActiveSort] = useState<RolesOrderBy | null>(RolesOrderBy.Name);
   const {
     orderDirection,
-    toggleOrderDirection,
-    orderBy,
     setOrderDirection,
     setOrderBy,
     search,
@@ -141,9 +141,11 @@ export const ProjectRoleList = () => {
           );
         })
         .sort((a, b) => {
+          if (!activeSort) return 0;
+
           const [roleOne, roleTwo] = orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
 
-          switch (orderBy) {
+          switch (activeSort) {
             case RolesOrderBy.Slug:
               return roleOne.slug.toLowerCase().localeCompare(roleTwo.slug.toLowerCase());
             case RolesOrderBy.Name:
@@ -151,24 +153,23 @@ export const ProjectRoleList = () => {
               return roleOne.name.toLowerCase().localeCompare(roleTwo.name.toLowerCase());
           }
         }) ?? [],
-    [roles, orderDirection, search, orderBy]
+    [activeSort, roles, orderDirection, search]
   );
 
-  const handleSort = (column: RolesOrderBy) => {
-    if (column === orderBy) {
-      toggleOrderDirection();
+  const handleSort = (column: RolesOrderBy, direction: TableSortDirection) => {
+    if (direction === "none") {
+      setActiveSort(null);
       return;
     }
 
+    setActiveSort(column);
     setOrderBy(column);
-    setOrderDirection(OrderByDirection.ASC);
+    setOrderDirection(direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC);
   };
 
-  const getAriaSort = (column: RolesOrderBy) => {
-    if (orderBy !== column) return "none" as const;
-    return orderDirection === OrderByDirection.ASC
-      ? ("ascending" as const)
-      : ("descending" as const);
+  const getSortDirection = (column: RolesOrderBy): TableSortDirection => {
+    if (activeSort !== column) return "none";
+    return orderDirection === OrderByDirection.ASC ? "ascending" : "descending";
   };
 
   const customRoles = filteredRoles.filter((role) => isCustomProjectRole(role.slug));
@@ -201,41 +202,37 @@ export const ProjectRoleList = () => {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-1/2" aria-sort={getAriaSort(RolesOrderBy.Name)}>
-            <button
-              type="button"
-              className="flex w-full cursor-pointer items-center rounded-sm text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              onClick={() => handleSort(RolesOrderBy.Name)}
-            >
-              Name
-              <ChevronDownIcon
-                className={twMerge(
-                  "ml-1 size-4 transition-transform",
-                  orderDirection === OrderByDirection.DESC &&
-                    orderBy === RolesOrderBy.Name &&
-                    "rotate-180",
-                  orderBy !== RolesOrderBy.Name && "opacity-30"
-                )}
-              />
-            </button>
+          <TableHead
+            className="w-1/2"
+            sortDirection={getSortDirection(RolesOrderBy.Name)}
+            onSortChange={(direction) => handleSort(RolesOrderBy.Name, direction)}
+          >
+            Name
+            <ChevronDownIcon
+              className={twMerge(
+                "transition-transform",
+                orderDirection === OrderByDirection.DESC &&
+                  activeSort === RolesOrderBy.Name &&
+                  "rotate-180",
+                activeSort !== RolesOrderBy.Name && "opacity-30"
+              )}
+            />
           </TableHead>
-          <TableHead className="w-1/2" aria-sort={getAriaSort(RolesOrderBy.Slug)}>
-            <button
-              type="button"
-              className="flex w-full cursor-pointer items-center rounded-sm text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              onClick={() => handleSort(RolesOrderBy.Slug)}
-            >
-              Slug
-              <ChevronDownIcon
-                className={twMerge(
-                  "ml-1 size-4 transition-transform",
-                  orderDirection === OrderByDirection.DESC &&
-                    orderBy === RolesOrderBy.Slug &&
-                    "rotate-180",
-                  orderBy !== RolesOrderBy.Slug && "opacity-30"
-                )}
-              />
-            </button>
+          <TableHead
+            className="w-1/2"
+            sortDirection={getSortDirection(RolesOrderBy.Slug)}
+            onSortChange={(direction) => handleSort(RolesOrderBy.Slug, direction)}
+          >
+            Slug
+            <ChevronDownIcon
+              className={twMerge(
+                "transition-transform",
+                orderDirection === OrderByDirection.DESC &&
+                  activeSort === RolesOrderBy.Slug &&
+                  "rotate-180",
+                activeSort !== RolesOrderBy.Slug && "opacity-30"
+              )}
+            />
           </TableHead>
           <TableHead className="w-5">
             <span className="sr-only">Actions</span>
