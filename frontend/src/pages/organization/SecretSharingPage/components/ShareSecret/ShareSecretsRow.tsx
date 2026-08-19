@@ -18,6 +18,18 @@ import {
 import { TSharedSecret } from "@app/hooks/api/secretSharing";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+const getStatusLabel = ({
+  isTimeExpired,
+  isViewsExhausted
+}: {
+  isTimeExpired: boolean;
+  isViewsExhausted: boolean;
+}) => {
+  if (isViewsExhausted) return "Views Used";
+  if (isTimeExpired) return "Expired";
+  return "Active";
+};
+
 export const ShareSecretsRow = ({
   row,
   handlePopUpOpen
@@ -38,14 +50,9 @@ export const ShareSecretsRow = ({
     ? format(new Date(row.lastViewedAt), "MMM d, yyyy h:mm a")
     : undefined;
 
-  let isExpired = false;
-  if (row.expiresAfterViews !== null && row.expiresAfterViews <= 0) {
-    isExpired = true;
-  }
-
-  if (row.expiresAt !== null && new Date(row.expiresAt) < new Date()) {
-    isExpired = true;
-  }
+  const isViewsExhausted = row.expiresAfterViews !== null && row.expiresAfterViews <= 0;
+  const isTimeExpired = row.expiresAt !== null && new Date(row.expiresAt) < new Date();
+  const isExpired = isViewsExhausted || isTimeExpired;
 
   return (
     <TableRow key={row.id}>
@@ -77,7 +84,7 @@ export const ShareSecretsRow = ({
       <TableCell>
         <Badge variant={isExpired ? "danger" : "success"}>
           {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
-          {isExpired ? "Expired" : "Active"}
+          {getStatusLabel({ isTimeExpired, isViewsExhausted })}
         </Badge>
       </TableCell>
       <TableCell>
@@ -95,13 +102,20 @@ export const ShareSecretsRow = ({
             {!isExpired && (
               <DropdownMenuItem
                 onClick={async () => {
-                  await navigator.clipboard.writeText(
-                    `${window.location.origin}/shared/secret/${row.id}`
-                  );
-                  createNotification({
-                    text: "Shared secret link copied to clipboard.",
-                    type: "success"
-                  });
+                  try {
+                    await navigator.clipboard.writeText(
+                      `${window.location.origin}/shared/secret/${row.id}`
+                    );
+                    createNotification({
+                      text: "Shared secret link copied to clipboard.",
+                      type: "success"
+                    });
+                  } catch {
+                    createNotification({
+                      text: "Could not copy the link. Your browser blocked clipboard access.",
+                      type: "error"
+                    });
+                  }
                 }}
               >
                 <Copy />

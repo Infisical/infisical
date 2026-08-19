@@ -35,7 +35,7 @@ type Props = {
 export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const { isPending, data } = useGetSharedSecrets({
+  const { isPending, isError, data } = useGetSharedSecrets({
     offset: (page - 1) * perPage,
     limit: perPage
   });
@@ -43,7 +43,7 @@ export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
 
   return (
     <div>
-      {(isPending || hasSecrets) && (
+      {(isPending || hasSecrets) && !isError && (
         <Table>
           <TableHeader>
             <TableRow>
@@ -76,7 +76,7 @@ export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
           </TableBody>
         </Table>
       )}
-      {hasSecrets && data.totalCount >= perPage && data.totalCount !== undefined && (
+      {hasSecrets && data.totalCount > perPage && (
         <Pagination
           count={data.totalCount}
           page={page}
@@ -88,7 +88,15 @@ export const ShareSecretsTable = ({ handlePopUpOpen }: Props) => {
           }}
         />
       )}
-      {!isPending && !data?.secrets?.length && (
+      {!isPending && isError && (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>Could Not Load Shared Secrets</EmptyTitle>
+            <EmptyDescription>Refresh the page to try again.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
+      {!isPending && !isError && !data?.secrets?.length && (
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>No Shared Secrets</EmptyTitle>

@@ -98,12 +98,18 @@ export const RequestSecretForm = () => {
     setLinkExpiresAt(formatExpiry(expiresIn));
     reset();
 
-    await navigator.clipboard.writeText(link.toString());
-
-    createNotification({
-      text: "Secret request link copied to clipboard.",
-      type: "success"
-    });
+    try {
+      await navigator.clipboard.writeText(link.toString());
+      createNotification({
+        text: "Secret request link copied to clipboard.",
+        type: "success"
+      });
+    } catch {
+      createNotification({
+        text: "Request link created. Copy it below, your browser blocked clipboard access.",
+        type: "info"
+      });
+    }
   };
 
   if (secretLink) {

@@ -16,6 +16,7 @@ const HIDDEN_SECRET = "••••••••••••••••";
 
 export const SecretContainer = ({ secret, brandingTheme }: Props) => {
   const [isVisible, setIsVisible] = useToggle(false);
+  const [hasCopyFailed, setHasCopyFailed] = useToggle(false);
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
     initialState: "Copy to clipboard"
   });
@@ -91,8 +92,12 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
           size="lg"
           isFullWidth
           onClick={async () => {
-            await navigator.clipboard.writeText(secret.secretValue);
-            setCopyTextSecret("Copied");
+            try {
+              await navigator.clipboard.writeText(secret.secretValue);
+              setCopyTextSecret("Copied");
+            } catch {
+              setHasCopyFailed.on();
+            }
           }}
           style={primaryButtonStyle}
         >
@@ -100,6 +105,12 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
           {isCopyingSecret ? "Copied" : "Copy Value"}
         </Button>
       </div>
+
+      {hasCopyFailed && (
+        <p className="mt-2 text-2xs text-danger">
+          Your browser blocked clipboard access. Reveal the value and copy it manually.
+        </p>
+      )}
 
       <SecretShareInfo secret={secret} brandingTheme={brandingTheme} />
 

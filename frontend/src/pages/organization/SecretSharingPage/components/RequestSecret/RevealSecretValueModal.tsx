@@ -1,5 +1,6 @@
 import { Check, Copy } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Dialog,
@@ -43,8 +44,15 @@ const Content = ({ secretValue, onClose }: ContentProps) => {
         <Button
           variant="project"
           onClick={async () => {
-            await navigator.clipboard.writeText(secretValue);
-            setCopyText("Copied");
+            try {
+              await navigator.clipboard.writeText(secretValue);
+              setCopyText("Copied");
+            } catch {
+              createNotification({
+                text: "Could not copy the value. Your browser blocked clipboard access.",
+                type: "error"
+              });
+            }
           }}
         >
           {isSecretValueCopied ? <Check /> : <Copy />}

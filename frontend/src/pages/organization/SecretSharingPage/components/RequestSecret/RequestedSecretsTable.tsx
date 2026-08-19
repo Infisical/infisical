@@ -29,7 +29,7 @@ type Props = {
 export const RequestedSecretsTable = ({ handlePopUpOpen }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const { isPending, data } = useGetSecretRequests({
+  const { isPending, isError, data } = useGetSecretRequests({
     offset: (page - 1) * perPage,
     limit: perPage
   });
@@ -38,7 +38,7 @@ export const RequestedSecretsTable = ({ handlePopUpOpen }: Props) => {
 
   return (
     <div>
-      {(isPending || hasSecrets) && (
+      {(isPending || hasSecrets) && !isError && (
         <Table>
           <TableHeader>
             <TableRow>
@@ -70,7 +70,7 @@ export const RequestedSecretsTable = ({ handlePopUpOpen }: Props) => {
           </TableBody>
         </Table>
       )}
-      {hasSecrets && data.totalCount >= perPage && data.totalCount !== undefined && (
+      {hasSecrets && data.totalCount > perPage && (
         <Pagination
           count={data.totalCount}
           page={page}
@@ -82,7 +82,15 @@ export const RequestedSecretsTable = ({ handlePopUpOpen }: Props) => {
           }}
         />
       )}
-      {!isPending && !data?.secrets?.length && (
+      {!isPending && isError && (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>Could Not Load Secret Requests</EmptyTitle>
+            <EmptyDescription>Refresh the page to try again.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
+      {!isPending && !isError && !data?.secrets?.length && (
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>No Secret Requests</EmptyTitle>

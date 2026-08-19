@@ -250,12 +250,18 @@ export const ShareSecretForm = ({
         views: shouldLimitView ? viewLimit : "Unlimited"
       });
 
-      await navigator.clipboard.writeText(link.toString());
-
-      createNotification({
-        text: "Shared secret link copied to clipboard.",
-        type: "success"
-      });
+      try {
+        await navigator.clipboard.writeText(link.toString());
+        createNotification({
+          text: "Shared secret link copied to clipboard.",
+          type: "success"
+        });
+      } catch {
+        createNotification({
+          text: "Secret link created. Copy it below, your browser blocked clipboard access.",
+          type: "info"
+        });
+      }
     }
 
     reset();
