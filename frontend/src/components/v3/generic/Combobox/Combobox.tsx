@@ -392,8 +392,9 @@ const MultipleCombobox = <TOption,>({
 }: ComboboxMultipleProps<TOption>) => {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const chipsRef = React.useRef<HTMLDivElement | null>(null);
-  const { scrollEdges: verticalScrollEdges, setViewportRef: setVerticalViewportRef } =
-    useScrollEdges<HTMLDivElement>("vertical");
+  const { scrollEdges, setViewportRef } = useScrollEdges<HTMLDivElement>(
+    singleLine ? "horizontal" : "vertical"
+  );
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => [...value], [value]);
@@ -447,26 +448,23 @@ const MultipleCombobox = <TOption,>({
         data-disabled={isDisabled ? "" : undefined}
         data-invalid={isError}
         className={cn(
-          "flex min-h-9 w-full items-center gap-1 rounded-md border border-border bg-transparent text-sm text-foreground transition-[color,box-shadow] outline-none",
-          singleLine ? "relative isolate overflow-hidden" : "",
+          "flex min-h-9 w-full gap-1 rounded-md border border-border bg-transparent text-sm text-foreground transition-[color,box-shadow] outline-none",
+          singleLine ? "items-center" : "items-start",
           "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 hover:border-foreground/20",
           "data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
           value.length > 0 ? "p-1" : "py-1 pr-2 pl-2.5",
-          singleLine && value.length > 0 && "pr-0",
           className
         )}
       >
         <div
           className={cn(
-            singleLine &&
-              "relative z-0 flex thin-scrollbar min-w-0 flex-1 items-center gap-1 overflow-x-auto",
-            !singleLine &&
-              "scroll-edge-fade flex max-h-24 thin-scrollbar min-w-0 flex-1 flex-wrap items-center gap-1 overflow-y-auto"
+            "scroll-edge-fade flex thin-scrollbar min-w-0 flex-1 items-center gap-1",
+            singleLine ? "overflow-x-auto" : "max-h-24 flex-wrap overflow-y-auto"
           )}
-          ref={singleLine ? undefined : setVerticalViewportRef}
-          data-scroll-edge-axis={singleLine ? undefined : "vertical"}
-          data-scrollable-start={singleLine ? undefined : verticalScrollEdges.start}
-          data-scrollable-end={singleLine ? undefined : verticalScrollEdges.end}
+          ref={setViewportRef}
+          data-scroll-edge-axis={singleLine ? "horizontal" : "vertical"}
+          data-scrollable-start={scrollEdges.start}
+          data-scrollable-end={scrollEdges.end}
         >
           <ComboboxPrimitive.Value>
             {(selectedValue: TOption[]) => (
@@ -505,28 +503,29 @@ const MultipleCombobox = <TOption,>({
             className="h-6 min-w-24 flex-1 bg-transparent px-0.5 text-sm text-foreground outline-none placeholder:text-muted"
             {...inputProps}
           />
-          {isLoading && (
-            <Loader2Icon className="size-4 shrink-0 animate-spin text-accent" aria-hidden="true" />
-          )}
         </div>
-        {singleLine && value.length > 0 && (
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 right-0 z-40 w-14 bg-gradient-to-r from-transparent via-background/90 to-background"
-          />
-        )}
         {value.length > 0 && (
           <ComboboxPrimitive.Clear
             aria-label={clearAriaLabel}
             tabIndex={0}
-            className={cn(
-              "flex size-6 shrink-0 items-center justify-center rounded-md text-muted outline-none hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-              singleLine && "sticky right-0 z-50 bg-background/80"
-            )}
+            className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted outline-none hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
           >
             <XIcon className="size-3.5" />
           </ComboboxPrimitive.Clear>
         )}
+        <span
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none flex h-6 shrink-0 items-center justify-center text-accent",
+            value.length > 0 && "mr-1"
+          )}
+        >
+          {isLoading ? (
+            <Loader2Icon className="size-4 animate-spin" />
+          ) : (
+            <ChevronDownIcon className="size-4" />
+          )}
+        </span>
       </ComboboxPrimitive.Chips>
       <ComboboxPrimitive.Status className="sr-only">
         {isLoading ? loadingMessage : null}
