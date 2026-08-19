@@ -456,6 +456,12 @@ import {
   TValidateTriggerDevConnectionCredentialsSchema
 } from "./trigger-dev";
 import {
+  TUltraDNSConnection,
+  TUltraDNSConnectionConfig,
+  TUltraDNSConnectionInput,
+  TValidateUltraDNSConnectionCredentialsSchema
+} from "./ultradns/ultradns-connection-types";
+import {
   TValidateVenafiConnectionCredentialsSchema,
   TVenafiConnection,
   TVenafiConnectionConfig,
@@ -531,6 +537,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TCloudflareConnection
   | TBitbucketConnection
   | TDNSMadeEasyConnection
+  | TUltraDNSConnection
   | TAzureDnsConnection
   | TZabbixConnection
   | TRailwayConnection
@@ -625,6 +632,7 @@ export type TAppConnectionInput = { id: string } & (
   | TCloudflareConnectionInput
   | TBitbucketConnectionInput
   | TDNSMadeEasyConnectionInput
+  | TUltraDNSConnectionInput
   | TAzureDnsConnectionInput
   | TZabbixConnectionInput
   | TRailwayConnectionInput
@@ -751,6 +759,7 @@ export type TAppConnectionConfig =
   | TCloudflareConnectionConfig
   | TBitbucketConnectionConfig
   | TDNSMadeEasyConnectionConfig
+  | TUltraDNSConnectionConfig
   | TAzureDnsConnectionConfig
   | TZabbixConnectionConfig
   | TRailwayConnectionConfig
@@ -836,6 +845,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateCloudflareConnectionCredentialsSchema
   | TValidateBitbucketConnectionCredentialsSchema
   | TValidateDNSMadeEasyConnectionCredentialsSchema
+  | TValidateUltraDNSConnectionCredentialsSchema
   | TValidateAzureDnsConnectionCredentialsSchema
   | TValidateZabbixConnectionCredentialsSchema
   | TValidateRailwayConnectionCredentialsSchema

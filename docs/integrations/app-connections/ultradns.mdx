@@ -1,0 +1,57 @@
+---
+title: "UltraDNS"
+description: "Learn how to configure an UltraDNS Connection for Infisical."
+---
+
+Infisical connects to UltraDNS with the username and password of an UltraDNS user, and uses that access to manage the DNS records in your zones.
+
+<Note>
+  The UltraDNS REST API does not support accounts with Two Factor Mobile Authentication enabled. Use a dedicated
+  API user, or disable Two Factor Mobile Authentication for the user you connect with.
+</Note>
+
+## Prepare an UltraDNS User
+
+<Steps>
+  <Step title="Create a user for Infisical">
+    Sign in to the [UltraDNS Portal](https://portal.ultradns.com) and go to **Account → Users**, then add a user
+    that Infisical will authenticate as. A dedicated user keeps the access auditable and lets you revoke it without
+    affecting anyone else.
+  </Step>
+  <Step title="Grant zone and record permissions">
+    Assign the user a role that can read zones and read, create, update, and delete resource records in the zones you
+    want Infisical to manage. For ACME certificate issuance, Infisical writes a TXT record at
+    `_acme-challenge.<your-domain>` and removes it once the certificate authority has validated the domain.
+  </Step>
+  <Step title="Confirm REST API access">
+    Verify the user can sign in, and that Two Factor Mobile Authentication is not enabled for it. Only zones of type
+    **Primary** are available to Infisical, because secondary zones cannot accept record changes.
+  </Step>
+</Steps>
+
+## Setup UltraDNS Connection in Infisical
+
+<Steps>
+  <Step title="Navigate to App Connections">
+    Navigate to the **Integrations** tab in the desired project, then select **App Connections**.
+    ![App Connections Tab](/images/app-connections/general/add-connection.png)
+  </Step>
+  <Step title="Add Connection">
+    Select the **UltraDNS Connection** option from the connection options modal.
+  </Step>
+  <Step title="Input Credentials">
+    Enter the username and password of your UltraDNS user, choose the **Environment** to connect to, and click
+    **Connect to UltraDNS**. Infisical verifies the credentials against the UltraDNS API before saving the connection.
+
+    Choose **Production** for `api.ultradns.com` and **Test** for the UltraDNS customer test environment at
+    `test-api.ultradns.com`. The two environments have separate accounts and separate zones, so a connection is only
+    valid against the one its credentials belong to.
+
+    <Warning>
+      Keep these credentials secure and do not share them. Anyone with access to them can manage your UltraDNS records.
+    </Warning>
+  </Step>
+  <Step title="Connection Created">
+    Your **UltraDNS Connection** is now available for use in your Infisical projects.
+  </Step>
+</Steps>

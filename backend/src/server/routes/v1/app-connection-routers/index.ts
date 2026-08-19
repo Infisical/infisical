@@ -77,6 +77,7 @@ import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
 import { registerTravisCIConnectionRouter } from "./travis-ci-connection-router";
 import { registerTriggerDevConnectionRouter } from "./trigger-dev-connection-router";
+import { registerUltraDNSConnectionRouter } from "./ultradns-connection-router";
 import { registerVenafiConnectionRouter } from "./venafi-connection-router";
 import { registerVenafiTppConnectionRouter } from "./venafi-tpp-connection-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
@@ -123,6 +124,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.GitLab]: registerGitLabConnectionRouter,
     [AppConnection.Cloudflare]: registerCloudflareConnectionRouter,
     [AppConnection.DNSMadeEasy]: registerDNSMadeEasyConnectionRouter,
+    [AppConnection.UltraDNS]: registerUltraDNSConnectionRouter,
     [AppConnection.Bitbucket]: registerBitbucketConnectionRouter,
     [AppConnection.Zabbix]: registerZabbixConnectionRouter,
     [AppConnection.Railway]: registerRailwayConnectionRouter,

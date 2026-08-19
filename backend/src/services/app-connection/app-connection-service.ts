@@ -189,6 +189,8 @@ import { ValidateTravisCIConnectionCredentialsSchema } from "./travis-ci";
 import { travisCIConnectionService } from "./travis-ci/travis-ci-connection-service";
 import { ValidateTriggerDevConnectionCredentialsSchema } from "./trigger-dev";
 import { triggerDevConnectionService } from "./trigger-dev/trigger-dev-connection-service";
+import { ValidateUltraDNSConnectionCredentialsSchema } from "./ultradns/ultradns-connection-schema";
+import { ultraDNSConnectionService } from "./ultradns/ultradns-connection-service";
 import { ValidateVenafiConnectionCredentialsSchema } from "./venafi/venafi-connection-schema";
 import { venafiConnectionService } from "./venafi/venafi-connection-service";
 import { ValidateVenafiTppConnectionCredentialsSchema } from "./venafi-tpp/venafi-tpp-connection-schemas";
@@ -259,6 +261,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.GitLab]: ValidateGitLabConnectionCredentialsSchema,
   [AppConnection.Cloudflare]: ValidateCloudflareConnectionCredentialsSchema,
   [AppConnection.DNSMadeEasy]: ValidateDNSMadeEasyConnectionCredentialsSchema,
+  [AppConnection.UltraDNS]: ValidateUltraDNSConnectionCredentialsSchema,
   [AppConnection.AzureDNS]: ValidateAzureDnsConnectionCredentialsSchema,
   [AppConnection.Zabbix]: ValidateZabbixConnectionCredentialsSchema,
   [AppConnection.Railway]: ValidateRailwayConnectionCredentialsSchema,
@@ -1382,6 +1385,7 @@ export const appConnectionServiceFactory = ({
     azureAdcs: azureAdcsConnectionService(connectAppConnectionById),
     adcs: adcsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     dnsMadeEasy: dnsMadeEasyConnectionService(connectAppConnectionById),
+    ultraDNS: ultraDNSConnectionService(connectAppConnectionById),
     azureDns: azureDnsConnectionService(connectAppConnectionById),
     zabbix: zabbixConnectionService(connectAppConnectionById),
     railway: railwayConnectionService(connectAppConnectionById),

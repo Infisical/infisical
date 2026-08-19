@@ -287,6 +287,11 @@ import {
   TriggerDevConnectionMethod,
   validateTriggerDevConnectionCredentials
 } from "./trigger-dev";
+import { UltraDNSConnectionMethod } from "./ultradns/ultradns-connection-enum";
+import {
+  getUltraDNSConnectionListItem,
+  validateUltraDNSConnectionCredentials
+} from "./ultradns/ultradns-connection-fns";
 import { getVenafiConnectionListItem, validateVenafiConnectionCredentials, VenafiConnectionMethod } from "./venafi";
 import {
   getVenafiTppConnectionListItem,
@@ -325,6 +330,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.AzureKeyVault,
   AppConnection.Chef,
   AppConnection.DNSMadeEasy,
+  AppConnection.UltraDNS,
   AppConnection.AzureDNS,
   AppConnection.Venafi,
   AppConnection.VenafiTpp,
@@ -378,6 +384,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getGitLabConnectionListItem(),
     getCloudflareConnectionListItem(),
     getDNSMadeEasyConnectionListItem(),
+    getUltraDNSConnectionListItem(),
     getAzureDnsConnectionListItem(),
     getZabbixConnectionListItem(),
     getRailwayConnectionListItem(),
@@ -621,6 +628,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DNSMadeEasy]: validateDNSMadeEasyConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.UltraDNS]: validateUltraDNSConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureDNS]: validateAzureDnsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Zabbix]: validateZabbixConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Railway]: validateRailwayConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -742,6 +750,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case MsSqlConnectionMethod.UsernameAndPassword:
     case MySqlConnectionMethod.UsernameAndPassword:
     case OracleDBConnectionMethod.UsernameAndPassword:
+    case UltraDNSConnectionMethod.UsernamePassword:
     case AzureADCSConnectionMethod.UsernamePassword:
     case ADCSConnectionMethod.UsernamePassword:
     case WinRMConnectionMethod.UsernamePassword:
@@ -899,6 +908,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.GitLab]: platformManagedCredentialsNotSupported,
   [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported,
   [AppConnection.DNSMadeEasy]: platformManagedCredentialsNotSupported,
+  [AppConnection.UltraDNS]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureDNS]: platformManagedCredentialsNotSupported,
   [AppConnection.Zabbix]: platformManagedCredentialsNotSupported,
   [AppConnection.Railway]: platformManagedCredentialsNotSupported,
