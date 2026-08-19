@@ -925,7 +925,8 @@
                     "pages": [
                       "documentation/platform/pki/concepts/certificate-lifecycle",
                       "documentation/platform/pki/concepts/certificate-components",
-                      "documentation/platform/pki/concepts/access-control"
+                      "documentation/platform/pki/concepts/access-control",
+                      "documentation/platform/pki/concepts/reference-architecture"
                     ]
                   },
                   {
