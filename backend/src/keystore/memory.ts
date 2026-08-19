@@ -163,6 +163,7 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       return listStore[key]?.length ?? 0;
     },
     streamAdd: async () => null,
+    streamLength: async () => 0,
     streamRange: async () => [],
     streamTrim: async () => 0,
     streamCollect: async () => ({ entries: [], lastId: null })
