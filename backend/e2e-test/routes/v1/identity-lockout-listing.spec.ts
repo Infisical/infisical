@@ -1,6 +1,10 @@
 import { IdentityAuthMethod, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 
+type TIdentityMembershipsResponse = {
+  identityMemberships: { identity: { id: string; activeLockoutAuthMethods: string[] } }[];
+};
+
 describe("Project identity listing lockout indicators", async () => {
   test("reports an active universal auth lockout and hides the client id", async () => {
     let identityId: string | undefined;
@@ -62,10 +66,11 @@ describe("Project identity listing lockout indicators", async () => {
       });
       expect(listRes.statusCode).toBe(200);
 
-      const row = listRes.json().identityMemberships.find((m) => m.identity.id === identity.id);
+      const { identityMemberships } = JSON.parse(listRes.payload) as TIdentityMembershipsResponse;
+      const row = identityMemberships.find((m) => m.identity.id === identity.id);
       expect(row).toBeDefined();
-      expect(row.identity.activeLockoutAuthMethods).toContain(IdentityAuthMethod.UNIVERSAL_AUTH);
-      expect(row.identity).not.toHaveProperty("universalAuthClientId");
+      expect(row?.identity.activeLockoutAuthMethods).toContain(IdentityAuthMethod.UNIVERSAL_AUTH);
+      expect(row?.identity).not.toHaveProperty("universalAuthClientId");
     } catch (err) {
       failure = err instanceof Error ? err : new Error(String(err));
     } finally {
@@ -95,7 +100,8 @@ describe("Project identity listing lockout indicators", async () => {
       headers: { authorization: `Bearer ${jwtAuthToken}` }
     });
     expect(listRes.statusCode).toBe(200);
-    listRes.json().identityMemberships.forEach((m) => {
+    const { identityMemberships } = JSON.parse(listRes.payload) as TIdentityMembershipsResponse;
+    identityMemberships.forEach((m) => {
       expect(m.identity.activeLockoutAuthMethods).toEqual([]);
     });
   });
