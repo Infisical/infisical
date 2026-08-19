@@ -358,6 +358,27 @@ describe("verifyClientCertificateChain", () => {
 
   const clientAuthEku = (usages: string[]) => new x509.ExtendedKeyUsageExtension(usages, true);
 
+  // A cross-signed CA: the same subject and key certified by more than one parent, so the leaf
+  // below it verifies against every copy and each copy opens a different path to the anchor.
+  const makeCrossSigned = async (
+    name: string,
+    keys: CryptoKeyPair,
+    issuer: TIssued,
+    serialNumber: string,
+    extraExtensions: x509.Extension[] = []
+  ) =>
+    x509.X509CertificateGenerator.create({
+      serialNumber,
+      subject: `CN=${name}`,
+      issuer: issuer.cert.subject,
+      notBefore: NOT_BEFORE,
+      notAfter: FAR_FUTURE,
+      signingKey: issuer.keys.privateKey,
+      publicKey: keys.publicKey,
+      signingAlgorithm: alg,
+      extensions: [new x509.BasicConstraintsExtension(true, undefined, true), ...extraExtensions]
+    });
+
   const makeLeaf = async (
     name: string,
     issuer: TIssued,
@@ -722,21 +743,12 @@ describe("verifyClientCertificateChain", () => {
     // Two CAs share a subject and key, so both verify as the leaf's issuer; only one permits
     // client authentication. The EKU check must not strand the chain on the wrong candidate.
     const usableKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const makeSibling = async (serialNumber: string, usages: string[]) =>
-      x509.X509CertificateGenerator.create({
-        serialNumber,
-        subject: "CN=Shared Subject CA",
-        issuer: root.cert.subject,
-        notBefore: NOT_BEFORE,
-        notAfter: FAR_FUTURE,
-        signingKey: root.keys.privateKey,
-        publicKey: usableKeys.publicKey,
-        signingAlgorithm: alg,
-        extensions: [new x509.BasicConstraintsExtension(true, undefined, true), clientAuthEku(usages)]
-      });
-
-    const serverOnly = await makeSibling("50", ["1.3.6.1.5.5.7.3.1"]);
-    const clientCapable = await makeSibling("51", ["1.3.6.1.5.5.7.3.2"]);
+    const serverOnly = await makeCrossSigned("Shared Subject CA", usableKeys, root, "50", [
+      clientAuthEku(["1.3.6.1.5.5.7.3.1"])
+    ]);
+    const clientCapable = await makeCrossSigned("Shared Subject CA", usableKeys, root, "51", [
+      clientAuthEku(["1.3.6.1.5.5.7.3.2"])
+    ]);
     const leaf = await makeLeaf("workload", { cert: clientCapable, keys: usableKeys });
 
     const result = await verifyClientCertificateChain({
@@ -746,6 +758,94 @@ describe("verifyClientCertificateChain", () => {
       now: NOW
     });
     expect(result).toEqual({ ok: true });
+  });
+
+  test("continues past a path-length violation to a valid cross-signed path", async () => {
+    // The issuing CA is cross-signed: one copy sits under a pathLen:0 CA (which may not have a CA
+    // below it), the other under an unconstrained CA. Both paths are the same length and the
+    // violating one is presented first, so committing to the first path found would deny a client
+    // that has a perfectly good path available.
+    const constrainedSub = await makeIntermediate("PathLen Zero Sub CA", root, {
+      serialNumber: "60",
+      pathLength: 0
+    });
+    const openSub = await makeIntermediate("Unconstrained Sub CA", root, { serialNumber: "61" });
+
+    const sharedKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const viaConstrained = await makeCrossSigned("Shared Issuing CA", sharedKeys, constrainedSub, "62");
+    const viaOpen = await makeCrossSigned("Shared Issuing CA", sharedKeys, openSub, "63");
+    const leaf = await makeLeaf("workload", { cert: viaOpen, keys: sharedKeys });
+
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [constrainedSub, openSub]
+        .map((i) => toNative(i.cert))
+        .concat([viaConstrained, viaOpen].map(toNative)),
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
+  test("continues past a name constraint violation to a valid cross-signed path", async () => {
+    const constrainedSub = await makeIntermediate("Namespace Constrained Sub CA", root, {
+      serialNumber: "64",
+      extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
+    });
+    const openSub = await makeIntermediate("Unconstrained Sub CA", root, { serialNumber: "65" });
+
+    const sharedKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const viaConstrained = await makeCrossSigned("Shared Issuing CA", sharedKeys, constrainedSub, "66");
+    const viaOpen = await makeCrossSigned("Shared Issuing CA", sharedKeys, openSub, "67");
+    const leaf = await makeLeaf(
+      "victim.example.com",
+      { cert: viaOpen, keys: sharedKeys },
+      {
+        dnsName: "victim.example.com"
+      }
+    );
+
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [constrainedSub, openSub]
+        .map((i) => toNative(i.cert))
+        .concat([viaConstrained, viaOpen].map(toNative)),
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
+  test("reports the constraint violation when every cross-signed path violates one", async () => {
+    const constrainedSub = await makeIntermediate("PathLen Zero Sub CA", root, {
+      serialNumber: "68",
+      pathLength: 0
+    });
+    const namespaceSub = await makeIntermediate("Namespace Constrained Sub CA", root, {
+      serialNumber: "69",
+      extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
+    });
+
+    const sharedKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const viaPathLen = await makeCrossSigned("Shared Issuing CA", sharedKeys, constrainedSub, "6a");
+    const viaNamespace = await makeCrossSigned("Shared Issuing CA", sharedKeys, namespaceSub, "6b");
+    const leaf = await makeLeaf(
+      "victim.example.com",
+      { cert: viaPathLen, keys: sharedKeys },
+      {
+        dnsName: "victim.example.com"
+      }
+    );
+
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [constrainedSub, namespaceSub]
+        .map((i) => toNative(i.cert))
+        .concat([viaPathLen, viaNamespace].map(toNative)),
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: false, reasonCode: "path_length_exceeded" });
   });
 
   test("rejects when the intermediate has expired", async () => {

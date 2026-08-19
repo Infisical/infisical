@@ -4,6 +4,7 @@ import * as x509 from "@peculiar/x509";
 import { Certificate, CertificateChainValidationEngine, CryptoEngine, NameConstraints } from "pkijs";
 
 import { crypto } from "@app/lib/crypto/cryptography";
+import { logger } from "@app/lib/logger";
 import {
   CERT_EXTENDED_KEY_USAGES,
   CertExtendedKeyUsageType
@@ -33,6 +34,10 @@ const ANY_PURPOSE_EKU_OID = CERT_EXTENDED_KEY_USAGES[CertExtendedKeyUsageType.AN
 
 const PERMITTED_SUBTREE_VIOLATION_CODE = 41;
 const EXCLUDED_SUBTREE_VIOLATION_CODE = 42;
+
+// Caps on how much of a presented chain the path search will explore. See `explore` below.
+const MAX_CANDIDATE_PATHS = 8;
+const MAX_SEARCH_PATH_STEPS = 2000;
 
 const pkiCryptoEngine = new CryptoEngine({ name: "identity-tls-cert-auth", crypto: webcrypto as Crypto });
 
@@ -132,13 +137,20 @@ export const permitsClientAuth = (cert: TNativeX509): boolean => {
 /**
  * Validate the presented client certificate chain against a configured trust anchor.
  *
- * Unlike single-hop verification (leaf signed directly by the configured CA), this builds a
- * path from the leaf through the presented intermediates up to the configured trust anchor and
- * verifies, at every hop: the issuer relationship (subject/issuer match + signature), that each
- * issuer is a CA (including the trust anchor itself), and that every certificate on the path is
- * within its validity window, and that every issuer's extended key usage permits client
- * authentication. The resulting path is then checked against the RFC 5280 delegation constraints
- * its CAs assert: `pathLenConstraint` and name constraints.
+ * Unlike single-hop verification (leaf signed directly by the configured CA), this builds paths
+ * from the leaf through the presented intermediates up to the configured trust anchor and accepts
+ * the client if any one of them is valid end to end. A path is valid when every hop has a real
+ * issuer relationship (subject/issuer match + signature), every issuer is a CA (including the
+ * trust anchor itself) that is within its validity window and whose extended key usage permits
+ * client authentication, and the path as a whole satisfies the RFC 5280 delegation constraints its
+ * CAs assert: `pathLenConstraint` and name constraints.
+ *
+ * Every one of those checks participates in path selection. A cross-signed PKI presents the same
+ * logical CA under more than one issuer, so a single certificate can sit on both a path that
+ * violates a constraint and a path that satisfies it; committing to the first path that is merely
+ * cryptographically sound would deny a client that has a perfectly good path available. Checks that
+ * belong to a single certificate (validity, extended key usage) prune the branch they fail on, and
+ * the path-wide constraints are applied to each complete path in turn until one passes.
  *
  * The trust anchor is the only trusted input. Presented intermediates are untrusted: a forged or
  * unrelated intermediate cannot create a path to the anchor, so it is rejected. This mirrors how
@@ -164,10 +176,17 @@ export const verifyClientCertificateChain = async ({
   trustAnchor: TNativeX509;
   now?: Date;
 }): Promise<TVerifyClientCertificateChainResult> => {
-  // Candidate issuers the builder may walk through. The trust anchor is always available; the
-  // presented intermediates are untrusted candidates that only matter if they help reach the anchor.
-  const anchorRaw = trustAnchor.raw;
-  const isAnchor = (cert: TNativeX509): boolean => cert.raw.equals(anchorRaw);
+  const certificateIds = new Map<TNativeX509, string>();
+  const certificateId = (cert: TNativeX509): string => {
+    const cached = certificateIds.get(cert);
+    if (cached !== undefined) return cached;
+    const id = cert.raw.toString("base64");
+    certificateIds.set(cert, id);
+    return id;
+  };
+
+  const anchorId = certificateId(trustAnchor);
+  const isAnchor = (cert: TNativeX509): boolean => certificateId(cert) === anchorId;
 
   /**
    * Returns true when `issuer` issued `child`.
@@ -175,7 +194,7 @@ export const verifyClientCertificateChain = async ({
    * The name check compares the OpenSSL-formatted DN strings returned by Node's X509Certificate
    * (`child.issuer === issuer.subject`). This is a fast pre-filter before the cryptographic
    * `verify`, and assumes both sides of the chain share the same PKI-level DN encoding
-   * conventions — i.e. the same string types (PrintableString vs UTF8String) and attribute
+   * conventions, i.e. the same string types (PrintableString vs UTF8String) and attribute
    * ordering for equivalent names. That holds within a single PKI (SPIRE emits the leaf and the
    * rotating intermediate from one CA with consistent encoding), which is the supported case here.
    *
@@ -184,97 +203,143 @@ export const verifyClientCertificateChain = async ({
    * attribute, or they differ in attribute ordering). In that situation a cryptographically valid
    * issuer relationship is rejected and chain validation fails with `ca_verification_failed`. A
    * full RFC 5280 name comparison (per-RDN, encoding-insensitive) would be required to support that.
+   *
+   * Results are cached per (child, issuer) pair, so overlapping paths through a shared issuer cost
+   * one signature verification rather than one per path.
    */
+  const signatureResults = new Map<string, boolean>();
   const issuedBy = (child: TNativeX509, issuer: TNativeX509): boolean => {
     if (child.issuer !== issuer.subject) return false;
+
+    const pairId = `${certificateId(child)}:${certificateId(issuer)}`;
+    const cached = signatureResults.get(pairId);
+    if (cached !== undefined) return cached;
+
+    let verified: boolean;
     try {
-      return child.verify(issuer.publicKey);
+      verified = child.verify(issuer.publicKey);
     } catch {
-      return false;
+      verified = false;
     }
+    signatureResults.set(pairId, verified);
+    return verified;
   };
 
-  type TPathSearchResult = { ok: true; issuers: TNativeX509[] } | TVerificationFailure;
+  const clientAuthResults = new Map<string, boolean>();
+  const issuerPermitsClientAuth = (cert: TNativeX509): boolean => {
+    const id = certificateId(cert);
+    const cached = clientAuthResults.get(id);
+    if (cached !== undefined) return cached;
+    const permitted = permitsClientAuth(cert);
+    clientAuthResults.set(id, permitted);
+    return permitted;
+  };
 
-  // Cache results by DER bytes, so a shared issuer is explored once regardless of how many paths
-  // reach it. This bounds signature verification to O(n^2) and avoids factorial work for crafted
-  // chains with many overlapping paths.
-  const results = new Map<string, TPathSearchResult>();
-  const inProgress = new Set<string>();
-  const certificateId = (cert: TNativeX509) => cert.raw.toString("base64");
-
-  const walk = (current: TNativeX509): TPathSearchResult => {
-    const currentId = certificateId(current);
-    const cachedResult = results.get(currentId);
-    if (cachedResult) return cachedResult;
-    if (inProgress.has(currentId)) return { ok: false, reasonCode: "ca_verification_failed" };
-
-    inProgress.add(currentId);
-    let result: TPathSearchResult;
-
-    if (!isWithinValidityWindow(current, now)) {
-      result = {
-        ok: false,
-        reasonCode: now < new Date(current.validFrom) ? "certificate_not_yet_valid" : "certificate_expired"
-      };
-    } else if (isAnchor(current)) {
-      // Reached the trust anchor: the path is complete and valid.
-      result = { ok: true, issuers: [] };
-    } else if (trustAnchor.ca && issuedBy(current, trustAnchor)) {
-      // The configured anchor directly issued the current certificate. The anchor must itself be a
-      // CA to sign certificates: presented intermediates are gated on `candidate.ca` below, and the
-      // trust anchor is held to the same bar so a non-CA cert can't anchor a path. Without this, a
-      // configured end-entity (CA:FALSE) certificate would still be accepted as the leaf's issuer.
-      if (!isWithinValidityWindow(trustAnchor, now)) {
-        result = {
+  const validityFailure = (cert: TNativeX509): TVerificationFailure | null =>
+    isWithinValidityWindow(cert, now)
+      ? null
+      : {
           ok: false,
-          reasonCode: now < new Date(trustAnchor.validFrom) ? "certificate_not_yet_valid" : "certificate_expired"
+          reasonCode: now < new Date(cert.validFrom) ? "certificate_not_yet_valid" : "certificate_expired"
         };
-      } else if (!permitsClientAuth(trustAnchor)) {
-        result = { ok: false, reasonCode: "issuer_client_auth_usage_not_allowed" };
-      } else {
-        result = { ok: true, issuers: [trustAnchor] };
-      }
-    } else {
-      // No path to the anchor was found through this node. Default to the generic reason, but
-      // surface a more specific validity failure if the only viable issuer was rejected for being
-      // outside its validity window (so an expired/not-yet-valid intermediate is reported as such).
-      result = { ok: false, reasonCode: "ca_verification_failed" };
 
-      for (const candidate of presentedChain) {
-        // An issuer on the path must be a CA and have signed the current certificate.
-        if (candidate.ca && issuedBy(current, candidate)) {
-          const candidateResult: TPathSearchResult = permitsClientAuth(candidate)
-            ? walk(candidate)
-            : { ok: false, reasonCode: "issuer_client_auth_usage_not_allowed" };
-          if (candidateResult.ok) {
-            result = { ok: true, issuers: [candidate, ...candidateResult.issuers] };
-            break;
-          }
-          if (candidateResult.reasonCode !== "ca_verification_failed") {
-            result = candidateResult;
-          }
-        }
-      }
+  /**
+   * The gate every issuer clears before it may extend a path. Both properties belong to the
+   * certificate alone rather than to the path it sits on, so failing one rules out this branch
+   * only: another issuer of the same certificate can still complete a path.
+   *
+   * An EKU on a CA restricts what its subordinates may be used for, so a CA that enumerates
+   * purposes without client authentication cannot delegate it, the way OpenSSL and Go check a
+   * purpose against the whole chain rather than the leaf alone.
+   */
+  const issuerFailure = (issuer: TNativeX509): TVerificationFailure | null =>
+    validityFailure(issuer) ??
+    (issuerPermitsClientAuth(issuer) ? null : { ok: false, reasonCode: "issuer_client_auth_usage_not_allowed" });
+
+  const leafFailure = validityFailure(leaf);
+  if (leafFailure) return leafFailure;
+
+  const candidateIssuers: TNativeX509[] = [];
+  const seenCandidates = new Set<string>();
+  presentedChain.forEach((cert) => {
+    const id = certificateId(cert);
+    if (!seenCandidates.has(id) && !isAnchor(cert)) {
+      seenCandidates.add(id);
+      candidateIssuers.push(cert);
+    }
+  });
+
+  const completePaths: TNativeX509[][] = [];
+  const search = { steps: 0, truncated: false, prunedFailure: null as TVerificationFailure | null };
+
+  /**
+   * Depth-first enumeration of the paths from the leaf to the trust anchor.
+   *
+   * @param current the certificate whose issuers are being looked for
+   * @param path    the path built so far, leaf first and `current` last
+   * @param visited ids of the certificates already on `path`, so a cross-signing loop terminates
+   */
+  const explore = (current: TNativeX509, path: TNativeX509[], visited: Set<string>): void => {
+    if (completePaths.length >= MAX_CANDIDATE_PATHS || search.steps >= MAX_SEARCH_PATH_STEPS) {
+      search.truncated = true;
+      return;
+    }
+    search.steps += 1;
+
+    if (isAnchor(current)) {
+      completePaths.push(path);
+      return;
     }
 
-    inProgress.delete(currentId);
-    results.set(currentId, result);
-    return result;
+    if (trustAnchor.ca && issuedBy(current, trustAnchor)) {
+      const anchorFailure = issuerFailure(trustAnchor);
+      if (anchorFailure) search.prunedFailure ??= anchorFailure;
+      else completePaths.push([...path, trustAnchor]);
+    }
+
+    candidateIssuers
+      .filter((candidate) => !visited.has(certificateId(candidate)) && candidate.ca && issuedBy(current, candidate))
+      .forEach((candidate) => {
+        const candidateFailure = issuerFailure(candidate);
+        if (candidateFailure) {
+          search.prunedFailure ??= candidateFailure;
+          return;
+        }
+        explore(candidate, [...path, candidate], new Set(visited).add(certificateId(candidate)));
+      });
   };
 
-  const pathResult = walk(leaf);
-  if (!pathResult.ok) return pathResult;
+  explore(leaf, [leaf], new Set([certificateId(leaf)]));
 
-  const orderedPath = [leaf, ...pathResult.issuers];
+  const reportFailure = (failure: TVerificationFailure): TVerificationFailure => {
+    if (search.truncated) {
+      logger.warn(
+        `TLS certificate auth: path search hit its exploration cap before finding a valid path [presentedCertificates=${presentedChain.length}] [pathsFound=${completePaths.length}]`
+      );
+    }
+    return failure;
+  };
+
+  if (!completePaths.length) {
+    return reportFailure(search.prunedFailure ?? { ok: false, reasonCode: "ca_verification_failed" });
+  }
+
+  const orderedPaths = completePaths.sort((a, b) => a.length - b.length);
+  let constraintFailure: TVerificationFailure | null = null;
 
   try {
-    const pathLengthFailure = enforcePathLength(orderedPath);
-    if (pathLengthFailure) return pathLengthFailure;
-    return (await enforceNameConstraints(orderedPath, now)) ?? { ok: true };
+    for (const path of orderedPaths) {
+      const pathLengthFailure = enforcePathLength(path);
+      // eslint-disable-next-line no-await-in-loop -- stop at the first path that validates
+      const failure = pathLengthFailure ?? (await enforceNameConstraints(path, now));
+      if (!failure) return { ok: true };
+      constraintFailure ??= failure;
+    }
   } catch {
     return { ok: false, reasonCode: "ca_verification_failed" };
   }
+
+  return reportFailure(constraintFailure ?? { ok: false, reasonCode: "ca_verification_failed" });
 };
 
 export const parseSubjectDetails = (data?: string | null) => {
