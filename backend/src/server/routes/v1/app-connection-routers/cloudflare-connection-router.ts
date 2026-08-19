@@ -43,7 +43,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -71,7 +71,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -100,7 +100,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -130,7 +130,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -162,7 +162,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 

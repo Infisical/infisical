@@ -100,7 +100,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         200: GatewayWithAuthMethodSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const authMethodArg =
         req.body.authMethod.method === ResourceAuthMethodType.Aws
@@ -153,7 +153,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       params: z.object({ gatewayId: z.string().trim().uuid() }),
       response: { 200: GatewayWithAuthMethodSchema }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
       const view = await server.services.resourceAuthMethod.getByGatewayId({
@@ -180,7 +180,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       }),
       response: { 200: GatewayWithAuthMethodSchema }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       if (req.body.authMethod) {
         const setInput =
@@ -264,7 +264,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.resourceAuthMethod.mintToken({
         resource: { type: "gateway", id: req.params.gatewayId },
@@ -300,7 +300,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.resourceAuthMethod.revokeAccess({
         resource: { type: "gateway", id: req.params.gatewayId },

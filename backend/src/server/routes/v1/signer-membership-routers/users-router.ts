@@ -31,7 +31,7 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
       params: SignerIdParamsSchema,
       response: { 200: z.object({ memberships: z.array(SignerMemberSchema) }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const memberships = await server.services.signerMembership.listMembers({
         actor: req.permission.type,
@@ -78,7 +78,7 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.signerMembership.addUserMembers({
         actor: req.permission.type,
@@ -137,7 +137,7 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
       body: RoleBodySchema,
       response: { 200: z.object({ membership: SignerMemberSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const membership = await server.services.signerMembership.updateMemberRole({
         actor: req.permission.type,
@@ -194,7 +194,7 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
       params: z.object({ signerId: z.string().uuid(), userId: z.string().uuid() }),
       response: { 200: RemoveSignerMemberResponseSchema }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.signerMembership.removeMember({
         actor: req.permission.type,
@@ -245,7 +245,7 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
       params: SignerIdParamsSchema,
       response: { 200: z.object({ members: z.array(EffectiveSignerMemberSchema) }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const members = await server.services.signerMembership.listEffectiveMembers({
         actor: req.permission.type,

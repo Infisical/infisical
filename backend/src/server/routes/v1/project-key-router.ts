@@ -29,7 +29,7 @@ export const registerProjectKeyRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       await server.services.projectKey.uploadProjectKeys({
         projectId: req.params.workspaceId,

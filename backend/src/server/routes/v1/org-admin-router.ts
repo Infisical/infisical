@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ProjectMembershipsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -29,7 +30,7 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projects, count } = await server.services.orgAdmin.listOrgProjects({
         limit: req.query.limit,
@@ -61,7 +62,7 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { membership } = await server.services.orgAdmin.grantProjectAdminAccess({
         actorOrgId: req.permission.orgId,
@@ -70,7 +71,7 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         projectId: req.params.projectId
       });
-      if (req.auth.authMode === AuthMode.JWT) {
+      if (isUserSessionAuth(req.auth)) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           projectId: req.params.projectId,

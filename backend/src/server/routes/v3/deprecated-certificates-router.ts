@@ -111,7 +111,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateRequestForService: CertificateRequestForService = {
         commonName: req.body.commonName,
@@ -240,7 +240,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.certificateV3.signCertificateFromProfile({
         actor: req.permission.type,
@@ -371,7 +371,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateOrderObject = {
         altNames: req.body.subjectAlternativeNames,
@@ -465,7 +465,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const originalCertificate = await server.services.certificate.getCert({
         actor: req.permission.type,
@@ -540,7 +540,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       if (req.body.enableAutoRenewal === false) {
         const data = await server.services.certificateV3.disableRenewalConfig({

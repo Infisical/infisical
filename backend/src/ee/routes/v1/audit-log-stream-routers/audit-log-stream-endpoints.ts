@@ -49,7 +49,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { logStreamId } = req.params;
 
@@ -73,7 +73,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { credentials, filters } = req.body;
 
@@ -116,7 +116,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { logStreamId } = req.params;
       const { credentials, streamMode, filters } = req.body;
@@ -161,7 +161,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { logStreamId } = req.params;
 

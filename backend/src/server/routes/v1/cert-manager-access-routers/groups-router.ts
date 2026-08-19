@@ -48,7 +48,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     method: "GET",
     url: "/groups",
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "listCertManagerGroups",
       response: { 200: z.object({ groupMemberships: z.array(certManagerGroupMembershipSchema) }) }
@@ -74,7 +74,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     method: "GET",
     url: "/groups/:groupId",
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "getCertManagerGroup",
       params: z.object({ groupId: z.string().uuid() }),
@@ -101,7 +101,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     method: "POST",
     url: "/groups/:groupId",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "addCertManagerGroup",
       params: z.object({ groupId: z.string().uuid() }),
@@ -181,7 +181,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     method: "PATCH",
     url: "/groups/:groupId",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "updateCertManagerGroup",
       params: z.object({ groupId: z.string().uuid() }),
@@ -228,7 +228,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     method: "DELETE",
     url: "/groups/:groupId",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "removeCertManagerGroup",
       params: z.object({ groupId: z.string().uuid() }),

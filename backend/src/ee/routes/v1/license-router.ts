@@ -21,7 +21,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.getOrgPlansTableByBillCycle({
         actorId: req.permission.id,
@@ -53,7 +53,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.object({ plan: z.any() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const plan = await server.services.license.getOrgPlan({
         actorId: req.permission.id,
@@ -81,7 +81,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.getOrgPlan({
         actorId: req.permission.id,
@@ -108,7 +108,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.startOrgTrial({
         actorId: req.permission.id,
@@ -134,7 +134,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.createOrganizationPortalSession({
         actorId: req.permission.id,
@@ -159,7 +159,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.getOrgBillingInfo({
         actorId: req.permission.id,
@@ -184,7 +184,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.getOrgPlanTable({
         actorId: req.permission.id,
@@ -209,7 +209,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.getOrgBillingDetails({
         actorId: req.permission.id,
@@ -238,7 +238,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.updateOrgBillingDetails({
         actorId: req.permission.id,
@@ -265,7 +265,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.getOrgPmtMethods({
         actorId: req.permission.id,
@@ -294,7 +294,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.addOrgPmtMethods({
         actorId: req.permission.id,
@@ -324,7 +324,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.delOrgPmtMethods({
         actorId: req.permission.id,
@@ -352,7 +352,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.getOrgTaxIds({
         actorId: req.permission.id,
@@ -383,7 +383,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.addOrgTaxId({
         actorId: req.permission.id,
@@ -413,7 +413,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.delOrgTaxId({
         actorId: req.permission.id,
@@ -441,7 +441,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.getOrgTaxInvoices({
         actorId: req.permission.id,
@@ -468,7 +468,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         200: z.any()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.license.getOrgLicenses({
         actorId: req.permission.id,
