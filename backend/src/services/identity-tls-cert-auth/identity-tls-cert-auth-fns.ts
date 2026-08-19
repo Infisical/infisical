@@ -4,6 +4,10 @@ import * as x509 from "@peculiar/x509";
 import { Certificate, CertificateChainValidationEngine, CryptoEngine, NameConstraints } from "pkijs";
 
 import { crypto } from "@app/lib/crypto/cryptography";
+import {
+  CERT_EXTENDED_KEY_USAGES,
+  CertExtendedKeyUsageType
+} from "@app/services/certificate-common/certificate-constants";
 
 type TNativeX509 = InstanceType<typeof crypto.nativeCrypto.X509Certificate>;
 
@@ -22,6 +26,9 @@ export type TVerifyClientCertificateChainResult =
 type TVerificationFailure = Extract<TVerifyClientCertificateChainResult, { ok: false }>;
 
 const NAME_CONSTRAINTS_EXTENSION_OID = "2.5.29.30";
+
+const CLIENT_AUTH_EKU_OID = CERT_EXTENDED_KEY_USAGES[CertExtendedKeyUsageType.CLIENT_AUTH].oid;
+const ANY_PURPOSE_EKU_OID = CERT_EXTENDED_KEY_USAGES[CertExtendedKeyUsageType.ANY_PURPOSE].oid;
 
 const PERMITTED_SUBTREE_VIOLATION_CODE = 41;
 const EXCLUDED_SUBTREE_VIOLATION_CODE = 42;
@@ -246,6 +253,22 @@ export const verifyClientCertificateChain = async ({
   } catch {
     return { ok: false, reasonCode: "ca_verification_failed" };
   }
+};
+
+/**
+ * RFC 5280 4.2.1.12: an Extended Key Usage extension is the exhaustive list of purposes its
+ * certificate may be used for. Without this check a leaf issued for serverAuth or codeSigning
+ * authenticates an identity, so anyone holding a server certificate under the configured CA can
+ * impersonate the machine identity pinned to it.
+ *
+ * A certificate that omits the extension is unconstrained and stays accepted, which is how OpenSSL
+ * and Go read a missing EKU and what keeps existing leaves that carry no EKU working. Only a
+ * certificate that explicitly enumerates purposes and leaves client authentication out is rejected.
+ */
+export const permitsClientAuth = (cert: TNativeX509): boolean => {
+  const usages = new x509.X509Certificate(cert.raw).getExtension(x509.ExtendedKeyUsageExtension)?.usages;
+  if (!usages) return true;
+  return usages.some((oid) => oid === CLIENT_AUTH_EKU_OID || oid === ANY_PURPOSE_EKU_OID);
 };
 
 export const parseSubjectDetails = (data?: string | null) => {

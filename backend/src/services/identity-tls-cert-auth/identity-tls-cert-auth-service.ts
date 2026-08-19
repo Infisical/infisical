@@ -48,6 +48,7 @@ import {
   isSubjectAltNameAllowed,
   parseAllowedSubjectAltNames,
   parseSubjectDetails,
+  permitsClientAuth,
   serializeAllowedSubjectAltNames,
   TVerifyClientCertificateChainResult,
   verifyClientCertificateChain
@@ -198,6 +199,18 @@ export const identityTlsCertAuthServiceFactory = ({
           message: "Access denied: a CA certificate cannot be used as a client certificate.",
           detail: {
             reasonCode: "ca_certificate_not_allowed",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
+        });
+      }
+
+      if (!permitsClientAuth(clientCertificateX509)) {
+        throw new UnauthorizedError({
+          message: "Access denied: the client certificate is not valid for client authentication.",
+          detail: {
+            reasonCode: "client_auth_usage_not_allowed",
             identityId: identity.id,
             orgId: identity.orgId,
             identityName: identity.name

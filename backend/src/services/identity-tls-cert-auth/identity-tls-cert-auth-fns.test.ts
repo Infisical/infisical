@@ -10,6 +10,7 @@ import {
   normalizeAllowedSubjectAltName,
   parseCertificateSubjectAltNames,
   parseSubjectDetails,
+  permitsClientAuth,
   TCertificateSanItem,
   verifyClientCertificateChain
 } from "./identity-tls-cert-auth-fns";
@@ -237,6 +238,57 @@ describe("isSubjectAltNameAllowed", () => {
         [{ type: "dns", value: "svc.example.com" }]
       )
     ).toBe(true);
+  });
+});
+
+describe("permitsClientAuth", () => {
+  const alg: RsaHashedKeyGenParams = {
+    name: "RSASSA-PKCS1-v1_5",
+    hash: "SHA-256",
+    publicExponent: new Uint8Array([1, 0, 1]),
+    modulusLength: 2048
+  };
+
+  x509.cryptoProvider.set(crypto.webcrypto as Crypto);
+
+  const makeLeafWithUsages = async (usages?: string[]) => {
+    const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const cert = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "04",
+      name: "CN=workload",
+      notBefore: new Date("2026-06-01T00:00:00Z"),
+      notAfter: new Date("2030-01-01T00:00:00Z"),
+      keys,
+      extensions: [
+        new x509.BasicConstraintsExtension(false),
+        ...(usages ? [new x509.ExtendedKeyUsageExtension(usages, true)] : [])
+      ]
+    });
+    return new crypto.X509Certificate(Buffer.from(cert.rawData));
+  };
+
+  test("accepts a certificate that asserts no extended key usage", async () => {
+    expect(permitsClientAuth(await makeLeafWithUsages())).toBe(true);
+  });
+
+  test("accepts a certificate that asserts clientAuth", async () => {
+    expect(permitsClientAuth(await makeLeafWithUsages(["1.3.6.1.5.5.7.3.2"]))).toBe(true);
+  });
+
+  test("accepts a certificate that asserts clientAuth alongside other usages", async () => {
+    expect(permitsClientAuth(await makeLeafWithUsages(["1.3.6.1.5.5.7.3.1", "1.3.6.1.5.5.7.3.2"]))).toBe(true);
+  });
+
+  test("accepts a certificate that asserts anyExtendedKeyUsage", async () => {
+    expect(permitsClientAuth(await makeLeafWithUsages(["2.5.29.37.0"]))).toBe(true);
+  });
+
+  test("rejects a serverAuth-only certificate", async () => {
+    expect(permitsClientAuth(await makeLeafWithUsages(["1.3.6.1.5.5.7.3.1"]))).toBe(false);
+  });
+
+  test("rejects a codeSigning-only certificate", async () => {
+    expect(permitsClientAuth(await makeLeafWithUsages(["1.3.6.1.5.5.7.3.3"]))).toBe(false);
   });
 });
 
