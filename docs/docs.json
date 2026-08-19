@@ -1,11 +1,11 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
+  "theme": "aspen",
   "name": "Infisical",
   "fonts": {
     "heading": {
       "family": "Alliance",
-      "source": "/fonts/AllianceNo2-Regular.woff2",
+      "source": "https://infisical.com/docs/fonts/AllianceNo2-Regular.woff2",
       "format": "woff2",
       "weight": 400
     }
@@ -32,7 +32,7 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Get started",
+        "tab": "Platform",
         "groups": [
           {
             "group": "Getting started",

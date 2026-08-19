@@ -592,7 +592,12 @@ const MyProjectsForType = ({
   }
 
   return (
-    <Card>
+    <Card
+      className={twMerge(
+        projectsViewMode === ProjectsViewMode.GRID ? "border-transparent bg-transparent p-0" : "",
+        "transition-all duration-100"
+      )}
+    >
       <CardHeader>
         <Toolbar
           searchFilter={searchFilter}

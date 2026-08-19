@@ -8,7 +8,6 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, PageHeader } from "@app/components/v2";
-import { AccessRestrictedBanner } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -93,6 +92,7 @@ const Page = () => {
     <div className="mx-auto flex flex-col justify-between text-white">
       {profile && (
         <ProjectPermissionCan
+          renderGuardBanner
           I={ProjectPermissionCertificateProfileActions.Read}
           a={subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })}
         >
@@ -162,11 +162,7 @@ const Page = () => {
                   onDeleteApproved={handleDeleteConfirm}
                 />
               </div>
-            ) : (
-              <div className="container mx-auto flex h-full items-center justify-center">
-                <AccessRestrictedBanner />
-              </div>
-            )
+            ) : null
           }
         </ProjectPermissionCan>
       )}

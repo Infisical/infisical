@@ -17,7 +17,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
-  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -31,9 +30,7 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  Field,
   IconButton,
-  Input,
   Skeleton,
   Table,
   TableBody,
@@ -62,7 +59,6 @@ export const GatewayPoolsContent = ({ search }: Props) => {
   const isEnterprise = subscription?.gatewayPool;
   const [selectedPoolId, setSelectedPoolId] = useState<string | null>(null);
   const [resourcesPool, setResourcesPool] = useState<{ id: string; name: string } | null>(null);
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const { data: pools, isLoading: isPoolsLoading } = useListGatewayPools({
     refetchInterval: 15_000,
     enabled: Boolean(isEnterprise)
@@ -232,10 +228,8 @@ export const GatewayPoolsContent = ({ search }: Props) => {
       />
       <AlertDialog
         open={popUp.deletePool.isOpen}
-        onOpenChange={(open) => {
-          if (!open) setDeleteConfirmation("");
-          handlePopUpToggle("deletePool", open);
-        }}
+        confirmationValue={(popUp.deletePool.data as TGatewayPool | undefined)?.name}
+        onOpenChange={(open) => handlePopUpToggle("deletePool", open)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -244,22 +238,9 @@ export const GatewayPoolsContent = ({ search }: Props) => {
               This permanently removes the gateway pool from your organization.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogConfirmationField>
-            <Field>
-              <AlertDialogConfirmationLabel
-                htmlFor="delete-pool-confirmation"
-                confirmationValue={(popUp.deletePool.data as TGatewayPool)?.name}
-              />
-              <Input
-                id="delete-pool-confirmation"
-                value={deleteConfirmation}
-                onChange={(event) => setDeleteConfirmation(event.target.value)}
-                placeholder={(popUp.deletePool.data as TGatewayPool)?.name}
-                autoComplete="off"
-                autoFocus
-              />
-            </Field>
-          </AlertDialogConfirmationField>
+          <AlertDialogConfirmationField
+            inputProps={{ placeholder: (popUp.deletePool.data as TGatewayPool)?.name }}
+          />
           <Alert variant="danger" appearance="borderless">
             <AlertDescription>Deleting this gateway pool cannot be undone.</AlertDescription>
           </Alert>
@@ -268,9 +249,6 @@ export const GatewayPoolsContent = ({ search }: Props) => {
             <AlertDialogAction
               variant="danger"
               isPending={deletePool.isPending}
-              isDisabled={
-                deleteConfirmation !== (popUp.deletePool.data as TGatewayPool | undefined)?.name
-              }
               onClick={(event) => {
                 event.preventDefault();
                 handleDeletePool();

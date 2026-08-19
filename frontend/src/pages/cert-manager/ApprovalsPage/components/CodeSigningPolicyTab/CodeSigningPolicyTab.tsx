@@ -1,9 +1,9 @@
 import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { PermissionDeniedBanner } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
 import {
+  AccessRestrictedDialog,
   Button,
   Card,
   CardAction,
@@ -38,7 +38,9 @@ export const CodeSigningPolicyTab = () => {
   ] as const);
 
   if (!isAdmin) {
-    return <PermissionDeniedBanner />;
+    return (
+      <AccessRestrictedDialog description="Only project admins can view and manage code signing approval policies." />
+    );
   }
 
   const handleDeletePolicy = async () => {

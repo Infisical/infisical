@@ -304,8 +304,32 @@ const LogsSectionComponent = ({
   );
 };
 
+// Built once at module scope: creating them inside the render makes a new component type on every
+// render, which remounts the whole log table (and replays the permission gate) each time.
+const ProjectLogsSectionWithPermission = withProjectPermission(LogsSectionComponent, {
+  action: ProjectPermissionAuditLogsActions.Read,
+  subject: ProjectPermissionSub.AuditLogs
+});
+
+const ProjectAuditLogsPageWithPermission = withProjectPermission(LogsSectionComponent, {
+  action: ProjectPermissionAuditLogsActions.Read,
+  subject: ProjectPermissionSub.AuditLogs,
+  accessRestrictedMode: "dialog"
+});
+
+const OrgLogsSectionWithPermission = withPermission(LogsSectionComponent, {
+  action: OrgPermissionAuditLogsActions.Read,
+  subject: OrgPermissionSubjects.AuditLogs
+});
+
+const OrgAuditLogsPageWithPermission = withPermission(LogsSectionComponent, {
+  action: OrgPermissionAuditLogsActions.Read,
+  subject: OrgPermissionSubjects.AuditLogs,
+  accessRestrictedMode: "dialog"
+});
+
 export const LogsSection = (props: Props) => {
-  const { project } = props;
+  const { pageView, project } = props;
 
   if (project) {
     // PAM uses its own product/resource permission model and scopes audit logs server-side, so the
@@ -314,16 +338,16 @@ export const LogsSection = (props: Props) => {
       return <LogsSectionComponent {...props} />;
     }
 
-    const ProjectLogsSectionWithPermission = withProjectPermission(LogsSectionComponent, {
-      action: ProjectPermissionAuditLogsActions.Read,
-      subject: ProjectPermissionSub.AuditLogs
-    });
-    return <ProjectLogsSectionWithPermission {...props} />;
+    return pageView ? (
+      <ProjectAuditLogsPageWithPermission {...props} />
+    ) : (
+      <ProjectLogsSectionWithPermission {...props} />
+    );
   }
 
-  const OrgLogsSectionWithPermission = withPermission(LogsSectionComponent, {
-    action: OrgPermissionAuditLogsActions.Read,
-    subject: OrgPermissionSubjects.AuditLogs
-  });
-  return <OrgLogsSectionWithPermission {...props} />;
+  return pageView ? (
+    <OrgAuditLogsPageWithPermission {...props} />
+  ) : (
+    <OrgLogsSectionWithPermission {...props} />
+  );
 };

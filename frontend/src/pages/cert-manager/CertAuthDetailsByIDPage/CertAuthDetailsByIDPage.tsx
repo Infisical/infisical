@@ -9,7 +9,6 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
-  AccessRestrictedBanner,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -107,6 +106,7 @@ const Page = () => {
     <div className="mx-auto flex flex-col justify-between text-white">
       {data && (
         <ProjectPermissionCan
+          renderGuardBanner
           I={ProjectPermissionCertificateAuthorityActions.Read}
           a={subject(ProjectPermissionSub.CertificateAuthorities, {
             name: data.name
@@ -195,11 +195,7 @@ const Page = () => {
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="container mx-auto flex h-full items-center justify-center">
-                <AccessRestrictedBanner />
-              </div>
-            )
+            ) : null
           }
         </ProjectPermissionCan>
       )}
