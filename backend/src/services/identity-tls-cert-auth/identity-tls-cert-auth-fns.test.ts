@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
+import { GeneralName, GeneralSubtree, NameConstraints } from "pkijs";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import {
@@ -270,10 +271,14 @@ describe("verifyClientCertificateChain", () => {
     return { cert, keys };
   };
 
-  const makeIntermediate = async (name: string, issuer: TIssued, opts?: { notAfter?: Date }): Promise<TIssued> => {
+  const makeIntermediate = async (
+    name: string,
+    issuer: TIssued,
+    opts?: { notAfter?: Date; serialNumber?: string; pathLength?: number; extraExtensions?: x509.Extension[] }
+  ): Promise<TIssued> => {
     const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const cert = await x509.X509CertificateGenerator.create({
-      serialNumber: "02",
+      serialNumber: opts?.serialNumber ?? "02",
       subject: `CN=${name}`,
       issuer: issuer.cert.subject,
       notBefore: NOT_BEFORE,
@@ -281,12 +286,29 @@ describe("verifyClientCertificateChain", () => {
       signingKey: issuer.keys.privateKey,
       publicKey: keys.publicKey,
       signingAlgorithm: alg,
-      extensions: [new x509.BasicConstraintsExtension(true, undefined, true)]
+      extensions: [new x509.BasicConstraintsExtension(true, opts?.pathLength, true), ...(opts?.extraExtensions ?? [])]
     });
     return { cert, keys };
   };
 
-  const makeLeaf = async (name: string, issuer: TIssued, opts?: { notBefore?: Date; notAfter?: Date }) => {
+  const permittedDnsConstraint = (permitted: string[]) =>
+    new x509.Extension(
+      "2.5.29.30",
+      true,
+      new NameConstraints({
+        permittedSubtrees: permitted.map(
+          (dns) => new GeneralSubtree({ base: new GeneralName({ type: 2, value: dns }) })
+        )
+      })
+        .toSchema()
+        .toBER(false)
+    );
+
+  const makeLeaf = async (
+    name: string,
+    issuer: TIssued,
+    opts?: { notBefore?: Date; notAfter?: Date; dnsName?: string }
+  ) => {
     const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const cert = await x509.X509CertificateGenerator.create({
       serialNumber: "03",
@@ -297,7 +319,10 @@ describe("verifyClientCertificateChain", () => {
       signingKey: issuer.keys.privateKey,
       publicKey: keys.publicKey,
       signingAlgorithm: alg,
-      extensions: [new x509.BasicConstraintsExtension(false)]
+      extensions: [
+        new x509.BasicConstraintsExtension(false),
+        ...(opts?.dnsName ? [new x509.SubjectAlternativeNameExtension([{ type: "dns", value: opts.dnsName }])] : [])
+      ]
     });
     return { cert, keys };
   };
@@ -314,7 +339,7 @@ describe("verifyClientCertificateChain", () => {
 
   test("accepts a leaf whose presented intermediate chains to the configured root", async () => {
     const leaf = await makeLeaf("workload", intermediate);
-    const result = verifyClientCertificateChain({
+    const result = await verifyClientCertificateChain({
       leaf: toNative(leaf.cert),
       presentedChain: [toNative(intermediate.cert)],
       trustAnchor: toNative(root.cert),
@@ -325,7 +350,7 @@ describe("verifyClientCertificateChain", () => {
 
   test("accepts a leaf issued directly by the configured anchor (single intermediate as anchor)", async () => {
     const leaf = await makeLeaf("workload", intermediate);
-    const result = verifyClientCertificateChain({
+    const result = await verifyClientCertificateChain({
       leaf: toNative(leaf.cert),
       presentedChain: [],
       trustAnchor: toNative(intermediate.cert),
@@ -336,7 +361,7 @@ describe("verifyClientCertificateChain", () => {
 
   test("rejects when the intermediate is missing (cannot reach the anchor)", async () => {
     const leaf = await makeLeaf("workload", intermediate);
-    const result = verifyClientCertificateChain({
+    const result = await verifyClientCertificateChain({
       leaf: toNative(leaf.cert),
       presentedChain: [],
       trustAnchor: toNative(root.cert),
@@ -347,7 +372,7 @@ describe("verifyClientCertificateChain", () => {
 
   test("rejects a chain that does not lead to the configured anchor", async () => {
     const leaf = await makeLeaf("workload", intermediate);
-    const result = verifyClientCertificateChain({
+    const result = await verifyClientCertificateChain({
       leaf: toNative(leaf.cert),
       presentedChain: [toNative(intermediate.cert)],
       trustAnchor: toNative(otherRoot.cert),
@@ -359,7 +384,7 @@ describe("verifyClientCertificateChain", () => {
   test("ignores an unrelated forged intermediate presented alongside the valid one", async () => {
     const forged = await makeIntermediate("Forged Intermediate", otherRoot);
     const leaf = await makeLeaf("workload", intermediate);
-    const result = verifyClientCertificateChain({
+    const result = await verifyClientCertificateChain({
       leaf: toNative(leaf.cert),
       presentedChain: [toNative(forged.cert), toNative(intermediate.cert)],
       trustAnchor: toNative(root.cert),
@@ -368,40 +393,87 @@ describe("verifyClientCertificateChain", () => {
     expect(result).toEqual({ ok: true });
   });
 
-  test("does not re-explore shared dead-end issuer paths", () => {
-    let verificationCount = 0;
-    const validFrom = NOT_BEFORE.toString();
-    const validTo = FAR_FUTURE.toString();
-    const toMockNative = (id: string, subject: string, issuer: string, ca: boolean) =>
-      ({
-        raw: Buffer.from(id),
+  test("does not re-explore shared dead-end issuer paths", async () => {
+    // Every maze certificate carries and is signed by one shared key, so any certificate at a level
+    // verifies against any certificate at the level above it. That is what creates the
+    // combinatorial path explosion the walk cache exists to bound.
+    const mazeKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const anchorKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+
+    let serial = 0x100;
+    const mazeCert = async (subject: string, issuer: string, signingKey: CryptoKey, publicKey: CryptoKey) => {
+      serial += 1;
+      return x509.X509CertificateGenerator.create({
+        serialNumber: serial.toString(16),
         subject,
         issuer,
-        ca,
-        validFrom,
-        validTo,
-        publicKey: id,
-        verify: () => {
+        notBefore: NOT_BEFORE,
+        notAfter: FAR_FUTURE,
+        signingKey,
+        publicKey,
+        signingAlgorithm: alg,
+        extensions: [new x509.BasicConstraintsExtension(true, undefined, true)]
+      });
+    };
+
+    let verificationCount = 0;
+    const counted = (cert: x509.X509Certificate) => {
+      const native = toNative(cert);
+      return {
+        raw: native.raw,
+        subject: native.subject,
+        issuer: native.issuer,
+        ca: native.ca,
+        validFrom: native.validFrom,
+        validTo: native.validTo,
+        publicKey: native.publicKey,
+        verify: (key: Parameters<typeof native.verify>[0]) => {
           verificationCount += 1;
-          return true;
+          return native.verify(key);
         }
-      }) as unknown as InstanceType<typeof crypto.X509Certificate>;
+      } as unknown as InstanceType<typeof crypto.X509Certificate>;
+    };
 
     const width = 4;
     const levels = 4;
-    const deadEndChain = Array.from({ length: levels }, (__, level) =>
-      Array.from({ length: width }, (_, index) =>
-        toMockNative(`dead-${level}-${index}`, `CN=level-${level}`, `CN=level-${level + 1}`, true)
+    const deadEnds = await Promise.all(
+      Array.from({ length: levels }, (__, level) =>
+        Promise.all(
+          Array.from({ length: width }, () =>
+            mazeCert(`CN=level-${level}`, `CN=level-${level + 1}`, mazeKeys.privateKey, mazeKeys.publicKey)
+          )
+        )
       )
     );
-    const leaf = toMockNative("leaf", "CN=leaf", "CN=level-0", false);
-    const successfulIssuer = toMockNative("success", "CN=level-0", "CN=anchor", true);
-    const trustAnchor = toMockNative("anchor", "CN=anchor", "CN=anchor", true);
 
-    const result = verifyClientCertificateChain({
-      leaf,
-      presentedChain: [...deadEndChain.flat(), successfulIssuer],
-      trustAnchor,
+    const anchor = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "0f",
+      name: "CN=anchor",
+      notBefore: NOT_BEFORE,
+      notAfter: FAR_FUTURE,
+      keys: anchorKeys,
+      extensions: [new x509.BasicConstraintsExtension(true, undefined, true)]
+    });
+    // Shares the maze public key, so the leaf verifies against it as well as against every dead end.
+    const successfulIssuer = await mazeCert("CN=level-0", "CN=anchor", anchorKeys.privateKey, mazeKeys.publicKey);
+
+    const leafKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const leaf = await x509.X509CertificateGenerator.create({
+      serialNumber: "0e",
+      subject: "CN=leaf",
+      issuer: "CN=level-0",
+      notBefore: NOT_BEFORE,
+      notAfter: FAR_FUTURE,
+      signingKey: mazeKeys.privateKey,
+      publicKey: leafKeys.publicKey,
+      signingAlgorithm: alg,
+      extensions: [new x509.BasicConstraintsExtension(false)]
+    });
+
+    const result = await verifyClientCertificateChain({
+      leaf: counted(leaf),
+      presentedChain: [...deadEnds.flat(), successfulIssuer].map(counted),
+      trustAnchor: counted(anchor),
       now: NOW
     });
 
@@ -414,7 +486,7 @@ describe("verifyClientCertificateChain", () => {
       notBefore: NOT_BEFORE,
       notAfter: new Date("2026-06-10T00:00:00Z")
     });
-    const result = verifyClientCertificateChain({
+    const result = await verifyClientCertificateChain({
       leaf: toNative(leaf.cert),
       presentedChain: [toNative(intermediate.cert)],
       trustAnchor: toNative(root.cert),
@@ -428,7 +500,7 @@ describe("verifyClientCertificateChain", () => {
       notBefore: new Date("2026-07-01T00:00:00Z"),
       notAfter: FAR_FUTURE
     });
-    const result = verifyClientCertificateChain({
+    const result = await verifyClientCertificateChain({
       leaf: toNative(leaf.cert),
       presentedChain: [toNative(intermediate.cert)],
       trustAnchor: toNative(root.cert),
@@ -451,7 +523,7 @@ describe("verifyClientCertificateChain", () => {
       extensions: [new x509.BasicConstraintsExtension(false)]
     });
     const leaf = await makeLeaf("workload", { cert: nonCaAnchor, keys: nonCaAnchorKeys });
-    const result = verifyClientCertificateChain({
+    const result = await verifyClientCertificateChain({
       leaf: toNative(leaf.cert),
       presentedChain: [],
       trustAnchor: toNative(nonCaAnchor),
@@ -460,12 +532,90 @@ describe("verifyClientCertificateChain", () => {
     expect(result).toEqual({ ok: false, reasonCode: "ca_verification_failed" });
   });
 
+  test("rejects a leaf minted outside the permitted namespace of its issuing CA", async () => {
+    // The delegated sub-CA is constrained to team-a, but mints a leaf naming a workload it was
+    // never authorised to certify. Without name constraint enforcement the holder of any
+    // constrained sub-CA under the pinned anchor could impersonate any identity on that anchor.
+    const constrained = await makeIntermediate("Constrained Intermediate CA", root, {
+      serialNumber: "20",
+      extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
+    });
+    const leaf = await makeLeaf("victim.example.com", constrained, { dnsName: "victim.example.com" });
+
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [toNative(constrained.cert)],
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+  });
+
+  test("accepts a leaf inside the permitted namespace of its issuing CA", async () => {
+    const constrained = await makeIntermediate("Constrained Intermediate CA", root, {
+      serialNumber: "21",
+      extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
+    });
+    const leaf = await makeLeaf("team-a.example.com", constrained, { dnsName: "team-a.example.com" });
+
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [toNative(constrained.cert)],
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
+  test("enforces name constraints carried by the configured anchor itself", async () => {
+    const constrained = await makeIntermediate("Constrained Anchor CA", root, {
+      serialNumber: "22",
+      extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
+    });
+    const leaf = await makeLeaf("victim.example.com", constrained, { dnsName: "victim.example.com" });
+
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [],
+      trustAnchor: toNative(constrained.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+  });
+
+  test("rejects a chain deeper than a CA's pathLenConstraint permits", async () => {
+    const limited = await makeIntermediate("PathLen Zero CA", root, { serialNumber: "30", pathLength: 0 });
+    const extra = await makeIntermediate("Extra Intermediate CA", limited, { serialNumber: "31" });
+    const leaf = await makeLeaf("workload", extra);
+
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [toNative(limited.cert), toNative(extra.cert)],
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: false, reasonCode: "path_length_exceeded" });
+  });
+
+  test("accepts a leaf issued directly by a pathLen:0 CA", async () => {
+    const limited = await makeIntermediate("PathLen Zero CA", root, { serialNumber: "32", pathLength: 0 });
+    const leaf = await makeLeaf("workload", limited);
+
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [toNative(limited.cert)],
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
   test("rejects when the intermediate has expired", async () => {
     const expiredIntermediate = await makeIntermediate("Expired Intermediate", root, {
       notAfter: new Date("2026-06-10T00:00:00Z")
     });
     const leaf = await makeLeaf("workload", expiredIntermediate);
-    const result = verifyClientCertificateChain({
+    const result = await verifyClientCertificateChain({
       leaf: toNative(leaf.cert),
       presentedChain: [toNative(expiredIntermediate.cert)],
       trustAnchor: toNative(root.cert),

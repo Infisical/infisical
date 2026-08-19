@@ -49,9 +49,22 @@ import {
   parseAllowedSubjectAltNames,
   parseSubjectDetails,
   serializeAllowedSubjectAltNames,
+  TVerifyClientCertificateChainResult,
   verifyClientCertificateChain
 } from "./identity-tls-cert-auth-fns";
 import { TIdentityTlsCertAuthServiceFactory } from "./identity-tls-cert-auth-types";
+
+const CHAIN_FAILURE_MESSAGES: Record<
+  Extract<TVerifyClientCertificateChainResult, { ok: false }>["reasonCode"],
+  string
+> = {
+  ca_verification_failed: "Access denied: Certificate chain could not be validated against the provided CA.",
+  certificate_expired: "Access denied: A certificate in the chain is outside its validity period.",
+  certificate_not_yet_valid: "Access denied: A certificate in the chain is outside its validity period.",
+  name_constraint_violation:
+    "Access denied: The client certificate's name is outside the namespace its issuing CA is permitted to certify.",
+  path_length_exceeded: "Access denied: The certificate chain has more intermediate CAs than a CA in it permits."
+};
 
 type TIdentityTlsCertAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -143,17 +156,14 @@ export const identityTlsCertAuthServiceFactory = ({
           .slice(1)
           .map((pem) => new crypto.nativeCrypto.X509Certificate(pem));
 
-        const chainResult = verifyClientCertificateChain({
+        const chainResult = await verifyClientCertificateChain({
           leaf: clientCertificateX509,
           presentedChain,
           trustAnchor: caCertificateX509
         });
 
         if (!chainResult.ok) {
-          const message =
-            chainResult.reasonCode === "ca_verification_failed"
-              ? "Access denied: Certificate chain could not be validated against the provided CA."
-              : "Access denied: A certificate in the chain is outside its validity period.";
+          const message = CHAIN_FAILURE_MESSAGES[chainResult.reasonCode];
           throw new UnauthorizedError({
             message,
             detail: {

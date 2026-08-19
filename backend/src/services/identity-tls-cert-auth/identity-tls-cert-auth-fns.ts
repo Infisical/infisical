@@ -1,13 +1,109 @@
+import { webcrypto } from "node:crypto";
+
+import * as x509 from "@peculiar/x509";
+import { Certificate, CertificateChainValidationEngine, CryptoEngine, NameConstraints } from "pkijs";
+
 import { crypto } from "@app/lib/crypto/cryptography";
 
 type TNativeX509 = InstanceType<typeof crypto.nativeCrypto.X509Certificate>;
 
 export type TVerifyClientCertificateChainResult =
   | { ok: true }
-  | { ok: false; reasonCode: "ca_verification_failed" | "certificate_expired" | "certificate_not_yet_valid" };
+  | {
+      ok: false;
+      reasonCode:
+        | "ca_verification_failed"
+        | "certificate_expired"
+        | "certificate_not_yet_valid"
+        | "name_constraint_violation"
+        | "path_length_exceeded";
+    };
+
+type TVerificationFailure = Extract<TVerifyClientCertificateChainResult, { ok: false }>;
+
+const NAME_CONSTRAINTS_EXTENSION_OID = "2.5.29.30";
+
+const PERMITTED_SUBTREE_VIOLATION_CODE = 41;
+const EXCLUDED_SUBTREE_VIOLATION_CODE = 42;
+
+const pkiCryptoEngine = new CryptoEngine({ name: "identity-tls-cert-auth", crypto: webcrypto as Crypto });
 
 const isWithinValidityWindow = (cert: TNativeX509, at: Date): boolean =>
   new Date(cert.validFrom) <= at && at <= new Date(cert.validTo);
+
+const isSelfIssued = (cert: TNativeX509): boolean => cert.subject === cert.issuer;
+
+const basicConstraintsPathLength = (cert: TNativeX509): number | undefined =>
+  new x509.X509Certificate(cert.raw).getExtension(x509.BasicConstraintsExtension)?.pathLength;
+
+/**
+ * RFC 5280 6.1.4 (l)/(m): a CA's `pathLenConstraint` caps how many non-self-issued CA certificates
+ * may follow it on the path, not counting the end-entity certificate. A CA that omits the field is
+ * unconstrained.
+ *
+ * @param orderedPath leaf first, then each issuer in turn, trust anchor last
+ */
+const enforcePathLength = (orderedPath: TNativeX509[]): TVerificationFailure | null => {
+  const issuers = orderedPath.slice(1);
+
+  const exceeded = issuers.some((issuer, idx) => {
+    const pathLength = basicConstraintsPathLength(issuer);
+    if (pathLength === undefined) return false;
+    return issuers.slice(0, idx).filter((below) => !isSelfIssued(below)).length > pathLength;
+  });
+
+  return exceeded ? { ok: false, reasonCode: "path_length_exceeded" } : null;
+};
+
+const nameConstraintsOf = (cert: Certificate): NameConstraints | null => {
+  const extension = cert.extensions?.find((ext) => ext.extnID === NAME_CONSTRAINTS_EXTENSION_OID);
+  return extension?.parsedValue instanceof NameConstraints ? extension.parsedValue : null;
+};
+
+/**
+ * RFC 5280 6.1.4 (g): a CA may restrict the namespace its subordinates can certify. Without this,
+ * the holder of a constrained sub-CA under the configured anchor could mint a leaf for any name and
+ * authenticate as any identity pinned to that anchor.
+ *
+ * Subtree matching (DNS/IP/email/URI/directory-name semantics, permitted and excluded) is delegated
+ * to pkijs rather than reimplemented. pkijs applies constraints carried by certificates on the path
+ * but not by the trust anchor itself, so the anchor's own constraints are supplied separately as the
+ * RFC's initial-permitted/excluded-subtrees inputs. That matters because operators may pin a
+ * constrained sub-CA directly rather than the root above it.
+ *
+ * Only runs when some certificate on the path actually asserts constraints, so a chain that has
+ * none is validated exactly as before.
+ */
+const enforceNameConstraints = async (orderedPath: TNativeX509[], now: Date): Promise<TVerificationFailure | null> => {
+  if (orderedPath.length < 2) return null;
+
+  const parsedPath = orderedPath.map((cert) => Certificate.fromBER(cert.raw));
+  if (!parsedPath.some((cert) => nameConstraintsOf(cert))) return null;
+
+  const anchor = parsedPath[parsedPath.length - 1];
+  const anchorConstraints = nameConstraintsOf(anchor);
+
+  const engine = new CertificateChainValidationEngine({
+    trustedCerts: [anchor],
+    // pkijs takes the chain end-entity last.
+    certs: parsedPath.slice(0, -1).reverse(),
+    checkDate: now
+  });
+
+  const { result, resultCode } = await engine.verify(
+    {
+      initialPermittedSubtreesSet: anchorConstraints?.permittedSubtrees ?? [],
+      initialExcludedSubtreesSet: anchorConstraints?.excludedSubtrees ?? []
+    },
+    pkiCryptoEngine
+  );
+
+  if (result) return null;
+  if (resultCode === PERMITTED_SUBTREE_VIOLATION_CODE || resultCode === EXCLUDED_SUBTREE_VIOLATION_CODE) {
+    return { ok: false, reasonCode: "name_constraint_violation" };
+  }
+  return { ok: false, reasonCode: "ca_verification_failed" };
+};
 
 /**
  * Validate the presented client certificate chain against a configured trust anchor.
@@ -16,7 +112,8 @@ const isWithinValidityWindow = (cert: TNativeX509, at: Date): boolean =>
  * path from the leaf through the presented intermediates up to the configured trust anchor and
  * verifies, at every hop: the issuer relationship (subject/issuer match + signature), that each
  * issuer is a CA (including the trust anchor itself), and that every certificate on the path is
- * within its validity window.
+ * within its validity window. The resulting path is then checked against the RFC 5280 delegation
+ * constraints its CAs assert: `pathLenConstraint` and name constraints.
  *
  * The trust anchor is the only trusted input. Presented intermediates are untrusted: a forged or
  * unrelated intermediate cannot create a path to the anchor, so it is rejected. This mirrors how
@@ -31,7 +128,7 @@ const isWithinValidityWindow = (cert: TNativeX509, at: Date): boolean =>
  * @param presentedChain  intermediates presented by the client (chain[1..n]); order-independent
  * @param trustAnchor     the configured CA certificate to anchor the path on
  */
-export const verifyClientCertificateChain = ({
+export const verifyClientCertificateChain = async ({
   leaf,
   presentedChain,
   trustAnchor,
@@ -41,7 +138,7 @@ export const verifyClientCertificateChain = ({
   presentedChain: TNativeX509[];
   trustAnchor: TNativeX509;
   now?: Date;
-}): TVerifyClientCertificateChainResult => {
+}): Promise<TVerifyClientCertificateChainResult> => {
   // Candidate issuers the builder may walk through. The trust anchor is always available; the
   // presented intermediates are untrusted candidates that only matter if they help reach the anchor.
   const anchorRaw = trustAnchor.raw;
@@ -72,21 +169,23 @@ export const verifyClientCertificateChain = ({
     }
   };
 
+  type TPathSearchResult = { ok: true; issuers: TNativeX509[] } | TVerificationFailure;
+
   // Cache results by DER bytes, so a shared issuer is explored once regardless of how many paths
   // reach it. This bounds signature verification to O(n^2) and avoids factorial work for crafted
   // chains with many overlapping paths.
-  const results = new Map<string, TVerifyClientCertificateChainResult>();
+  const results = new Map<string, TPathSearchResult>();
   const inProgress = new Set<string>();
   const certificateId = (cert: TNativeX509) => cert.raw.toString("base64");
 
-  const walk = (current: TNativeX509): TVerifyClientCertificateChainResult => {
+  const walk = (current: TNativeX509): TPathSearchResult => {
     const currentId = certificateId(current);
     const cachedResult = results.get(currentId);
     if (cachedResult) return cachedResult;
     if (inProgress.has(currentId)) return { ok: false, reasonCode: "ca_verification_failed" };
 
     inProgress.add(currentId);
-    let result: TVerifyClientCertificateChainResult;
+    let result: TPathSearchResult;
 
     if (!isWithinValidityWindow(current, now)) {
       result = {
@@ -95,7 +194,7 @@ export const verifyClientCertificateChain = ({
       };
     } else if (isAnchor(current)) {
       // Reached the trust anchor: the path is complete and valid.
-      result = { ok: true };
+      result = { ok: true, issuers: [] };
     } else if (trustAnchor.ca && issuedBy(current, trustAnchor)) {
       // The configured anchor directly issued the current certificate. The anchor must itself be a
       // CA to sign certificates: presented intermediates are gated on `candidate.ca` below, and the
@@ -107,7 +206,7 @@ export const verifyClientCertificateChain = ({
           reasonCode: now < new Date(trustAnchor.validFrom) ? "certificate_not_yet_valid" : "certificate_expired"
         };
       } else {
-        result = { ok: true };
+        result = { ok: true, issuers: [trustAnchor] };
       }
     } else {
       // No path to the anchor was found through this node. Default to the generic reason, but
@@ -120,7 +219,7 @@ export const verifyClientCertificateChain = ({
         if (candidate.ca && issuedBy(current, candidate)) {
           const candidateResult = walk(candidate);
           if (candidateResult.ok) {
-            result = candidateResult;
+            result = { ok: true, issuers: [candidate, ...candidateResult.issuers] };
             break;
           }
           if (candidateResult.reasonCode !== "ca_verification_failed") {
@@ -135,7 +234,18 @@ export const verifyClientCertificateChain = ({
     return result;
   };
 
-  return walk(leaf);
+  const pathResult = walk(leaf);
+  if (!pathResult.ok) return pathResult;
+
+  const orderedPath = [leaf, ...pathResult.issuers];
+
+  try {
+    const pathLengthFailure = enforcePathLength(orderedPath);
+    if (pathLengthFailure) return pathLengthFailure;
+    return (await enforceNameConstraints(orderedPath, now)) ?? { ok: true };
+  } catch {
+    return { ok: false, reasonCode: "ca_verification_failed" };
+  }
 };
 
 export const parseSubjectDetails = (data?: string | null) => {
