@@ -67,7 +67,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
         200: RelayWithAuthMethodSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { authMethod: authMethodInput, ...rest } = req.body;
       const authMethodArg =
@@ -122,7 +122,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
         200: RelayWithAuthMethodSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const relay = await server.services.relay.getOrgRelay({
         relayId: req.params.relayId,
@@ -158,7 +158,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
         )
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.relay.getConnectedGateways({
         relayId: req.params.relayId,
@@ -182,7 +182,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
         200: RelayWithAuthMethodSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       let relay;
 
@@ -264,7 +264,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
         200: z.object({ token: z.string(), expiresAt: z.date() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.resourceAuthMethod.mintToken({
         resource: { type: "relay", id: req.params.relayId },
@@ -295,7 +295,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
         200: z.object({ method: z.string() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.resourceAuthMethod.revokeAccess({
         resource: { type: "relay", id: req.params.relayId },

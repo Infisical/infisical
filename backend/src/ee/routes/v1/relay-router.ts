@@ -116,7 +116,12 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.IDENTITY_ACCESS_TOKEN,
+      AuthMode.GATEWAY_ACCESS_TOKEN,
+      AuthMode.OAUTH
+    ]),
     handler: async (req) => {
       return server.services.relay.getRelays({
         actorId: req.permission.id,
@@ -142,7 +147,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
         200: RelaysSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const relay = await server.services.relay.deleteRelay({
         id: req.params.id,

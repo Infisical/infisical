@@ -66,7 +66,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalPolicy.createSecretApprovalPolicy({
         actor: req.permission.type,
@@ -146,7 +146,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalPolicy.updateSecretApprovalPolicy({
         actor: req.permission.type,
@@ -187,7 +187,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalPolicy.deleteSecretApprovalPolicy({
         actor: req.permission.type,
@@ -246,7 +246,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const approvals = await server.services.secretApprovalPolicy.getSecretApprovalPolicyByProjectId({
         actor: req.permission.type,
@@ -291,7 +291,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalPolicy.getSecretApprovalPolicyById({
         actor: req.permission.type,
@@ -328,7 +328,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
         actor: req.permission.type,

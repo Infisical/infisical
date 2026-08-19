@@ -176,7 +176,19 @@ Auth extraction happens in `src/server/plugins/auth/`:
 - **OAUTH**: delegated user tokens minted by the `oauth-client` module. Same JWT shape and session
   binding as `JWT`, distinguished only by an `oauthClientId` claim. **Opt-in per route**: `verify-auth.ts`
   rejects them on every route that does not list `AuthMode.OAUTH`, because a route that authenticates on
-  bare `userId` (account self-management) never builds the permission that enforces delegation.
+  bare `userId` never builds the permission that enforces delegation. In practice every `AuthMode.JWT`
+  route now also lists `AuthMode.OAUTH` **except** three families that cannot be scope-narrowed and so
+  stay first-party only: account self-management (`v1`/`v2` user, password, MFA session, login, signup,
+  user action/activation/engagement, notifications, announcements), instance super-admin
+  (`v1/admin-router.ts`, `ee/v1/rate-limit-router.ts`, gated by `verifySuperAdmin`, which reads
+  `user.superAdmin` rather than a CASL ability), and the OAuth client CRUD + consent routes
+  (`v1/oauth-router.ts`) plus `ee/v1/assume-privilege-router.ts`, where a delegated token would be able
+  to widen its own grant. Three routes are held back individually rather than by file, and carry a
+  comment saying so: `GET /v1/organization`, `GET /v1/organization/accessible-with-sub-orgs`, and
+  `POST /v2/organization`. A new route follows the default; adding `AuthMode.OAUTH` to a handler that
+  never builds an org/project/resource permission is the one thing to check before copying it. The
+  quick proxy is `requireOrg: false` — with no org in context there is no ability to narrow, so no such
+  route lists `AuthMode.OAUTH`.
 
 **Delegated OAuth tokens carry exactly one delegation marker, never both** (`oauth-client-types.ts`):
 - `scopes: [...]`: from the authorization code grant. `permission-service` intersects the user's CASL

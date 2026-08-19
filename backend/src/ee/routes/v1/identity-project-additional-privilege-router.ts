@@ -50,7 +50,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { permissions, privilegePermission } = req.body;
       if (!permissions && !privilegePermission) {
@@ -143,7 +143,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { permissions, privilegePermission } = req.body;
       if (!permissions && !privilegePermission) {
@@ -242,7 +242,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { permissions, privilegePermission, ...updatedInfo } = req.body.privilegeDetails;
       if (!permissions && !privilegePermission) {
@@ -332,7 +332,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { id: projectId } = await server.services.convertor.projectSlugToId({
         orgId: req.permission.orgId,
@@ -398,7 +398,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { id: projectId } = await server.services.convertor.projectSlugToId({
         orgId: req.permission.orgId,
@@ -461,7 +461,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { id: projectId } = await server.services.convertor.projectSlugToId({
         orgId: req.permission.orgId,

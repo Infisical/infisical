@@ -39,7 +39,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.createRequest({
         accountId: req.body.accountId,
@@ -103,7 +103,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.listRequests({
         projectId: req.internalPamProjectId,
@@ -134,7 +134,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.listPendingMyApproval({
         projectId: req.internalPamProjectId,
@@ -160,7 +160,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.getCount({
         projectId: req.internalPamProjectId,
@@ -198,7 +198,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.getAccountApprovers({
         accountId: req.params.accountId,
@@ -230,7 +230,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.reviewRequest({
         requestId: req.params.requestId,
@@ -293,7 +293,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.revokeGrant({
         requestId: req.params.requestId,

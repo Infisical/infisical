@@ -28,7 +28,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       if (!canUseSecretScanning(req.auth.orgId)) {
         throw new BadRequestError({
@@ -63,7 +63,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
         200: GitAppOrgSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { installatedApp } = await server.services.secretScanning.linkInstallationToOrg({
         actor: req.permission.type,
@@ -88,7 +88,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
         200: z.object({ appInstallationCompleted: z.boolean() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const appInstallationCompleted = await server.services.secretScanning.getOrgInstallationStatus({
         actor: req.permission.type,
@@ -123,7 +123,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const risks = await server.services.secretScanning.getAllRisksByOrg({
         actor: req.permission.type,
@@ -170,7 +170,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { risks, totalCount, repos } = await server.services.secretScanning.getRisksByOrg({
         actor: req.permission.type,
@@ -204,7 +204,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
         200: SecretScanningGitRisksSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { risk } = await server.services.secretScanning.updateRiskStatus({
         actor: req.permission.type,

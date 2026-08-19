@@ -50,7 +50,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { data: identityMemberships, totalCount } = await server.services.membershipIdentity.listMemberships({
@@ -84,7 +84,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { identities } = await server.services.membershipIdentity.listAvailableIdentities({
@@ -137,7 +137,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const identityMembership = await server.services.membershipIdentity.getMembershipByIdentityId({
@@ -153,7 +153,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     method: "POST",
     url: "/identities/:identityId",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "addCertManagerIdentity",
       params: z.object({ identityId: z.string().trim().uuid() }),
@@ -225,7 +225,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     method: "PATCH",
     url: "/identities/:identityId",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "updateCertManagerIdentity",
       params: z.object({ identityId: z.string().trim().uuid() }),
@@ -271,7 +271,7 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     method: "DELETE",
     url: "/identities/:identityId",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "removeCertManagerIdentity",
       params: z.object({ identityId: z.string().trim().uuid() }),

@@ -24,7 +24,7 @@ export const registerExternalGroupOrgRoleMappingRouter = async (server: FastifyZ
         200: ExternalGroupOrgRoleMappingsSchema.array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const mappings = server.services.externalGroupOrgRoleMapping.listExternalGroupOrgRoleMappings(req.permission);
 
@@ -63,7 +63,7 @@ export const registerExternalGroupOrgRoleMappingRouter = async (server: FastifyZ
         200: ExternalGroupOrgRoleMappingsSchema.array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { body, permission } = req;
 
