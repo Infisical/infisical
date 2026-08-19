@@ -1,4 +1,4 @@
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -11,6 +11,7 @@ import {
   TGetInsightsCountsResponse,
   TGetInsightsSummaryDTO,
   TGetInsightsSummaryResponse,
+  TGetOrgSecretsProjectsDTO,
   // TGetSecretAccessLocationsDTO,
   // TGetSecretAccessLocationsResponse,
   TGetSecretAccessVolumeDTO,
@@ -18,7 +19,12 @@ import {
   TGetSecretBlindIndexStatusDTO,
   TGetSecretBlindIndexStatusResponse,
   TGetSecretsDuplicationDTO,
-  TGetSecretsDuplicationResponse
+  TGetSecretsDuplicationResponse,
+  TOrgAuthMethodUsage,
+  TOrgProjectsInsights,
+  TOrgSecretAccessVolume,
+  TOrgSecretsSummary,
+  TOrgStaticSecretUsage
 } from "./types";
 
 export const secretInsightsKeys = {
@@ -38,7 +44,19 @@ export const secretInsightsKeys = {
   secretsDuplication: (params: TGetSecretsDuplicationDTO) =>
     [...secretInsightsKeys.all(), "secrets-duplication", params] as const,
   blindIndexStatus: (params: TGetSecretBlindIndexStatusDTO) =>
-    [...secretInsightsKeys.all(), "blind-index-status", params] as const
+    [...secretInsightsKeys.all(), "blind-index-status", params] as const,
+  // Org-scoped keys. The endpoints derive the org from the auth token, so orgId is only
+  // here to isolate the cache when the user switches organizations.
+  orgSecretsSummary: (orgId: string) =>
+    [...secretInsightsKeys.all(), "org-secrets-summary", { orgId }] as const,
+  orgSecretsProjects: (orgId: string, params: TGetOrgSecretsProjectsDTO) =>
+    [...secretInsightsKeys.all(), "org-secrets-projects", { orgId, ...params }] as const,
+  orgAuthMethodDistribution: (orgId: string) =>
+    [...secretInsightsKeys.all(), "org-auth-method-distribution", { orgId }] as const,
+  orgStaticSecretsUsage: (orgId: string) =>
+    [...secretInsightsKeys.all(), "org-static-secrets-usage", { orgId }] as const,
+  orgAccessVolume: (orgId: string) =>
+    [...secretInsightsKeys.all(), "org-access-volume", { orgId }] as const
 };
 
 const INSIGHTS_STALE_TIME = 5 * 60 * 1000; // 5 minutes
@@ -58,9 +76,10 @@ export const useGetCalendarInsights = (
   return useQuery({
     queryKey: secretInsightsKeys.calendarEvents(params),
     queryFn: async () => {
+      const { projectId, ...query } = params;
       const { data } = await apiRequest.get<TGetCalendarInsightsResponse>(
-        "/api/v1/insights/secrets/calendar",
-        { params }
+        `/api/v1/insights/${projectId}/secrets/calendar`,
+        { params: query }
       );
       return data;
     },
@@ -85,8 +104,7 @@ export const useGetSecretAccessVolume = (
     queryKey: secretInsightsKeys.accessVolume(params),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetSecretAccessVolumeResponse>(
-        "/api/v1/insights/secrets/access-volume",
-        { params }
+        `/api/v1/insights/${params.projectId}/secrets/access-volume`
       );
       return data;
     },
@@ -94,32 +112,6 @@ export const useGetSecretAccessVolume = (
     ...options
   });
 };
-
-// export const useGetSecretAccessLocations = (
-//   params: TGetSecretAccessLocationsDTO,
-//   options?: Omit<
-//     UseQueryOptions<
-//       TGetSecretAccessLocationsResponse,
-//       unknown,
-//       TGetSecretAccessLocationsResponse,
-//       ReturnType<typeof secretInsightsKeys.accessLocations>
-//     >,
-//     "queryKey" | "queryFn"
-//   >
-// ) => {
-//   return useQuery({
-//     queryKey: secretInsightsKeys.accessLocations(params),
-//     queryFn: async () => {
-//       const { data } = await apiRequest.get<TGetSecretAccessLocationsResponse>(
-//         "/api/v1/insights/secrets/access-locations",
-//         { params }
-//       );
-//       return data;
-//     },
-//     staleTime: INSIGHTS_STALE_TIME,
-//     ...options
-//   });
-// };
 
 export const useGetAuthMethodDistribution = (
   params: TGetAuthMethodDistributionDTO,
@@ -136,9 +128,10 @@ export const useGetAuthMethodDistribution = (
   return useQuery({
     queryKey: secretInsightsKeys.authMethodDistribution(params),
     queryFn: async () => {
+      const { projectId, ...query } = params;
       const { data } = await apiRequest.get<TGetAuthMethodDistributionResponse>(
-        "/api/v1/insights/auth/method-distribution",
-        { params }
+        `/api/v1/insights/${projectId}/usage/auth-methods`,
+        { params: query }
       );
       return data;
     },
@@ -162,9 +155,10 @@ export const useGetInsightsSummary = (
   return useQuery({
     queryKey: secretInsightsKeys.summary(params),
     queryFn: async () => {
+      const { projectId, ...query } = params;
       const { data } = await apiRequest.get<TGetInsightsSummaryResponse>(
-        "/api/v1/insights/secrets/summary",
-        { params }
+        `/api/v1/insights/${projectId}/secrets/summary`,
+        { params: query }
       );
       return data;
     },
@@ -189,8 +183,7 @@ export const useGetInsightsCounts = (
     queryKey: secretInsightsKeys.counts(params),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGetInsightsCountsResponse>(
-        "/api/v1/insights/secrets/counts",
-        { params }
+        `/api/v1/insights/${params.projectId}/secrets/counts`
       );
       return data;
     },
@@ -215,8 +208,7 @@ export const useGetSecretsDuplication = (
     queryKey: secretInsightsKeys.secretsDuplication(params),
     queryFn: async () => {
       const res = await apiRequest.get<TGetSecretsDuplicationResponse>(
-        "/api/v1/insights/secrets/secrets-duplication",
-        { params }
+        `/api/v1/insights/${params.projectId}/secrets/secrets-duplication`
       );
       const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
       return { ...res.data, remainingTtl };
@@ -248,5 +240,89 @@ export const useGetSecretBlindIndexStatus = (
     },
     staleTime: 0,
     ...options
+  });
+};
+
+// Org-scoped insights hooks. The endpoints have no :projectId — the backend resolves the
+// org from the auth token, so the hooks only take orgId to key the cache.
+
+export const useGetOrgSecretsSummary = (orgId: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.orgSecretsSummary(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ usageInsights: TOrgSecretsSummary }>(
+        "/api/v1/insights/secrets/summary"
+      );
+      return data.usageInsights;
+    },
+    enabled: Boolean(orgId) && (options?.enabled ?? true),
+    staleTime: INSIGHTS_STALE_TIME
+  });
+};
+
+export const useGetOrgSecretsProjects = (
+  orgId: string,
+  params: TGetOrgSecretsProjectsDTO = {},
+  options?: { enabled?: boolean }
+) => {
+  return useInfiniteQuery({
+    queryKey: secretInsightsKeys.orgSecretsProjects(orgId, params),
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const { data } = await apiRequest.get<{ projectWarnings: TOrgProjectsInsights }>(
+        "/api/v1/insights/secrets/projects",
+        { params: { ...params, offset: pageParam } }
+      );
+      return data.projectWarnings;
+    },
+    getNextPageParam: (lastPage) => {
+      if (lastPage.projects.length === 0) return undefined;
+      const nextOffset = lastPage.offset + lastPage.projects.length;
+      return nextOffset < lastPage.totalProjects ? nextOffset : undefined;
+    },
+    enabled: Boolean(orgId) && (options?.enabled ?? true),
+    staleTime: INSIGHTS_STALE_TIME
+  });
+};
+
+export const useGetOrgAuthMethodDistribution = (orgId: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.orgAuthMethodDistribution(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ authMethodDistribution: TOrgAuthMethodUsage }>(
+        "/api/v1/insights/secrets/usage/auth-methods"
+      );
+      return data.authMethodDistribution;
+    },
+    enabled: Boolean(orgId) && (options?.enabled ?? true),
+    staleTime: INSIGHTS_STALE_TIME
+  });
+};
+
+export const useGetOrgStaticSecretsUsage = (orgId: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.orgStaticSecretsUsage(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ staticSecretUsage: TOrgStaticSecretUsage }>(
+        "/api/v1/insights/secrets/usage/static-secrets"
+      );
+      return data.staticSecretUsage;
+    },
+    enabled: Boolean(orgId) && (options?.enabled ?? true),
+    staleTime: INSIGHTS_STALE_TIME
+  });
+};
+
+export const useGetOrgSecretsAccessVolume = (orgId: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.orgAccessVolume(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ accessVolume: TOrgSecretAccessVolume }>(
+        "/api/v1/insights/secrets/access-volume"
+      );
+      return data.accessVolume;
+    },
+    enabled: Boolean(orgId) && (options?.enabled ?? true),
+    staleTime: INSIGHTS_STALE_TIME
   });
 };

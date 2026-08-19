@@ -10,7 +10,7 @@ interface ProjectAccessRequestTemplateProps extends Omit<BaseEmailWrapperProps, 
   requesterName: string;
   requesterEmail: string;
   orgName: string;
-  note: string;
+  note?: string;
   callback_url: string;
   productLabel?: string;
 }
@@ -55,9 +55,11 @@ export const ProjectAccessRequestTemplate = ({
           )}{" "}
           in the organization <strong>{orgName}</strong>.
         </Text>
-        <Text className="text-[14px] text-slate-700 leading-[24px]">
-          <strong className="text-black">User note:</strong> "{note}"
-        </Text>
+        {note && (
+          <Text className="text-[14px] text-slate-700 leading-[24px]">
+            <strong className="text-black">User note:</strong> "{note}"
+          </Text>
+        )}
       </Section>
       <Section className="text-center">
         <BaseButton href={callback_url}>Grant Access</BaseButton>
