@@ -10,7 +10,10 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema, temporaryPermissionTypeSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedFolderAccessSchema } from "@app/server/routes/sanitizedSchema/folder-access";
+import {
+  SanitizedFolderAccessSchema,
+  SanitizedFolderAccessUserSchema
+} from "@app/server/routes/sanitizedSchema/folder-access";
 import { SanitizedUserProjectAdditionalPrivilegeSchema } from "@app/server/routes/sanitizedSchema/user-additional-privilege";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
@@ -436,5 +439,49 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
 
       return { folderAccess: { ...folderAccess, userId: req.params.userId } };
     }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/projects/:projectId/folder-access/:folderId/users",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "listFolderAccessUsers",
+      tags: [ApiDocsTags.FolderAccess],
+      description: "List every user in a project with the access they have on a folder.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim().min(1).max(64).describe(FOLDER_ACCESS.LIST_USERS.projectId),
+        folderId: z.string().uuid().describe(FOLDER_ACCESS.LIST_USERS.folderId)
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().int().min(0).default(0).describe(FOLDER_ACCESS.LIST_USERS.offset),
+        limit: z.coerce.number().int().min(1).max(100).default(50).describe(FOLDER_ACCESS.LIST_USERS.limit),
+        search: z.string().trim().max(64).optional().describe(FOLDER_ACCESS.LIST_USERS.search)
+      }),
+      response: {
+        200: z.object({
+          users: SanitizedFolderAccessUserSchema.array(),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) =>
+      server.services.folderPermission.listFolderAccessUsers({
+        permission: req.permission,
+        projectId: req.params.projectId,
+        folderId: req.params.folderId,
+        limit: req.query.limit,
+        offset: req.query.offset,
+        search: req.query.search
+      })
   });
 };

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is the **backend** package of the Infisical monorepo — a Fastify 4 API server with TypeScript, PostgreSQL via Knex, and BullMQ queues.
 
-The backend code quality guide is imported below, so it is always in context for work in this package. **Check every change against it, whatever the change is, before calling the task done.** This file covers *where* code goes and *which* pattern to follow; the quality guide covers the minimum any implementation has to handle. It is a deliberately non-exhaustive floor, so the topics it happens to cover are not a filter for whether it applies.
+The backend code quality guide is imported below, so it is always in context for work in this package. **Check every change against it, whatever the change is, before calling the task done.** This file covers _where_ code goes and _which_ pattern to follow; the quality guide covers the minimum any implementation has to handle. It is a deliberately non-exhaustive floor, so the topics it happens to cover are not a filter for whether it applies.
 
 @CODE_QUALITY.md
 
@@ -49,7 +49,7 @@ pull the toolchain instead of spending ~15min compiling it. Consequences worth k
   image blobs there evicts the `node_modules` caches of every workflow.
 - **The published image is an internal CI build cache, not a supported artifact.** It is
   public only so CI and local dev can pull it; it carries no support or compatibility
-  guarantee. It is *not* the FIPS product image; that one is `infisical/infisical-fips`,
+  guarantee. It is _not_ the FIPS product image; that one is `infisical/infisical-fips`,
   built from `Dockerfile.fips.standalone-infisical`. OCI labels on the image say the same.
 - **Keep every third-party fetch pinned and checksummed.** SoftHSM2 is pinned to a commit
   SHA (tags are mutable); both OpenSSL tarballs and the Oracle Instant Client zip are
@@ -111,6 +111,7 @@ Path alias: `@app/*` maps to `./src/*`.
 ## ESLint & Import Ordering
 
 Config in `.eslintrc.js`. Uses `simple-import-sort` with this group order:
+
 1. Side-effect imports
 2. `node:` builtins
 3. Third-party packages
@@ -126,6 +127,7 @@ Config in `.eslintrc.js`. Uses `simple-import-sort` with this group order:
 No IoC container. Every service is a factory function that receives explicit dependencies as a typed object and returns an object of methods. Dependencies are narrowed with TypeScript `Pick` to define minimal interface contracts.
 
 The entire dependency graph is manually wired in `src/server/routes/index.ts`:
+
 - **~line 480-646**: DAL instantiation — each DAL factory receives the `db` client
 - **~line 649-2800**: Service instantiation — each factory receives its DALs + other services
 - **~line 2831-2972**: `server.decorate("services", {...})` exposes ~100+ services as `server.services.*`
@@ -148,6 +150,7 @@ See `src/services/secret/secret-dal.ts` for a DAL that overrides the base `updat
 ### Service Module Structure
 
 Services live in `src/services/` (100+ modules). Each typically contains:
+
 - `*-dal.ts` — data access via `ormify()` + custom queries
 - `*-service.ts` — business logic factory
 - `*-types.ts` — DTOs and type definitions
@@ -163,6 +166,7 @@ See `src/server/routes/v4/secret-router.ts` for a representative router file.
 ### Auth System
 
 Auth extraction happens in `src/server/plugins/auth/`:
+
 - `inject-identity.ts` — detects auth mode from request headers and attaches identity to request
 - `verify-auth.ts` — middleware that checks if the request's auth mode is in the route's allowed strategies
 - `inject-permission.ts` — attaches permission context
@@ -170,11 +174,13 @@ Auth extraction happens in `src/server/plugins/auth/`:
 - `superAdmin.ts` — super admin flag injection
 
 **Auth modes** (defined in `AuthMode` enum):
+
 - **JWT** — user browser sessions (decoded from `Authorization: Bearer` header)
 - **IDENTITY_ACCESS_TOKEN** — machine-to-machine identity tokens
 - **SCIM_TOKEN** — SCIM provisioning tokens
 
 **Deprecated auth modes (do not use in new code):**
+
 - **API_KEY** — user API keys (from `x-api-key` header). Deprecated — use identity access tokens instead.
 - **SERVICE_TOKEN** — service tokens (Bearer tokens starting with `st.` prefix). Deprecated — use identity access tokens instead.
 
@@ -185,6 +191,7 @@ Token detection logic in `inject-identity.ts` checks `x-api-key` header first, t
 ### Permission System (CASL)
 
 Uses CASL (`@casl/ability`) with MongoDB-style rules. Permission logic lives in `src/ee/services/permission/`:
+
 - `permission-service.ts` — factory that builds CASL abilities from user/identity roles
 - `project-permission.ts` — defines project-level permission actions and subjects
 - `org-permission.ts` — defines org-level permission actions and subjects
@@ -194,6 +201,7 @@ Uses CASL (`@casl/ability`) with MongoDB-style rules. Permission logic lives in 
 Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. Custom roles use unpacked CASL rules stored in the database. Rules can include conditions with operators `$IN`, `$EQ`, `$NEQ`, `$GLOB` (for pattern matching like `prod-*`). See `PermissionConditionSchema` in `permission-types.ts`.
 
 **Project permission caching** uses a fingerprint-based two-tier cache (`withCacheFingerprint` in `src/lib/cache/with-cache.ts`):
+
 - **Short-lived marker** (10s TTL) in Redis — while present, cached data is served with 0 DB reads.
 - **Long-lived data payload** (10m TTL) in Redis — holds the full permission blob plus a fingerprint hash.
 - On marker expiry, a lightweight **fingerprint query** (`getPermissionFingerprint` in `permission-dal.ts`) runs (1 DB read). If the fingerprint matches the cached payload, the marker is reset; otherwise, a full data re-fetch occurs.
@@ -202,7 +210,7 @@ Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. Custom roles use unpack
 - **No explicit cache invalidation calls exist.** The fingerprint self-corrects within the marker TTL (10s eventual consistency for access granting). The old `invalidateProjectPermissionCache` / DAL version counter pattern has been removed.
 - Cache helpers (`cacheGet`, `cacheSet`, `applyReviver`) in `src/lib/cache/with-cache.ts` are shared between the simple `withCache` and the fingerprint-based `withCacheFingerprint`.
 
-**Folder RBAC (folder-scoped privileges)**: `additional_privileges` rows with a `folderId` + `role` (`SecretFolderRole` tiers in `default-roles.ts`) are fetched in `getProjectPermission` through a second, longer-lived fingerprint cache (15m data / 15s marker) whose fingerprint is a Postgres version counter bumped by `permissionService.invalidateProjectFolderPermissionCache` (any future grant/revoke API and every folder rename/move/delete path MUST call it). When an actor holds folder grants, `buildProjectPermissionRules` appends per-grant CASL rules built by `buildFolderScopedPrivilegeRules` (`permission-fns.ts`): a deny of every secretPath-capable subject conditioned on `{ environment, secretPath }` (exact path, folder-only, subfolders fall back to base roles), followed by the folder role's allows with the same conditions. CASL gives the last matching rule precedence, so the folder role fully replaces base permissions at the granted path and nowhere else. The deny list `FOLDER_SCOPED_DENY_RULES` (`default-roles.ts`) is deliberately literal: `folder-scoped-privilege-rules.test.ts` enumerates `ProjectPermissionV2Schema` and fails when a new secretPath-scoped subject or action is added, forcing a human to extend the deny list and reconsider the role tiers. Only `getProjectPermission` evaluates folder grants; audits and `getProjectPermissions` do not yet.
+**Folder RBAC (folder-scoped privileges)**: `additional_privileges` rows with a `folderId` + `role` (`SecretFolderRole` tiers in `folder-roles.ts`) are fetched in `getProjectPermission` through a second, longer-lived fingerprint cache (15m data / 15s marker) whose fingerprint is a Postgres version counter bumped by `permissionService.invalidateProjectFolderPermissionCache` (any future grant/revoke API and every folder rename/move/delete path MUST call it). When an actor holds folder grants, `buildProjectPermissionRules` appends per-grant CASL rules built by `buildFolderScopedPrivilegeRules` (`permission-fns.ts`): a deny of every secretPath-capable subject conditioned on `{ environment, secretPath }` (exact path, folder-only, subfolders fall back to base roles), followed by the folder role's allows with the same conditions. CASL gives the last matching rule precedence, so the folder role fully replaces base permissions at the granted path and nowhere else. The deny list `FOLDER_SCOPED_DENY_RULES` (`folder-roles.ts`) is deliberately literal: `folder-scoped-privilege-rules.test.ts` enumerates `ProjectPermissionV2Schema` and fails when a new secretPath-scoped subject or action is added, forcing a human to extend the deny list and reconsider the role tiers. Only `getProjectPermission` evaluates folder grants; audits and `getProjectPermissions` do not yet.
 
 ### Request-Scoped Memoization
 
@@ -211,29 +219,30 @@ A per-request in-memory cache that eliminates redundant DB reads within a single
 **How it works**: `RequestMemoizer` wraps a `Map<string, unknown>` with an async `getOrSet(key, fetcher)` method. Concurrent calls for the same key coalesce onto a single fetcher invocation (in-flight deduplication). The `requestMemoize(key, fetcher)` helper reads the memoizer from request context and falls back to direct execution when no context exists (e.g. queue workers).
 
 **Currently memoized**:
+
 - `getProjectPermission` — full-function result (keyed by projectId + actor + actorId + actorOrgId + actorAuthMethod + actionProjectType). Eliminates redundant permission checks in batch secret operations (50 secrets → 1 DB round-trip instead of 50).
 - `getOrgPermission` — full-function result (keyed by orgId + actor + actorId + actorOrgId + actorAuthMethod + scope).
 - `projectDAL.findById` — in permission-service.ts and project-bot-fns.ts. Deduplicates 4 of the 5 redundant project lookups seen per secret read request.
 - `userDAL.findById` / `identityDAL.findById` — in permission-service.ts. Eliminates the redundant actor lookup during permission resolution.
 
 **Usage pattern**:
+
 ```ts
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 // In a service or function called during request handling:
-const project = await requestMemoize(
-  `project:findById:${projectId}`,
-  () => projectDAL.findById(projectId)
-);
+const project = await requestMemoize(`project:findById:${projectId}`, () => projectDAL.findById(projectId));
 ```
 
 **When to add more items to request-scoped memoization**:
+
 - The data is **read-only within the request** — no mutations to the same record happen between reads.
 - The same DAL call (same table, same ID) is made **2+ times in the same request** across different services or functions. Check with Datadog traces or by searching for the DAL method across call sites in the hot path.
 - The call does **NOT use a DB transaction** (`trx` parameter). Transactional reads may see different data than read-replica results; memoizing them could return stale data.
 - The call is on a **hot path** (auth, permissions, secret CRUD). Low-frequency admin endpoints don't benefit enough to justify the added indirection.
 
 **When NOT to use**:
+
 - Inside DB transactions — pass `trx` directly, skip memoization.
 - For data mutated within the request and re-read (e.g. KMS key creation writes to the project row, then re-reads it).
 - In queue workers or background jobs — the helper falls back gracefully, but there's no request lifecycle to scope the cache.
@@ -253,7 +262,7 @@ Queue handler factories (e.g., `src/services/secret/secret-queue.ts`) follow the
 
 `queueService.start(name, handler, opts)` accepts `concurrency` (per-worker parallelism ceiling) and BullMQ's `limiter: { max, duration }` (fleet-wide throughput cap, coordinated via Redis). Use both to **rate-shape DB-heavy background work** so a large backlog drains as an even plateau instead of a burst — see `src/services/project/project-cleanup-queue.ts`. The cron cadence must not be the pacer; load is bounded by `concurrency × per-job cost`, and the limiter caps steady throughput.
 
-**`QUEUE_WORKER_PROFILE` gates the consumer, never the producer.** Whenever workers are enabled, `start()` creates the BullMQ `Queue` for every queue and only skips creating the `Worker` when the queue isn't in this pod's profile. This invariant is what makes splitting the fleet by profile safe: a pod that doesn't consume a queue must still be able to enqueue onto it, since `queue()` silently no-ops on an uninitialized queue (`await q?.add(...)`) and would otherwise drop every job destined for another profile's worker. `QUEUE_WORKERS_ENABLED=false` is the one exception and is deliberately absolute — it returns before the `Queue` is created (`src/queue/queue-service.ts:786`), so such a pod neither consumes *nor* produces, and both `queue()` and `upsertJobScheduler` are no-ops or throw. Code that schedules work at boot must branch on that flag rather than swallowing the failure, so a genuine Redis/BullMQ error still surfaces (see `src/ee/services/audit-log/audit-log-queue.ts`).
+**`QUEUE_WORKER_PROFILE` gates the consumer, never the producer.** Whenever workers are enabled, `start()` creates the BullMQ `Queue` for every queue and only skips creating the `Worker` when the queue isn't in this pod's profile. This invariant is what makes splitting the fleet by profile safe: a pod that doesn't consume a queue must still be able to enqueue onto it, since `queue()` silently no-ops on an uninitialized queue (`await q?.add(...)`) and would otherwise drop every job destined for another profile's worker. `QUEUE_WORKERS_ENABLED=false` is the one exception and is deliberately absolute — it returns before the `Queue` is created (`src/queue/queue-service.ts:786`), so such a pod neither consumes _nor_ produces, and both `queue()` and `upsertJobScheduler` are no-ops or throw. Code that schedules work at boot must branch on that flag rather than swallowing the failure, so a genuine Redis/BullMQ error still surfaces (see `src/ee/services/audit-log/audit-log-queue.ts`).
 
 ### Scheduled Jobs (Cron Manager)
 
@@ -273,11 +282,13 @@ Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cro
      const init = () => {
        cronJob.register({
          name: CronJobName.MyJob,
-         pattern: "*/5 * * * *",      // standard cron, UTC
-         runHashTtlS: 60 * 60,        // how long the run hash lives in Redis
+         pattern: "*/5 * * * *", // standard cron, UTC
+         runHashTtlS: 60 * 60, // how long the run hash lives in Redis
          enabled: !appCfg.isSecondaryInstance, // gate per-deploy if needed
-         maxAttempts: 3,              // optional, default 3
-         handler: async () => { /* work */ }
+         maxAttempts: 3, // optional, default 3
+         handler: async () => {
+           /* work */
+         }
        });
      };
      return { init };
@@ -287,15 +298,17 @@ Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cro
 3. Add a corresponding alarm in the infrastructure repo so the new job is monitored. Follow the existing pattern in `infisical-shared-cloud/modules/redis_alarms/main.tf` — every cron job must have an alarm defined there. Don't ship a new cron job without wiring up its alarm.
 
 **Handler contract**:
+
 - Each scheduled fire runs exactly once across the fleet: pods race for a per-run redlock, the winner executes the handler, and the others no-op. You don't need in-handler locking to guard against concurrent pods.
 - Handlers must be idempotent at the boundary of `handlerTimeoutMs` (default 5 min). A timeout marks the run failed-final and waits for the next fire — it does NOT retry the same fire, because the timed-out handler may still be running.
 - Failures (non-timeout) retry with exponential backoff (base 30 s, max 5 min) up to `maxAttempts`, but only if the retry would still fit before the next scheduled fire. Otherwise the next fire is treated as the natural retry.
 - Long-running handlers should override `handlerTimeoutMs` / `leaseDurationMs` per-entry (must satisfy `handlerTimeoutMs <= leaseDurationMs`).
 
 **When to use cron vs. queue**:
+
 - Scheduled/recurring (every N minutes, daily at X, cron pattern) → `cronJob.register(...)`.
 - One-shot or event-triggered work (enqueued from a request handler or another job) → BullMQ queue + worker.
-- A cron handler that fans out per-tenant work typically *enqueues BullMQ jobs* for each unit of work rather than doing the work inline — keep the cron tick fast and let the queue worker handle parallelism and retries for the actual payload.
+- A cron handler that fans out per-tenant work typically _enqueues BullMQ jobs_ for each unit of work rather than doing the work inline — keep the cron tick fast and let the queue worker handle parallelism and retries for the actual payload.
 
 See `src/services/health-alert/health-alert-queue.ts` for a minimal example, `src/services/resource-cleanup/resource-cleanup-queue.ts` for a service with multiple registrations, and `src/ee/services/secret-rotation-v2/secret-rotation-v2-queue.ts` for a cron-tick that fans out into a BullMQ queue.
 
@@ -319,6 +332,7 @@ Invariants worth knowing before extending it:
 - **Channel configs are encrypted** with the org/project KMS cipher (`alert-channel-crypto-fns.ts`) — never store or return them in plaintext.
 - **`findDueTargets` must return most-urgent-first.** The engine's per-channel `maxTargetsPerRun` cap keeps the head of the list and defers the tail, so ordering is what guarantees the closest-to-expiry targets are never the dropped ones.
 - **Deleting an alertable resource does NOT delete its alerts. You have to reap them yourself.** `alerts.resourceId` is a plain string column with **no foreign key** to the resource's table (a provider's `resourceType` can point at anything), so nothing cascades. Skip the reap and the row survives as a dangling alert whose `findDueTargets` matches nothing and whose "view" link 404s. Two helpers on `alertService`, and picking the wrong one is the bug:
+
   - **`deleteAlertsForDeletedResource({ resourceType, resourceId })`** when the resource **row is gone**. It has **no scope filter** and reaps across every org and project. This is required, not just tidier: the same resource can be watched from another org (a root-org identity invited into a child org), so an `orgId`-filtered reap leaves those rows orphaned.
   - **`deleteAlertsForResource({ orgId, projectId?, resourceType, resourceId })`** when the resource merely **left a scope** (removed from a project, removed from an org) but still exists. Narrow on purpose: leaving one project must not drop the org-level alert, and leaving one org must not touch another org's alerts. Omitting `projectId` reaps the whole org, which is what org-membership removal wants since it cascades the project memberships.
 
@@ -329,18 +343,20 @@ Invariants worth knowing before extending it:
 Resources whose deletion cascades across many/large tables use a **soft-delete + paced async hard-delete** pattern instead of a synchronous cascade in the request path.
 
 Pattern:
+
 - **Soft-delete columns** on the table: `deleteAfter`, `softDeletedAt`, `deletedByActorType`, `deletedByActorId`, plus a **partial index** `WHERE deleteAfter IS NOT NULL` (tiny, ~zero write cost on the live path). The DELETE handler sets `deleteAfter` (one UPDATE) and returns immediately. Set `deleteAfter = now()` for "real delete" UX (reaped on the next worker tick) or `now + grace` for a restore window. The actor pair follows the same `(actorType, actorId)` pattern used by audit logs — extensible to any `ActorType` without schema changes.
 - **Hide soft-deleted rows from every read.** Override the `ormify` base `findById`/`findOne`/`find` to append `.whereNull("deleteAfter")`, and add explicit `*IncludingExpired` escape hatches used only by the cleanup worker/restore. Patch all custom read queries too — **especially any count feeding a plan/quota limit** (e.g. `countOfOrgProjects`), or soft-deleted rows wrongly count against limits. Free unique columns (e.g. the project slug) on soft-delete so the resource can be recreated immediately.
-- **`Environment.deleteAfter` ≠ `Project.deleteAfter` — filter both.** The two soft-deletes are independent: soft-deleting a project does NOT soft-delete its environments. Many DALs already filter `Environment.deleteAfter` (from the env soft-delete) — that does **not** exclude a soft-deleted *project*'s data. So any **cron / cross-project enumeration** must also filter `Project.deleteAfter`: the rotation/sync/reminder queue queries, and cross-project listings (project/identity memberships, group projects, org product stats). External side effects are the dangerous case — without it, a soft-deleted project's secrets get rotated, synced, or reminded on during the cleanup window. Per-project reads resolved through `projectDAL.findById` are protected upstream (it returns nothing for a soft-deleted project).
+- **`Environment.deleteAfter` ≠ `Project.deleteAfter` — filter both.** The two soft-deletes are independent: soft-deleting a project does NOT soft-delete its environments. Many DALs already filter `Environment.deleteAfter` (from the env soft-delete) — that does **not** exclude a soft-deleted _project_'s data. So any **cron / cross-project enumeration** must also filter `Project.deleteAfter`: the rotation/sync/reminder queue queries, and cross-project listings (project/identity memberships, group projects, org product stats). External side effects are the dangerous case — without it, a soft-deleted project's secrets get rotated, synced, or reminded on during the cleanup window. Per-project reads resolved through `projectDAL.findById` are protected upstream (it returns nothing for a soft-deleted project).
 - **Cron discovery + paced worker** (cron fans out to BullMQ): the cron selects the oldest `LIMIT N` expired rows (`ORDER BY deleteAfter ASC`) and enqueues one job each with a deterministic `jobId` (dedupe → queue stays bounded at ~N; never enqueue the whole backlog). The worker (`concurrency` + `limiter`) does the actual delete, re-reading via the **primary** under a per-resource lock to defeat replica-lag/restore races.
 - **Only manually chunk-delete a table whose inbound FKs are all `CASCADE`/`SET NULL`.** A table with a `DEFERRABLE NO ACTION` inbound FK (e.g. `secret_rotation_v2_secret_mappings.secretId → secrets_v2`) must be left to the final `deleteById` cascade, which resolves the deferred check at COMMIT across the whole tree; deleting its parent outside that tree fails the check. Use `SET LOCAL statement_timeout` per batch so the bound can't leak to pooled connections. (Example: `secret_versions_v2` is chunked by `folderId` because all its inbound FKs are CASCADE/SET NULL and it has no `folderId`/`secretId` FK back to the project, so the project cascade would otherwise orphan it.)
-- **A non-deferrable `NO ACTION`/`RESTRICT` inbound FK is unsafe under cascading deletes; make it `DEFERRABLE INITIALLY DEFERRED`.** It is checked at end of *statement*, so within one cascading `DELETE` a parent branch can be processed before a sibling branch deletes the referencer, raising "update or delete on X violates FK on Y". When a CASCADE child of the deleted root is itself referenced by `NO ACTION`/`RESTRICT` FKs, declare those FKs `.deferrable("deferred")` so the check runs at COMMIT after the cascade completes (a *direct* parent delete is still blocked while a referencer remains). Audit **all** inbound `NO ACTION`/`RESTRICT` FKs of such a parent, not just one.
-- **Index every FK referencing column that participates in a cascade.** Postgres does **not** auto-index FK columns. A cascade fires a **per-row** RI trigger on each child, so an unindexed child means one seq-scan *per deleted parent row*, which blows past `statement_timeout` on a chunked delete. Before chunk-deleting a large table, enumerate **every** inbound FK, including helper-generated ones: `createJunctionTable` (`src/db/utils.ts`) creates CASCADE FK columns with **no index** on either side, so every junction table needs explicit FK indexes. For a mostly-NULL nullable FK, a partial index `WHERE col IS NOT NULL` serves the cascade lookup at a fraction of the size/write cost.
+- **A non-deferrable `NO ACTION`/`RESTRICT` inbound FK is unsafe under cascading deletes; make it `DEFERRABLE INITIALLY DEFERRED`.** It is checked at end of _statement_, so within one cascading `DELETE` a parent branch can be processed before a sibling branch deletes the referencer, raising "update or delete on X violates FK on Y". When a CASCADE child of the deleted root is itself referenced by `NO ACTION`/`RESTRICT` FKs, declare those FKs `.deferrable("deferred")` so the check runs at COMMIT after the cascade completes (a _direct_ parent delete is still blocked while a referencer remains). Audit **all** inbound `NO ACTION`/`RESTRICT` FKs of such a parent, not just one.
+- **Index every FK referencing column that participates in a cascade.** Postgres does **not** auto-index FK columns. A cascade fires a **per-row** RI trigger on each child, so an unindexed child means one seq-scan _per deleted parent row_, which blows past `statement_timeout` on a chunked delete. Before chunk-deleting a large table, enumerate **every** inbound FK, including helper-generated ones: `createJunctionTable` (`src/db/utils.ts`) creates CASCADE FK columns with **no index** on either side, so every junction table needs explicit FK indexes. For a mostly-NULL nullable FK, a partial index `WHERE col IS NOT NULL` serves the cascade lookup at a fraction of the size/write cost.
 - **Observe the backlog, not just the queue.** Queue depth caps at the discovery batch size, so it can't reveal the true backlog. Record the discovery result from the cron tick itself (e.g. `infisical.project_cleanup.discovered` / `infisical.project_env_cleanup.discovered` on the `InfisicalCore` meter: last batch size, capped at the discovery LIMIT). **Alert when the gauge stays at the cap** — it means the drain rate can't keep up (raise concurrency/limiter) or a mass-delete is in progress.
 
 ### Error Handling
 
 Custom error classes in `src/lib/errors/index.ts`:
+
 - `BadRequestError` (400) — with optional `details` field
 - `UnauthorizedError` (401)
 - `ForbiddenRequestError` (403) — with optional `details`
@@ -376,6 +392,7 @@ Note that `logger.ts` also has a `redactedKeys` list applied to structured-objec
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:
+
 - `src/ee/services/` — 60+ service modules (access approval, audit log, dynamic secrets, external KMS, gateway, KMIP, LDAP, OIDC, PAM, PKI, SAML, SCIM, secret approval/rotation/replication, etc.)
 - `src/ee/routes/v1/` — 63 EE route files; `src/ee/routes/v2/` — 10 v2 route files
 
@@ -386,6 +403,7 @@ EE routes register before community routes so they can override/extend endpoints
 ### Server Plugins
 
 Key plugins in `src/server/plugins/`:
+
 - `error-handler.ts` — global error handling with OpenTelemetry metrics
 - `fastify-zod.ts` — in-house Zod-to-OpenAPI transformation
 - `audit-log.ts` — request audit logging to queue
@@ -402,14 +420,16 @@ Key plugins in `src/server/plugins/`:
 OpenTelemetry metric setup lives in `src/lib/telemetry/`. Instruments are defined in `metrics.ts` (resolved lazily so they bind to the real MeterProvider installed by `instrumentation.ts` after boot).
 
 **Meter split by cardinality:**
+
 - **`InfisicalCore`** — the meter for all new metrics. A strict attribute allowlist (`INFISICAL_CORE_METER_ATTRIBUTES` in `telemetry-attributes.ts`) is applied via an SDK View, so **only bounded labels survive** — HTTP method, parameterized `http.route` template, and low-cardinality enums. This is the single choke point: any attribute passed at a call site that isn't in the allowlist is silently dropped.
 - **Legacy `Infisical` / `API` / `SecretSyncs` / `PkiSyncs` / `Integrations`** — carry unbounded per-actor labels (`HIGH_CARDINALITY_METER_NAMES`). Disabled wholesale via `OTEL_DROP_HIGH_CARDINALITY_METERS=true` in multi-tenant/cloud.
 
 **A new instrument goes on `InfisicalCore` and carries only bounded attributes.** The per-actor labels on the legacy meters are a deliberate exception, not a precedent: they are allowed only through `highCardinalityMeter`, so that `OTEL_DROP_HIGH_CARDINALITY_METERS` can switch them off. Do not put unbounded attributes on any other meter, and do not acquire a meter outside `src/lib/telemetry/` — ESLint blocks both `@opentelemetry/*` imports and `getMeter` access there, so use `highCardinalityMeter` for per-actor instruments and `resolveCoreMeter` for `InfisicalCore` observable gauges.
 
-The gate has to sit at the call site because **a `DROP` aggregation does not bound memory; only an attributes processor does.** The SDK filters attributes *before* hashing them (so the allowlist View is bounded) but consults the aggregator *after* (so a dropped data point has already been keyed by its full attribute set). Under cumulative temporality — which `OTEL_EXPORT_TYPE=prometheus` mandates — `TemporalMetricProcessor` then retains one entry per distinct attribute set, with no cardinality cap, for the lifetime of the process. A meter whose data points are dropped therefore still leaks heap if anything records to it, which is why the flag stops the recording (`shouldRecordHighCardinalityMetrics` in `metrics.ts`) *and* the View strips attributes. With the flag off — the self-hosted default — that retention is the operator's informed choice; the tradeoff is documented in the monitoring guide.
+The gate has to sit at the call site because **a `DROP` aggregation does not bound memory; only an attributes processor does.** The SDK filters attributes _before_ hashing them (so the allowlist View is bounded) but consults the aggregator _after_ (so a dropped data point has already been keyed by its full attribute set). Under cumulative temporality — which `OTEL_EXPORT_TYPE=prometheus` mandates — `TemporalMetricProcessor` then retains one entry per distinct attribute set, with no cardinality cap, for the lifetime of the process. A meter whose data points are dropped therefore still leaks heap if anything records to it, which is why the flag stops the recording (`shouldRecordHighCardinalityMetrics` in `metrics.ts`) _and_ the View strips attributes. With the flag off — the self-hosted default — that retention is the operator's informed choice; the tradeoff is documented in the monitoring guide.
 
 **Rules for InfisicalCore metrics:**
+
 - **No per-tenant / per-actor identifiers** as labels — no org id, user id/email, identity id, ip, user agent, request id, or free-form values (e.g. environment slug). These scale series count with customer count, which breaks CloudWatch's 1000-datapoint-per-OTLP-request limit and drives per-GB ingestion cost. Use the **audit log table** for per-org / per-actor breakdowns.
 - Adding a new label means adding it to the allowlist in `telemetry-attributes.ts`. Only add **bounded** keys (fixed enums / static route templates), and document why.
 - `http.route` must be the parameterized template (`req.routeOptions.url`), never the raw request path.

@@ -10,7 +10,10 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema, temporaryPermissionTypeSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedFolderAccessSchema } from "@app/server/routes/sanitizedSchema/folder-access";
+import {
+  SanitizedFolderAccessIdentitySchema,
+  SanitizedFolderAccessSchema
+} from "@app/server/routes/sanitizedSchema/folder-access";
 import { SanitizedIdentityPrivilegeSchema } from "@app/server/routes/sanitizedSchema/identitiy-additional-privilege";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
@@ -514,5 +517,49 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
 
       return { folderAccess: { ...folderAccess, identityId: req.params.identityId } };
     }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/projects/:projectId/folder-access/:folderId/identities",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "listFolderAccessIdentities",
+      tags: [ApiDocsTags.FolderAccess],
+      description: "List every machine identity in a project with the access it has on a folder.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim().min(1).max(64).describe(FOLDER_ACCESS.LIST_IDENTITIES.projectId),
+        folderId: z.string().uuid().describe(FOLDER_ACCESS.LIST_IDENTITIES.folderId)
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().int().min(0).default(0).describe(FOLDER_ACCESS.LIST_IDENTITIES.offset),
+        limit: z.coerce.number().int().min(1).max(100).default(50).describe(FOLDER_ACCESS.LIST_IDENTITIES.limit),
+        search: z.string().trim().max(64).optional().describe(FOLDER_ACCESS.LIST_IDENTITIES.search)
+      }),
+      response: {
+        200: z.object({
+          identities: SanitizedFolderAccessIdentitySchema.array(),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) =>
+      server.services.folderPermission.listFolderAccessIdentities({
+        permission: req.permission,
+        projectId: req.params.projectId,
+        folderId: req.params.folderId,
+        limit: req.query.limit,
+        offset: req.query.offset,
+        search: req.query.search
+      })
   });
 };

@@ -6,8 +6,8 @@ import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
-import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TFolderPermissionDALFactory } from "./folder-permission-dal";
 import {
   assertManageFolderAccess,
   assertTargetMembership,
@@ -17,7 +17,12 @@ import {
   targetLabel,
   toFolderGrant
 } from "./folder-permission-fns";
-import { TCreateFolderGrantDTO, TDeleteFolderGrantDTO, TUpdateFolderGrantDTO } from "./folder-permission-types";
+import {
+  TCreateFolderGrantDTO,
+  TDeleteFolderGrantDTO,
+  TListFolderAccessActorsDTO,
+  TUpdateFolderGrantDTO
+} from "./folder-permission-types";
 
 type TFolderPermissionServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<
@@ -26,7 +31,10 @@ type TFolderPermissionServiceFactoryDep = {
   >;
   secretFolderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
-  membershipDAL: Pick<TMembershipDALFactory, "findOne">;
+  folderPermissionDAL: Pick<
+    TFolderPermissionDALFactory,
+    "findUsersWithFolderAccess" | "findIdentitiesWithFolderAccess" | "hasProjectAccess"
+  >;
 };
 
 export type TFolderPermissionServiceFactory = ReturnType<typeof folderPermissionServiceFactory>;
@@ -35,13 +43,13 @@ export const folderPermissionServiceFactory = ({
   additionalPrivilegeDAL,
   secretFolderDAL,
   permissionService,
-  membershipDAL
+  folderPermissionDAL
 }: TFolderPermissionServiceFactoryDep) => {
   const createFolderGrant = async (dto: TCreateFolderGrantDTO) => {
     const { projectId, folderId, target } = dto;
     const folder = await resolveFolder(projectId, folderId, secretFolderDAL);
     await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
-    await assertTargetMembership(dto.permission.orgId, projectId, target, membershipDAL);
+    await assertTargetMembership(dto.permission.orgId, projectId, target, folderPermissionDAL);
 
     const actorField = targetActorField(target);
     const alreadyExistsError = () =>
@@ -84,7 +92,7 @@ export const folderPermissionServiceFactory = ({
     const { projectId, folderId, target } = dto;
     const folder = await resolveFolder(projectId, folderId, secretFolderDAL);
     await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
-    await assertTargetMembership(dto.permission.orgId, projectId, target, membershipDAL);
+    await assertTargetMembership(dto.permission.orgId, projectId, target, folderPermissionDAL);
 
     const actorField = targetActorField(target);
     const grant = await additionalPrivilegeDAL.transaction(async (tx) => {
@@ -134,9 +142,57 @@ export const folderPermissionServiceFactory = ({
     return { folderAccess: toFolderGrant(grant, projectId, folderId, folder) };
   };
 
+  const listFolderAccessUsers = async (dto: TListFolderAccessActorsDTO) => {
+    const { projectId, folderId, limit, offset, search } = dto;
+    const folder = await resolveFolder(projectId, folderId, secretFolderDAL);
+    await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
+
+    const { users, totalCount } = await folderPermissionDAL.findUsersWithFolderAccess({
+      projectId,
+      orgId: dto.permission.orgId,
+      folderId,
+      search,
+      limit,
+      offset
+    });
+
+    return {
+      users: users.map(({ folderAccess, ...user }) => ({
+        ...user,
+        folderRBACAccess: folderAccess ? toFolderGrant(folderAccess, projectId, folderId, folder) : null
+      })),
+      totalCount
+    };
+  };
+
+  const listFolderAccessIdentities = async (dto: TListFolderAccessActorsDTO) => {
+    const { projectId, folderId, limit, offset, search } = dto;
+    const folder = await resolveFolder(projectId, folderId, secretFolderDAL);
+    await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
+
+    const { identities, totalCount } = await folderPermissionDAL.findIdentitiesWithFolderAccess({
+      projectId,
+      orgId: dto.permission.orgId,
+      folderId,
+      search,
+      limit,
+      offset
+    });
+
+    return {
+      identities: identities.map(({ folderAccess, ...identity }) => ({
+        ...identity,
+        folderRBACAccess: folderAccess ? toFolderGrant(folderAccess, projectId, folderId, folder) : null
+      })),
+      totalCount
+    };
+  };
+
   return {
     createFolderGrant,
     updateFolderGrant,
-    deleteFolderGrant
+    deleteFolderGrant,
+    listFolderAccessUsers,
+    listFolderAccessIdentities
   };
 };

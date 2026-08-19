@@ -17,3 +17,18 @@ export const SanitizedFolderAccessSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date()
 });
+
+export const SanitizedFolderAccessUserSchema = z.object({
+  userId: z.string().uuid(),
+  username: z.string(),
+  email: z.string().nullable(),
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
+  folderRBACAccess: SanitizedFolderAccessSchema.nullable()
+});
+
+export const SanitizedFolderAccessIdentitySchema = z.object({
+  identityId: z.string().uuid(),
+  name: z.string(),
+  folderRBACAccess: SanitizedFolderAccessSchema.nullable()
+});

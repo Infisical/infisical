@@ -11,8 +11,8 @@ import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
-import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TFolderPermissionDALFactory } from "./folder-permission-dal";
 import { TFolderGrant, TFolderGrantActor, TFolderGrantTypeInput, TResolvedFolder } from "./folder-permission-types";
 
 export const computeTemporaryFields = (type: TFolderGrantTypeInput | undefined) => {
@@ -47,11 +47,6 @@ export const resolveFolder = async (
       message: `Folder with ID '${folderId}' not found in project with ID '${projectId}'`
     });
   }
-  if (folder.parentId === null) {
-    throw new BadRequestError({
-      message: "Folder access cannot be granted on the root folder. Grant a project role instead, or pick a subfolder."
-    });
-  }
   if (folder.isReserved) {
     throw new BadRequestError({ message: "Folder access cannot be granted on a reserved system folder." });
   }
@@ -81,18 +76,22 @@ export const assertManageFolderAccess = async (
   );
 };
 
+// Access can be inherited from a group, so this cannot be a membership lookup on
+// actorUserId/actorIdentityId: a group-derived actor has no such row and would be rejected despite
+// holding real access to the project.
 export const assertTargetMembership = async (
   orgId: string,
   projectId: string,
   target: TFolderGrantActor,
-  membershipDAL: Pick<TMembershipDALFactory, "findOne">
+  folderPermissionDAL: Pick<TFolderPermissionDALFactory, "hasProjectAccess">
 ) => {
-  const membership = await membershipDAL.findOne({
-    scopeOrgId: orgId,
-    scopeProjectId: projectId,
-    [target.actorType === ActorType.USER ? "actorUserId" : "actorIdentityId"]: target.actorId
+  const hasAccess = await folderPermissionDAL.hasProjectAccess({
+    orgId,
+    projectId,
+    actorId: target.actorId,
+    actorType: target.actorType
   });
-  if (!membership) {
+  if (!hasAccess) {
     throw new NotFoundError({
       message:
         target.actorType === ActorType.USER

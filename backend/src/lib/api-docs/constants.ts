@@ -1763,6 +1763,20 @@ export const FOLDER_ACCESS = {
     folderId: "The ID of the folder the access is on.",
     userId: "The ID of the user whose folder access to revoke.",
     identityId: "The ID of the machine identity whose folder access to revoke."
+  },
+  LIST_USERS: {
+    projectId: "The ID of the project the folder is in.",
+    folderId: "The ID of the folder to list access for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th user.",
+    limit: "The number of users to return.",
+    search: "The text string that user names and email addresses will be filtered by."
+  },
+  LIST_IDENTITIES: {
+    projectId: "The ID of the project the folder is in.",
+    folderId: "The ID of the folder to list access for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th machine identity.",
+    limit: "The number of machine identities to return.",
+    search: "The text string that machine identity names will be filtered by."
   }
 };
 

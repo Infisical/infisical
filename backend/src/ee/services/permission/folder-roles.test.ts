@@ -2,7 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 
 import { SecretFolderRole } from "@app/db/schemas";
 
-import { SECRET_FOLDER_ROLE_PERMISSIONS } from "./default-roles";
+import { SECRET_FOLDER_ROLE_PERMISSIONS } from "./folder-roles";
 import {
   ProjectPermissionActions,
   ProjectPermissionCommitsActions,

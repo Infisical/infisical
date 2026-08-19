@@ -5,7 +5,7 @@ import { ProjectMembershipRole, ProjectType, SecretFolderRole } from "@app/db/sc
 import { conditionsMatcher } from "@app/lib/casl";
 import { NotFoundError } from "@app/lib/errors";
 
-import { FOLDER_SCOPED_DENY_RULES } from "./default-roles";
+import { FOLDER_SCOPED_DENY_RULES } from "./folder-roles";
 import { buildFolderScopedPrivilegeRules } from "./permission-fns";
 import { buildProjectPermissionRules } from "./permission-service";
 import { TProjectFolderScopedPrivilege } from "./permission-service-types";
@@ -79,7 +79,7 @@ describe("folder-scoped privilege deny coverage", () => {
   test("every secretPath-scoped subject is denied at the granted folder path", () => {
     expect(
       [...new Set(Object.keys(deniedActionsBySubject))].sort(),
-      "A subject that supports a secretPath condition was added or removed. Update FOLDER_SCOPED_DENY_RULES in default-roles.ts and review whether the SECRET_FOLDER_ROLE_PERMISSIONS tiers should grant the new subject's actions."
+      "A subject that supports a secretPath condition was added or removed. Update FOLDER_SCOPED_DENY_RULES in folder-roles.ts and review whether the SECRET_FOLDER_ROLE_PERMISSIONS tiers should grant the new subject's actions."
     ).toEqual([...new Set(secretPathScopedSubjects)].sort());
   });
 
@@ -102,7 +102,7 @@ describe("folder-scoped privilege deny coverage", () => {
     (deniedSubject) => {
       expect(
         [...(deniedActionsBySubject[deniedSubject] ?? [])].sort(),
-        `A new action was added to the '${deniedSubject}' subject. Add it to FOLDER_SCOPED_DENY_RULES in default-roles.ts and review whether the SECRET_FOLDER_ROLE_PERMISSIONS tiers should grant it.`
+        `A new action was added to the '${deniedSubject}' subject. Add it to FOLDER_SCOPED_DENY_RULES in folder-roles.ts and review whether the SECRET_FOLDER_ROLE_PERMISSIONS tiers should grant it.`
       ).toEqual([...(ALL_ACTIONS_BY_SUBJECT[deniedSubject] ?? [])].sort());
     }
   );

@@ -309,6 +309,7 @@ import { folderCommitDALFactory } from "@app/services/folder-commit/folder-commi
 import { folderCommitQueueServiceFactory } from "@app/services/folder-commit/folder-commit-queue";
 import { folderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { folderCommitChangesDALFactory } from "@app/services/folder-commit-changes/folder-commit-changes-dal";
+import { folderPermissionDALFactory } from "@app/services/folder-permission/folder-permission-dal";
 import { folderPermissionServiceFactory } from "@app/services/folder-permission/folder-permission-service";
 import { folderTreeCheckpointDALFactory } from "@app/services/folder-tree-checkpoint/folder-tree-checkpoint-dal";
 import { folderTreeCheckpointResourcesDALFactory } from "@app/services/folder-tree-checkpoint-resources/folder-tree-checkpoint-resources-dal";
@@ -743,6 +744,7 @@ export const registerRoutes = async (
   const membershipIdentityDAL = membershipIdentityDALFactory(db);
   const membershipGroupDAL = membershipGroupDALFactory(db);
   const additionalPrivilegeDAL = additionalPrivilegeDALFactory(db);
+  const folderPermissionDAL = folderPermissionDALFactory(db);
   const membershipRoleDAL = membershipRoleDALFactory(db);
   const approvalPolicyDAL = approvalPolicyDALFactory(db);
   const roleDAL = roleDALFactory(db);
@@ -934,7 +936,7 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     secretFolderDAL: folderDAL,
     permissionService,
-    membershipDAL
+    folderPermissionDAL
   });
 
   const kmsService = kmsServiceFactory({

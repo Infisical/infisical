@@ -18,7 +18,7 @@ import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privile
 import { ActorAuthMethod, ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
-import { FOLDER_SCOPED_DENY_RULES, SECRET_FOLDER_ROLE_PERMISSIONS } from "./default-roles";
+import { FOLDER_SCOPED_DENY_RULES, SECRET_FOLDER_ROLE_PERMISSIONS } from "./folder-roles";
 import { OrgPermissionSet } from "./org-permission";
 import { TCachedFolderScopedPrivileges, TProjectFolderScopedPrivilege } from "./permission-service-types";
 import {
