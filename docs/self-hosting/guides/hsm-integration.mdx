@@ -1,5 +1,5 @@
 ---
-title: "HSM Integration"
+title: "HSM integration"
 description: "Configure a Hardware Security Module (HSM) as the root encryption strategy for your self-hosted Infisical instance."
 ---
 
@@ -17,7 +17,7 @@ Infisical KMS currently supports two encryption strategies:
 1. **Standard Encryption**: This is the default encryption strategy used by Infisical KMS. It uses a software-protected encryption key to encrypt KMS keys within your Infisical instance. The root encryption key is defined by setting the `ENCRYPTION_KEY` environment variable.
 2. **Hardware Security Module (HSM)**: This encryption strategy uses a Hardware Security Module (HSM) to create a root encryption key that is stored on a physical device to encrypt the KMS keys within your instance.
 
-## Hardware Security Module (HSM)
+## Hardware security module (HSM)
 
 ![HSM Illustration](/images/platform/kms/hsm/hsm-illustration.png)
 
@@ -40,7 +40,7 @@ Enabling HSM encryption has a set of key benefits:
   Infisical is validated to work with PKCS#11 2.30 and newer. If your HSM device doesn't follow the >=2.30 PKCS#11 standard you may see degraded performance.
 
 
-## Environment Variable Configuration
+## Environment variable configuration
 To configure your Infisical instance to use an HSM, you must set the required environment variables. Below you'll find an example of the required environment variables.
 For further instructions on how to configure the HSM device for your Infisical instance, please see the [Setup Instructions](#setup-instructions) section.
 
@@ -59,12 +59,12 @@ HSM_PIN=your:pin
 
 You can read more about the [default instance configurations](/self-hosting/configuration/envars) here.
 
-## PKCS#11 Key Attributes
+## PKCS#11 key attributes
 
 If no AES key or HMAC key already exists with the label you defined on the `HSM_KEY_LABEL` environment variable, then Infisical will create one for you automatically using the label specified on `HSM_KEY_LABEL`.
 Below you'll find a list of the attributes each key will be created with.
 
-### AES Key
+### AES key
 
 <Accordion title="Bring your own key minimum requirements (optional)">
   If you bring your own AES key and don't let Infisical create it for you it must have at least the following attributes:
@@ -92,7 +92,7 @@ Below you'll find a list of the attributes each key will be created with.
 * `CKA_SENSITIVE`: `true` — The key material is marked as sensitive.
 * `CKA_PRIVATE`: `true` — The key material is marked as private to the slot and can't be accessed from other slots.
 
-### HMAC Key
+### HMAC key
 
 <Accordion title="Bring your own key minimum requirements (optional)">
   If you bring your own HMAC key and don't let Infisical create it for you it must have at least the following attributes:
@@ -122,7 +122,7 @@ Below you'll find a list of the attributes each key will be created with.
 
 
 
-## Setup Instructions
+## Setup instructions
 
 
 <Steps>
@@ -168,7 +168,7 @@ Below you'll find a list of the attributes each key will be created with.
 </Steps>
 
 
-## Using HSMs In Your Deployment
+## Using HSMs in your deployment
 
 <Tabs>
   <Tab title="Docker">
@@ -1559,7 +1559,7 @@ Below you'll find a list of the attributes each key will be created with.
 </Tabs>
 
 
-## Disabling HSM Encryption
+## Disabling HSM encryption
 
 To disable HSM encryption, navigate to Infisical's Server Admin Console and set the KMS encryption strategy to `Software-based Encryption`. This will revert the encryption strategy back to the default software-based encryption.
 

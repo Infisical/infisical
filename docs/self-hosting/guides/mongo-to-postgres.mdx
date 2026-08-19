@@ -160,7 +160,7 @@ Once started, the migration script will transform MongoDB data into an equivalen
   </Step>
 </Steps>
 
-## Finalizing Migration
+## Finalizing migration
 At this stage, the data from the Mongo instance of Infisical should have been successfully converted into its Postgres equivalent. 
 The remaining step involves transferring the local Postgres database, which now contains all the migrated data, to your chosen production Postgres environment. 
 Rather than transferring the data row-by-row from your local machine to the production Postgres database, we will first create a dump file from the local Postgres and then upload this file to your production Postgres instance.
@@ -185,7 +185,7 @@ Rather than transferring the data row-by-row from your local machine to the prod
   </Step>
 </Steps>
 
-## Post-Migration Steps
+## Post-migration steps
 
 Once the data migration to PostgreSQL is complete, you're ready to deploy Infisical using the deployment method of your choice.
 For guidance on deployment options, please visit the [self-hosting documentation](/self-hosting/overview). 
@@ -196,7 +196,7 @@ The first deployment of Postgres based Infisical must be deployed with Docker im
 After deploying this version, you can proceed to update to any subsequent versions.
 </Warning>
 
-## Important Notes 
+## Important notes 
 
 Infisical's [Docker Hub repository](https://hub.docker.com/r/infisical/infisical) uses different tagging conventions to indicate which database backend is used:
 
