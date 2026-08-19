@@ -3,7 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ChevronDownIcon, FilterIcon, HardDriveIcon, SearchIcon, UserIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { AssumePrivilegesModal } from "@app/components/assume-privileges";
+import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -268,7 +268,7 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
           onChangePerPage={handlePerPageChange}
         />
       )}
-      <AssumePrivilegesModal
+      <AssumePrivilegesDialog
         isOpen={popUp.assumePrivileges.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
         actorType={(popUp.assumePrivileges.data as { actorType: ActorType })?.actorType}

@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { EllipsisIcon, InfoIcon, ShieldIcon } from "lucide-react";
 
-import { AssumePrivilegesModal } from "@app/components/assume-privileges";
+import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -251,7 +251,7 @@ export const Page = () => {
             onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
             onDeleteApproved={handleRemoveUser}
           />
-          <AssumePrivilegesModal
+          <AssumePrivilegesDialog
             isOpen={popUp.assumePrivileges.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
             actorType={ActorType.USER}
