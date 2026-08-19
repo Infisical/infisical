@@ -115,7 +115,8 @@ export const AccessRestrictedDialog = ({
               <LockIcon />
               Access Restricted
             </Badge>
-            <h2 id={titleId} className="text-3xl leading-tight font-semibold">
+            {/* Alliance ships only weight 400, so font-normal rather than a faux-bolded semibold. */}
+            <h2 id={titleId} className="font-alliance text-3xl leading-tight font-normal">
               {title}
               <br />
               <span className="text-2xl">{subtitle}</span>
