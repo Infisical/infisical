@@ -1260,9 +1260,11 @@ export const pkiAcmeServiceFactory = ({
               throw new NotFoundError({ message: "Certificate policy not found" });
             }
 
+            // The CSR's own algorithms are spread in so a profile default cannot override what the
+            // key actually is, which would fail a policy the CSR itself satisfies.
             const validationResult = await certificatePolicyService.validateCertificateRequest(
               policy.id,
-              applyProfileDefaults(certificateRequest, profile.defaults)
+              applyProfileDefaults({ ...certificateRequest, ...extractAlgorithmsFromCSR(csr) }, profile.defaults)
             );
             if (!validationResult.isValid) {
               throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
