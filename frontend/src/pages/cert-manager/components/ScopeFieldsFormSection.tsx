@@ -20,7 +20,7 @@ import {
   FieldContent,
   FieldDescription,
   FieldError,
-  FieldTitle,
+  FieldLabel,
   Input,
   Select,
   SelectContent,
@@ -164,16 +164,18 @@ export const ScopeFieldsFormSection = <
 
   return (
     <div>
-      <FieldTitle>Scope this request (Optional)</FieldTitle>
+      <FieldLabel>
+        Scope this request <span className="text-muted">(optional)</span>
+      </FieldLabel>
       <FieldDescription>
-        Left empty, the access covers any signing situation. Anything you add has to match on every
-        sign call, so a mismatch is denied even when signatures remain.
+        Leave empty to cover any signing. Anything you add must match at signing time, or the call
+        is denied.
       </FieldDescription>
 
       <div className="mt-3">
         <div className="flex flex-col gap-2">
           {fields.length === 0 && (
-            <Empty className="border py-8">
+            <Empty className="gap-3 border p-5 md:p-6">
               <EmptyMedia variant="icon">
                 <ListFilter />
               </EmptyMedia>

@@ -23,11 +23,16 @@ const DURATION_PRESETS = [
   { value: "7d", label: "1 week" }
 ];
 
-const DEFAULT_UNCAPPED_WINDOW = "1d";
+export const NO_SIGNING_WINDOW = "none";
+
+const NO_LIMIT_OPTION = { value: NO_SIGNING_WINDOW, label: "No limit" };
+
+export const resolveSigningWindow = (value?: string) =>
+  !value || value === NO_SIGNING_WINDOW ? undefined : value;
 
 const getSigningWindowOptions = (maxWindowDuration?: string | null) => {
   const maxMs = parseDurationMs(maxWindowDuration);
-  if (maxMs === null || !maxWindowDuration) return DURATION_PRESETS;
+  if (maxMs === null || !maxWindowDuration) return [NO_LIMIT_OPTION, ...DURATION_PRESETS];
 
   const withinPolicy = DURATION_PRESETS.filter((option) => {
     const optionMs = parseDurationMs(option.value);
@@ -41,7 +46,7 @@ const getSigningWindowOptions = (maxWindowDuration?: string | null) => {
 export const getDefaultSigningWindow = (maxWindowDuration?: string | null) =>
   maxWindowDuration && parseDurationMs(maxWindowDuration) !== null
     ? maxWindowDuration
-    : DEFAULT_UNCAPPED_WINDOW;
+    : NO_SIGNING_WINDOW;
 
 type Props<T extends FieldValues> = {
   control: Control<T>;
@@ -79,7 +84,7 @@ export const SigningWindowField = <T extends FieldValues>({
             <FieldDescription>
               {maxWindowDuration
                 ? `Counts down from when the access is granted. Policy caps it at ${maxWindowDuration}.`
-                : "Counts down from when the access is granted."}
+                : "Counts down from when the access is granted. This policy sets no maximum, so the approval can run until its signatures are used up."}
             </FieldDescription>
           </FieldContent>
         </Field>

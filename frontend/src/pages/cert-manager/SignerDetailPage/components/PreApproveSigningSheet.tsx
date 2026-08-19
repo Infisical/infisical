@@ -36,7 +36,11 @@ import {
 } from "@app/pages/cert-manager/components/ScopeFieldsFormSection";
 import { PkiDocsUrls } from "@app/pages/cert-manager/pki-docs-urls";
 
-import { getDefaultSigningWindow, SigningWindowField } from "../../components/SigningWindowField";
+import {
+  getDefaultSigningWindow,
+  resolveSigningWindow,
+  SigningWindowField
+} from "../../components/SigningWindowField";
 
 type Props = {
   isOpen: boolean;
@@ -63,7 +67,7 @@ const schema = z
     justification: z.string().trim().min(1, "Reason is required").max(2048),
     scope: SigningScopeSchema
   })
-  .refine((d) => d.requestedSignings || d.requestedWindowDuration, {
+  .refine((d) => d.requestedSignings || resolveSigningWindow(d.requestedWindowDuration), {
     message: "Provide a signature count or an approval duration",
     path: ["requestedSignings"]
   });
@@ -135,7 +139,7 @@ export const PreApproveSigningSheet = ({ isOpen, onOpenChange, signerId }: Props
         granteeIdentityId: kind === "identity" ? id : undefined,
         justification: data.justification,
         requestedSignings: data.requestedSignings ?? undefined,
-        requestedWindowDuration: data.requestedWindowDuration,
+        requestedWindowDuration: resolveSigningWindow(data.requestedWindowDuration),
         scope: pickDeclaredScope(data.scope)
       });
       handleClose(false);
