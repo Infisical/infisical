@@ -5,7 +5,8 @@ import { ChevronLeftIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { AccessRestrictedBanner, PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
+import { AccessRestrictedBanner } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import {

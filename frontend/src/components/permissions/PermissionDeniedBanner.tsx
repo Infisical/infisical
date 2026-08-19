@@ -1,6 +1,6 @@
 import { twMerge } from "tailwind-merge";
 
-import { AccessRestrictedBanner } from "@app/components/v2";
+import { AccessRestrictedBanner } from "@app/components/v3";
 
 type Props = {
   containerClassName?: string;

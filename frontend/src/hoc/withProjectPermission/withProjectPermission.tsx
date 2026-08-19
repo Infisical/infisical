@@ -2,7 +2,7 @@ import { ComponentType } from "react";
 import { AbilityTuple } from "@casl/ability";
 import { twMerge } from "tailwind-merge";
 
-import { AccessRestrictedBanner } from "@app/components/v2";
+import { AccessRestrictedBanner } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 

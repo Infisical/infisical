@@ -6,7 +6,8 @@ import { TooltipProps } from "@app/components/v2/Tooltip/Tooltip";
 import { useOrgPermission } from "@app/context/OrgPermissionContext";
 import { OrgPermissionSet } from "@app/context/OrgPermissionContext/types";
 
-import { AccessRestrictedBanner, Tooltip } from "../v2";
+import { Tooltip } from "../v2";
+import { AccessRestrictedBanner } from "../v3";
 
 export const OrgPermissionGuardBanner = () => {
   return (

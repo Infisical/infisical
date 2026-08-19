@@ -5,13 +5,9 @@ import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
+import { DeleteActionModal, EmptyState, PageHeader } from "@app/components/v2";
 import {
   AccessRestrictedBanner,
-  DeleteActionModal,
-  EmptyState,
-  PageHeader
-} from "@app/components/v2";
-import {
   Button,
   DropdownMenu,
   DropdownMenuContent,

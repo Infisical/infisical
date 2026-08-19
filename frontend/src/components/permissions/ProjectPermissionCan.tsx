@@ -2,7 +2,7 @@ import { FunctionComponent, ReactNode } from "react";
 import { AbilityTuple, MongoAbility } from "@casl/ability";
 import { Can } from "@casl/react";
 
-import { AccessRestrictedBanner } from "@app/components/v2";
+import { AccessRestrictedBanner } from "@app/components/v3";
 import { ProjectPermissionSet, useProjectPermission } from "@app/context/ProjectPermissionContext";
 
 import { Tooltip } from "../v2/Tooltip";

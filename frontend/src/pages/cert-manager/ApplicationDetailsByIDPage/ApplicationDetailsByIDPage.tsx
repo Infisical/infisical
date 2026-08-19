@@ -12,8 +12,9 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { AccessRestrictedBanner, PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 import {
+  AccessRestrictedBanner,
   Button,
   DeleteConfirmDialog,
   DocumentationLinkBadge,

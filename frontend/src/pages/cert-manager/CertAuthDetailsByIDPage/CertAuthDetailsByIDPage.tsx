@@ -7,8 +7,9 @@ import { EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { AccessRestrictedBanner, DeleteActionModal, PageHeader } from "@app/components/v2";
+import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
+  AccessRestrictedBanner,
   Button,
   DropdownMenu,
   DropdownMenuContent,

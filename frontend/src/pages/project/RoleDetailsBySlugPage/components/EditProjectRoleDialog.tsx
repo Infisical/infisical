@@ -8,18 +8,18 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-  Input
+  Input,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
 } from "@app/components/v3";
 import { useOrganization, useProject, useSubscription } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
@@ -113,7 +113,7 @@ export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => 
 
   return (
     <>
-      <Dialog
+      <Sheet
         open={isOpen}
         onOpenChange={(open) => {
           onOpenChange(open);
@@ -126,75 +126,77 @@ export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => 
           }
         }}
       >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit Role</DialogTitle>
-            <DialogDescription>Update the role name, slug, and description.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-            <FieldGroup>
-              <Controller
-                control={control}
-                name="name"
-                render={({ field, fieldState: { error } }) => (
-                  <Field data-invalid={Boolean(error)}>
-                    <FieldLabel htmlFor="edit-project-role-name">Name</FieldLabel>
-                    <Input
-                      {...field}
-                      id="edit-project-role-name"
-                      placeholder="Billing Team"
-                      isError={Boolean(error)}
-                    />
-                    <FieldError>{error?.message}</FieldError>
-                  </Field>
-                )}
-              />
-              <Controller
-                control={control}
-                name="slug"
-                render={({ field, fieldState: { error } }) => (
-                  <Field data-invalid={Boolean(error)}>
-                    <FieldLabel htmlFor="edit-project-role-slug">Slug</FieldLabel>
-                    <Input
-                      {...field}
-                      id="edit-project-role-slug"
-                      placeholder="billing"
-                      isError={Boolean(error)}
-                    />
-                    <FieldError>{error?.message}</FieldError>
-                  </Field>
-                )}
-              />
-              <Controller
-                control={control}
-                name="description"
-                render={({ field, fieldState: { error } }) => (
-                  <Field data-invalid={Boolean(error)}>
-                    <FieldLabel htmlFor="edit-project-role-description">Description</FieldLabel>
-                    <Input
-                      {...field}
-                      id="edit-project-role-description"
-                      placeholder="Manage billing settings"
-                      isError={Boolean(error)}
-                    />
-                    <FieldError>{error?.message}</FieldError>
-                  </Field>
-                )}
-              />
-            </FieldGroup>
-            <DialogFooter>
-              <DialogClose asChild>
+        <SheetContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+            <SheetHeader>
+              <SheetTitle>Edit Role</SheetTitle>
+              <SheetDescription>Update the role name, slug, and description.</SheetDescription>
+            </SheetHeader>
+            <div className="flex min-h-0 thin-scrollbar flex-1 flex-col overflow-y-auto p-4">
+              <FieldGroup>
+                <Controller
+                  control={control}
+                  name="name"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="edit-project-role-name">Name</FieldLabel>
+                      <Input
+                        {...field}
+                        id="edit-project-role-name"
+                        placeholder="Billing Team"
+                        isError={Boolean(error)}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="slug"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="edit-project-role-slug">Slug</FieldLabel>
+                      <Input
+                        {...field}
+                        id="edit-project-role-slug"
+                        placeholder="billing"
+                        isError={Boolean(error)}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="description"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="edit-project-role-description">Description</FieldLabel>
+                      <Input
+                        {...field}
+                        id="edit-project-role-description"
+                        placeholder="Manage billing settings"
+                        isError={Boolean(error)}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              </FieldGroup>
+            </div>
+            <SheetFooter className="border-t">
+              <SheetClose asChild>
                 <Button variant="ghost" isDisabled={isSubmitting}>
                   Cancel
                 </Button>
-              </DialogClose>
+              </SheetClose>
               <Button type="submit" variant="project" isPending={isSubmitting}>
                 Save Changes
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
       <UpgradePlanModal
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(open) => handleUpgradePlanPopUpToggle("upgradePlan", open)}

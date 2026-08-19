@@ -2,7 +2,7 @@ import { ComponentType } from "react";
 import { Abilities, AbilityTuple, Generics, SubjectType } from "@casl/ability";
 import { twMerge } from "tailwind-merge";
 
-import { AccessRestrictedBanner } from "@app/components/v2";
+import { AccessRestrictedBanner } from "@app/components/v3";
 import { TOrgPermission, useOrgPermission } from "@app/context";
 
 type Props<T extends Abilities> = (T extends AbilityTuple

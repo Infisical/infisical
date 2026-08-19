@@ -245,6 +245,7 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 | Component                                                                                                         | Reach for this when…                                                                  |
 | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | [`Separator`](frontend/src/components/v3/generic/Separator/Separator.tsx)                                         | Horizontal/vertical divider.                                                          |
+| [`AccessRestrictedBanner`](frontend/src/components/v3/platform/AccessRestrictedBanner.tsx)                       | Dedicated full-surface state for content blocked by the user's current permissions.  |
 | [`ScopeIcons`](frontend/src/components/v3/platform/ScopeIcons.tsx)                                                | `OrgIcon` / `SubOrgIcon` / `ProjectIcon` / `InstanceIcon` — use when intent is scope. |
 | [`PageHeader`](frontend/src/components/v3/platform/PageHeader/PageHeader.tsx)                                     | Canonical full-width page heading with scope semantics, description, and page actions. |
 | [`DocumentationLinkBadge`](frontend/src/components/v3/platform/DocumentationLinkBadge/DocumentationLinkBadge.tsx) | Inline "Documentation" link badge in `CardTitle`.                                     |
