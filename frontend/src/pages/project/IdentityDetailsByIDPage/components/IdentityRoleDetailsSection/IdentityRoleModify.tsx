@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from "react";
+import { useId, useState } from "react";
 import {
   Control,
   Controller,
@@ -8,10 +8,8 @@ import {
   useWatch
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format, formatDistance } from "date-fns";
 import { ChevronDownIcon, ClockIcon, PlusIcon, TrashIcon } from "lucide-react";
 import ms from "ms";
-import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -41,84 +39,27 @@ import {
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
-  ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useProject,
-  useProjectPermission,
   useSubscription
 } from "@app/context";
-import { formatProjectRoleName, isCustomProjectRole } from "@app/helpers/roles";
+import { isCustomProjectRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
-import { useGetProjectRoles, useUpdateProjectIdentityMembership } from "@app/hooks/api";
+import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
-import { TemporaryPermissionMode } from "@app/hooks/api/shared";
+
 import {
-  canModifyByGrantConditions,
-  filterByGrantConditions,
-  getIdentityAssignRoleConditions
-} from "@app/lib/fn/permission";
+  getIdentityRoleDurationDisplay,
+  identityRoleFormAssignmentToPayload,
+  identityRoleFormSchema,
+  isValidTemporaryRange,
+  TEMPORARY_RANGE_ERROR,
+  TIdentityRoleForm,
+  toIdentityRoleFormAssignment
+} from "./identityRoleAssignment";
+import { useIdentityRoleGrant } from "./useIdentityRoleGrant";
 
-const TEMPORARY_RANGE_ERROR = "Only valid time values are accepted (1h, 20m, 2d).";
-
-const isValidTemporaryRange = (value?: string) => {
-  if (!value?.trim()) return false;
-  const parsedMs = ms(value);
-  return typeof parsedMs === "number" && Number.isFinite(parsedMs) && parsedMs > 0;
-};
-
-const roleFormSchema = z.object({
-  roles: z
-    .object({
-      slug: z.string().min(1),
-      temporaryAccess: z.discriminatedUnion("isTemporary", [
-        z.object({
-          isTemporary: z.literal(true),
-          temporaryRange: z
-            .string()
-            .min(1, "Required")
-            .refine(isValidTemporaryRange, TEMPORARY_RANGE_ERROR),
-          temporaryAccessStartTime: z.string().datetime(),
-          temporaryAccessEndTime: z.string().datetime().nullable().optional()
-        }),
-        z.object({
-          isTemporary: z.literal(false)
-        })
-      ])
-    })
-    .array()
-});
-
-type TRoleForm = z.infer<typeof roleFormSchema>;
-type TTemporaryAccess = TRoleForm["roles"][number]["temporaryAccess"];
 type RoleForSelect = { slug: string; name: string; id: string };
-
-const getDurationDisplay = (temporaryAccess?: TTemporaryAccess) => {
-  if (!temporaryAccess?.isTemporary) {
-    return {
-      variant: "outline" as const,
-      text: "Permanent",
-      tooltip: "Non-Expiring Access",
-      isExpired: false
-    };
-  }
-
-  const endTime = new Date(temporaryAccess.temporaryAccessEndTime || "");
-  if (new Date() > endTime) {
-    return {
-      variant: "danger" as const,
-      text: "Access Expired",
-      tooltip: "Timed Access Expired",
-      isExpired: true
-    };
-  }
-
-  return {
-    variant: "warning" as const,
-    text: formatDistance(endTime, new Date()),
-    tooltip: `Until ${format(endTime, "yyyy-MM-dd HH:mm:ss")}`,
-    isExpired: false
-  };
-};
 
 type DurationEditorProps = {
   committedRange?: string;
@@ -177,18 +118,19 @@ const DurationEditor = ({
 };
 
 type RoleAssignmentRowProps = {
-  control: Control<TRoleForm>;
-  setValue: UseFormSetValue<TRoleForm>;
+  control: Control<TIdentityRoleForm>;
+  setValue: UseFormSetValue<TIdentityRoleForm>;
   index: number;
   showLabels: boolean;
   isEditDisabled: boolean;
   assignableRoleSlugs: Set<string>;
   getRolesForSelect: (currentSlug: string) => RoleForSelect[];
-  canRemove: boolean;
-  onRemove: () => void;
+  canRemove?: boolean;
+  onRemove?: () => void;
+  showRemoveButton?: boolean;
 };
 
-const IdentityRoleAssignmentRow = ({
+export const IdentityRoleAssignmentRow = ({
   control,
   setValue,
   index,
@@ -196,14 +138,15 @@ const IdentityRoleAssignmentRow = ({
   isEditDisabled,
   assignableRoleSlugs,
   getRolesForSelect,
-  canRemove,
-  onRemove
+  canRemove = false,
+  onRemove,
+  showRemoveButton = true
 }: RoleAssignmentRowProps) => {
   const selectId = useId();
   const durationId = useId();
   const temporaryAccess = useWatch({ control, name: `roles.${index}.temporaryAccess` });
   const isTemporary = Boolean(temporaryAccess?.isTemporary);
-  const { variant, text, tooltip, isExpired } = getDurationDisplay(temporaryAccess);
+  const { variant, text, tooltip, isExpired } = getIdentityRoleDurationDisplay(temporaryAccess);
 
   return (
     <div className="flex flex-wrap items-end gap-2">
@@ -217,7 +160,7 @@ const IdentityRoleAssignmentRow = ({
               <SelectTrigger id={selectId} className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent position="popper">
+              <SelectContent position="popper" className="z-[70]">
                 {getRolesForSelect(field.value).map(({ name, slug, id }) => {
                   const isAssignable = assignableRoleSlugs.has(slug);
                   return (
@@ -261,6 +204,7 @@ const IdentityRoleAssignmentRow = ({
           </Tooltip>
           <PopoverContent
             side="right"
+            className="z-[70]"
             onWheel={(event) => event.stopPropagation()}
             onOpenAutoFocus={(event) => event.preventDefault()}
           >
@@ -295,16 +239,18 @@ const IdentityRoleAssignmentRow = ({
           </PopoverContent>
         </Popover>
       </Field>
-      <IconButton
-        type="button"
-        size="md"
-        variant="danger"
-        aria-label="Remove role"
-        isDisabled={isEditDisabled || !canRemove}
-        onClick={onRemove}
-      >
-        <TrashIcon />
-      </IconButton>
+      {showRemoveButton && (
+        <IconButton
+          type="button"
+          size="md"
+          variant="danger"
+          aria-label="Remove role"
+          isDisabled={isEditDisabled || !canRemove}
+          onClick={onRemove}
+        >
+          <TrashIcon />
+        </IconButton>
+      )}
     </div>
   );
 };
@@ -317,85 +263,24 @@ type Props = {
 export const IdentityRoleModify = ({ identityProjectMembership, onClose }: Props) => {
   const { projectId, currentProject } = useProject();
   const { subscription } = useSubscription();
-  const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(
-    projectId,
-    currentProject?.type
-  );
-  const { permission } = useProjectPermission();
+  const { filteredRoles, isRolesLoading, assignableRoleSlugs, getRolesForSelect, isEditDisabled } =
+    useIdentityRoleGrant(identityProjectMembership);
   const {
     popUp: upgradePlanPopUp,
     handlePopUpOpen: handleUpgradePlanPopUpOpen,
     handlePopUpToggle: handleUpgradePlanPopUpToggle
   } = usePopUp(["upgradePlan"] as const);
-  const isIdentityEditDisabled = permission.cannot(
-    ProjectPermissionIdentityActions.Edit,
-    ProjectPermissionSub.Identity
-  );
 
-  const assignRoleConditions = useMemo(
-    () => getIdentityAssignRoleConditions(permission),
-    [permission]
-  );
-
-  const canModifyIdentityRoles = useMemo(() => {
-    const targetIdentityId = identityProjectMembership?.identity?.id;
-    if (!targetIdentityId) return false;
-
-    return canModifyByGrantConditions({
-      targetValue: targetIdentityId,
-      allowed: assignRoleConditions?.identityIds,
-      forbidden: assignRoleConditions?.forbiddenIdentityIds
-    });
-  }, [assignRoleConditions, identityProjectMembership?.identity?.id]);
-
-  const filteredRoles = useMemo(
-    () =>
-      filterByGrantConditions(projectRoles ?? [], {
-        getKey: (role) => role.slug,
-        allowed: assignRoleConditions?.roles,
-        forbidden: assignRoleConditions?.forbiddenRoles
-      }),
-    [projectRoles, assignRoleConditions]
-  );
-
-  const assignableRoleSlugs = useMemo(
-    () => new Set(filteredRoles.map((role) => role.slug)),
-    [filteredRoles]
-  );
-
-  const getRolesForSelect = (currentSlug: string) => {
-    if (assignableRoleSlugs.has(currentSlug)) return filteredRoles;
-
-    const currentRole = projectRoles?.find((role) => role.slug === currentSlug) ?? {
-      slug: currentSlug,
-      name: formatProjectRoleName(currentSlug),
-      id: currentSlug
-    };
-    return [currentRole, ...filteredRoles];
-  };
-
-  const roleForm = useForm<TRoleForm>({
-    resolver: zodResolver(roleFormSchema),
+  const roleForm = useForm<TIdentityRoleForm>({
+    resolver: zodResolver(identityRoleFormSchema),
     values: {
-      roles: identityProjectMembership?.roles?.map(({ customRoleSlug, role, ...dto }) => ({
-        slug: customRoleSlug || role,
-        temporaryAccess: dto.isTemporary
-          ? {
-              isTemporary: true,
-              temporaryRange: dto.temporaryRange,
-              temporaryAccessEndTime: dto.temporaryAccessEndTime,
-              temporaryAccessStartTime: dto.temporaryAccessStartTime
-            }
-          : { isTemporary: false }
-      }))
+      roles: identityProjectMembership?.roles?.map(toIdentityRoleFormAssignment)
     }
   });
   const selectedRoleList = useFieldArray({ name: "roles", control: roleForm.control });
 
   const updateProjectIdentityMembership = useUpdateProjectIdentityMembership();
-  const isEditDisabled = isIdentityEditDisabled || !canModifyIdentityRoles;
-
-  const handleRoleUpdate = async (data: TRoleForm) => {
+  const handleRoleUpdate = async (data: TIdentityRoleForm) => {
     if (updateProjectIdentityMembership.isPending) return;
 
     const hasCustomRole = data.roles.some((role) => isCustomProjectRole(role.slug));
@@ -404,17 +289,7 @@ export const IdentityRoleModify = ({ identityProjectMembership, onClose }: Props
       return;
     }
 
-    const roles = data.roles.map(({ slug, temporaryAccess }) =>
-      temporaryAccess.isTemporary
-        ? {
-            role: slug,
-            isTemporary: true as const,
-            temporaryMode: TemporaryPermissionMode.Relative,
-            temporaryRange: temporaryAccess.temporaryRange,
-            temporaryAccessStartTime: temporaryAccess.temporaryAccessStartTime
-          }
-        : { role: slug, isTemporary: false as const }
-    );
+    const roles = data.roles.map(identityRoleFormAssignmentToPayload);
 
     await updateProjectIdentityMembership.mutateAsync({
       projectId,
@@ -423,6 +298,7 @@ export const IdentityRoleModify = ({ identityProjectMembership, onClose }: Props
       roles
     });
     createNotification({ text: "Successfully updated roles", type: "success" });
+    onClose();
   };
 
   if (isRolesLoading) {

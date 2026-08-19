@@ -15,6 +15,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -60,7 +65,9 @@ import {
 } from "@app/lib/fn/permission";
 
 import { IdentityActionConfirmationDialog } from "../IdentityActionConfirmationDialog";
+import { TIdentityRole } from "./identityRoleAssignment";
 import { IdentityRoleModify } from "./IdentityRoleModify";
+import { IdentitySingleRoleModify } from "./IdentitySingleRoleModify";
 
 type Props = {
   identityMembershipDetails: IdentityProjectMembershipV1;
@@ -76,7 +83,8 @@ export const IdentityRoleDetailsSection = ({
   const navigate = useNavigate();
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deleteRole",
-    "modifyRole"
+    "modifyRole",
+    "modifySingleRole"
   ] as const);
   const { mutateAsync: updateIdentityProjectMembership } = useUpdateProjectIdentityMembership();
 
@@ -314,19 +322,30 @@ export const IdentityRoleDetailsSection = ({
                                   })}
                                 >
                                   {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handlePopUpOpen("deleteRole", {
-                                          id: roleDetails?.id,
-                                          slug: roleDetails?.customRoleName || roleDetails?.role
-                                        });
-                                      }}
-                                      isDisabled={!isAllowed || !canModifyIdentityRoles}
-                                      variant="danger"
-                                    >
-                                      Remove Role
-                                    </DropdownMenuItem>
+                                    <>
+                                      <DropdownMenuItem
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          handlePopUpOpen("modifySingleRole", roleDetails);
+                                        }}
+                                        isDisabled={!isAllowed || !canModifyIdentityRoles}
+                                      >
+                                        Modify Role
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          handlePopUpOpen("deleteRole", {
+                                            id: roleDetails?.id,
+                                            slug: roleDetails?.customRoleName || roleDetails?.role
+                                          });
+                                        }}
+                                        isDisabled={!isAllowed || !canModifyIdentityRoles}
+                                        variant="danger"
+                                      >
+                                        Remove Role
+                                      </DropdownMenuItem>
+                                    </>
                                   )}
                                 </ProjectPermissionCan>
                               </DropdownMenuContent>
@@ -397,6 +416,26 @@ export const IdentityRoleDetailsSection = ({
         onOpenChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
         onConfirm={handleRoleDelete}
       />
+      <Dialog
+        open={popUp.modifySingleRole.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("modifySingleRole", isOpen)}
+      >
+        <DialogContent className="overflow-visible sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Edit Role</DialogTitle>
+            <DialogDescription>
+              Update this role assignment and its access duration.
+            </DialogDescription>
+          </DialogHeader>
+          {popUp.modifySingleRole.data && (
+            <IdentitySingleRoleModify
+              identityProjectMembership={identityMembershipDetails}
+              role={popUp.modifySingleRole.data as TIdentityRole}
+              onSuccess={() => handlePopUpClose("modifySingleRole")}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
       <Sheet
         open={popUp.modifyRole.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("modifyRole", isOpen)}
