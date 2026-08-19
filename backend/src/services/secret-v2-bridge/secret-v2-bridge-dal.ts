@@ -692,11 +692,13 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(db.ref("createdAt").withSchema(TableName.SecretTag).as("tagCreatedAt"))
         .select(
           db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
           db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
-          db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue")
+          db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue"),
+          db.ref("createdAt").withSchema(TableName.ResourceMetadata).as("metadataCreatedAt")
         )
         .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping))
         .select(db.ref("honeyTokenId").withSchema(TableName.HoneyTokenSecretMapping).as("honeyTokenId"))
@@ -729,9 +731,14 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           .from<Awaited<typeof query>[number]>("w")
           .where("w.rank", ">=", rankOffset)
           .andWhere("w.rank", "<", rankOffset + filters.limit)
-          // a CTE does not carry its inner ordering, so re-state it here to keep paging deterministic
-          .orderBy("key", filters?.orderDirection ?? OrderByDirection.ASC)
-          .orderBy("id", OrderByDirection.ASC);
+          // a CTE does not carry its inner ordering, so re-state it in full: paging needs the key order, and the
+          // join rows need the metadata/tag order the inner query set, which a partial re-sort would scramble
+          .orderBy("key", filters.orderDirection ?? OrderByDirection.ASC)
+          .orderBy("id", OrderByDirection.ASC)
+          .orderBy("metadataCreatedAt", "asc", "first")
+          .orderBy("metadataId", "asc", "first")
+          .orderBy("tagCreatedAt", "asc", "first")
+          .orderBy("tagId", "asc", "first");
       } else {
         secs = await query;
       }

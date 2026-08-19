@@ -248,12 +248,16 @@ const Content = ({
       .filter((group) => group.total > 0);
   }, [folders, secrets, dynamicSecrets, secretRotations, environments, envIdToSlug, showType]);
 
-  // pages advance every resource type at once, so counting every visible match keeps them all reachable
-  const visibleResultCount =
-    (showType(RowType.Folder) ? totalFolderCount : 0) +
-    (showType(RowType.Secret) ? totalSecretCount : 0) +
-    (showType(RowType.DynamicSecret) ? totalDynamicSecretCount : 0) +
-    (showType(RowType.SecretRotation) ? totalSecretRotationCount : 0);
+  // the endpoint applies one offset to each resource type independently, so the largest type sets the page count
+  const visibleResultCount = Math.max(
+    showType(RowType.Folder) ? totalFolderCount : 0,
+    showType(RowType.Secret) ? totalSecretCount : 0,
+    showType(RowType.DynamicSecret) ? totalDynamicSecretCount : 0,
+    showType(RowType.SecretRotation) ? totalSecretRotationCount : 0
+  );
+
+  // the endpoint rejects an offset past its search window, so stop the pager at the last page it accepts
+  const pageableResultCount = Math.min(visibleResultCount, searchLimit + perPage);
 
   useEffect(() => {
     setPage(1);
@@ -545,14 +549,14 @@ const Content = ({
                     showType(RowType.SecretRotation) ? totalSecretRotationCount : 0
                   }
                 />
-                {isSearchLimitReached && (
+                {(isSearchLimitReached || pageableResultCount < visibleResultCount) && (
                   <span className="text-xs text-accent">
-                    {`Only the first ${searchLimit} matches per resource type are searched. Narrow your search to reach the rest.`}
+                    {`Only the first ${searchLimit} matches per resource type can be reached. Narrow your search to see the rest.`}
                   </span>
                 )}
               </div>
             }
-            count={visibleResultCount}
+            count={pageableResultCount}
             page={page}
             perPage={perPage}
             perPageList={QUICK_SEARCH_PER_PAGE_OPTIONS}

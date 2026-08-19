@@ -3,7 +3,9 @@ import { seedData1 } from "@app/db/seed-data";
 
 type TDeepSearchResponse = {
   secrets?: { secretKey: string }[];
+  folders?: { name: string }[];
   totalSecretCount: number;
+  totalFolderCount: number;
   totalCount: number;
   searchLimit: number;
   isSearchLimitReached: boolean;
@@ -43,6 +45,40 @@ const deleteSecret = async (key: string) => {
       workspaceId: seedData1.projectV3.id,
       environment: seedData1.environment.slug,
       secretPath: TEST_PATH
+    }
+  });
+  expect(res.statusCode).toBe(200);
+};
+
+const createFolder = async (name: string) => {
+  const res = await testServer.inject({
+    method: "POST",
+    url: `/api/v1/folders`,
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    },
+    body: {
+      workspaceId: seedData1.projectV3.id,
+      environment: seedData1.environment.slug,
+      name,
+      path: TEST_PATH
+    }
+  });
+  expect(res.statusCode).toBe(200);
+  return res.json().folder as { id: string };
+};
+
+const deleteFolder = async (id: string) => {
+  const res = await testServer.inject({
+    method: "DELETE",
+    url: `/api/v1/folders/${id}`,
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    },
+    body: {
+      workspaceId: seedData1.projectV3.id,
+      environment: seedData1.environment.slug,
+      path: TEST_PATH
     }
   });
   expect(res.statusCode).toBe(200);
@@ -120,5 +156,40 @@ describe("Dashboard - deep search pagination", async () => {
     const res = await deepSearch(pagination);
 
     expect(res.statusCode).toBe(422);
+  });
+
+  describe("with a folder matching the same term", async () => {
+    const folderName = `${SEARCH_TERM}_FOLDER`;
+    let folderId: string;
+
+    beforeAll(async () => {
+      folderId = (await createFolder(folderName)).id;
+    });
+
+    afterAll(async () => {
+      await deleteFolder(folderId);
+    });
+
+    test("counts and pages each resource type on its own offset", async () => {
+      const firstPageRes = await deepSearch({ limit: 2, offset: 0 });
+      expect(firstPageRes.statusCode).toBe(200);
+      const firstPage = JSON.parse(firstPageRes.payload) as TDeepSearchResponse;
+
+      expect(firstPage.totalFolderCount).toBe(1);
+      expect(firstPage.totalSecretCount).toBe(secretKeys.length);
+      expect(firstPage.folders?.map((folder) => folder.name)).toEqual([folderName]);
+      expect(firstPage.secrets?.map((secret) => secret.secretKey)).toEqual(secretKeys.slice(0, 2));
+
+      // the folder bucket is exhausted a page before the secret bucket, so a pager sized on the sum of the
+      // counts would offer pages that hold nothing
+      const secondPageRes = await deepSearch({ limit: 2, offset: 2 });
+      expect(secondPageRes.statusCode).toBe(200);
+      const secondPage = JSON.parse(secondPageRes.payload) as TDeepSearchResponse;
+
+      expect(secondPage.totalFolderCount).toBe(1);
+      expect(secondPage.folders ?? []).toEqual([]);
+      expect(secondPage.secrets?.map((secret) => secret.secretKey)).toEqual(secretKeys.slice(2));
+      expect(secondPage.isSearchLimitReached).toBe(false);
+    });
   });
 });

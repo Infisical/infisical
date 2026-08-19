@@ -1123,12 +1123,21 @@ export const secretV2BridgeServiceFactory = ({
   ) => {
     const groupedFolderMappings = groupBy(folderMappings, (folderMapping) => folderMapping.folderId);
 
-    const secrets = await secretDAL.findByFolderIds({
+    const { limit } = filters;
+
+    // findByFolderIds windows on distinct keys, so scan one key past the limit to tell a full window from a truncated one
+    const scannedSecrets = await secretDAL.findByFolderIds({
       folderIds: folderMappings.map((folderMapping) => folderMapping.folderId),
       userId,
       tx: undefined,
-      filters
+      filters: limit ? { ...filters, limit: limit + 1 } : filters
     });
+
+    const scannedKeys = [...new Set(scannedSecrets.map((secret) => secret.key))];
+    const isLimitReached = limit ? scannedKeys.length > limit : false;
+    const secrets = isLimitReached
+      ? scannedSecrets.filter((secret) => secret.key !== scannedKeys[scannedKeys.length - 1])
+      : scannedSecrets;
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -1182,12 +1191,9 @@ export const secretV2BridgeServiceFactory = ({
         );
       });
 
-    // findByFolderIds limits on distinct keys, so a fully consumed limit means matches may exist beyond it
-    const matchedKeyCount = new Set(secrets.map((secret) => secret.key)).size;
-
     return {
       secrets: decryptedSecrets,
-      isLimitReached: filters.limit ? matchedKeyCount >= filters.limit : false
+      isLimitReached
     };
   };
 
