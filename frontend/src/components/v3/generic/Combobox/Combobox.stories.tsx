@@ -196,7 +196,7 @@ const MultipleRender = () => {
         multiple
         options={PROJECTS}
         value={value}
-        onValueChange={setValue}
+        onValueChange={(options) => setValue(options)}
         getOptionValue={(option) => option.id}
         getOptionLabel={(option) => option.name}
         placeholder="Select projects..."
@@ -229,7 +229,7 @@ const OverflowedSelectionsRender = () => {
         multiple
         options={PROJECTS}
         value={value}
-        onValueChange={setValue}
+        onValueChange={(options) => setValue(options)}
         getOptionValue={(option) => option.id}
         getOptionLabel={(option) => option.name}
         placeholder="Select projects..."
