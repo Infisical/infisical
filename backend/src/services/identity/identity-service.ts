@@ -84,6 +84,7 @@ export const identityServiceFactory = ({
     name,
     role,
     hasDeleteProtection,
+    isAgent,
     actor,
     orgId,
     actorId,
@@ -153,7 +154,7 @@ export const identityServiceFactory = ({
         }
       }
 
-      const newIdentity = await identityDAL.create({ name, hasDeleteProtection, orgId }, tx);
+      const newIdentity = await identityDAL.create({ name, hasDeleteProtection, isAgent, orgId }, tx);
       const membership = await membershipIdentityDAL.create(
         {
           scope: AccessScope.Organization,
@@ -205,6 +206,7 @@ export const identityServiceFactory = ({
     id,
     role,
     hasDeleteProtection,
+    isAgent,
     name,
     actor,
     actorId,
@@ -277,8 +279,9 @@ export const identityServiceFactory = ({
 
     const identity = await identityDAL.transaction(async (tx) => {
       const newIdentity =
-        identityDetails.orgId === actorOrgId && (name || hasDeleteProtection)
-          ? await identityDAL.updateById(id, { name, hasDeleteProtection }, tx)
+        identityDetails.orgId === actorOrgId &&
+        (name !== undefined || hasDeleteProtection !== undefined || isAgent !== undefined)
+          ? await identityDAL.updateById(id, { name, hasDeleteProtection, isAgent }, tx)
           : identityDetails;
 
       if (role) {

@@ -95,7 +95,8 @@ export type TCreateAuditLogDTO = {
     | ScepAccountActor
     | GatewayActor
     | RelayActor
-    | KmipServerActor;
+    | KmipServerActor
+    | AgentProxyActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -865,6 +866,21 @@ export enum EventType {
   RELAY_DELETE = "relay-delete",
   RELAY_ENROLLMENT_TOKEN_CREATE = "relay-enrollment-token-create",
 
+  AGENT_POLICY_CREATE = "agent-policy-create",
+  AGENT_POLICY_UPDATE = "agent-policy-update",
+  AGENT_POLICY_DELETE = "agent-policy-delete",
+  USER_POLICY_CREATE = "user-policy-create",
+  USER_POLICY_UPDATE = "user-policy-update",
+  USER_POLICY_DELETE = "user-policy-delete",
+  AGENT_SESSION_CREATE = "agent-session-create",
+  AGENT_SESSION_REVOKE = "agent-session-revoke",
+  AGENT_PROXY_REQUEST = "agent-proxy-request",
+
+  AGENT_PROXY_CREATE = "agent-proxy-create",
+  AGENT_PROXY_UPDATE = "agent-proxy-update",
+  AGENT_PROXY_DELETE = "agent-proxy-delete",
+  AGENT_PROXY_ENROLLMENT_TOKEN_CREATE = "agent-proxy-enrollment-token-create",
+
   KMIP_SERVER_CREATE = "kmip-server-create",
   KMIP_SERVER_UPDATE = "kmip-server-update",
   KMIP_SERVER_DELETE = "kmip-server-delete",
@@ -985,6 +1001,10 @@ interface KmipServerActorMetadata {
   kmipServerId: string;
 }
 
+interface AgentProxyActorMetadata {
+  agentProxyId: string;
+}
+
 export interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -1054,6 +1074,11 @@ export interface KmipServerActor {
   metadata: KmipServerActorMetadata;
 }
 
+export interface AgentProxyActor {
+  type: ActorType.AGENT_PROXY;
+  metadata: AgentProxyActorMetadata;
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
@@ -1067,7 +1092,8 @@ export type Actor =
   | ScepAccountActor
   | GatewayActor
   | RelayActor
-  | KmipServerActor;
+  | KmipServerActor
+  | AgentProxyActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -1386,6 +1412,7 @@ interface CreateIdentityEvent {
     identityId: string;
     name: string;
     hasDeleteProtection: boolean;
+    isAgent?: boolean;
     metadata?: { key: string; value: string }[];
     roles?: (
       | { role: string; isTemporary: false }
@@ -1406,6 +1433,7 @@ interface UpdateIdentityEvent {
     identityId: string;
     name?: string;
     hasDeleteProtection?: boolean;
+    isAgent?: boolean;
     metadata?: { key: string; value: string }[];
   };
 }
@@ -6820,7 +6848,7 @@ interface GatewayEnrollEvent {
 }
 
 type ResourceAuthMethodKind = "aws" | "token";
-type ResourceAuthMethodResourceType = "gateway" | "relay" | "kmip";
+type ResourceAuthMethodResourceType = "gateway" | "relay" | "kmip" | "agentProxy";
 
 interface ResourceAuthMethodLoginEvent {
   type: EventType.RESOURCE_AUTH_METHOD_LOGIN;
@@ -6898,6 +6926,117 @@ interface RelayDeleteEvent {
 
 interface RelayEnrollmentTokenCreateEvent {
   type: EventType.RELAY_ENROLLMENT_TOKEN_CREATE;
+  metadata: {
+    tokenId: string;
+    name: string;
+  };
+}
+
+interface AgentPolicyMutationMetadata {
+  policyId: string;
+  name: string;
+  target: string;
+}
+
+interface AgentPolicyCreateEvent {
+  type: EventType.AGENT_POLICY_CREATE;
+  metadata: AgentPolicyMutationMetadata;
+}
+
+interface AgentPolicyUpdateEvent {
+  type: EventType.AGENT_POLICY_UPDATE;
+  metadata: AgentPolicyMutationMetadata;
+}
+
+interface AgentPolicyDeleteEvent {
+  type: EventType.AGENT_POLICY_DELETE;
+  metadata: AgentPolicyMutationMetadata;
+}
+
+interface UserPolicyCreateEvent {
+  type: EventType.USER_POLICY_CREATE;
+  metadata: AgentPolicyMutationMetadata;
+}
+
+interface UserPolicyUpdateEvent {
+  type: EventType.USER_POLICY_UPDATE;
+  metadata: AgentPolicyMutationMetadata;
+}
+
+interface UserPolicyDeleteEvent {
+  type: EventType.USER_POLICY_DELETE;
+  metadata: AgentPolicyMutationMetadata;
+}
+
+interface AgentSessionCreateEvent {
+  type: EventType.AGENT_SESSION_CREATE;
+  metadata: {
+    identityId: string;
+    userId: string;
+    projectId: string;
+  };
+}
+
+interface AgentSessionRevokeEvent {
+  type: EventType.AGENT_SESSION_REVOKE;
+  metadata: {
+    sessionId: string;
+    identityId: string;
+    userId: string;
+    projectId: string;
+  };
+}
+
+// One entry per request an agent proxy handled. Carries both the agent and the user so the trail says
+// who acted and on whose behalf, and never carries the credential or the request body.
+interface AgentProxyRequestEvent {
+  type: EventType.AGENT_PROXY_REQUEST;
+  metadata: {
+    agentProxyId: string;
+    sessionId: string;
+    identityId: string;
+    agentName: string;
+    userId: string;
+    decision: "brokered" | "passthrough" | "blocked" | "error";
+    method: string;
+    host: string;
+    port: number;
+    path: string;
+    statusCode?: number;
+    // Both halves of the intersection: the agent policy whose credential was brokered, and the user
+    // policy that allowed it. Either is absent when that side had no match.
+    policyName?: string;
+    userPolicyName?: string;
+    reason?: string;
+  };
+}
+
+interface AgentProxyCreateEvent {
+  type: EventType.AGENT_PROXY_CREATE;
+  metadata: {
+    agentProxyId: string;
+    name: string;
+  };
+}
+
+interface AgentProxyUpdateEvent {
+  type: EventType.AGENT_PROXY_UPDATE;
+  metadata: {
+    agentProxyId: string;
+    name: string;
+  };
+}
+
+interface AgentProxyDeleteEvent {
+  type: EventType.AGENT_PROXY_DELETE;
+  metadata: {
+    agentProxyId: string;
+    name: string;
+  };
+}
+
+interface AgentProxyEnrollmentTokenCreateEvent {
+  type: EventType.AGENT_PROXY_ENROLLMENT_TOKEN_CREATE;
   metadata: {
     tokenId: string;
     name: string;
@@ -7697,6 +7836,19 @@ export type Event =
   | RelayUpdateEvent
   | RelayDeleteEvent
   | RelayEnrollmentTokenCreateEvent
+  | AgentPolicyCreateEvent
+  | AgentPolicyUpdateEvent
+  | AgentPolicyDeleteEvent
+  | UserPolicyCreateEvent
+  | UserPolicyUpdateEvent
+  | UserPolicyDeleteEvent
+  | AgentSessionCreateEvent
+  | AgentSessionRevokeEvent
+  | AgentProxyRequestEvent
+  | AgentProxyCreateEvent
+  | AgentProxyUpdateEvent
+  | AgentProxyDeleteEvent
+  | AgentProxyEnrollmentTokenCreateEvent
   | KmipServerCreateEvent
   | KmipServerUpdateEvent
   | KmipServerDeleteEvent

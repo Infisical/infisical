@@ -35,13 +35,14 @@ export const useCreateOrgIdentity = () => {
 export const useUpdateOrgIdentity = () => {
   const queryClient = useQueryClient();
   return useMutation<Identity, object, UpdateIdentityDTO>({
-    mutationFn: async ({ identityId, name, role, hasDeleteProtection, metadata }) => {
+    mutationFn: async ({ identityId, name, role, hasDeleteProtection, isAgent, metadata }) => {
       const {
         data: { identity }
       } = await apiRequest.patch(`/api/v1/identities/${identityId}`, {
         name,
         role,
         hasDeleteProtection,
+        isAgent,
         metadata
       });
 

@@ -438,7 +438,21 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.KMIP_SERVER_ENROLLMENT_TOKEN_CREATE]: "Generate KMIP server enrollment token",
 
   [EventType.CREATE_PROJECT_FOLDER_GRANT]: "Create project grant",
-  [EventType.DELETE_PROJECT_FOLDER_GRANT]: "Delete project grant"
+  [EventType.DELETE_PROJECT_FOLDER_GRANT]: "Delete project grant",
+
+  [EventType.AGENT_POLICY_CREATE]: "Create agent policy",
+  [EventType.AGENT_POLICY_UPDATE]: "Update agent policy",
+  [EventType.AGENT_POLICY_DELETE]: "Delete agent policy",
+  [EventType.USER_POLICY_CREATE]: "Create user policy",
+  [EventType.USER_POLICY_UPDATE]: "Update user policy",
+  [EventType.USER_POLICY_DELETE]: "Delete user policy",
+  [EventType.AGENT_SESSION_CREATE]: "Start agent session",
+  [EventType.AGENT_SESSION_REVOKE]: "Revoke agent session",
+  [EventType.AGENT_PROXY_REQUEST]: "Agent proxy request",
+  [EventType.AGENT_PROXY_CREATE]: "Create agent proxy",
+  [EventType.AGENT_PROXY_UPDATE]: "Update agent proxy",
+  [EventType.AGENT_PROXY_DELETE]: "Delete agent proxy",
+  [EventType.AGENT_PROXY_ENROLLMENT_TOKEN_CREATE]: "Generate agent proxy enrollment token"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

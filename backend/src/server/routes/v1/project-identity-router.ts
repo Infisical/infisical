@@ -21,7 +21,8 @@ const sanitizedIdentitySchema = IdentitiesSchema.pick({
   projectId: true,
   createdAt: true,
   updatedAt: true,
-  hasDeleteProtection: true
+  hasDeleteProtection: true,
+  isAgent: true
 }).extend({
   activeLockoutAuthMethods: z.string().array().optional(),
   authMethods: z.string().array().optional(),
@@ -59,6 +60,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
       body: z.object({
         name: z.string().trim().min(1).describe(IDENTITIES.CREATE.name),
         hasDeleteProtection: z.boolean().default(false).describe(IDENTITIES.CREATE.hasDeleteProtection),
+        isAgent: z.boolean().default(false).describe(IDENTITIES.CREATE.isAgent),
         metadata: z.array(metadataSchema).optional().describe(IDENTITIES.CREATE.metadata),
         roles: z
           .array(
@@ -95,6 +97,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
         data: {
           name: req.body.name,
           hasDeleteProtection: req.body.hasDeleteProtection,
+          isAgent: req.body.isAgent,
           metadata: req.body.metadata,
           roles: req.body.roles
         }
@@ -109,6 +112,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
             identityId: identity.id,
             name: req.body.name,
             hasDeleteProtection: req.body.hasDeleteProtection,
+            isAgent: req.body.isAgent,
             metadata: req.body.metadata,
             roles: req.body.roles?.map((r) =>
               r.isTemporary
@@ -153,6 +157,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
       body: z.object({
         name: z.string().trim().min(1).optional().describe(IDENTITIES.UPDATE.name),
         hasDeleteProtection: z.boolean().optional().describe(IDENTITIES.UPDATE.hasDeleteProtection),
+        isAgent: z.boolean().optional().describe(IDENTITIES.UPDATE.isAgent),
         metadata: z.array(metadataSchema).optional().describe(IDENTITIES.UPDATE.metadata)
       }),
       response: {
@@ -176,6 +181,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
         data: {
           name: req.body.name,
           hasDeleteProtection: req.body.hasDeleteProtection,
+          isAgent: req.body.isAgent,
           metadata: req.body.metadata
         }
       });
@@ -189,6 +195,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
             identityId: req.params.identityId,
             name: req.body.name,
             hasDeleteProtection: req.body.hasDeleteProtection,
+            isAgent: req.body.isAgent,
             metadata: req.body.metadata
           }
         }

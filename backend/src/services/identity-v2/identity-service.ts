@@ -250,6 +250,7 @@ export const identityV2ServiceFactory = ({
         {
           name: data.name,
           hasDeleteProtection: data.hasDeleteProtection,
+          isAgent: data.isAgent,
           orgId: dto.permission.orgId,
           projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : null
         },
@@ -336,10 +337,10 @@ export const identityV2ServiceFactory = ({
 
     const identity = await identityDAL.transaction(async (tx) => {
       const updatedIdentity =
-        data?.name || data?.hasDeleteProtection
+        data?.name !== undefined || data?.hasDeleteProtection !== undefined || data?.isAgent !== undefined
           ? await identityDAL.updateById(
               dto.selector.identityId,
-              { name: data.name, hasDeleteProtection: data.hasDeleteProtection },
+              { name: data.name, hasDeleteProtection: data.hasDeleteProtection, isAgent: data.isAgent },
               tx
             )
           : existingIdentity;

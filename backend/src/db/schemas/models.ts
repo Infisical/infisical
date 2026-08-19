@@ -336,6 +336,17 @@ export enum TableName {
   ProxiedService = "proxied_services",
   ProxiedServiceCredential = "proxied_service_credentials",
 
+  // Agent policies (agent proxy resource + intersection policy model)
+  AgentProxy = "agent_proxies",
+  AgentPolicy = "agent_policies",
+  AgentPolicyAgent = "agent_policy_agents",
+  AgentPolicyCredential = "agent_policy_credentials",
+  AgentPolicyRule = "agent_policy_rules",
+  UserPolicy = "user_policies",
+  UserPolicyUser = "user_policy_users",
+  UserPolicyRule = "user_policy_rules",
+  AgentSession = "agent_sessions",
+
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",
   DeprecatedSecretRotationV1 = "secret_rotations",

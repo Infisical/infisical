@@ -7,6 +7,7 @@ export enum ActorType {
   ACME_PROFILE = "acmeProfile",
   ACME_ACCOUNT = "acmeAccount",
   EST_ACCOUNT = "estAccount",
+  AGENT_PROXY = "agentProxy",
   UNKNOWN_USER = "unknownUser"
 }
 
@@ -435,5 +436,20 @@ export enum EventType {
 
   // Project Grants
   CREATE_PROJECT_FOLDER_GRANT = "create-project-folder-grant",
-  DELETE_PROJECT_FOLDER_GRANT = "delete-project-folder-grant"
+  DELETE_PROJECT_FOLDER_GRANT = "delete-project-folder-grant",
+
+  // Agent Proxy
+  AGENT_POLICY_CREATE = "agent-policy-create",
+  AGENT_POLICY_UPDATE = "agent-policy-update",
+  AGENT_POLICY_DELETE = "agent-policy-delete",
+  USER_POLICY_CREATE = "user-policy-create",
+  USER_POLICY_UPDATE = "user-policy-update",
+  USER_POLICY_DELETE = "user-policy-delete",
+  AGENT_SESSION_CREATE = "agent-session-create",
+  AGENT_SESSION_REVOKE = "agent-session-revoke",
+  AGENT_PROXY_REQUEST = "agent-proxy-request",
+  AGENT_PROXY_CREATE = "agent-proxy-create",
+  AGENT_PROXY_UPDATE = "agent-proxy-update",
+  AGENT_PROXY_DELETE = "agent-proxy-delete",
+  AGENT_PROXY_ENROLLMENT_TOKEN_CREATE = "agent-proxy-enrollment-token-create"
 }

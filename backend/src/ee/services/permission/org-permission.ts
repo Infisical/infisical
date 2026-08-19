@@ -93,6 +93,14 @@ export enum OrgPermissionRelayActions {
   RevokeRelayAccess = "revoke-relay-access"
 }
 
+export enum OrgPermissionAgentProxyActions {
+  CreateAgentProxies = "create-agent-proxies",
+  ListAgentProxies = "list-agent-proxies",
+  EditAgentProxies = "edit-agent-proxies",
+  DeleteAgentProxies = "delete-agent-proxies",
+  RevokeAgentProxyAccess = "revoke-agent-proxy-access"
+}
+
 export enum OrgPermissionKmipServerActions {
   CreateKmipServers = "create-kmip-servers",
   ListKmipServers = "list-kmip-servers",
@@ -186,6 +194,7 @@ export enum OrgPermissionSubjects {
   Gateway = "gateway",
   GatewayPool = "gateway-pool",
   Relay = "relay",
+  AgentProxy = "agent-proxy",
   SecretShare = "secret-share",
   SubOrganization = "sub-organization",
   EmailDomains = "email-domains",
@@ -222,6 +231,7 @@ export type OrgPermissionSet =
   | [OrgPermissionGatewayActions, OrgPermissionSubjects.Gateway]
   | [OrgPermissionGatewayPoolActions, OrgPermissionSubjects.GatewayPool]
   | [OrgPermissionRelayActions, OrgPermissionSubjects.Relay]
+  | [OrgPermissionAgentProxyActions, OrgPermissionSubjects.AgentProxy]
   | [OrgPermissionKmipServerActions, OrgPermissionSubjects.KmipServer]
   | [
       OrgPermissionAppConnectionActions,
@@ -399,6 +409,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     )
   }),
   z.object({
+    subject: z.literal(OrgPermissionSubjects.AgentProxy).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionAgentProxyActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(OrgPermissionSubjects.KmipServer).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionKmipServerActions).describe(
       "Describe what action an entity can take."
@@ -563,6 +579,12 @@ const buildAdminPermission = () => {
   can(OrgPermissionRelayActions.DeleteRelays, OrgPermissionSubjects.Relay);
   can(OrgPermissionRelayActions.RevokeRelayAccess, OrgPermissionSubjects.Relay);
 
+  can(OrgPermissionAgentProxyActions.ListAgentProxies, OrgPermissionSubjects.AgentProxy);
+  can(OrgPermissionAgentProxyActions.CreateAgentProxies, OrgPermissionSubjects.AgentProxy);
+  can(OrgPermissionAgentProxyActions.EditAgentProxies, OrgPermissionSubjects.AgentProxy);
+  can(OrgPermissionAgentProxyActions.DeleteAgentProxies, OrgPermissionSubjects.AgentProxy);
+  can(OrgPermissionAgentProxyActions.RevokeAgentProxyAccess, OrgPermissionSubjects.AgentProxy);
+
   can(OrgPermissionKmipServerActions.ListKmipServers, OrgPermissionSubjects.KmipServer);
   can(OrgPermissionKmipServerActions.CreateKmipServers, OrgPermissionSubjects.KmipServer);
   can(OrgPermissionKmipServerActions.EditKmipServers, OrgPermissionSubjects.KmipServer);
@@ -656,6 +678,10 @@ const buildMemberPermission = () => {
   can(OrgPermissionRelayActions.ListRelays, OrgPermissionSubjects.Relay);
   can(OrgPermissionRelayActions.CreateRelays, OrgPermissionSubjects.Relay);
   can(OrgPermissionRelayActions.EditRelays, OrgPermissionSubjects.Relay);
+
+  can(OrgPermissionAgentProxyActions.ListAgentProxies, OrgPermissionSubjects.AgentProxy);
+  can(OrgPermissionAgentProxyActions.CreateAgentProxies, OrgPermissionSubjects.AgentProxy);
+  can(OrgPermissionAgentProxyActions.EditAgentProxies, OrgPermissionSubjects.AgentProxy);
 
   can(OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates, OrgPermissionSubjects.MachineIdentityAuthTemplate);
   can(

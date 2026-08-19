@@ -17,6 +17,8 @@ export type TIdentity = {
   createdAt: string;
   updatedAt: string;
   hasDeleteProtection: boolean;
+  // Only an agent may start a session on a user's behalf, and only agents appear in an agent policy.
+  isAgent: boolean;
   authMethods: IdentityAuthMethod[];
   activeLockoutAuthMethods: IdentityAuthMethod[];
   metadata?: Array<TMetadata & { id: string }>;

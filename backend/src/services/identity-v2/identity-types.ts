@@ -32,6 +32,7 @@ export type TCreateIdentityV2DTO = {
   data: {
     name: string;
     hasDeleteProtection: boolean;
+    isAgent?: boolean;
     metadata?: { key: string; value: string }[];
     roles?: TCreateIdentityV2RoleDTO[];
   };
@@ -46,6 +47,7 @@ export type TUpdateIdentityV2DTO = {
   data: Partial<{
     name: string;
     hasDeleteProtection: boolean;
+    isAgent: boolean;
     metadata?: { key: string; value: string }[];
   }>;
   isActorSuperAdmin?: boolean;

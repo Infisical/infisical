@@ -5,6 +5,7 @@ export type TOrgIdentity = TIdentity;
 export type TCreateOrgIdentityDTO = {
   name: string;
   hasDeleteProtection?: boolean;
+  isAgent?: boolean;
   metadata?: TMetadata;
 };
 
@@ -12,6 +13,7 @@ export type TUpdateOrgIdentityDTO = {
   identityId: string;
   name?: string;
   hasDeleteProtection?: boolean;
+  isAgent?: boolean;
   metadata?: TMetadata;
 };
 

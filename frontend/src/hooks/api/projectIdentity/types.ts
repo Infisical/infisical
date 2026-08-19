@@ -12,6 +12,7 @@ export type TCreateProjectIdentityDTO = {
   projectId: string;
   name: string;
   hasDeleteProtection?: boolean;
+  isAgent?: boolean;
   metadata?: TMetadata[];
   roles?: { role: string }[];
 };
@@ -21,6 +22,7 @@ export type TUpdateProjectIdentityDTO = {
   identityId: string;
   name?: string;
   hasDeleteProtection?: boolean;
+  isAgent?: boolean;
   metadata?: TMetadata[];
 };
 

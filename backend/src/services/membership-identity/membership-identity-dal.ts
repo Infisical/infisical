@@ -93,6 +93,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
           db.ref("orgId").withSchema(TableName.Identity).as("identityOrgId"),
           db.ref("projectId").withSchema(TableName.Identity).as("identityProjectId"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity).as("identityHasDeleteProtection"),
+          db.ref("isAgent").withSchema(TableName.Identity).as("identityIsAgent"),
 
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
           db.ref("name").withSchema(TableName.Role).as("roleName"),
@@ -138,6 +139,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
             identityOrgId,
             identityProjectId,
             identityHasDeleteProtection,
+            identityIsAgent,
             identityName,
             uaId,
             awsId,
@@ -159,6 +161,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
               name: identityName,
               id: actorIdentityId,
               hasDeleteProtection: identityHasDeleteProtection,
+              isAgent: identityIsAgent,
               orgId: identityOrgId,
               projectId: identityProjectId,
               authMethods: buildAuthMethods({
@@ -328,6 +331,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
           db.ref("orgId").withSchema(TableName.Identity).as("identityOrgId"),
           db.ref("projectId").withSchema(TableName.Identity).as("identityProjectId"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity).as("identityHasDeleteProtection"),
+          db.ref("isAgent").withSchema(TableName.Identity).as("identityIsAgent"),
 
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
           db.ref("name").withSchema(TableName.Role).as("roleName"),
@@ -368,6 +372,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
           const {
             identityId: actorIdentityId,
             identityHasDeleteProtection,
+            identityIsAgent,
             identityName,
             identityProjectId,
             identityOrgId,
@@ -392,6 +397,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
               name: identityName,
               id: actorIdentityId,
               hasDeleteProtection: identityHasDeleteProtection,
+              isAgent: identityIsAgent,
               orgId: identityOrgId,
               projectId: identityProjectId,
               authMethods: buildAuthMethods({

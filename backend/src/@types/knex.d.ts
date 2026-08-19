@@ -20,6 +20,24 @@ import {
   TAdditionalPrivileges,
   TAdditionalPrivilegesInsert,
   TAdditionalPrivilegesUpdate,
+  TAgentPolicies,
+  TAgentPoliciesInsert,
+  TAgentPoliciesUpdate,
+  TAgentPolicyAgents,
+  TAgentPolicyAgentsInsert,
+  TAgentPolicyAgentsUpdate,
+  TAgentPolicyCredentials,
+  TAgentPolicyCredentialsInsert,
+  TAgentPolicyCredentialsUpdate,
+  TAgentPolicyRules,
+  TAgentPolicyRulesInsert,
+  TAgentPolicyRulesUpdate,
+  TAgentProxies,
+  TAgentProxiesInsert,
+  TAgentProxiesUpdate,
+  TAgentSessions,
+  TAgentSessionsInsert,
+  TAgentSessionsUpdate,
   TAlertChannelMemberships,
   TAlertChannelMembershipsInsert,
   TAlertChannelMembershipsUpdate,
@@ -665,6 +683,15 @@ import {
   TUserMfaRecoveryCodes,
   TUserMfaRecoveryCodesInsert,
   TUserMfaRecoveryCodesUpdate,
+  TUserPolicies,
+  TUserPoliciesInsert,
+  TUserPoliciesUpdate,
+  TUserPolicyRules,
+  TUserPolicyRulesInsert,
+  TUserPolicyRulesUpdate,
+  TUserPolicyUsers,
+  TUserPolicyUsersInsert,
+  TUserPolicyUsersUpdate,
   TUsers,
   TUserSecretActivation,
   TUserSecretActivationInsert,
@@ -1530,6 +1557,43 @@ declare module "knex/types/tables" {
       TKmipClientCertificatesUpdate
     >;
     [TableName.KmipServer]: KnexOriginal.CompositeTableType<TKmipServers, TKmipServersInsert, TKmipServersUpdate>;
+    [TableName.AgentProxy]: KnexOriginal.CompositeTableType<TAgentProxies, TAgentProxiesInsert, TAgentProxiesUpdate>;
+    [TableName.AgentPolicy]: KnexOriginal.CompositeTableType<
+      TAgentPolicies,
+      TAgentPoliciesInsert,
+      TAgentPoliciesUpdate
+    >;
+    [TableName.AgentPolicyAgent]: KnexOriginal.CompositeTableType<
+      TAgentPolicyAgents,
+      TAgentPolicyAgentsInsert,
+      TAgentPolicyAgentsUpdate
+    >;
+    [TableName.AgentPolicyCredential]: KnexOriginal.CompositeTableType<
+      TAgentPolicyCredentials,
+      TAgentPolicyCredentialsInsert,
+      TAgentPolicyCredentialsUpdate
+    >;
+    [TableName.AgentPolicyRule]: KnexOriginal.CompositeTableType<
+      TAgentPolicyRules,
+      TAgentPolicyRulesInsert,
+      TAgentPolicyRulesUpdate
+    >;
+    [TableName.UserPolicy]: KnexOriginal.CompositeTableType<TUserPolicies, TUserPoliciesInsert, TUserPoliciesUpdate>;
+    [TableName.UserPolicyUser]: KnexOriginal.CompositeTableType<
+      TUserPolicyUsers,
+      TUserPolicyUsersInsert,
+      TUserPolicyUsersUpdate
+    >;
+    [TableName.UserPolicyRule]: KnexOriginal.CompositeTableType<
+      TUserPolicyRules,
+      TUserPolicyRulesInsert,
+      TUserPolicyRulesUpdate
+    >;
+    [TableName.AgentSession]: KnexOriginal.CompositeTableType<
+      TAgentSessions,
+      TAgentSessionsInsert,
+      TAgentSessionsUpdate
+    >;
     [TableName.Gateway]: KnexOriginal.CompositeTableType<TGateways, TGatewaysInsert, TGatewaysUpdate>;
     [TableName.ProjectGateway]: KnexOriginal.CompositeTableType<
       TProjectGateways,

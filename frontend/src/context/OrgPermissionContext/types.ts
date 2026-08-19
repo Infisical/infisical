@@ -46,6 +46,14 @@ export enum OrgRelayPermissionActions {
   RevokeRelayAccess = "revoke-relay-access"
 }
 
+export enum OrgAgentProxyPermissionActions {
+  CreateAgentProxies = "create-agent-proxies",
+  ListAgentProxies = "list-agent-proxies",
+  EditAgentProxies = "edit-agent-proxies",
+  DeleteAgentProxies = "delete-agent-proxies",
+  RevokeAgentProxyAccess = "revoke-agent-proxy-access"
+}
+
 export enum OrgKmipServerPermissionActions {
   CreateKmipServers = "create-kmip-servers",
   ListKmipServers = "list-kmip-servers",
@@ -87,6 +95,7 @@ export enum OrgPermissionSubjects {
   Gateway = "gateway",
   GatewayPool = "gateway-pool",
   Relay = "relay",
+  AgentProxy = "agent-proxy",
   SecretShare = "secret-share",
   GithubOrgSync = "github-org-sync",
   GithubOrgSyncManual = "github-org-sync-manual",
@@ -219,6 +228,7 @@ export type OrgPermissionSet =
   | [OrgGatewayPermissionActions, OrgPermissionSubjects.Gateway]
   | [OrgGatewayPoolPermissionActions, OrgPermissionSubjects.GatewayPool]
   | [OrgRelayPermissionActions, OrgPermissionSubjects.Relay]
+  | [OrgAgentProxyPermissionActions, OrgPermissionSubjects.AgentProxy]
   | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare]
   | [
       OrgPermissionAppConnectionActions,

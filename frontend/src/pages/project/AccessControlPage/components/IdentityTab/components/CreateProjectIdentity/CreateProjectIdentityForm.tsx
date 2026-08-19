@@ -11,11 +11,14 @@ import {
   Button,
   Field,
   FieldContent,
+  FieldDescription,
   FieldError,
   FieldLabel,
   FilterableSelect,
   Input,
+  Label,
   SheetFooter,
+  Switch,
   Tabs,
   TabsList,
   TabsTrigger
@@ -90,6 +93,9 @@ export const CreateProjectIdentityForm = ({
   const queryClient = useQueryClient();
   const isCertManager = projectType === ProjectType.CertificateManager;
   const isPam = projectType === ProjectType.PAM;
+  // A project-scoped identity can only ever belong to this project, and agent policies are a Secret
+  // Manager surface, so the flag would be unusable on an identity created anywhere else.
+  const canBeAgent = projectType === ProjectType.SecretManager;
 
   const { data: projectRoles } = useGetProjectRoles(projectId, projectType);
 
@@ -117,6 +123,7 @@ export const CreateProjectIdentityForm = ({
       mode: CreateProjectIdentityMode.Create,
       name: "",
       role: defaultRole,
+      isAgent: false,
       templateIds: []
     }
   });
@@ -169,6 +176,7 @@ export const CreateProjectIdentityForm = ({
           name: data.name!.trim(),
           projectId,
           hasDeleteProtection: true,
+          isAgent: canBeAgent && data.isAgent,
           ...(isPam && data.role?.slug ? { roles: [{ role: data.role.slug }] } : {})
         });
         identityId = created.id;
@@ -383,6 +391,30 @@ export const CreateProjectIdentityForm = ({
                 <PolicyTemplateSelect projectType={projectType} />
               </FieldContent>
             </Field>
+          )}
+
+          {canBeAgent && mode === CreateProjectIdentityMode.Create && (
+            <Controller
+              control={control}
+              name="isAgent"
+              render={({ field: { value, onChange } }) => (
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <Label htmlFor="identity-is-agent">Agent</Label>
+                    <FieldDescription>
+                      Lets this identity start a session on a user&apos;s behalf and appear in agent
+                      policies. It can then only do what both it and that user are allowed to do.
+                    </FieldDescription>
+                  </FieldContent>
+                  <Switch
+                    id="identity-is-agent"
+                    variant="project"
+                    checked={value}
+                    onCheckedChange={onChange}
+                  />
+                </Field>
+              )}
+            />
           )}
         </div>
         <SheetFooter className="border-t">

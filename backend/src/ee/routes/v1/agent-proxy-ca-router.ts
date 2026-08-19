@@ -11,7 +11,7 @@ export const registerAgentProxyCaRouter = async (server: FastifyZodProvider) => 
     method: "GET",
     url: "/",
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.AGENT_PROXY_ACCESS_TOKEN]),
     schema: {
       response: {
         200: z.object({
@@ -32,7 +32,7 @@ export const registerAgentProxyCaRouter = async (server: FastifyZodProvider) => 
     method: "POST",
     url: "/sign",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.AGENT_PROXY_ACCESS_TOKEN]),
     schema: {
       body: z.object({
         publicKey: z.string().trim().min(1)

@@ -25,6 +25,7 @@ const secretManagerRoutes = route("/organizations/$orgId/projects/secret-managem
     route("/allowlist", "secret-manager/IPAllowlistPage/route.tsx"),
     route("/approval", "secret-manager/SecretApprovalsPage/route.tsx"),
     route("/insights", "secret-manager/InsightsPage/route.tsx"),
+    route("/agent-proxy", "secret-manager/AgentProxyPage/route.tsx"),
     route("/settings", "secret-manager/SettingsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-secret-manager.tsx"),
     route("/access-management", "project/AccessControlPage/route-secret-manager.tsx"),

@@ -100,6 +100,19 @@ export const injectPermission = fp(async (server) => {
       logger.info(
         `injectPermission: Injecting permissions for [permissionsForKmipServer=${req.auth.kmipServerId}] [type=${ActorType.KMIP_SERVER}]`
       );
+    } else if (req.auth.actor === ActorType.AGENT_PROXY) {
+      req.permission = {
+        type: ActorType.AGENT_PROXY,
+        id: req.auth.agentProxyId,
+        orgId: req.auth.orgId,
+        rootOrgId: req.auth.rootOrgId,
+        parentOrgId: req.auth.parentOrgId,
+        authMethod: null
+      };
+
+      logger.info(
+        `injectPermission: Injecting permissions for [permissionsForAgentProxy=${req.auth.agentProxyId}] [type=${ActorType.AGENT_PROXY}]`
+      );
     }
   });
 });

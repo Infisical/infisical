@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 
+import { AgentProxyTab } from "../AgentProxyTab/AgentProxyTab";
 import { GatewayTab } from "../GatewayTab/GatewayTab";
 import { RelayTab } from "../RelayTab/RelayTab";
 
@@ -18,7 +19,8 @@ export const NetworkingTabGroup = () => {
 
   const tabs = [
     { key: "gateways", label: "Gateways", component: GatewayTab },
-    { key: "relays", label: "Relays", component: RelayTab }
+    { key: "relays", label: "Relays", component: RelayTab },
+    { key: "agent-proxies", label: "Agent Proxies", component: AgentProxyTab }
   ];
 
   const updateSelectedTab = (tab: string) => {

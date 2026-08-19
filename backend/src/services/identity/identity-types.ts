@@ -6,6 +6,7 @@ export type TCreateIdentityDTO = {
   role: string;
   name: string;
   hasDeleteProtection: boolean;
+  isAgent?: boolean;
   metadata?: { key: string; value: string }[];
 } & TOrgPermission;
 
@@ -13,6 +14,7 @@ export type TUpdateIdentityDTO = {
   id: string;
   role?: string;
   hasDeleteProtection?: boolean;
+  isAgent?: boolean;
   name?: string;
   metadata?: { key: string; value: string }[];
   isActorSuperAdmin?: boolean;

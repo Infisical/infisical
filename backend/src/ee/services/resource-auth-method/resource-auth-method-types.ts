@@ -35,7 +35,7 @@ export type TLoginWithAwsDTO = {
 
 export type TLoginWithTokenDTO = {
   token: string;
-  expectedResourceType: "gateway" | "relay" | "kmip";
+  expectedResourceType: "gateway" | "relay" | "kmip" | "agentProxy";
 };
 
 export type TAuthMethodView =

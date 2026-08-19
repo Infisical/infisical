@@ -1,6 +1,9 @@
 export * from "./accessApproval";
 export * from "./accountRecovery";
 export * from "./admin";
+export * from "./agentPolicies";
+export * from "./agentProxies";
+export * from "./agentSessions";
 export * from "./alerts";
 export * from "./approvalGrants";
 export * from "./approvalPolicies";
@@ -73,6 +76,7 @@ export * from "./subscriptions";
 export * from "./tags";
 export * from "./trustedIps";
 export * from "./userActivation";
+export * from "./userPolicies";
 export * from "./users";
 export * from "./webhooks";
 export * from "./workflowIntegrations";
