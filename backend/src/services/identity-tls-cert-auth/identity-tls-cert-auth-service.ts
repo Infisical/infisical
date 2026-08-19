@@ -70,6 +70,40 @@ const CHAIN_FAILURE_MESSAGES: Record<
   path_length_exceeded: "Access denied: The certificate chain has more intermediate CAs than a CA in it permits."
 };
 
+const normalizeCaCertificate = (caCertificate: string) => caCertificate.replace(/\s+/g, "");
+
+/**
+ * Reject a CA certificate the moment it is configured, rather than at every login it would deny.
+ *
+ * Only conditions that can never authenticate a client are rejected here. A certificate that is not
+ * yet valid is deliberately allowed through, since an operator may be pre-provisioning the next CA
+ * in a rotation.
+ */
+const validateCaCertificateUsable = (caCertificate: string) => {
+  let caCertificateX509: InstanceType<typeof crypto.nativeCrypto.X509Certificate>;
+  try {
+    caCertificateX509 = new crypto.nativeCrypto.X509Certificate(caCertificate);
+  } catch {
+    throw new BadRequestError({
+      message: "CA certificate could not be read. Provide a PEM-encoded X.509 certificate."
+    });
+  }
+
+  const validTo = new Date(caCertificateX509.validTo);
+  if (validTo < new Date()) {
+    throw new BadRequestError({
+      message: `CA certificate expired on ${validTo.toISOString()}. Provide a CA certificate that is still valid.`
+    });
+  }
+
+  if (!permitsClientAuth(caCertificateX509)) {
+    throw new BadRequestError({
+      message:
+        "CA certificate's extended key usage does not include client authentication, so no certificate it issues could be used to log in. Provide a CA certificate that permits client authentication."
+    });
+  }
+};
+
 type TIdentityTlsCertAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
@@ -485,6 +519,8 @@ export const identityTlsCertAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
+    validateCaCertificateUsable(caCertificate);
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
@@ -603,10 +639,17 @@ export const identityTlsCertAuthServiceFactory = ({
         });
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });
+
+    const storedCaCertificate = decryptor({
+      cipherTextBlob: identityTlsCertAuth.encryptedCaCertificate
+    }).toString();
+    if (caCertificate && normalizeCaCertificate(caCertificate) !== normalizeCaCertificate(storedCaCertificate)) {
+      validateCaCertificateUsable(caCertificate);
+    }
 
     const updatedTlsCertAuth = await identityTlsCertAuthDAL.updateById(identityTlsCertAuth.id, {
       allowedCommonNames,

@@ -118,15 +118,13 @@ const deleteIdentity = async (identityId: string) => {
   expect(res.statusCode).toBe(200);
 };
 
-const attachTlsCertAuth = async (identityId: string, caCertificate: string, verifyClientCertificateChain: boolean) => {
-  const res = await testServer.inject({
+const attachTlsCertAuth = (identityId: string, caCertificate: string, verifyClientCertificateChain: boolean) =>
+  testServer.inject({
     method: "POST",
     url: `/api/v1/auth/tls-cert-auth/identities/${identityId}`,
     headers: { authorization: `Bearer ${jwtAuthToken}` },
     body: { caCertificate, verifyClientCertificateChain }
   });
-  expect(res.statusCode).toBe(200);
-};
 
 const login = (identityId: string, chain: x509.X509Certificate[]) =>
   testServer.inject({
@@ -146,7 +144,8 @@ const withIdentity = async (
 ) => {
   const identity = await createIdentity(`tls-cert-auth-${nextSerial()}`);
   try {
-    await attachTlsCertAuth(identity.id, toPem(opts.caCertificate), opts.verifyChain);
+    const res = await attachTlsCertAuth(identity.id, toPem(opts.caCertificate), opts.verifyChain);
+    expect(res.statusCode).toBe(200);
     await run(identity.id);
   } finally {
     await deleteIdentity(identity.id);
@@ -178,15 +177,19 @@ describe("Identity TLS certificate auth v1", async () => {
       });
     });
 
-    test("denies a chain whose configured CA may not issue for client authentication", async () => {
+    // A CA that cannot delegate client authentication is refused when it is configured, so the
+    // operator finds out then rather than through a login failure they have to trace back to it.
+    test("refuses to attach a CA that may not issue for client authentication", async () => {
       const ca = await makeRoot("ServerAuth Only CA", [ekuExtension([SERVER_AUTH_EKU])]);
-      const leaf = await makeLeaf("workload", ca, { usages: [CLIENT_AUTH_EKU] });
+      const identity = await createIdentity(`tls-cert-auth-${nextSerial()}`);
 
-      await withIdentity({ caCertificate: ca.cert, verifyChain: false }, async (identityId) => {
-        const res = await login(identityId, [leaf.cert]);
-        expect(res.statusCode).toBe(401);
-        expect(res.json().message).toContain("A CA in the certificate chain is not permitted");
-      });
+      try {
+        const res = await attachTlsCertAuth(identity.id, toPem(ca.cert), false);
+        expect(res.statusCode).toBe(400);
+        expect(res.json().message).toContain("does not include client authentication");
+      } finally {
+        await deleteIdentity(identity.id);
+      }
     });
   });
 
