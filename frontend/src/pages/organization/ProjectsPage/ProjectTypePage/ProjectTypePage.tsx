@@ -544,9 +544,6 @@ const MyProjectsForType = ({
                     </div>
                   </TableCell>
                   <TableCell isTruncatable>
-                    {/* The name is the row's link, so the accessible name comes from visible text
-                        rather than a duplicated label, and its stretched pseudo-element covers the
-                        row. Siblings raised above it stay outside the anchor. */}
                     <Link
                       to={getProjectHomePage(workspace.type, workspace.environments)}
                       params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
