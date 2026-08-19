@@ -356,6 +356,8 @@ describe("verifyClientCertificateChain", () => {
         .toBER(false)
     );
 
+  const clientAuthEku = (usages: string[]) => new x509.ExtendedKeyUsageExtension(usages, true);
+
   const makeLeaf = async (
     name: string,
     issuer: TIssued,
@@ -656,6 +658,90 @@ describe("verifyClientCertificateChain", () => {
     const result = await verifyClientCertificateChain({
       leaf: toNative(leaf.cert),
       presentedChain: [toNative(limited.cert)],
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
+  test("rejects a clientAuth leaf issued through a serverAuth-only intermediate", async () => {
+    // A CA's EKU restricts the purposes of everything beneath it, so a serverAuth-only intermediate
+    // cannot delegate client authentication no matter what the leaf itself asserts.
+    const serverOnly = await makeIntermediate("ServerAuth Only CA", root, {
+      serialNumber: "40",
+      extraExtensions: [clientAuthEku(["1.3.6.1.5.5.7.3.1"])]
+    });
+    const leaf = await makeLeaf("workload", serverOnly);
+
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [toNative(serverOnly.cert)],
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: false, reasonCode: "issuer_client_auth_usage_not_allowed" });
+  });
+
+  test("rejects a leaf issued directly by a codeSigning-only configured anchor", async () => {
+    const codeSigningOnly = await makeIntermediate("CodeSigning Only CA", root, {
+      serialNumber: "41",
+      extraExtensions: [clientAuthEku(["1.3.6.1.5.5.7.3.3"])]
+    });
+    const leaf = await makeLeaf("workload", codeSigningOnly);
+
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [],
+      trustAnchor: toNative(codeSigningOnly.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: false, reasonCode: "issuer_client_auth_usage_not_allowed" });
+  });
+
+  test("accepts a chain whose CAs assert clientAuth or anyExtendedKeyUsage", async () => {
+    const clientAuthCa = await makeIntermediate("ClientAuth CA", root, {
+      serialNumber: "42",
+      extraExtensions: [clientAuthEku(["1.3.6.1.5.5.7.3.1", "1.3.6.1.5.5.7.3.2"])]
+    });
+    const anyPurposeCa = await makeIntermediate("Any Purpose CA", clientAuthCa, {
+      serialNumber: "43",
+      extraExtensions: [clientAuthEku(["2.5.29.37.0"])]
+    });
+    const leaf = await makeLeaf("workload", anyPurposeCa);
+
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [toNative(clientAuthCa.cert), toNative(anyPurposeCa.cert)],
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
+  test("builds a path through an alternative issuer when one candidate forbids client auth", async () => {
+    // Two CAs share a subject and key, so both verify as the leaf's issuer; only one permits
+    // client authentication. The EKU check must not strand the chain on the wrong candidate.
+    const usableKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const makeSibling = async (serialNumber: string, usages: string[]) =>
+      x509.X509CertificateGenerator.create({
+        serialNumber,
+        subject: "CN=Shared Subject CA",
+        issuer: root.cert.subject,
+        notBefore: NOT_BEFORE,
+        notAfter: FAR_FUTURE,
+        signingKey: root.keys.privateKey,
+        publicKey: usableKeys.publicKey,
+        signingAlgorithm: alg,
+        extensions: [new x509.BasicConstraintsExtension(true, undefined, true), clientAuthEku(usages)]
+      });
+
+    const serverOnly = await makeSibling("50", ["1.3.6.1.5.5.7.3.1"]);
+    const clientCapable = await makeSibling("51", ["1.3.6.1.5.5.7.3.2"]);
+    const leaf = await makeLeaf("workload", { cert: clientCapable, keys: usableKeys });
+
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [toNative(serverOnly), toNative(clientCapable)],
       trustAnchor: toNative(root.cert),
       now: NOW
     });

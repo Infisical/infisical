@@ -19,6 +19,7 @@ export type TVerifyClientCertificateChainResult =
         | "ca_verification_failed"
         | "certificate_expired"
         | "certificate_not_yet_valid"
+        | "issuer_client_auth_usage_not_allowed"
         | "name_constraint_violation"
         | "path_length_exceeded";
     };
@@ -113,14 +114,31 @@ const enforceNameConstraints = async (orderedPath: TNativeX509[], now: Date): Pr
 };
 
 /**
+ * RFC 5280 4.2.1.12: an Extended Key Usage extension is the exhaustive list of purposes its
+ * certificate may be used for. Without this check a leaf issued for serverAuth or codeSigning
+ * authenticates an identity, so anyone holding a server certificate under the configured CA can
+ * impersonate the machine identity pinned to it.
+ *
+ * A certificate that omits the extension is unconstrained and stays accepted, which is how OpenSSL
+ * and Go read a missing EKU and what keeps existing leaves that carry no EKU working. Only a
+ * certificate that explicitly enumerates purposes and leaves client authentication out is rejected.
+ */
+export const permitsClientAuth = (cert: TNativeX509): boolean => {
+  const usages = new x509.X509Certificate(cert.raw).getExtension(x509.ExtendedKeyUsageExtension)?.usages;
+  if (!usages) return true;
+  return usages.some((oid) => oid === CLIENT_AUTH_EKU_OID || oid === ANY_PURPOSE_EKU_OID);
+};
+
+/**
  * Validate the presented client certificate chain against a configured trust anchor.
  *
  * Unlike single-hop verification (leaf signed directly by the configured CA), this builds a
  * path from the leaf through the presented intermediates up to the configured trust anchor and
  * verifies, at every hop: the issuer relationship (subject/issuer match + signature), that each
  * issuer is a CA (including the trust anchor itself), and that every certificate on the path is
- * within its validity window. The resulting path is then checked against the RFC 5280 delegation
- * constraints its CAs assert: `pathLenConstraint` and name constraints.
+ * within its validity window, and that every issuer's extended key usage permits client
+ * authentication. The resulting path is then checked against the RFC 5280 delegation constraints
+ * its CAs assert: `pathLenConstraint` and name constraints.
  *
  * The trust anchor is the only trusted input. Presented intermediates are untrusted: a forged or
  * unrelated intermediate cannot create a path to the anchor, so it is rejected. This mirrors how
@@ -212,6 +230,8 @@ export const verifyClientCertificateChain = async ({
           ok: false,
           reasonCode: now < new Date(trustAnchor.validFrom) ? "certificate_not_yet_valid" : "certificate_expired"
         };
+      } else if (!permitsClientAuth(trustAnchor)) {
+        result = { ok: false, reasonCode: "issuer_client_auth_usage_not_allowed" };
       } else {
         result = { ok: true, issuers: [trustAnchor] };
       }
@@ -224,7 +244,9 @@ export const verifyClientCertificateChain = async ({
       for (const candidate of presentedChain) {
         // An issuer on the path must be a CA and have signed the current certificate.
         if (candidate.ca && issuedBy(current, candidate)) {
-          const candidateResult = walk(candidate);
+          const candidateResult: TPathSearchResult = permitsClientAuth(candidate)
+            ? walk(candidate)
+            : { ok: false, reasonCode: "issuer_client_auth_usage_not_allowed" };
           if (candidateResult.ok) {
             result = { ok: true, issuers: [candidate, ...candidateResult.issuers] };
             break;
@@ -253,22 +275,6 @@ export const verifyClientCertificateChain = async ({
   } catch {
     return { ok: false, reasonCode: "ca_verification_failed" };
   }
-};
-
-/**
- * RFC 5280 4.2.1.12: an Extended Key Usage extension is the exhaustive list of purposes its
- * certificate may be used for. Without this check a leaf issued for serverAuth or codeSigning
- * authenticates an identity, so anyone holding a server certificate under the configured CA can
- * impersonate the machine identity pinned to it.
- *
- * A certificate that omits the extension is unconstrained and stays accepted, which is how OpenSSL
- * and Go read a missing EKU and what keeps existing leaves that carry no EKU working. Only a
- * certificate that explicitly enumerates purposes and leaves client authentication out is rejected.
- */
-export const permitsClientAuth = (cert: TNativeX509): boolean => {
-  const usages = new x509.X509Certificate(cert.raw).getExtension(x509.ExtendedKeyUsageExtension)?.usages;
-  if (!usages) return true;
-  return usages.some((oid) => oid === CLIENT_AUTH_EKU_OID || oid === ANY_PURPOSE_EKU_OID);
 };
 
 export const parseSubjectDetails = (data?: string | null) => {

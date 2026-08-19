@@ -62,6 +62,8 @@ const CHAIN_FAILURE_MESSAGES: Record<
   ca_verification_failed: "Access denied: Certificate chain could not be validated against the provided CA.",
   certificate_expired: "Access denied: A certificate in the chain is outside its validity period.",
   certificate_not_yet_valid: "Access denied: A certificate in the chain is outside its validity period.",
+  issuer_client_auth_usage_not_allowed:
+    "Access denied: A CA in the certificate chain is not permitted to issue client authentication certificates.",
   name_constraint_violation:
     "Access denied: The client certificate's name is outside the namespace its issuing CA is permitted to certify.",
   path_length_exceeded: "Access denied: The certificate chain has more intermediate CAs than a CA in it permits."
@@ -188,6 +190,18 @@ export const identityTlsCertAuthServiceFactory = ({
               identityName: identity.name
             }
           });
+
+        if (!permitsClientAuth(caCertificateX509)) {
+          throw new UnauthorizedError({
+            message: CHAIN_FAILURE_MESSAGES.issuer_client_auth_usage_not_allowed,
+            detail: {
+              reasonCode: "issuer_client_auth_usage_not_allowed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
+          });
+        }
       }
 
       // Require an end-entity certificate issued by the configured CA, not the CA certificate
