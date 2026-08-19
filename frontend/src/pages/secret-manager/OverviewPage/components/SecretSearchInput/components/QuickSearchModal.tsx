@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FilterIcon,
   FingerprintIcon,
@@ -21,6 +21,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   PageLoader,
+  Pagination,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -43,6 +44,7 @@ import {
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { WsTag } from "@app/hooks/api/tags/types";
 import { groupBy } from "@app/lib/fn/array";
+import { ResourceCount } from "@app/pages/secret-manager/OverviewPage/components/ResourceCount";
 import {
   ResourceFilterMenuContent,
   type ResourceTypeOption
@@ -78,6 +80,8 @@ type ResourceType =
   | RowType.Folder
   | RowType.SecretRotation;
 
+const QUICK_SEARCH_PER_PAGE_OPTIONS = [25, 50, 100];
+
 const QUICK_SEARCH_RESOURCE_TYPES: ResourceTypeOption[] = [
   { type: RowType.Folder, label: "Folders", icon: <FolderIcon className="text-folder" /> },
   {
@@ -102,6 +106,8 @@ const Content = ({
 }: Omit<QuickSearchModalProps, "isOpen" | "onOpenChange" | "isSingleEnv">) => {
   const [search, setSearch] = useState(initialValue);
   const [debouncedSearch] = useDebounce(search);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(QUICK_SEARCH_PER_PAGE_OPTIONS[0]);
   const [filterTags, setFilterTags] = useState<Record<string, boolean>>({});
   const [showFilter, setShowFilter] = useState<Record<ResourceType, boolean>>({
     [RowType.Secret]: false,
@@ -171,16 +177,35 @@ const Content = ({
       environments: environments.map((env) => env.slug),
       projectId,
       search: debouncedSearch,
-      tags: filterTags
+      tags: filterTags,
+      limit: perPage,
+      offset: (page - 1) * perPage
     },
     { enabled: isDeepSearchEnabled }
   );
 
-  const { folders = {}, secrets = {}, dynamicSecrets = {}, secretRotations = {} } = data ?? {};
+  const {
+    folders = {},
+    secrets = {},
+    dynamicSecrets = {},
+    secretRotations = {},
+    totalFolderCount = 0,
+    totalSecretCount = 0,
+    totalDynamicSecretCount = 0,
+    totalSecretRotationCount = 0,
+    searchLimit = 0,
+    isSearchLimitReached = false
+  } = data ?? {};
 
   const envIdToSlug = useMemo(
     () => new Map(environments.map((env) => [env.id, env.slug])),
     [environments]
+  );
+
+  // When no resource types are checked, show all (empty filter = no filter)
+  const showType = useCallback(
+    (type: ResourceType) => !Object.values(showFilter).some(Boolean) || Boolean(showFilter[type]),
+    [showFilter]
   );
 
   const resultsByEnv = useMemo(() => {
@@ -196,10 +221,6 @@ const Content = ({
     const secretsByEnv = groupBy(allSecrets, (secret) => secret.env);
     const dynamicSecretsByEnv = groupBy(allDynamicSecrets, (ds) => ds.environment);
     const rotationsByEnv = groupBy(allRotations, (r) => r.environment.slug);
-
-    // When no resource types are checked, show all (empty filter = no filter)
-    const hasActiveResourceFilter = Object.values(showFilter).some(Boolean);
-    const showType = (type: ResourceType) => !hasActiveResourceFilter || showFilter[type];
 
     return environments
       .map((env) => {
@@ -225,7 +246,18 @@ const Content = ({
         };
       })
       .filter((group) => group.total > 0);
-  }, [folders, secrets, dynamicSecrets, secretRotations, environments, envIdToSlug, showFilter]);
+  }, [folders, secrets, dynamicSecrets, secretRotations, environments, envIdToSlug, showType]);
+
+  // pages advance every resource type at once, so counting every visible match keeps them all reachable
+  const visibleResultCount =
+    (showType(RowType.Folder) ? totalFolderCount : 0) +
+    (showType(RowType.Secret) ? totalSecretCount : 0) +
+    (showType(RowType.DynamicSecret) ? totalDynamicSecretCount : 0) +
+    (showType(RowType.SecretRotation) ? totalSecretRotationCount : 0);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, filterTags, showFilter]);
 
   const metadataResultsByEnv = useMemo(() => {
     const query = debouncedSearch.trim().toLowerCase();
@@ -500,6 +532,38 @@ const Content = ({
         )}
         {resultsContent}
       </div>
+      {isDeepSearchEnabled && !isDeepSearchPending && visibleResultCount > 0 && (
+        <div className="border-t border-border">
+          <Pagination
+            startAdornment={
+              <div className="flex items-center gap-3">
+                <ResourceCount
+                  folderCount={showType(RowType.Folder) ? totalFolderCount : 0}
+                  secretCount={showType(RowType.Secret) ? totalSecretCount : 0}
+                  dynamicSecretCount={showType(RowType.DynamicSecret) ? totalDynamicSecretCount : 0}
+                  secretRotationCount={
+                    showType(RowType.SecretRotation) ? totalSecretRotationCount : 0
+                  }
+                />
+                {isSearchLimitReached && (
+                  <span className="text-xs text-accent">
+                    {`Only the first ${searchLimit} matches per resource type are searched. Narrow your search to reach the rest.`}
+                  </span>
+                )}
+              </div>
+            }
+            count={visibleResultCount}
+            page={page}
+            perPage={perPage}
+            perPageList={QUICK_SEARCH_PER_PAGE_OPTIONS}
+            onChangePage={setPage}
+            onChangePerPage={(newPerPage) => {
+              setPerPage(newPerPage);
+              setPage(1);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };

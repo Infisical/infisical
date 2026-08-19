@@ -1518,6 +1518,10 @@ export const DASHBOARD = {
     includeSecretRotations: "Whether to include secret rotations in the response.",
     includeHoneyTokens: "Whether to include honey tokens in the response.",
     includeProxiedServices: "Whether to include proxied services in the response."
+  },
+  SECRET_DEEP_SEARCH: {
+    offset: "The offset to start from, applied to each resource type separately.",
+    limit: "The number of results to return per resource type."
   }
 } as const;
 

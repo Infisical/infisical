@@ -728,7 +728,10 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           .select("*")
           .from<Awaited<typeof query>[number]>("w")
           .where("w.rank", ">=", rankOffset)
-          .andWhere("w.rank", "<", rankOffset + filters.limit);
+          .andWhere("w.rank", "<", rankOffset + filters.limit)
+          // a CTE does not carry its inner ordering, so re-state it here to keep paging deterministic
+          .orderBy("key", filters?.orderDirection ?? OrderByDirection.ASC)
+          .orderBy("id", OrderByDirection.ASC);
       } else {
         secs = await query;
       }

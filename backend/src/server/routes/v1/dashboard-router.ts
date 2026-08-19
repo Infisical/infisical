@@ -38,6 +38,8 @@ import {
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
+const DEEP_SEARCH_DEFAULT_PAGE_LIMIT = 25;
+const DEEP_SEARCH_MAX_PAGE_LIMIT = 100;
 
 const parseSecretPathSearch = (search?: string) => {
   if (!search)
@@ -1520,7 +1522,25 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         environments: z.string().trim().transform(decodeURIComponent),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         search: z.string().trim().optional(),
-        tags: z.string().trim().transform(decodeURIComponent).optional()
+        tags: z.string().trim().transform(decodeURIComponent).optional(),
+        limit: z.coerce
+          .number({ invalid_type_error: "Limit must be a number" })
+          .int({ message: "Limit must be a whole number" })
+          .min(1, { message: "Limit must be at least 1" })
+          .max(DEEP_SEARCH_MAX_PAGE_LIMIT, {
+            message: `Limit cannot be greater than ${DEEP_SEARCH_MAX_PAGE_LIMIT}`
+          })
+          .default(DEEP_SEARCH_DEFAULT_PAGE_LIMIT)
+          .describe(DASHBOARD.SECRET_DEEP_SEARCH.limit),
+        offset: z.coerce
+          .number({ invalid_type_error: "Offset must be a number" })
+          .int({ message: "Offset must be a whole number" })
+          .min(0, { message: "Offset cannot be negative" })
+          .max(MAX_DEEP_SEARCH_LIMIT, {
+            message: `Offset cannot be greater than ${MAX_DEEP_SEARCH_LIMIT}. Narrow your search to reach more results`
+          })
+          .default(0)
+          .describe(DASHBOARD.SECRET_DEEP_SEARCH.offset)
       }),
       response: {
         200: z.object({
@@ -1539,13 +1559,20 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             })
             .array()
             .optional(),
-          secretRotations: SecretRotationV2Schema.array().optional()
+          secretRotations: SecretRotationV2Schema.array().optional(),
+          totalFolderCount: z.number(),
+          totalDynamicSecretCount: z.number(),
+          totalSecretCount: z.number(),
+          totalSecretRotationCount: z.number(),
+          totalCount: z.number(),
+          searchLimit: z.number(),
+          isSearchLimitReached: z.boolean()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { secretPath, projectId, search } = req.query;
+      const { secretPath, projectId, search, limit, offset } = req.query;
 
       const environments = req.query.environments.split(",").filter((env) => Boolean(env.trim()));
       if (!environments.length) throw new BadRequestError({ message: "One or more environments required" });
@@ -1576,20 +1603,21 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         orderBy: SecretsOrderBy.Name
       };
 
-      const secrets = await server.services.secret.getSecretsRawByFolderMappings(
-        {
-          filterByAction: ProjectPermissionSecretActions.DescribeSecret,
-          projectId,
-          folderMappings,
-          filters: {
-            ...sharedFilters,
-            tagSlugs: tags,
-            includeTagsInSearch: true,
-            includeMetadataInSearch: true
-          }
-        },
-        req.permission
-      );
+      const { secrets, isLimitReached: isSecretLimitReached } =
+        await server.services.secret.getSecretsRawByFolderMappings(
+          {
+            filterByAction: ProjectPermissionSecretActions.DescribeSecret,
+            projectId,
+            folderMappings,
+            filters: {
+              ...sharedFilters,
+              tagSlugs: tags,
+              includeTagsInSearch: true,
+              includeMetadataInSearch: true
+            }
+          },
+          req.permission
+        );
 
       const dynamicSecrets = await server.services.dynamicSecret.listDynamicSecretsByFolderIds(
         {
@@ -1664,23 +1692,52 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      const sliceQuickSearch = <T>(array: T[]) => array.slice(0, 25);
+      const matchedSecrets = searchPath ? secrets.filter((secret) => secret.secretPath.endsWith(searchPath)) : secrets;
 
-      const filteredDynamicSecrets = sliceQuickSearch(
-        searchPath ? dynamicSecrets.filter((dynamicSecret) => dynamicSecret.path.endsWith(searchPath)) : dynamicSecrets
-      );
+      const matchedDynamicSecrets = searchPath
+        ? dynamicSecrets.filter((dynamicSecret) => dynamicSecret.path.endsWith(searchPath))
+        : dynamicSecrets;
 
-      if (filteredDynamicSecrets?.length) {
+      const matchedSecretRotations = searchPath
+        ? secretRotations.filter((rotation) => rotation.folder.path.endsWith(searchPath))
+        : secretRotations;
+
+      const matchedFolders = allFolders.filter((folder) => {
+        const [folderName, ...folderPathSegments] = folder.path.split("/").reverse();
+        const folderPath = folderPathSegments.reverse().join("/").toLowerCase() || "/";
+
+        if (searchPath) {
+          if (searchPath === "/") {
+            // only show root folders if no folder name search
+            if (!searchName) return folderPath === searchPath;
+
+            // start partial match on root folders
+            return folderName.toLowerCase().startsWith(searchName.toLowerCase());
+          }
+
+          // support ending partial path match
+          return folderPath.endsWith(searchPath) && folderName.toLowerCase().startsWith(searchName.toLowerCase());
+        }
+
+        // no search path, "fuzzy" match all folders
+        return folderName.toLowerCase().includes(searchName.toLowerCase());
+      });
+
+      const paginate = <T>(array: T[]) => array.slice(offset, offset + limit);
+
+      const paginatedDynamicSecrets = paginate(matchedDynamicSecrets);
+
+      if (paginatedDynamicSecrets.length) {
         await server.services.auditLog.createAuditLog({
           projectId,
           ...req.auditLogInfo,
           event: {
             type: EventType.LIST_DYNAMIC_SECRETS,
             metadata: {
-              environment: [...new Set(filteredDynamicSecrets.map((dynamicSecret) => dynamicSecret.environment))].join(
+              environment: [...new Set(paginatedDynamicSecrets.map((dynamicSecret) => dynamicSecret.environment))].join(
                 ","
               ),
-              secretPath: [...new Set(filteredDynamicSecrets.map((dynamicSecret) => dynamicSecret.path))].join(","),
+              secretPath: [...new Set(paginatedDynamicSecrets.map((dynamicSecret) => dynamicSecret.path))].join(","),
               projectId
             }
           }
@@ -1688,39 +1745,22 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }
 
       return {
-        secrets: sliceQuickSearch(
-          searchPath ? secrets.filter((secret) => secret.secretPath.endsWith(searchPath)) : secrets
-        ),
-        dynamicSecrets: sliceQuickSearch(
-          searchPath
-            ? dynamicSecrets.filter((dynamicSecret) => dynamicSecret.path.endsWith(searchPath))
-            : dynamicSecrets
-        ),
-        secretRotations: sliceQuickSearch(
-          searchPath ? secretRotations.filter((rotation) => rotation.folder.path.endsWith(searchPath)) : secretRotations
-        ),
-        folders: sliceQuickSearch(
-          allFolders.filter((folder) => {
-            const [folderName, ...folderPathSegments] = folder.path.split("/").reverse();
-            const folderPath = folderPathSegments.reverse().join("/").toLowerCase() || "/";
-
-            if (searchPath) {
-              if (searchPath === "/") {
-                // only show root folders if no folder name search
-                if (!searchName) return folderPath === searchPath;
-
-                // start partial match on root folders
-                return folderName.toLowerCase().startsWith(searchName.toLowerCase());
-              }
-
-              // support ending partial path match
-              return folderPath.endsWith(searchPath) && folderName.toLowerCase().startsWith(searchName.toLowerCase());
-            }
-
-            // no search path, "fuzzy" match all folders
-            return folderName.toLowerCase().includes(searchName.toLowerCase());
-          })
-        )
+        secrets: paginate(matchedSecrets),
+        dynamicSecrets: paginatedDynamicSecrets,
+        secretRotations: paginate(matchedSecretRotations),
+        folders: paginate(matchedFolders),
+        totalFolderCount: matchedFolders.length,
+        totalDynamicSecretCount: matchedDynamicSecrets.length,
+        totalSecretCount: matchedSecrets.length,
+        totalSecretRotationCount: matchedSecretRotations.length,
+        totalCount:
+          matchedFolders.length + matchedDynamicSecrets.length + matchedSecrets.length + matchedSecretRotations.length,
+        searchLimit: MAX_DEEP_SEARCH_LIMIT,
+        // counts only cover what the search window scanned, so flag when it filled up
+        isSearchLimitReached:
+          isSecretLimitReached ||
+          dynamicSecrets.length >= MAX_DEEP_SEARCH_LIMIT ||
+          secretRotations.length >= MAX_DEEP_SEARCH_LIMIT
       };
     }
   });

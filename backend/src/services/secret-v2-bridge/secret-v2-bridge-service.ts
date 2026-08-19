@@ -1182,7 +1182,13 @@ export const secretV2BridgeServiceFactory = ({
         );
       });
 
-    return decryptedSecrets;
+    // findByFolderIds limits on distinct keys, so a fully consumed limit means matches may exist beyond it
+    const matchedKeyCount = new Set(secrets.map((secret) => secret.key)).size;
+
+    return {
+      secrets: decryptedSecrets,
+      isLimitReached: filters.limit ? matchedKeyCount >= filters.limit : false
+    };
   };
 
   // get secrets for multiple envs
@@ -1227,7 +1233,7 @@ export const secretV2BridgeServiceFactory = ({
       environment: folder.environment.slug
     }));
 
-    const decryptedSecrets = await getSecretsByFolderMappings(
+    const { secrets } = await getSecretsByFolderMappings(
       {
         projectId,
         folderMappings,
@@ -1238,7 +1244,7 @@ export const secretV2BridgeServiceFactory = ({
       permission
     );
 
-    return decryptedSecrets;
+    return secrets;
   };
 
   const getSecrets = async (dto: TGetSecretsDTO) => {
