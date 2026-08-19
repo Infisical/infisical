@@ -73,8 +73,9 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          enrollmentMethod: "acme",
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          enrollmentMethod: "acme"
         }
       });
 
@@ -118,8 +119,9 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          enrollmentMethod: "acme",
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          enrollmentMethod: "acme"
         }
       });
       return result;

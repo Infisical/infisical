@@ -296,7 +296,7 @@ export const CreateProjectIdentityForm = ({
                     }
                   }}
                 >
-                  <TabsList className="w-full">
+                  <TabsList aria-label="Identity assignment mode" className="w-full">
                     <TabsTrigger value={CreateProjectIdentityMode.Create}>Create New</TabsTrigger>
                     <TabsTrigger value={CreateProjectIdentityMode.Assign}>
                       Assign Existing

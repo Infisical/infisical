@@ -37,6 +37,7 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
+import { validateIdentityUpdateForSuperAdminPrivileges } from "@app/services/super-admin/super-admin-fns";
 
 import { ActorType } from "../auth/auth-type";
 import { getIdentityActiveLockoutAuthMethods } from "../identity/identity-fns";
@@ -322,6 +323,7 @@ export const identityV2ServiceFactory = ({
     const factory = scopeFactory[scopeData.scope];
 
     await factory.onUpdateIdentityGuard(dto);
+
     const existingIdentity = await identityDAL.findOne({
       id: dto.selector.identityId,
       orgId: dto.permission.orgId,
@@ -329,6 +331,8 @@ export const identityV2ServiceFactory = ({
     });
     if (!existingIdentity)
       throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
+
+    await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
 
     const identity = await identityDAL.transaction(async (tx) => {
       const updatedIdentity =
@@ -383,6 +387,8 @@ export const identityV2ServiceFactory = ({
     });
     if (!existingIdentity)
       throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
+
+    await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
     if (existingIdentity.hasDeleteProtection) {
       throw new BadRequestError({ message: "Cannot delete identity while delete protection is enabled" });
     }

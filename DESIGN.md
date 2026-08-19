@@ -71,7 +71,8 @@ Used to signal the scope a surface, badge, or action belongs to.
 
 | Role              | Token                     |
 | ----------------- | ------------------------- |
-| Page background   | `--color-background`      |
+| Page canvas       | `--color-page`            |
+| Background        | `--color-background`      |
 | Foreground text   | `--color-foreground`      |
 | Card surface      | `--color-card`            |
 | Popover / Sheet   | `--color-popover`         |
@@ -254,7 +255,7 @@ host component; don't override unless necessary.
 
 ## 5. Layout Principles
 
-- **Page container** — `max-w-8xl` (88rem) centered, `bg-bunker-800`.
+- **Page container** — `max-w-8xl` (88rem) centered, `bg-page`.
 - **Page header** — v3 `PageHeader` with scope icon + underlined `h1` + description. Import it from `@app/components/v3` and always set `scope` to the correct hierarchy level. See [`PageHeader.tsx`](frontend/src/components/v3/platform/PageHeader/PageHeader.tsx).
 - **Section** — one `Card` per logical section. Title + optional `DocumentationLinkBadge` in `CardHeader`; primary action in `CardAction` (top-right).
 - **Tables inside Cards** — filters and search sit in the `CardHeader` above the table; pagination sits in the `CardFooter` or bottom of `CardContent`. **Empty state** — when the table has no rows (and isn't loading), hide the `Table` entirely and render `Empty` in its place; never leave a column header floating above a blank body. Add `className="border"` to `Empty` whenever it's nested in a `Card`, `Sheet`, or `Dialog` so the dashed frame is visible against the parent surface (the component ships dashed-but-borderless on purpose for page-level use).
@@ -269,7 +270,7 @@ for elements that float (Popover, DropdownMenu, Sheet).
 
 | Layer           | Surface                                  | Border                        |
 | --------------- | ---------------------------------------- | ----------------------------- |
-| Page            | `bg-bunker-800`                          | —                             |
+| Page            | `bg-page`                                | —                             |
 | Card            | `bg-card`                                | `border-border`               |
 | Popover / Sheet | `bg-popover`                             | `border-border` + `shadow-lg` |
 | Row hover       | `bg-container-hover`                     | —                             |

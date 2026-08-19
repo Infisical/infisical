@@ -1,9 +1,12 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { TriangleAlertIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { NATIVE_INTEGRATION_DEPRECATION_DATE } from "@app/const/nativeIntegrationDeprecation";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -12,6 +15,7 @@ import {
   useProject
 } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
+import { useGetWorkspaceIntegrations } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
@@ -32,6 +36,16 @@ export const IntegrationsListPage = () => {
   const { selectedTab } = useSearch({
     from: ROUTE_PATHS.SecretManager.IntegrationsListPage.id
   });
+
+  const { data: integrations = [] } = useGetWorkspaceIntegrations(currentProject.id, {
+    refetchInterval: false
+  });
+
+  // Native integrations are deprecated: the tab is only offered to projects that already have one.
+  // Keeping it mounted while the user is standing on it avoids an empty page when they delete their
+  // last integration.
+  const showNativeIntegrations =
+    integrations.length > 0 || selectedTab === IntegrationsListPageTabs.NativeIntegrations;
 
   const updateSelectedTab = (tab: string) => {
     navigate({
@@ -70,9 +84,26 @@ export const IntegrationsListPage = () => {
               <Tab variant="project" value={IntegrationsListPageTabs.InfrastructureIntegrations}>
                 Infrastructure Integrations
               </Tab>
-              <Tab variant="project" value={IntegrationsListPageTabs.NativeIntegrations}>
-                Native Integrations
-              </Tab>
+              {showNativeIntegrations && (
+                <Tab
+                  variant="project"
+                  value={IntegrationsListPageTabs.NativeIntegrations}
+                  className="gap-2"
+                >
+                  Native Integrations
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <TriangleAlertIcon className="size-3.5 text-warning" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Native Integrations are being retired on {NATIVE_INTEGRATION_DEPRECATION_DATE}
+                      . Migrate to Secret Syncs.
+                    </TooltipContent>
+                  </Tooltip>
+                </Tab>
+              )}
             </TabList>
             <TabPanel value={IntegrationsListPageTabs.AppConnections}>
               <AppConnectionsTab />
@@ -83,15 +114,17 @@ export const IntegrationsListPage = () => {
             <TabPanel value={IntegrationsListPageTabs.InfrastructureIntegrations}>
               <InfrastructureIntegrationTab />
             </TabPanel>
-            <TabPanel value={IntegrationsListPageTabs.NativeIntegrations}>
-              <ProjectPermissionCan
-                renderGuardBanner
-                I={ProjectPermissionActions.Read}
-                a={ProjectPermissionSub.Integrations}
-              >
-                <NativeIntegrationsTab />
-              </ProjectPermissionCan>
-            </TabPanel>
+            {showNativeIntegrations && (
+              <TabPanel value={IntegrationsListPageTabs.NativeIntegrations}>
+                <ProjectPermissionCan
+                  renderGuardBanner
+                  I={ProjectPermissionActions.Read}
+                  a={ProjectPermissionSub.Integrations}
+                >
+                  <NativeIntegrationsTab />
+                </ProjectPermissionCan>
+              </TabPanel>
+            )}
             <TabPanel value={IntegrationsListPageTabs.SecretSyncs}>
               <ProjectPermissionCan
                 renderGuardBanner

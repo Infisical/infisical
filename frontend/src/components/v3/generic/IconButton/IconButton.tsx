@@ -40,6 +40,7 @@ const iconButtonVariants = cva(
         pam: "border-product-pam/30 bg-product-pam/25 text-foreground hover:bg-product-pam/30 hover:border-product-pam/35 data-[state=open]:bg-product-pam/30 data-[state=open]:border-product-pam/35"
       },
       size: {
+        "2xs": "size-control-2xs [&>svg]:size-icon-xs rounded-sm [&>svg]:stroke-[1.75]",
         xs: "size-control-xs [&>svg]:size-icon-md rounded-sm [&>svg]:stroke-[1.75]",
         sm: "size-control-sm [&>svg]:size-icon-md [&>svg]:stroke-[1.5]",
         md: "size-control-md [&>svg]:size-icon-md [&>svg]:stroke-[1.5]",
@@ -105,6 +106,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
             isAutoPlay
             className={twMerge(
               "absolute rounded-xl",
+              size === "2xs" && "w-5",
               size === "xs" && "w-6",
               size === "sm" && "w-7",
               size === "md" && "w-8",

@@ -62,7 +62,7 @@ const SanitizedSuperAdminSchema = z.object({
   paramsFolderSecretDetectionEnabled: z.boolean().optional(),
   isOfflineUsageReportsEnabled: z.boolean().optional(),
   isCrossProjectSecretSharingEnabled: z.boolean().optional(),
-  // Always returned
+  isClickhouseAuditLogEnabled: z.boolean().optional(),
   defaultAuthOrgSlug: z.string().nullable(),
   defaultAuthOrgAuthEnforced: z.boolean().nullish(),
   defaultAuthOrgAuthMethod: z.string().nullish(),
@@ -97,6 +97,10 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const latestAvailableVersion = await server.services.updateCheck.getAvailableUpdateVersion();
       const plan = await server.services.license.getPlan(orgId);
 
+      const isClickhouseAuditLogEnabled = Boolean(
+        serverEnvs.isClickHouseConfigured && serverEnvs.CLICKHOUSE_AUDIT_LOG_ENABLED
+      );
+
       if (!isSuperAdminUser) {
         // Only return fields the frontend needs before authentication
         return {
@@ -116,6 +120,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
             licenseServerV2Enabled: serverEnvs.LICENSE_SERVER_V2_MODE === "on",
             isCrossProjectSecretSharingEnabled: plan.crossProjectSecretSharing,
+            isClickhouseAuditLogEnabled,
             latestAvailableVersion
           }
         };
@@ -134,6 +139,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
           isOfflineUsageReportsEnabled: hasOfflineLicense,
           isCrossProjectSecretSharingEnabled: plan.crossProjectSecretSharing,
+          isClickhouseAuditLogEnabled,
           latestAvailableVersion
         }
       };
