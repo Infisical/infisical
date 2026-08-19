@@ -71,6 +71,22 @@ describe("highCardinalityMeter", () => {
     expect(getMeter).toHaveBeenCalledWith(meterName);
   });
 
+  // Every record helper in the module funnels through this wrapper, so a broken exporter or a bad
+  // instrument name can never surface as an exception in the code being measured.
+  test("does not throw into the call site when the SDK does", () => {
+    const broken = () => {
+      throw new Error("exporter broken");
+    };
+    vi.spyOn(opentelemetry.metrics, "getMeter").mockReturnValue({
+      createCounter: broken,
+      createHistogram: broken
+    } as never);
+    const meter = highCardinalityMeter(uniqueMeterName());
+
+    expect(() => meter.createCounter("test.counter").add(1)).not.toThrow();
+    expect(() => meter.createHistogram("test.histogram").record(1)).not.toThrow();
+  });
+
   test("stays a no-op while telemetry is disabled, then records once it is enabled", () => {
     mockConfig.OTEL_TELEMETRY_COLLECTION_ENABLED = false;
     const getMeter = vi.spyOn(opentelemetry.metrics, "getMeter");

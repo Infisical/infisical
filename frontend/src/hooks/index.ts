@@ -3,6 +3,7 @@ export {
   useCanUseProjectAppConnectionImport
 } from "./useCanUseAppConnectionImport";
 export { useDebounce } from "./useDebounce";
+export { useDiscardChangesGuard } from "./useDiscardChangesGuard";
 export * from "./useGetProjectTypeFromRoute";
 export { useLastLogin } from "./useLastLogin";
 export { useLocalStorageState } from "./useLocalStorageState";

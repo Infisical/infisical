@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 import { useRef, useState } from "react";
-import { CircleCheckIcon, CircleXIcon, EyeIcon, EyeOffIcon, TriangleAlertIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, TriangleAlertIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { isSingleLine, scrollToFirstChange } from "@app/components/utilities/diff";
@@ -18,6 +18,13 @@ import {
 } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 import { DiffContainer } from "./DiffContainer";
+import { DiffPaneField, DiffPanes } from "./DiffPanes";
+import {
+  getSecretFieldChanges,
+  SECRET_FIELD_LABELS,
+  SECRET_FIELD_ORDER,
+  SecretFieldKey
+} from "./fieldChanges";
 import {
   InlineTextDiff,
   MetadataDiffRenderer,
@@ -27,17 +34,7 @@ import {
 } from "./FieldDiffRenderers";
 import { MultiLineDiff } from "./MultiLineDiff";
 import { SingleLineDiff } from "./SingleLineDiff";
-
-export interface SecretVersionData {
-  isRedacted?: boolean;
-  secretKey?: string;
-  secretValue?: string;
-  secretValueHidden?: boolean;
-  secretComment?: string;
-  tags?: Array<{ slug: string; color: string }>;
-  secretMetadata?: Array<{ key: string; value: string; isEncrypted?: boolean }>;
-  skipMultilineEncoding?: boolean;
-}
+import { SecretVersionData } from "./types";
 
 export interface SecretDiffViewProps {
   operationType: "create" | "update" | "delete";
@@ -47,9 +44,15 @@ export interface SecretDiffViewProps {
   onRevealNewValue?: () => Promise<void>;
   isLoadingOldValue?: boolean;
   isLoadingNewValue?: boolean;
+  /** Completes the "Previous …" / "New …" pane titles. */
+  resourceLabel?: string;
+  /** Flags each changed property, for when the panes show unchanged properties too. */
+  showChangedMarkers?: boolean;
+  /** Narrows the panes to these properties, in display order. Defaults to every property. */
+  visibleFields?: SecretFieldKey[];
 }
 
-const SecretValueRenderer = ({
+export const SecretValueRenderer = ({
   isOldVersion,
   isValueHidden,
   value,
@@ -176,210 +179,202 @@ export const SecretDiffView = ({
   onRevealOldValue,
   onRevealNewValue,
   isLoadingOldValue,
-  isLoadingNewValue
+  isLoadingNewValue,
+  resourceLabel = "Secret",
+  showChangedMarkers,
+  visibleFields = SECRET_FIELD_ORDER
 }: SecretDiffViewProps) => {
   const oldDiffContainerRef = useRef<HTMLDivElement>(null);
   const newDiffContainerRef = useRef<HTMLDivElement>(null);
   const oldCommentDiffContainerRef = useRef<HTMLDivElement>(null);
   const newCommentDiffContainerRef = useRef<HTMLDivElement>(null);
 
+  const changes = getSecretFieldChanges(oldVersion, newVersion);
+
   const oldSecretValue = oldVersion?.secretValue ?? "";
   const newSecretValue = newVersion?.secretValue ?? oldVersion?.secretValue ?? "";
-  const hasValueChanges = oldSecretValue !== newSecretValue;
   const isBothSingleLine = isSingleLine(oldSecretValue) && isSingleLine(newSecretValue);
 
   const oldKey = oldVersion?.secretKey ?? "";
   const newKey = newVersion?.secretKey ?? "";
-  const hasKeyChanges = oldKey !== newKey && oldKey !== "" && newKey !== "";
 
   const oldComment = oldVersion?.secretComment ?? "";
   const newComment = newVersion?.secretComment ?? "";
-  const hasCommentChanges = oldComment !== newComment;
 
   const oldMultiline = String(oldVersion?.skipMultilineEncoding ?? false);
   const newMultiline = String(newVersion?.skipMultilineEncoding ?? false);
-  const hasMultilineChanges = oldMultiline !== newMultiline;
 
   const oldTags = oldVersion?.tags ?? [];
   const newTags = newVersion?.tags ?? [];
 
-  const showOldVersion = operationType === "update" || operationType === "delete";
-  const showNewVersion = operationType === "update" || operationType === "create";
-
-  const isRollingToRedactedVersion = newVersion?.isRedacted;
+  const fieldByKey: Record<SecretFieldKey, DiffPaneField> = {
+    secretKey: {
+      key: "secretKey",
+      label: SECRET_FIELD_LABELS.secretKey,
+      hasChanges: changes.secretKey,
+      previous: (
+        <SingleLineTextDiffRenderer
+          text={oldKey}
+          oldText={oldKey}
+          newText={newKey}
+          hasChanges={changes.secretKey}
+          isOldVersion
+        />
+      ),
+      next: (
+        <SingleLineTextDiffRenderer
+          text={newKey}
+          oldText={oldKey}
+          newText={newKey}
+          hasChanges={changes.secretKey}
+          isOldVersion={false}
+        />
+      )
+    },
+    secretValue: {
+      key: "secretValue",
+      label: SECRET_FIELD_LABELS.secretValue,
+      hasChanges: changes.secretValue,
+      previous: (
+        <SecretValueRenderer
+          value={oldVersion?.secretValue}
+          isValueHidden={oldVersion?.secretValueHidden}
+          isOldVersion
+          oldValue={oldSecretValue}
+          newValue={newSecretValue}
+          hasValueChanges={changes.secretValue}
+          isBothSingleLine={isBothSingleLine}
+          containerRef={oldDiffContainerRef}
+          onReveal={onRevealOldValue}
+          isLoading={isLoadingOldValue}
+        />
+      ),
+      next: (
+        <SecretValueRenderer
+          value={newVersion?.secretValue}
+          isValueHidden={newVersion?.secretValueHidden}
+          isOldVersion={false}
+          oldValue={oldSecretValue}
+          newValue={newSecretValue}
+          hasValueChanges={changes.secretValue}
+          isBothSingleLine={isBothSingleLine}
+          containerRef={newDiffContainerRef}
+          onReveal={onRevealNewValue}
+          isLoading={isLoadingNewValue}
+        />
+      )
+    },
+    secretComment: {
+      key: "secretComment",
+      label: SECRET_FIELD_LABELS.secretComment,
+      hasChanges: changes.secretComment,
+      previous: (
+        <MultiLineTextDiffRenderer
+          text={oldComment}
+          oldText={oldComment}
+          newText={newComment}
+          hasChanges={changes.secretComment}
+          isOldVersion
+          containerRef={oldCommentDiffContainerRef}
+        />
+      ),
+      next: (
+        <MultiLineTextDiffRenderer
+          text={newComment}
+          oldText={oldComment}
+          newText={newComment}
+          hasChanges={changes.secretComment}
+          isOldVersion={false}
+          containerRef={newCommentDiffContainerRef}
+        />
+      )
+    },
+    tags: {
+      key: "tags",
+      label: SECRET_FIELD_LABELS.tags,
+      hasChanges: changes.tags,
+      previous: (
+        <TagsDiffRenderer
+          tags={oldTags.map((tag) => ({ slug: tag.slug, color: tag.color ?? "" }))}
+          otherTags={newTags.map((tag) => ({ slug: tag.slug, color: tag.color ?? "" }))}
+          isOldVersion
+        />
+      ),
+      next: (
+        <TagsDiffRenderer
+          tags={newTags.map((tag) => ({ slug: tag.slug, color: tag.color ?? "" }))}
+          otherTags={oldTags.map((tag) => ({ slug: tag.slug, color: tag.color ?? "" }))}
+          isOldVersion={false}
+        />
+      )
+    },
+    secretMetadata: {
+      key: "secretMetadata",
+      label: SECRET_FIELD_LABELS.secretMetadata,
+      hasChanges: changes.secretMetadata,
+      previous: (
+        <MetadataDiffRenderer
+          metadata={oldVersion?.secretMetadata}
+          otherMetadata={newVersion?.secretMetadata}
+          isOldVersion
+        />
+      ),
+      next: (
+        <MetadataDiffRenderer
+          metadata={newVersion?.secretMetadata}
+          otherMetadata={oldVersion?.secretMetadata}
+          isOldVersion={false}
+        />
+      )
+    },
+    skipMultilineEncoding: {
+      key: "skipMultilineEncoding",
+      label: SECRET_FIELD_LABELS.skipMultilineEncoding,
+      hasChanges: changes.skipMultilineEncoding,
+      previous: (
+        <InlineTextDiff
+          oldText={oldMultiline}
+          newText={newMultiline}
+          isOldVersion
+          hasChanges={changes.skipMultilineEncoding}
+          fontSize="sm"
+        />
+      ),
+      next: (
+        <InlineTextDiff
+          oldText={oldMultiline}
+          newText={newMultiline}
+          isOldVersion={false}
+          hasChanges={changes.skipMultilineEncoding}
+          fontSize="sm"
+        />
+      )
+    }
+  };
 
   return (
-    <div className="flex flex-col space-y-4 space-x-0 xl:flex-row xl:space-y-0 xl:space-x-4">
-      {showOldVersion ? (
-        <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-danger/35 bg-danger/5 p-4 xl:w-1/2">
-          <div className="mb-4 flex flex-row justify-between">
-            <span className="text-md font-medium">Previous Secret</span>
-            <Badge variant="danger">
-              <CircleXIcon /> Previous
-            </Badge>
-          </div>
-          <div className="mb-2.5">
-            <div className="mb-0.5 text-xs font-medium text-label">Key</div>
-            <SingleLineTextDiffRenderer
-              text={oldKey}
-              oldText={oldKey}
-              newText={newKey}
-              hasChanges={hasKeyChanges}
-              isOldVersion
-            />
-          </div>
-          <div className="mb-2.5">
-            <div className="mb-0.5 text-xs font-medium text-label">Value</div>
-            <SecretValueRenderer
-              value={oldVersion?.secretValue}
-              isValueHidden={oldVersion?.secretValueHidden}
-              isOldVersion
-              oldValue={oldSecretValue}
-              newValue={newSecretValue}
-              hasValueChanges={hasValueChanges}
-              isBothSingleLine={isBothSingleLine}
-              containerRef={oldDiffContainerRef}
-              onReveal={onRevealOldValue}
-              isLoading={isLoadingOldValue}
-            />
-          </div>
-          <div className="mb-2.5">
-            <div className="mb-0.5 text-xs font-medium text-label">Comment</div>
-            <MultiLineTextDiffRenderer
-              text={oldComment}
-              oldText={oldComment}
-              newText={newComment}
-              hasChanges={hasCommentChanges}
-              isOldVersion
-              containerRef={oldCommentDiffContainerRef}
-            />
-          </div>
-          <div className="mb-2.5">
-            <div className="mb-0.5 text-xs font-medium text-label">Tags</div>
-            <TagsDiffRenderer
-              tags={oldTags.map((tag) => ({ slug: tag.slug, color: tag.color ?? "" }))}
-              otherTags={newTags.map((tag) => ({ slug: tag.slug, color: tag.color ?? "" }))}
-              isOldVersion
-            />
-          </div>
-          <div className="mb-2.5">
-            <div className="mb-0.5 text-xs font-medium text-label">Metadata</div>
-            <MetadataDiffRenderer
-              metadata={oldVersion?.secretMetadata}
-              otherMetadata={newVersion?.secretMetadata}
-              isOldVersion
-            />
-          </div>
-          <div className="mb-2.5">
-            <div className="mb-0.5 text-xs font-medium text-label">Multi-line Encoding</div>
-            <InlineTextDiff
-              oldText={oldMultiline}
-              newText={newMultiline}
-              isOldVersion
-              hasChanges={hasMultilineChanges}
-              fontSize="sm"
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="flex w-full cursor-default flex-col items-center justify-center rounded-lg border border-dashed border-border bg-container p-4 text-center shadow-inner xl:w-1/2">
-          <span className="text-sm text-muted">Secret did not exist in the previous version.</span>
-        </div>
-      )}
-
-      {showNewVersion ? (
-        <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-success/35 bg-success/5 p-4 xl:w-1/2">
-          <div className="mb-4 flex flex-row justify-between">
-            <span className="text-md font-medium">New Secret</span>
-
-            <div className="flex items-center gap-2">
-              {isRollingToRedactedVersion && (
-                <V3Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="danger">
-                      <TriangleAlertIcon /> Redacted Version
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    This secret version has been redacted. Rolling back to this version will result
-                    in an empty secret value.
-                  </TooltipContent>
-                </V3Tooltip>
-              )}
-
-              <Badge variant="success">
-                <CircleCheckIcon /> New
+    <DiffPanes
+      operationType={operationType}
+      fields={visibleFields.map((field) => fieldByKey[field])}
+      resourceLabel={resourceLabel}
+      showChangedMarkers={showChangedMarkers}
+      previousEmptyMessage="Secret did not exist in the previous version."
+      nextEmptyMessage="Secret will be deleted."
+      newPaneBadge={
+        newVersion?.isRedacted && (
+          <V3Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="danger">
+                <TriangleAlertIcon /> Redacted Version
               </Badge>
-            </div>
-          </div>
-          <div className="mb-2.5">
-            <div className="mb-0.5 text-xs font-medium text-label">Key</div>
-            <SingleLineTextDiffRenderer
-              text={newKey}
-              oldText={oldKey}
-              newText={newKey}
-              hasChanges={hasKeyChanges}
-              isOldVersion={false}
-            />
-          </div>
-          <div className="mb-2.5">
-            <div className="mb-0.5 text-xs font-medium text-label">Value</div>
-            <SecretValueRenderer
-              value={newVersion?.secretValue}
-              oldValue={oldSecretValue}
-              newValue={newSecretValue}
-              isValueHidden={newVersion?.secretValueHidden}
-              isOldVersion={false}
-              hasValueChanges={hasValueChanges}
-              isBothSingleLine={isBothSingleLine}
-              containerRef={newDiffContainerRef}
-              onReveal={onRevealNewValue}
-              isLoading={isLoadingNewValue}
-            />
-          </div>
-          <div className="mb-2.5">
-            <div className="mb-0.5 text-xs font-medium text-label">Comment</div>
-            <MultiLineTextDiffRenderer
-              text={newComment}
-              oldText={oldComment}
-              newText={newComment}
-              hasChanges={hasCommentChanges}
-              isOldVersion={false}
-              containerRef={newCommentDiffContainerRef}
-            />
-          </div>
-          <div className="mb-2.5">
-            <div className="mb-0.5 text-xs font-medium text-label">Tags</div>
-            <TagsDiffRenderer
-              tags={newTags.map((tag) => ({ slug: tag.slug, color: tag.color ?? "" }))}
-              otherTags={oldTags.map((tag) => ({ slug: tag.slug, color: tag.color ?? "" }))}
-              isOldVersion={false}
-            />
-          </div>
-          <div className="mb-2.5">
-            <div className="mb-0.5 text-xs font-medium text-label">Metadata</div>
-            <MetadataDiffRenderer
-              metadata={newVersion?.secretMetadata}
-              otherMetadata={oldVersion?.secretMetadata}
-              isOldVersion={false}
-            />
-          </div>
-          <div className="mb-2.5">
-            <div className="mb-0.5 text-xs font-medium text-label">Multi-line Encoding</div>
-            <InlineTextDiff
-              oldText={oldMultiline}
-              newText={newMultiline}
-              isOldVersion={false}
-              hasChanges={hasMultilineChanges}
-              fontSize="sm"
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="flex w-full cursor-default flex-col items-center justify-center rounded-lg border border-dashed border-border bg-container p-4 text-center shadow-inner xl:w-1/2">
-          <span className="text-sm text-muted">Secret will be deleted.</span>
-        </div>
-      )}
-    </div>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              This secret version has been redacted. Rolling back to this version will result in an
+              empty secret value.
+            </TooltipContent>
+          </V3Tooltip>
+        )
+      }
+    />
   );
 };
