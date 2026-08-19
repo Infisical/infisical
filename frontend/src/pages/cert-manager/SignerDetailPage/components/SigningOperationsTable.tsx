@@ -138,7 +138,7 @@ export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) =
                 <TableHead>Timestamp</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Algorithm</TableHead>
-                <TableHead>Data Digest</TableHead>
+                <TableHead>Data Hash</TableHead>
                 <TableHead>Actor</TableHead>
               </TableRow>
             </TableHeader>

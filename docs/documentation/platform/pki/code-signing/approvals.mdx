@@ -100,7 +100,7 @@ By default an approval means "this member may sign N times before it expires". E
 | **Hostname** | The machine the sign calls come from. |
 | **OS Username** | The operating system account running the signing tool. |
 | **IP Address** | The address sign calls have to arrive from, for example a build agent's egress address. Infisical reads the address off the sign call itself, the same way audit logs record it, so the caller cannot present a different one. |
-| **Data Digest** | The SHA-256 digest of the payload submitted for signing, which pins the approval to one artifact. Signing tools submit a digest of the file rather than the file itself, so this is not the same value as `sha256sum yourfile`. The [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) and the Windows KSP fill it in for you. |
+| **Data Hash** | The SHA-256 digest of the payload submitted for signing, which pins the approval to one artifact. Signing tools submit a digest of the file rather than the file itself, so this is not the same value as `sha256sum yourfile`. The [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) and the Windows KSP fill it in for you. |
 
 <Warning>
   **A parameter you fill in has to match every time.** If a scoped approval still has 999 signatures left but you switch to a different machine, tool, or command than the one you declared, those sign calls are denied. When signing suddenly stops working under an approval that clearly has signatures remaining, compare your current signing setup against the scope on the request: that mismatch is almost always the cause. To sign in a different situation, open a new request describing it.
@@ -120,12 +120,12 @@ By default an approval means "this member may sign N times before it expires". E
 
 ### Scoping to one artifact
 
-Pinning an approval to a **Data Digest** is the tightest option: the approver signs off on one file rather than on a window of time, and no other payload can be signed under it.
+Pinning an approval to a **Data Hash** is the tightest option: the approver signs off on one file rather than on a window of time, and no other payload can be signed under it.
 
 The [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) and the [Windows KSP](/documentation/platform/pki/code-signing/windows-ksp) fill this in for you. When signing is denied, the request they open is already scoped to the artifact of the denied attempt, along with the command and machine it came from, so you approve it in Infisical and re-run the same command.
 
 <Tip>
-  For release pipelines, pair a data digest scope with a signature count of **1**. The approval then covers exactly one signature over exactly one file.
+  For release pipelines, pair a data hash scope with a signature count of **1**. The approval then covers exactly one signature over exactly one file.
 </Tip>
 
 <Note>
@@ -173,7 +173,7 @@ There are two ways someone gets active access on a Signer: Administrators **pre-
         | **Justification** | Short note recorded on the access record for audit. Required. |
         | **Signatures allowed** | How many sign operations the access permits. Capped at the policy's **Signatures per approval**. Leave empty to fall back to the policy ceiling. |
         | **How long the approval lasts** | How long the access stays usable, counted from the moment the access is granted. Capped at the policy's **Signing window**. |
-        | **Scope this request** | Optional. Expand it to [scope](#scoping-an-approval) the access to a specific command, signing tool, checksum, machine, OS account, IP address, or payload digest. Useful for pre-approving a known build agent: set its address and the access only works from there. |
+        | **Scope this request** | Optional. Expand it to [scope](#scoping-an-approval) the access to a specific command, signing tool, checksum, machine, OS account, IP address, or data hash. Useful for pre-approving a known build agent: set its address and the access only works from there. |
 
         <Note>
           Per-access values cannot exceed the policy ceilings. Requesting `maxSignings=10` against a policy that allows 3 returns a 400 with a clear message. Omitting a field that the policy caps simply clamps to the ceiling, never silently unlimited.
@@ -202,7 +202,7 @@ There are two ways someone gets active access on a Signer: Administrators **pre-
         |-------|-------------|
         | **Signatures requested** | How many sign operations you need. Capped at the policy's **Signatures per approval**. Leave empty to fall back to the policy ceiling. |
         | **How long the approval lasts** | How long you need the access for, counted from the moment approvals complete. Capped at the policy's **Signing window**. Waiting for an approver does not eat into it. |
-        | **Scope this request** | Optional. Expand it to [scope](#scoping-an-approval) your access to the command, signing tool, checksum, machine, OS account, IP address, or payload digest you will sign with. Approvers see whatever you declare, and the access only covers matching sign calls. |
+        | **Scope this request** | Optional. Expand it to [scope](#scoping-an-approval) your access to the command, signing tool, checksum, machine, OS account, IP address, or data hash you will sign with. Approvers see whatever you declare, and the access only covers matching sign calls. |
 
         <Note>
           Submitting a request with the same scope as one you already have pending returns the pending request instead of opening a duplicate. Signing clients that auto-request access can safely retry without flooding approvers.

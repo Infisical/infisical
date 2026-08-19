@@ -15,5 +15,5 @@ export const CODE_SIGNING_SCOPE_FIELD_LABELS: Record<CodeSigningScopeField, stri
   [CodeSigningScopeField.Hostname]: "hostname",
   [CodeSigningScopeField.OsUsername]: "OS username",
   [CodeSigningScopeField.IpAddress]: "IP address",
-  [CodeSigningScopeField.DataHash]: "data digest"
+  [CodeSigningScopeField.DataHash]: "data hash"
 };

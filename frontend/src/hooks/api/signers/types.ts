@@ -95,7 +95,7 @@ export const codeSigningScopeFieldLabels: Record<CodeSigningScopeField, string> 
   [CodeSigningScopeField.Hostname]: "Hostname",
   [CodeSigningScopeField.OsUsername]: "OS Username",
   [CodeSigningScopeField.IpAddress]: "IP Address",
-  [CodeSigningScopeField.DataHash]: "Data Digest"
+  [CodeSigningScopeField.DataHash]: "Data Hash"
 };
 
 export const codeSigningScopeFieldDescriptions: Record<CodeSigningScopeField, string> = {
@@ -106,7 +106,7 @@ export const codeSigningScopeFieldDescriptions: Record<CodeSigningScopeField, st
   [CodeSigningScopeField.Hostname]: "The machine the signing requests come from.",
   [CodeSigningScopeField.OsUsername]: "The operating system account running the signing tool.",
   [CodeSigningScopeField.IpAddress]: "The address sign calls must come from.",
-  [CodeSigningScopeField.DataHash]: "SHA-256 digest of the payload being signed."
+  [CodeSigningScopeField.DataHash]: "SHA-256 hash of the payload being signed."
 };
 
 /** How each value is compared at signing time, mirroring the API's matching rules. */
@@ -115,7 +115,7 @@ export const codeSigningScopeFieldMatchRules: Record<CodeSigningScopeField, stri
     "Compared exactly, apart from whitespace. Reordering the options counts as a different command.",
   [CodeSigningScopeField.SigningApplication]: "Compared exactly, including capitalisation.",
   [CodeSigningScopeField.SigningApplicationHash]:
-    "Compared as a hex digest, so capitalisation does not matter.",
+    "Compared as a hex string, so capitalisation does not matter.",
   [CodeSigningScopeField.Hostname]: "Compared without regard to capitalisation.",
   [CodeSigningScopeField.OsUsername]: "Compared exactly, including capitalisation.",
   [CodeSigningScopeField.IpAddress]: "Compared exactly, so one address per approval.",

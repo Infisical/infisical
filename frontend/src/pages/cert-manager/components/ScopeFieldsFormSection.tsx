@@ -48,7 +48,7 @@ const validateScopeValue = (field: CodeSigningScopeField, value: string): string
   switch (field) {
     case CodeSigningScopeField.SigningApplicationHash:
     case CodeSigningScopeField.DataHash:
-      return SHA256_HEX.test(value) ? undefined : "Must be a 64-character SHA-256 hex digest";
+      return SHA256_HEX.test(value) ? undefined : "Must be a 64-character SHA-256 hex string";
     case CodeSigningScopeField.IpAddress:
       return z.string().ip().safeParse(value).success ? undefined : "Must be a valid IP address";
     case CodeSigningScopeField.Command:

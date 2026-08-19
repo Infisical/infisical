@@ -117,7 +117,7 @@ export const SigningOperationDetailPage = () => {
               </Detail>
             </div>
             <Detail>
-              <DetailLabel>Data Digest</DetailLabel>
+              <DetailLabel>Data Hash</DetailLabel>
               <MonoValue value={operation.dataHash} />
             </Detail>
             {operation.errorMessage && (

@@ -213,7 +213,7 @@ The request is [scoped](/documentation/platform/pki/code-signing/approvals#scopi
 
 ### Leaving parameters out of a request
 
-Every parameter on a request has to match at signing time, so a request that names the artifact digest covers exactly one artifact. To have one approval cover a series of builds, name the parameters that vary in `approval.exclude_scope_fields` and the module leaves them off every request it opens:
+Every parameter on a request has to match at signing time, so a request that names the artifact hash covers exactly one artifact. To have one approval cover a series of builds, name the parameters that vary in `approval.exclude_scope_fields` and the module leaves them off every request it opens:
 
 ```json
 {
@@ -233,7 +233,7 @@ Leave out only what genuinely varies, and be aware that dropping a parameter wid
   Excluding every parameter leaves the request with no scope at all. The resulting approval permits any command, on any machine, against any artifact, for the whole of its window and signature count, which is the same access you would have with no scoping at all. Excluding `data_hash` alone is almost always what a build pipeline needs.
 </Warning>
 
-An excluded parameter is still recorded on the signing operation, so the command, machine, account and artifact digest behind every signature stay available to auditors even when they no longer constrain the approval.
+An excluded parameter is still recorded on the signing operation, so the command, machine, account and artifact hash behind every signature stay available to auditors even when they no longer constrain the approval.
 
 ### Scoping by address
 
