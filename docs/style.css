@@ -852,3 +852,77 @@ a.ifx-card__title:hover .ifx-card__chevron {
     height: 100%;
   }
 }
+
+.ifx-home__hero-aside {
+  display: flex;
+  flex-direction: column;
+}
+
+.ifx-home__hero-aside > .ifx-steps {
+  margin-bottom: 2.25rem;
+}
+
+.ifx-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 1.5rem;
+  margin-top: auto;
+  padding-top: 1.75rem;
+}
+
+.ifx-links__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0;
+  text-decoration: none;
+}
+
+.ifx-links__icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: #6f6f6f;
+  opacity: 0.75;
+  transition: opacity 0.2s;
+}
+
+.ifx-links__item:hover .ifx-links__icon {
+  opacity: 1;
+}
+
+.ifx-links__label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+  font-family: var(--font-family-headings-custom, inherit);
+  font-size: 0.9375rem;
+  color: #101114;
+}
+
+.ifx-links__chevron {
+  flex: none;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.ifx-links__item:hover .ifx-links__chevron {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.dark .ifx-links__icon {
+  color: #707174;
+}
+
+.dark .ifx-links__label {
+  color: #ebebeb;
+}
+
+@media (min-width: 1024px) {
+  .ifx-home__hero-aside {
+    align-self: stretch;
+  }
+}

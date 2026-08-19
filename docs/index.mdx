@@ -5,7 +5,7 @@ description: "Learn how to use Infisical to manage secrets, certificates, and se
 mode: custom
 ---
 
-import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard, HomeStack, HomeSteps, Mark } from "/snippets/home.jsx";
+import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard, HomeStack, HomeSteps, HomeLinks, Mark } from "/snippets/home.jsx";
 
 <div className="ifx-home">
 
@@ -18,22 +18,32 @@ import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard, HomeStack, HomeS
     </>
   }
   aside={
-    <HomeSteps
-      steps={[
-        {
-          tabs: [
-            { label: "macOS", command: "brew install infisical/get-cli/infisical" },
-            { label: "Windows", command: "winget install infisical" },
-            { label: "npm", command: "npm install -g @infisical/cli" }
-          ]
-        },
-        { label: "Inject your secrets.", href: "/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret" }
-      ]}
-    />
+    <>
+      <HomeSteps
+        steps={[
+          {
+            tabs: [
+              { label: "macOS", command: "brew install infisical/get-cli/infisical" },
+              { label: "Windows", command: "winget install infisical" },
+              { label: "npm", command: "npm install -g @infisical/cli" }
+            ]
+          },
+          { label: "Inject your secrets.", href: "/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret" }
+        ]}
+      />
+      <HomeLinks
+        items={[
+          { label: "Self-hosting", icon: "server", href: "/self-hosting/overview" },
+          { label: "Security", icon: "shield", href: "/internals/security" },
+          { label: "Machine identities", icon: "key", href: "/documentation/platform/identities/machine-identities" },
+          { label: "Contributing", icon: "code", href: "/contributing/getting-started/overview" }
+        ]}
+      />
+    </>
   }
 >
   <HomeButton href="/documentation/getting-started/overview" variant="primary">
-    Get started
+    Platform
   </HomeButton>
   <HomeButton href="/documentation/getting-started/introduction">
     What is Infisical?

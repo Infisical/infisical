@@ -347,3 +347,75 @@ export const HomeCard = ({
     </a>
   );
 };
+
+export const HomeLinks = ({ items }) => {
+  // Declared inside the component on purpose: Mintlify evaluates each exported
+  // component in isolation, so module-scope bindings are not in scope here.
+  const icons = {
+    server: (
+      <>
+        <rect x="2" y="3" width="20" height="8" />
+        <rect x="2" y="13" width="20" height="8" />
+        <path d="M6 7h.01M6 17h.01" />
+      </>
+    ),
+    code: (
+      <>
+        <path d="m16 18 6-6-6-6" />
+        <path d="m8 6-6 6 6 6" />
+      </>
+    ),
+    shield: (
+      <>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <path d="m9 12 2 2 4-4" />
+      </>
+    ),
+    key: (
+      <>
+        <path d="M2.59 17.41A2 2 0 0 0 2 18.83V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.17a2 2 0 0 0 1.41-.59l.82-.81" />
+        <circle cx="16.5" cy="7.5" r="5.5" />
+      </>
+    )
+  };
+
+  return (
+    <div className="ifx-links">
+      {items.map((item) => (
+        <a key={item.href} className="ifx-links__item" href={item.href}>
+          <svg
+            className="ifx-links__icon"
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            {icons[item.icon]}
+          </svg>
+          <span className="ifx-links__label">
+            {item.label}
+            <svg
+              className="ifx-links__chevron"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </span>
+        </a>
+      ))}
+    </div>
+  );
+};
