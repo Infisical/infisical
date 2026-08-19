@@ -1,6 +1,6 @@
 ---
-title: "PKCS#11 Module"
-sidebarTitle: "PKCS#11 Module"
+title: "PKCS#11 module"
+sidebarTitle: "PKCS#11 module"
 description: "Use jarsigner, cosign, osslsigncode, and other standard signing tools with Infisical Signers."
 ---
 
@@ -136,7 +136,7 @@ export INFISICAL_CONFIG=/path/to/your/pkcs11.conf
   Environment variables always take precedence over values in the configuration file.
 </Note>
 
-## Verify the Module
+## Verify the module
 
 Use `pkcs11-tool` (from OpenSC: `brew install opensc` or `apt install opensc`) to confirm everything is wired up.
 
@@ -182,7 +182,7 @@ pkcs11-tool \
 
 If the Signer has an approval policy and you don't have active access, the sign call is rejected with `CKR_GENERAL_ERROR` and the module logs a "signing requires approval" line. See [Automatic Signing Access Requests](#automatic-signing-access-requests) below to make this seamless.
 
-## Automatic Signing Access Requests
+## Automatic signing access requests
 
 When a Signer has a policy attached, sign calls without active access normally fail. The module can automatically open a signing request for you on the first denied call. You just need to add an `approval` block to the config:
 

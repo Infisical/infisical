@@ -1,6 +1,6 @@
 ---
-title: "Secret Management in Development Environments"
-sidebarTitle: "Local Development"
+title: "Secret management in development environments"
+sidebarTitle: "Local development"
 description: "Learn how to manage secrets in local development environments."
 ---
 
@@ -25,10 +25,10 @@ On top of that, Infisical provides a great [Web Dashboard](https://app.infisical
 
 ![project dashboard](../../images/dashboard.png)
 
-### Personal Overrides
+### Personal overrides
 
 By default, all the secrets in the Infisical environments are shared among project members who have the permission to access those environment. At the same time, when doing local development, it is often desirable to change the value of a certain secret only for a particular self. For such use cases, Infisical supports the functionality of **Personal Overrides** – which allow developers to override values of any secrets without affecting the workflows of the rest of the team. Personal Overrides can be created both in the dashboard or via [Infisical CLI](/cli/overview). 
 
-### Secret Scanning
+### Secret scanning
 
 In addition, Infisical also provides a set of tools to automatically prevent secret leaks to git history. This functionality can be set up on the level of [Infisical CLI using pre-commit hooks](/cli/scanning-overview#automatically-scan-changes-before-you-commit) or through a direct integration with platforms like GitHub.

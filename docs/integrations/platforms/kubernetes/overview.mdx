@@ -72,7 +72,7 @@ The operator is installed via [Helm](/self-hosting/helm-charts/secrets-operator)
 
 <KubernetesOperatorInstall />
 
-## Custom Resource Definitions
+## Custom resource definitions
 
 <Tabs>
   <Tab title="v1beta1 (Recommended)">
@@ -161,7 +161,7 @@ telemetry:
     scrapeTimeout: 10s
 ```
 
-### Available Metrics
+### Available metrics
 
 The operator exposes standard controller-runtime metrics. For a complete list of available metrics, see the [Kubebuilder metrics reference](https://book.kubebuilder.io/reference/metrics.html).
 
@@ -174,7 +174,7 @@ The operator exposes standard controller-runtime metrics. For a complete list of
 
 **v1alpha1 controllers:** `InfisicalSecret`, `InfisicalPushSecret`, `InfisicalDynamicSecret`
 
-### Example Prometheus Setup
+### Example Prometheus setup
 
 <Steps>
   <Step title="Install Prometheus Operator">
@@ -214,7 +214,7 @@ The operator exposes standard controller-runtime metrics. For a complete list of
   </Step>
 </Steps>
 
-### Example Queries
+### Example queries
 
 ```promql
 # Total reconciliations
@@ -227,7 +227,7 @@ histogram_quantile(0.99, rate(controller_runtime_reconcile_time_seconds_bucket[5
 process_resident_memory_bytes / 1024 / 1024
 ```
 
-## General Configuration
+## General configuration
 ### Private/self-signed certificate
 To connect to Infisical instances behind a private/self-signed certificate, you can configure TLS settings
 to point to a CA certificate stored in a Kubernetes secret resource.
@@ -313,7 +313,7 @@ The v1beta1 API introduces a cleaner separation of concerns. Instead of defining
   </Step>
 </Steps>
 
-## Uninstall Operator
+## Uninstall operator
 
 The managed secret created by the operator will not be deleted when the operator is uninstalled.
 

@@ -7,7 +7,7 @@ description: "Reference architecture for self-hosting Infisical on Google Cloud 
 This guide outlines a reference architecture for deploying Infisical in a self-hosted configuration using Google Cloud Run. 
 It is intended to provide a scalable, secure, and production-ready baseline for organizations choosing Google Cloud Platform (GCP) as their infrastructure provider.
 
-## Core Components
+## Core components
 
 - **Cloud Run:** Infisical service is containerized and deployed as fully managed Cloud Run services.
 
@@ -20,7 +20,7 @@ It is intended to provide a scalable, secure, and production-ready baseline for 
 - **Secrets Manager:** To secure Infisical’s root credentials (database connection string, encryption key, etc.), 
 we highly recommend that you use Google Secrets Manager and only allow the tasks running Infisical to access them.
 
-## High Availability and Scalability
+## High availability and scalability
 
 This architecture leverages Google Cloud's managed services to achieve high availability and scalability out of the box:
 

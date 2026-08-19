@@ -1,5 +1,5 @@
 ---
-title: "Active Directory Discovery"
+title: "Active Directory discovery"
 sidebarTitle: "Active Directory"
 description: "Scan an Active Directory environment for domain and local Windows accounts."
 ---
@@ -13,7 +13,7 @@ Active Directory discovery scans an AD environment to enumerate privileged accou
 
 All scan traffic (LDAP, DNS, and WinRM) is tunneled through an Infisical [Gateway](/documentation/platform/gateways/overview).
 
-## How It Works
+## How it works
 
 Behind the scenes, an Active Directory scan connects entirely through the Gateway:
 
@@ -34,7 +34,7 @@ Before creating an Active Directory discovery source, make sure you have:
 To discover local Windows accounts or account dependencies, the credential account must include a **password**, WinRM must be enabled on your servers, and your domain controller's DNS must resolve each server's hostname so the Gateway can reach it.
 </Note>
 
-## Creating a Source
+## Creating a source
 
 <Steps>
   <Step title="Start adding a source">
@@ -63,7 +63,7 @@ To discover local Windows accounts or account dependencies, the credential accou
   </Step>
 </Steps>
 
-## Server WinRM Options
+## Server WinRM options
 
 When **Discover local accounts** or **Discover account dependencies** is enabled, discovery locates domain-joined Windows servers, resolves each one through the domain controller's DNS, and connects to it over WinRM. Local account discovery enumerates the server's local users (staged as **Windows** accounts); dependency discovery enumerates the [dependencies](/documentation/platform/pam/dependencies/overview) that run as a discovered account.
 
@@ -80,13 +80,13 @@ Both use the same WinRM connection options:
 If a scan cannot reach WinRM on a particular server, that server is skipped and the failure is reported on the run. The rest of the scan still completes.
 </Note>
 
-## Running a Scan
+## Running a scan
 
 Trigger a scan manually with **Scan Now** from the source's row menu or its detail panel. Scans run in the background, and a source can only have one scan running at a time.
 
 If the source is on a **Daily** or **Weekly** schedule, Infisical also scans it automatically when its interval has elapsed. **Manual** sources are only scanned when you trigger them.
 
-## Importing Accounts
+## Importing accounts
 
 From the **Staged Accounts** tab, select the accounts you want and click **Import Accounts**. Then choose:
 
@@ -105,7 +105,7 @@ Imported accounts arrive without a credential because discovery finds accounts w
   Enabling **Discover account dependencies** also connects to each Windows server over WinRM and records the services, scheduled tasks, and IIS application pools that run as a discovered account. These are stored as [dependencies](/documentation/platform/pam/dependencies/overview) so they stay in sync when the account's password rotates. It is off by default and independent of **Discover local accounts**.
 </Note>
 
-## Next Steps
+## Next steps
 
 <CardGroup cols={2}>
   <Card title="Discovery Overview" icon="radar" href="/documentation/platform/pam/discovery/overview">

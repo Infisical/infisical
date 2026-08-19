@@ -31,7 +31,7 @@ Python 3.7+
 pip install infisicalsdk
 ```
 
-## Getting Started
+## Getting started
 
 ```python
 from infisical_sdk import InfisicalSDKClient
@@ -49,7 +49,7 @@ client.auth.universal_auth.login(
 secrets = client.secrets.list_secrets(project_id="<project-id>", environment_slug="dev", secret_path="/")
 ```
 
-## InfisicalSDKClient Parameters
+## InfisicalSDKClient parameters
 
 The `InfisicalSDKClient` takes the following parameters, which are used as a global configuration for the lifetime of the SDK instance.
 
@@ -65,7 +65,7 @@ client = InfisicalSDKClient(
 )
 ```
 
-## Core Methods
+## Core methods
 
 The SDK methods are organized into the following high-level categories:
 
@@ -79,7 +79,7 @@ The SDK methods are organized into the following high-level categories:
 
 The `Auth` component provides methods for authentication:
 
-#### Universal Auth
+#### Universal auth
 
 ```python
 response = client.auth.universal_auth.login(
@@ -88,13 +88,13 @@ response = client.auth.universal_auth.login(
 )
 ```
 
-#### AWS Auth
+#### AWS auth
 
 ```python
 response = client.auth.aws_auth.login(identity_id="<machine-identity-id>")
 ```
 
-#### OIDC Auth
+#### OIDC auth
 
 ```python
 response = client.auth.oidc_auth.login(
@@ -109,7 +109,7 @@ response = client.auth.oidc_auth.login(
 
 This authentication method is useful when integrating with OIDC-compliant identity providers like Okta, Auth0, or any service that issues OIDC tokens.
 
-#### LDAP Auth
+#### LDAP auth
 
 ```python
 response = client.auth.ldap_auth.login(
@@ -130,7 +130,7 @@ response = client.auth.ldap_auth.login(
   authentication method.
 </Info>
 
-#### Token Auth
+#### Token auth
 
 ```python
 response = client.auth.token_auth.login(token="<your-token>")
@@ -143,7 +143,7 @@ response = client.auth.token_auth.login(token="<your-token>")
 
 This sub-class handles operations related to secrets:
 
-#### List Secrets
+#### List secrets
 
 ```python
 secrets = client.secrets.list_secrets(
@@ -174,7 +174,7 @@ secrets = client.secrets.list_secrets(
 **Returns:**
 - `ListSecretsResponse`: The response containing the list of secrets.
 
-#### Create Secret
+#### Create secret
 
 ```python
 new_secret = client.secrets.create_secret_by_name(
@@ -211,7 +211,7 @@ new_secret = client.secrets.create_secret_by_name(
 **Returns:**
 - `BaseSecret`: The response after creating the secret.
 
-#### Update Secret
+#### Update secret
 
 ```python
 updated_secret = client.secrets.update_secret_by_name(
@@ -251,7 +251,7 @@ updated_secret = client.secrets.update_secret_by_name(
 **Returns:**
 - `BaseSecret`: The response after updating the secret.
 
-#### Get Secret by Name
+#### Get secret by name
 
 ```python
 secret = client.secrets.get_secret_by_name(
@@ -282,7 +282,7 @@ secret = client.secrets.get_secret_by_name(
 **Returns:**
 - `BaseSecret`: The response containing the secret.
 
-#### Delete Secret by Name
+#### Delete secret by name
 
 ```python
 deleted_secret = client.secrets.delete_secret_by_name(
@@ -309,7 +309,7 @@ deleted_secret = client.secrets.delete_secret_by_name(
 
 This sub-class handles operations related to dynamic secrets. Dynamic secrets generate credentials on-demand with automatic expiration. For more information, see the [Dynamic Secrets documentation](/documentation/platform/dynamic-secrets/overview).
 
-#### Create Dynamic Secret
+#### Create dynamic secret
 
 ```python
 from infisical_sdk import DynamicSecretProviders
@@ -350,7 +350,7 @@ dynamic_secret = client.dynamic_secrets.create(
 **Returns:**
 - `DynamicSecret`: The created dynamic secret.
 
-#### Supported Provider Types
+#### Supported provider types
 
 The `DynamicSecretProviders` enum includes the following providers:
 
@@ -378,7 +378,7 @@ The `DynamicSecretProviders` enum includes the following providers:
 | TOTP | `DynamicSecretProviders.TOTP` |
 | Vertica | `DynamicSecretProviders.VERTICA` |
 
-#### Get Dynamic Secret by Name
+#### Get dynamic secret by name
 
 ```python
 dynamic_secret = client.dynamic_secrets.get_by_name(
@@ -398,7 +398,7 @@ dynamic_secret = client.dynamic_secrets.get_by_name(
 **Returns:**
 - `DynamicSecret`: The dynamic secret.
 
-#### Update Dynamic Secret
+#### Update dynamic secret
 
 ```python
 updated_secret = client.dynamic_secrets.update(
@@ -430,7 +430,7 @@ updated_secret = client.dynamic_secrets.update(
 **Returns:**
 - `DynamicSecret`: The updated dynamic secret.
 
-#### Delete Dynamic Secret
+#### Delete dynamic secret
 
 ```python
 deleted_secret = client.dynamic_secrets.delete(
@@ -456,7 +456,7 @@ deleted_secret = client.dynamic_secrets.delete(
 
 This sub-class handles operations related to dynamic secret leases. A lease represents a set of generated credentials with a specific TTL.
 
-#### Create Lease
+#### Create lease
 
 Create a lease to generate credentials from a dynamic secret:
 
@@ -488,7 +488,7 @@ lease_id = lease_response.lease.id
   - `dynamicSecret`: The associated dynamic secret.
   - `data`: The generated credentials. The structure depends on the dynamic secret provider.
 
-#### Get Lease
+#### Get lease
 
 ```python
 lease = client.dynamic_secrets.leases.get(
@@ -508,7 +508,7 @@ lease = client.dynamic_secrets.leases.get(
 **Returns:**
 - `DynamicSecretLease`: The lease with dynamicSecret included.
 
-#### Renew Lease
+#### Renew lease
 
 Extend the TTL of an existing lease:
 
@@ -532,7 +532,7 @@ renewed_lease = client.dynamic_secrets.leases.renew(
 **Returns:**
 - `DynamicSecretLease`: The renewed lease.
 
-#### Revoke Lease
+#### Revoke lease
 
 Revoke a lease and its associated credentials:
 
@@ -560,7 +560,7 @@ revoked_lease = client.dynamic_secrets.leases.revoke(
 
 This sub-class handles KMS related operations:
 
-#### List KMS Keys
+#### List KMS keys
 
 ```python
 kms_keys = client.kms.list_keys(
@@ -584,7 +584,7 @@ kms_keys = client.kms.list_keys(
 **Returns:**
 - `ListKmsKeysResponse`: The response containing the list of KMS keys.
 
-#### Get KMS Key by ID
+#### Get KMS key by ID
 
 ```python
 kms_key = client.kms.get_key_by_id(
@@ -598,7 +598,7 @@ kms_key = client.kms.get_key_by_id(
 **Returns:**
 - `KmsKey`: The specified key.
 
-#### Get KMS Key by Name
+#### Get KMS key by name
 
 ```python
 kms_key = client.kms.get_key_by_name(
@@ -614,7 +614,7 @@ kms_key = client.kms.get_key_by_name(
 **Returns:**
 - `KmsKey`: The specified key.
 
-#### Create KMS Key
+#### Create KMS key
 
 ```python
 kms_key = client.kms.create_key(
@@ -634,7 +634,7 @@ kms_key = client.kms.create_key(
 **Returns:**
 - `KmsKey`: The newly created key.
 
-#### Update KMS Key
+#### Update KMS key
 
 ```python
 updated_key = client.kms.update_key(
@@ -654,7 +654,7 @@ updated_key = client.kms.update_key(
 **Returns:**
 - `KmsKey`: The updated key.
 
-#### Delete KMS Key
+#### Delete KMS key
 
 ```python
 deleted_key = client.kms.delete_key(
@@ -668,7 +668,7 @@ deleted_key = client.kms.delete_key(
 **Returns:**
 - `KmsKey`: The deleted key.
 
-#### Encrypt Data with KMS Key
+#### Encrypt data with KMS key
 
 ```python
 encrypted_data = client.kms.encrypt_data(
@@ -684,7 +684,7 @@ encrypted_data = client.kms.encrypt_data(
 **Returns:**
 - `str`: The encrypted ciphertext.
 
-#### Decrypt Data with KMS Key
+#### Decrypt data with KMS key
 
 ```python
 decrypted_data = client.kms.decrypt_data(
@@ -704,7 +704,7 @@ decrypted_data = client.kms.decrypt_data(
 
 This sub-class handles operations related to folders:
 
-#### List Folders
+#### List folders
 
 ```python
 folders = client.folders.list_folders(
@@ -726,7 +726,7 @@ folders = client.folders.list_folders(
 **Returns:**
 - `ListFoldersResponse`: The response containing the list of folders.
 
-#### Create Folder
+#### Create folder
 
 ```python
 new_folder = client.folders.create_folder(
@@ -748,7 +748,7 @@ new_folder = client.folders.create_folder(
 **Returns:**
 - `CreateFolderResponseItem`: The response containing the created folder.
 
-#### Get Folder by ID
+#### Get folder by ID
 
 ```python
 folder = client.folders.get_folder_by_id(

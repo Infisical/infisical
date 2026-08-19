@@ -12,7 +12,7 @@ If you're working with Rust, the official Infisical Rust SDK package is the easi
 cargo add infisical
 ```
 
-### Getting Started
+### Getting started
 
 The easiest way to get started is to use the builder pattern for both the client and your requests.
 
@@ -48,7 +48,7 @@ async fn fetch_secret() -> Result<(), InfisicalError> {
 }
 ```
 
-### Client Configuration
+### Client configuration
 
 The `Client::builder()` provides several configuration options:
 
@@ -62,7 +62,7 @@ let mut client = Client::builder()
 **Parameters**
 - `.base_url(url)`: Optional method to set the Infisical instance URL. Defaults to `https://app.infisical.com` for Infisical Cloud. Use `https://eu.infisical.com` for EU and `http://localhost:8080` for local development.
 
-### Core Methods
+### Core methods
 
 The SDK methods are organized into the following high-level categories:
 
@@ -71,7 +71,7 @@ The SDK methods are organized into the following high-level categories:
 - `client.secrets()`: Provides access to all CRUD operations for secrets.
 - `client.kms()`: Provides access to all KMS (Key Management Service) operations.
 
-### Helper Functions
+### Helper functions
 
 The SDK provides utility functions for common operations:
 
@@ -95,7 +95,7 @@ println!("Decoded: {}", decoded);
 
 All secret operations are accessed via `client.secrets()`. Each operation has a dedicated request builder.
 
-#### Create Secret
+#### Create secret
 
 Create a new secret in your project.
 
@@ -125,7 +125,7 @@ let created_secret = client.secrets().create(request).await?;
 - `.skip_multiline_encoding(bool)`: Optional method to control multiline encoding (defaults to `false`).
 - `.r#type(type)`: Optional method to set the secret type (`shared` or `personal`), defaults to `shared`.
 
-#### Get Secret
+#### Get secret
 
 Retrieve a specific secret by name.
 
@@ -148,7 +148,7 @@ let secret = client.secrets().get(request).await?;
 - `.expand_secret_references(bool)`: Optional method to control secret reference expansion (defaults to `true`).
 - `.r#type(type)`: Optional method to set the secret type (`shared` or `personal`), defaults to `shared`.
 
-#### List Secrets
+#### List secrets
 
 List all secrets in a project and environment.
 
@@ -173,7 +173,7 @@ let secrets = client.secrets().list(request).await?;
 - `.recursive(bool)`: Optional method to recursively list secrets from sub-folders (defaults to `false`).
 - `.attach_to_process_env(bool)`: Optional method to attach fetched secrets to the current process's environment variables (defaults to `false`).
 
-#### Update Secret
+#### Update secret
 
 Update an existing secret.
 
@@ -199,7 +199,7 @@ let updated_secret = client.secrets().update(request).await?;
 - `.skip_multiline_encoding(bool)`: Optional method to control multiline encoding.
 - `.r#type(type)`: Optional method to set the secret type (`shared` or `personal`).
 
-#### Delete Secret
+#### Delete secret
 
 Delete a secret from your project.
 
@@ -225,7 +225,7 @@ let deleted_secret = client.secrets().delete(request).await?;
 
 All KMS (Key Management Service) operations are accessed via `client.kms()`. Each operation has a dedicated request builder.
 
-#### List KMS Keys
+#### List KMS keys
 
 List all KMS keys in a project.
 
@@ -243,7 +243,7 @@ let keys = client.kms().list(request).await?;
 
 - `project_id`: Required parameter passed to the `builder()` function.
 
-#### Get KMS Key
+#### Get KMS key
 
 Retrieve a specific KMS key by ID.
 
@@ -261,7 +261,7 @@ let key = client.kms().get(request).await?;
 
 - `key_id`: Required parameter passed to the `builder()` function.
 
-#### Get KMS Key by Name
+#### Get KMS key by name
 
 Retrieve a specific KMS key by name.
 
@@ -279,7 +279,7 @@ let key = client.kms().get_by_name(request).await?;
 
 - `key_name`: Required parameter passed to the `builder()` function.
 
-#### Create KMS Key
+#### Create KMS key
 
 Create a new KMS key in your project.
 
@@ -304,7 +304,7 @@ let created_key = client.kms().create(request).await?;
 - `.key_usage(usage)`: Optional method to set the key usage using the `KeyUsage` enum (defaults to `KeyUsage::EncryptDecrypt`).
 - `.encryption_algorithm(algorithm)`: Optional method to set the encryption algorithm using the `EncryptionAlgorithm` enum (defaults to `EncryptionAlgorithm::Aes256Gcm`).
 
-#### Update KMS Key
+#### Update KMS key
 
 Update an existing KMS key.
 
@@ -329,7 +329,7 @@ let updated_key = client.kms().update(request).await?;
 - `.description(description)`: Optional method to update the key description.
 - `.is_disabled(disabled)`: Optional method to enable or disable the key.
 
-#### Delete KMS Key
+#### Delete KMS key
 
 Delete a KMS key from your project.
 
@@ -347,7 +347,7 @@ let deleted_key = client.kms().delete(request).await?;
 
 - `key_id`: Required parameter passed to the `builder()` function.
 
-#### Encrypt Data
+#### Encrypt data
 
 Encrypt data using a KMS key.
 
@@ -365,7 +365,7 @@ let ciphertext = client.kms().encrypt(request).await?;
 
 - `key_id`, `plaintext`: Required parameters passed to the `builder()` function.
 
-#### Decrypt Data
+#### Decrypt data
 
 Decrypt data using a KMS key.
 
@@ -383,7 +383,7 @@ let plaintext = client.kms().decrypt(request).await?;
 
 - `key_id`, `ciphertext`: Required parameters passed to the `builder()` function.
 
-#### Sign Data
+#### Sign data
 
 Sign data using a KMS key.
 
@@ -406,7 +406,7 @@ let signature = client.kms().sign(request).await?;
 - `.signing_algorithm(algorithm)`: Optional method to set the signing algorithm using the `SigningAlgorithm` enum (defaults to `SigningAlgorithm::RsassaPkcs1V15Sha256`).
 - `.is_digest(is_digest)`: Optional method to indicate if the data is a digest (defaults to `false`).
 
-#### Verify Signature
+#### Verify signature
 
 Verify a signature using a KMS key.
 
@@ -429,7 +429,7 @@ let verification = client.kms().verify(request).await?;
 - `.signing_algorithm(algorithm)`: Optional method to set the signing algorithm using the `SigningAlgorithm` enum (defaults to `SigningAlgorithm::RsassaPkcs1V15Sha256`).
 - `.is_digest(is_digest)`: Optional method to indicate if the data is a digest (defaults to `false`).
 
-#### Get Public Key
+#### Get public key
 
 Get the public key for a KMS key.
 
@@ -443,7 +443,7 @@ let public_key = client.kms().get_public_key("<key-id>").await?;
 
 - `key_id`: The ID of the key to get the public key for.
 
-#### Get Signing Algorithms
+#### Get signing algorithms
 
 Get the available signing algorithms for a KMS key.
 
@@ -457,9 +457,9 @@ let algorithms = client.kms().get_signing_algorithms("<key-id>").await?;
 
 - `key_id`: The ID of the key to get signing algorithms for.
 
-## Development and Testing
+## Development and testing
 
-### Environment Setup
+### Environment setup
 
 For development and testing, you'll need to set up environment variables. Create a `.env` file in your project root:
 
@@ -473,14 +473,14 @@ INFISICAL_SECRETS_PROJECT_ID=your_project_id_here
 INFISICAL_KMS_PROJECT_ID=your_project_id_here
 ```
 
-### Getting Credentials
+### Getting credentials
 
 To obtain the required credentials:
 
 1. **Client ID and Secret**: Create a Universal Auth machine identity in your Infisical project settings
 2. **Project ID**: Found in your project settings or URL when viewing a project in the Infisical dashboard
 
-### Running Tests
+### Running tests
 
 Tests that require authentication are marked with `#[ignore]` and need valid credentials:
 

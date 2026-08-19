@@ -1,5 +1,5 @@
 ---
-title: "ClickHouse Setup"
+title: "ClickHouse setup"
 description: "Configure ClickHouse as your audit log storage backend for high-volume deployments"
 ---
 
@@ -41,11 +41,11 @@ CLICKHOUSE_AUDIT_LOG_TABLE_NAME=custom_audit_logs
 
 For the full list of available ClickHouse and audit log environment variables (insert settings, table engine, disabling PostgreSQL storage, etc.), see the [Environment Variables Reference](/self-hosting/configuration/envars#clickhouse-optional).
 
-## How It Works
+## How it works
 
 Once `CLICKHOUSE_URL` is set, audit log writes switch from PostgreSQL to ClickHouse. Events are queued in a Redis stream and batch-inserted into ClickHouse every 5 seconds via a background worker. Reads also route to ClickHouse automatically. On first startup, Infisical creates the ClickHouse table if it doesn't already exist.
 
-### Migration Strategy
+### Migration strategy
 
 **Recommended approach for existing deployments:**
 
