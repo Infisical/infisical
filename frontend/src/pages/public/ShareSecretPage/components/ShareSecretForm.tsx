@@ -3,7 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { CheckCircle2, ForwardIcon, Info, Lock, MailCheck } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, ForwardIcon, Info, Lock, MailCheck } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
@@ -21,6 +21,10 @@ import {
   FieldSeparator,
   FieldSet,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
   Select,
   SelectContent,
   SelectItem,
@@ -32,6 +36,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useToggle } from "@app/hooks";
 import { useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api";
 import { SecretSharingAccessType } from "@app/hooks/api/secretSharing";
 import { ms } from "@app/lib/fn/time";
@@ -155,6 +160,7 @@ export const ShareSecretForm = ({
   maxSharedSecretViewLimit
 }: Props) => {
   const [result, setResult] = useState<ShareResult | null>(null);
+  const [isPasswordVisible, setIsPasswordVisible] = useToggle(false);
   const subOrganization = useSearch({
     strict: false,
     select: (el) => el?.subOrganization
@@ -473,18 +479,28 @@ export const ShareSecretForm = ({
                 <FieldLabel htmlFor="share-secret-password">
                   Password <span className="text-xs text-muted italic">- Optional</span>
                 </FieldLabel>
-                <Input
-                  {...field}
-                  id="share-secret-password"
-                  placeholder="Password"
-                  type="password"
-                  autoComplete="new-password"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  aria-autocomplete="none"
-                  data-form-type="other"
-                  isError={Boolean(error)}
-                />
+                <InputGroup>
+                  <InputGroupInput
+                    {...field}
+                    id="share-secret-password"
+                    placeholder="Password"
+                    type={isPasswordVisible ? "text" : "password"}
+                    autoComplete="new-password"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    aria-autocomplete="none"
+                    data-form-type="other"
+                    aria-invalid={Boolean(error)}
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      onClick={() => setIsPasswordVisible.toggle()}
+                      aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+                    >
+                      {isPasswordVisible ? <EyeOff /> : <Eye />}
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                </InputGroup>
                 <FieldDescription>
                   Recipients must enter this password before the secret is revealed.
                 </FieldDescription>
