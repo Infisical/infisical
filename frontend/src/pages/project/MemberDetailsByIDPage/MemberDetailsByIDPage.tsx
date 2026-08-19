@@ -11,7 +11,7 @@ import {
   ShieldIcon
 } from "lucide-react";
 
-import { AssumePrivilegesModal } from "@app/components/assume-privileges";
+import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -303,7 +303,7 @@ export const Page = () => {
             isPending={removeUserMutation.isPending}
             onConfirm={handleRemoveUser}
           />
-          <AssumePrivilegesModal
+          <AssumePrivilegesDialog
             isOpen={popUp.assumePrivileges.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
             actorType={ActorType.USER}

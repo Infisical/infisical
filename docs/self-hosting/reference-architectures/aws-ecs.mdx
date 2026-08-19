@@ -13,7 +13,7 @@ The architecture utilizes Amazon Relational Database Service (RDS) for persisten
 
 ![AWS ECS architecture](/images/self-hosting/reference-architectures/Infisical-AWS-ECS-architecture.jpeg)
 
-### Core Components
+### Core components
 
 - **ECS Fargate:** In this architecture, Infisical is deployed on ECS using Fargate launch type. The ECS services are deployed across multiple Availability Zones to ensure high availability.
 
@@ -24,7 +24,7 @@ This ensures that if there is a failure in one availability zone, the working re
 
 - **Amazon Simple Email Service (SES):** Infisical requires email service to facilitate outbound communication. AWS SES is integrated into the architecture to handle such communication.
 
-### Network Setup
+### Network setup
 
 - **Public Subnets:** Each Availability Zone contains a public subnet. There are two main reasons you might need internet access. First, if you intend to use Infisical to communicate with external secrets managers not located within your virtual private network, enabling internet access is necessary. Second, downloading the Docker image from Docker Hub requires internet access, though this can be avoided by utilizing AWS ECR with VPC Endpoints through AWS Private Link.
 
@@ -35,7 +35,7 @@ This ensures that if there is a failure in one availability zone, the working re
 - **Parameter Store:** To secure Infisical's root credentials (database connection string, encryption key, etc), we highly recommend that you use AWS Parameter Store and only allow the tasks running Infisical to access them.
 - **AWS Secrets Manager:** We strongly advise securing the master credentials for RDS by utilizing the latest AWS RDS integration with AWS Secrets Manager. This integration automatically stores the master database user's credentials in AWS Secrets Manager, thereby reducing the risk of misplacing the root RDS credential.
 
-### High Availability (HA) and Scalability
+### High availability (HA) and scalability
 
 - **Multi-AZ Deployment:** By spreading resources across multiple Availability Zones, we ensure that if one AZ experiences issues, traffic can be redirected to the remaining healthy AZ without service interruption.
 

@@ -1,6 +1,6 @@
 import { createNotification } from "@app/components/notifications";
-import { PermissionDeniedBanner } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
+import { AccessRestrictedDialog } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyType, useDeleteApprovalPolicy } from "@app/hooks/api/approvalPolicies";
@@ -25,7 +25,9 @@ export const PolicyTab = () => {
   ] as const);
 
   if (!isAdmin) {
-    return <PermissionDeniedBanner />;
+    return (
+      <AccessRestrictedDialog description="Only project admins can view and manage certificate approval policies." />
+    );
   }
 
   const handleDeletePolicy = async () => {

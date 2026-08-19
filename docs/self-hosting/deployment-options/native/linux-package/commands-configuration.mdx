@@ -3,14 +3,14 @@ title: "Configurations"
 description: "Learn how to configure and manage the Infisical Linux package"
 ---
 
-## Configuration Overview
+## Configuration overview
 
 All configuration for the Infisical Linux package is managed through a single file called `infisical.rb`, located in the `/etc/infisical` directory. 
 This file defines all necessary settings, including encryption keys, database connections, and environment-specific settings.
 
 <Info> After making any changes to the `infisical.rb` file, always run `infisical-ctl reconfigure` to apply them. </Info>
 
-### Example Configuration
+### Example configuration
 
 ```ruby infisical.rb
 # Important: Replace these values with secure keys in production
@@ -24,7 +24,7 @@ infisical_core['REDIS_URL'] = 'redis://<host>:6379'
 
 For a full list of supported configuration variables, refer to the [configuration variables documentation](/self-hosting/configuration/envars).
 
-## All `infisical-ctl` Commands
+## All `infisical-ctl` commands
 
 The Infisical Linux package includes the `infisical-ctl` command-line tool, which allows you to manage your deployment. 
 The available commands are listed below.

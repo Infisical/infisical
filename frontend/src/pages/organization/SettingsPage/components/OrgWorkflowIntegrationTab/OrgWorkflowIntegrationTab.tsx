@@ -399,5 +399,9 @@ export const OrgWorkflowIntegrationTab = withPermission(
       </Card>
     );
   },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Settings }
+  {
+    action: OrgPermissionActions.Read,
+    subject: OrgPermissionSubjects.Settings,
+    accessRestrictedMode: "dialog"
+  }
 );

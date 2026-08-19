@@ -4,14 +4,11 @@ import { LogOutIcon, TrashIcon } from "lucide-react";
 
 import { Alert, AlertDescription } from "../Alert";
 import { Button } from "../Button";
-import { Field } from "../Field";
-import { Input } from "../Input";
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
-  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -230,7 +227,7 @@ export const SmallSize: Story = {
     docs: {
       description: {
         story:
-          'Pass `size="sm"` to `AlertDialogContent` for a compact dialog — header content remains left-aligned and footer actions split into a two-column grid. Use for short, single-sentence confirmations.'
+          'Pass `size="sm"` to `AlertDialogContent` for a narrow, centered dialog with footer actions split into a two-column grid. Use for short, single-sentence confirmations.'
       }
     }
   },
@@ -263,77 +260,32 @@ export const SmallSize: Story = {
   )
 };
 
-const PROJECT_NAME = "production-api";
+const CONFIRMATION_KEYWORD = "delete";
 
-const TypedConfirmationStory = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isPending, setIsPending] = useState(false);
-  const [confirmation, setConfirmation] = useState("");
-  const isConfirmed = confirmation === PROJECT_NAME;
-
-  return (
-    <AlertDialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (isPending) return;
-        setIsOpen(open);
-        if (!open) setConfirmation("");
-      }}
-    >
-      <AlertDialogTrigger asChild>
-        <Button variant="danger">
-          <TrashIcon />
-          Delete project
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete project?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will permanently remove the project and all of its secrets, integrations, and audit
-            history. This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogConfirmationField>
-          <Field>
-            <AlertDialogConfirmationLabel
-              htmlFor="alert-dialog-confirmation"
-              confirmationValue={PROJECT_NAME}
-            />
-            <Input
-              id="alert-dialog-confirmation"
-              value={confirmation}
-              onChange={(e) => setConfirmation(e.target.value)}
-              placeholder={PROJECT_NAME}
-              autoComplete="off"
-              autoFocus
-            />
-          </Field>
-        </AlertDialogConfirmationField>
-        <AlertDialogFooter>
-          <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="danger"
-            isPending={isPending}
-            isDisabled={!isConfirmed}
-            onClick={async (event) => {
-              event.preventDefault();
-              setIsPending(true);
-              await new Promise((resolve) => {
-                setTimeout(resolve, 800);
-              });
-              setIsPending(false);
-              setIsOpen(false);
-              setConfirmation("");
-            }}
-          >
-            Delete project
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-};
+const TypedConfirmationStory = () => (
+  <AlertDialog confirmationValue={CONFIRMATION_KEYWORD}>
+    <AlertDialogTrigger asChild>
+      <Button variant="danger">
+        <TrashIcon />
+        Delete project
+      </Button>
+    </AlertDialogTrigger>
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Delete project?</AlertDialogTitle>
+        <AlertDialogDescription>
+          This will permanently remove the project and all of its secrets, integrations, and audit
+          history. This action cannot be undone.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogConfirmationField />
+      <AlertDialogFooter>
+        <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <AlertDialogAction variant="danger">Delete project</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+);
 
 export const TypedConfirmation: Story = {
   name: "Example: Typed Confirmation",
@@ -341,7 +293,7 @@ export const TypedConfirmation: Story = {
     docs: {
       description: {
         story:
-          "Require the resource name for high-consequence deletion. Pass it to `confirmationValue`, mirror it in the input placeholder, focus the input when the dialog opens, and clear it on close. During an asynchronous action, prevent the default close, show `isPending`, and disable cancellation until the operation completes. A fixed keyword can be used when no stable resource name is available."
+          "Add an `Input` between the header and footer that requires the user to type a keyword before the destructive action is enabled. Use this pattern for tier-two destructive actions (delete account, delete project) where an extra deliberate step reduces accidental loss. The input clears whenever the dialog closes."
       }
     }
   },

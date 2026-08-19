@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 import { createNotification } from "@app/components/notifications";
 import {
   Alert,
@@ -8,13 +6,11 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
-  AlertDialogConfirmationLabel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-  Field,
-  Input
+  AlertDialogTitle
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
@@ -30,22 +26,17 @@ type Props = {
   actorId?: string;
 };
 
-export const AssumePrivilegesModal = ({ isOpen, onOpenChange, actorType, actorId }: Props) => {
+export const AssumePrivilegesDialog = ({ isOpen, onOpenChange, actorType, actorId }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const assumePrivileges = useAssumeProjectPrivileges();
-  const [inputData, setInputData] = useState("");
-
-  useEffect(() => {
-    setInputData("");
-  }, [isOpen]);
 
   const isUser = actorType === ActorType.USER;
   const noun = isUser ? "user" : "machine identity";
-  const isConfirmed = inputData === CONFIRM_KEY;
+  const isActionDisabled = !actorId || !currentOrg?.id || !currentProject?.id;
 
   const handleConfirm = () => {
-    if (!isConfirmed || !actorId || !currentOrg?.id || !currentProject?.id) return;
+    if (!actorId || !currentOrg?.id || !currentProject?.id || assumePrivileges.isPending) return;
 
     assumePrivileges.mutate(
       {
@@ -72,58 +63,38 @@ export const AssumePrivilegesModal = ({ isOpen, onOpenChange, actorType, actorId
   return (
     <AlertDialog
       open={isOpen}
+      confirmationValue={CONFIRM_KEY}
       onOpenChange={(open) => {
-        if (assumePrivileges.isPending) return;
-        onOpenChange(open);
+        if (!assumePrivileges.isPending) onOpenChange(open);
       }}
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Do you want to assume privileges of this {noun}?</AlertDialogTitle>
-          <Alert variant="project" appearance="borderless">
-            <AlertDescription>
-              This will set your privileges to those of the {noun} for the next hour.
-            </AlertDescription>
-          </Alert>
+          <AlertDialogTitle>Assume privileges of this {noun}</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <Alert variant="warning" appearance="borderless">
+              <AlertDescription>
+                This will set your privileges to those of the {noun} for the next hour.
+              </AlertDescription>
+            </Alert>
+          </AlertDialogDescription>
         </AlertDialogHeader>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleConfirm();
-          }}
-        >
-          <AlertDialogConfirmationField>
-            <Field>
-              <AlertDialogConfirmationLabel
-                htmlFor="assume-privileges-confirmation"
-                confirmationValue={CONFIRM_KEY}
-              />
-              <Input
-                id="assume-privileges-confirmation"
-                value={inputData}
-                onChange={(e) => setInputData(e.target.value)}
-                placeholder={CONFIRM_KEY}
-                autoComplete="off"
-                autoFocus
-                disabled={assumePrivileges.isPending}
-              />
-            </Field>
-          </AlertDialogConfirmationField>
-        </form>
+        <AlertDialogConfirmationField
+          inputProps={{ placeholder: `Type ${CONFIRM_KEY} here` }}
+          onConfirm={handleConfirm}
+        />
         <AlertDialogFooter>
-          <AlertDialogCancel variant="outline" isDisabled={assumePrivileges.isPending}>
-            Cancel
-          </AlertDialogCancel>
+          <AlertDialogCancel isDisabled={assumePrivileges.isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="project"
             isPending={assumePrivileges.isPending}
-            isDisabled={!isConfirmed}
+            isDisabled={isActionDisabled}
             onClick={(event) => {
               event.preventDefault();
               handleConfirm();
             }}
           >
-            Confirm
+            Assume Privileges
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

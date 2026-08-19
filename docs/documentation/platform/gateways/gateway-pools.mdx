@@ -1,6 +1,6 @@
 ---
-title: "Gateway Pools"
-sidebarTitle: "Gateway Pools"
+title: "Gateway pools"
+sidebarTitle: "Gateway pools"
 description: "High availability and automatic failover for gateways"
 ---
 
@@ -12,7 +12,7 @@ Gateway Pools provide high availability for your gateway infrastructure. A pool 
   license.
 </Info>
 
-## How It Works
+## How it works
 
 1. You create a Gateway Pool and add multiple gateways that share network access to the same resources.
 2. When configuring a consumer (e.g., Kubernetes Auth), you select the pool instead of an individual gateway.
@@ -21,7 +21,7 @@ Gateway Pools provide high availability for your gateway infrastructure. A pool 
 
 A gateway is considered healthy if it has sent a successful heartbeat within its TTL window.
 
-## Creating a Gateway Pool
+## Creating a Gateway pool
 
 1. Navigate to **Organization Settings > Networking > Gateways**.
 2. Click the **Gateway Pools** tab.
@@ -36,7 +36,7 @@ A gateway is considered healthy if it has sent a successful heartbeat within its
 
 ![Create Gateway Pool](../../../images/platform/gateways/gateway-pools-create.png)
 
-## Adding Gateways to a Pool
+## Adding gateways to a pool
 
 1. In the **Gateway Pools** tab, click on a pool to open its detail view.
 
@@ -50,17 +50,17 @@ A gateway is considered healthy if it has sent a successful heartbeat within its
 
 A gateway can belong to multiple pools if it has connectivity to resources served by each pool. Pool membership can be changed at any time without restarting the gateway.
 
-## Using a Pool in a Consumer Config
+## Using a pool in a consumer config
 
 Anywhere you configure a gateway, the gateway picker dropdown shows both individual gateways and gateway pools. Pools are listed under the "Gateway Pools" section with an **HA** (high availability) badge and health status.
 
 When you select a pool, the platform validates connectivity through one of its healthy gateways before saving.
 
-## Gateway Selection
+## Gateway selection
 
 When a request is routed through a pool, the platform picks a gateway at random from the pool's healthy gateways. There is no round-robin or weighted selection.
 
-## Pool Health
+## Pool health
 
 Each pool displays an aggregate health status based on its gateways:
 

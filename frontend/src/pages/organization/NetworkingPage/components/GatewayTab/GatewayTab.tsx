@@ -23,7 +23,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
-  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -50,9 +49,7 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  Field,
   IconButton,
-  Input,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -106,7 +103,6 @@ export const GatewayTab = withPermission(
     const [search, setSearch] = useState("");
     const [poolSearch, setPoolSearch] = useState("");
     const [selectedPoolId, setSelectedPoolId] = useState<string | null>(null);
-    const [deleteConfirmation, setDeleteConfirmation] = useState("");
     const { data: gateways, isPending: isGatewaysLoading } = useQuery({
       ...gatewaysQueryKeys.listWithTokens(),
       refetchInterval: 15_000
@@ -472,10 +468,10 @@ export const GatewayTab = withPermission(
               </Dialog>
               <AlertDialog
                 open={popUp.deleteGateway.isOpen}
-                onOpenChange={(open) => {
-                  if (!open) setDeleteConfirmation("");
-                  handlePopUpToggle("deleteGateway", open);
-                }}
+                confirmationValue={
+                  (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
+                }
+                onOpenChange={(open) => handlePopUpToggle("deleteGateway", open)}
               >
                 <AlertDialogContent>
                   <AlertDialogHeader>
@@ -484,26 +480,12 @@ export const GatewayTab = withPermission(
                       This permanently removes the gateway from your organization.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <AlertDialogConfirmationField>
-                    <Field>
-                      <AlertDialogConfirmationLabel
-                        htmlFor="delete-gateway-confirmation"
-                        confirmationValue={
-                          (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
-                        }
-                      />
-                      <Input
-                        id="delete-gateway-confirmation"
-                        value={deleteConfirmation}
-                        onChange={(event) => setDeleteConfirmation(event.target.value)}
-                        placeholder={
-                          (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
-                        }
-                        autoComplete="off"
-                        autoFocus
-                      />
-                    </Field>
-                  </AlertDialogConfirmationField>
+                  <AlertDialogConfirmationField
+                    inputProps={{
+                      placeholder:
+                        (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
+                    }}
+                  />
                   <Alert variant="danger" appearance="borderless">
                     <AlertDescription>Deleting this gateway cannot be undone.</AlertDescription>
                   </Alert>
@@ -516,10 +498,6 @@ export const GatewayTab = withPermission(
                     <AlertDialogAction
                       variant="danger"
                       isPending={deleteGatewayById.isPending || deleteGatewayV2ById.isPending}
-                      isDisabled={
-                        deleteConfirmation !==
-                        ((popUp.deleteGateway.data as { name?: string })?.name || "gateway")
-                      }
                       onClick={(event) => {
                         event.preventDefault();
                         handleDeleteGateway();
@@ -557,5 +535,9 @@ export const GatewayTab = withPermission(
       </Card>
     );
   },
-  { action: OrgGatewayPermissionActions.ListGateways, subject: OrgPermissionSubjects.Gateway }
+  {
+    action: OrgGatewayPermissionActions.ListGateways,
+    subject: OrgPermissionSubjects.Gateway,
+    accessRestrictedMode: "dialog"
+  }
 );

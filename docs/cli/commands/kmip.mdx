@@ -189,11 +189,11 @@ For token enrollment, the single-use token is exchanged for a long-lived access 
 3. Reloads the systemd daemon
 4. Enables the service to start on boot
 
-### Arguments & Flags
+### Arguments & flags
 
 Like `infisical kmip start`, this command takes the `<server-name>` as a required positional argument (or via `--server-name` / `INFISICAL_KMIP_SERVER_NAME`). It accepts the same flags as `infisical kmip start` (documented above): `--enroll-method`, `--token`, `--kmip-server-id`, `--server-name`, `--domain`, `--listen-address`, and (for legacy machine-identity servers only) `--hostnames-or-ips` and `--certificate-ttl`.
 
-### Service Details
+### Service details
 
 The systemd service is installed with secure defaults:
 

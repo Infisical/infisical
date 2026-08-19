@@ -1,12 +1,12 @@
 ---
-title: "Enrollment Methods"
+title: "Enrollment methods"
 sidebarTitle: "Overview"
 description: "Configure how your services and devices request certificates from Certificate Manager."
 ---
 
 Enrollment methods define how certificates are requested from your Application. Each method supports different use cases — from UI-based issuance and the Infisical Agent to standard protocols like ACME that work with existing tooling.
 
-## Choose an Enrollment Method
+## Choose an enrollment method
 
 <CardGroup cols={2}>
   <Card title="API" icon="code" href="/documentation/platform/pki/applications/enrollment-methods/api">
@@ -40,7 +40,7 @@ Enrollment methods define how certificates are requested from your Application. 
 | **EST** | RFC 7030 | Re-enrollment | Certificate-based | Enterprise devices |
 | **SCEP** | Draft RFC | Re-enrollment | Challenge password | MDM, network devices |
 
-## How Enrollment Works
+## How enrollment works
 
 <Steps>
   <Step title="Product Admin attaches a profile">
@@ -61,7 +61,7 @@ Enrollment methods define how certificates are requested from your Application. 
   Each enrollment method is tied to a specific profile attached to the Application — meaning the enrollment URL (e.g., ACME directory) is unique to that Application + Profile pair.
 </Note>
 
-## After Enrollment
+## After enrollment
 
 Once certificates are issued, you can:
 

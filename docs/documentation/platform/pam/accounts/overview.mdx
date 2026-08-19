@@ -8,7 +8,7 @@ Accounts are the databases and servers you want to manage through PAM. Each acco
 
 Whoever connects to an account never sees the actual credentials, whether that is a person or an [AI agent](/documentation/platform/pam/ai-agents/overview). The connection is proxied, credentials are injected automatically, and everything is recorded.
 
-## Account Types
+## Account types
 
 PAM supports the following account types:
 
@@ -29,7 +29,7 @@ PAM supports the following account types:
 
 Each type has specific connection details. See the type-specific pages for details.
 
-## Adding an Account
+## Adding an account
 
 Accounts live inside [folders](/documentation/platform/pam/folders/overview). To add one:
 
@@ -52,11 +52,11 @@ Accounts live inside [folders](/documentation/platform/pam/folders/overview). To
 </Steps>
 
 
-## Connecting to an Account
+## Connecting to an account
 
 Once an account exists, anyone with access can connect: people in the browser or through the CLI, [machine identities](/documentation/platform/identities/machine-identities) through the CLI.
 
-### Web Access
+### Web access
 
 Go to **Privileged Access Management → Accounts**, find the account, and click the rocket icon (or select **Launch Session** from the menu), then click **Connect in Browser**. This opens:
 - **PostgreSQL / MySQL** — a Data Explorer for browsing tables and a SQL Editor for running queries
@@ -64,7 +64,7 @@ Go to **Privileged Access Management → Accounts**, find the account, and click
 - **AWS IAM** — opens the AWS Console with federated credentials
 - **Windows / Windows AD** — an RDP connection to the server
 
-### CLI Access
+### CLI access
 
 Run the CLI command to start a local proxy:
 
@@ -83,7 +83,7 @@ The command outputs the local port to connect to. Then connect with your preferr
 
 To let an [AI agent](/documentation/platform/pam/ai-agents/overview) reach an account, use [`infisical pam agentic access`](/cli/commands/pam-agentic) instead.
 
-## Direct Account Memberships
+## Direct account memberships
 
 Most access is granted at the folder level — if you have access to the folder, you have access to all accounts in it.
 
@@ -96,6 +96,6 @@ But sometimes you need to grant access to just one account. For that, use direct
 
 Direct memberships are for exceptions: a contractor who needs one specific database, temporary elevated access to a single account, or a job that should reach one account and nothing else.
 
-## Next Steps
+## Next steps
 
 For detailed instructions on creating and connecting to specific account types, see the type-specific pages in the sidebar.

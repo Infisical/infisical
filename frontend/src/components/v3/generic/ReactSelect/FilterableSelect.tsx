@@ -3,6 +3,10 @@ import Select, { GroupBase, Props } from "react-select";
 import { ClearIndicator, DropdownIndicator, Group, MultiValueRemove, Option } from "./components";
 import { getSelectClassNames, selectClassNames, selectStyles } from "./styles";
 
+/**
+ * @deprecated Migrate searchable single- and multi-select callsites to `Combobox` when its
+ * contract fits. Creatable, grouped, and advanced compatibility consumers remain supported.
+ */
 export const FilterableSelect = <T,>({
   isMulti,
   closeMenuOnSelect,

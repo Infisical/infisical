@@ -275,7 +275,7 @@ function FieldError({ className, children, errors, isOpen, ...props }: FieldErro
       <div
         role="alert"
         data-slot="field-error"
-        className={cn("mt-0.5 text-xs leading-snug font-normal text-danger", className)}
+        className={cn("text-xs leading-snug font-normal text-danger", className)}
         {...props}
       >
         {retainedContent}

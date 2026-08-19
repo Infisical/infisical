@@ -1,6 +1,6 @@
 # Contributing to the documentation
 
-## Style Guide
+## Style guide
 
 **Read [STYLE_GUIDE.md](./STYLE_GUIDE.md) before writing documentation.** It covers:
 
