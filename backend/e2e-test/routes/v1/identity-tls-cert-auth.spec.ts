@@ -1,0 +1,283 @@
+import crypto from "node:crypto";
+
+import * as x509 from "@peculiar/x509";
+import { GeneralName, GeneralSubtree, NameConstraints } from "pkijs";
+
+import { OrgMembershipRole } from "@app/db/schemas";
+import { seedData1 } from "@app/db/seed-data";
+
+const KEY_ALGORITHM: EcKeyGenParams = { name: "ECDSA", namedCurve: "P-256" };
+const SIGNING_ALGORITHM: EcdsaParams = { name: "ECDSA", hash: "SHA-256" };
+
+const CLIENT_AUTH_EKU = "1.3.6.1.5.5.7.3.2";
+const SERVER_AUTH_EKU = "1.3.6.1.5.5.7.3.1";
+
+const NOT_BEFORE = new Date(Date.now() - 60 * 60 * 1000);
+const NOT_AFTER = new Date(Date.now() + 60 * 60 * 1000);
+
+type TIssued = { cert: x509.X509Certificate; keys: CryptoKeyPair };
+
+let serial = 0x1000;
+const nextSerial = () => {
+  serial += 1;
+  return serial.toString(16);
+};
+
+const generateKeys = () => crypto.webcrypto.subtle.generateKey(KEY_ALGORITHM, true, ["sign", "verify"]);
+
+const ekuExtension = (usages: string[]) => new x509.ExtendedKeyUsageExtension(usages, true);
+
+const permittedDnsConstraint = (permitted: string[]) =>
+  new x509.Extension(
+    "2.5.29.30",
+    true,
+    new NameConstraints({
+      permittedSubtrees: permitted.map((dns) => new GeneralSubtree({ base: new GeneralName({ type: 2, value: dns }) }))
+    })
+      .toSchema()
+      .toBER(false)
+  );
+
+const makeRoot = async (name: string, extraExtensions: x509.Extension[] = []): Promise<TIssued> => {
+  const keys = await generateKeys();
+  const cert = await x509.X509CertificateGenerator.createSelfSigned({
+    serialNumber: nextSerial(),
+    name: `CN=${name}`,
+    notBefore: NOT_BEFORE,
+    notAfter: NOT_AFTER,
+    keys,
+    signingAlgorithm: SIGNING_ALGORITHM,
+    extensions: [new x509.BasicConstraintsExtension(true, undefined, true), ...extraExtensions]
+  });
+  return { cert, keys };
+};
+
+const makeIntermediate = async (
+  name: string,
+  issuer: TIssued,
+  opts?: { pathLength?: number; extraExtensions?: x509.Extension[]; keys?: CryptoKeyPair }
+): Promise<TIssued> => {
+  const keys = opts?.keys ?? (await generateKeys());
+  const cert = await x509.X509CertificateGenerator.create({
+    serialNumber: nextSerial(),
+    subject: `CN=${name}`,
+    issuer: issuer.cert.subject,
+    notBefore: NOT_BEFORE,
+    notAfter: NOT_AFTER,
+    signingKey: issuer.keys.privateKey,
+    publicKey: keys.publicKey,
+    signingAlgorithm: SIGNING_ALGORITHM,
+    extensions: [
+      new x509.BasicConstraintsExtension(true, opts?.pathLength, true),
+      ...(opts?.extraExtensions ?? [])
+    ]
+  });
+  return { cert, keys };
+};
+
+const makeLeaf = async (
+  name: string,
+  issuer: TIssued,
+  opts?: { usages?: string[]; dnsName?: string }
+): Promise<TIssued> => {
+  const keys = await generateKeys();
+  const cert = await x509.X509CertificateGenerator.create({
+    serialNumber: nextSerial(),
+    subject: `CN=${name}`,
+    issuer: issuer.cert.subject,
+    notBefore: NOT_BEFORE,
+    notAfter: NOT_AFTER,
+    signingKey: issuer.keys.privateKey,
+    publicKey: keys.publicKey,
+    signingAlgorithm: SIGNING_ALGORITHM,
+    extensions: [
+      new x509.BasicConstraintsExtension(false),
+      ...(opts?.usages ? [ekuExtension(opts.usages)] : []),
+      ...(opts?.dnsName ? [new x509.SubjectAlternativeNameExtension([{ type: "dns", value: opts.dnsName }])] : [])
+    ]
+  });
+  return { cert, keys };
+};
+
+const toPem = (cert: x509.X509Certificate) => cert.toString("pem");
+
+const createIdentity = async (name: string) => {
+  const res = await testServer.inject({
+    method: "POST",
+    url: "/api/v1/identities",
+    body: { name, role: OrgMembershipRole.Member, organizationId: seedData1.organization.id },
+    headers: { authorization: `Bearer ${jwtAuthToken}` }
+  });
+  expect(res.statusCode).toBe(200);
+  return res.json().identity as { id: string };
+};
+
+const deleteIdentity = async (identityId: string) => {
+  const res = await testServer.inject({
+    method: "DELETE",
+    url: `/api/v1/identities/${identityId}`,
+    headers: { authorization: `Bearer ${jwtAuthToken}` }
+  });
+  expect(res.statusCode).toBe(200);
+};
+
+const attachTlsCertAuth = async (
+  identityId: string,
+  caCertificate: string,
+  verifyClientCertificateChain: boolean
+) => {
+  const res = await testServer.inject({
+    method: "POST",
+    url: `/api/v1/auth/tls-cert-auth/identities/${identityId}`,
+    headers: { authorization: `Bearer ${jwtAuthToken}` },
+    body: { caCertificate, verifyClientCertificateChain }
+  });
+  expect(res.statusCode).toBe(200);
+};
+
+const login = (identityId: string, chain: x509.X509Certificate[]) =>
+  testServer.inject({
+    method: "POST",
+    url: "/api/v1/auth/tls-cert-auth/login",
+    headers: { "x-identity-tls-cert-auth-client-cert": encodeURIComponent(chain.map(toPem).join("")) },
+    body: { identityId }
+  });
+
+/**
+ * Drives the real login route end to end: the CA certificate is stored through the API (KMS
+ * encrypted), and the client chain arrives in the header a TLS-terminating proxy would set.
+ */
+const withIdentity = async (
+  opts: { caCertificate: x509.X509Certificate; verifyChain: boolean },
+  run: (identityId: string) => Promise<void>
+) => {
+  const identity = await createIdentity(`tls-cert-auth-${nextSerial()}`);
+  try {
+    await attachTlsCertAuth(identity.id, toPem(opts.caCertificate), opts.verifyChain);
+    await run(identity.id);
+  } finally {
+    await deleteIdentity(identity.id);
+  }
+};
+
+describe("Identity TLS certificate auth v1", async () => {
+  describe("direct issuer mode", async () => {
+    test("issues an access token for a client certificate the configured CA issued", async () => {
+      const ca = await makeRoot("Direct Mode CA");
+      const leaf = await makeLeaf("workload", ca, { usages: [CLIENT_AUTH_EKU] });
+
+      await withIdentity({ caCertificate: ca.cert, verifyChain: false }, async (identityId) => {
+        const res = await login(identityId, [leaf.cert]);
+        expect(res.statusCode).toBe(200);
+        expect(res.json().accessToken).toEqual(expect.any(String));
+        expect(res.json().tokenType).toBe("Bearer");
+      });
+    });
+
+    test("denies a client certificate whose extended key usage omits client authentication", async () => {
+      const ca = await makeRoot("Direct Mode CA");
+      const leaf = await makeLeaf("workload", ca, { usages: [SERVER_AUTH_EKU] });
+
+      await withIdentity({ caCertificate: ca.cert, verifyChain: false }, async (identityId) => {
+        const res = await login(identityId, [leaf.cert]);
+        expect(res.statusCode).toBe(401);
+        expect(res.json().message).toContain("not valid for client authentication");
+      });
+    });
+
+    test("denies a chain whose configured CA may not issue for client authentication", async () => {
+      const ca = await makeRoot("ServerAuth Only CA", [ekuExtension([SERVER_AUTH_EKU])]);
+      const leaf = await makeLeaf("workload", ca, { usages: [CLIENT_AUTH_EKU] });
+
+      await withIdentity({ caCertificate: ca.cert, verifyChain: false }, async (identityId) => {
+        const res = await login(identityId, [leaf.cert]);
+        expect(res.statusCode).toBe(401);
+        expect(res.json().message).toContain("A CA in the certificate chain is not permitted");
+      });
+    });
+  });
+
+  describe("trust anchor mode", async () => {
+    test("issues an access token for a leaf presented with its intermediate", async () => {
+      const root = await makeRoot("Stable Root CA");
+      const intermediate = await makeIntermediate("Rotating Intermediate CA", root);
+      const leaf = await makeLeaf("workload", intermediate, { usages: [CLIENT_AUTH_EKU] });
+
+      await withIdentity({ caCertificate: root.cert, verifyChain: true }, async (identityId) => {
+        const res = await login(identityId, [leaf.cert, intermediate.cert]);
+        expect(res.statusCode).toBe(200);
+        expect(res.json().accessToken).toEqual(expect.any(String));
+      });
+    });
+
+    test("denies a chain through an intermediate that may not delegate client authentication", async () => {
+      const root = await makeRoot("Stable Root CA");
+      const serverOnly = await makeIntermediate("ServerAuth Only Intermediate", root, {
+        extraExtensions: [ekuExtension([SERVER_AUTH_EKU])]
+      });
+      const leaf = await makeLeaf("workload", serverOnly, { usages: [CLIENT_AUTH_EKU] });
+
+      await withIdentity({ caCertificate: root.cert, verifyChain: true }, async (identityId) => {
+        const res = await login(identityId, [leaf.cert, serverOnly.cert]);
+        expect(res.statusCode).toBe(401);
+        expect(res.json().message).toContain("A CA in the certificate chain is not permitted");
+      });
+    });
+
+    test("denies a leaf named outside its issuing CA's permitted namespace", async () => {
+      const root = await makeRoot("Stable Root CA");
+      const constrained = await makeIntermediate("Constrained Intermediate CA", root, {
+        extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
+      });
+      const leaf = await makeLeaf("victim.example.com", constrained, {
+        usages: [CLIENT_AUTH_EKU],
+        dnsName: "victim.example.com"
+      });
+
+      await withIdentity({ caCertificate: root.cert, verifyChain: true }, async (identityId) => {
+        const res = await login(identityId, [leaf.cert, constrained.cert]);
+        expect(res.statusCode).toBe(401);
+        expect(res.json().message).toContain("outside the namespace its issuing CA is permitted to certify");
+      });
+    });
+
+    test("denies a chain deeper than a CA's path length permits", async () => {
+      const root = await makeRoot("Stable Root CA");
+      const limited = await makeIntermediate("PathLen Zero CA", root, { pathLength: 0 });
+      const extra = await makeIntermediate("Extra Intermediate CA", limited);
+      const leaf = await makeLeaf("workload", extra, { usages: [CLIENT_AUTH_EKU] });
+
+      await withIdentity({ caCertificate: root.cert, verifyChain: true }, async (identityId) => {
+        const res = await login(identityId, [leaf.cert, limited.cert, extra.cert]);
+        expect(res.statusCode).toBe(401);
+        expect(res.json().message).toContain("more intermediate CAs than a CA in it permits");
+      });
+    });
+
+    test("issues an access token when a cross-signed alternative path satisfies the constraints", async () => {
+      // The issuing CA is cross-signed: the copy under the pathLen:0 parent is presented first, so
+      // a search that commits to the first signature-valid path would deny a client that has a
+      // valid path available through the unconstrained parent.
+      const root = await makeRoot("Stable Root CA");
+      const constrainedParent = await makeIntermediate("PathLen Zero Parent CA", root, { pathLength: 0 });
+      const openParent = await makeIntermediate("Unconstrained Parent CA", root);
+
+      const sharedKeys = await generateKeys();
+      const viaConstrained = await makeIntermediate("Shared Issuing CA", constrainedParent, { keys: sharedKeys });
+      const viaOpen = await makeIntermediate("Shared Issuing CA", openParent, { keys: sharedKeys });
+      const leaf = await makeLeaf("workload", viaOpen, { usages: [CLIENT_AUTH_EKU] });
+
+      await withIdentity({ caCertificate: root.cert, verifyChain: true }, async (identityId) => {
+        const res = await login(identityId, [
+          leaf.cert,
+          constrainedParent.cert,
+          openParent.cert,
+          viaConstrained.cert,
+          viaOpen.cert
+        ]);
+        expect(res.statusCode).toBe(200);
+        expect(res.json().accessToken).toEqual(expect.any(String));
+      });
+    });
+  });
+});

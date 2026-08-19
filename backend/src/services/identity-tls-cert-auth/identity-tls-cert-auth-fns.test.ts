@@ -823,37 +823,13 @@ describe("verifyClientCertificateChain", () => {
     expect(result).toEqual({ ok: true });
   });
 
-  test("accepts a cross-signed chain under every presentation order of the intermediates", async () => {
-    // The presented chain is documented as order-independent, and with cross-signing the order
-    // decides which path the search reaches first. Every ordering must reach the same verdict,
-    // not just the one where the valid path happens to come first.
-    const constrainedSub = await makeIntermediate("PathLen Zero Sub CA", root, {
-      serialNumber: "70",
-      pathLength: 0
-    });
-    const namespaceSub = await makeIntermediate("Namespace Constrained Sub CA", root, {
-      serialNumber: "71",
-      extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
-    });
-    const openSub = await makeIntermediate("Unconstrained Sub CA", root, { serialNumber: "72" });
-
-    const sharedKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const crossSigned = await Promise.all([
-      makeCrossSigned("Shared Issuing CA", sharedKeys, constrainedSub, "73"),
-      makeCrossSigned("Shared Issuing CA", sharedKeys, namespaceSub, "74"),
-      makeCrossSigned("Shared Issuing CA", sharedKeys, openSub, "75")
-    ]);
-    const leaf = await makeLeaf(
-      "victim.example.com",
-      { cert: crossSigned[2], keys: sharedKeys },
-      {
-        dnsName: "victim.example.com"
-      }
-    );
-
-    const presented = [constrainedSub.cert, namespaceSub.cert, openSub.cert, ...crossSigned];
+  // The presented chain is documented as order-independent, and with cross-signing the order
+  // decides which path the search reaches first. Every ordering has to reach the same verdict, not
+  // just the one where the valid path happens to come first. Both constraint kinds get their own
+  // sweep because they are enforced by different code: `pathLenConstraint` synchronously here,
+  // name constraints through the async pkijs engine.
+  const expectOrderIndependentAccept = async (leaf: TIssued, presented: x509.X509Certificate[]) => {
     const orderings = permutationsOf(presented);
-
     const results = await Promise.all(
       orderings.map((ordering) =>
         verifyClientCertificateChain({
@@ -865,8 +841,44 @@ describe("verifyClientCertificateChain", () => {
       )
     );
 
-    expect(orderings).toHaveLength(720);
+    expect(orderings).toHaveLength(24);
     expect(results.filter((result) => !result.ok)).toEqual([]);
+  };
+
+  test("accepts a cross-signed chain under every presentation order, past a path length violation", async () => {
+    const constrainedParent = await makeIntermediate("PathLen Zero Sub CA", root, {
+      serialNumber: "70",
+      pathLength: 0
+    });
+    const openParent = await makeIntermediate("Unconstrained Sub CA", root, { serialNumber: "71" });
+
+    const sharedKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const viaConstrained = await makeCrossSigned("Shared Issuing CA", sharedKeys, constrainedParent, "72");
+    const viaOpen = await makeCrossSigned("Shared Issuing CA", sharedKeys, openParent, "73");
+    const leaf = await makeLeaf("workload", { cert: viaOpen, keys: sharedKeys });
+
+    await expectOrderIndependentAccept(leaf, [constrainedParent.cert, openParent.cert, viaConstrained, viaOpen]);
+  });
+
+  test("accepts a cross-signed chain under every presentation order, past a name constraint violation", async () => {
+    const constrainedParent = await makeIntermediate("Namespace Constrained Sub CA", root, {
+      serialNumber: "74",
+      extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
+    });
+    const openParent = await makeIntermediate("Unconstrained Sub CA", root, { serialNumber: "75" });
+
+    const sharedKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const viaConstrained = await makeCrossSigned("Shared Issuing CA", sharedKeys, constrainedParent, "76");
+    const viaOpen = await makeCrossSigned("Shared Issuing CA", sharedKeys, openParent, "77");
+    const leaf = await makeLeaf(
+      "victim.example.com",
+      { cert: viaOpen, keys: sharedKeys },
+      {
+        dnsName: "victim.example.com"
+      }
+    );
+
+    await expectOrderIndependentAccept(leaf, [constrainedParent.cert, openParent.cert, viaConstrained, viaOpen]);
   });
 
   test("reports the constraint violation when every cross-signed path violates one", async () => {
