@@ -13,6 +13,13 @@ import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import {
+  isTelemetryEnabled as isOtelMetricsEnabled,
+  recordTelemetryAggregationBacklogMetric,
+  recordTelemetryAggregationDroppedMetric,
+  recordTelemetryAggregationPublishedMetric,
+  TelemetryAggregationDropReason
+} from "@app/lib/telemetry/metrics";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -69,7 +76,7 @@ export type TTelemetryServiceFactory = ReturnType<typeof telemetryServiceFactory
 export type TTelemetryServiceFactoryDep = {
   keyStore: Pick<
     TKeyStoreFactory,
-    "incrementBy" | "setItemWithExpiryNX" | "setExpiry" | "streamAdd" | "streamCollect" | "streamTrim"
+    "incrementBy" | "setItemWithExpiryNX" | "setExpiry" | "streamAdd" | "streamCollect" | "streamTrim" | "streamLength"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -577,15 +584,35 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       );
     }
 
+    const events = parseEventPayloads(entries, `event=${eventType} bucket=${bucketId}`);
+
+    recordTelemetryAggregationDroppedMetric({
+      eventType,
+      reason: TelemetryAggregationDropReason.Unparseable,
+      count: entries.length - events.length
+    });
+
     return {
-      events: parseEventPayloads(entries, `event=${eventType} bucket=${bucketId}`),
+      events,
       collected: entries.length,
       lastId
     };
   };
 
+  const recordShardBacklog = async (streamKey: string, eventType: string, bucketId: string) => {
+    // The XLEN is bought solely for this metric, so it is not worth a round trip per drained shard
+    // on the instances (the default) that export nothing.
+    if (!isOtelMetricsEnabled()) return;
+
+    try {
+      recordTelemetryAggregationBacklogMetric({ eventType, backlog: await keyStore.streamLength(streamKey) });
+    } catch (error) {
+      logger.error(error, `Failed to measure backlog on bucket ${bucketId} for ${eventType}`);
+    }
+  };
+
   const processBucketEvents = async (eventType: string, bucketId: string, orgsIdentifyAttempted: Set<string>) => {
-    if (!postHog) return 0;
+    if (!postHog) return { published: 0, expired: 0 };
 
     const streamKey = KeyStorePrefixes.TelemetryAggregatedEventStream(eventType, bucketId);
 
@@ -595,8 +622,14 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       logger.error(error, `Failed to refresh key expiry on bucket ${bucketId} for ${eventType}`);
     }
 
+    let expired = 0;
     try {
-      await keyStore.streamTrim(streamKey, `${Date.now() - TELEMETRY_EVENT_STREAM_RETENTION_MS}-0`);
+      expired = await keyStore.streamTrim(streamKey, `${Date.now() - TELEMETRY_EVENT_STREAM_RETENTION_MS}-0`);
+      recordTelemetryAggregationDroppedMetric({
+        eventType,
+        reason: TelemetryAggregationDropReason.Retention,
+        count: expired
+      });
     } catch (error) {
       logger.error(error, `Failed to apply retention trim to bucket ${bucketId} for ${eventType}`);
     }
@@ -604,7 +637,10 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     try {
       const { events, collected, lastId } = await collectShardEvents(streamKey, eventType, bucketId);
 
-      if (collected === 0 || !lastId) return 0;
+      if (collected === 0 || !lastId) {
+        recordTelemetryAggregationBacklogMetric({ eventType, backlog: 0 });
+        return { published: 0, expired };
+      }
 
       await publishAggregatedEvents(eventType, events, orgsIdentifyAttempted);
 
@@ -612,11 +648,14 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
       await keyStore.streamTrim(streamKey, lastId, true);
 
+      recordTelemetryAggregationPublishedMetric({ eventType, count: events.length });
+      await recordShardBacklog(streamKey, eventType, bucketId);
+
       logger.info(`Processed ${events.length} events from bucket ${bucketId} for ${eventType}`);
-      return events.length;
+      return { published: events.length, expired };
     } catch (error) {
       logger.error(error, `Failed to process bucket ${bucketId} for ${eventType}`);
-      return 0;
+      return { published: 0, expired };
     }
   };
 
@@ -629,6 +668,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
     for (const eventType of POSTHOG_AGGREGATED_EVENTS) {
       let totalProcessed = 0;
+      let totalExpired = 0;
       logger.info(`Starting bucket processing for ${eventType}`);
 
       for (let i = 0; i < TELEMETRY_BUCKET_NAMES.length; i += BUCKET_CONCURRENCY) {
@@ -637,10 +677,19 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
         const results = await Promise.all(
           batch.map((bucketId) => processBucketEvents(eventType, bucketId, orgsIdentifyAttempted))
         );
-        totalProcessed += results.reduce((sum, n) => sum + n, 0);
+        totalProcessed += results.reduce((sum, result) => sum + result.published, 0);
+        totalExpired += results.reduce((sum, result) => sum + result.expired, 0);
       }
 
       logger.info(`Completed processing ${totalProcessed} total events for ${eventType}`);
+
+      if (totalExpired > 0) {
+        logger.warn(
+          `Telemetry aggregation dropped ${totalExpired} events for ${eventType} that aged past the ${
+            TELEMETRY_EVENT_STREAM_RETENTION_MS / 60_000
+          }-minute retention window before they could be published`
+        );
+      }
     }
   };
 

@@ -287,6 +287,7 @@ export type TKeyStoreFactory = {
   ) => Promise<string | null>;
   streamRange: (key: string, start: string, end: string, count?: number) => Promise<[string, string[]][]>;
   streamTrim: (key: string, minId: string, inclusive?: boolean) => Promise<number>;
+  streamLength: (key: string) => Promise<number>;
   streamCollect: (
     key: string,
     batchSize: number,
@@ -566,6 +567,8 @@ export const keyStoreFactory = (
     return primaryRedis.xrange(key, start, end);
   };
 
+  const streamLength = async (key: string) => primaryRedis.xlen(key);
+
   const streamTrim = async (key: string, minId: string, inclusive = false) => {
     let id = minId;
     if (inclusive) {
@@ -650,6 +653,7 @@ export const keyStoreFactory = (
     listRemove,
     listLength,
     streamAdd,
+    streamLength,
     streamRange,
     streamTrim,
     streamCollect

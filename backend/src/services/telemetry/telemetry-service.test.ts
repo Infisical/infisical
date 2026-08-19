@@ -17,8 +17,10 @@ vi.mock("@app/lib/config/env", async (importOriginal) => ({
   getConfig: () => mockConfig
 }));
 
+const loggerMock = vi.hoisted(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
+
 vi.mock("@app/lib/logger", () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+  logger: loggerMock
 }));
 
 vi.mock("@fastify/request-context", () => ({
@@ -35,6 +37,20 @@ const postHogClient = {
 
 vi.mock("posthog-node", () => ({
   PostHog: vi.fn(() => postHogClient)
+}));
+
+// The drain's health signals: what it published, what it lost, and what it left behind. Spied here
+// because a limit (MAXLEN, collect ceiling, retention window) can only be tuned against them.
+const metrics = vi.hoisted(() => ({
+  recordTelemetryAggregationPublishedMetric: vi.fn(),
+  recordTelemetryAggregationDroppedMetric: vi.fn(),
+  recordTelemetryAggregationBacklogMetric: vi.fn(),
+  isTelemetryEnabled: vi.fn(() => true)
+}));
+
+vi.mock("@app/lib/telemetry/metrics", () => ({
+  ...metrics,
+  TelemetryAggregationDropReason: { Retention: "retention", Unparseable: "unparseable" }
 }));
 
 // eslint-disable-next-line import/first
@@ -83,7 +99,8 @@ const createHarness = () => {
     streamCollect: vi.fn<(key: string) => Promise<{ entries: [string, string[]][]; lastId: string | null }>>(
       async () => ({ entries: [], lastId: null })
     ),
-    streamTrim: vi.fn<(key: string, minId: string, inclusive?: boolean) => Promise<number>>(async () => 0)
+    streamTrim: vi.fn<(key: string, minId: string, inclusive?: boolean) => Promise<number>>(async () => 0),
+    streamLength: vi.fn<(key: string) => Promise<number>>(async () => 0)
   };
 
   const telemetryService = telemetryServiceFactory({
@@ -99,6 +116,7 @@ const createHarness = () => {
 describe("telemetry aggregated event storage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    metrics.isTelemetryEnabled.mockReturnValue(true);
   });
 
   test("appends an aggregated event to its shard stream instead of a per-event key", async () => {
@@ -375,6 +393,109 @@ describe("telemetry aggregated event storage", () => {
     keyStore.streamCollect.mockImplementation(async (key) =>
       key === streamKey ? collectResult([pulledEvent()], "3-0") : { entries: [], lastId: null }
     );
+
+    await telemetryService.processAggregatedEvents();
+
+    expect(postHogClient.capture).toHaveBeenCalledTimes(1);
+    expect(drainTrims(keyStore)).toEqual([[streamKey, "3-0", true]]);
+  });
+  test("counts what the retention trim aged out as a drop, and warns once per event type", async () => {
+    const { keyStore, telemetryService } = createHarness();
+    const bucketId = telemetryService.getBucketForDistinctId("user-1");
+    const streamKey = `telemetry-agg-stream:${PostHogEventTypes.SecretPulled}:${bucketId}`;
+
+    keyStore.streamTrim.mockImplementation(async (key, _minId, inclusive) =>
+      key === streamKey && inclusive === undefined ? 4 : 0
+    );
+
+    await telemetryService.processAggregatedEvents();
+
+    expect(metrics.recordTelemetryAggregationDroppedMetric).toHaveBeenCalledWith({
+      eventType: PostHogEventTypes.SecretPulled,
+      reason: "retention",
+      count: 4
+    });
+    expect(loggerMock.warn).toHaveBeenCalledTimes(1);
+  });
+
+  test("counts an entry it cannot parse as a drop rather than losing it silently", async () => {
+    const { keyStore, telemetryService } = createHarness();
+    const bucketId = telemetryService.getBucketForDistinctId("user-1");
+    const streamKey = `telemetry-agg-stream:${PostHogEventTypes.SecretPulled}:${bucketId}`;
+
+    keyStore.streamCollect.mockImplementation(async (key) => {
+      if (key !== streamKey) return { entries: [], lastId: null };
+      const { entries } = collectResult([pulledEvent()], "5-0");
+      return { entries: [...entries, ["5-0", ["data", "{not json"]] as [string, string[]]], lastId: "5-0" };
+    });
+
+    await telemetryService.processAggregatedEvents();
+
+    expect(metrics.recordTelemetryAggregationDroppedMetric).toHaveBeenCalledWith({
+      eventType: PostHogEventTypes.SecretPulled,
+      reason: "unparseable",
+      count: 1
+    });
+    expect(metrics.recordTelemetryAggregationPublishedMetric).toHaveBeenCalledWith({
+      eventType: PostHogEventTypes.SecretPulled,
+      count: 1
+    });
+  });
+
+  test("reports the shard backlog the run left behind, measured after the drain trim", async () => {
+    const { keyStore, telemetryService } = createHarness();
+    const bucketId = telemetryService.getBucketForDistinctId("user-1");
+    const streamKey = `telemetry-agg-stream:${PostHogEventTypes.SecretPulled}:${bucketId}`;
+    const trimmedBeforeLength: boolean[] = [];
+
+    keyStore.streamCollect.mockImplementation(async (key) =>
+      key === streamKey ? collectResult([pulledEvent()], "3-0") : { entries: [], lastId: null }
+    );
+    keyStore.streamLength.mockImplementation(async (key) => {
+      trimmedBeforeLength.push(drainTrims(keyStore).some(([trimmedKey]) => trimmedKey === key));
+      return 12;
+    });
+
+    await telemetryService.processAggregatedEvents();
+
+    // Only the drained shard is measured; an empty shard reports zero without spending a round trip.
+    expect(keyStore.streamLength).toHaveBeenCalledTimes(1);
+    expect(trimmedBeforeLength).toEqual([true]);
+    expect(metrics.recordTelemetryAggregationBacklogMetric).toHaveBeenCalledWith({
+      eventType: PostHogEventTypes.SecretPulled,
+      backlog: 12
+    });
+    expect(metrics.recordTelemetryAggregationBacklogMetric).toHaveBeenCalledWith({
+      eventType: PostHogEventTypes.SecretPulled,
+      backlog: 0
+    });
+  });
+
+  test("skips the backlog round trip when nothing will export it", async () => {
+    const { keyStore, telemetryService } = createHarness();
+    const bucketId = telemetryService.getBucketForDistinctId("user-1");
+    const streamKey = `telemetry-agg-stream:${PostHogEventTypes.SecretPulled}:${bucketId}`;
+
+    metrics.isTelemetryEnabled.mockReturnValue(false);
+    keyStore.streamCollect.mockImplementation(async (key) =>
+      key === streamKey ? collectResult([pulledEvent()], "3-0") : { entries: [], lastId: null }
+    );
+
+    await telemetryService.processAggregatedEvents();
+
+    expect(keyStore.streamLength).not.toHaveBeenCalled();
+    expect(drainTrims(keyStore)).toEqual([[streamKey, "3-0", true]]);
+  });
+
+  test("publishes the batch even when the backlog measurement fails", async () => {
+    const { keyStore, telemetryService } = createHarness();
+    const bucketId = telemetryService.getBucketForDistinctId("user-1");
+    const streamKey = `telemetry-agg-stream:${PostHogEventTypes.SecretPulled}:${bucketId}`;
+
+    keyStore.streamCollect.mockImplementation(async (key) =>
+      key === streamKey ? collectResult([pulledEvent()], "3-0") : { entries: [], lastId: null }
+    );
+    keyStore.streamLength.mockRejectedValue(new Error("redis hiccup"));
 
     await telemetryService.processAggregatedEvents();
 

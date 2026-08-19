@@ -19,6 +19,8 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "audit_log.actor_type",
   "audit_log.backend",
   "audit_log.drop_reason",
+  "telemetry_aggregation.event_type",
+  "telemetry_aggregation.drop_reason",
   "audit_log_stream.provider",
   "audit_log_stream.id",
   "scim.operation",
