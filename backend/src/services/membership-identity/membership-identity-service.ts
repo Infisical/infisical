@@ -10,7 +10,7 @@ import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
-import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
+import { getActiveLockoutAuthMethodsForIdentities } from "@app/services/identity/identity-fns";
 import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
@@ -52,7 +52,7 @@ type TMembershipIdentityServiceFactoryDep = {
     "cleanupActorApplicationMemberships"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
+  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem" | "getItems">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
   identityAccessTokenService: Pick<
@@ -515,15 +515,21 @@ export const membershipIdentityServiceFactory = ({
       }
     });
     const filtered = memberships.data.filter((el) => listFilter({ identityId: el.identity.id }));
-    const withLockouts = await Promise.all(
-      filtered.map(async (el) => ({
-        ...el,
-        identity: {
-          ...el.identity,
-          activeLockoutAuthMethods: await getIdentityActiveLockoutAuthMethods(el.identity.id, keyStore)
-        }
-      }))
+    const lockoutsByIdentityId = await getActiveLockoutAuthMethodsForIdentities(
+      filtered.map((el) => ({
+        id: el.identity.id,
+        authMethods: el.identity.authMethods,
+        universalAuthClientId: el.identity.universalAuthClientId
+      })),
+      keyStore
     );
+    const withLockouts = filtered.map((el) => ({
+      ...el,
+      identity: {
+        ...el.identity,
+        activeLockoutAuthMethods: lockoutsByIdentityId[el.identity.id] ?? []
+      }
+    }));
     return { ...memberships, data: withLockouts };
   };
 
