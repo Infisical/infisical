@@ -6,6 +6,7 @@ import { z } from "zod";
 import { SecretFolderRole, TOrganizations } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
+import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -453,6 +454,27 @@ export const getFolderPermissionVersionFingerprint = async (
   projectId: string,
   keyStore: Pick<TKeyStoreFactory, "pgGetIntItem">
 ) => String((await keyStore.pgGetIntItem(KeyStorePrefixes.ProjectFolderPermissionVersion(projectId))) ?? 0);
+
+export const isActiveRole = <U extends { isTemporary?: boolean; temporaryAccessEndTime?: Date | null }>(
+  role: U
+): boolean =>
+  !role.isTemporary ||
+  Boolean(role.isTemporary && role.temporaryAccessEndTime && new Date() < role.temporaryAccessEndTime);
+
+// Empty string when the actor holds no active folder grants: the folder-permission version counter is
+// project-wide, so a bump from another actor's grant re-fetches the cached blob, but an actor whose own
+// list is still empty must keep a stable fingerprint (and therefore a stable ETag). Active-filtering at
+// compute time makes a temporary grant's expiry flip the fingerprint without any counter bump.
+export const computeFolderScopedPrivilegeFingerprint = (
+  privileges: TCachedFolderScopedPrivileges["privileges"]
+): string => {
+  const active = privileges.filter(isActiveRole);
+  if (!active.length) return "";
+  const stable = active
+    .map(({ id, folderId, role, environmentSlug, secretPath }) => ({ id, folderId, role, environmentSlug, secretPath }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  return generateCacheKeyFromData(stable);
+};
 
 export const fetchFolderScopedPrivileges = async (
   projectId: string,

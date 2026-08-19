@@ -144,7 +144,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: TSecretTagDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectFolderPermissionFingerprint">;
   permissionDAL: Pick<TPermissionDALFactory, "getPermissionFingerprint">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
@@ -1054,7 +1054,12 @@ export const secretV2BridgeServiceFactory = ({
         actorOrgId,
         actionProjectType: ActionProjectType.SecretManager
       });
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
+      environments.forEach((environment) => {
+        throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment,
+          secretPath: path
+        });
+      });
     }
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, path);
@@ -1101,7 +1106,10 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      environment,
+      secretPath: path
+    });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) return 0;
@@ -1212,7 +1220,12 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
     if (!isInternal) {
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
+      environments.forEach((environment) => {
+        throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment,
+          secretPath: path
+        });
+      });
     }
 
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, path);
@@ -1263,23 +1276,30 @@ export const secretV2BridgeServiceFactory = ({
     } = dto;
 
     let permissionFingerprint = "";
+    let folderPermissionFingerprint = "";
 
     if (actor === ActorType.USER || actor === ActorType.IDENTITY) {
       // Cache the fingerprint for the marker window so repeated polls
       // skip the per-request DB query. Same 10s TTL as getProjectPermission's marker, so no new staleness.
       // This gates only the Etag cache, the real permission check is still done on the getProjectPermission call.
-      permissionFingerprint = await withCache({
-        keyStore,
-        key: KeyStorePrefixes.SecretPermissionFingerprint(projectId, actor, actorId),
-        ttlSeconds: KeyStoreTtls.ProjectPermissionMarkerTtlSeconds,
-        fetcher: () =>
-          permissionDAL.getPermissionFingerprint({
-            projectId,
-            orgId: actorOrgId,
-            actorId,
-            actorType: actor
-          })
-      });
+      // Folder-scoped grants are excluded from getPermissionFingerprint (they live behind their own
+      // version-counter cache), so they get their own actor-scoped fingerprint: empty when the actor
+      // holds no folder grants, keeping other actors' grant changes from churning this actor's ETag.
+      [permissionFingerprint, folderPermissionFingerprint] = await Promise.all([
+        withCache({
+          keyStore,
+          key: KeyStorePrefixes.SecretPermissionFingerprint(projectId, actor, actorId),
+          ttlSeconds: KeyStoreTtls.ProjectPermissionMarkerTtlSeconds,
+          fetcher: () =>
+            permissionDAL.getPermissionFingerprint({
+              projectId,
+              orgId: actorOrgId,
+              actorId,
+              actorType: actor
+            })
+        }),
+        permissionService.getProjectFolderPermissionFingerprint({ projectId, actor, actorId })
+      ]);
     }
 
     const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId, utcDayStamp());
@@ -1300,7 +1320,7 @@ export const secretV2BridgeServiceFactory = ({
       throwOnMissingReadValuePermission,
       ...params
     });
-    const etagField = `${actorId}:${permissionFingerprint}:${requestParamsHash}`;
+    const etagField = `${actorId}:${permissionFingerprint}:${folderPermissionFingerprint}:${requestParamsHash}`;
 
     const hasIfNoneMatch = ifNoneMatch !== undefined;
     let etagMissReason: SecretEtagMissReason | undefined;
@@ -1322,7 +1342,10 @@ export const secretV2BridgeServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
+    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      environment,
+      secretPath: path
+    });
 
     recordSecretReadMetric({
       environment,
@@ -1331,11 +1354,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const cachedSecretDalVersion = await keyStore.pgGetIntItem(SecretServiceCacheKeys.getSecretDalVersion(projectId));
     const secretDalVersion = Number(cachedSecretDalVersion || 0);
-    // The ETag field keys on permissionFingerprint alone — the ETag value is a content hash of the
-    // payload, so a shared field across auth contexts can at worst miss a 304, never serve stale content.
-    // The cache blob is returned without re-filtering, so its key additionally folds in the interpolated
-    // permission.rules: those carry request-time identity.auth context that the fingerprint (membership
-    // rows only) does not, and two auth contexts for the same identity must not share a cached payload.
+
     const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer({
       projectId,
       version: secretDalVersion,

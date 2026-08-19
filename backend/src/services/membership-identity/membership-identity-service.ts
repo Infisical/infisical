@@ -41,7 +41,11 @@ type TMembershipIdentityServiceFactoryDep = {
   roleDAL: Pick<TRoleDALFactory, "find">;
   permissionService: Pick<
     TPermissionServiceFactory,
-    "getOrgPermission" | "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermissionByRoles"
+    | "getOrgPermission"
+    | "getProjectPermission"
+    | "getProjectPermissionByRoles"
+    | "getOrgPermissionByRoles"
+    | "invalidateProjectFolderPermissionCache"
   >;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
@@ -428,6 +432,7 @@ export const membershipIdentityServiceFactory = ({
       if (scopeData.scope === AccessScope.Project) {
         const projectScopeFields = scopeDatabaseFields as { scopeProjectId?: string };
         if (projectScopeFields.scopeProjectId) {
+          await permissionService.invalidateProjectFolderPermissionCache(projectScopeFields.scopeProjectId, tx);
           await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
             {
               projectId: projectScopeFields.scopeProjectId,

@@ -4,6 +4,7 @@ import { SecretFolderRole } from "@app/db/schemas";
 
 import { SECRET_FOLDER_ROLE_PERMISSIONS } from "./default-roles";
 import {
+  ProjectPermissionActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSecretActions,
@@ -78,7 +79,7 @@ describe("Secret folder roles", () => {
       const edit = abilityFor(SecretFolderRole.Edit);
 
       expect(edit.can(ProjectPermissionSecretActions.Create, ProjectPermissionSub.Secrets)).toBe(true);
-      expect(edit.can(ProjectPermissionSecretFolderActions.Create, ProjectPermissionSub.SecretFolders)).toBe(true);
+      expect(edit.can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretFolders)).toBe(true);
       expect(
         edit.can(ProjectPermissionDynamicSecretActions.CreateRootCredential, ProjectPermissionSub.DynamicSecrets)
       ).toBe(false);
@@ -105,9 +106,7 @@ describe("Secret folder roles", () => {
 
     test("no tier can delete a folder", () => {
       LADDER.forEach((role) => {
-        expect(
-          abilityFor(role).can(ProjectPermissionSecretFolderActions.Delete, ProjectPermissionSub.SecretFolders)
-        ).toBe(false);
+        expect(abilityFor(role).can(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretFolders)).toBe(false);
       });
     });
   });

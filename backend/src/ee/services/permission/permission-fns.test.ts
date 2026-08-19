@@ -3,7 +3,11 @@ import { describe, expect, test } from "vitest";
 
 import { conditionsMatcher } from "@app/lib/casl";
 
-import { expandLegacyForbidActions, throwIfMissingSecretReadValueOrDescribePermission } from "./permission-fns";
+import {
+  computeFolderScopedPrivilegeFingerprint,
+  expandLegacyForbidActions,
+  throwIfMissingSecretReadValueOrDescribePermission
+} from "./permission-fns";
 import {
   ProjectPermissionActions,
   ProjectPermissionGroupActions,
@@ -249,5 +253,50 @@ describe("throwIfMissingSecretReadValueOrDescribePermission", () => {
         secretPath: "/"
       })
     ).toThrow();
+  });
+});
+
+describe("computeFolderScopedPrivilegeFingerprint", () => {
+  const grant = (overrides: Partial<Parameters<typeof computeFolderScopedPrivilegeFingerprint>[0][number]> = {}) => ({
+    id: "priv-1",
+    folderId: "folder-1",
+    role: "viewer",
+    environmentSlug: "dev",
+    secretPath: "/app",
+    isTemporary: false,
+    temporaryAccessEndTime: null,
+    ...overrides
+  });
+
+  test("returns empty string when the actor has no grants", () => {
+    expect(computeFolderScopedPrivilegeFingerprint([])).toBe("");
+  });
+
+  test("returns empty string when all grants are expired temporary grants", () => {
+    const expired = grant({ isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 60_000) });
+    expect(computeFolderScopedPrivilegeFingerprint([expired])).toBe("");
+  });
+
+  test("active temporary grants are included", () => {
+    const active = grant({ isTemporary: true, temporaryAccessEndTime: new Date(Date.now() + 60_000) });
+    expect(computeFolderScopedPrivilegeFingerprint([active])).not.toBe("");
+  });
+
+  test("is stable across row ordering", () => {
+    const a = grant({ id: "priv-a", folderId: "folder-a" });
+    const b = grant({ id: "priv-b", folderId: "folder-b", secretPath: "/other" });
+    expect(computeFolderScopedPrivilegeFingerprint([a, b])).toBe(computeFolderScopedPrivilegeFingerprint([b, a]));
+  });
+
+  test("ignores fields outside the grant identity, like temporary access timestamps", () => {
+    const withEnd = grant({ isTemporary: true, temporaryAccessEndTime: new Date(Date.now() + 60_000) });
+    expect(computeFolderScopedPrivilegeFingerprint([withEnd])).toBe(computeFolderScopedPrivilegeFingerprint([grant()]));
+  });
+
+  test("changes when a grant's role or resolved path changes", () => {
+    const base = computeFolderScopedPrivilegeFingerprint([grant()]);
+    expect(computeFolderScopedPrivilegeFingerprint([grant({ role: "editor" })])).not.toBe(base);
+    expect(computeFolderScopedPrivilegeFingerprint([grant({ secretPath: "/renamed" })])).not.toBe(base);
+    expect(computeFolderScopedPrivilegeFingerprint([grant({ environmentSlug: "prod" })])).not.toBe(base);
   });
 });

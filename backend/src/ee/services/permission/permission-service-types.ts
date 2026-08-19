@@ -120,6 +120,11 @@ export type TPermissionServiceFactory = {
     folderScopedPrivileges: TProjectFolderScopedPrivilege[];
   }>;
   invalidateProjectFolderPermissionCache: (projectId: string, tx?: Knex) => Promise<void>;
+  getProjectFolderPermissionFingerprint: (arg: {
+    projectId: string;
+    actor: ActorType.USER | ActorType.IDENTITY;
+    actorId: string;
+  }) => Promise<string>;
   getResourcePermission: (arg: TGetResourcePermissionArg) => Promise<{
     permission: MongoAbility<ResourcePermissionSet, MongoQuery>;
     memberships: Array<TMemberships & { roles: { role: string; customRoleSlug?: string | null }[] }>;
