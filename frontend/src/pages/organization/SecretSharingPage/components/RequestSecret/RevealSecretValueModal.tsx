@@ -1,4 +1,4 @@
-import { ClipboardCheckIcon, Copy } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 
 import {
   Button,
@@ -7,13 +7,9 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-  IconButton,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  DialogTitle
 } from "@app/components/v3";
-import { useToggle } from "@app/hooks";
+import { useTimedReset } from "@app/hooks";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -28,40 +24,31 @@ type ContentProps = {
 };
 
 const Content = ({ secretValue, onClose }: ContentProps) => {
-  const [isSecretValueCopied, setIsSecretValueCopied] = useToggle(false);
+  const [, isSecretValueCopied, setCopyText] = useTimedReset<string>({
+    initialState: "Copy to clipboard"
+  });
 
   return (
     <>
-      <div className="relative flex items-start justify-between rounded-md border border-border bg-container p-2 pr-5 pl-3 text-base text-label">
-        <p className="mr-4 max-h-128 thin-scrollbar min-w-0 overflow-y-auto break-all">
+      <div className="rounded-md border border-border bg-container p-3 text-base text-label">
+        <p className="max-h-128 thin-scrollbar min-w-0 overflow-y-auto font-mono break-all whitespace-pre-wrap">
           {secretValue}
         </p>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <IconButton
-              aria-label="copy icon"
-              variant="ghost"
-              size="sm"
-              className="absolute top-1 right-1"
-              onClick={() => {
-                navigator.clipboard.writeText(secretValue);
-                setIsSecretValueCopied.on();
-              }}
-            >
-              {isSecretValueCopied ? (
-                <ClipboardCheckIcon className="size-4" />
-              ) : (
-                <Copy className="size-4" />
-              )}
-            </IconButton>
-          </TooltipTrigger>
-          <TooltipContent>Click to copy</TooltipContent>
-        </Tooltip>
       </div>
 
       <DialogFooter>
-        <Button variant="outline" onClick={onClose}>
+        <Button variant="ghost" onClick={onClose}>
           Close
+        </Button>
+        <Button
+          variant="project"
+          onClick={async () => {
+            await navigator.clipboard.writeText(secretValue);
+            setCopyText("Copied");
+          }}
+        >
+          {isSecretValueCopied ? <Check /> : <Copy />}
+          {isSecretValueCopied ? "Copied" : "Copy Value"}
         </Button>
       </DialogFooter>
     </>
@@ -77,12 +64,12 @@ export const RevealSecretValueModal = ({ isOpen, onOpenChange, popUp }: Props) =
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Shared secret value</DialogTitle>
-          {data?.secretRequestName && (
-            <DialogDescription>
-              Shared secret value for secret request {data.secretRequestName}
-            </DialogDescription>
-          )}
+          <DialogTitle>Requested Secret Value</DialogTitle>
+          <DialogDescription>
+            {data?.secretRequestName
+              ? `Submitted for ${data.secretRequestName}.`
+              : "Submitted through your secret request."}
+          </DialogDescription>
         </DialogHeader>
         <Content secretValue={data?.secretValue} onClose={() => onOpenChange?.(false)} />
       </DialogContent>
