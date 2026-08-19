@@ -155,6 +155,8 @@ export const OauthClientModal = ({
   });
 
   const flow = useWatch({ control, name: "flow" });
+  const isMissingOidcSso =
+    flow === OauthClientFlow.TokenExchange && !isOidcConfigPending && !hasActiveOidcSso;
 
   useEffect(() => {
     if (popUp?.clientForm?.isOpen) {
@@ -376,7 +378,7 @@ export const OauthClientModal = ({
                   />
                 </>
               )}
-              {flow === OauthClientFlow.TokenExchange && (
+              {flow === OauthClientFlow.TokenExchange && !isMissingOidcSso && (
                 <>
                   <Controller
                     control={control}
@@ -433,7 +435,7 @@ export const OauthClientModal = ({
               variant="org"
               type="submit"
               isPending={isCreating || isUpdating}
-              isDisabled={isCreating || isUpdating}
+              isDisabled={isCreating || isUpdating || isMissingOidcSso}
             >
               {isEditing ? "Save Changes" : "Create Application"}
             </Button>
