@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { createContext, type ReactNode, useContext, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Button } from "../Button";
@@ -11,7 +11,7 @@ import {
   DialogTrigger
 } from "../Dialog";
 import { Field, FieldError, FieldLabel } from "../Field";
-import { Combobox } from "./Combobox";
+import { Combobox, type ComboboxProps } from "./Combobox";
 
 const ENVIRONMENTS = [
   { id: "development", name: "Development" },
@@ -49,6 +49,37 @@ const PROJECTS = Array.from({ length: 18 }, (_, index) => ({
     index % 4 === 0 ? `Project ${index + 1} with a long descriptive name` : `Project ${index + 1}`
 }));
 
+const ComboboxStoryPortalContext = createContext<HTMLElement | null>(null);
+
+const StoryCombobox = <TOption,>(props: ComboboxProps<TOption>) => {
+  const portalContainer = useContext(ComboboxStoryPortalContext);
+  const { modal } = props;
+  return <Combobox {...props} portalContainer={modal ? undefined : portalContainer} />;
+};
+
+const ComboboxStoryFrame = ({
+  children,
+  fullscreen = false
+}: {
+  children: ReactNode;
+  fullscreen?: boolean;
+}) => {
+  const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
+
+  return (
+    <ComboboxStoryPortalContext.Provider value={portalContainer}>
+      <div
+        ref={setPortalContainer}
+        className={
+          fullscreen ? "relative w-full min-w-0 overflow-visible" : "relative min-h-96 w-80"
+        }
+      >
+        {children}
+      </div>
+    </ComboboxStoryPortalContext.Provider>
+  );
+};
+
 const meta = {
   title: "Generic/Combobox",
   component: Combobox,
@@ -63,14 +94,11 @@ const meta = {
     getOptionLabel: () => ""
   },
   decorators: [
-    (Story, context) =>
-      context.parameters.layout === "fullscreen" ? (
+    (Story, context) => (
+      <ComboboxStoryFrame fullscreen={context.parameters.layout === "fullscreen"}>
         <Story />
-      ) : (
-        <div className="w-80">
-          <Story />
-        </div>
-      )
+      </ComboboxStoryFrame>
+    )
   ],
   globals: {
     backgrounds: { value: "card" }
@@ -86,7 +114,7 @@ const DefaultRender = () => {
   return (
     <Field>
       <FieldLabel htmlFor="combobox-environment">Environment</FieldLabel>
-      <Combobox
+      <StoryCombobox
         id="combobox-environment"
         options={ENVIRONMENTS}
         value={value}
@@ -120,7 +148,7 @@ const RichOptionsRender = () => {
   return (
     <Field>
       <FieldLabel htmlFor="combobox-role">Organization role</FieldLabel>
-      <Combobox
+      <StoryCombobox
         id="combobox-role"
         options={ORGANIZATION_ROLES}
         value={value}
@@ -163,7 +191,7 @@ const MultipleRender = () => {
   return (
     <Field>
       <FieldLabel htmlFor="combobox-projects">Projects</FieldLabel>
-      <Combobox
+      <StoryCombobox
         id="combobox-projects"
         multiple
         options={PROJECTS}
@@ -196,7 +224,7 @@ const OverflowedSelectionsRender = () => {
   return (
     <Field>
       <FieldLabel htmlFor="combobox-overflow-projects">Projects</FieldLabel>
-      <Combobox
+      <StoryCombobox
         id="combobox-overflow-projects"
         multiple
         options={PROJECTS}
@@ -242,7 +270,7 @@ const InDialogRender = () => {
         </DialogHeader>
         <Field>
           <FieldLabel htmlFor="combobox-dialog-role">Organization role</FieldLabel>
-          <Combobox
+          <StoryCombobox
             id="combobox-dialog-role"
             options={ORGANIZATION_ROLES}
             value={value}
@@ -287,7 +315,7 @@ export const States: Story = {
     <div className="flex flex-col gap-5">
       <Field data-invalid="true">
         <FieldLabel htmlFor="combobox-error">Environment</FieldLabel>
-        <Combobox
+        <StoryCombobox
           id="combobox-error"
           options={ENVIRONMENTS}
           onValueChange={() => undefined}
@@ -299,7 +327,7 @@ export const States: Story = {
       </Field>
       <Field data-disabled="true">
         <FieldLabel htmlFor="combobox-disabled">Environment</FieldLabel>
-        <Combobox
+        <StoryCombobox
           id="combobox-disabled"
           options={ENVIRONMENTS}
           value={ENVIRONMENTS[0]}
@@ -311,7 +339,7 @@ export const States: Story = {
       </Field>
       <Field>
         <FieldLabel htmlFor="combobox-loading">Environment</FieldLabel>
-        <Combobox
+        <StoryCombobox
           id="combobox-loading"
           options={[]}
           onValueChange={() => undefined}
@@ -333,7 +361,7 @@ const ViewportEdgesRender = () => {
     value: (typeof ORGANIZATION_ROLES)[number] | null,
     onValueChange: (option: (typeof ORGANIZATION_ROLES)[number]) => void
   ) => (
-    <Combobox
+    <StoryCombobox
       id={id}
       options={ORGANIZATION_ROLES}
       value={value}
@@ -356,7 +384,7 @@ const ViewportEdgesRender = () => {
   );
 
   return (
-    <div className="relative h-screen min-h-[28rem] w-screen p-2">
+    <div className="relative h-[32rem] min-h-[28rem] w-full min-w-0 p-2">
       <div className="absolute top-2 left-2 w-72">
         <Field>
           <FieldLabel htmlFor="combobox-top-edge">Near the Top Edge</FieldLabel>

@@ -26,6 +26,7 @@ type ComboboxSharedProps<TOption> = {
   isLoading?: boolean;
   isError?: boolean;
   modal?: boolean;
+  portalContainer?: HTMLElement | null;
   contentClassName?: string;
 };
 
@@ -120,7 +121,7 @@ const ComboboxList = <TOption,>({
     <ComboboxPrimitive.List
       aria-label={ariaLabel}
       aria-busy={isLoading || undefined}
-      className="scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none"
+      className="thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none"
       style={{ maxHeight }}
     >
       {(option: TOption) => {
@@ -237,6 +238,7 @@ const SingleCombobox = <TOption,>({
   isLoading = false,
   isError = false,
   modal = false,
+  portalContainer: portalContainerProp,
   className,
   contentClassName,
   id,
@@ -244,7 +246,6 @@ const SingleCombobox = <TOption,>({
   ...inputProps
 }: ComboboxSingleProps<TOption>) => {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
-  const [portalContainer, setPortalContainer] = React.useState<HTMLElement | null>(null);
   const [open, setOpen] = React.useState(false);
   const selectedOptions = React.useMemo(() => (value == null ? [] : [value]), [value]);
   const items = useComboboxItems(options, selectedOptions, getOptionValue);
@@ -253,11 +254,6 @@ const SingleCombobox = <TOption,>({
     () => new Set(value == null ? [] : [getOptionValue(value)]),
     [getOptionValue, value]
   );
-
-  const handleInputRef = React.useCallback((element: HTMLInputElement | null) => {
-    inputRef.current = element;
-    setPortalContainer(element?.closest<HTMLElement>("[data-slot='sheet-content']") ?? null);
-  }, []);
 
   return (
     <ComboboxPrimitive.Root<TOption, false>
@@ -284,7 +280,7 @@ const SingleCombobox = <TOption,>({
     >
       <div className="relative w-full">
         <ComboboxPrimitive.Input
-          ref={handleInputRef}
+          ref={inputRef}
           id={id}
           data-slot="combobox-input"
           data-invalid={isError}
@@ -342,7 +338,7 @@ const SingleCombobox = <TOption,>({
         anchor={inputRef}
         ariaLabel={searchAriaLabel}
         className={contentClassName}
-        portalContainer={portalContainer}
+        portalContainer={portalContainerProp}
       >
         <ComboboxList
           emptyMessage={emptyMessage}
@@ -382,6 +378,7 @@ const MultipleCombobox = <TOption,>({
   isLoading = false,
   isError = false,
   modal = false,
+  portalContainer: portalContainerProp,
   className,
   contentClassName,
   id,
@@ -390,7 +387,6 @@ const MultipleCombobox = <TOption,>({
 }: ComboboxMultipleProps<TOption>) => {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const chipsRef = React.useRef<HTMLDivElement | null>(null);
-  const [portalContainer, setPortalContainer] = React.useState<HTMLElement | null>(null);
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => [...value], [value]);
@@ -400,11 +396,6 @@ const MultipleCombobox = <TOption,>({
     () => new Set(value.map(getOptionValue)),
     [getOptionValue, value]
   );
-
-  const handleChipsRef = React.useCallback((element: HTMLDivElement | null) => {
-    chipsRef.current = element;
-    setPortalContainer(element?.closest<HTMLElement>("[data-slot='sheet-content']") ?? null);
-  }, []);
 
   return (
     <ComboboxPrimitive.Root<TOption, true>
@@ -444,12 +435,12 @@ const MultipleCombobox = <TOption,>({
       autoHighlight
     >
       <ComboboxPrimitive.Chips
-        ref={handleChipsRef}
+        ref={chipsRef}
         data-slot="combobox-chips"
         data-disabled={isDisabled ? "" : undefined}
         data-invalid={isError}
         className={cn(
-          "flex max-h-24 min-h-9 w-full flex-wrap items-center gap-1 overflow-y-auto rounded-md border border-border bg-transparent text-sm text-foreground transition-[color,box-shadow] outline-none",
+          "flex max-h-24 min-h-9 thin-scrollbar w-full flex-wrap items-center gap-1 overflow-y-auto rounded-md border border-border bg-transparent text-sm text-foreground transition-[color,box-shadow] outline-none",
           "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 hover:border-foreground/20",
           "data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
           value.length > 0 ? "p-1" : "py-1 pr-2 pl-2.5",
@@ -512,7 +503,7 @@ const MultipleCombobox = <TOption,>({
       <ComboboxPopup
         anchor={chipsRef}
         className={contentClassName}
-        portalContainer={portalContainer}
+        portalContainer={portalContainerProp}
       >
         <ComboboxList
           emptyMessage={emptyMessage}
