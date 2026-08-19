@@ -1,5 +1,5 @@
 ---
-title: "Key Management Service (KMS)"
+title: "Key management service (KMS)"
 sidebarTitle: "Overview"
 description: "Learn how to manage and use cryptographic keys with Infisical."
 ---
@@ -32,7 +32,7 @@ The typical workflow for using Infisical KMS consists of the following steps:
 
 ## Encryption
 
-### Guide to Encrypting Data
+### Guide to encrypting data
 
 In the following steps, we explore how to generate a key and use it to encrypt data.
 
@@ -141,7 +141,7 @@ In the following steps, we explore how to generate a key and use it to encrypt d
 
 </Tabs>
 
-### Guide to Decrypting Data
+### Guide to decrypting data
 
 In the following steps, we explore how to use decrypt data using an existing key in Infisical KMS.
 
@@ -199,7 +199,7 @@ In the following steps, we explore how to use decrypt data using an existing key
 
 ## Signing
 
-### Guide to Signing Data
+### Guide to signing data
 
 In the following steps, we explore how to generate a key and use it to sign data.
 
@@ -304,7 +304,7 @@ In the following steps, we explore how to generate a key and use it to sign data
     </Tab>
 </Tabs>
 
-### Guide to Verifying Data
+### Guide to verifying data
 
 In the following steps, we explore how to verify data using an existing key in Infisical KMS.
 
@@ -366,11 +366,11 @@ In the following steps, we explore how to verify data using an existing key in I
     </Tab>
 </Tabs>
 
-## Message Authentication (MAC)
+## Message authentication (MAC)
 
 HMAC keys generate and verify hash-based message authentication codes, which confirm the integrity and authenticity of data using a shared secret key. The algorithm you choose at key creation determines both the key length and the hash function, so every generate and verify operation on that key uses the same MAC algorithm.
 
-### Guide to Generating a MAC
+### Guide to generating a MAC
 
 In the following steps, we explore how to generate a key and use it to produce a MAC.
 
@@ -435,7 +435,7 @@ In the following steps, we explore how to generate a key and use it to produce a
     </Tab>
 </Tabs>
 
-### Guide to Verifying a MAC
+### Guide to verifying a MAC
 
 In the following steps, we explore how to verify a MAC using an existing key in Infisical KMS.
 
@@ -486,7 +486,7 @@ In the following steps, we explore how to verify a MAC using an existing key in 
     </Tab>
 </Tabs>
 
-## Key Rotation
+## Key rotation
 
 Every KMS key tracks a version, starting at 1. Rotating a key generates new cryptographic key material for it and increments the version. The key keeps the same ID and name, so applications referencing the key do not need any changes.
 
@@ -518,11 +518,11 @@ Keys can also be rotated programmatically via the [rotate key API endpoint](/api
   - **KMIP-managed keys.** A KMIP client retrieves raw key material and encrypts data itself. If you rotate a key that is used over KMIP, the client will retrieve different material on its next fetch and will no longer be able to decrypt data it encrypted with the previous material. Do not rotate a key that is in use by a KMIP client; provision a new key instead.
 </Warning>
 
-## Bulk Export & Import
+## Bulk export & import
 
 Infisical KMS supports bulk export and bulk import of key material, allowing you to export multiple keys at once or import keys in bulk from an external file.
 
-### Bulk Export
+### Bulk export
 
 1. Navigate to **Project > Key Management**.
 2. Use the checkboxes to select the keys you want to export (up to 100 at a time).
@@ -568,7 +568,7 @@ The exported file is a JSON array where each entry is one of the following shape
   and any export request for them (including over KMIP) is rejected, regardless of the caller's permissions.
 </Note>
 
-### Bulk Import
+### Bulk import
 
 1. Navigate to **Project > Key Management**.
 2. In the top-right of the keys table, click the dropdown arrow next to **Add Key** and select **Import Keys**.

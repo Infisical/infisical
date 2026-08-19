@@ -9,7 +9,7 @@ A project defines a specific scope of work for a given product line in Infisical
 
 Projects are created within an [organization](/documentation/platform/organization), and an organization can contain multiple projects across different product types.
 
-## Project Types
+## Project types
 
 Infisical supports project types, each representing a different security product with its own dashboard, workflows, and capabilities.
 
@@ -23,7 +23,7 @@ The supported project types are:
 - [Infisical KMS](/documentation/platform/kms/overview): Encrypt and decrypt data using centrally managed keys with enforced access policies and full audit visibility.
 - [Infisical PAM](/documentation/platform/pam/overview): Manage access to resources like databases, servers, and accounts with policy-based controls and approvals.
 
-## Roles and Access Control
+## Roles and access control
 
 [Users](/documentation/platform/identities/user-identities) and [machine identities](/documentation/platform/identities/machine-identities) must be added to a project to access its resources. Each identity is assigned a [project-level role](/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls) that defines what they can manage—such as secrets, certificates, or PAM access. These roles apply to both individuals and [user groups](/documentation/platform/groups), enabling scalable access across teams and environments.
 
@@ -37,13 +37,13 @@ Depending on the project type (e.g. Secrets Management, PKI, PAM), project-level
 
 To learn more about how permissions work in detail, refer to the [access control documentation](/documentation/platform/access-controls/overview).
 
-## Audit Logs
+## Audit logs
 
 Infisical provides [audit logging](/documentation/platform/audit-logs) at the project level to help teams monitor activity and maintain accountability within a specific project. These logs capture all relevant events—such as secret access, certificate issuance, and PAM activity—that occur within the boundaries of that project.
 
 Unlike the organization-level audit view, which aggregates logs across all projects in one centralized interface, the project-level audit view is scoped to a single project. This enables relevant project admins and contributors to review activity relevant to their work without having broader access to audit logs in other projects that they are not part of.
 
-## Project Settings
+## Project settings
 
 Each project has its own settings panel, with options that vary depending on the selected product type. These may include
 setup and configuration for environments, tags, behaviors, encryption strategies, and other options.

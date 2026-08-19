@@ -1,6 +1,6 @@
 ---
-title: "Sign Windows Executables with osslsigncode"
-sidebarTitle: "Sign Windows Executables"
+title: "Sign Windows executables with osslsigncode"
+sidebarTitle: "Sign Windows executables"
 description: "Use the Infisical PKCS#11 module to sign Windows executables, DLLs, and MSI installers with osslsigncode."
 ---
 
@@ -18,7 +18,7 @@ Sign Windows Authenticode artifacts using `osslsigncode` with the Infisical PKCS
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - `osslsigncode` 2.5 or later (includes native PKCS#11 support)
 
-## Step 1: Set Up Authentication
+## Step 1: Set up authentication
 
 Configure the Infisical PKCS#11 module with your machine identity credentials. Without this, the signing commands below fail with an auth error.
 
@@ -48,7 +48,7 @@ export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<machine-identity-client-secret>"
 
 For the full set of options, see the [PKCS#11 module configuration reference](/documentation/platform/pki/code-signing/pkcs11-module#configuration).
 
-## Step 2: Install osslsigncode and Dependencies
+## Step 2: Install osslsigncode and dependencies
 
 <Tabs>
   <Tab title="Ubuntu / Debian">
@@ -74,7 +74,7 @@ For the full set of options, see the [PKCS#11 module configuration reference](/d
   </Tab>
 </Tabs>
 
-## Step 3: Identify Your Signer
+## Step 3: Identify your signer
 
 Use `pkcs11-tool` to list available signers and note the token label:
 
@@ -89,7 +89,7 @@ Slot 0 (0x0): release-signer
   token manufacturer : Infisical
 ```
 
-## Step 4: Sign a Windows Executable
+## Step 4: Sign a Windows executable
 
 Use `osslsigncode` with the PKCS#11 module to sign your binary:
 
@@ -115,7 +115,7 @@ osslsigncode sign \
   - `-t`: Timestamp server URL. Timestamping ensures the signature remains valid after your certificate expires.
 </Note>
 
-### Supported File Types
+### Supported file types
 
 osslsigncode can sign the following Windows artifact types:
 
@@ -127,7 +127,7 @@ osslsigncode can sign the following Windows artifact types:
 | Scripts | `.ps1`, `.vbs` |
 | Catalogs | `.cat` |
 
-## Step 5: Verify the Signature
+## Step 5: Verify the signature
 
 Verify the signed binary:
 
@@ -141,7 +141,7 @@ The output confirms the signature is valid:
 Signature verification: ok
 ```
 
-## CI/CD Integration
+## CI/CD integration
 
 ```bash
 export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_CLIENT_ID}"
@@ -172,7 +172,7 @@ For any issue, enable debug logging in your config file (`"log_level": "debug"`,
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="Sign with OpenSSL" icon="lock" href="/documentation/platform/pki/guides/code-signing/openssl">
