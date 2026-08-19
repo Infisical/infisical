@@ -54,9 +54,13 @@ vi.mock("@app/lib/telemetry/metrics", () => ({
 }));
 
 // eslint-disable-next-line import/first
+import { PostHog } from "posthog-node";
+
+// eslint-disable-next-line import/first
 import { POSTHOG_AGGREGATED_EVENTS, telemetryServiceFactory } from "./telemetry-service";
 
 const RETENTION_MS = 30 * 60 * 1000;
+const COLLECT_CEILING = 50_000;
 const KEY_TTL_SECONDS = 60 * 60;
 const BUCKET_COUNT = 30;
 const SHARD_COUNT = POSTHOG_AGGREGATED_EVENTS.length * BUCKET_COUNT;
@@ -469,6 +473,39 @@ describe("telemetry aggregated event storage", () => {
       eventType: PostHogEventTypes.SecretPulled,
       backlog: 0
     });
+  });
+
+  // capture() enqueues on a later turn of the event loop, so a flush issued in the same tick as the
+  // capture loop finds an empty queue and sends nothing, while reporting success to a drain that then
+  // trims. Awaiting the publish is not enough: only yielding past the pending work drains it, which is
+  // what the deferred capture here stands in for.
+  test("lets the captures settle before the flush that gates the trim", async () => {
+    const { keyStore, telemetryService } = createHarness();
+    let captureSettled = false;
+    let flushSawSettledCaptures = false;
+
+    keyStore.streamCollect.mockResolvedValueOnce(collectResult([pulledEvent()], "3-0"));
+    postHogClient.capture.mockImplementation(() => {
+      setImmediate(() => {
+        captureSettled = true;
+      });
+    });
+    postHogClient.flush.mockImplementation(async () => {
+      flushSawSettledCaptures = captureSettled;
+    });
+
+    await telemetryService.processAggregatedEvents();
+
+    expect(flushSawSettledCaptures).toBe(true);
+    expect(drainTrims(keyStore)).toHaveLength(1);
+  });
+
+  // The SDK defaults to 1000 queued events and drops the OLDEST on overflow, logged at info only.
+  test("sizes the client queue for what one drain cycle can enqueue", () => {
+    createHarness();
+
+    const [, options] = vi.mocked(PostHog).mock.calls[0] as [string, { maxQueueSize?: number }];
+    expect(options.maxQueueSize).toBeGreaterThanOrEqual(COLLECT_CEILING);
   });
 
   test("skips the backlog round trip when nothing will export it", async () => {

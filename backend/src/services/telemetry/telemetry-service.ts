@@ -62,6 +62,9 @@ const TELEMETRY_EVENT_STREAM_COLLECT_CEILING = 50_000;
 const TELEMETRY_EVENT_STREAM_MAX_ENTRIES = 100_000;
 const TELEMETRY_EVENT_STREAM_RETENTION_MS = 30 * 60 * 1000;
 const TELEMETRY_EVENT_STREAM_KEY_TTL_SECONDS = 60 * 60;
+const BUCKET_CONCURRENCY = 2;
+
+const TELEMETRY_POSTHOG_MAX_QUEUE_SIZE = TELEMETRY_EVENT_STREAM_COLLECT_CEILING * BUCKET_CONCURRENCY;
 
 type AggregatedEventData = Record<string, unknown>;
 type SingleEventData = {
@@ -82,6 +85,11 @@ export type TTelemetryServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
+
+const settleCapturedEvents = () =>
+  new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
 
 const getBucketForDistinctId = (distinctId: string): string => {
   // Use SHA-256 hash for consistent distribution
@@ -156,7 +164,10 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   }
 
   const postHog = appCfg.TELEMETRY_ENABLED
-    ? new PostHog(appCfg.POSTHOG_PROJECT_API_KEY, { host: appCfg.POSTHOG_HOST })
+    ? new PostHog(appCfg.POSTHOG_PROJECT_API_KEY, {
+        host: appCfg.POSTHOG_HOST,
+        maxQueueSize: TELEMETRY_POSTHOG_MAX_QUEUE_SIZE
+      })
     : undefined;
 
   // used for email marketting email sending purpose
@@ -644,6 +655,8 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
       await publishAggregatedEvents(eventType, events, orgsIdentifyAttempted);
 
+      await settleCapturedEvents();
+
       await postHog.flush();
 
       await keyStore.streamTrim(streamKey, lastId, true);
@@ -658,8 +671,6 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       return { published: 0, expired };
     }
   };
-
-  const BUCKET_CONCURRENCY = 2;
 
   const processAggregatedEvents = async () => {
     if (!postHog) return;
