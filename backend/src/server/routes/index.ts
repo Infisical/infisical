@@ -74,6 +74,7 @@ import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { identityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { identityAuthTemplateServiceFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-service";
+import { insightsDALFactory } from "@app/ee/services/insights/insights-dal";
 import { insightsServiceFactory } from "@app/ee/services/insights/insights-service";
 import { kmipClientCertificateDALFactory } from "@app/ee/services/kmip/kmip-client-certificate-dal";
 import { kmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
@@ -618,6 +619,7 @@ export const registerRoutes = async (
   const integrationDAL = integrationDALFactory(db);
   const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
   const orgProductStatsDAL = orgProductStatsDALFactory(db);
+  const insightsDAL = insightsDALFactory(db);
   const integrationAuthDAL = integrationAuthDALFactory(db);
   const webhookDAL = webhookDALFactory(db);
   const serviceTokenDAL = serviceTokenDALFactory(db);
@@ -3107,6 +3109,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     auditLogDAL,
+    clickhouseAuditLogDAL,
     secretRotationV2DAL,
     reminderDAL,
     folderDAL,
@@ -3117,7 +3120,11 @@ export const registerRoutes = async (
     projectDAL,
     userDAL,
     kmsService,
-    keyStore
+    keyStore,
+    orgDAL,
+    identityOrgMembershipDAL,
+    dynamicSecretLeaseDAL,
+    insightsDAL
   });
 
   const auditReportDAL = auditReportDALFactory(db);
@@ -3128,6 +3135,7 @@ export const registerRoutes = async (
     projectDAL,
     projectBotService,
     userDAL,
+    orgDAL,
     queueService
   });
   // Registers the BullMQ worker that generates the CSVs and emails them.
@@ -3135,6 +3143,7 @@ export const registerRoutes = async (
     queueService,
     auditReportDAL,
     projectDAL,
+    orgDAL,
     smtpService,
     secretV2BridgeDAL,
     folderDAL,
@@ -3143,7 +3152,10 @@ export const registerRoutes = async (
     auditLogDAL,
     clickhouseAuditLogDAL,
     secretValidationRuleDAL,
-    kmsService
+    kmsService,
+    insightsDAL,
+    dynamicSecretLeaseDAL,
+    identityOrgMembershipDAL
   });
 
   const pkiSyncQueue = pkiSyncQueueFactory({
