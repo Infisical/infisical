@@ -13,7 +13,8 @@ import {
   permitsClientAuth,
   readSubjectAltNames,
   TCertificateSanItem,
-  verifyClientCertificateChain
+  verifyClientCertificateChain,
+  verifyDirectlyIssuedClientCertificate
 } from "./identity-tls-cert-auth-fns";
 
 // The singleton logger is only initialized by the server bootstrap, so it is undefined under vitest.
@@ -354,6 +355,143 @@ describe("readSubjectAltNames", () => {
 
     expect(readSubjectAltNames(unparseable)).toBeUndefined();
     expect(isSubjectAltNameAllowed(["dns:svc.example.com"], readSubjectAltNames(unparseable))).toBe(false);
+  });
+});
+
+describe("verifyDirectlyIssuedClientCertificate", () => {
+  const alg: RsaHashedKeyGenParams = {
+    name: "RSASSA-PKCS1-v1_5",
+    hash: "SHA-256",
+    publicExponent: new Uint8Array([1, 0, 1]),
+    modulusLength: 2048
+  };
+
+  x509.cryptoProvider.set(crypto.webcrypto as Crypto);
+
+  const NOW = new Date("2026-06-24T12:00:00Z");
+  const NOT_BEFORE = new Date("2026-06-01T00:00:00Z");
+  const FAR_FUTURE = new Date("2030-01-01T00:00:00Z");
+
+  const toNative = (cert: x509.X509Certificate) => new crypto.X509Certificate(Buffer.from(cert.rawData));
+
+  const makeCa = async (
+    name: string,
+    opts?: { notAfter?: Date; extensions?: x509.Extension[]; omitBasicConstraints?: boolean }
+  ) => {
+    const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const cert = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "01",
+      name: `CN=${name}`,
+      notBefore: NOT_BEFORE,
+      notAfter: opts?.notAfter ?? FAR_FUTURE,
+      keys,
+      extensions: [
+        ...(opts?.omitBasicConstraints ? [] : [new x509.BasicConstraintsExtension(true, undefined, true)]),
+        ...(opts?.extensions ?? [])
+      ]
+    });
+    return { cert, keys };
+  };
+
+  const makeLeaf = async (issuer: { cert: x509.X509Certificate; keys: CryptoKeyPair }, dnsName: string) => {
+    const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const cert = await x509.X509CertificateGenerator.create({
+      serialNumber: "02",
+      subject: "CN=workload",
+      issuer: issuer.cert.subject,
+      notBefore: NOT_BEFORE,
+      notAfter: FAR_FUTURE,
+      signingKey: issuer.keys.privateKey,
+      publicKey: keys.publicKey,
+      signingAlgorithm: alg,
+      extensions: [
+        new x509.BasicConstraintsExtension(false),
+        new x509.SubjectAlternativeNameExtension([{ type: "dns", value: dnsName }])
+      ]
+    });
+    return { cert, keys };
+  };
+
+  const permittedDnsConstraint = (permitted: string[]) =>
+    new x509.Extension(
+      "2.5.29.30",
+      true,
+      new NameConstraints({
+        permittedSubtrees: permitted.map(
+          (dns) => new GeneralSubtree({ base: new GeneralName({ type: 2, value: dns }) })
+        )
+      })
+        .toSchema()
+        .toBER(false)
+    );
+
+  test("accepts a leaf the configured CA issued", async () => {
+    const ca = await makeCa("Root CA");
+    const leaf = await makeLeaf(ca, "workload.example.com");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: true });
+  });
+
+  test("rejects a leaf a different CA issued", async () => {
+    const ca = await makeCa("Root CA");
+    const otherCa = await makeCa("Other CA");
+    const leaf = await makeLeaf(otherCa, "workload.example.com");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: false, reasonCode: "ca_verification_failed" });
+  });
+
+  test("rejects when the configured CA has expired", async () => {
+    const ca = await makeCa("Expired CA", { notAfter: new Date("2026-06-10T00:00:00Z") });
+    const leaf = await makeLeaf(ca, "workload.example.com");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: false, reasonCode: "certificate_expired" });
+  });
+
+  test("rejects when the configured CA's extended key usage excludes client authentication", async () => {
+    const ca = await makeCa("ServerAuth CA", {
+      extensions: [new x509.ExtendedKeyUsageExtension(["1.3.6.1.5.5.7.3.1"], true)]
+    });
+    const leaf = await makeLeaf(ca, "workload.example.com");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: false, reasonCode: "issuer_client_auth_usage_not_allowed" });
+  });
+
+  test("accepts a leaf inside the namespace its CA is permitted to certify", async () => {
+    const ca = await makeCa("Constrained CA", { extensions: [permittedDnsConstraint(["example.com"])] });
+    const leaf = await makeLeaf(ca, "workload.example.com");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: true });
+  });
+
+  test("rejects a leaf outside the namespace its CA is permitted to certify", async () => {
+    const ca = await makeCa("Constrained CA", { extensions: [permittedDnsConstraint(["allowed.example.com"])] });
+    const leaf = await makeLeaf(ca, "workload.elsewhere.com");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+  });
+
+  // Single-hop has always accepted a configured CA that omits basic constraints, unlike the path
+  // builder, which will not walk through a certificate that does not assert CA:TRUE.
+  test("accepts a configured CA that omits basic constraints", async () => {
+    const ca = await makeCa("Constraint-less CA", { omitBasicConstraints: true });
+    const leaf = await makeLeaf(ca, "workload.example.com");
+
+    expect(toNative(ca.cert).ca).toBe(false);
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: true });
   });
 });
 

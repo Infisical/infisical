@@ -73,6 +73,39 @@ const isWithinValidityWindow = (cert: TNativeX509, at: Date): boolean =>
 
 const isSelfIssued = (cert: TNativeX509): boolean => cert.subject === cert.issuer;
 
+const validityFailure = (cert: TNativeX509, at: Date): TVerificationFailure | null =>
+  isWithinValidityWindow(cert, at)
+    ? null
+    : {
+        ok: false,
+        reasonCode: at < new Date(cert.validFrom) ? "certificate_not_yet_valid" : "certificate_expired"
+      };
+
+/**
+ * Returns true when `issuer` issued `child`.
+ *
+ * The name check compares the OpenSSL-formatted DN strings returned by Node's X509Certificate
+ * (`child.issuer === issuer.subject`). This is a fast pre-filter before the cryptographic `verify`,
+ * and assumes both sides of the chain share the same PKI-level DN encoding conventions, i.e. the
+ * same string types (PrintableString vs UTF8String) and attribute ordering for equivalent names.
+ * That holds within a single PKI (SPIRE emits the leaf and the rotating intermediate from one CA
+ * with consistent encoding), which is the supported case here.
+ *
+ * It can yield a false negative in a heterogeneous PKI where the issuer and subject encode the same
+ * logical DN differently (e.g. one cert uses PrintableString and the other UTF8String for an
+ * attribute, or they differ in attribute ordering). In that situation a cryptographically valid
+ * issuer relationship is rejected and validation fails with `ca_verification_failed`. A full
+ * RFC 5280 name comparison (per-RDN, encoding-insensitive) would be required to support that.
+ */
+const issuedBy = (child: TNativeX509, issuer: TNativeX509): boolean => {
+  if (child.issuer !== issuer.subject) return false;
+  try {
+    return child.verify(issuer.publicKey);
+  } catch {
+    return false;
+  }
+};
+
 const basicConstraintsPathLength = (cert: TNativeX509): number | undefined =>
   new x509.X509Certificate(cert.raw).getExtension(x509.BasicConstraintsExtension)?.pathLength;
 
@@ -177,6 +210,46 @@ export const permitsClientAuth = (cert: TNativeX509): boolean => {
 };
 
 /**
+ * Validate a client certificate the configured CA is expected to have issued directly.
+ *
+ * This is the default mode, where no intermediates are involved: the configured CA either signed
+ * the presented leaf or it did not. It still applies every rule the path-building mode applies to a
+ * one-hop path, because the rules belong to the CA rather than to the length of the path. A CA that
+ * has expired, or whose extended key usage does not cover client authentication, cannot authenticate
+ * a client in either mode, and a leaf outside the namespace its CA is permitted to certify is
+ * outside it whether or not intermediates were presented.
+ *
+ * Unlike the path-building mode, the anchor is not required to assert `CA:TRUE`. It is configured by
+ * an operator rather than presented by the client, and a self-signed certificate that omits basic
+ * constraints entirely has always been accepted here.
+ *
+ * @param leaf the end-entity certificate presented by the client
+ * @param ca   the configured CA certificate that must have issued it
+ */
+export const verifyDirectlyIssuedClientCertificate = async ({
+  leaf,
+  ca,
+  now = new Date()
+}: {
+  leaf: TNativeX509;
+  ca: TNativeX509;
+  now?: Date;
+}): Promise<TVerifyClientCertificateChainResult> => {
+  if (!issuedBy(leaf, ca)) return { ok: false, reasonCode: "ca_verification_failed" };
+
+  const caFailure =
+    validityFailure(ca, now) ??
+    (permitsClientAuth(ca) ? null : ({ ok: false, reasonCode: "issuer_client_auth_usage_not_allowed" } as const));
+  if (caFailure) return caFailure;
+
+  try {
+    return (await enforceNameConstraints([leaf, ca], now)) ?? { ok: true };
+  } catch {
+    return { ok: false, reasonCode: "ca_verification_failed" };
+  }
+};
+
+/**
  * Validate the presented client certificate chain against a configured trust anchor.
  *
  * Unlike single-hop verification (leaf signed directly by the configured CA), this builds paths
@@ -201,7 +274,7 @@ export const permitsClientAuth = (cert: TNativeX509): boolean => {
  *
  * NOTE: each hop's issuer/subject match is a string comparison of the OpenSSL-formatted DN strings,
  * so this assumes every certificate on the path shares the same PKI-level DN encoding conventions
- * (string types and attribute ordering). See `issuedBy` below for the heterogeneous-PKI caveat.
+ * (string types and attribute ordering). See `issuedBy` above for the heterogeneous-PKI caveat.
  *
  * @param leaf            the end-entity certificate presented by the client (chain[0])
  * @param presentedChain  intermediates presented by the client (chain[1..n]); order-independent
@@ -230,39 +303,13 @@ export const verifyClientCertificateChain = async ({
   const anchorId = certificateId(trustAnchor);
   const isAnchor = (cert: TNativeX509): boolean => certificateId(cert) === anchorId;
 
-  /**
-   * Returns true when `issuer` issued `child`.
-   *
-   * The name check compares the OpenSSL-formatted DN strings returned by Node's X509Certificate
-   * (`child.issuer === issuer.subject`). This is a fast pre-filter before the cryptographic
-   * `verify`, and assumes both sides of the chain share the same PKI-level DN encoding
-   * conventions, i.e. the same string types (PrintableString vs UTF8String) and attribute
-   * ordering for equivalent names. That holds within a single PKI (SPIRE emits the leaf and the
-   * rotating intermediate from one CA with consistent encoding), which is the supported case here.
-   *
-   * It can yield a false negative in a heterogeneous PKI where the issuer and subject encode the
-   * same logical DN differently (e.g. one cert uses PrintableString and the other UTF8String for an
-   * attribute, or they differ in attribute ordering). In that situation a cryptographically valid
-   * issuer relationship is rejected and chain validation fails with `ca_verification_failed`. A
-   * full RFC 5280 name comparison (per-RDN, encoding-insensitive) would be required to support that.
-   *
-   * Results are cached per (child, issuer) pair, so overlapping paths through a shared issuer cost
-   * one signature verification rather than one per path.
-   */
   const signatureResults = new Map<string, boolean>();
-  const issuedBy = (child: TNativeX509, issuer: TNativeX509): boolean => {
-    if (child.issuer !== issuer.subject) return false;
-
+  const issuedByCached = (child: TNativeX509, issuer: TNativeX509): boolean => {
     const pairId = `${certificateId(child)}:${certificateId(issuer)}`;
     const cached = signatureResults.get(pairId);
     if (cached !== undefined) return cached;
 
-    let verified: boolean;
-    try {
-      verified = child.verify(issuer.publicKey);
-    } catch {
-      verified = false;
-    }
+    const verified = issuedBy(child, issuer);
     signatureResults.set(pairId, verified);
     return verified;
   };
@@ -277,14 +324,6 @@ export const verifyClientCertificateChain = async ({
     return permitted;
   };
 
-  const validityFailure = (cert: TNativeX509): TVerificationFailure | null =>
-    isWithinValidityWindow(cert, now)
-      ? null
-      : {
-          ok: false,
-          reasonCode: now < new Date(cert.validFrom) ? "certificate_not_yet_valid" : "certificate_expired"
-        };
-
   /**
    * The gate every issuer clears before it may extend a path. Both properties belong to the
    * certificate alone rather than to the path it sits on, so failing one rules out this branch
@@ -295,10 +334,10 @@ export const verifyClientCertificateChain = async ({
    * purpose against the whole chain rather than the leaf alone.
    */
   const issuerFailure = (issuer: TNativeX509): TVerificationFailure | null =>
-    validityFailure(issuer) ??
+    validityFailure(issuer, now) ??
     (issuerPermitsClientAuth(issuer) ? null : { ok: false, reasonCode: "issuer_client_auth_usage_not_allowed" });
 
-  const leafFailure = validityFailure(leaf);
+  const leafFailure = validityFailure(leaf, now);
   if (leafFailure) return leafFailure;
 
   const candidateIssuers: TNativeX509[] = [];
@@ -333,14 +372,16 @@ export const verifyClientCertificateChain = async ({
       return;
     }
 
-    if (trustAnchor.ca && issuedBy(current, trustAnchor)) {
+    if (trustAnchor.ca && issuedByCached(current, trustAnchor)) {
       const anchorFailure = issuerFailure(trustAnchor);
       if (anchorFailure) search.prunedFailure ??= anchorFailure;
       else completePaths.push([...path, trustAnchor]);
     }
 
     candidateIssuers
-      .filter((candidate) => !visited.has(certificateId(candidate)) && candidate.ca && issuedBy(current, candidate))
+      .filter(
+        (candidate) => !visited.has(certificateId(candidate)) && candidate.ca && issuedByCached(current, candidate)
+      )
       .forEach((candidate) => {
         const candidateFailure = issuerFailure(candidate);
         if (candidateFailure) {

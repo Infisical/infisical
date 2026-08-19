@@ -67,10 +67,7 @@ const makeIntermediate = async (
     signingKey: issuer.keys.privateKey,
     publicKey: keys.publicKey,
     signingAlgorithm: SIGNING_ALGORITHM,
-    extensions: [
-      new x509.BasicConstraintsExtension(true, opts?.pathLength, true),
-      ...(opts?.extraExtensions ?? [])
-    ]
+    extensions: [new x509.BasicConstraintsExtension(true, opts?.pathLength, true), ...(opts?.extraExtensions ?? [])]
   });
   return { cert, keys };
 };
@@ -121,11 +118,7 @@ const deleteIdentity = async (identityId: string) => {
   expect(res.statusCode).toBe(200);
 };
 
-const attachTlsCertAuth = async (
-  identityId: string,
-  caCertificate: string,
-  verifyClientCertificateChain: boolean
-) => {
+const attachTlsCertAuth = async (identityId: string, caCertificate: string, verifyClientCertificateChain: boolean) => {
   const res = await testServer.inject({
     method: "POST",
     url: `/api/v1/auth/tls-cert-auth/identities/${identityId}`,

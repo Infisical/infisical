@@ -51,7 +51,8 @@ import {
   readSubjectAltNames,
   serializeAllowedSubjectAltNames,
   TVerifyClientCertificateChainResult,
-  verifyClientCertificateChain
+  verifyClientCertificateChain,
+  verifyDirectlyIssuedClientCertificate
 } from "./identity-tls-cert-auth-fns";
 import { TIdentityTlsCertAuthServiceFactory } from "./identity-tls-cert-auth-types";
 
@@ -179,23 +180,19 @@ export const identityTlsCertAuthServiceFactory = ({
         }
       } else {
         // Single-hop mode (default): the configured CA must be the direct issuer of the leaf.
-        const isValidCertificate = clientCertificateX509.verify(caCertificateX509.publicKey);
-        if (!isValidCertificate)
-          throw new UnauthorizedError({
-            message: "Access denied: Certificate not issued by the provided CA.",
-            detail: {
-              reasonCode: "ca_verification_failed",
-              identityId: identity.id,
-              orgId: identity.orgId,
-              identityName: identity.name
-            }
-          });
+        const directResult = await verifyDirectlyIssuedClientCertificate({
+          leaf: clientCertificateX509,
+          ca: caCertificateX509
+        });
 
-        if (!permitsClientAuth(caCertificateX509)) {
+        if (!directResult.ok) {
           throw new UnauthorizedError({
-            message: CHAIN_FAILURE_MESSAGES.issuer_client_auth_usage_not_allowed,
+            message:
+              directResult.reasonCode === "ca_verification_failed"
+                ? "Access denied: Certificate not issued by the provided CA."
+                : CHAIN_FAILURE_MESSAGES[directResult.reasonCode],
             detail: {
-              reasonCode: "issuer_client_auth_usage_not_allowed",
+              reasonCode: directResult.reasonCode,
               identityId: identity.id,
               orgId: identity.orgId,
               identityName: identity.name
