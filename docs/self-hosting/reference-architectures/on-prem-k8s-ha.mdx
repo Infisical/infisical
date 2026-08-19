@@ -179,7 +179,7 @@ During failover, the latest Redis backup is restored from object storage to the 
 ## Multi data center deployment
 Infisical can be deployed across multiple data centers in an active-passive configuration for disaster recovery. In this setup, one data center serves as the active site while others remain as passive standbys.
 
-### Active data center 
+### Active data center
 The active data center contains:
 - The primary PostgreSQL cluster managed by CloudNativePG handling all write operations
 - The active Redis instance handling all traffic

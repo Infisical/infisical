@@ -103,7 +103,7 @@ Redis caches are regional and independent (no coordination occurs between instan
 
 Secrets use versioned caching. When a secret changes, its version identifier changes, causing automatic cache misses. This ensures subsequent reads fetch the updated value from PostgreSQL without requiring active cache invalidation.
 
-# Technical details 
+# Technical details
 
 Understanding the implementation details can help evaluate whether Infisical's replication characteristics align with your requirements. 
 The following sections provide deeper insight into performance behavior, failure modes, and the underlying mechanisms that drive the replication system.
