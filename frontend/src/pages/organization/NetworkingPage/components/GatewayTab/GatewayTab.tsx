@@ -557,5 +557,9 @@ export const GatewayTab = withPermission(
       </Card>
     );
   },
-  { action: OrgGatewayPermissionActions.ListGateways, subject: OrgPermissionSubjects.Gateway }
+  {
+    action: OrgGatewayPermissionActions.ListGateways,
+    subject: OrgPermissionSubjects.Gateway,
+    accessRestrictedMode: "dialog"
+  }
 );

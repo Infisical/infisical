@@ -681,5 +681,9 @@ export const IdentityTab = withProjectPermission(
       </>
     );
   },
-  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Identity }
+  {
+    action: ProjectPermissionActions.Read,
+    subject: ProjectPermissionSub.Identity,
+    accessRestrictedMode: "dialog"
+  }
 );
