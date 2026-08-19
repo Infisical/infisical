@@ -31,7 +31,7 @@ For other build tools, please check our [package snippets](https://central.sonat
 
 
 
-## Getting Started
+## Getting started
 
 ```java
 package com.example.example;
@@ -70,7 +70,7 @@ public class Example {
 }
 ```
 
-## Core Methods
+## Core methods
 
 The SDK methods are organized into the following high-level categories:
 
@@ -81,7 +81,7 @@ The SDK methods are organized into the following high-level categories:
 
 The `Auth` component provides methods for authentication:
 
-### Universal Auth
+### Universal auth
 
 #### Authenticating
 
@@ -134,7 +134,7 @@ sdk.Auth().RevokeToken("ACCESS_TOKEN");
 **Parameters (explicit variant):**
 - `accessToken` (String): The access token to revoke.
 
-### AWS Auth
+### AWS auth
 
 ```java
 public void AwsAuthLogin(
@@ -150,7 +150,7 @@ sdk.Auth().AwsAuthLogin("<machine-identity-id>");
 **Parameters:**
 - `identityId` (String): The ID of the machine identity to authenticate with.
 
-### LDAP Auth
+### LDAP auth
 
 ```java
 public void LdapAuthLogin(
@@ -176,7 +176,7 @@ sdk.Auth().LdapAuthLogin(input);
   - `username` (String): The LDAP username.
   - `password` (String): The LDAP password.
 
-### Access Token Auth
+### Access token auth
 
 #### Authenticating
 
@@ -198,7 +198,7 @@ sdk.Auth().SetAccessToken("ACCESS_TOKEN");
 
 This sub-class handles operations related to secrets:
 
-#### List Secrets
+#### List secrets
 
 ```java
 public List<Secret> ListSecrets(
@@ -238,7 +238,7 @@ List<Secret> secrets = sdk.Secrets().ListSecrets(
 **Returns:**
 - `List<Secret>`: The response containing the list of secrets.
 
-#### Create Secret
+#### Create secret
 
 
 ```java
@@ -272,7 +272,7 @@ Secret newSecret = sdk.Secrets().CreateSecret(
 **Returns:**
 - `Secret`: The created secret.
 
-#### Update Secret
+#### Update secret
 
 ```java
 public Secret UpdateSecret(
@@ -310,7 +310,7 @@ Secret updatedSecret = sdk.Secrets().UpdateSecret(
 **Returns:**
 - `Secret`: The updated secret.
 
-#### Get Secret by Name
+#### Get secret by name
 
 ```java
 public Secret GetSecret(
@@ -351,7 +351,7 @@ Secret secret = sdk.Secrets().GetSecret(
 **Returns:**
 - `Secret`: The fetched secret.
 
-#### Delete Secret by Name
+#### Delete secret by name
 
 ```java
 public Secret DeleteSecret(
@@ -384,7 +384,7 @@ Secret deletedSecret = sdk.Secrets().DeleteSecret(
 
 ### `Folders`
 
-#### Get Folder By Name 
+#### Get folder by name 
 
 ```java
 public Folder Get(
@@ -403,7 +403,7 @@ Folder folder = sdk.Folders().Get("<folder-id>");
 **Returns:**
 - `Folder`: The retrieved folder.
 
-#### List Folders
+#### List folders
 
 ```java
 public List<Folder> List(
@@ -435,7 +435,7 @@ List<Folder> folders = sdk.Folders().List(input);
 **Returns:**
 - `List<Folder>`: The retrieved folders.
 
-#### Create Folder
+#### Create folder
 
 ```java
 public Folder Create(
@@ -468,7 +468,7 @@ Folder createdFolder = sdk.Folders().Create(input);
 **Returns:**
 - `Folder`: The created folder.
 
-#### Update Folder
+#### Update folder
 
 ```java
 public Folder Update(
@@ -501,7 +501,7 @@ Folder updatedFolder = sdk.Folders().Update(input);
 **Returns:**
 - `Folder`: The updated folder.
 
-#### Delete Folder
+#### Delete folder
 
 ```java
 public Folder Delete(

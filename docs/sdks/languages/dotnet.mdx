@@ -12,7 +12,7 @@ If you're working with .NET, the official Infisical .NET SDK package is the easi
 dotnet add package Infisical.Sdk
 ```
 
-## Getting Started (.NET)
+## Getting started (.NET)
 
 ```csharp
 namespace Example;
@@ -54,7 +54,7 @@ public class Program {
 }
 ```
 
-## Getting Started (Visual Basic)
+## Getting started (Visual Basic)
 ```vb
 Imports Infisical.Sdk
 Imports Infisical.Sdk.Model
@@ -90,7 +90,7 @@ Module Program
 End Module
 ```
 
-## Core Methods
+## Core methods
 
 The SDK methods are organized into the following high-level categories:
 
@@ -103,7 +103,7 @@ The SDK methods are organized into the following high-level categories:
 
 The `Auth()` component provides methods for authentication:
 
-### Universal Auth
+### Universal auth
 
 #### Authenticating
 ```cs
@@ -118,7 +118,7 @@ var _ = await sdk.Auth().UniversalAuth().LoginAsync(
 - `clientId` (string): The client ID of your Machine Identity.
 - `clientSecret` (string): The client secret of your Machine Identity.
 
-### LDAP Auth
+### LDAP auth
 
 #### Authenticating
 ```cs
@@ -138,7 +138,7 @@ var _ = await sdk.Auth().LdapAuth().LoginAsync(
 
 The `Secrets()` sub-class handles operations related to the Infisical secrets management product.
 
-#### List Secrets
+#### List secrets
 
 ```cs
 Task<Secret[]> ListAsync(ListSecretsOptions options);
@@ -172,7 +172,7 @@ Secret[] secrets = await sdk.Secrets().ListAsync(options);
 **Returns:**
 - `Task<Secret[]>`: The response containing the list of secrets.
 
-#### Create Secret
+#### Create secret
 
 ```cs
 public Task<Secret> CreateAsync(CreateSecretOptions options);
@@ -215,7 +215,7 @@ Task<Secret> newSecret = await sdk.Secrets().CreateAsync(options);
 **Returns:**
 - `Task<Secret>`: The created secret.
 
-#### Update Secret
+#### Update secret
 
 ```cs
 public Task<Secret> UpdateAsync(UpdateSecretOptions options); 
@@ -252,7 +252,7 @@ Task<Secret> updatedSecret = await sdk.Secrets().UpdateAsync(updateSecretOptions
 **Returns:**
 - `Task<Secret>`: The updated secret.
 
-#### Get Secret by Name
+#### Get secret by name
 
 ```cs
 public Task<Secret> GetAsync(GetSecretOptions options);
@@ -285,7 +285,7 @@ Secret secret = await sdk.Secrets().GetAsync(getSecretOptions);
 **Returns:**
 - `Task<Secret>`: The fetched secret.
 
-#### Delete Secret by Name
+#### Delete secret by name
 
 ```cs
 public Secret DeleteAsync(DeleteSecretOptions options);
