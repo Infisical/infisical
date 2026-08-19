@@ -1,12 +1,12 @@
 ---
-title: "Session Recording"
-sidebarTitle: "Session Recording"
+title: "Session recording"
+sidebarTitle: "Session recording"
 description: "How PAM captures and stores session activity."
 ---
 
 PAM captures everything that happens during a session — every query, command, and response. This gives you a complete record for compliance audits and incident investigation.
 
-## What Gets Recorded
+## What gets recorded
 
 The content depends on the account type:
 
@@ -24,7 +24,7 @@ Both Web Access and CLI sessions are recorded the same way.
 
 Recording happens at the [Gateway](/documentation/platform/gateways/overview) level — events are captured, encrypted, and uploaded in real-time. See [Architecture](/documentation/platform/pam/architecture) for details on how this works.
 
-## Storage Options
+## Storage options
 
 Recording is always enabled. You can configure where recordings are stored at the **[template](/documentation/platform/pam/templates/overview) level** — all accounts using a template inherit its storage settings.
 
@@ -35,7 +35,7 @@ Recording is always enabled. You can configure where recordings are stored at th
 
 For most cases, internal storage works fine. Use [External Storage](/documentation/platform/pam/sessions/external-storage) if you need control over data residency or retention.
 
-## Viewing Recordings
+## Viewing recordings
 
 1. Go to **Sessions** and click on a session
 2. The session detail page shows the full log of activity
@@ -43,7 +43,7 @@ For most cases, internal storage works fine. Use [External Storage](/documentati
 
 Recordings are available in real-time for both active and completed sessions.
 
-## Next Steps
+## Next steps
 
 <CardGroup cols={2}>
   <Card title="External Storage" icon="cloud" href="/documentation/platform/pam/sessions/external-storage">

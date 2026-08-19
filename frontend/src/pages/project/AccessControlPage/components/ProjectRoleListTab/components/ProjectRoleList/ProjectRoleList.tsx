@@ -198,7 +198,10 @@ export const ProjectRoleList = () => {
     </Empty>
   );
 
-  const renderRoleTable = (tableRoles: TProjectRole[], skeletonCount = 4) => (
+  const renderRoleTable = (
+    tableRoles: Array<Omit<TProjectRole, "permissions">>,
+    skeletonCount = 4
+  ) => (
     <Table>
       <TableHeader>
         <TableRow>

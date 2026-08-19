@@ -1,5 +1,5 @@
 ---
-title: "Windows Active Directory Accounts"
+title: "Windows Active Directory accounts"
 sidebarTitle: "Windows AD"
 description: "Add and connect to Windows servers through Active Directory."
 ---
@@ -10,7 +10,7 @@ Windows AD accounts let you manage access to Windows servers using Active Direct
 Windows AD accounts require session recordings to be stored in an external S3 bucket. Configure this in the [template](/documentation/platform/pam/templates/overview) before creating Windows AD accounts.
 </Note>
 
-## Creating an Account
+## Creating an account
 
 <Steps>
   <Step title="Start adding an account">
@@ -83,13 +83,13 @@ Windows AD accounts require session recordings to be stored in an external S3 bu
   </Tab>
 </Tabs>
 
-## Allowed Hosts
+## Allowed hosts
 
 Unlike single-server Windows accounts, Windows AD accounts can connect to multiple hosts. When you create the account, you define the list of allowed hosts. Users choose which host to connect to when launching a session.
 
 This is useful for domain admin accounts that need access to multiple servers — you can manage a single account with one set of credentials while controlling which servers it can access.
 
-## Next Steps
+## Next steps
 
 <CardGroup cols={2}>
   <Card title="Windows Accounts" icon="windows" href="/documentation/platform/pam/accounts/windows">

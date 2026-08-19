@@ -33,7 +33,7 @@ The short video below walks through deploying Infisical with Docker Compose, cov
   To run Infisical in a highly available manner, see the [Kubernetes guide](/self-hosting/deployment-options/kubernetes-helm).
 </Warning>
 
-## System Requirements
+## System requirements
 
 The following are minimum requirements for running Infisical with Docker Compose:
 
@@ -45,7 +45,7 @@ The following are minimum requirements for running Infisical with Docker Compose
 
 These requirements include resources for Infisical, PostgreSQL, and Redis containers. For larger deployments with many secrets or users, increase resources accordingly.
 
-## Deployment Steps
+## Deployment steps
 
 <Tabs>
   <Tab title="Docker Compose">
@@ -221,9 +221,9 @@ Podman Compose is an alternative way to run Infisical using Podman as a replacem
 
 ---
 
-## Managing Your Deployment
+## Managing your deployment
 
-### Stopping and Restarting Services
+### Stopping and restarting services
 
 To stop all Infisical services:
 
@@ -243,7 +243,7 @@ To restart a specific service (e.g., after configuration changes):
 docker compose -f docker-compose.prod.yml restart backend
 ```
 
-### Data Persistence and Volumes
+### Data persistence and volumes
 
 The Docker Compose configuration uses named volumes to persist data:
 
@@ -268,7 +268,7 @@ To back up the PostgreSQL volume:
 docker compose -f docker-compose.prod.yml exec db pg_dump -U infisical infisical > backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
-### Viewing Logs
+### Viewing logs
 
 To view logs from all services:
 
@@ -298,7 +298,7 @@ docker logs <container_name> --since 1h
 
 ---
 
-## Additional Configuration
+## Additional configuration
 
 <AccordionGroup>
   <Accordion title="Firewall Configuration">

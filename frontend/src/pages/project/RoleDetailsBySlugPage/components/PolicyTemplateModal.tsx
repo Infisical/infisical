@@ -1,46 +1,24 @@
 import { useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import {
-  BellIcon,
   ClockIcon,
-  DatabaseIcon,
   EyeIcon,
-  FileCheckIcon,
-  FileKeyIcon,
-  FileStackIcon,
-  FingerprintIcon,
-  FolderArchiveIcon,
-  FolderIcon,
-  ImportIcon,
-  KeyRoundIcon,
-  LayersIcon,
-  LockIcon,
+  LayoutGridIcon,
+  ListIcon,
   type LucideIcon,
   PencilIcon,
   PlusIcon,
-  PuzzleIcon,
   RadarIcon,
   RotateCcwIcon,
-  ScrollTextIcon,
-  SearchIcon,
-  ServerIcon,
-  SettingsIcon,
-  ShieldCheckIcon,
   ShieldIcon,
-  SlidersHorizontalIcon,
-  TableIcon,
-  TagIcon,
-  Trash2Icon,
-  UndoIcon,
-  UsersIcon,
-  WaypointsIcon,
-  WebhookIcon
+  Trash2Icon
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
+  ButtonGroup,
   Card,
   CardContent,
   CardHeader,
@@ -51,6 +29,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  getProjectPermissionSubjectPresentation,
+  IconButton,
   Sheet,
   SheetClose,
   SheetContent,
@@ -90,96 +70,6 @@ type TemplatePolicyGroup = {
   actions: { value: string; label: string; description?: string }[];
 };
 
-const ACCENT_ICON_TILE = "border-accent/10 bg-accent/15 text-accent";
-
-const POLICY_SUBJECT_ICONS: Partial<
-  Record<ProjectPermissionSub, { Icon: LucideIcon; tileClassName: string }>
-> = {
-  [ProjectPermissionSub.Secrets]: {
-    Icon: KeyRoundIcon,
-    tileClassName: "border-secret/10 bg-secret/15 text-secret"
-  },
-  [ProjectPermissionSub.SecretFolders]: {
-    Icon: FolderIcon,
-    tileClassName: "border-folder/10 bg-folder/15 text-folder"
-  },
-  [ProjectPermissionSub.DynamicSecrets]: {
-    Icon: FingerprintIcon,
-    tileClassName: "border-dynamic-secret/10 bg-dynamic-secret/15 text-dynamic-secret"
-  },
-  [ProjectPermissionSub.SecretImports]: {
-    Icon: ImportIcon,
-    tileClassName: "border-import/10 bg-import/15 text-import"
-  },
-  [ProjectPermissionSub.SecretRotation]: {
-    Icon: RotateCcwIcon,
-    tileClassName: "border-secret-rotation/10 bg-secret-rotation/15 text-secret-rotation"
-  },
-  [ProjectPermissionSub.ProxiedServices]: {
-    Icon: WaypointsIcon,
-    tileClassName: "border-proxied-service/10 bg-proxied-service/15 text-proxied-service"
-  },
-  [ProjectPermissionSub.SecretRollback]: { Icon: UndoIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.SecretApproval]: { Icon: FileCheckIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.SecretSyncs]: { Icon: RotateCcwIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.Environments]: { Icon: LayersIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.Tags]: { Icon: TagIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.Integrations]: { Icon: PuzzleIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.Webhooks]: { Icon: WebhookIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.ServiceTokens]: { Icon: KeyRoundIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.AuditLogs]: { Icon: ScrollTextIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.IpAllowList]: { Icon: ShieldCheckIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.Member]: { Icon: UsersIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.Groups]: { Icon: UsersIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.Identity]: { Icon: FingerprintIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.Role]: { Icon: ShieldIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.Project]: { Icon: ShieldIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.Settings]: { Icon: SettingsIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.Kms]: { Icon: LockIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.Cmek]: { Icon: LockIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.Kmip]: { Icon: ServerIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.Certificates]: { Icon: FileKeyIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.CertificateAuthorities]: {
-    Icon: FileKeyIcon,
-    tileClassName: ACCENT_ICON_TILE
-  },
-  [ProjectPermissionSub.CertificateTemplates]: {
-    Icon: FileStackIcon,
-    tileClassName: ACCENT_ICON_TILE
-  },
-  [ProjectPermissionSub.CertificateProfiles]: {
-    Icon: FileStackIcon,
-    tileClassName: ACCENT_ICON_TILE
-  },
-  [ProjectPermissionSub.CertificateInventoryViews]: {
-    Icon: TableIcon,
-    tileClassName: ACCENT_ICON_TILE
-  },
-  [ProjectPermissionSub.PkiAlerts]: { Icon: BellIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.PkiCollections]: {
-    Icon: FolderArchiveIcon,
-    tileClassName: ACCENT_ICON_TILE
-  },
-  [ProjectPermissionSub.PkiSyncs]: { Icon: RotateCcwIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.SecretScanningDataSources]: {
-    Icon: DatabaseIcon,
-    tileClassName: ACCENT_ICON_TILE
-  },
-  [ProjectPermissionSub.SecretScanningFindings]: {
-    Icon: SearchIcon,
-    tileClassName: ACCENT_ICON_TILE
-  },
-  [ProjectPermissionSub.SecretScanningConfigs]: {
-    Icon: SlidersHorizontalIcon,
-    tileClassName: ACCENT_ICON_TILE
-  },
-  [ProjectPermissionSub.HoneyTokens]: { Icon: ShieldIcon, tileClassName: ACCENT_ICON_TILE },
-  [ProjectPermissionSub.Commits]: { Icon: FileStackIcon, tileClassName: ACCENT_ICON_TILE }
-};
-
-const getPolicySubjectIcon = (subject: ProjectPermissionSub) =>
-  POLICY_SUBJECT_ICONS[subject] ?? { Icon: ShieldIcon, tileClassName: ACCENT_ICON_TILE };
-
 const getPermissionActionIcon = (label: string, value: string): LucideIcon => {
   const haystack = `${label} ${value}`.toLowerCase();
 
@@ -215,6 +105,82 @@ const getTemplatePolicyGroups = (template: RoleTemplate): TemplatePolicyGroup[] 
     })
     .sort((a, b) => a.title.localeCompare(b.title));
 
+const POLICY_LAYOUT = {
+  Compact: "compact",
+  Detailed: "detailed"
+} as const;
+
+type PolicyLayout = (typeof POLICY_LAYOUT)[keyof typeof POLICY_LAYOUT];
+
+const PolicyGroupsCompactView = ({ groups }: { groups: TemplatePolicyGroup[] }) => (
+  <div className="columns-1 gap-x-6 @md/policies:columns-2">
+    {groups.map((group) => (
+      <div key={group.subject} className="mb-5 break-inside-avoid">
+        <div className="text-sm font-medium">{group.title}</div>
+        <ul className="mt-1 flex list-disc flex-col gap-1 pl-4 text-sm text-accent">
+          {group.actions.map((action) => (
+            <li key={action.value}>{action.label}</li>
+          ))}
+        </ul>
+      </div>
+    ))}
+  </div>
+);
+
+const PolicyGroupsDetailedView = ({ groups }: { groups: TemplatePolicyGroup[] }) => (
+  <div className="flex flex-col gap-3">
+    {groups.map((group) => {
+      const { Icon: SubjectIcon, color } = getProjectPermissionSubjectPresentation(group.subject);
+
+      return (
+        <Card key={group.subject} className="gap-0 overflow-hidden p-0 shadow-none">
+          <CardHeader className="border-b px-3 py-2.5">
+            <CardTitle className="gap-2.5 text-sm">
+              <span
+                className={cn(
+                  "flex size-7 shrink-0 items-center justify-center rounded-md border",
+                  color.tileClassName
+                )}
+              >
+                <SubjectIcon className="size-4" />
+              </span>
+              {group.title}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 py-3">
+            <ul className="flex flex-wrap gap-2">
+              {group.actions.map((action) => {
+                const ActionIcon = getPermissionActionIcon(action.label, action.value);
+                const badge = (
+                  <Badge variant="neutral" iconPosition="left">
+                    <ActionIcon />
+                    {action.label}
+                  </Badge>
+                );
+
+                return (
+                  <li key={action.value}>
+                    {action.description ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>{badge}</span>
+                        </TooltipTrigger>
+                        <TooltipContent>{action.description}</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      badge
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      );
+    })}
+  </div>
+);
+
 const Content = ({ onClose, type: projectType }: ContentProps) => {
   const rootForm = useFormContext<TFormSchema>();
 
@@ -222,6 +188,7 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
   const [selectedTemplate, setSelectedTemplate] = useState(templates[0]);
   const [conflictingSubjects, setConflictingSubjects] = useState<ProjectPermissionSub[]>([]);
   const [showConflictingSubjects, setShowConflictingSubjects] = useState(false);
+  const [policyLayout, setPolicyLayout] = useState<PolicyLayout>(POLICY_LAYOUT.Detailed);
 
   const selectedPolicyGroups = useMemo(
     () => (selectedTemplate ? getTemplatePolicyGroups(selectedTemplate) : []),
@@ -364,72 +331,59 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
                 // Scroll regions must be keyboard reachable when children are informational.
                 // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
                 tabIndex={0}
-                className="min-h-0 thin-scrollbar flex-1 overflow-y-auto p-5 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                className="@container/policies min-h-0 thin-scrollbar flex-1 overflow-y-auto p-5 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
               >
                 <div className="flex flex-col gap-8">
-                  <div className="flex flex-col gap-1.5">
-                    <h3 className="text-lg leading-none font-semibold">{selectedTemplate.name}</h3>
-                    <p className="text-sm text-accent">{selectedTemplate.description}</p>
-                    <Badge variant="neutral">
-                      {selectedPolicyCount} {selectedPolicyCount === 1 ? "Policy" : "Policies"}
-                    </Badge>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                      <h3 className="text-lg leading-none font-semibold">
+                        {selectedTemplate.name}
+                      </h3>
+                      <p className="text-sm text-accent">{selectedTemplate.description}</p>
+                      <Badge variant="neutral">
+                        {selectedPolicyCount} {selectedPolicyCount === 1 ? "Policy" : "Policies"}
+                      </Badge>
+                    </div>
+                    <ButtonGroup aria-label="Policy layout">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <IconButton
+                            size="sm"
+                            variant={policyLayout === POLICY_LAYOUT.Compact ? "project" : "outline"}
+                            aria-label="List view"
+                            aria-pressed={policyLayout === POLICY_LAYOUT.Compact}
+                            className={policyLayout === POLICY_LAYOUT.Compact ? "z-10" : ""}
+                            onClick={() => setPolicyLayout(POLICY_LAYOUT.Compact)}
+                          >
+                            <ListIcon />
+                          </IconButton>
+                        </TooltipTrigger>
+                        <TooltipContent>List</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <IconButton
+                            size="sm"
+                            variant={
+                              policyLayout === POLICY_LAYOUT.Detailed ? "project" : "outline"
+                            }
+                            aria-label="Card view"
+                            aria-pressed={policyLayout === POLICY_LAYOUT.Detailed}
+                            className={policyLayout === POLICY_LAYOUT.Detailed ? "z-10" : ""}
+                            onClick={() => setPolicyLayout(POLICY_LAYOUT.Detailed)}
+                          >
+                            <LayoutGridIcon />
+                          </IconButton>
+                        </TooltipTrigger>
+                        <TooltipContent>Cards</TooltipContent>
+                      </Tooltip>
+                    </ButtonGroup>
                   </div>
-                  <div className="flex flex-col gap-3">
-                    {selectedPolicyGroups.map((group) => {
-                      const { Icon: SubjectIcon, tileClassName } = getPolicySubjectIcon(
-                        group.subject
-                      );
-
-                      return (
-                        <Card key={group.subject} className="gap-0 overflow-hidden p-0 shadow-none">
-                          <CardHeader className="border-b px-3 py-2.5">
-                            <CardTitle className="gap-2.5 text-sm">
-                              <span
-                                className={cn(
-                                  "flex size-7 shrink-0 items-center justify-center rounded-md border",
-                                  tileClassName
-                                )}
-                              >
-                                <SubjectIcon className="size-4" />
-                              </span>
-                              {group.title}
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="px-3 py-3">
-                            <ul className="flex flex-wrap gap-2">
-                              {group.actions.map((action) => {
-                                const ActionIcon = getPermissionActionIcon(
-                                  action.label,
-                                  action.value
-                                );
-                                const badge = (
-                                  <Badge variant="project" iconPosition="left">
-                                    <ActionIcon />
-                                    {action.label}
-                                  </Badge>
-                                );
-
-                                return (
-                                  <li key={action.value}>
-                                    {action.description ? (
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <span>{badge}</span>
-                                        </TooltipTrigger>
-                                        <TooltipContent>{action.description}</TooltipContent>
-                                      </Tooltip>
-                                    ) : (
-                                      badge
-                                    )}
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
+                  {policyLayout === POLICY_LAYOUT.Compact ? (
+                    <PolicyGroupsCompactView groups={selectedPolicyGroups} />
+                  ) : (
+                    <PolicyGroupsDetailedView groups={selectedPolicyGroups} />
+                  )}
                 </div>
               </div>
             )}

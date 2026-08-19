@@ -1,5 +1,5 @@
 ---
-title: "AWS IAM Accounts"
+title: "AWS IAM accounts"
 sidebarTitle: "AWS IAM"
 description: "Add and connect to AWS accounts via IAM role assumption."
 ---
@@ -12,7 +12,7 @@ Infisical assumes the IAM role you configure directly, then returns short-lived 
 AWS IAM accounts do not require a Gateway. Infisical communicates directly with the AWS STS API.
 </Note>
 
-## How It Works
+## How it works
 
 When a user accesses an AWS IAM account, Infisical assumes the account's IAM role using AWS STS and returns the temporary credentials:
 
@@ -84,7 +84,7 @@ Before adding the account in Infisical, create the IAM role in your AWS account 
   </Step>
 </Steps>
 
-## Creating an Account
+## Creating an account
 
 <Steps>
   <Step title="Start adding an account">
@@ -108,7 +108,7 @@ Before adding the account in Infisical, create the IAM role in your AWS account 
   To expose the same role in more than one folder, add an account in each folder pointing at the same **Role ARN**. Each account is a distinct entry that references the same underlying IAM role.
 </Note>
 
-## Session Duration
+## Session duration
 
 Sessions use short-lived STS credentials. The duration is bounded by the target role's **maximum session duration** in AWS (`MaxSessionDuration`), with a minimum of 15 minutes. Requesting longer than the role allows will cause AWS to reject the request, so set the role's `MaxSessionDuration` to cover the session lengths you expect.
 
@@ -154,7 +154,7 @@ All actions performed with the credentials are logged in [AWS CloudTrail](https:
   </Tab>
 </Tabs>
 
-## Next Steps
+## Next steps
 
 <CardGroup cols={2}>
   <Card title="Kubernetes Accounts" icon="dharmachakra" href="/documentation/platform/pam/accounts/kubernetes">

@@ -1,6 +1,6 @@
 ---
-title: "Account Templates"
-sidebarTitle: "Account Templates"
+title: "Account templates"
+sidebarTitle: "Account templates"
 description: "Define the rules that apply when someone connects to an account."
 ---
 
@@ -10,13 +10,13 @@ Templates define how [accounts](/documentation/platform/pam/accounts/overview) b
 
 Infisical provides **default templates** for each account type with sensible defaults, so you can start adding accounts right away. Create custom templates when you need different rules — for example, stricter session limits for production or a specific Gateway for a network segment.
 
-## Default Templates
+## Default templates
 
 When you first use PAM, default templates are available for each account type (PostgreSQL, MySQL, MS SQL, MongoDB, Redis, SSH, Kubernetes, AWS IAM, GCP Service Account, Azure CLI, Windows, Windows AD). Each has sensible defaults like 1-hour session duration.
 
 If the defaults work for you, you can skip straight to [adding accounts](/documentation/platform/pam/accounts/overview).
 
-## Creating a Custom Template
+## Creating a custom template
 
 If you need different rules — say, 4-hour sessions with MFA for production — create a custom template.
 
@@ -55,7 +55,7 @@ If you need different rules — say, 4-hour sessions with MFA for production —
   </Step>
 </Steps>
 
-## How Templates Work with Accounts
+## How templates work with accounts
 
 Every account references a template. The account inherits everything from that template — session limits, MFA requirements, Gateway, recording storage, and so on.
 
@@ -66,7 +66,7 @@ This means you can:
 
 Some options like Gateway can be overridden at the account level when needed.
 
-## Next Steps
+## Next steps
 
 With templates set up, you're ready to add accounts to your [folders](/documentation/platform/pam/folders/overview).
 

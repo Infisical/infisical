@@ -17,7 +17,7 @@ graph TD
     A --> C[Intermediate CA]
 ```
 
-## How It Works
+## How it works
 
 1. **Create a Root CA** — Or use an existing external root CA
 2. **Create Intermediate CA(s)** — Chain them to your root CA
@@ -28,7 +28,7 @@ graph TD
   You can execute this workflow via the UI or API. For API workflows, you may need to create CSRs and import certificates manually.
 </Note>
 
-## Create a CA Hierarchy
+## Create a CA hierarchy
 
 Create a simple Private CA hierarchy with a root CA and intermediate CA.
 
@@ -254,7 +254,7 @@ Create a simple Private CA hierarchy with a root CA and intermediate CA.
   </Tab>
 </Tabs>
 
-## HSM-backed Internal CAs
+## HSM-backed internal CAs
 
 By default, Infisical generates and manages the signing key for an Internal CA. You can instead keep the CA's signing key inside your own Hardware Security Module. When **Key Source** is set to **HSM**, Infisical generates the keypair on the HSM through an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) and performs every signing operation the CA does on the HSM. That covers the self-signed root certificate, intermediate CSRs, the certificates the CA issues, and its CRLs.
 
@@ -293,7 +293,7 @@ curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="CA Renewal" icon="arrows-rotate" href="/documentation/platform/pki/ca/ca-renewal">

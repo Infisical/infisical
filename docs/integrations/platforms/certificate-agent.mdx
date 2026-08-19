@@ -30,7 +30,7 @@ A typical workflow for using the Infisical Agent to request certificates from In
 3. Create an agent [configuration file](/integrations/platforms/certificate-agent#agent-configuration) containing details about the certificate to request and how it should be managed such as renewal thresholds, post-event hooks, etc.
 4. Start the agent with that configuration so it can request, persist, monitor, and going forward automatically renew the certificate before it expires on the target machine.
 
-## Operating the Agent
+## Operating the agent
 
 This section describes how to use the Infisical Agent to request certificates from Infisical. It covers how the agent authenticates with Infisical,
 and how to configure it to start requesting certificates from Infisical.
@@ -179,7 +179,7 @@ the agent automatically handles token renewal as documented [here](/integrations
   </Accordion>
 </AccordionGroup>
 
-### Agent Configuration
+### Agent configuration
 
 The Infisical Agent relies on a YAML configuration file to define its behavior, including how it should authenticate with Infisical, the certificate it should request, and how that certificate should be managed including auto-renewal.
 
@@ -268,7 +268,7 @@ To be more specific, the configuration file instructs the agent to:
 - Store the certificate and its associated private key and certificate chain (excluding the root CA certificate) in the filesystem at the specified paths with the specified permissions.
 - Execute custom commands after certificate issuance, renewal, or failure events such as reloading an `nginx` service or sending an email notification.
 
-### Agent Execution
+### Agent execution
 
 After creating the configuration file, you can run the command below with the `--config` flag pointing to the path where the agent configuration file is located.
 
@@ -284,7 +284,7 @@ infisical cert-manager agent --config /path/to/your/agent-config.yaml --verbose
 
 For production deployments, you may consider running the agent as a system service to ensure it starts automatically and runs continuously.
 
-### Agent Certificate Configuration Parameters
+### Agent certificate configuration parameters
 
 The table below provides a complete list of parameters that can be configured in the **certificate configuration** section of the agent configuration file:
 
@@ -316,7 +316,7 @@ The table below provides a complete list of parameters that can be configured in
 | `post-hooks.on-failure.command`      | Optional                                               | The shell command to execute when certificate issuance or renewal fails (e.g., `logger 'Certificate renewal failed'`, `/usr/local/bin/alert.sh`)                                                                                   |
 | `post-hooks.on-failure.timeout`      | Optional (defaults to `30`)                            | Maximum execution time in seconds for the on-failure post-hook command before it is terminated (e.g., `10`, `30`, `60`)                                                                                                            |
 
-### Post-Event Hooks
+### Post-event hooks
 
 The Infisical Agent supports running custom commands in response to certificate lifecycle events such as issuance, renewal, and failure through the `post-hooks` configuration
 in the agent configuration file.
@@ -393,12 +393,12 @@ infisical:
 # ... rest of the agent configuration file
 ```
 
-## Example Agent Configuration Files
+## Example agent configuration files
 
 Since there are several ways you might want to use the Infisical Agent to request certificates from Infisical,
 we provide a few example configuration files for common use cases below to help you get started.
 
-### One-Time Certificate Issuance
+### One-time certificate issuance
 
 The code snippet below shows a configuration file that instructs the agent to request a certificate from Infisical
 once without performing any subsequent auto-renewal.
@@ -451,7 +451,7 @@ certificates:
         omit-root: true
 ```
 
-### One-Time Certificate Issuance using a Pre-Generated CSR
+### One-time certificate issuance using a pre-generated CSR
 
 The code snippet below shows a configuration file that instructs the agent to request a certificate from Infisical
 once using a pre-generated CSR.
@@ -494,7 +494,7 @@ certificates:
         omit-root: true
 ```
 
-### Certificate Issuance with Automatic Renewal
+### Certificate issuance with automatic renewal
 
 The code snippet below shows a configuration file that instructs the agent to request a certificate from Infisical and continuously renew it 14 days before expiration, checking the certificate status every 6 hours.
 

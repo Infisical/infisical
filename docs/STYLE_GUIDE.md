@@ -1,23 +1,24 @@
-# Documentation Style Guide
+# Documentation style guide
 
 This guide defines how to write user-facing documentation for Infisical.
 
-## Quick Summary
+## Quick summary
 
 1. **Provide context** — Explain what and why before how. Don't assume prior knowledge.
 2. **Write for users** — No implementation details. Users care about outcomes, not internals.
 3. **Cross-reference** — Link concepts that are essential for understanding.
 4. **Use Mintlify components** — Steps, Tabs, Cards, Accordions, callouts, diagrams.
 5. **Write clearly** — Active voice, specific verbs, concise sentences, sparing em dashes.
-6. **Keep pages focused** — One purpose per page. Split if it gets too long.
+6. **Keep pages focused** — One purpose per page.
 7. **Maintain flow** — New content should connect naturally with existing content.
 8. **State prerequisites** — Tell readers what they need before they start.
 9. **Be consistent** — Use the same terms throughout.
 10. **Structure by purpose** — Guides, concepts, overviews, and references have different shapes.
+11. **Use sentence case** — Write page titles, sidebar titles, and headings in sentence case.
 
 ---
 
-## 1. Provide Context for New Users
+## 1. Provide context for new users
 
 Don't assume the reader already knows what a feature is or why it matters. Every page should orient a new user before diving into details.
 
@@ -35,7 +36,7 @@ Then move to the "how."
 
 If a reader lands on the page with no prior context, they should be able to understand what they're looking at within the first few sentences.
 
-### Audience Callouts
+### Audience callouts
 
 If a page is intended for a specific audience (admins vs. end users, product admins vs. application admins), say so at the top with an `<Info>` callout:
 
@@ -49,12 +50,12 @@ If a page is intended for a specific audience (admins vs. end users, product adm
 
 This helps readers quickly know if they're in the right place.
 
-### "When to Use" Sections
+### "When to use" sections
 
-For pages that describe one approach among several (e.g., ACME vs. EST vs. SCEP), include a "When to Use" section that helps readers decide if this is the right choice:
+For pages that describe one approach among several (e.g., ACME vs. EST vs. SCEP), include a "When to use" section that helps readers decide if this is the right choice:
 
 ```mdx
-## When to Use ACME Enrollment
+## When to use ACME enrollment
 
 <CardGroup cols={2}>
   <Card title="Web Servers" icon="server">
@@ -70,7 +71,7 @@ This makes it easier for readers to quickly assess whether to continue reading o
 
 ---
 
-## 2. Write for Users, Not Implementers
+## 2. Write for users, not implementers
 
 Documentation should be readable and understandable by someone who has never seen our codebase.
 
@@ -82,7 +83,7 @@ Users care about what they can do and what happens — not how we built it. Don'
 
 ---
 
-## 3. Cross-Reference Core Concepts
+## 3. Cross-reference core concepts
 
 When you reference a concept that is core to understanding the page, link to its documentation. If a reader wouldn't understand the page without knowing what that concept means, link it.
 
@@ -102,13 +103,13 @@ Permissions are set at the folder level.
 
 ---
 
-## 4. Use Mintlify Components
+## 4. Use Mintlify components
 
 Take full advantage of Mintlify's component library rather than relying on plain markdown. Components make documentation more scannable, interactive, and easier to navigate.
 
 ### Procedures
 
-Use `<Steps>` for any sequence of actions:
+Use `<Steps>` when readers need to complete a discrete, ordered procedure, especially a sequence of actions in the Infisical UI:
 
 ```mdx
 <Steps>
@@ -119,7 +120,9 @@ Use `<Steps>` for any sequence of actions:
 </Steps>
 ```
 
-### Alternative Approaches
+A longer guide should use headings such as `## Step 1: Configure in Infisical` to organize its major stages, with `<Steps>` nested within a stage where numbered actions improve clarity.
+
+### Alternative approaches
 
 Use `<Tabs>` when there are multiple ways to accomplish something:
 
@@ -156,7 +159,7 @@ Use `<Card>` and `<CardGroup>` to guide readers to related pages:
 </CardGroup>
 ```
 
-### Diagrams and Visuals
+### Diagrams and visuals
 
 Use diagrams when explaining technical concepts with multiple connecting pieces. Visuals help readers understand relationships, data flows, and architecture far better than text alone.
 
@@ -170,7 +173,7 @@ Use diagrams when explaining technical concepts with multiple connecting pieces.
 
 Mintlify supports [Mermaid diagrams](https://mermaid.js.org/) inline, or you can include images.
 
-### Frequently Asked Questions
+### Frequently asked questions
 
 Use `<AccordionGroup>` with `<Accordion>` for FAQ sections. FAQs are valuable — they address common questions, edge cases, and "but what about..." scenarios without cluttering the main content.
 
@@ -194,7 +197,7 @@ Use `<AccordionGroup>` with `<Accordion>` for FAQ sections. FAQs are valuable �
 
 FAQs make documentation easier to scan — readers can jump straight to their question instead of hunting through paragraphs.
 
-### Code Examples
+### Code examples
 
 Include code examples only when they genuinely help understanding — not to make documentation look technical or comprehensive. A well-placed example clarifies; too many examples overwhelm.
 
@@ -233,13 +236,13 @@ curl -X POST https://app.infisical.com/api/v1/secrets \
   ...
 ```
 
-### Other Components
+### Other components
 
 Mintlify offers many more components — use whatever best serves the reader's understanding.
 
 ---
 
-## 5. Write Clearly and Directly
+## 5. Write clearly and directly
 
 Documentation should read like instructions from a knowledgeable colleague: direct, specific, and easy to follow.
 
@@ -248,21 +251,50 @@ Documentation should read like instructions from a knowledgeable colleague: dire
 - Keep sentences and paragraphs concise
 - Explain jargon on first use
 
-### Don't Overuse Em Dashes
+### Use sentence case for titles and headings
+
+Always use sentence case for:
+
+- The `title` and `sidebarTitle` frontmatter fields
+- Markdown headings at every level
+
+Capitalize only the first word and proper nouns, product names, and acronyms such as Infisical, Docker, CLI, and ACME.
+
+```mdx
+<!-- Good -->
+---
+title: "Inject secrets into a Docker application"
+sidebarTitle: "Docker quickstart"
+---
+
+## Next steps
+
+<!-- Bad -->
+---
+title: "Inject Secrets Into a Docker Application"
+sidebarTitle: "Docker Quickstart"
+---
+
+## Next Steps
+```
+
+### Don't overuse em dashes
 
 Reach for a comma, colon, parentheses, or a full stop first. An occasional em dash is fine, but several in a paragraph, or one in most sentences, means the punctuation is doing the work that sentence structure should.
 
 ---
 
-## 6. Keep Pages Focused
+## 6. Keep pages focused
 
-Each page should have a clear, single purpose. If a page is getting long or covering multiple distinct topics, split it into separate pages.
+Each page should have a clear, single purpose. Keep related workflows together when readers benefit from seeing them in one place. For example, an integration guide can cover several delivery methods and related configuration such as Docker Compose as long as every section serves the same integration goal.
+
+Use `<Tabs>` for alternative methods when readers choose one path. Use headings for related extensions that readers may complete after the primary workflow. Split a page when its sections serve genuinely different purposes, not merely because the page is long.
 
 **Signs a page should be split:**
 
 - Readers have to scroll past content that isn't relevant to them
 - The table of contents has more than 5-6 top-level sections
-- Different audiences need different parts (e.g., admins vs. end users)
+- Different audiences have unrelated goals (e.g., admins configuring infrastructure vs. end users consuming it)
 
 **Better structure:**
 
@@ -275,7 +307,7 @@ Short, focused pages are easier to navigate, easier to link to, and easier to ma
 
 ---
 
-## 7. Maintain Flow When Editing
+## 7. Maintain flow when editing
 
 When adding or modifying content on an existing page, make sure it fits naturally with what comes before and after. Don't just insert content — connect it.
 
@@ -290,24 +322,26 @@ If new content doesn't fit the existing flow, consider whether it belongs on thi
 
 ---
 
-## 8. State Prerequisites Explicitly
+## 8. State prerequisites explicitly
 
 If a page assumes something is already set up — a Gateway deployed, permissions granted, a CLI installed — state it at the top. Readers shouldn't get stuck halfway through because they missed an unstated requirement.
 
-Use a `<Note>` callout for critical prerequisites:
+Use an `<Info>` callout for a short prerequisite list:
 
 ```mdx
-<Note>
-  This guide requires a [Gateway](/documentation/platform/gateways/overview)
-  that can reach your database.
-</Note>
+<Info>
+Prerequisites:
+
+- An Infisical account
+- A [Gateway](/documentation/platform/gateways/overview) that can reach your database
+</Info>
 ```
 
-Or list them in a "Prerequisites" section before the main content.
+Use a "Prerequisites" section before the main content when requirements need additional explanation. Reserve `<Note>` for prerequisite details that apply to a specific step rather than the whole page.
 
 ---
 
-## 9. Use Consistent Terminology
+## 9. Use consistent terminology
 
 Use the same terms throughout the documentation. Don't switch between synonyms for the same concept — it confuses readers and makes searching harder.
 
@@ -321,7 +355,7 @@ If Infisical has a specific term for something, use that term consistently.
 
 ---
 
-## 10. Page Structure
+## 10. Page structure
 
 Structure depends on what the page is for. Don't force every page into the same template.
 

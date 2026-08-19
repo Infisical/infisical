@@ -3,13 +3,36 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { auditReportKeys } from "./queries";
-import { TAuditReport, TRequestAuditReportDTO } from "./types";
+import {
+  TAuditReport,
+  TDeleteAuditReportDTO,
+  TOrgAuditReport,
+  TRequestAuditReportDTO,
+  TRequestOrgAuditReportDTO
+} from "./types";
 
 export const useRequestAuditReport = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (dto: TRequestAuditReportDTO) => {
-      const { data } = await apiRequest.post<TAuditReport>("/api/v1/insights/secrets/reports", dto);
+    mutationFn: async ({ projectId, ...body }: TRequestAuditReportDTO) => {
+      const { data } = await apiRequest.post<TAuditReport>(
+        `/api/v1/insights/${projectId}/secrets/reports`,
+        body
+      );
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: auditReportKeys.all() })
+  });
+};
+
+export const useRequestOrgAuditReport = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: TRequestOrgAuditReportDTO) => {
+      const { data } = await apiRequest.post<TOrgAuditReport>(
+        "/api/v1/insights/secrets/reports",
+        body
+      );
       return data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: auditReportKeys.all() })
@@ -19,9 +42,9 @@ export const useRequestAuditReport = () => {
 export const useDeleteAuditReport = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (auditReportId: string) => {
+    mutationFn: async ({ projectId, auditReportId }: TDeleteAuditReportDTO) => {
       const { data } = await apiRequest.delete<TAuditReport>(
-        `/api/v1/insights/secrets/reports/${auditReportId}`
+        `/api/v1/insights/${projectId}/secrets/reports/${auditReportId}`
       );
       return data;
     },
