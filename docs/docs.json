@@ -5,7 +5,7 @@
   "fonts": {
     "heading": {
       "family": "Alliance",
-      "source": "/fonts/AllianceNo2-Regular.woff2",
+      "source": "https://infisical.com/docs/fonts/AllianceNo2-Regular.woff2",
       "format": "woff2",
       "weight": 400
     }
