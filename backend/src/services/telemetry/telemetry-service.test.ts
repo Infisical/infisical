@@ -42,15 +42,15 @@ vi.mock("posthog-node", () => ({
 // The drain's health signals: what it published, what it lost, and what it left behind. Spied here
 // because a limit (MAXLEN, collect ceiling, retention window) can only be tuned against them.
 const metrics = vi.hoisted(() => ({
-  recordTelemetryAggregationPublishedMetric: vi.fn(),
-  recordTelemetryAggregationDroppedMetric: vi.fn(),
-  recordTelemetryAggregationBacklogMetric: vi.fn(),
+  recordProductAnalyticsPublishedMetric: vi.fn(),
+  recordProductAnalyticsDroppedMetric: vi.fn(),
+  recordProductAnalyticsBacklogMetric: vi.fn(),
   isTelemetryEnabled: vi.fn(() => true)
 }));
 
 vi.mock("@app/lib/telemetry/metrics", () => ({
   ...metrics,
-  TelemetryAggregationDropReason: { Retention: "retention", Unparseable: "unparseable" }
+  ProductAnalyticsDropReason: { Retention: "retention", Unparseable: "unparseable" }
 }));
 
 // eslint-disable-next-line import/first
@@ -414,7 +414,7 @@ describe("telemetry aggregated event storage", () => {
 
     await telemetryService.processAggregatedEvents();
 
-    expect(metrics.recordTelemetryAggregationDroppedMetric).toHaveBeenCalledWith({
+    expect(metrics.recordProductAnalyticsDroppedMetric).toHaveBeenCalledWith({
       eventType: PostHogEventTypes.SecretPulled,
       reason: "retention",
       count: 4
@@ -435,12 +435,12 @@ describe("telemetry aggregated event storage", () => {
 
     await telemetryService.processAggregatedEvents();
 
-    expect(metrics.recordTelemetryAggregationDroppedMetric).toHaveBeenCalledWith({
+    expect(metrics.recordProductAnalyticsDroppedMetric).toHaveBeenCalledWith({
       eventType: PostHogEventTypes.SecretPulled,
       reason: "unparseable",
       count: 1
     });
-    expect(metrics.recordTelemetryAggregationPublishedMetric).toHaveBeenCalledWith({
+    expect(metrics.recordProductAnalyticsPublishedMetric).toHaveBeenCalledWith({
       eventType: PostHogEventTypes.SecretPulled,
       count: 1
     });
@@ -465,11 +465,11 @@ describe("telemetry aggregated event storage", () => {
     // Only the drained shard is measured; an empty shard reports zero without spending a round trip.
     expect(keyStore.streamLength).toHaveBeenCalledTimes(1);
     expect(trimmedBeforeLength).toEqual([true]);
-    expect(metrics.recordTelemetryAggregationBacklogMetric).toHaveBeenCalledWith({
+    expect(metrics.recordProductAnalyticsBacklogMetric).toHaveBeenCalledWith({
       eventType: PostHogEventTypes.SecretPulled,
       backlog: 12
     });
-    expect(metrics.recordTelemetryAggregationBacklogMetric).toHaveBeenCalledWith({
+    expect(metrics.recordProductAnalyticsBacklogMetric).toHaveBeenCalledWith({
       eventType: PostHogEventTypes.SecretPulled,
       backlog: 0
     });

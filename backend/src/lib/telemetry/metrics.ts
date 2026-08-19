@@ -688,30 +688,30 @@ export const recordAlertDispatchOutcomeMetric = (params: { resourceType: string;
   });
 };
 
-export enum TelemetryAggregationDropReason {
+export enum ProductAnalyticsDropReason {
   Retention = "retention",
   Unparseable = "unparseable"
 }
 
-export const telemetryAggregationPublishedCounter = infisicalCoreMeter.createCounter(
-  "infisical.telemetry_aggregation.published.count",
+export const productAnalyticsPublishedCounter = infisicalCoreMeter.createCounter(
+  "infisical.product_analytics.published.count",
   {
-    description: "Buffered telemetry events drained from Redis and published to PostHog, by event type.",
+    description: "Buffered product analytics events drained from Redis and published to PostHog, by event type.",
     unit: "{event}"
   }
 );
 
-export const telemetryAggregationDroppedCounter = infisicalCoreMeter.createCounter(
-  "infisical.telemetry_aggregation.dropped.count",
+export const productAnalyticsDroppedCounter = infisicalCoreMeter.createCounter(
+  "infisical.product_analytics.dropped.count",
   {
     description:
-      "Buffered telemetry events dropped before reaching PostHog, by event type and reason. Occasional retention drops are tolerable; a sustained rate means the drain is not keeping up and the limits need tweaking.",
+      "Buffered product analytics events dropped before reaching PostHog, by event type and reason. Occasional retention drops are tolerable; a sustained rate means the drain is not keeping up and the limits need tweaking.",
     unit: "{event}"
   }
 );
 
-export const telemetryAggregationBacklogHistogram = infisicalCoreMeter.createHistogram(
-  "infisical.telemetry_aggregation.shard.backlog",
+export const productAnalyticsBacklogHistogram = infisicalCoreMeter.createHistogram(
+  "infisical.product_analytics.shard.backlog",
   {
     description:
       "Entries left in a shard after its drain, by event type. Zero on a healthy run: a backlog that persists across runs is what precedes retention drops and, near the 100k MAXLEN, silent write-path eviction.",
@@ -719,30 +719,30 @@ export const telemetryAggregationBacklogHistogram = infisicalCoreMeter.createHis
   }
 );
 
-export const recordTelemetryAggregationPublishedMetric = (params: { eventType: string; count: number }) =>
+export const recordProductAnalyticsPublishedMetric = (params: { eventType: string; count: number }) =>
   safely(() => {
     if (!isTelemetryEnabled() || params.count === 0) return;
-    telemetryAggregationPublishedCounter.add(params.count, { "telemetry_aggregation.event_type": params.eventType });
+    productAnalyticsPublishedCounter.add(params.count, { "product_analytics.event_type": params.eventType });
   });
 
-export const recordTelemetryAggregationDroppedMetric = (params: {
+export const recordProductAnalyticsDroppedMetric = (params: {
   eventType: string;
-  reason: TelemetryAggregationDropReason;
+  reason: ProductAnalyticsDropReason;
   count: number;
 }) =>
   safely(() => {
     if (!isTelemetryEnabled() || params.count === 0) return;
-    telemetryAggregationDroppedCounter.add(params.count, {
-      "telemetry_aggregation.event_type": params.eventType,
-      "telemetry_aggregation.drop_reason": params.reason
+    productAnalyticsDroppedCounter.add(params.count, {
+      "product_analytics.event_type": params.eventType,
+      "product_analytics.drop_reason": params.reason
     });
   });
 
-export const recordTelemetryAggregationBacklogMetric = (params: { eventType: string; backlog: number }) =>
+export const recordProductAnalyticsBacklogMetric = (params: { eventType: string; backlog: number }) =>
   safely(() => {
     if (!isTelemetryEnabled()) return;
-    telemetryAggregationBacklogHistogram.record(params.backlog, {
-      "telemetry_aggregation.event_type": params.eventType
+    productAnalyticsBacklogHistogram.record(params.backlog, {
+      "product_analytics.event_type": params.eventType
     });
   });
 

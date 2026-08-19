@@ -15,10 +15,10 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
   isTelemetryEnabled as isOtelMetricsEnabled,
-  recordTelemetryAggregationBacklogMetric,
-  recordTelemetryAggregationDroppedMetric,
-  recordTelemetryAggregationPublishedMetric,
-  TelemetryAggregationDropReason
+  ProductAnalyticsDropReason,
+  recordProductAnalyticsBacklogMetric,
+  recordProductAnalyticsDroppedMetric,
+  recordProductAnalyticsPublishedMetric
 } from "@app/lib/telemetry/metrics";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -591,15 +591,15 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
     if (entries.length >= TELEMETRY_EVENT_STREAM_COLLECT_CEILING) {
       logger.warn(
-        `Telemetry aggregation hit the collection ceiling for bucket ${bucketId} of ${eventType} [collected=${entries.length}] [ceiling=${TELEMETRY_EVENT_STREAM_COLLECT_CEILING}] [maxLen=${TELEMETRY_EVENT_STREAM_MAX_ENTRIES}] — the shard is backing up; the excess is dropped once it ages past the retention window or the stream hits its MAXLEN cap`
+        `Product analytics aggregation hit the collection ceiling for bucket ${bucketId} of ${eventType} [collected=${entries.length}] [ceiling=${TELEMETRY_EVENT_STREAM_COLLECT_CEILING}] [maxLen=${TELEMETRY_EVENT_STREAM_MAX_ENTRIES}] — the shard is backing up; the excess is dropped once it ages past the retention window or the stream hits its MAXLEN cap`
       );
     }
 
     const events = parseEventPayloads(entries, `event=${eventType} bucket=${bucketId}`);
 
-    recordTelemetryAggregationDroppedMetric({
+    recordProductAnalyticsDroppedMetric({
       eventType,
-      reason: TelemetryAggregationDropReason.Unparseable,
+      reason: ProductAnalyticsDropReason.Unparseable,
       count: entries.length - events.length
     });
 
@@ -616,7 +616,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     if (!isOtelMetricsEnabled()) return;
 
     try {
-      recordTelemetryAggregationBacklogMetric({ eventType, backlog: await keyStore.streamLength(streamKey) });
+      recordProductAnalyticsBacklogMetric({ eventType, backlog: await keyStore.streamLength(streamKey) });
     } catch (error) {
       logger.error(error, `Failed to measure backlog on bucket ${bucketId} for ${eventType}`);
     }
@@ -636,9 +636,9 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     let expired = 0;
     try {
       expired = await keyStore.streamTrim(streamKey, `${Date.now() - TELEMETRY_EVENT_STREAM_RETENTION_MS}-0`);
-      recordTelemetryAggregationDroppedMetric({
+      recordProductAnalyticsDroppedMetric({
         eventType,
-        reason: TelemetryAggregationDropReason.Retention,
+        reason: ProductAnalyticsDropReason.Retention,
         count: expired
       });
     } catch (error) {
@@ -649,7 +649,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       const { events, collected, lastId } = await collectShardEvents(streamKey, eventType, bucketId);
 
       if (collected === 0 || !lastId) {
-        recordTelemetryAggregationBacklogMetric({ eventType, backlog: 0 });
+        recordProductAnalyticsBacklogMetric({ eventType, backlog: 0 });
         return { published: 0, expired };
       }
 
@@ -661,7 +661,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
       await keyStore.streamTrim(streamKey, lastId, true);
 
-      recordTelemetryAggregationPublishedMetric({ eventType, count: events.length });
+      recordProductAnalyticsPublishedMetric({ eventType, count: events.length });
       await recordShardBacklog(streamKey, eventType, bucketId);
 
       logger.info(`Processed ${events.length} events from bucket ${bucketId} for ${eventType}`);
@@ -696,7 +696,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
 
       if (totalExpired > 0) {
         logger.warn(
-          `Telemetry aggregation dropped ${totalExpired} events for ${eventType} that aged past the ${
+          `Product analytics aggregation dropped ${totalExpired} events for ${eventType} that aged past the ${
             TELEMETRY_EVENT_STREAM_RETENTION_MS / 60_000
           }-minute retention window before they could be published`
         );

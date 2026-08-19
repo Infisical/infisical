@@ -879,7 +879,7 @@ High-volume product analytics events (secret pulls, machine identity logins, cer
 
 <AccordionGroup>
   <Accordion title="Aggregation Published">
-    **Metric Name**: `infisical.telemetry_aggregation.published.count`
+    **Metric Name**: `infisical.product_analytics.published.count`
 
     **Type**: Counter
 
@@ -888,11 +888,11 @@ High-volume product analytics events (secret pulls, machine identity logins, cer
     **Description**: Buffered events drained from Redis and sent upstream. Use it as the denominator for the drop rate below.
 
     **Attributes**:
-      - `telemetry_aggregation.event_type` (string): the buffered event, e.g. `secrets pulled`
+      - `product_analytics.event_type` (string): the buffered event, e.g. `secrets pulled`
   </Accordion>
 
   <Accordion title="Aggregation Dropped">
-    **Metric Name**: `infisical.telemetry_aggregation.dropped.count`
+    **Metric Name**: `infisical.product_analytics.dropped.count`
 
     **Type**: Counter
 
@@ -901,12 +901,12 @@ High-volume product analytics events (secret pulls, machine identity logins, cer
     **Description**: Buffered events discarded before they were sent. `retention` means the event aged past the 30-minute buffer window while the roll-up was behind; `unparseable` means its payload could not be read back and points at a bug rather than at capacity.
 
     **Attributes**:
-      - `telemetry_aggregation.event_type` (string)
-      - `telemetry_aggregation.drop_reason` (string): `retention` or `unparseable`
+      - `product_analytics.event_type` (string)
+      - `product_analytics.drop_reason` (string): `retention` or `unparseable`
   </Accordion>
 
   <Accordion title="Aggregation Shard Backlog">
-    **Metric Name**: `infisical.telemetry_aggregation.shard.backlog`
+    **Metric Name**: `infisical.product_analytics.shard.backlog`
 
     **Type**: Histogram
 
@@ -915,7 +915,7 @@ High-volume product analytics events (secret pulls, machine identity logins, cer
     **Description**: Entries left in a buffer shard after the roll-up finished with it. Zero on a healthy run.
 
     **Attributes**:
-      - `telemetry_aggregation.event_type` (string)
+      - `product_analytics.event_type` (string)
   </Accordion>
 </AccordionGroup>
 
