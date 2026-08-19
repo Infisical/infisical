@@ -85,7 +85,7 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
           </CardDescription>
           {canEditGateway && showDeploymentControls && (
             <CardAction>
-              <TabsList variant="filled">
+              <TabsList variant="filled" aria-label="Deployment method">
                 {isKubernetes ? (
                   <>
                     <TabsTrigger value="helm">Helm</TabsTrigger>

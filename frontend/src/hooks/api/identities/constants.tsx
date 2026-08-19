@@ -1,5 +1,19 @@
 import { IdentityAuthMethod } from "./enums";
 
+// Sensible Universal Auth defaults used by in-product identity creation flows (Cert Manager, PAM)
+export const UNIVERSAL_AUTH_DEFAULTS = {
+  clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+  accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+  accessTokenTTL: 2592000,
+  accessTokenMaxTTL: 2592000,
+  accessTokenNumUsesLimit: 0,
+  accessTokenPeriod: 0,
+  lockoutEnabled: true,
+  lockoutThreshold: 3,
+  lockoutDurationSeconds: 300,
+  lockoutCounterResetSeconds: 30
+};
+
 export const identityAuthToNameMap: { [I in IdentityAuthMethod]: string } = {
   [IdentityAuthMethod.TOKEN_AUTH]: "Token Auth",
   [IdentityAuthMethod.UNIVERSAL_AUTH]: "Universal Auth",

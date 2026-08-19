@@ -285,16 +285,10 @@ export const SignerDetailPage = () => {
                 })
               }
             >
-              <TabsList variant="project" className="w-full justify-start">
-                <TabsTrigger value="activity" className="flex-none">
-                  Activity
-                </TabsTrigger>
-                <TabsTrigger value="approvals" className="flex-none">
-                  Approvals
-                </TabsTrigger>
-                <TabsTrigger value="members" className="flex-none">
-                  Members
-                </TabsTrigger>
+              <TabsList variant="project" aria-label="Signer sections">
+                <TabsTrigger value="activity">Activity</TabsTrigger>
+                <TabsTrigger value="approvals">Approvals</TabsTrigger>
+                <TabsTrigger value="members">Members</TabsTrigger>
               </TabsList>
 
               <TabsContent value="activity" className="pt-2">

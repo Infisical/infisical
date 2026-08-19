@@ -1,16 +1,16 @@
 import { requestContext } from "@fastify/request-context";
-import opentelemetry from "@opentelemetry/api";
 import fp from "fastify-plugin";
 
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { highCardinalityMeter, shouldRecordHighCardinalityMetrics } from "@app/lib/telemetry/metrics";
 
-const apiMeter = opentelemetry.metrics.getMeter("API");
+const apiMeter = highCardinalityMeter("API");
 
 const latencyHistogram = apiMeter.createHistogram("API_latency", {
   unit: "ms"
 });
 
-const infisicalMeter = opentelemetry.metrics.getMeter("Infisical");
+const infisicalMeter = highCardinalityMeter("Infisical");
 
 const requestCounter = infisicalMeter.createCounter("infisical.http.server.request.count", {
   description: "Total number of API requests to Infisical (covers both human users and machine identities)",
@@ -24,6 +24,10 @@ const requestDurationHistogram = infisicalMeter.createHistogram("infisical.http.
 
 export const apiMetrics = fp(async (fastify) => {
   fastify.addHook("onResponse", async (request, reply) => {
+    // Checked before assembling the attribute object below: it is built per response and every label on
+    // it is per-actor, so it is the largest source of the cardinality these meters would retain.
+    if (!shouldRecordHighCardinalityMetrics()) return;
+
     const { method } = request;
     const route = request.routeOptions.url;
     const { statusCode } = reply;

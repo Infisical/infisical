@@ -35,8 +35,26 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 
+// Modified and middle clicks belong to the browser: it opens the row's href in a new tab
+// or window, so we neither preventDefault nor navigate programmatically on those paths.
+const isBrowserHandledClick = (event: React.MouseEvent) =>
+  event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0;
+
+// The row's anchor exists for its href (new-tab, copy link, status bar preview) while cmdk
+// owns activation via onSelect. A plain primary click therefore suppresses the anchor's own
+// navigation and bubbles up to cmdk; a browser-handled click is kept away from cmdk instead,
+// so the current tab stays put while the new one opens.
+const handleRowAnchorClick = (event: React.MouseEvent) => {
+  if (isBrowserHandledClick(event)) {
+    event.stopPropagation();
+    return;
+  }
+  event.preventDefault();
+};
+
 const ProjectSelectInner = () => {
   const [open, setOpen] = useState(false);
+  const [selectedValue, setSelectedValue] = useState("");
   const { currentProject: currentWorkspace } = useProject();
   const { currentOrg } = useOrganization();
   const { data: projects = [] } = useGetUserProjects();
@@ -81,12 +99,17 @@ const ProjectSelectInner = () => {
     return projectOptions;
   }, [projects, projectFavorites, currentWorkspace.type]);
 
+  // cmdk activates a row through onSelect, which fires both on pointer click and on
+  // Enter for the arrow-key selected row, so all plain activation is funnelled here.
   const handleSelectProject = (projectId: string) => {
     const workspace = projects.find((p) => p.id === projectId);
     if (!workspace || workspace.id === currentWorkspace.id) {
       setOpen(false);
       return;
     }
+
+    // Switching projects reloads the page instead of navigating client-side: React Query
+    // throws in the overview when the two projects have a different environment count.
     const url = linkOptions({
       to: getProjectHomePage(workspace.type, workspace.environments),
       params: {
@@ -109,7 +132,16 @@ const ProjectSelectInner = () => {
 
   return (
     <div className="mr-2 flex min-w-16 items-center gap-1 pr-1 pl-1">
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(nextOpen) => {
+          // Clearing on open lets cmdk pick the first row again, as it did while its
+          // selection was uncontrolled. Reset here rather than on close so the paths that
+          // call setOpen(false) directly cannot leave a stale row selected.
+          if (nextOpen) setSelectedValue("");
+          setOpen(nextOpen);
+        }}
+      >
         <PopoverAnchor className="absolute left-18" />
         <Link
           to={getProjectHomePage(currentWorkspace.type, currentWorkspace.environments)}
@@ -131,8 +163,8 @@ const ProjectSelectInner = () => {
           </IconButton>
         </PopoverTrigger>
         <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
-          <Command>
-            <CommandInput placeholder="Search projects..." />
+          <Command value={selectedValue} onValueChange={setSelectedValue}>
+            <CommandInput aria-label="Search projects" placeholder="Search projects..." />
             <CommandList>
               <CommandEmpty>No projects found.</CommandEmpty>
               <CommandGroup heading="Projects">
@@ -142,7 +174,7 @@ const ProjectSelectInner = () => {
                     value={workspace.id}
                     keywords={[workspace.name]}
                     onSelect={() => handleSelectProject(workspace.id)}
-                    className="gap-2"
+                    className="relative gap-2"
                   >
                     <Check
                       className={
@@ -150,7 +182,24 @@ const ProjectSelectInner = () => {
                       }
                     />
                     <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-sm">{workspace.name}</span>
+                      {/* The name is the row's link, so its accessible name comes from visible
+                          text and its stretched pseudo-element covers the row. Being a tab stop
+                          means focus must drive cmdk's selection: cmdk resolves Enter against the
+                          row it has marked aria-selected, never against the focused element, so
+                          without this onFocus a tabbed-to row would activate whichever row the
+                          arrow keys last selected and switch the user to the wrong project. */}
+                      <Link
+                        to={getProjectHomePage(workspace.type, workspace.environments)}
+                        params={{
+                          projectId: workspace.id,
+                          orgId: workspace.orgId
+                        }}
+                        className="truncate rounded-sm text-sm outline-0 after:absolute after:inset-0 after:rounded-sm after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                        onFocus={() => setSelectedValue(workspace.id)}
+                        onClick={handleRowAnchorClick}
+                      >
+                        {workspace.name}
+                      </Link>
                       <span className="truncate text-[11px] text-muted">
                         {workspace.description || "No description"}
                       </span>
@@ -159,10 +208,10 @@ const ProjectSelectInner = () => {
                       variant="ghost"
                       size="xs"
                       aria-label="toggle favorite"
+                      className="relative z-10"
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={async (e) => {
                         e.stopPropagation();
-                        e.preventDefault();
                         await (
                           workspace.isFavorite ? removeProjectFromFavorites : addProjectToFavorites
                         )(workspace.id);

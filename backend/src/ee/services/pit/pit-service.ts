@@ -9,6 +9,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TFolderCommitDALFactory } from "@app/services/folder-commit/folder-commit-dal";
+import { summarizeCommitChanges } from "@app/services/folder-commit/folder-commit-fns";
 import {
   ResourceType,
   TCommitResourceChangeDTO,
@@ -110,7 +111,8 @@ export const pitServiceFactory = ({
     offset,
     limit,
     search,
-    sort
+    sort,
+    authorFilter
   }: {
     actor: ActorType;
     actorId: string;
@@ -123,6 +125,7 @@ export const pitServiceFactory = ({
     limit: number;
     search?: string;
     sort: "asc" | "desc";
+    authorFilter?: { actorId?: string; actorType?: string };
   }) => {
     const result = await folderCommitService.getCommitsForFolder({
       actor,
@@ -135,17 +138,49 @@ export const pitServiceFactory = ({
       offset,
       limit,
       search,
-      sort
+      sort,
+      authorFilter
     });
 
     return {
-      commits: result.commits.map((commit) => ({
+      commits: result.commits.map(({ changeCounts, ...commit }) => ({
         ...commit,
-        commitId: commit.commitId.toString()
+        commitId: commit.commitId.toString(),
+        summary: summarizeCommitChanges(changeCounts)
       })),
       total: result.total,
       hasMore: result.hasMore
     };
+  };
+
+  const getCommitAuthorsForFolder = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    environment,
+    path
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorOrgId: string;
+    actorAuthMethod: ActorAuthMethod;
+    projectId: string;
+    environment: string;
+    path: string;
+  }) => {
+    const authors = await folderCommitService.getCommitAuthorsForFolder({
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      projectId,
+      environment,
+      path
+    });
+
+    return { authors };
   };
 
   const getCommitChanges = async ({
@@ -972,6 +1007,7 @@ export const pitServiceFactory = ({
   return {
     getCommitsCount,
     getCommitsForFolder,
+    getCommitAuthorsForFolder,
     getCommitChanges,
     compareCommitChanges,
     rollbackToCommit,

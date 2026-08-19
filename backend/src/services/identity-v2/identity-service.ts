@@ -37,6 +37,7 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
+import { validateIdentityUpdateForSuperAdminPrivileges } from "@app/services/super-admin/super-admin-fns";
 
 import { ActorType } from "../auth/auth-type";
 import { getIdentityActiveLockoutAuthMethods } from "../identity/identity-fns";
@@ -146,12 +147,14 @@ export const identityV2ServiceFactory = ({
       const project = await requestMemoize(requestMemoKeys.projectFindById(scopeData.projectId), () =>
         projectDAL.findById(scopeData.projectId)
       );
-      if (project?.type === ProjectType.CertificateManager) {
+      if (project?.type === ProjectType.CertificateManager || project?.type === ProjectType.PAM) {
         const invalidRoles = data.roles.filter(
           (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
         );
         if (invalidRoles.length > 0) {
-          throw new BadRequestError({ message: "Certificate Manager only supports Admin and Member roles." });
+          throw new BadRequestError({
+            message: `${project.type === ProjectType.PAM ? "PAM" : "Certificate Manager"} only supports Admin and Member roles.`
+          });
         }
       }
 
@@ -236,7 +239,8 @@ export const identityV2ServiceFactory = ({
     let projectMemberRole = ProjectMembershipRole.NoAccess as string;
     if (scopeData.scope === AccessScope.Project && !resolvedRoleDocs) {
       const project = await projectDAL.findById(scopeData.projectId);
-      if (project?.type === ProjectType.CertificateManager) {
+      // PAM's project membership IS its product membership, so NoAccess would be meaningless there
+      if (project?.type === ProjectType.CertificateManager || project?.type === ProjectType.PAM) {
         projectMemberRole = ProjectMembershipRole.Member;
       }
     }
@@ -319,6 +323,7 @@ export const identityV2ServiceFactory = ({
     const factory = scopeFactory[scopeData.scope];
 
     await factory.onUpdateIdentityGuard(dto);
+
     const existingIdentity = await identityDAL.findOne({
       id: dto.selector.identityId,
       orgId: dto.permission.orgId,
@@ -326,6 +331,8 @@ export const identityV2ServiceFactory = ({
     });
     if (!existingIdentity)
       throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
+
+    await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
 
     const identity = await identityDAL.transaction(async (tx) => {
       const updatedIdentity =
@@ -380,6 +387,8 @@ export const identityV2ServiceFactory = ({
     });
     if (!existingIdentity)
       throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
+
+    await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
     if (existingIdentity.hasDeleteProtection) {
       throw new BadRequestError({ message: "Cannot delete identity while delete protection is enabled" });
     }

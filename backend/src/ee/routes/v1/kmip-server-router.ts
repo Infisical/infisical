@@ -2,6 +2,7 @@ import z from "zod";
 
 import { KmipServersSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { MIN_SERVER_CERT_TTL } from "@app/ee/services/kmip/kmip-service";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
@@ -29,9 +30,20 @@ const SanitizedKmipServerSchema = KmipServersSchema.pick({
   canRevoke: z.boolean()
 });
 
-// Cert config lives on the server entity (set in the UI). The daemon's /connect call reads it,
-// rather than passing it on every launch. ttl/keyAlgorithm get sensible defaults.
-const ttlField = z.string().refine((val) => ms(val) > 0, "TTL must be a positive number");
+// Cert config lives on the server entity. The daemon's /connect call reads it, rather than
+// passing it on every launch. TTL is API-only (no UI field) and defaults to 1y.
+// The 1h floor catches "1m", which ms() reads as one minute rather than one month.
+const MIN_TTL_MS = ms(MIN_SERVER_CERT_TTL);
+const isTtlAtLeastFloor = (val: string) => {
+  try {
+    return ms(val) >= MIN_TTL_MS;
+  } catch {
+    return false;
+  }
+};
+const ttlField = z
+  .string()
+  .refine(isTtlAtLeastFloor, "TTL must be a valid duration of at least 1 hour (e.g. 12h, 30d, 1y)");
 
 // hostnamesOrIps is stored in a varchar(4096) column (matching the issued cert's altNames), so cap
 // the resolved SAN list there to surface a clean 400 instead of a DB "value too long" error.
@@ -206,7 +218,10 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
       params: z.object({ kmipServerId: z.string().uuid() }),
       body: z.object({
         hostnamesOrIps: hostnamesOrIpsField.optional(),
-        ttl: ttlField.optional(),
+        ttl: ttlField
+          .nullable()
+          .optional()
+          .describe("Validity period of the server certificate. Pass null to clear a custom TTL and use the default."),
         keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
         authMethod: SettableAuthMethodInputSchema.optional()
       }),
@@ -571,7 +586,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
         event: {
-          type: EventType.REGISTER_KMIP_SERVER,
+          type: EventType.KMIP_SERVER_CONNECT,
           metadata: {
             serverCertificateSerialNumber: configs.serverCertificateSerialNumber,
             hostnamesOrIps: kmipServer.hostnamesOrIps,

@@ -26,16 +26,6 @@ const secretManagerRoutes = route("/organizations/$orgId/projects/secret-managem
     route("/approval", "secret-manager/SecretApprovalsPage/route.tsx"),
     route("/insights", "secret-manager/InsightsPage/route.tsx"),
     route("/settings", "secret-manager/SettingsPage/route.tsx"),
-    route("/commits/$environment/$folderId", [
-      index("secret-manager/CommitsPage/route.tsx"),
-      route("/$commitId", [
-        index("secret-manager/CommitDetailsPage/route.tsx"),
-        route(
-          "/restore",
-          "secret-manager/CommitDetailsPage/components/RollbackPreviewTab/route.tsx"
-        )
-      ])
-    ]),
     route("/audit-logs", "project/AuditLogsPage/route-secret-manager.tsx"),
     route("/access-management", "project/AccessControlPage/route-secret-manager.tsx"),
     route("/app-connections", "project/AppConnectionsPage/route-secret-manager.tsx"),
@@ -395,6 +385,7 @@ const organizationRoutes = route("/organizations/$orgId", [
     index("organization/KmipServersPage/route.tsx"),
     route("/$kmipServerId", "organization/KmipServersPage/KmipServerDetailsByIDPage/route.tsx")
   ]),
+  route("/projects/secret-management/insights", "organization/SecretInsightsPage/route.tsx"),
   route("/projects/secret-management/secret-sharing", [
     index("organization/SecretSharingPage/route.tsx")
   ]),

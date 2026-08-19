@@ -47,6 +47,7 @@ import {
   useGetProjectIdentityMembershipV2
 } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { useRemovePamProductIdentityMember } from "@app/hooks/api/pam";
 import { projectIdentityQuery, useDeleteProjectIdentity } from "@app/hooks/api/projectIdentity";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectIdentityAuthenticationSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityAuthSection";
@@ -71,9 +72,30 @@ const Page = () => {
     useGetProjectIdentityMembershipV2(projectId, identityId, currentProject?.type);
 
   const { mutateAsync: removeIdentityMutateAsync } = useDeleteProjectIdentityMembership();
+  const { mutateAsync: removePamIdentityMutateAsync } = useRemovePamProductIdentityMember();
 
   const isProjectIdentity = Boolean(identityMembershipDetails?.identity.projectId);
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const isPam = currentProject?.type === ProjectType.PAM;
+  // Products where the underlying project is an internal detail the user never sees
+  const isStandaloneProduct = isCertManager || isPam;
+
+  let removeMenuItemLabel = "Remove From Project";
+  if (isProjectIdentity) {
+    removeMenuItemLabel = "Delete Machine Identity";
+  } else if (isPam) {
+    removeMenuItemLabel = "Remove From PAM";
+  }
+
+  let accessControlLabel = "project";
+  if (isCertManager) {
+    accessControlLabel = "certificate manager";
+  } else if (isPam) {
+    accessControlLabel = "PAM";
+  }
+  const pageDescription = `Configure and manage${
+    isProjectIdentity ? " machine identity and " : " "
+  }${accessControlLabel} access control`;
 
   const {
     data: identity,
@@ -97,12 +119,21 @@ const Page = () => {
   const [isPermissionAuditOpen, setIsPermissionAuditOpen] = useState(false);
 
   const onRemoveIdentitySubmit = async () => {
-    await removeIdentityMutateAsync({
-      identityId,
-      projectId
-    });
+    if (isPam) {
+      // PAM removal goes through the PAM endpoint so PAM audit events fire and
+      // folder/account resource memberships are cleaned up (the generic route skips that)
+      await removePamIdentityMutateAsync({
+        identityId,
+        projectId
+      });
+    } else {
+      await removeIdentityMutateAsync({
+        identityId,
+        projectId
+      });
+    }
     createNotification({
-      text: "Successfully removed machine identity from project",
+      text: `Successfully removed machine identity from ${isPam ? "PAM" : "project"}`,
       type: "success"
     });
     handlePopUpClose("removeIdentity");
@@ -167,15 +198,11 @@ const Page = () => {
             className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
             <ChevronLeftIcon size={16} />
-            {isCertManager ? "Machine Identities" : "Project Machine Identities"}
+            {isStandaloneProduct ? "Machine Identities" : "Project Machine Identities"}
           </Link>
           <PageHeader
             scope={currentProject.type}
-            description={
-              isCertManager
-                ? `Configure and manage${isProjectIdentity ? " machine identity and " : " "}certificate manager access control`
-                : `Configure and manage${isProjectIdentity ? " machine identity and " : " "}project access control`
-            }
+            description={pageDescription}
             title={identityMembershipDetails.identity.name}
           >
             <div className="flex items-center gap-2">
@@ -193,7 +220,7 @@ const Page = () => {
                   readOnly
                 />
               )}
-              {!isCertManager && (
+              {!isStandaloneProduct && (
                 <Button variant="outline" onClick={() => setIsPermissionAuditOpen(true)}>
                   <ShieldIcon />
                   Permission Audit
@@ -260,7 +287,7 @@ const Page = () => {
                             : handlePopUpOpen("removeIdentity")
                         }
                       >
-                        {isProjectIdentity ? "Delete Machine Identity" : "Remove From Project"}
+                        {removeMenuItemLabel}
                       </DropdownMenuItem>
                     )}
                   </ProjectPermissionCan>
@@ -334,7 +361,7 @@ const Page = () => {
                 identityMembershipDetails={identityMembershipDetails}
                 isMembershipDetailsLoading={isMembershipDetailsLoading}
               />
-              {!isCertManager && (
+              {!isStandaloneProduct && (
                 <IdentityProjectAdditionalPrivilegeSection
                   identityMembershipDetails={identityMembershipDetails}
                 />
@@ -343,9 +370,15 @@ const Page = () => {
           </div>
           <DeleteActionModal
             isOpen={popUp.removeIdentity.isOpen}
-            title={`Are you sure you want to remove ${identityMembershipDetails?.identity?.name} from the project?`}
+            title={`Are you sure you want to remove ${identityMembershipDetails?.identity?.name} from ${isPam ? "PAM" : "the project"}?`}
+            subTitle={
+              isPam
+                ? "The identity will lose its PAM access but remain available in your organization."
+                : undefined
+            }
             onChange={(isOpen) => handlePopUpToggle("removeIdentity", isOpen)}
             deleteKey="remove"
+            buttonText={isPam ? "Remove" : undefined}
             onDeleteApproved={() => onRemoveIdentitySubmit()}
           />
           <AssumePrivilegesModal

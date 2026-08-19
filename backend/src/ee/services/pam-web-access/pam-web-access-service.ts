@@ -193,7 +193,9 @@ export const pamWebAccessServiceFactory = ({
     let grantRemainingMs: number | null = null;
     if (requiresApproval) {
       const grant = await pamAccessRequestService.checkGrant({
-        userId: actor.id,
+        // Web access is JWT-only, so the actor is always a user
+        actorId: actor.id,
+        actor: ActorType.USER,
         accountId,
         accountFolderId: account.folderId,
         projectId
@@ -430,7 +432,8 @@ export const pamWebAccessServiceFactory = ({
       let sessionDurationCapMs = policyDurationMs || DEFAULT_WEB_SESSION_DURATION_MS;
       if (requiresApproval) {
         const grant = await pamAccessRequestService.checkGrant({
-          userId,
+          actorId: userId,
+          actor: ActorType.USER,
           accountId,
           accountFolderId: account.folderId,
           projectId

@@ -253,8 +253,7 @@ export const parseCertificateBody = (decryptedCertificate: Buffer): TParsedCerti
       state: parsedDn.province,
       locality: parsedDn.locality
     };
-    const domainComponents = certObj.subjectName.getField("DC");
-    if (domainComponents.length > 0) subject.domainComponents = domainComponents;
+    if (parsedDn.domainComponents?.length) subject.domainComponents = parsedDn.domainComponents;
 
     // Calculate fingerprints and format with colons (e.g., "1A:2F:73:...")
     const rawData = Buffer.from(certObj.rawData);

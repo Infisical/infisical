@@ -3,9 +3,11 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { SignerMemberKind } from "@app/services/signer-membership";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import {
   EffectiveSignerMemberSchema,
@@ -84,6 +86,19 @@ export const registerSignerIdentityMembershipRouter = async (server: FastifyZodP
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SignerMemberAdded,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          signerId: req.params.signerId,
+          memberType: "identity",
+          role: req.body.role
+        }
+      });
+
       return membership;
     }
   });
@@ -129,6 +144,19 @@ export const registerSignerIdentityMembershipRouter = async (server: FastifyZodP
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SignerMemberUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          signerId: req.params.signerId,
+          memberType: "identity",
+          role: req.body.role
+        }
+      });
+
       return { membership };
     }
   });
@@ -164,6 +192,18 @@ export const registerSignerIdentityMembershipRouter = async (server: FastifyZodP
         event: {
           type: EventType.REMOVE_PKI_SIGNER_MEMBER,
           metadata: { signerId: req.params.signerId, kind: SignerMemberKind.Identity, memberId: req.params.identityId }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SignerMemberRemoved,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          signerId: req.params.signerId,
+          memberType: "identity"
         }
       });
 

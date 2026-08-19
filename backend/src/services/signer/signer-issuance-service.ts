@@ -549,6 +549,7 @@ export const signerIssuanceServiceFactory = ({
         extendedKeyUsages: [CertExtendedKeyUsage.CODE_SIGNING],
         validity: { ttl: `${job.certificateTtlDays}d` },
         keyAlgorithm: job.keyAlgorithm as CertKeyAlgorithm,
+        csr,
         isRenewal: false,
         isCancelled: async () => false
       });

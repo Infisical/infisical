@@ -51,7 +51,7 @@ export type TReportDefinition = {
 };
 
 // Cap a fully-materialized result set at the row ceiling, reporting truncation.
-const applyRowCap = <T>(items: T[]): { items: T[]; truncated: boolean } => {
+export const applyRowCap = <T>(items: T[]): { items: T[]; truncated: boolean } => {
   if (items.length > MAX_AUDIT_REPORT_ROWS) {
     return { items: items.slice(0, MAX_AUDIT_REPORT_ROWS), truncated: true };
   }
