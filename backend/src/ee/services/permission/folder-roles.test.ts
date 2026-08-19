@@ -104,9 +104,11 @@ describe("Secret folder roles", () => {
       ).toBe(true);
     });
 
-    test("no tier can delete a folder", () => {
+    test("only Full Access can delete a folder", () => {
       LADDER.forEach((role) => {
-        expect(abilityFor(role).can(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretFolders)).toBe(false);
+        expect(abilityFor(role).can(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretFolders)).toBe(
+          role === SecretFolderRole.FullAccess
+        );
       });
     });
   });
