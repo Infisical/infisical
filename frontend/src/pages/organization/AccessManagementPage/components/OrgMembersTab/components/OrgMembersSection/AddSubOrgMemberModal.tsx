@@ -3,7 +3,7 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Field, FieldError, FieldLabel, FilterableSelect } from "@app/components/v3";
+import { Combobox, Field, FieldError, FieldLabel } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { findOrgMembershipRole } from "@app/helpers/roles";
 import {
@@ -159,20 +159,22 @@ export const AddSubOrgMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             render={({ field, fieldState: { error } }) => (
               <Field>
                 <FieldLabel htmlFor="add-sub-org-member-users">Emails</FieldLabel>
-                <FilterableSelect
-                  inputId="add-sub-org-member-users"
+                <Combobox
+                  id="add-sub-org-member-users"
+                  multiple
                   placeholder="Add one or more users..."
-                  isMulti
+                  searchPlaceholder="Search users..."
+                  searchAriaLabel="Search organization users"
+                  clearAriaLabel="Clear all users"
                   isLoading={isMembersPending}
                   options={members}
                   value={field.value}
-                  onChange={field.onChange}
+                  onValueChange={field.onChange}
                   getOptionValue={(option) => option.username}
                   getOptionLabel={(option) => option.username}
                   isError={Boolean(error)}
-                  noOptionsMessage={() =>
-                    "All root organization users are already in this sub-organization"
-                  }
+                  emptyMessage="All root organization users are already in this sub-organization"
+                  modal
                 />
                 <FieldError>{error?.message}</FieldError>
               </Field>

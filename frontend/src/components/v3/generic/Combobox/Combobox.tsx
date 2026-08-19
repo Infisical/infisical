@@ -3,6 +3,9 @@ import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { CheckIcon, ChevronDownIcon, Loader2Icon, XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
+import { useScrollEdges } from "../../utils/useScrollEdges";
+
+import "../../utils/ScrollEdgeFade.css";
 
 type ComboboxRenderOptionState = {
   isSelected: boolean;
@@ -47,6 +50,7 @@ type ComboboxMultipleProps<TOption> = ComboboxSharedProps<TOption> &
     "children" | "disabled" | "multiple" | "onChange" | "type" | "value"
   > & {
     multiple: true;
+    singleLine?: boolean;
     value?: readonly TOption[];
     onValueChange: (options: TOption[]) => void;
     onClear?: () => void;
@@ -369,6 +373,7 @@ const MultipleCombobox = <TOption,>({
   renderValue,
   onClear,
   clearAriaLabel = "Clear all selections",
+  singleLine = false,
   placeholder = "Select options...",
   searchPlaceholder = "Search...",
   searchAriaLabel = searchPlaceholder,
@@ -387,6 +392,8 @@ const MultipleCombobox = <TOption,>({
 }: ComboboxMultipleProps<TOption>) => {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const chipsRef = React.useRef<HTMLDivElement | null>(null);
+  const { scrollEdges: verticalScrollEdges, setViewportRef: setVerticalViewportRef } =
+    useScrollEdges<HTMLDivElement>("vertical");
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => [...value], [value]);
@@ -440,58 +447,82 @@ const MultipleCombobox = <TOption,>({
         data-disabled={isDisabled ? "" : undefined}
         data-invalid={isError}
         className={cn(
-          "flex max-h-24 min-h-9 thin-scrollbar w-full flex-wrap items-center gap-1 overflow-y-auto rounded-md border border-border bg-transparent text-sm text-foreground transition-[color,box-shadow] outline-none",
+          "flex min-h-9 w-full items-center gap-1 rounded-md border border-border bg-transparent text-sm text-foreground transition-[color,box-shadow] outline-none",
+          singleLine ? "relative isolate overflow-hidden" : "",
           "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 hover:border-foreground/20",
           "data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
           value.length > 0 ? "p-1" : "py-1 pr-2 pl-2.5",
+          singleLine && value.length > 0 && "pr-0",
           className
         )}
       >
-        <ComboboxPrimitive.Value>
-          {(selectedValue: TOption[]) => (
-            <>
-              {selectedValue.map((option) => {
-                const label = getOptionLabel(option);
-                return (
-                  <ComboboxPrimitive.Chip
-                    key={getOptionValue(option)}
-                    className="flex h-6 max-w-full items-center gap-1 rounded-sm bg-foreground/10 px-1.5 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <span className="max-w-48 truncate">{renderValue?.(option) ?? label}</span>
-                    <ComboboxPrimitive.ChipRemove
-                      aria-label={`Remove ${label}`}
-                      className="flex size-4 shrink-0 items-center justify-center rounded-xs text-muted outline-none hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <XIcon className="size-3" />
-                    </ComboboxPrimitive.ChipRemove>
-                  </ComboboxPrimitive.Chip>
-                );
-              })}
-            </>
+        <div
+          className={cn(
+            singleLine &&
+              "relative z-0 flex thin-scrollbar min-w-0 flex-1 items-center gap-1 overflow-x-auto",
+            !singleLine &&
+              "scroll-edge-fade flex max-h-24 thin-scrollbar min-w-0 flex-1 flex-wrap items-center gap-1 overflow-y-auto"
           )}
-        </ComboboxPrimitive.Value>
-        <ComboboxPrimitive.Input
-          ref={inputRef}
-          id={id}
-          aria-label={searchAriaLabel}
-          aria-invalid={isError || undefined}
-          aria-busy={isLoading || undefined}
-          placeholder={value.length === 0 ? placeholder : undefined}
-          onKeyDown={(event) => {
-            onKeyDown?.(event);
-            preventComboboxFormSubmit(event);
-          }}
-          className="h-6 min-w-24 flex-1 bg-transparent px-0.5 text-sm text-foreground outline-none placeholder:text-muted"
-          {...inputProps}
-        />
-        {isLoading && (
-          <Loader2Icon className="size-4 shrink-0 animate-spin text-accent" aria-hidden="true" />
+          ref={singleLine ? undefined : setVerticalViewportRef}
+          data-scroll-edge-axis={singleLine ? undefined : "vertical"}
+          data-scrollable-start={singleLine ? undefined : verticalScrollEdges.start}
+          data-scrollable-end={singleLine ? undefined : verticalScrollEdges.end}
+        >
+          <ComboboxPrimitive.Value>
+            {(selectedValue: TOption[]) => (
+              <>
+                {selectedValue.map((option) => {
+                  const label = getOptionLabel(option);
+                  return (
+                    <ComboboxPrimitive.Chip
+                      key={getOptionValue(option)}
+                      className="flex h-6 max-w-full items-center gap-1 rounded-sm bg-foreground/10 px-1.5 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <span className="max-w-48 truncate">{renderValue?.(option) ?? label}</span>
+                      <ComboboxPrimitive.ChipRemove
+                        aria-label={`Remove ${label}`}
+                        className="flex size-4 shrink-0 items-center justify-center rounded-xs text-muted outline-none hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <XIcon className="size-3" />
+                      </ComboboxPrimitive.ChipRemove>
+                    </ComboboxPrimitive.Chip>
+                  );
+                })}
+              </>
+            )}
+          </ComboboxPrimitive.Value>
+          <ComboboxPrimitive.Input
+            ref={inputRef}
+            id={id}
+            aria-label={searchAriaLabel}
+            aria-invalid={isError || undefined}
+            aria-busy={isLoading || undefined}
+            placeholder={value.length === 0 ? placeholder : undefined}
+            onKeyDown={(event) => {
+              onKeyDown?.(event);
+              preventComboboxFormSubmit(event);
+            }}
+            className="h-6 min-w-24 flex-1 bg-transparent px-0.5 text-sm text-foreground outline-none placeholder:text-muted"
+            {...inputProps}
+          />
+          {isLoading && (
+            <Loader2Icon className="size-4 shrink-0 animate-spin text-accent" aria-hidden="true" />
+          )}
+        </div>
+        {singleLine && value.length > 0 && (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 right-0 z-40 w-14 bg-gradient-to-r from-transparent via-background/90 to-background"
+          />
         )}
         {value.length > 0 && (
           <ComboboxPrimitive.Clear
             aria-label={clearAriaLabel}
             tabIndex={0}
-            className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted outline-none hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+            className={cn(
+              "flex size-6 shrink-0 items-center justify-center rounded-md text-muted outline-none hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+              singleLine && "sticky right-0 z-50 bg-background/80"
+            )}
           >
             <XIcon className="size-3.5" />
           </ComboboxPrimitive.Clear>

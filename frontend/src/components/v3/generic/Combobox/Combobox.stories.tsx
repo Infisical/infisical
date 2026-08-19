@@ -218,6 +218,48 @@ export const Multiple: Story = {
   render: () => <MultipleRender />
 };
 
+const SingleLineRender = () => {
+  const [value, setValue] = useState<(typeof PROJECTS)[number][]>(PROJECTS.slice(0, 12));
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="combobox-single-line-projects">Projects</FieldLabel>
+      <StoryCombobox
+        id="combobox-single-line-projects"
+        multiple
+        singleLine
+        options={PROJECTS}
+        value={value}
+        onValueChange={(options) => setValue(options)}
+        getOptionValue={(option) => option.id}
+        getOptionLabel={(option) => option.name}
+        placeholder="Select projects..."
+        searchPlaceholder="Search projects..."
+        searchAriaLabel="Search projects"
+        clearAriaLabel="Clear all projects"
+      />
+    </Field>
+  );
+};
+
+/**
+ * Single-line mode keeps the chips and search input on one row. Overflow scrolls
+ * horizontally with a thin scrollbar while the clear button remains visible at
+ * the trailing edge.
+ */
+export const SingleLine: Story = {
+  name: "Multiple: Single Line",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use `singleLine` when the control should behave like a text input instead of expanding vertically. Selected chips scroll horizontally with a thin scrollbar, and the clear button stays visible."
+      }
+    }
+  },
+  render: () => <SingleLineRender />
+};
+
 const OverflowedSelectionsRender = () => {
   const [value, setValue] = useState<(typeof PROJECTS)[number][]>(PROJECTS.slice(0, 12));
 
