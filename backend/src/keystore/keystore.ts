@@ -169,9 +169,8 @@ export const KeyStorePrefixes = {
     `lockout:identity:${identityId}:${authMethod}:*` as const,
   IdentityLockoutStatePattern: (identityId: string) => `lockout:identity:${identityId}:*` as const,
 
-  TelemetryEvent: (event: string, bucketId: string, distinctId: string, uuid: string) =>
-    `telemetry-event-${event}-${bucketId}-${distinctId}-${uuid}` as const,
-  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const,
+  TelemetryAggregatedEventStream: (event: string, bucketId: string) =>
+    `telemetry-agg-stream:${event}:${bucketId}` as const,
 
   AuditLogStreamFlushDebounce: (streamId: string) => `audit-log-stream:${streamId}:flush-debounce` as const,
   AuditLogIngestConsumerLock: "audit-log-ingest:consumer-lock" as const,
@@ -232,7 +231,6 @@ export const KeyStoreTtls = {
   StepUpMfaLockoutInSeconds: 300, // 5 minutes - temporary lockout after too many failed step-up attempts
   TelemetryGroupIdentifyInSeconds: 3600, // 1 hour
   TelemetryAuditLogsViewedInSeconds: 3600, // 1 hour
-  TelemetryAggregatedEventInSeconds: 1800, // 30 minutes
   SecretEtagInSeconds: 900, // 15 minutes
   PkiAcmeNonceInSeconds: 300, // 5 minutes
   GatewayRelayCredentialInSeconds: 600, // 10 minutes - TURN credential lifetime
@@ -290,9 +288,16 @@ export type TKeyStoreFactory = {
   listRemove: (key: string, count: number, value: string) => Promise<number>;
   listLength: (key: string) => Promise<number>;
   // stream operations
-  streamAdd: (key: string, id: string, fieldValue: Record<string, string>, maxLen?: number) => Promise<string | null>;
+  streamAdd: (
+    key: string,
+    id: string,
+    fieldValue: Record<string, string>,
+    maxLen?: number,
+    expiryInSeconds?: number
+  ) => Promise<string | null>;
   streamRange: (key: string, start: string, end: string, count?: number) => Promise<[string, string[]][]>;
   streamTrim: (key: string, minId: string, inclusive?: boolean) => Promise<number>;
+  streamLength: (key: string) => Promise<number>;
   streamCollect: (
     key: string,
     batchSize: number,
@@ -538,12 +543,31 @@ export const keyStoreFactory = (
   const listLength = async (key: string) => pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).llen(key);
 
   // Stream operations
-  const streamAdd = async (key: string, id: string, fieldValue: Record<string, string>, maxLen = 1_000_000) => {
+  const streamAdd = async (
+    key: string,
+    id: string,
+    fieldValue: Record<string, string>,
+    maxLen = 1_000_000,
+    expiryInSeconds?: number
+  ) => {
     const args: string[] = [];
     for (const [field, value] of Object.entries(fieldValue)) {
       args.push(field, value);
     }
-    return primaryRedis.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
+
+    if (!expiryInSeconds) {
+      return primaryRedis.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
+    }
+
+    const results = await primaryRedis
+      .multi()
+      .xadd(key, "MAXLEN", "~", maxLen, id, ...args)
+      .expire(key, expiryInSeconds)
+      .exec();
+
+    const [addError, entryId] = results?.[0] ?? [null, null];
+    if (addError) throw addError;
+    return (entryId as string | null) ?? null;
   };
 
   const streamRange = async (key: string, start: string, end: string, count?: number) => {
@@ -552,6 +576,8 @@ export const keyStoreFactory = (
     }
     return primaryRedis.xrange(key, start, end);
   };
+
+  const streamLength = async (key: string) => primaryRedis.xlen(key);
 
   const streamTrim = async (key: string, minId: string, inclusive = false) => {
     let id = minId;
@@ -637,6 +663,7 @@ export const keyStoreFactory = (
     listRemove,
     listLength,
     streamAdd,
+    streamLength,
     streamRange,
     streamTrim,
     streamCollect
