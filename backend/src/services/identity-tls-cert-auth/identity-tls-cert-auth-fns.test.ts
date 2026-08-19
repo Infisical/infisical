@@ -358,6 +358,13 @@ describe("verifyClientCertificateChain", () => {
 
   const clientAuthEku = (usages: string[]) => new x509.ExtendedKeyUsageExtension(usages, true);
 
+  const permutationsOf = <T>(items: T[]): T[][] =>
+    items.length <= 1
+      ? [items]
+      : items.flatMap((item, idx) =>
+          permutationsOf([...items.slice(0, idx), ...items.slice(idx + 1)]).map((rest) => [item, ...rest])
+        );
+
   // A cross-signed CA: the same subject and key certified by more than one parent, so the leaf
   // below it verifies against every copy and each copy opens a different path to the anchor.
   const makeCrossSigned = async (
@@ -814,6 +821,52 @@ describe("verifyClientCertificateChain", () => {
       now: NOW
     });
     expect(result).toEqual({ ok: true });
+  });
+
+  test("accepts a cross-signed chain under every presentation order of the intermediates", async () => {
+    // The presented chain is documented as order-independent, and with cross-signing the order
+    // decides which path the search reaches first. Every ordering must reach the same verdict,
+    // not just the one where the valid path happens to come first.
+    const constrainedSub = await makeIntermediate("PathLen Zero Sub CA", root, {
+      serialNumber: "70",
+      pathLength: 0
+    });
+    const namespaceSub = await makeIntermediate("Namespace Constrained Sub CA", root, {
+      serialNumber: "71",
+      extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
+    });
+    const openSub = await makeIntermediate("Unconstrained Sub CA", root, { serialNumber: "72" });
+
+    const sharedKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const crossSigned = await Promise.all([
+      makeCrossSigned("Shared Issuing CA", sharedKeys, constrainedSub, "73"),
+      makeCrossSigned("Shared Issuing CA", sharedKeys, namespaceSub, "74"),
+      makeCrossSigned("Shared Issuing CA", sharedKeys, openSub, "75")
+    ]);
+    const leaf = await makeLeaf(
+      "victim.example.com",
+      { cert: crossSigned[2], keys: sharedKeys },
+      {
+        dnsName: "victim.example.com"
+      }
+    );
+
+    const presented = [constrainedSub.cert, namespaceSub.cert, openSub.cert, ...crossSigned];
+    const orderings = permutationsOf(presented);
+
+    const results = await Promise.all(
+      orderings.map((ordering) =>
+        verifyClientCertificateChain({
+          leaf: toNative(leaf.cert),
+          presentedChain: ordering.map(toNative),
+          trustAnchor: toNative(root.cert),
+          now: NOW
+        })
+      )
+    );
+
+    expect(orderings).toHaveLength(720);
+    expect(results.filter((result) => !result.ok)).toEqual([]);
   });
 
   test("reports the constraint violation when every cross-signed path violates one", async () => {
