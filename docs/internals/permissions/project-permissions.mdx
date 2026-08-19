@@ -1,5 +1,5 @@
 ---
-title: "Project Permissions"
+title: "Project permissions"
 description: "Comprehensive guide to Infisical's project-level permissions"
 ---
 
@@ -14,11 +14,11 @@ Each permission consists of:
 
 Some project-level resources—specifically `secrets`, `secret-folders`, `secret-imports`, `dynamic-secrets`, `secret-syncs`, `secret-rotation`, `honey-tokens`, `identity`, `app-connections`, and `pam-accounts`—support conditional permissions and permission inversion for more granular access control. Conditions allow you to specify criteria (like environment, secret path, tags, app connection ID, identity ID, resource name, or endpoint name) that must be met for the permission to apply.
 
-## Available Project Permissions
+## Available project permissions
 
 Below is a comprehensive list of all available project-level subjects and their supported actions.
 
-### Core Platform & Access Control
+### Core platform & access control
 
 #### Subject: `role`
 
@@ -165,7 +165,7 @@ Supports conditions and permission inversion.
 | `delete-app-connections`  | Remove app connections             | `connectionId` |
 | `connect-app-connections` | Use app connections                | `connectionId` |
 
-### Secrets Management
+### Secrets management
 
 #### Subject: `secrets`
 
@@ -304,7 +304,7 @@ Supports conditions and permission inversion.
 | ------ | ------------------------------------------------------------------------------------ |
 | `read` | View project insights dashboard, including secret access volume, access locations, auth method distribution, and rotation/reminder calendar |
 
-### Key Management Service (KMS)
+### Key management service (KMS)
 
 #### Subject: `kms`
 
@@ -329,7 +329,7 @@ Supports conditions and permission inversion.
 | `rotate`             | Rotate key material for encryption keys                                     |
 | `export-private-key` | Export key material (private key for asymmetric, secret key for symmetric)  |
 
-### Public Key Infrastructure (PKI)
+### Public key infrastructure (PKI)
 
 #### Subject: `certificate-authorities`
 
@@ -404,7 +404,7 @@ Supports conditions and permission inversion.
 | `edit`   | Modify certificate installations |
 | `delete` | Remove certificate installations |
 
-### Secret Scanning
+### Secret scanning
 
 #### Subject: `secret-scanning-data-sources`
 
@@ -432,7 +432,7 @@ Supports conditions and permission inversion.
 | `read-configs`   | View Secret Scanning Project Configuration   |
 | `update-configs` | Update Secret Scanning Project Configuration |
 
-### Privileged Access Management (PAM)
+### Privileged access management (PAM)
 
 #### Subject: `pam-resources`
 
@@ -464,7 +464,7 @@ Supports conditions and permission inversion.
 | ------ | ----------- |
 | `read` | View the PAM insights dashboard, including resource and account totals, session activity, top actors, resource breakdown, and upcoming rotations |
 
-## Condition Operators
+## Condition operators
 
 When defining conditions for permissions, you can use the following operators to match values:
 
@@ -488,7 +488,7 @@ A trailing `/*` also does **not** match the folder itself: `/app/*` matches secr
 | `/{dev,staging}/*` | `/dev/secrets`, `/staging/config` | `/prod/secrets` |
 </Note>
 
-## Condition Keys Reference
+## Condition keys reference
 
 The following condition keys can be used to restrict permissions. Each key is available only for specific subjects as indicated in the tables above.
 
@@ -511,7 +511,7 @@ The following condition keys can be used to restrict permissions. Each key is av
 | `assignableSubject` | Assignable subjects - The permission subjects that can be granted in additional privileges | `string` |
 | `assignableAction` | Assignable actions - The permission actions that can be granted in additional privileges. Format: `subject:action` (e.g., `secrets:read`) | `string` |
 
-## Usage Examples
+## Usage examples
 
 These permission objects are used when creating or updating [custom project roles](/api-reference/endpoints/project-roles/create) via the API. Each permission in the `permissions` array defines what actions a role can perform on which resources.
 
@@ -588,7 +588,7 @@ curl --request POST \
   }'
 ```
 
-## Auditing a User's Effective Permissions
+## Auditing a user's effective permissions
 
 Because a member can receive access from direct roles, group-inherited roles, and additional privileges at the same time, it isn't always obvious what they can actually do. The **Permission Audit** view resolves all sources into a single, effective answer per subject and action.
 
