@@ -26,7 +26,7 @@ import {
 } from "./Command";
 
 /**
- * Command renders a fuzzy-searchable command palette — an input paired with a scrollable
+ * Command renders a searchable command palette — an input paired with a scrollable
  * list of items the user can navigate with keyboard or pointer. Built on `cmdk`.
  * Compose items into `CommandGroup`s (with optional headings) and separate groups with
  * `CommandSeparator`. Wrap in `CommandDialog` for a global `⌘K`-style overlay, or inline
@@ -57,13 +57,13 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          "The baseline command palette — input + list + grouped items. Typing filters the list via the default fuzzy matcher (matches on value and any `keywords` passed to each item)."
+          "The baseline command palette — input + list + grouped items. Typing filters the list via the default case-insensitive substring matcher (matching the value and any `keywords` passed to each item)."
       }
     }
   },
   render: () => (
     <Command className="w-80 border border-border">
-      <CommandInput placeholder="Type a command or search..." />
+      <CommandInput aria-label="Search commands" placeholder="Type a command or search..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup heading="Suggestions">
@@ -97,7 +97,7 @@ export const WithGroups: Story = {
   },
   render: () => (
     <Command className="w-80 border border-border">
-      <CommandInput placeholder="Type a command or search..." />
+      <CommandInput aria-label="Search commands" placeholder="Type a command or search..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup heading="Suggestions">
@@ -142,7 +142,7 @@ export const WithShortcuts: Story = {
   },
   render: () => (
     <Command className="w-80 border border-border">
-      <CommandInput placeholder="Type a command or search..." />
+      <CommandInput aria-label="Search commands" placeholder="Type a command or search..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup heading="Actions">
@@ -176,7 +176,7 @@ const AsDialogStory = () => {
         <CommandShortcut>⌘K</CommandShortcut>
       </Button>
       <CommandDialog className="max-w-lg" open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Type a command or search..." />
+        <CommandInput aria-label="Search commands" placeholder="Type a command or search..." />
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
           <CommandGroup heading="Suggestions">
@@ -241,7 +241,7 @@ const InPopoverStory = () => {
       </PopoverTrigger>
       <PopoverContent align="start" sideOffset={4} className="w-80 p-0">
         <Command>
-          <CommandInput placeholder="Search organizations..." />
+          <CommandInput aria-label="Search organizations" placeholder="Search organizations..." />
           <CommandList>
             <CommandEmpty>No organizations found.</CommandEmpty>
             <CommandGroup heading="Organizations">

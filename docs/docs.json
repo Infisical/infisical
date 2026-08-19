@@ -2,19 +2,37 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Infisical",
+  "fonts": {
+    "heading": {
+      "family": "Alliance",
+      "source": "/fonts/AllianceNo2-Regular.woff2",
+      "format": "woff2",
+      "weight": 400
+    }
+  },
   "colors": {
     "primary": "#26272b",
-    "light": "#EFFF33",
+    "light": "#dbf530",
     "dark": "#A1B659"
   },
+  "appearance": {
+    "default": "light"
+  },
   "styling": {
-    "codeblocks": "dark"
+    "codeblocks": "dark",
+    "eyebrows": "breadcrumbs"
+  },
+  "thumbnails": {
+    "appearance": "light"
   },
   "favicon": "/favicon.ico",
+  "contextual": {
+    "options": ["assistant", "copy", "view", "chatgpt", "claude", "mcp"]
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Platform",
+        "tab": "Get started",
         "groups": [
           {
             "group": "Getting Started",
@@ -466,15 +484,10 @@
             "item": "Secrets Management",
             "groups": [
               {
-                "group": "Secrets Management",
+                "group": "Get started",
                 "pages": [
                   "documentation/platform/secrets-mgmt/overview",
-                  {
-                    "group": "Quickstarts",
-                    "pages": [
-                      "documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret"
-                    ]
-                  },
+                  "documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret",
                   {
                     "group": "Concepts",
                     "pages": [
@@ -485,173 +498,40 @@
                       "documentation/platform/secrets-mgmt/concepts/dynamic-secrets",
                       "documentation/platform/secrets-mgmt/concepts/approval-workflows"
                     ]
-                  },
-                  {
-                    "group": "Guides",
-                    "pages": [
-                      "documentation/guides/local-development",
-                      "documentation/guides/node",
-                      "documentation/guides/python",
-                      "documentation/guides/nextjs-vercel",
-                      "documentation/guides/kubernetes-operator"
-                    ]
                   }
                 ]
               },
               {
-                "group": "Product Reference",
+                "group": "Manage secrets",
                 "pages": [
-                  "documentation/platform/secrets-mgmt/project",
-                  "documentation/platform/folder",
-                  "documentation/platform/secret-reference",
-                  "documentation/platform/secret-versioning",
-                  "documentation/platform/pit-recovery",
-                  "documentation/platform/secret-validation-rules",
-                  "documentation/platform/pr-workflows",
-                  "documentation/platform/access-controls/access-requests",
-                  "documentation/platform/webhooks",
-                  "documentation/platform/insights",
                   {
-                    "group": "Secret Rotation",
+                    "group": "Organization",
                     "pages": [
-                      "documentation/platform/secret-rotation/overview",
-                      "integrations/secret-rotations",
-                      {
-                        "group": "Databases",
-                        "pages": [
-                          "documentation/platform/secret-rotation/mongodb-credentials",
-                          "documentation/platform/secret-rotation/mssql-credentials",
-                          "documentation/platform/secret-rotation/mysql-credentials",
-                          "documentation/platform/secret-rotation/oracledb-credentials",
-                          "documentation/platform/secret-rotation/postgres-credentials",
-                          "documentation/platform/secret-rotation/redis-credentials",
-                          "documentation/platform/secret-rotation/snowflake-user-key-pair"
-                        ]
-                      },
-                      {
-                        "group": "Cloud & Identity",
-                        "pages": [
-                          "documentation/platform/secret-rotation/auth0-client-secret",
-                          "documentation/platform/secret-rotation/aws-iam-user-secret",
-                          "documentation/platform/secret-rotation/azure-client-secret",
-                          "documentation/platform/secret-rotation/ldap-password",
-                          "documentation/platform/secret-rotation/okta-client-secret"
-                        ]
-                      },
-                      {
-                        "group": "SaaS & Platforms",
-                        "pages": [
-                          "documentation/platform/secret-rotation/cloudflare-api-token",
-                          "documentation/platform/secret-rotation/cloudflare-r2-access-key",
-                          "documentation/platform/secret-rotation/convex-access-key",
-                          "documentation/platform/secret-rotation/databricks-service-principal-secret",
-                          "documentation/platform/secret-rotation/datadog-application-key-secret",
-                          "documentation/platform/secret-rotation/datadog-api-key",
-                          "documentation/platform/secret-rotation/dbt-service-token",
-                          "documentation/platform/secret-rotation/fireworks-api-key",
-                          "documentation/platform/secret-rotation/litellm-api-key",
-                          "documentation/platform/secret-rotation/openai-service-account",
-                          "documentation/platform/secret-rotation/openrouter-api-key",
-                          "documentation/platform/secret-rotation/salesforce-oauth-credentials",
-                          "documentation/platform/secret-rotation/supabase-api-key"
-                        ]
-                      },
-                      {
-                        "group": "OS & Hardware",
-                        "pages": [
-                          "documentation/platform/secret-rotation/hp-ilo-local-account",
-                          "documentation/platform/secret-rotation/unix-linux-local-account",
-                          "documentation/platform/secret-rotation/windows-local-account"
-                        ]
-                      }
+                      "documentation/platform/secrets-mgmt/project",
+                      "documentation/platform/folder",
+                      "documentation/platform/secret-reference"
                     ]
                   },
                   {
-                    "group": "Dynamic Secrets",
+                    "group": "Versioning",
                     "pages": [
-                      "documentation/platform/dynamic-secrets/overview",
-                      "integrations/dynamic-secrets",
-                      {
-                        "group": "Databases",
-                        "pages": [
-                          "documentation/platform/dynamic-secrets/aws-elasticache",
-                          "documentation/platform/dynamic-secrets/aws-memorydb",
-                          "documentation/platform/dynamic-secrets/azure-sql-database",
-                          "documentation/platform/dynamic-secrets/cassandra",
-                          "documentation/platform/dynamic-secrets/clickhouse",
-                          "documentation/platform/dynamic-secrets/couchbase",
-                          "documentation/platform/dynamic-secrets/elastic-search",
-                          "documentation/platform/dynamic-secrets/milvus",
-                          "documentation/platform/dynamic-secrets/mongo-atlas",
-                          "documentation/platform/dynamic-secrets/mongo-db",
-                          "documentation/platform/dynamic-secrets/mssql",
-                          "documentation/platform/dynamic-secrets/mysql",
-                          "documentation/platform/dynamic-secrets/oracle",
-                          "documentation/platform/dynamic-secrets/postgresql",
-                          "documentation/platform/dynamic-secrets/redis",
-                          "documentation/platform/dynamic-secrets/sap-ase",
-                          "documentation/platform/dynamic-secrets/sap-hana",
-                          "documentation/platform/dynamic-secrets/snowflake",
-                          "documentation/platform/dynamic-secrets/vertica"
-                        ]
-                      },
-                      {
-                        "group": "Cloud & Identity",
-                        "pages": [
-                          "documentation/platform/dynamic-secrets/aws-iam",
-                          "documentation/platform/dynamic-secrets/azure-entra-id",
-                          "documentation/platform/dynamic-secrets/gcp-iam",
-                          "documentation/platform/dynamic-secrets/github",
-                          "documentation/platform/dynamic-secrets/kubernetes",
-                          "documentation/platform/dynamic-secrets/ldap",
-                          "documentation/platform/dynamic-secrets/tailscale"
-                        ]
-                      },
-                      {
-                        "group": "Other",
-                        "pages": [
-                          "documentation/platform/dynamic-secrets/ibm-api-connect",
-                          "documentation/platform/dynamic-secrets/rabbit-mq",
-                          "documentation/platform/dynamic-secrets/ssh",
-                          "documentation/platform/dynamic-secrets/totp"
-                        ]
-                      }
+                      "documentation/platform/secret-versioning",
+                      "documentation/platform/pit-recovery"
                     ]
                   },
                   {
-                    "group": "Honey Tokens",
+                    "group": "Access control",
                     "pages": [
-                      "documentation/platform/honey-tokens/overview",
-                      {
-                        "group": "AWS",
-                        "pages": [
-                          "documentation/platform/honey-tokens/aws/setup",
-                          "documentation/platform/honey-tokens/aws/usage"
-                        ]
-                      }
+                      "documentation/platform/secret-validation-rules",
+                      "documentation/platform/pr-workflows",
+                      "documentation/platform/access-controls/access-requests"
                     ]
                   },
                   {
-                    "group": "Agent Proxy",
+                    "group": "Monitoring",
                     "pages": [
-                      "documentation/platform/agent-proxy/overview",
-                      {
-                        "group": "Quickstart",
-                        "pages": [
-                          "documentation/platform/agent-proxy/quickstart/credentials",
-                          "documentation/platform/agent-proxy/quickstart/local-proxy",
-                          "documentation/platform/agent-proxy/quickstart/standalone-proxy"
-                        ]
-                      },
-                      {
-                        "group": "Reference",
-                        "pages": [
-                          "documentation/platform/agent-proxy/proxied-services",
-                          "documentation/platform/agent-proxy/local-agent-proxy",
-                          "documentation/platform/agent-proxy/standalone-agent-proxy",
-                          "documentation/platform/agent-proxy/activity-logs"
-                        ]
-                      }
+                      "documentation/platform/insights",
+                      "documentation/platform/webhooks"
                     ]
                   }
                 ]
@@ -659,6 +539,7 @@
               {
                 "group": "Integrations",
                 "pages": [
+                  "integrations/all",
                   {
                     "group": "Kubernetes",
                     "pages": [
@@ -666,6 +547,7 @@
                         "group": "Kubernetes Operator",
                         "pages": [
                           "integrations/platforms/kubernetes/overview",
+                          "documentation/guides/kubernetes-operator",
                           {
                             "group": "V2",
                             "tag": "RECOMMENDED",
@@ -692,15 +574,7 @@
                   {
                     "group": "Infrastructure",
                     "pages": [
-                      {
-                        "group": "Docker",
-                        "pages": [
-                          "integrations/platforms/docker-intro",
-                          "integrations/platforms/docker",
-                          "integrations/platforms/docker-pass-envs",
-                          "integrations/platforms/docker-compose"
-                        ]
-                      },
+                      "integrations/platforms/docker",
                       "integrations/platforms/ansible",
                       "integrations/platforms/apache-airflow",
                       {
@@ -725,6 +599,7 @@
                     "pages": [
                       "integrations/secret-syncs/overview",
                       "integrations/secret-syncs",
+                      "integrations/secret-syncs/native-integrations-migration",
                       {
                         "group": "Cloud Providers",
                         "pages": [
@@ -811,8 +686,12 @@
                     ]
                   },
                   {
-                    "group": "Frameworks & Build Tools",
+                    "group": "Application Development",
                     "pages": [
+                      "documentation/guides/local-development",
+                      "documentation/guides/node",
+                      "documentation/guides/python",
+                      "documentation/guides/nextjs-vercel",
                       "integrations/framework-integrations",
                       "integrations/frameworks/spring-boot-maven",
                       "integrations/build-tools/gradle",
@@ -849,36 +728,184 @@
                     ]
                   }
                 ]
-              }
-            ]
-          },
-          {
-            "item": "Secrets Scanning",
-            "groups": [
+              },
               {
-                "group": "Secrets Scanning",
+                "group": "Secret rotation",
                 "pages": [
-                  "documentation/platform/secret-scanning/overview",
+                  "integrations/secret-rotations",
+                  "documentation/platform/secret-rotation/overview",
                   {
-                    "group": "Concepts",
+                    "group": "Databases",
                     "pages": [
-                      "documentation/platform/secret-scanning/concepts/secret-scanning"
+                      "documentation/platform/secret-rotation/mongodb-credentials",
+                      "documentation/platform/secret-rotation/mssql-credentials",
+                      "documentation/platform/secret-rotation/mysql-credentials",
+                      "documentation/platform/secret-rotation/oracledb-credentials",
+                      "documentation/platform/secret-rotation/postgres-credentials",
+                      "documentation/platform/secret-rotation/redis-credentials",
+                      "documentation/platform/secret-rotation/snowflake-user-key-pair"
+                    ]
+                  },
+                  {
+                    "group": "Cloud & Identity",
+                    "pages": [
+                      "documentation/platform/secret-rotation/auth0-client-secret",
+                      "documentation/platform/secret-rotation/aws-iam-user-secret",
+                      "documentation/platform/secret-rotation/azure-client-secret",
+                      "documentation/platform/secret-rotation/ldap-password",
+                      "documentation/platform/secret-rotation/okta-client-secret"
+                    ]
+                  },
+                  {
+                    "group": "SaaS & Platforms",
+                    "pages": [
+                      "documentation/platform/secret-rotation/cloudflare-api-token",
+                      "documentation/platform/secret-rotation/cloudflare-r2-access-key",
+                      "documentation/platform/secret-rotation/convex-access-key",
+                      "documentation/platform/secret-rotation/databricks-service-principal-secret",
+                      "documentation/platform/secret-rotation/datadog-application-key-secret",
+                      "documentation/platform/secret-rotation/datadog-api-key",
+                      "documentation/platform/secret-rotation/dbt-service-token",
+                      "documentation/platform/secret-rotation/fireworks-api-key",
+                      "documentation/platform/secret-rotation/litellm-api-key",
+                      "documentation/platform/secret-rotation/openai-service-account",
+                      "documentation/platform/secret-rotation/openrouter-api-key",
+                      "documentation/platform/secret-rotation/salesforce-oauth-credentials",
+                      "documentation/platform/secret-rotation/supabase-api-key"
+                    ]
+                  },
+                  {
+                    "group": "OS & Hardware",
+                    "pages": [
+                      "documentation/platform/secret-rotation/hp-ilo-local-account",
+                      "documentation/platform/secret-rotation/unix-linux-local-account",
+                      "documentation/platform/secret-rotation/windows-local-account"
                     ]
                   }
                 ]
               },
               {
-                "group": "Product Reference",
+                "group": "Dynamic secrets",
                 "pages": [
-                  "documentation/platform/secret-scanning/usage",
-                  "documentation/platform/secret-scanning/bitbucket",
-                  "documentation/platform/secret-scanning/github",
-                  "documentation/platform/secret-scanning/gitlab"
+                  "integrations/dynamic-secrets",
+                  "documentation/platform/dynamic-secrets/overview",
+                  {
+                    "group": "Databases",
+                    "pages": [
+                      "documentation/platform/dynamic-secrets/aws-elasticache",
+                      "documentation/platform/dynamic-secrets/aws-memorydb",
+                      "documentation/platform/dynamic-secrets/azure-sql-database",
+                      "documentation/platform/dynamic-secrets/cassandra",
+                      "documentation/platform/dynamic-secrets/clickhouse",
+                      "documentation/platform/dynamic-secrets/couchbase",
+                      "documentation/platform/dynamic-secrets/elastic-search",
+                      "documentation/platform/dynamic-secrets/milvus",
+                      "documentation/platform/dynamic-secrets/mongo-atlas",
+                      "documentation/platform/dynamic-secrets/mongo-db",
+                      "documentation/platform/dynamic-secrets/mssql",
+                      "documentation/platform/dynamic-secrets/mysql",
+                      "documentation/platform/dynamic-secrets/oracle",
+                      "documentation/platform/dynamic-secrets/postgresql",
+                      "documentation/platform/dynamic-secrets/redis",
+                      "documentation/platform/dynamic-secrets/sap-ase",
+                      "documentation/platform/dynamic-secrets/sap-hana",
+                      "documentation/platform/dynamic-secrets/snowflake",
+                      "documentation/platform/dynamic-secrets/vertica"
+                    ]
+                  },
+                  {
+                    "group": "Cloud & Identity",
+                    "pages": [
+                      "documentation/platform/dynamic-secrets/aws-iam",
+                      "documentation/platform/dynamic-secrets/azure-entra-id",
+                      "documentation/platform/dynamic-secrets/gcp-iam",
+                      "documentation/platform/dynamic-secrets/github",
+                      "documentation/platform/dynamic-secrets/kubernetes",
+                      "documentation/platform/dynamic-secrets/ldap",
+                      "documentation/platform/dynamic-secrets/tailscale"
+                    ]
+                  },
+                  {
+                    "group": "Other",
+                    "pages": [
+                      "documentation/platform/dynamic-secrets/ibm-api-connect",
+                      "documentation/platform/dynamic-secrets/rabbit-mq",
+                      "documentation/platform/dynamic-secrets/ssh",
+                      "documentation/platform/dynamic-secrets/totp"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Honey tokens",
+                "pages": [
+                  "documentation/platform/honey-tokens/overview",
+                  {
+                    "group": "AWS",
+                    "pages": [
+                      "documentation/platform/honey-tokens/aws/setup",
+                      "documentation/platform/honey-tokens/aws/usage"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Agent Proxy",
+                "pages": [
+                  "documentation/platform/agent-proxy/overview",
+                  {
+                    "group": "Quickstart",
+                    "pages": [
+                      "documentation/platform/agent-proxy/quickstart/credentials",
+                      "documentation/platform/agent-proxy/quickstart/local-proxy",
+                      "documentation/platform/agent-proxy/quickstart/standalone-proxy"
+                    ]
+                  },
+                  {
+                    "group": "Reference",
+                    "pages": [
+                      "documentation/platform/agent-proxy/proxied-services",
+                      "documentation/platform/agent-proxy/local-agent-proxy",
+                      "documentation/platform/agent-proxy/standalone-agent-proxy",
+                      "documentation/platform/agent-proxy/activity-logs"
+                    ]
+                  },
+                  {
+                    "group": "Agent Vault",
+                    "icon": "arrow-up-right-from-square",
+                    "root": "https://docs.agent-vault.dev/"
+                  }
+                ]
+              }
+        ]
+      },
+      {
+        "item": "Secrets Scanning",
+        "groups": [
+          {
+            "group": "Secrets Scanning",
+            "pages": [
+              "documentation/platform/secret-scanning/overview",
+              {
+                "group": "Concepts",
+                "pages": [
+                  "documentation/platform/secret-scanning/concepts/secret-scanning"
                 ]
               }
             ]
           },
           {
+            "group": "Product Reference",
+            "pages": [
+              "documentation/platform/secret-scanning/usage",
+              "documentation/platform/secret-scanning/bitbucket",
+              "documentation/platform/secret-scanning/github",
+              "documentation/platform/secret-scanning/gitlab"
+            ]
+          }
+        ]
+      },
+      {
             "item": "Certificate Management",
             "groups": [
               {
@@ -1061,7 +1088,7 @@
             ]
           },
           {
-            "item": "Infisical KMS",
+            "item": "KMS",
             "groups": [
               {
                 "group": "Infisical KMS",
@@ -1081,7 +1108,7 @@
             ]
           },
           {
-            "item": "Privileged Access Manager",
+            "item": "Privileged Access Management",
             "groups": [
               {
                 "group": "Privileged Access Manager",
@@ -1123,6 +1150,7 @@
                       "documentation/platform/pam/accounts/mysql",
                       "documentation/platform/pam/accounts/mssql",
                       "documentation/platform/pam/accounts/mongodb",
+                      "documentation/platform/pam/accounts/redis",
                       "documentation/platform/pam/accounts/ssh",
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
@@ -1133,6 +1161,7 @@
                     ]
                   },
                   "documentation/platform/pam/access-requests/overview",
+                  "documentation/platform/pam/ai-agents/overview",
                   {
                     "group": "Credential Rotation",
                     "pages": [
@@ -1170,17 +1199,12 @@
                 ]
               }
             ]
-          },
-          {
-            "item": "Agent Vault",
-            "icon": "arrow-up-right-from-square",
-            "href": "https://docs.agent-vault.dev/"
           }
         ]
       },
       {
-        "tab": "CLI Reference",
-        "groups": [
+            "tab": "CLI Reference",
+            "groups": [
           {
             "group": "Command line",
             "pages": [
@@ -1195,7 +1219,10 @@
                   "cli/commands/secrets",
                   "cli/commands/agent-proxy",
                   "cli/commands/dynamic-secrets",
-                  "cli/commands/pam",
+                  {
+                    "group": "infisical pam",
+                    "pages": ["cli/commands/pam", "cli/commands/pam-agentic"]
+                  },
                   "cli/commands/gateway",
                   "cli/commands/kmip",
                   "cli/commands/relay",
@@ -1715,6 +1742,12 @@
                     ]
                   },
                   {
+                    "group": "Datadog",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/datadog/create"
+                    ]
+                  },
+                  {
                     "group": "DBT",
                     "pages": [
                       "api-reference/endpoints/app-connections/dbt/list",
@@ -1871,6 +1904,12 @@
                     ]
                   },
                   {
+                    "group": "GoDaddy",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/godaddy/create"
+                    ]
+                  },
+                  {
                     "group": "Hashicorp Vault",
                     "pages": [
                       "api-reference/endpoints/app-connections/hashicorp-vault/list",
@@ -1931,6 +1970,12 @@
                     ]
                   },
                   {
+                    "group": "Kemp LoadMaster",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/kemp-loadmaster/create"
+                    ]
+                  },
+                  {
                     "group": "Laravel Forge",
                     "pages": [
                       "api-reference/endpoints/app-connections/laravel-forge/list",
@@ -1964,6 +2009,12 @@
                       "api-reference/endpoints/app-connections/litellm/create",
                       "api-reference/endpoints/app-connections/litellm/update",
                       "api-reference/endpoints/app-connections/litellm/delete"
+                    ]
+                  },
+                  {
+                    "group": "Microsoft Intune",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/microsoft-intune/create"
                     ]
                   },
                   {
@@ -2087,6 +2138,12 @@
                     ]
                   },
                   {
+                    "group": "Ona",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/ona/create"
+                    ]
+                  },
+                  {
                     "group": "OpenAI",
                     "pages": [
                       "api-reference/endpoints/app-connections/openai/list",
@@ -2120,6 +2177,12 @@
                       "api-reference/endpoints/app-connections/oracledb/create",
                       "api-reference/endpoints/app-connections/oracledb/update",
                       "api-reference/endpoints/app-connections/oracledb/delete"
+                    ]
+                  },
+                  {
+                    "group": "OVH",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/ovh/create"
                     ]
                   },
                   {
@@ -2252,6 +2315,12 @@
                       "api-reference/endpoints/app-connections/terraform-cloud/create",
                       "api-reference/endpoints/app-connections/terraform-cloud/update",
                       "api-reference/endpoints/app-connections/terraform-cloud/delete"
+                    ]
+                  },
+                  {
+                    "group": "Travis CI",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/travis-ci/create"
                     ]
                   },
                   {
@@ -2469,6 +2538,12 @@
                   "api-reference/endpoints/ldap-auth/update",
                   "api-reference/endpoints/ldap-auth/revoke"
                 ]
+              },
+              {
+                "group": "SPIFFE Auth",
+                "pages": [
+                  "api-reference/endpoints/machine-identities/spiffe-auth/refresh-bundle"
+                ]
               }
             ]
           },
@@ -2659,6 +2734,12 @@
                     ]
                   },
                   {
+                    "group": "Convex Access Key",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/convex-access-key/create"
+                    ]
+                  },
+                  {
                     "group": "Databricks Service Principal Secret",
                     "pages": [
                       "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/create",
@@ -2669,6 +2750,18 @@
                       "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/list",
                       "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/databricks-service-principal-secret/update"
+                    ]
+                  },
+                  {
+                    "group": "Datadog Application Key Secret",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/datadog-application-key-secret/create"
+                    ]
+                  },
+                  {
+                    "group": "Datadog API Key",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/datadog-api-key/create"
                     ]
                   },
                   {
@@ -2921,6 +3014,15 @@
                       "api-reference/endpoints/secret-rotations/windows-local-account/reconcile"
                     ]
                   }
+                ]
+              },
+              {
+                "group": "Secret Validation Rules",
+                "pages": [
+                  "api-reference/endpoints/secret-validation-rules/list",
+                  "api-reference/endpoints/secret-validation-rules/create",
+                  "api-reference/endpoints/secret-validation-rules/update",
+                  "api-reference/endpoints/secret-validation-rules/delete"
                 ]
               },
               {
@@ -3375,6 +3477,14 @@
                     ]
                   },
                   {
+                    "group": "Ona",
+                    "pages": ["api-reference/endpoints/secret-syncs/ona/create"]
+                  },
+                  {
+                    "group": "OVH",
+                    "pages": ["api-reference/endpoints/secret-syncs/ovh/create"]
+                  },
+                  {
                     "group": "Qovery",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/qovery/list",
@@ -3492,6 +3602,12 @@
                       "api-reference/endpoints/secret-syncs/terraform-cloud/delete",
                       "api-reference/endpoints/secret-syncs/terraform-cloud/sync-secrets",
                       "api-reference/endpoints/secret-syncs/terraform-cloud/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Travis CI",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/travis-ci/create"
                     ]
                   },
                   {
@@ -3750,6 +3866,13 @@
                         ]
                       },
                       {
+                        "group": "Kemp LoadMaster",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/kemp-loadmaster/create",
+                          "api-reference/endpoints/pki/syncs/kemp-loadmaster/sync-certificates"
+                        ]
+                      },
+                      {
                         "group": "NetScaler",
                         "pages": [
                           "api-reference/endpoints/pki/syncs/netscaler/list",
@@ -3905,6 +4028,12 @@
                           "api-reference/endpoints/certificate-authorities/digicert/read",
                           "api-reference/endpoints/certificate-authorities/digicert/update",
                           "api-reference/endpoints/certificate-authorities/digicert/delete"
+                        ]
+                      },
+                      {
+                        "group": "GoDaddy",
+                        "pages": [
+                          "api-reference/endpoints/certificate-authorities/godaddy/create"
                         ]
                       }
                     ]
@@ -4181,7 +4310,7 @@
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg",
-    "href": "https://infisical.com"
+    "href": "/"
   },
   "api": {
     "openapi": "https://app.infisical.com/api/docs/json",
@@ -4192,7 +4321,7 @@
   "background": {
     "color": {
       "light": "#ffffff",
-      "dark": "#0D1117"
+      "dark": "#08090b"
     }
   },
   "navbar": {
@@ -4286,7 +4415,7 @@
           },
           {
             "label": "Docker",
-            "href": "https://infisical.com/docs/integrations/platforms/docker-intro"
+            "href": "https://infisical.com/docs/integrations/platforms/docker"
           },
           {
             "label": "AWS ECS",
@@ -4395,6 +4524,18 @@
     }
   },
   "redirects": [
+    {
+      "source": "/integrations/platforms/docker-intro",
+      "destination": "/integrations/platforms/docker"
+    },
+    {
+      "source": "/integrations/platforms/docker-pass-envs",
+      "destination": "/integrations/platforms/docker"
+    },
+    {
+      "source": "/integrations/platforms/docker-compose",
+      "destination": "/integrations/platforms/docker"
+    },
     {
       "source": "/documentation/platform/agent-proxy/quickstart",
       "destination": "/documentation/platform/agent-proxy/quickstart/credentials"

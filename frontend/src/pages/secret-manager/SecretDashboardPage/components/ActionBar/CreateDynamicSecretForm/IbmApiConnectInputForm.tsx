@@ -119,6 +119,7 @@ export const IbmApiConnectInputForm = ({
     apiKey: apiKey || "",
     clientId: clientId || "",
     clientSecret: clientSecret || "",
+    projectSlug,
     enabled: credentialsComplete
   });
 
@@ -134,6 +135,7 @@ export const IbmApiConnectInputForm = ({
     clientId: clientId || "",
     clientSecret: clientSecret || "",
     orgId: selectedOrg?.id || "",
+    projectSlug,
     enabled: orgSelected
   });
 
@@ -150,6 +152,7 @@ export const IbmApiConnectInputForm = ({
     clientSecret: clientSecret || "",
     orgId: selectedOrg?.id || "",
     catalogId: selectedCatalog?.id || "",
+    projectSlug,
     enabled: catalogSelected
   });
 

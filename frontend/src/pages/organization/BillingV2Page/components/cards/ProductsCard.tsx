@@ -56,10 +56,7 @@ const ActiveProductCard = ({
   // "Commit annually and save" nudge: shown when the org holds this product monthly but hasn't set the
   // available commitment. Clicking opens the set-commitment flow. Hidden for enterprise-managed orgs.
   const commitNudge = readOnly || !selfServe ? null : commitSavingsNudge(entitlement);
-  // Every deprecation is presented as a retiring plan for now (see asPlanDeprecation).
-  const deprecation = !entitlement?.planTier?.includes("enterprise")
-    ? asPlanDeprecation(entitlement?.deprecation)
-    : null;
+  const deprecation = selfServe ? asPlanDeprecation(entitlement?.deprecation) : null;
   const isProductDeprecated = deprecation?.kind === "product";
   const isPlanDeprecated = deprecation?.kind === "plan";
 

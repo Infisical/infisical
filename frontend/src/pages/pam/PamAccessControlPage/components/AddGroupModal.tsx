@@ -70,7 +70,7 @@ export const AddGroupModal = ({ isOpen, onOpenChange }: Props) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-visible sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Add Group</DialogTitle>
           <DialogDescription>Add an existing organization group.</DialogDescription>

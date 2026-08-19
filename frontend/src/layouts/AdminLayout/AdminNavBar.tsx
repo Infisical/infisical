@@ -13,14 +13,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useMatchRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
-} from "@app/components/v3";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { useOrganization } from "@app/context";
 
 const generalTabs = [
@@ -79,29 +73,39 @@ export const AdminNavBar = () => {
         transition={{ duration: 0.2 }}
         className="px-4"
       >
-        <nav className="w-full">
-          <Tabs value="selected">
-            <TabsList variant="admin">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="back" asChild>
-                    <Link to="/organizations/$orgId/projects" params={{ orgId: currentOrg.id }}>
-                      <FontAwesomeIcon icon={faArrowLeft} />
-                    </Link>
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Back to organization</TooltipContent>
-              </Tooltip>
-              {generalTabs.map((tab) => {
-                const isActive = matchRoute({ to: tab.link, fuzzy: false });
-                return (
-                  <TabsTrigger key={tab.link} value={isActive ? "selected" : ""} asChild>
-                    <Link to={tab.link}>{tab.label}</Link>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-          </Tabs>
+        <nav aria-label="Admin sections" className="no-scrollbar overflow-x-auto">
+          <div className="flex h-11 w-max min-w-full items-stretch gap-1 border-b border-border">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  to="/organizations/$orgId/projects"
+                  params={{ orgId: currentOrg.id }}
+                  aria-label="Back to organization"
+                  className="inline-flex items-center justify-center px-3 text-sm text-foreground/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
+                >
+                  <FontAwesomeIcon icon={faArrowLeft} aria-hidden />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Back to organization</TooltipContent>
+            </Tooltip>
+            {generalTabs.map((tab) => {
+              const isActive = matchRoute({ to: tab.link, fuzzy: false });
+              return (
+                <Link
+                  key={tab.link}
+                  to={tab.link}
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(
+                    "relative inline-flex items-center px-3 text-sm whitespace-nowrap text-foreground/60 transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset",
+                    isActive &&
+                      "text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-admin"
+                  )}
+                >
+                  {tab.label}
+                </Link>
+              );
+            })}
+          </div>
         </nav>
       </motion.div>
     </div>

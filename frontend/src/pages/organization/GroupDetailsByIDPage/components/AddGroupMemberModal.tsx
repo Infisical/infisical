@@ -231,7 +231,7 @@ export const AddGroupMembersModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="overflow-visible sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Add Group Members</DialogTitle>
           <DialogDescription>

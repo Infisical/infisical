@@ -3,7 +3,6 @@ import { PlusIcon } from "lucide-react";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -12,6 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DeleteConfirmDialog,
   DocumentationLinkBadge
 } from "@app/components/v3";
 import {
@@ -33,7 +33,8 @@ export const GroupsSection = () => {
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   const productLabel = isCertManager ? "Certificate Manager" : "Project";
 
-  const { mutateAsync: deleteMutateAsync } = useDeleteGroupFromWorkspace();
+  const { mutateAsync: deleteMutateAsync, isPending: isRemovingGroup } =
+    useDeleteGroupFromWorkspace();
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "group",
@@ -53,11 +54,15 @@ export const GroupsSection = () => {
   };
 
   const onRemoveGroupSubmit = async (groupId: string) => {
-    await deleteMutateAsync({
-      groupId,
-      projectId: currentProject?.id || "",
-      projectType: currentProject?.type
-    });
+    try {
+      await deleteMutateAsync({
+        groupId,
+        projectId: currentProject?.id || "",
+        projectType: currentProject?.type
+      });
+    } catch {
+      return;
+    }
 
     createNotification({
       text: `Successfully removed group from ${productLabel.toLowerCase()}`,
@@ -66,6 +71,8 @@ export const GroupsSection = () => {
 
     handlePopUpClose("deleteGroup");
   };
+
+  const groupToRemove = popUp.deleteGroup.data as { id?: string; name?: string } | undefined;
 
   return (
     <>
@@ -99,16 +106,19 @@ export const GroupsSection = () => {
           <GroupTable handlePopUpOpen={handlePopUpOpen} />
         </CardContent>
       </Card>
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteGroup.isOpen}
-        title={`Are you sure you want to remove the group ${
-          (popUp?.deleteGroup?.data as { name: string })?.name || ""
-        } from the ${productLabel.toLowerCase()}?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
-          onRemoveGroupSubmit((popUp?.deleteGroup?.data as { id: string })?.id)
-        }
+        onOpenChange={(isOpen) => {
+          if (!isRemovingGroup) handlePopUpToggle("deleteGroup", isOpen);
+        }}
+        title={`Remove "${groupToRemove?.name}" from ${productLabel}?`}
+        description={`This removes the group's access to this ${productLabel.toLowerCase()}. You can add the group again later.`}
+        confirmKey={groupToRemove?.name ?? ""}
+        confirmLabel="Remove Group"
+        isPending={isRemovingGroup}
+        onConfirm={async () => {
+          if (groupToRemove?.id) await onRemoveGroupSubmit(groupToRemove.id);
+        }}
       />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}

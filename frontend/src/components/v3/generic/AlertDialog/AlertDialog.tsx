@@ -4,6 +4,7 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 import { cn } from "../../utils";
 import { Button } from "../Button";
 import { DIALOG_CONTENT_WIDTH_CLASSNAME } from "../Dialog";
+import { FieldLabel } from "../Field";
 
 function AlertDialog({ ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />;
@@ -77,7 +78,7 @@ function AlertDialogFooter({ className, ...props }: React.ComponentProps<"div">)
     <div
       data-slot="alert-dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-row flex-wrap justify-end gap-2 rounded-b-xl border-t border-border px-4 py-3 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2",
+        "-mx-4 -mb-4 flex flex-row flex-wrap justify-end gap-2 rounded-b-xl border-t border-border bg-container p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2",
         className
       )}
       {...props}
@@ -133,6 +134,28 @@ function AlertDialogDescription({
 function AlertDialogConfirmationField({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div data-slot="alert-dialog-confirmation-field" className={cn("mt-4", className)} {...props} />
+  );
+}
+
+function AlertDialogConfirmationLabel({
+  className,
+  confirmationValue,
+  ...props
+}: Omit<React.ComponentProps<typeof FieldLabel>, "children"> & {
+  confirmationValue: React.ReactNode;
+}) {
+  return (
+    <FieldLabel
+      data-slot="alert-dialog-confirmation-label"
+      size="sm"
+      className={cn("gap-0", className)}
+      {...props}
+    >
+      <span>
+        Type &quot;<span className="font-medium text-foreground">{confirmationValue}</span>&quot; to
+        confirm.
+      </span>
+    </FieldLabel>
   );
 }
 
@@ -193,6 +216,7 @@ export {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,

@@ -109,6 +109,9 @@ spec:
             - --target-relay-name={{ .Values.gateway.relayName }}
             {{- end }}
             - --pam-session-recording-path={{ $sessionPath }}
+            {{- with .Values.extraArgs }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           volumeMounts:
             {{- if $usePVC }}
             - name: gateway-data
@@ -133,6 +136,9 @@ spec:
             - gateway
             - start
             - --pam-session-recording-path={{ $sessionPath }}
+            {{- with .Values.extraArgs }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           envFrom:
             - secretRef:
                 name: {{ .Values.secret.name }}

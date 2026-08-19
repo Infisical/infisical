@@ -1398,7 +1398,7 @@ export const appConnectionServiceFactory = ({
     datadog: datadogConnectionService(connectAppConnectionById),
     openai: openaiConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
-    chef: chefConnectionService(connectAppConnectionById, licenseService),
+    chef: chefConnectionService(connectAppConnectionById, licenseService, gatewayV2Service, gatewayPoolService),
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
     dbt: dbtConnectionService(connectAppConnectionById),
     circleci: circleciConnectionService(connectAppConnectionById),

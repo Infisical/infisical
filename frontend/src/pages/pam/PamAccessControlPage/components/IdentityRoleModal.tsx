@@ -12,14 +12,14 @@ import {
   DialogTitle
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
-import { IdentityProjectMembershipV2 } from "@app/hooks/api/identities/types";
 import { useUpdatePamProductIdentityMember } from "@app/hooks/api/pam";
+import { TPamIdentityMember } from "@app/hooks/api/pam/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProductRoleOptionList } from "./ProductRoleOptionList";
 
 type Props = {
-  identity: IdentityProjectMembershipV2 | null;
+  identity: TPamIdentityMember | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 };
@@ -28,23 +28,23 @@ export const IdentityRoleModal = ({ identity, isOpen, onOpenChange }: Props) => 
   const { currentProject } = useProject();
   const updateRole = useUpdatePamProductIdentityMember();
 
-  const currentRole = identity?.roles?.[0]?.role ?? ProjectMembershipRole.Member;
+  const currentRole = identity?.role ?? ProjectMembershipRole.Member;
   const [selectedRole, setSelectedRole] = useState<string>(currentRole);
 
   useEffect(() => {
     if (identity) {
-      setSelectedRole(identity.roles?.[0]?.role ?? ProjectMembershipRole.Member);
+      setSelectedRole(identity.role ?? ProjectMembershipRole.Member);
     }
   }, [identity]);
 
-  if (!identity) return null;
+  if (!identity?.identityId) return null;
 
   const hasChanges = selectedRole !== currentRole;
 
   const handleSave = () => {
     updateRole.mutate(
       {
-        identityId: identity.identity.id,
+        identityId: identity.identityId!,
         role: selectedRole,
         projectId: currentProject.id
       },
@@ -63,7 +63,7 @@ export const IdentityRoleModal = ({ identity, isOpen, onOpenChange }: Props) => 
         <DialogHeader>
           <DialogTitle>Edit Role</DialogTitle>
           <DialogDescription>
-            Update the product role for {identity.identity.name || "this identity"}.
+            Update the product role for {identity.name || "this identity"}.
           </DialogDescription>
         </DialogHeader>
 

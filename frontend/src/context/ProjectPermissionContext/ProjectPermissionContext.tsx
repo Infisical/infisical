@@ -45,7 +45,7 @@ export const useProjectPermission = () => {
   const hasProjectRole = useCallback(
     (role: string) =>
       memberships?.some((membership) => membership.roles.some((el) => role === el.role)),
-    []
+    [memberships]
   );
 
   return { permission, memberships, hasProjectRole, assumedPrivilegeDetails };

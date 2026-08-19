@@ -1,109 +1,105 @@
 import { useRef } from "react";
-import { CircleCheckIcon, CircleXIcon } from "lucide-react";
 
-import { Badge } from "@app/components/v3";
-
+import { DiffPaneField, DiffPanes } from "./DiffPanes";
+import {
+  FOLDER_FIELD_LABELS,
+  FOLDER_FIELD_ORDER,
+  FolderFieldKey,
+  getFolderFieldChanges
+} from "./fieldChanges";
 import { MultiLineTextDiffRenderer, SingleLineTextDiffRenderer } from "./FieldDiffRenderers";
-
-export interface FolderVersionData {
-  name?: string;
-  description?: string;
-}
+import { FolderVersionData } from "./types";
 
 export interface FolderDiffViewProps {
   operationType: "create" | "update" | "delete";
   oldVersion?: FolderVersionData;
   newVersion?: FolderVersionData;
+  /** Completes the "Previous …" / "New …" pane titles. */
+  resourceLabel?: string;
+  /** Flags each changed property, for when the panes show unchanged properties too. */
+  showChangedMarkers?: boolean;
+  /** Narrows the panes to these properties, in display order. Defaults to every property. */
+  visibleFields?: FolderFieldKey[];
 }
 
-export const FolderDiffView = ({ operationType, oldVersion, newVersion }: FolderDiffViewProps) => {
+export const FolderDiffView = ({
+  operationType,
+  oldVersion,
+  newVersion,
+  resourceLabel = "Folder",
+  showChangedMarkers,
+  visibleFields = FOLDER_FIELD_ORDER
+}: FolderDiffViewProps) => {
   const oldDescriptionDiffContainerRef = useRef<HTMLDivElement>(null);
   const newDescriptionDiffContainerRef = useRef<HTMLDivElement>(null);
 
+  const changes = getFolderFieldChanges(oldVersion, newVersion);
+
   const oldName = oldVersion?.name ?? "";
   const newName = newVersion?.name ?? "";
-  const hasNameChanges = oldName !== newName && oldName !== "" && newName !== "";
 
   const oldDescription = oldVersion?.description ?? "";
   const newDescription = newVersion?.description ?? "";
-  const hasDescriptionChanges = oldDescription !== newDescription;
 
-  const showOldVersion = operationType === "update" || operationType === "delete";
-  const showNewVersion = operationType === "update" || operationType === "create";
+  const fieldByKey: Record<FolderFieldKey, DiffPaneField> = {
+    name: {
+      key: "name",
+      label: FOLDER_FIELD_LABELS.name,
+      hasChanges: changes.name,
+      previous: (
+        <SingleLineTextDiffRenderer
+          text={oldName}
+          oldText={oldName}
+          newText={newName}
+          hasChanges={changes.name}
+          isOldVersion
+        />
+      ),
+      next: (
+        <SingleLineTextDiffRenderer
+          text={newName}
+          oldText={oldName}
+          newText={newName}
+          hasChanges={changes.name}
+          isOldVersion={false}
+        />
+      )
+    },
+    description: {
+      key: "description",
+      label: FOLDER_FIELD_LABELS.description,
+      hasChanges: changes.description,
+      previous: (
+        <MultiLineTextDiffRenderer
+          text={oldDescription}
+          oldText={oldDescription}
+          newText={newDescription}
+          hasChanges={changes.description}
+          isOldVersion
+          containerRef={oldDescriptionDiffContainerRef}
+        />
+      ),
+      next: (
+        <MultiLineTextDiffRenderer
+          text={newDescription}
+          oldText={oldDescription}
+          newText={newDescription}
+          hasChanges={changes.description}
+          isOldVersion={false}
+          containerRef={newDescriptionDiffContainerRef}
+        />
+      )
+    }
+  };
 
   return (
-    <div className="flex flex-col space-y-4 space-x-0 xl:flex-row xl:space-y-0 xl:space-x-4">
-      {showOldVersion ? (
-        <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-danger/35 bg-danger/10 p-4 xl:w-1/2">
-          <div className="mb-4 flex flex-row justify-between">
-            <span className="text-md font-medium">Previous Folder</span>
-            <Badge variant="danger">
-              <CircleXIcon /> Previous
-            </Badge>
-          </div>
-          <div className="mb-2">
-            <div className="mb-0.5 text-xs font-medium text-label">Name</div>
-            <SingleLineTextDiffRenderer
-              text={oldName}
-              oldText={oldName}
-              newText={newName}
-              hasChanges={hasNameChanges}
-              isOldVersion
-            />
-          </div>
-          <div className="mb-2">
-            <div className="mb-0.5 text-xs font-medium text-label">Description</div>
-            <MultiLineTextDiffRenderer
-              text={oldDescription}
-              oldText={oldDescription}
-              newText={newDescription}
-              hasChanges={hasDescriptionChanges}
-              isOldVersion
-              containerRef={oldDescriptionDiffContainerRef}
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="flex w-full cursor-default flex-col items-center justify-center rounded-lg border border-dashed border-border bg-container p-4 text-center shadow-inner xl:w-1/2">
-          <span className="text-sm text-muted">Folder did not exist in the previous version.</span>
-        </div>
-      )}
-
-      {showNewVersion ? (
-        <div className="flex w-full min-w-0 cursor-default flex-col rounded-lg border border-success/35 bg-success/10 p-4 xl:w-1/2">
-          <div className="mb-4 flex flex-row justify-between">
-            <span className="text-md font-medium">New Folder</span>
-            <Badge variant="success">
-              <CircleCheckIcon /> New
-            </Badge>
-          </div>
-          <div className="mb-2">
-            <div className="mb-0.5 text-xs font-medium text-label">Name</div>
-            <SingleLineTextDiffRenderer
-              text={newName}
-              oldText={oldName}
-              newText={newName}
-              hasChanges={hasNameChanges}
-              isOldVersion={false}
-            />
-          </div>
-          <div className="mb-2">
-            <div className="mb-0.5 text-xs font-medium text-label">Description</div>
-            <MultiLineTextDiffRenderer
-              text={newDescription}
-              oldText={oldDescription}
-              newText={newDescription}
-              hasChanges={hasDescriptionChanges}
-              isOldVersion={false}
-              containerRef={newDescriptionDiffContainerRef}
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="flex w-full cursor-default flex-col items-center justify-center rounded-lg border border-dashed border-border bg-container p-4 text-center shadow-inner xl:w-1/2">
-          <span className="text-sm text-muted">Folder will be deleted.</span>
-        </div>
-      )}
-    </div>
+    <DiffPanes
+      operationType={operationType}
+      fields={visibleFields.map((field) => fieldByKey[field])}
+      resourceLabel={resourceLabel}
+      showChangedMarkers={showChangedMarkers}
+      previousEmptyMessage="Folder did not exist in the previous version."
+      nextEmptyMessage="Folder will be deleted."
+    />
   );
 };

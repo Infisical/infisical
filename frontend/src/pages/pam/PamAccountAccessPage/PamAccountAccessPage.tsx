@@ -23,16 +23,21 @@ const TerminalContent = ({
   mfaSessionId?: string;
 }) => {
   const [sessionEnded, setSessionEnded] = useState(false);
+  const [endReason, setEndReason] = useState<string | undefined>();
 
   const { containerRef, isConnected, disconnect, reconnect } = useWebAccessSession({
     accountId: account.id,
     accountType: account.accountType,
     reason,
     mfaSessionId,
-    onSessionEnd: () => setSessionEnded(true)
+    onSessionEnd: (reasonText) => {
+      setEndReason(reasonText);
+      setSessionEnded(true);
+    }
   });
 
   const handleReconnect = () => {
+    setEndReason(undefined);
     setSessionEnded(false);
     reconnect();
   };
@@ -54,7 +59,9 @@ const TerminalContent = ({
         style={{ minHeight: 0 }}
       >
         <div ref={containerRef} className="h-full" style={{ minWidth: "100%" }} />
-        {sessionEnded && <DisconnectedScreen onReconnect={handleReconnect} />}
+        {sessionEnded && (
+          <DisconnectedScreen onReconnect={handleReconnect} description={endReason} />
+        )}
       </div>
       <div className="flex items-center justify-between border-t border-border bg-card px-3 py-1.5 text-xs">
         <span className="flex items-center gap-1.5">

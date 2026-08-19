@@ -1,25 +1,28 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { MultiValue, SingleValue } from "react-select";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
+import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
   Button,
+  Field,
+  FieldError,
   FilterableSelect,
-  FormControl,
-  FormLabel,
   IconButton,
   Input,
   Select,
+  SelectContent,
   SelectItem,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import {
   TCloudflarePermissionGroup,
   TCloudflareZone,
@@ -117,193 +120,204 @@ export const CloudflareApiTokenRotationParametersFields = () => {
 
   return (
     <Tabs defaultValue={ParameterTab.General}>
-      <TabList>
-        <Tab value={ParameterTab.General}>General</Tab>
-        <Tab value={ParameterTab.Restrictions}>Restrictions</Tab>
-      </TabList>
-      <TabPanel value={ParameterTab.General}>
+      <TabsList variant="project" className="w-full justify-start">
+        <TabsTrigger value={ParameterTab.General}>General</TabsTrigger>
+        <TabsTrigger value={ParameterTab.Restrictions}>Restrictions</TabsTrigger>
+      </TabsList>
+      <TabsContent value={ParameterTab.General} className="space-y-4">
         <Controller
           control={control}
           name="parameters.name"
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error?.message)}
-              errorText={error?.message}
-              label="Token Name"
-              tooltipText="The name for the generated Cloudflare API token. A timestamp is appended so each rotated token is distinct."
-            >
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabelWithTooltip tooltip="The name for the generated Cloudflare API token. A timestamp is appended so each rotated token is distinct.">
+                Token Name
+              </FieldLabelWithTooltip>
               <Input
                 {...field}
                 placeholder="infisical-rotated-token"
                 maxLength={CLOUDFLARE_TOKEN_NAME_MAX_LENGTH}
+                isError={Boolean(error)}
               />
-            </FormControl>
+              <FieldError>{error?.message}</FieldError>
+            </Field>
           )}
         />
-        <FormLabel
-          label="Access Policies"
-          tooltipText="Each row grants one permission group over the entire account, all zones in the account, or a specific set of zones. Rows targeting the same resources are combined into a single Cloudflare policy."
-        />
-        <div className="mb-3 flex w-full flex-col space-y-2">
-          {policyFields.fields.map(({ id: policyFieldId }, i) => {
-            const policyScope = policies?.[i]?.scope ?? CloudflareApiTokenPolicyScope.Account;
-            const permissionGroupOptions = permissionGroupsByScope[policyScope];
-            const showZones = policyScope === CloudflareApiTokenPolicyScope.Zones;
+        <div className="space-y-3">
+          <FieldLabelWithTooltip tooltip="Each row grants one permission group over the entire account, all zones in the account, or a specific set of zones. Rows targeting the same resources are combined into a single Cloudflare policy.">
+            Access Policies
+          </FieldLabelWithTooltip>
+          <div className="flex w-full flex-col gap-3">
+            {policyFields.fields.map(({ id: policyFieldId }, i) => {
+              const policyScope = policies?.[i]?.scope ?? CloudflareApiTokenPolicyScope.Account;
+              const permissionGroupOptions = permissionGroupsByScope[policyScope];
+              const showZones = policyScope === CloudflareApiTokenPolicyScope.Zones;
 
-            return (
-              // A card per policy rather than one flat row: four selects side by side don't fit the
-              // modal width, and cramming them wraps the placeholders and misaligns the labels.
-              <div
-                key={policyFieldId}
-                className="rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3"
-              >
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="text-xs text-mineshaft-400">Policy {i + 1}</span>
-                  <IconButton
-                    ariaLabel="delete policy"
-                    variant="plain"
-                    colorSchema="danger"
-                    onClick={() => {
-                      const currentPolicies = getValues("parameters.policies");
-                      if (currentPolicies && currentPolicies.length > 1) {
-                        policyFields.remove(i);
-                      } else {
-                        setValue("parameters.policies", [DEFAULT_POLICY]);
-                      }
-                    }}
-                  >
-                    <FontAwesomeIcon icon={faTrash} />
-                  </IconButton>
-                </div>
-                <div className="grid grid-cols-2 gap-x-3">
-                  <Controller
-                    control={control}
-                    name={`parameters.policies.${i}.effect`}
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        label="Effect"
-                        className="mb-0"
-                      >
-                        <Select
-                          className="w-full"
-                          position="popper"
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          {Object.entries(CLOUDFLARE_POLICY_EFFECT_MAP).map(([effect, label]) => (
-                            <SelectItem key={effect} value={effect}>
-                              {label}
-                            </SelectItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    name={`parameters.policies.${i}.scope`}
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        label="Scope"
-                        className="mb-0"
-                      >
-                        <Select
-                          className="w-full"
-                          position="popper"
-                          value={field.value}
-                          onValueChange={(scope) => {
-                            field.onChange(scope);
-                            // the zones and permission group from the previous scope no longer apply
-                            setValue(`parameters.policies.${i}.zoneIds`, []);
-                            setValue(`parameters.policies.${i}.permissionGroupId`, "");
-                          }}
-                        >
-                          {Object.entries(CLOUDFLARE_POLICY_SCOPE_MAP).map(([scope, label]) => (
-                            <SelectItem key={scope} value={scope}>
-                              {label}
-                            </SelectItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    )}
-                  />
-                  {showZones && (
+              return (
+                // A card per policy rather than one flat row: four selects side by side don't fit the
+                // modal width, and cramming them wraps the placeholders and misaligns the labels.
+                <div key={policyFieldId} className="rounded-md border border-border bg-card p-3">
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-xs text-muted">Policy {i + 1}</span>
+                    <IconButton
+                      type="button"
+                      aria-label="Delete policy"
+                      variant="ghost"
+                      onClick={() => {
+                        const currentPolicies = getValues("parameters.policies");
+                        if (currentPolicies && currentPolicies.length > 1) {
+                          policyFields.remove(i);
+                        } else {
+                          setValue("parameters.policies", [DEFAULT_POLICY]);
+                        }
+                      }}
+                    >
+                      <TrashIcon />
+                    </IconButton>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3">
                     <Controller
                       control={control}
-                      name={`parameters.policies.${i}.zoneIds`}
-                      render={({ field: { value, onChange }, fieldState: { error } }) => (
-                        <FormControl
-                          isError={Boolean(error?.message)}
-                          errorText={error?.message}
-                          label="Zones"
-                          className="mt-3 mb-0"
-                        >
-                          <FilterableSelect
-                            isMulti
-                            isLoading={isZonesPending && Boolean(connectionId)}
-                            isDisabled={!connectionId}
-                            options={zones}
-                            placeholder="Select zones..."
-                            getOptionLabel={(option) => option.name}
-                            getOptionValue={(option) => option.id}
-                            value={zones?.filter((zone) => (value ?? []).includes(zone.id)) ?? []}
-                            onChange={(option) =>
-                              onChange(
-                                (option as MultiValue<TCloudflareZone>).map((zone) => zone.id)
-                              )
-                            }
-                          />
-                        </FormControl>
+                      name={`parameters.policies.${i}.effect`}
+                      render={({ field, fieldState: { error } }) => (
+                        <Field data-invalid={Boolean(error)}>
+                          <FieldLabelWithTooltip>Effect</FieldLabelWithTooltip>
+                          <Select
+                            value={field.value}
+                            onValueChange={(nextValue) => {
+                              // Radix Select can emit a spurious empty onValueChange while options mount.
+                              if (!nextValue || nextValue === field.value) return;
+                              field.onChange(nextValue);
+                            }}
+                          >
+                            <SelectTrigger className="w-full" isError={Boolean(error)}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent position="popper">
+                              {Object.entries(CLOUDFLARE_POLICY_EFFECT_MAP).map(
+                                ([effect, label]) => (
+                                  <SelectItem key={effect} value={effect}>
+                                    {label}
+                                  </SelectItem>
+                                )
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FieldError>{error?.message}</FieldError>
+                        </Field>
                       )}
                     />
-                  )}
-                  <Controller
-                    control={control}
-                    name={`parameters.policies.${i}.permissionGroupId`}
-                    render={({ field: { value, onChange }, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        label="Permission group"
-                        // fills the row when there's no zone picker beside it
-                        className={twMerge("mt-3 mb-0", showZones ? "" : "col-span-2")}
-                      >
-                        <FilterableSelect
-                          isLoading={isPermissionGroupsPending && Boolean(connectionId)}
-                          isDisabled={!connectionId}
-                          options={permissionGroupOptions}
-                          placeholder="Select a permission group..."
-                          getOptionLabel={(option) => option.name}
-                          getOptionValue={(option) => option.id}
-                          value={permissionGroupOptions.find((group) => group.id === value) ?? null}
-                          onChange={(option) =>
-                            onChange((option as SingleValue<TCloudflarePermissionGroup>)?.id ?? "")
-                          }
-                        />
-                      </FormControl>
+                    <Controller
+                      control={control}
+                      name={`parameters.policies.${i}.scope`}
+                      render={({ field, fieldState: { error } }) => (
+                        <Field data-invalid={Boolean(error)}>
+                          <FieldLabelWithTooltip>Scope</FieldLabelWithTooltip>
+                          <Select
+                            value={field.value}
+                            onValueChange={(scope) => {
+                              // Radix Select can emit a spurious empty onValueChange while options mount.
+                              if (!scope || scope === field.value) return;
+                              field.onChange(scope);
+                              // the zones and permission group from the previous scope no longer apply
+                              setValue(`parameters.policies.${i}.zoneIds`, []);
+                              setValue(`parameters.policies.${i}.permissionGroupId`, "");
+                            }}
+                          >
+                            <SelectTrigger className="w-full" isError={Boolean(error)}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent position="popper">
+                              {Object.entries(CLOUDFLARE_POLICY_SCOPE_MAP).map(([scope, label]) => (
+                                <SelectItem key={scope} value={scope}>
+                                  {label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FieldError>{error?.message}</FieldError>
+                        </Field>
+                      )}
+                    />
+                    {showZones && (
+                      <Controller
+                        control={control}
+                        name={`parameters.policies.${i}.zoneIds`}
+                        render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+                          <Field className="mt-3" data-invalid={Boolean(error)}>
+                            <FieldLabelWithTooltip>Zones</FieldLabelWithTooltip>
+                            <FilterableSelect
+                              isMulti
+                              isLoading={isZonesPending && Boolean(connectionId)}
+                              isDisabled={!connectionId}
+                              options={zones}
+                              placeholder="Select zones..."
+                              getOptionLabel={(option) => option.name}
+                              getOptionValue={(option) => option.id}
+                              value={zones?.filter((zone) => (value ?? []).includes(zone.id)) ?? []}
+                              onBlur={onBlur}
+                              onChange={(option) =>
+                                onChange(
+                                  (option as MultiValue<TCloudflareZone>).map((zone) => zone.id)
+                                )
+                              }
+                              isError={Boolean(error)}
+                            />
+                            <FieldError>{error?.message}</FieldError>
+                          </Field>
+                        )}
+                      />
                     )}
-                  />
+                    <Controller
+                      control={control}
+                      name={`parameters.policies.${i}.permissionGroupId`}
+                      render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+                        <Field
+                          className={twMerge("mt-3", showZones ? "" : "col-span-2")}
+                          data-invalid={Boolean(error)}
+                        >
+                          <FieldLabelWithTooltip>Permission group</FieldLabelWithTooltip>
+                          <FilterableSelect
+                            isLoading={isPermissionGroupsPending && Boolean(connectionId)}
+                            isDisabled={!connectionId}
+                            options={permissionGroupOptions}
+                            placeholder="Select a permission group..."
+                            getOptionLabel={(option) => option.name}
+                            getOptionValue={(option) => option.id}
+                            value={
+                              permissionGroupOptions.find((group) => group.id === value) ?? null
+                            }
+                            onBlur={onBlur}
+                            onChange={(option) =>
+                              onChange(
+                                (option as SingleValue<TCloudflarePermissionGroup>)?.id ?? ""
+                              )
+                            }
+                            isError={Boolean(error)}
+                          />
+                          <FieldError>{error?.message}</FieldError>
+                        </Field>
+                      )}
+                    />
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-          <div>
-            <Button
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              size="xs"
-              variant="outline_bg"
-              onClick={() => policyFields.append(DEFAULT_POLICY)}
-            >
-              Add policy
-            </Button>
+              );
+            })}
+            <div>
+              <Button
+                type="button"
+                size="xs"
+                variant="outline"
+                onClick={() => policyFields.append(DEFAULT_POLICY)}
+              >
+                <PlusIcon />
+                Add policy
+              </Button>
+            </div>
           </div>
         </div>
-      </TabPanel>
-      <TabPanel value={ParameterTab.Restrictions}>
+      </TabsContent>
+      <TabsContent value={ParameterTab.Restrictions} className="space-y-4">
         <CloudflareIpListField
           control={control}
           name="parameters.allowedIps"
@@ -316,7 +330,7 @@ export const CloudflareApiTokenRotationParametersFields = () => {
           label="Disallowed IPs"
           tooltipText="The generated token cannot be used from these IP addresses or CIDR blocks. One entry per line."
         />
-      </TabPanel>
+      </TabsContent>
     </Tabs>
   );
 };

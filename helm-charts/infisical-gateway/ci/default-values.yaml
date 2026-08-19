@@ -1,0 +1,6 @@
+# Values applied automatically by chart-testing (ct install) in CI.
+# The CI secret holds a dummy token, so without an explicit relay name the
+# gateway exits on the relay-lookup API call and the pod crash-loops. With a
+# relay name it enters its reconnect-retry loop and the pod stays Running.
+extraArgs:
+  - --target-relay-name=ci-test-relay

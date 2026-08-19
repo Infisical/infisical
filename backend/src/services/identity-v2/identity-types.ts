@@ -48,6 +48,7 @@ export type TUpdateIdentityV2DTO = {
     hasDeleteProtection: boolean;
     metadata?: { key: string; value: string }[];
   }>;
+  isActorSuperAdmin?: boolean;
 };
 
 export type TDeleteIdentityV2DTO = {
@@ -56,6 +57,7 @@ export type TDeleteIdentityV2DTO = {
   selector: {
     identityId: string;
   };
+  isActorSuperAdmin?: boolean;
 };
 
 export type TGetIdentityByIdV2DTO = {

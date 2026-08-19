@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { SecretRotationReviewSection } from "./shared";
@@ -21,22 +21,22 @@ export const LiteLLMApiKeyRotationReviewFields = () => {
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
-        <GenericFieldLabel label="Key Name">{name}</GenericFieldLabel>
-        {userId && <GenericFieldLabel label="User">{userId}</GenericFieldLabel>}
-        {teamId && <GenericFieldLabel label="Team">{teamId}</GenericFieldLabel>}
+        <ReviewField label="Key Name">{name}</ReviewField>
+        {userId && <ReviewField label="User">{userId}</ReviewField>}
+        {teamId && <ReviewField label="Team">{teamId}</ReviewField>}
         {models && models.length > 0 && (
-          <GenericFieldLabel label="Models">{models.join(", ")}</GenericFieldLabel>
+          <ReviewField label="Models">{models.join(", ")}</ReviewField>
         )}
-        <GenericFieldLabel label="Additional Options" className="w-full">
+        <ReviewField label="Additional Options" className="w-full">
           {additionalOptions ? (
-            <span className="mt-1 block max-h-40 overflow-auto rounded-sm border border-mineshaft-600 bg-mineshaft-900 p-2 font-mono text-xs break-words whitespace-pre-wrap text-mineshaft-200">
+            <span className="mt-1 block max-h-40 overflow-auto rounded-sm border border-border bg-container p-2 font-mono text-xs break-words whitespace-pre-wrap text-foreground">
               {additionalOptions}
             </span>
           ) : undefined}
-        </GenericFieldLabel>
+        </ReviewField>
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
-        <GenericFieldLabel label="API Key">{apiKey}</GenericFieldLabel>
+        <ReviewField label="API Key">{apiKey}</ReviewField>
       </SecretRotationReviewSection>
     </>
   );
