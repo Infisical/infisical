@@ -44,8 +44,8 @@ export const RequestedSecretsTable = ({ handlePopUpOpen }: Props) => {
             <TableRow>
               <TableHead className="w-1/4">Name</TableHead>
               <TableHead>Access Type</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Expires</TableHead>
+              <TableHead>Created At</TableHead>
+              <TableHead>Expires At</TableHead>
               <TableHead>Status</TableHead>
               <TableHead aria-label="button" className="w-5" />
             </TableRow>
@@ -76,14 +76,19 @@ export const RequestedSecretsTable = ({ handlePopUpOpen }: Props) => {
           page={page}
           perPage={perPage}
           onChangePage={(newPage) => setPage(newPage)}
-          onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+          onChangePerPage={(newPerPage) => {
+            setPerPage(newPerPage);
+            setPage(1);
+          }}
         />
       )}
       {!isPending && !data?.secrets?.length && (
         <Empty className="border">
           <EmptyHeader>
-            <EmptyTitle>No secrets requested yet</EmptyTitle>
-            <EmptyDescription>Request a secret to get started</EmptyDescription>
+            <EmptyTitle>No Secret Requests</EmptyTitle>
+            <EmptyDescription>
+              Create a link that lets someone send you a secret securely.
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       )}

@@ -29,7 +29,8 @@ export const AddSecretRequestModal = ({ popUp, handlePopUpToggle }: Props) => {
         <DialogHeader>
           <DialogTitle>Request a Secret</DialogTitle>
           <DialogDescription>
-            Securely request one off secrets from your team or people outside your organization.
+            Create a link that lets someone send you a secret without exposing it over chat or
+            email.
           </DialogDescription>
         </DialogHeader>
         <RequestSecretForm />

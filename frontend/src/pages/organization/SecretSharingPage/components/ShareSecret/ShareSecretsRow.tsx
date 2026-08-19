@@ -1,6 +1,7 @@
 import { format } from "date-fns";
-import { ClockAlertIcon, ClockIcon, Ellipsis, Mail, MailOpen, Trash2 } from "lucide-react";
+import { ClockAlertIcon, ClockIcon, Copy, Ellipsis, Mail, MailOpen, Trash2 } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   DropdownMenu,
@@ -62,7 +63,7 @@ export const ShareSecretsRow = ({
           </TooltipContent>
         </Tooltip>
       </TableCell>
-      <TableCell>{row.name || <span className="text-muted">&mdash;</span>}</TableCell>
+      <TableCell>{row.name || <span className="text-muted">Unnamed secret</span>}</TableCell>
 
       <TableCell>{format(new Date(row.createdAt), "MMM d, yyyy h:mm a")}</TableCell>
       <TableCell>{format(new Date(row.expiresAt), "MMM d, yyyy h:mm a")}</TableCell>
@@ -70,7 +71,7 @@ export const ShareSecretsRow = ({
         {row.expiresAfterViews !== null ? (
           row.expiresAfterViews
         ) : (
-          <span className="text-muted">&mdash;</span>
+          <span className="text-muted">Unlimited</span>
         )}
       </TableCell>
       <TableCell>
@@ -82,16 +83,36 @@ export const ShareSecretsRow = ({
       <TableCell>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <IconButton variant="ghost" size="xs" aria-label="actions">
+            <IconButton
+              variant="ghost"
+              size="xs"
+              aria-label={`Actions for ${row.name || "shared secret"}`}
+            >
               <Ellipsis className="size-4" />
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {!isExpired && (
+              <DropdownMenuItem
+                onClick={async () => {
+                  await navigator.clipboard.writeText(
+                    `${window.location.origin}/shared/secret/${row.id}`
+                  );
+                  createNotification({
+                    text: "Shared secret link copied to clipboard.",
+                    type: "success"
+                  });
+                }}
+              >
+                <Copy />
+                Copy Link
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               variant="danger"
               onClick={() =>
                 handlePopUpOpen("deleteSharedSecretConfirmation", {
-                  name: "delete",
+                  name: row.name || "this secret",
                   id: row.id
                 })
               }

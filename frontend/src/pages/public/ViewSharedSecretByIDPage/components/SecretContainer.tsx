@@ -1,4 +1,4 @@
-import { ClipboardCheckIcon, Copy, Eye, EyeOff, ForwardIcon } from "lucide-react";
+import { ClipboardCheckIcon, Copy, Eye, EyeOff, ForwardIcon, ShieldCheck } from "lucide-react";
 
 import { Button, IconButton } from "@app/components/v3";
 import { useTimedReset, useToggle } from "@app/hooks";
@@ -18,7 +18,7 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
     initialState: "Copy to clipboard"
   });
 
-  const hiddenSecret = "*".repeat(secret.secretValue.length);
+  const hiddenSecret = "••••••••••••••••";
 
   const panelStyle = brandingTheme
     ? {
@@ -44,34 +44,38 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
 
   return (
     <div style={panelStyle}>
+      <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+        <ShieldCheck className="size-4 text-success" />
+        Shared Secret
+      </div>
       <div
-        className={`flex items-start justify-between rounded-md border p-2 pl-3 text-base ${
+        className={`flex min-h-24 items-start justify-between rounded-md border p-3 text-base ${
           brandingTheme ? "" : "border-border bg-container text-label"
         }`}
         style={secretDisplayStyle}
       >
-        <p className="min-w-0 break-all whitespace-pre-wrap">
+        <p className="min-w-0 pt-1 font-mono break-all whitespace-pre-wrap">
           {isVisible ? secret.secretValue : hiddenSecret}
         </p>
-        <div className="ml-1 flex shrink-0 items-start gap-2 self-start">
+        <div className="ml-2 flex shrink-0 items-start gap-1 self-start">
           <IconButton
-            aria-label="copy icon"
+            aria-label={isCopyingSecret ? "Secret copied" : "Copy secret"}
             variant="ghost"
             size="sm"
-            onClick={() => {
-              navigator.clipboard.writeText(secret.secretValue);
+            onClick={async () => {
+              await navigator.clipboard.writeText(secret.secretValue);
               setCopyTextSecret("Copied");
             }}
             style={iconButtonStyle}
           >
             {isCopyingSecret ? (
-              <ClipboardCheckIcon className="size-4" />
+              <ClipboardCheckIcon className="size-4 text-success" />
             ) : (
               <Copy className="size-4" />
             )}
           </IconButton>
           <IconButton
-            aria-label="toggle visibility"
+            aria-label={isVisible ? "Hide secret" : "Reveal secret"}
             variant="ghost"
             size="sm"
             onClick={() => setIsVisible.toggle()}

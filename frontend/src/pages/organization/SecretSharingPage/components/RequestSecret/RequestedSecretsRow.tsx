@@ -52,7 +52,9 @@ export const RequestedSecretsRow = ({
 
   return (
     <TableRow key={row.id}>
-      <TableCell isTruncatable>{row.name || <span className="text-muted">&mdash;</span>}</TableCell>
+      <TableCell isTruncatable>
+        {row.name || <span className="text-muted">Unnamed request</span>}
+      </TableCell>
       <TableCell>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -77,7 +79,7 @@ export const RequestedSecretsRow = ({
         {row.expiresAt ? (
           format(new Date(row.expiresAt), "MMM d, yyyy h:mm a")
         ) : (
-          <span className="text-muted">&mdash;</span>
+          <span className="text-muted">Never</span>
         )}
       </TableCell>
       <TableCell>
@@ -113,7 +115,12 @@ export const RequestedSecretsRow = ({
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <IconButton className="ml-auto" variant="ghost" size="xs" aria-label="actions">
+              <IconButton
+                className="ml-auto"
+                variant="ghost"
+                size="xs"
+                aria-label={`Actions for ${row.name || "secret request"}`}
+              >
                 <Ellipsis className="size-4" />
               </IconButton>
             </DropdownMenuTrigger>
@@ -125,7 +132,7 @@ export const RequestedSecretsRow = ({
                     `${window.location.origin}/secret-request/secret/${row.id}`
                   );
                   createNotification({
-                    text: "Shared secret link copied to clipboard.",
+                    text: "Secret request link copied to clipboard.",
                     type: "success"
                   });
                 }}
@@ -137,7 +144,7 @@ export const RequestedSecretsRow = ({
                 variant="danger"
                 onClick={() =>
                   handlePopUpOpen("deleteSecretRequestConfirmation", {
-                    name: "delete",
+                    name: row.name || "this request",
                     id: row.id
                   })
                 }
