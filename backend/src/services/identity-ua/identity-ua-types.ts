@@ -56,6 +56,7 @@ export type TCreateUaClientSecretDTO = {
   description: string;
   numUsesLimit: number;
   ttl: number;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetUaClientSecretsDTO = {
@@ -65,10 +66,12 @@ export type TGetUaClientSecretsDTO = {
 export type TRevokeUaClientSecretDTO = {
   identityId: string;
   clientSecretId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TClearUaLockoutsDTO = {
   identityId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetUniversalAuthClientSecretByIdDTO = {

@@ -2233,7 +2233,7 @@ export const projectServiceFactory = ({
     await projectAccessRequestDAL.upsertPendingRequest({
       projectId,
       requesterUserId: permission.id,
-      comment: comment ?? null
+      comment: comment || null
     });
 
     await notificationService.createUserNotifications(

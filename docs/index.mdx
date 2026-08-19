@@ -1,0 +1,133 @@
+---
+title: "Infisical Documentation"
+sidebarTitle: "Documentation"
+description: "Learn how to use Infisical to manage secrets, certificates, and secure infrastructure access."
+mode: custom
+---
+
+import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard, HomeStack, HomeSteps, Mark } from "/snippets/home.jsx";
+
+<div className="ifx-home">
+
+<HomeHero
+  title="Documentation"
+  description={
+    <>
+      Learn how to use Infisical, the{" "}
+      <Mark>all-in-one open source security platform.</Mark>
+    </>
+  }
+  aside={
+    <HomeSteps
+      steps={[
+        {
+          tabs: [
+            { label: "macOS", command: "brew install infisical/get-cli/infisical" },
+            { label: "Windows", command: "winget install infisical" },
+            { label: "npm", command: "npm install -g @infisical/cli" }
+          ]
+        },
+        { label: "Inject your secrets.", href: "/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret" }
+      ]}
+    />
+  }
+>
+  <HomeButton href="/documentation/getting-started/overview" variant="primary">
+    Get started
+  </HomeButton>
+  <HomeButton href="/documentation/getting-started/introduction">
+    What is Infisical?
+  </HomeButton>
+</HomeHero>
+
+<HomeSection title="Products">
+  <HomeGrid cols={2}>
+    <HomeCard
+      title="Secrets Management"
+      href="/documentation/platform/secrets-mgmt/overview"
+      icon="vault"
+      product="secrets"
+      wide
+      panel={
+        <HomeStack
+          items={[
+            { label: "Kubernetes", logo: "/images/stack/kubernetes.png", href: "/integrations/platforms/kubernetes/overview" },
+            { label: "Docker", logo: "/images/stack/docker.png", href: "/integrations/platforms/docker" },
+            { label: "GitHub", logo: "/images/stack/github.png", adapt: "light", href: "/integrations/cicd/githubactions" },
+            { label: "AWS", logo: "/images/stack/aws.png", adapt: "mono", href: "/integrations/secret-syncs/aws-secrets-manager" },
+            { label: "Next.js", logo: "/images/stack/nextjs.png", adapt: "light", href: "/integrations/frameworks/nextjs" },
+            { label: "Node.js", logo: "/images/sdks/languages/node.svg", href: "/documentation/guides/node" },
+            { label: "Python", logo: "/images/sdks/languages/python.svg", href: "/documentation/guides/python" },
+            { label: "Go", logo: "/images/sdks/languages/go.svg", href: "/sdks/languages/go" },
+            { label: ".NET", logo: "/images/sdks/languages/dotnet.svg", href: "/integrations/frameworks/dotnet" },
+            { label: "Terraform", logo: "/images/stack/terraform.png", href: "/integrations/frameworks/terraform" },
+            { label: "Ansible", logo: "/images/stack/ansible.png", adapt: "dark", href: "/integrations/platforms/ansible" },
+            { label: "All integrations", href: "/integrations/all" }
+          ]}
+        />
+      }
+      links={[
+        { label: "Quickstart", href: "/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret" },
+        { label: "Dynamic secrets", href: "/documentation/platform/dynamic-secrets/overview" },
+        { label: "Secret rotation", href: "/documentation/platform/secret-rotation/overview" },
+        { label: "Agent proxy", href: "/documentation/platform/agent-proxy/overview" }
+      ]}
+    >
+      Store application secrets, control who can read them, and deliver them to every environment your services run in.
+    </HomeCard>
+    <HomeCard
+      title="Secrets Scanning"
+      href="/documentation/platform/secret-scanning/overview"
+      icon="radar"
+      product="scanning"
+      links={[
+        { label: "GitHub", href: "/documentation/platform/secret-scanning/github" },
+        { label: "GitLab", href: "/documentation/platform/secret-scanning/gitlab" },
+        { label: "Bitbucket", href: "/documentation/platform/secret-scanning/bitbucket" }
+      ]}
+    >
+      Catch hardcoded secrets in source code, pipelines, and infrastructure before they reach production.
+    </HomeCard>
+    <HomeCard
+      title="Certificate Management"
+      href="/documentation/platform/pki/overview"
+      icon="certificate"
+      product="certificates"
+      links={[
+        { label: "Issue a certificate", href: "/documentation/platform/pki/quick-starts/issue-first-certificate" },
+        { label: "Sign an artifact", href: "/documentation/platform/pki/quick-starts/sign-first-code" },
+        { label: "Manage certificate authorities", href: "/documentation/platform/pki/ca/overview" }
+      ]}
+    >
+      Run your own certificate authorities and automate the X.509 lifecycle end to end.
+    </HomeCard>
+    <HomeCard
+      title="Privileged Access Management"
+      href="/documentation/platform/pam/overview"
+      icon="user-shield"
+      product="pam"
+      links={[
+        { label: "Launch a session", href: "/documentation/platform/pam/quick-starts/launch-first-session" },
+        { label: "Connect an account", href: "/documentation/platform/pam/accounts/overview" },
+        { label: "Access requests", href: "/documentation/platform/pam/access-requests/overview" }
+      ]}
+    >
+      Gate access to databases, servers, and accounts behind policies, approvals, and a full session record.
+    </HomeCard>
+    <HomeCard
+      title="Key Management"
+      href="/documentation/platform/kms/overview"
+      icon="key"
+      product="kms"
+      links={[
+        { label: "Encrypt Kubernetes", href: "/documentation/platform/kms/kubernetes-encryption" },
+        { label: "Sign with Cosign", href: "/documentation/platform/kms/sigstore-cosign" },
+        { label: "KMIP", href: "/documentation/platform/kms/kmip" }
+      ]}
+    >
+      Encrypt and decrypt sensitive data with centrally managed keys.
+    </HomeCard>
+  </HomeGrid>
+</HomeSection>
+
+</div>

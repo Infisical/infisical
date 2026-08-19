@@ -4,9 +4,7 @@ sidebarTitle: "Docker"
 description: "Store secrets in Infisical and deliver them to a Dockerized application at runtime."
 ---
 
-import ConfigureProject from "/snippets/documentation/platform/secrets-mgmt/configure-project.mdx";
-
-This guide walks you through storing secrets in Infisical and injecting them into a Dockerized application as environment variables. You can [fetch secrets when the container starts](#fetch-at-startup) or [export them from the host](#pass-with-docker-run) when you run the container.
+This guide walks you through injecting secrets from Infisical into a Dockerized application as environment variables. You can [fetch secrets when the container starts](#fetch-at-startup) or [export them from the host](#pass-with-docker-run) when you run the container.
 
 <Tip>
   Visual learner? Watch an [overview of managing secrets in Docker with Infisical](https://www.youtube.com/watch?v=oU2nNBwlOTA).
@@ -16,28 +14,25 @@ This guide walks you through storing secrets in Infisical and injecting them int
 Prerequisites:
 
 - An Infisical account on [Infisical Cloud](https://app.infisical.com) or a [self-hosted instance](/self-hosting/overview)
+- A [project with secrets configured](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret)
 - [Docker](https://docs.docker.com/get-started/get-docker/) installed
 - The [Infisical CLI](/cli/overview) installed on the machine where you run Docker
 - An application or container image to run
 </Info>
 
-<ConfigureProject />
+## Setup
 
-## Step 2: Choose a delivery method
-
-Next, choose how Docker should receive your application secrets:
+Choose how Docker should receive your application secrets:
 
 <Tabs>
   <Tab title="Fetch at startup (Recommended)">
-    <span id="fetch-at-startup"></span>
-
     This method installs the Infisical CLI in your image and uses it to start your application. The CLI fetches secrets when the container starts and injects them into the application process.
 
     <Note>
       We strongly recommend this method, since it works for both local development and automated/production environments.
     </Note>
 
-    ### Create a machine identity
+    ### Step 1: Create a machine identity
 
     Create a [machine identity](/documentation/platform/identities/machine-identities) for your application:
 
@@ -55,7 +50,7 @@ Next, choose how Docker should receive your application secrets:
 
     Infisical creates the identity with [Universal Auth](/documentation/platform/identities/universal-auth) enabled and opens its details page.
 
-    ### Create a client secret
+    ### Step 2: Create a client secret
 
     Create credentials that the application can exchange for a short-lived access token:
 
@@ -84,11 +79,11 @@ Next, choose how Docker should receive your application secrets:
       In automated deployments, store the Client ID and Client Secret in your deployment platform's secret store and run `infisical login` immediately before each `docker run` or `docker compose up`.
     </Note>
 
-    ### Copy your project ID
+    ### Step 3: Copy your project ID
 
     In your project, select **Project Settings**, then select **Copy Project ID**. You'll add this ID to your Dockerfile in the next step.
 
-    ### Update your Dockerfile
+    ### Step 4: Update your Dockerfile
 
     Add the Infisical CLI installation that matches your base image:
 
@@ -137,7 +132,7 @@ Next, choose how Docker should receive your application secrets:
       ```
     </Accordion>
 
-    ### Build and run your container
+    ### Step 5: Build and run your container
 
     Build your image:
 
@@ -188,16 +183,13 @@ Next, choose how Docker should receive your application secrets:
   </Tab>
 
   <Tab title="Docker Run (Interactive)">
-    <span id="pass-with-docker-run"></span>
-    <span id="docker-run-interactive"></span>
-
     Alternatively, you can run the Infisical CLI on the host and pass exported secrets to an existing image through Docker's `--env-file` option. This method doesn't require you to install the CLI in the image.
 
     <Note>
       This method requires a Bash-compatible shell because it uses process substitution.
     </Note>
 
-    ### Authenticate with the CLI
+    ### Step 1: Authenticate with the CLI
 
     Authenticate with Infisical by running [`infisical login`](/cli/commands/login):
 
@@ -207,7 +199,7 @@ Next, choose how Docker should receive your application secrets:
 
     This prompts you to select your hosting option, then opens your browser to complete the login.
 
-    ### Connect your project
+    ### Step 2: Connect your project
 
     In your application's directory, link it to the project you created by running [`infisical init`](/cli/commands/init):
 
@@ -217,7 +209,7 @@ Next, choose how Docker should receive your application secrets:
 
     Follow the prompts to select your organization and project.
 
-    ### Run your container
+    ### Step 3: Run your container
 
     Export the secrets from the **Development** environment and pass them to your container:
 
@@ -239,21 +231,19 @@ Next, choose how Docker should receive your application secrets:
   </Tab>
 
   <Tab title="Docker Run (CI/CD)">
-    <span id="docker-run-cicd"></span>
-
     In CI/CD and other automated environments, use a [machine identity](/documentation/platform/identities/machine-identities) to authenticate the Infisical CLI on the host. The CLI exports your application secrets and passes them to an existing image through Docker's `--env-file` option.
 
     <Note>
       This method requires a Bash-compatible shell because it uses process substitution.
     </Note>
 
-    ### Configure machine identity access
+    ### Step 1: Configure machine identity access
 
     Create a machine identity with permission to read the required secrets, configure it with [Universal Auth](/documentation/platform/identities/universal-auth), and copy its **Client ID** and **Client Secret**. Then copy the **Project ID** from **Project Settings**.
 
     Store these values in your automation platform's secret store rather than in source control.
 
-    ### Authenticate with the CLI
+    ### Step 2: Authenticate with the CLI
 
     Exchange the machine identity credentials for a short-lived access token using the commands for your Infisical deployment:
 
@@ -280,7 +270,7 @@ Next, choose how Docker should receive your application secrets:
       ```
     </CodeGroup>
 
-    ### Run your container
+    ### Step 3: Run your container
 
     Identify the project explicitly when exporting secrets, then pass them to the container:
 
@@ -306,7 +296,7 @@ Next, choose how Docker should receive your application secrets:
 
 If you [fetch secrets at startup](#fetch-at-startup), you can use [Docker Compose](https://docs.docker.com/compose/) to build and run one or more configured service images.
 
-[Configure each image](/integrations/platforms/docker#update-your-dockerfile) to start through `infisical run`, then configure your Compose file for your Infisical deployment:
+[Configure each image](/integrations/platforms/docker#step-4-update-your-dockerfile) to start through `infisical run`, then configure your Compose file for your Infisical deployment:
 
 <CodeGroup>
   ```yaml Infisical Cloud US
@@ -440,20 +430,3 @@ Authenticate each identity before starting the services:
   docker compose up --build
   ```
 </CodeGroup>
-
-## Next steps
-
-<CardGroup cols={2}>
-  <Card title="Core Concepts" icon="book" href="/documentation/platform/secrets-mgmt/concepts/secrets-mgmt">
-    Understand how projects, environments, folders, and secrets fit together.
-  </Card>
-  <Card title="Secrets Delivery" icon="truck-fast" href="/documentation/platform/secrets-mgmt/concepts/secrets-delivery">
-    Explore other ways to deliver secrets to applications and infrastructure.
-  </Card>
-  <Card title="Machine Identities" icon="robot" href="/documentation/platform/identities/machine-identities">
-    Configure workload authentication and access controls.
-  </Card>
-  <Card title="Infisical Run" icon="terminal" href="/cli/commands/run">
-    Review all options for injecting secrets into an application process.
-  </Card>
-</CardGroup>
