@@ -38,9 +38,9 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { AlertPrincipalType } from "../alert/alert-types";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
-import { ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
+import { ActorType, AuthMethod } from "../auth/auth-type";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { signIdentityAccessToken } from "../identity-access-token/identity-access-token-fns";
 import { TIdentityTokenAuthDALFactory } from "../identity-token-auth/identity-token-auth-dal";
 import { KMS_ROOT_CONFIG_UUID } from "../kms/kms-fns";
 import { TKmsRootConfigDALFactory } from "../kms/kms-root-config-dal";
@@ -679,14 +679,24 @@ export const superAdminServiceFactory = ({
         tx
       );
 
-      const generatedAccessToken = crypto.jwt().sign(
-        {
-          identityId: newIdentity.id,
-          identityAccessTokenId: newToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET
-      );
+      const { accessToken: generatedAccessToken } = signIdentityAccessToken({
+        identityAccessTokenId: newToken.id,
+        identityId: newIdentity.id,
+        identityName: newIdentity.name,
+        authMethod: IdentityAuthMethod.TOKEN_AUTH,
+        orgId: organization.id,
+        rootOrgId: organization.id,
+        parentOrgId: organization.id,
+        clientSecretId: "",
+        numUsesLimit: tokenAuth.accessTokenNumUsesLimit,
+        ipRestrictionEnabled: false,
+        ttlSeconds: appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE,
+        accessTokenTTL: tokenAuth.accessTokenTTL,
+        accessTokenMaxTTL: tokenAuth.accessTokenMaxTTL,
+        accessTokenPeriod: 0,
+        creationEpoch: Math.floor(Date.now() / 1000),
+        identityAuth: {}
+      });
 
       return { identity: newIdentity, auth: tokenAuth, credentials: { token: generatedAccessToken } };
     });
