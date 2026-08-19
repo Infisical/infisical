@@ -367,6 +367,7 @@ import { identityV2DALFactory } from "@app/services/identity-v2/identity-dal";
 import { identityMembershipV2DALFactory } from "@app/services/identity-v2/identity-membership-dal";
 import { identityV2ServiceFactory } from "@app/services/identity-v2/identity-service";
 import { integrationDALFactory } from "@app/services/integration/integration-dal";
+import { integrationDeprecationQueueFactory } from "@app/services/integration/integration-deprecation-queue";
 import { integrationServiceFactory } from "@app/services/integration/integration-service";
 import { integrationAuthDALFactory } from "@app/services/integration-auth/integration-auth-dal";
 import { integrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
@@ -1734,20 +1735,6 @@ export const registerRoutes = async (
   const pamFolderDAL = pamFolderDALFactory(db);
   const pamFolderNotificationConfigDAL = pamFolderNotificationConfigDALFactory(db);
 
-  const pamMembershipService = pamMembershipServiceFactory({
-    membershipDAL,
-    membershipRoleDAL,
-    approvalPolicyDAL,
-    projectAccessRequestDAL,
-    pamFolderDAL,
-    pamAccountDAL,
-    userDAL,
-    groupDAL,
-    identityDAL,
-    permissionService,
-    usageMeteringService
-  });
-
   const certManagerInstanceService = certManagerInstanceServiceFactory({
     db,
     orgDAL,
@@ -1873,6 +1860,26 @@ export const registerRoutes = async (
   const pamSessionDAL = pamSessionDALFactory(db);
   const pamSessionEventChunkDAL = pamSessionEventChunkDALFactory(db);
 
+  // Wired after pamSessionDAL/gatewayV2Service: narrowing a member's access has to close the PAM
+  // sessions that access was holding open.
+  const pamMembershipService = pamMembershipServiceFactory({
+    membershipDAL,
+    membershipRoleDAL,
+    approvalPolicyDAL,
+    projectAccessRequestDAL,
+    pamFolderDAL,
+    pamAccountDAL,
+    pamSessionDAL,
+    userDAL,
+    groupDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL,
+    identityDAL,
+    permissionService,
+    gatewayV2Service,
+    usageMeteringService
+  });
+
   const pamSessionExpirationService = pamSessionExpirationServiceFactory({
     queueService,
     pamSessionDAL,
@@ -1925,6 +1932,8 @@ export const registerRoutes = async (
     pamAccountTemplateDAL,
     membershipDAL,
     membershipRoleDAL,
+    pamSessionDAL,
+    userDAL,
     permissionService,
     kmsService,
     gatewayV2DAL,
@@ -2327,7 +2336,8 @@ export const registerRoutes = async (
     secretImportDAL,
     secretV2BridgeService,
     reminderDAL,
-    reminderService
+    reminderService,
+    keyStore
   });
 
   const secretSharingService = secretSharingServiceFactory({
@@ -2492,6 +2502,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     orgDAL,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2520,6 +2531,7 @@ export const registerRoutes = async (
     gatewayV2DAL,
     gatewayDAL,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     gatewayPoolService,
     gatewayPoolDAL,
@@ -2532,6 +2544,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     permissionService,
     licenseService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2543,6 +2556,7 @@ export const registerRoutes = async (
     identityAliCloudAuthDAL,
     licenseService,
     permissionService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2554,6 +2568,7 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     orgDAL,
     identityAccessTokenService
@@ -2566,6 +2581,7 @@ export const registerRoutes = async (
     identityAwsAuthDAL,
     licenseService,
     permissionService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2577,6 +2593,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     permissionService,
     licenseService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2588,6 +2605,7 @@ export const registerRoutes = async (
     identityOciAuthDAL,
     licenseService,
     permissionService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2615,6 +2633,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2627,6 +2646,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     licenseService,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2639,6 +2659,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     licenseService,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2793,6 +2814,17 @@ export const registerRoutes = async (
 
   const dailyReminderQueueService = dailyReminderQueueServiceFactory({
     reminderService,
+    cronJob
+  });
+
+  const integrationDeprecationQueue = integrationDeprecationQueueFactory({
+    integrationDAL,
+    orgDAL,
+    projectMembershipDAL,
+    smtpService,
+    notificationService,
+    keyStore,
+    queueService,
     cronJob
   });
 
@@ -3681,7 +3713,8 @@ export const registerRoutes = async (
     cronJob,
     gatewayV2Service,
     gatewayV2DAL,
-    gatewayPoolService
+    gatewayPoolService,
+    telemetryService
   });
 
   const pkiDiscoveryService = pkiDiscoveryServiceFactory({
@@ -3903,6 +3936,7 @@ export const registerRoutes = async (
   certificateAuthorityQueue.startCaCrlRebuildJob();
   pkiSubscriberQueue.startDailyAutoRenewalJob();
   pkiAlertV2Queue.init();
+  integrationDeprecationQueue.init();
   certificateCleanupQueue.init();
   certificateV3Queue.init();
   digicertCaQueue.init();

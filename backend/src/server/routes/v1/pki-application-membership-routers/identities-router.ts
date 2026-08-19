@@ -104,6 +104,8 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
         properties: {
           applicationId: req.params.applicationId,
           orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          memberType: "identity",
           role: req.body.role
         }
       });
@@ -155,6 +157,19 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiApplicationMemberUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          applicationId: req.params.applicationId,
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          memberType: "identity",
+          role: req.body.role
+        }
+      });
+
       return { membership };
     }
   });
@@ -196,6 +211,18 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
             identityId: result.actorIdentityId ?? undefined,
             identityName: result.details?.name ?? undefined
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiApplicationMemberRemoved,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          applicationId: req.params.applicationId,
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          memberType: "identity"
         }
       });
 

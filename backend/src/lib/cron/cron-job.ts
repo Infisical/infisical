@@ -42,6 +42,7 @@ export const CronJobName = {
   AuditLogStreamOutboxCleanup: "audit-log-stream-outbox-cleanup",
   LicenseUsageFlush: "license-usage-flush",
   PamCredentialRotationQueueRotations: "pam-credential-rotation-queue-rotations",
+  MonthlyNativeIntegrationDeprecationNotice: "monthly-native-integration-deprecation-notice",
   DailyAlertProcessing: "daily-alert-processing",
   SecretScanningStuckScanReaper: "secret-scanning-stuck-scan-reaper",
   InstanceUpdateCheck: "instance-update-check",

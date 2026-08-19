@@ -60,18 +60,14 @@ type PermissionedTabProps = {
 
 const PermissionedTab = ({ value, label, isBlocked, blockedReason }: PermissionedTabProps) => {
   if (!isBlocked) {
-    return (
-      <TabsTrigger value={value} className="flex-none">
-        {label}
-      </TabsTrigger>
-    );
+    return <TabsTrigger value={value}>{label}</TabsTrigger>;
   }
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <span className="inline-flex">
-          <TabsTrigger value={value} disabled className="flex-none">
+          <TabsTrigger value={value} disabled>
             {label}
           </TabsTrigger>
         </span>
@@ -270,7 +266,7 @@ export const ApplicationDetailsByIDPage = () => {
                 })
               }
             >
-              <TabsList variant="project" className="w-full justify-start">
+              <TabsList variant="project" aria-label="Application sections">
                 {(canViewCertificates || isNonMemberAdmin) && (
                   <PermissionedTab
                     value="certificates"
@@ -295,12 +291,8 @@ export const ApplicationDetailsByIDPage = () => {
                     blockedReason="You do not have permission to view certificate syncs"
                   />
                 )}
-                <TabsTrigger value="members" className="flex-none">
-                  Members
-                </TabsTrigger>
-                <TabsTrigger value="settings" className="flex-none">
-                  Settings
-                </TabsTrigger>
+                <TabsTrigger value="members">Members</TabsTrigger>
+                <TabsTrigger value="settings">Settings</TabsTrigger>
               </TabsList>
               {canViewCertificates && (
                 <TabsContent className="pt-2" value="certificates">

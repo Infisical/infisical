@@ -143,7 +143,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
               id: true
             }).extend({
               publicKey: z.string().optional().nullable(),
-              isOrgMembershipActive: z.boolean()
+              isOrgMembershipActive: z.boolean(),
+              isOrgMembershipPending: z.boolean()
             }),
             project: SanitizedProjectSchema.pick({ name: true, id: true }),
             roles: z.array(

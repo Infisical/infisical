@@ -133,6 +133,8 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
           properties: {
             applicationId: req.params.applicationId,
             orgId: req.permission.orgId,
+            projectId,
+            memberType: "user",
             role: req.body.role
           }
         });
@@ -186,6 +188,19 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiApplicationMemberUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          applicationId: req.params.applicationId,
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          memberType: "user",
+          role: req.body.role
+        }
+      });
+
       return { membership };
     }
   });
@@ -227,6 +242,18 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
             userId: result.actorUserId ?? undefined,
             userName: result.details?.email ?? result.details?.username ?? result.details?.name ?? undefined
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiApplicationMemberRemoved,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          applicationId: req.params.applicationId,
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          memberType: "user"
         }
       });
 

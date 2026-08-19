@@ -491,8 +491,17 @@ export const dynamicSecretServiceFactory = ({
       return cfg;
     });
 
+    const canReadRootCredential = permission.can(
+      ProjectPermissionDynamicSecretActions.ReadRootCredential,
+      subject(ProjectPermissionSub.DynamicSecrets, {
+        environment: environmentSlug,
+        secretPath: path,
+        metadata: metadata ?? dynamicSecretCfg.metadata
+      })
+    );
+
     return {
-      dynamicSecret: updatedDynamicCfg,
+      dynamicSecret: { ...updatedDynamicCfg, inputs: canReadRootCredential ? updatedInput : null },
       updatedFields,
       projectId: project.id,
       environment: environmentSlug,

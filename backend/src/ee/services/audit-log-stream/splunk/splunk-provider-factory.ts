@@ -5,7 +5,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 
 import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
-import { blockAuditLogStreamInternalIps } from "../audit-log-stream-fns";
+import { blockAuditLogStreamInternalIps, resolveEventTimestamp } from "../audit-log-stream-fns";
 import {
   TLogStreamFactoryBatchStreamLog,
   TLogStreamFactoryGetProviderBatchLimit,
@@ -13,11 +13,11 @@ import {
 } from "../audit-log-stream-types";
 import { TSplunkProviderCredentials } from "./splunk-provider-types";
 
-function createPayload(event: Record<string, unknown>) {
+function createPayload(event: Record<string, unknown> & { createdAt?: Date | string }) {
   const appCfg = getConfig();
 
   return {
-    time: Math.floor(Date.now() / 1000),
+    time: resolveEventTimestamp(event).getTime() / 1000,
     ...(appCfg.SITE_URL && { host: new URL(appCfg.SITE_URL).host }),
     source: "infisical",
     sourcetype: "_json",
@@ -78,11 +78,16 @@ export const SplunkProviderFactory = () => {
       Authorization: `Splunk ${token}`
     };
 
+    // HEC takes multiple events as concatenated JSON objects, which is not itself valid JSON.
+    // Axios' default transform re-runs JSON.stringify over any string body it cannot JSON.parse
+    // when the content type is JSON, which would wrap the whole batch in one quoted, escaped
+    // string that HEC rejects with a 400. Send the bytes we built, untransformed.
     const body = auditLogs.map((auditLog) => JSON.stringify(createPayload(auditLog))).join("");
 
     await request.post(url, body, {
       headers: streamHeaders,
-      timeout: AUDIT_LOG_STREAM_BATCH_TIMEOUT
+      timeout: AUDIT_LOG_STREAM_BATCH_TIMEOUT,
+      transformRequest: [(data: unknown) => data]
     });
   };
 

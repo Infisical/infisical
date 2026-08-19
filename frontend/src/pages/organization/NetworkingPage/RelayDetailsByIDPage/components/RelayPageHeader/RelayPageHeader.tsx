@@ -12,6 +12,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -23,7 +24,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Field,
-  FieldLabel,
   Input
 } from "@app/components/v3";
 import {
@@ -152,11 +152,10 @@ export const RelayPageHeader = ({
           </AlertDialogHeader>
           <AlertDialogConfirmationField>
             <Field>
-              <FieldLabel htmlFor="delete-relay-confirmation" size="sm">
-                <span>
-                  Type &quot;<span className="text-foreground">{relay.name}</span>&quot; to confirm.
-                </span>
-              </FieldLabel>
+              <AlertDialogConfirmationLabel
+                htmlFor="delete-relay-confirmation"
+                confirmationValue={relay.name}
+              />
               <Input
                 id="delete-relay-confirmation"
                 value={deleteConfirmation}

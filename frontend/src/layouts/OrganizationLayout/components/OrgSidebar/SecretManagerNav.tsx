@@ -28,7 +28,7 @@ export const SecretManagerNav = ({
       label: "Secrets",
       icon: ProjectIcon,
       pathSuffix: "overview",
-      activeMatch: /\/secrets\/|\/commits\//
+      activeMatch: /\/secrets\//
     },
     {
       label: "Approvals",
