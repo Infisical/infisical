@@ -30,14 +30,28 @@ PostgreSQL accounts let you manage access to your PostgreSQL databases. Users co
     | **Reject Unauthorized** | Reject connections with invalid certificates (only if SSL enabled) |
     | **SSL Certificate** | Custom CA certificate (only if SSL enabled) |
   </Step>
-  <Step title="Enter credentials">
-    | Field | Description |
-    |-------|-------------|
-    | **Auth Method** | **Password** for a standard PostgreSQL login, or **AWS IAM** for RDS and Aurora instances that use [IAM database authentication](#aws-iam-authentication) |
-    | **Username** | PostgreSQL username |
-    | **Password** | PostgreSQL password (password auth only) |
-    | **AWS Region** | Region of the RDS or Aurora instance (AWS IAM only) |
-    | **Role ARN** | IAM role Infisical assumes to generate a token (AWS IAM only) |
+  <Step title="Choose authentication method">
+    PostgreSQL supports two authentication methods:
+
+    <Tabs>
+      <Tab title="Password">
+        Standard PostgreSQL login with username and password.
+
+        | Field | Description |
+        |-------|-------------|
+        | **Username** | PostgreSQL username |
+        | **Password** | PostgreSQL password |
+      </Tab>
+      <Tab title="AWS IAM">
+        [IAM database authentication](#aws-iam-authentication) for RDS and Aurora. No password is stored.
+
+        | Field | Description |
+        |-------|-------------|
+        | **Username** | Database user granted the `rds_iam` role |
+        | **AWS Region** | Region of the RDS or Aurora instance |
+        | **Role ARN** | IAM role Infisical assumes to generate a token |
+      </Tab>
+    </Tabs>
   </Step>
   <Step title="Save">
     Click **Create**.
@@ -61,7 +75,29 @@ Set the following up before creating the account.
     ```
   </Step>
   <Step title="Create the role with a trust policy">
-    Create the IAM role you'll set as **Role ARN**, with the trust policy from [AWS IAM accounts](/documentation/platform/pam/accounts/aws-iam#prerequisites). It uses your Infisical Organization ID as the External ID.
+    Create the IAM role you'll set as **Role ARN**. Replace `<INFISICAL_AWS_ACCOUNT_ID>` with the Infisical account ID for your region (US `381492033652`, EU `345594589636`) and `<YOUR_INFISICAL_ORG_ID>` with your Infisical Organization ID, found under **Organization Settings**.
+
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [{
+        "Effect": "Allow",
+        "Principal": { "AWS": "arn:aws:iam::<INFISICAL_AWS_ACCOUNT_ID>:root" },
+        "Action": "sts:AssumeRole",
+        "Condition": {
+          "StringEquals": { "sts:ExternalId": "<YOUR_INFISICAL_ORG_ID>" }
+        }
+      }]
+    }
+    ```
+
+    <Warning>
+      Always include the External ID condition. Without it, another Infisical customer could potentially trick Infisical into assuming your role.
+    </Warning>
+
+    <Note>
+      **For Self-Hosted Instances**: use the AWS account ID where your Infisical instance is deployed, since that is the account assuming the role.
+    </Note>
   </Step>
   <Step title="Attach permission to connect">
     Attach a policy allowing the role to connect as that database user:

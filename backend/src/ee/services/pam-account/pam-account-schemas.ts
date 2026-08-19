@@ -138,7 +138,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       },
       awsRegion: {
         label: "AWS Region",
-        tooltip: "The region of the RDS or Aurora instance, used to sign the authentication token (e.g. us-east-1)."
+        tooltip: "The region of the RDS or Aurora instance (e.g. us-east-1)."
       },
       roleArn: {
         label: "Role ARN",
