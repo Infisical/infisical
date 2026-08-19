@@ -1,6 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import * as x509 from "@peculiar/x509";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -49,6 +48,7 @@ import {
   parseAllowedSubjectAltNames,
   parseSubjectDetails,
   permitsClientAuth,
+  readSubjectAltNames,
   serializeAllowedSubjectAltNames,
   TVerifyClientCertificateChainResult,
   verifyClientCertificateChain
@@ -273,13 +273,9 @@ export const identityTlsCertAuthServiceFactory = ({
       }
 
       if (identityTlsCertAuth.allowedSubjectAltNames) {
-        const sanExtension = new x509.X509Certificate(clientCertificateX509.raw).getExtension(
-          x509.SubjectAlternativeNameExtension
-        );
-
         const isValidSubjectAltName = isSubjectAltNameAllowed(
           parseAllowedSubjectAltNames(identityTlsCertAuth.allowedSubjectAltNames),
-          sanExtension?.names.items
+          readSubjectAltNames(clientCertificateX509)
         );
         if (!isValidSubjectAltName) {
           throw new UnauthorizedError({

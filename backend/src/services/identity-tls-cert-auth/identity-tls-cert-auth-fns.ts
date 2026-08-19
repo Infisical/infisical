@@ -39,7 +39,34 @@ const EXCLUDED_SUBTREE_VIOLATION_CODE = 42;
 const MAX_CANDIDATE_PATHS = 8;
 const MAX_SEARCH_PATH_STEPS = 2000;
 
-const pkiCryptoEngine = new CryptoEngine({ name: "identity-tls-cert-auth", crypto: webcrypto as Crypto });
+const ED25519_SIGNATURE_OID = "1.3.101.112";
+
+/**
+ * pkijs re-verifies every signature on the path with its own crypto engine, and that engine's
+ * algorithm table covers only RSA and ECDSA. An Ed25519 chain Node already verified therefore comes
+ * back from pkijs as unbuildable rather than as a constraint decision, which would deny a valid
+ * client the moment its CA asserts name constraints. Node's WebCrypto does implement Ed25519, so
+ * route that one algorithm to it and leave every other signature to pkijs.
+ *
+ * Ed448 is deliberately not routed here: Node still marks it experimental, and this is an
+ * authentication path. Such a chain keeps failing closed, with the reason logged.
+ */
+class ChainCryptoEngine extends CryptoEngine {
+  async verifyWithPublicKey(...args: Parameters<CryptoEngine["verifyWithPublicKey"]>): Promise<boolean> {
+    const [data, signature, publicKeyInfo, signatureAlgorithm] = args;
+    if (signatureAlgorithm.algorithmId !== ED25519_SIGNATURE_OID) {
+      return super.verifyWithPublicKey(...args);
+    }
+
+    const algorithm = { name: "Ed25519" };
+    const publicKey = await webcrypto.subtle.importKey("spki", publicKeyInfo.toSchema().toBER(false), algorithm, true, [
+      "verify"
+    ]);
+    return webcrypto.subtle.verify(algorithm, publicKey, signature.valueBlock.valueHexView, data);
+  }
+}
+
+const pkiCryptoEngine = new ChainCryptoEngine({ name: "identity-tls-cert-auth", crypto: webcrypto as Crypto });
 
 const isWithinValidityWindow = (cert: TNativeX509, at: Date): boolean =>
   new Date(cert.validFrom) <= at && at <= new Date(cert.validTo);
@@ -103,7 +130,7 @@ const enforceNameConstraints = async (orderedPath: TNativeX509[], now: Date): Pr
     checkDate: now
   });
 
-  const { result, resultCode } = await engine.verify(
+  const { result, resultCode, resultMessage } = await engine.verify(
     {
       initialPermittedSubtreesSet: anchorConstraints?.permittedSubtrees ?? [],
       initialExcludedSubtreesSet: anchorConstraints?.excludedSubtrees ?? []
@@ -115,6 +142,10 @@ const enforceNameConstraints = async (orderedPath: TNativeX509[], now: Date): Pr
   if (resultCode === PERMITTED_SUBTREE_VIOLATION_CODE || resultCode === EXCLUDED_SUBTREE_VIOLATION_CODE) {
     return { ok: false, reasonCode: "name_constraint_violation" };
   }
+
+  logger.warn(
+    `TLS certificate auth: name constraint validation could not confirm the chain [resultCode=${resultCode}] [resultMessage=${resultMessage}] [leafSubject=${orderedPath[0].subject}] [anchorSubject=${orderedPath[orderedPath.length - 1].subject}]`
+  );
   return { ok: false, reasonCode: "ca_verification_failed" };
 };
 
@@ -134,7 +165,7 @@ const enforceNameConstraints = async (orderedPath: TNativeX509[], now: Date): Pr
  * established it and is denied rather than failing the request as an internal error.
  */
 export const permitsClientAuth = (cert: TNativeX509): boolean => {
-  let usages: readonly string[] | undefined;
+  let usages: x509.ExtendedKeyUsageExtension["usages"] | undefined;
   try {
     usages = new x509.X509Certificate(cert.raw).getExtension(x509.ExtendedKeyUsageExtension)?.usages;
   } catch (err) {
@@ -372,6 +403,21 @@ export const parseSubjectDetails = (data?: string | null) => {
 type CanonicalSanType = "dns" | "ip" | "email" | "uri";
 
 export type TCertificateSanItem = { type: string; value: string };
+
+/**
+ * Reading the subject alternative names is what establishes that the certificate carries one the
+ * identity allows, so a certificate whose extensions @peculiar/x509 cannot parse has not established
+ * it and is treated as carrying none, which denies. See `permitsClientAuth` for why a certificate
+ * Node accepted can still fail to parse here.
+ */
+export const readSubjectAltNames = (cert: TNativeX509): ReadonlyArray<TCertificateSanItem> | undefined => {
+  try {
+    return new x509.X509Certificate(cert.raw).getExtension(x509.SubjectAlternativeNameExtension)?.names.items;
+  } catch (err) {
+    logger.warn(err, `TLS certificate auth: could not read subject alternative names [subject=${cert.subject}]`);
+    return undefined;
+  }
+};
 
 const peculiarTypeToCanonical = (type: string): CanonicalSanType | null => {
   switch (type.trim().toLowerCase()) {

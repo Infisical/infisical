@@ -11,6 +11,7 @@ import {
   parseCertificateSubjectAltNames,
   parseSubjectDetails,
   permitsClientAuth,
+  readSubjectAltNames,
   TCertificateSanItem,
   verifyClientCertificateChain
 } from "./identity-tls-cert-auth-fns";
@@ -307,6 +308,52 @@ describe("permitsClientAuth", () => {
     } as unknown as crypto.X509Certificate;
 
     expect(permitsClientAuth(unparseable)).toBe(false);
+  });
+});
+
+describe("readSubjectAltNames", () => {
+  x509.cryptoProvider.set(crypto.webcrypto as Crypto);
+
+  const makeLeafWithSans = async (sans?: { type: "dns" | "url"; value: string }[]) => {
+    const keys = await crypto.webcrypto.subtle.generateKey(
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256", publicExponent: new Uint8Array([1, 0, 1]), modulusLength: 2048 },
+      true,
+      ["sign", "verify"]
+    );
+    const cert = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "05",
+      name: "CN=workload",
+      notBefore: new Date("2026-06-01T00:00:00Z"),
+      notAfter: new Date("2030-01-01T00:00:00Z"),
+      keys,
+      extensions: [
+        new x509.BasicConstraintsExtension(false),
+        ...(sans ? [new x509.SubjectAlternativeNameExtension(sans)] : [])
+      ]
+    });
+    return new crypto.X509Certificate(Buffer.from(cert.rawData));
+  };
+
+  test("reads the subject alternative names a certificate carries", async () => {
+    const cert = await makeLeafWithSans([{ type: "dns", value: "svc.example.com" }]);
+    expect(readSubjectAltNames(cert)?.map(({ type, value }) => ({ type, value }))).toEqual([
+      { type: "dns", value: "svc.example.com" }
+    ]);
+  });
+
+  test("returns undefined for a certificate with no subject alternative names", async () => {
+    expect(readSubjectAltNames(await makeLeafWithSans())).toBeUndefined();
+  });
+
+  // Denies rather than throwing, for the reason given on the equivalent permitsClientAuth test.
+  test("returns undefined for a certificate whose extensions cannot be parsed", () => {
+    const unparseable = {
+      raw: Buffer.from("not a certificate"),
+      subject: "CN=broken"
+    } as unknown as crypto.X509Certificate;
+
+    expect(readSubjectAltNames(unparseable)).toBeUndefined();
+    expect(isSubjectAltNameAllowed(["dns:svc.example.com"], readSubjectAltNames(unparseable))).toBe(false);
   });
 });
 
@@ -943,5 +990,83 @@ describe("verifyClientCertificateChain", () => {
       now: NOW
     });
     expect(result).toEqual({ ok: false, reasonCode: "certificate_expired" });
+  });
+
+  describe("Ed25519", () => {
+    const edAlg = { name: "Ed25519" } as unknown as EcKeyGenParams;
+
+    const makeEdRoot = async (name: string, extraExtensions: x509.Extension[] = []) => {
+      const keys = (await crypto.webcrypto.subtle.generateKey(edAlg, true, ["sign", "verify"])) as CryptoKeyPair;
+      const cert = await x509.X509CertificateGenerator.createSelfSigned({
+        serialNumber: "01",
+        name: `CN=${name}`,
+        notBefore: NOT_BEFORE,
+        notAfter: FAR_FUTURE,
+        keys,
+        signingAlgorithm: edAlg,
+        extensions: [new x509.BasicConstraintsExtension(true, undefined, true), ...extraExtensions]
+      });
+      return { cert, keys };
+    };
+
+    const makeEdLeaf = async (name: string, issuer: { cert: x509.X509Certificate; keys: CryptoKeyPair }) => {
+      const keys = (await crypto.webcrypto.subtle.generateKey(edAlg, true, ["sign", "verify"])) as CryptoKeyPair;
+      const cert = await x509.X509CertificateGenerator.create({
+        serialNumber: "02",
+        subject: `CN=${name}`,
+        issuer: issuer.cert.subject,
+        notBefore: NOT_BEFORE,
+        notAfter: FAR_FUTURE,
+        signingKey: issuer.keys.privateKey,
+        publicKey: keys.publicKey,
+        signingAlgorithm: edAlg,
+        extensions: [
+          new x509.BasicConstraintsExtension(false),
+          new x509.SubjectAlternativeNameExtension([{ type: "dns", value: `${name}.example.com` }])
+        ]
+      });
+      return { cert, keys };
+    };
+
+    test("accepts an Ed25519 chain", async () => {
+      const edRoot = await makeEdRoot("Ed Root");
+      const leaf = await makeEdLeaf("workload", edRoot);
+
+      const result = await verifyClientCertificateChain({
+        leaf: toNative(leaf.cert),
+        presentedChain: [],
+        trustAnchor: toNative(edRoot.cert),
+        now: NOW
+      });
+      expect(result).toEqual({ ok: true });
+    });
+
+    // Name constraint checking runs through pkijs, whose own crypto engine covers only RSA and
+    // ECDSA, so these two cover the Ed25519 verification `ChainCryptoEngine` adds on top of it.
+    test("accepts an Ed25519 chain whose CA asserts name constraints the leaf complies with", async () => {
+      const edRoot = await makeEdRoot("Ed Constrained Root", [permittedDnsConstraint(["example.com"])]);
+      const leaf = await makeEdLeaf("workload", edRoot);
+
+      const result = await verifyClientCertificateChain({
+        leaf: toNative(leaf.cert),
+        presentedChain: [],
+        trustAnchor: toNative(edRoot.cert),
+        now: NOW
+      });
+      expect(result).toEqual({ ok: true });
+    });
+
+    test("rejects an Ed25519 leaf outside the namespace its CA is permitted to certify", async () => {
+      const edRoot = await makeEdRoot("Ed Constrained Root", [permittedDnsConstraint(["allowed.example.com"])]);
+      const leaf = await makeEdLeaf("workload", edRoot);
+
+      const result = await verifyClientCertificateChain({
+        leaf: toNative(leaf.cert),
+        presentedChain: [],
+        trustAnchor: toNative(edRoot.cert),
+        now: NOW
+      });
+      expect(result).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+    });
   });
 });
