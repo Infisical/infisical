@@ -304,7 +304,7 @@ export const ConditionsFields = ({
                 </span>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="space-y-1 bg-danger/[0.025] p-6">
+            <AccordionContent className="space-y-1 bg-danger/[0.025] px-3 py-2">
               {incompatibleConditions.map((item) => (
                 <div key={item.conditionValue} className="text-sm">
                   <span className="font-medium text-danger">

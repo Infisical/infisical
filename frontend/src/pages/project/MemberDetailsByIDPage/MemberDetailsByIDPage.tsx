@@ -18,18 +18,10 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Alert,
   AlertDescription,
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogConfirmationField,
-  AlertDialogConfirmationLabel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   AlertTitle,
   Badge,
   Button,
+  DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -38,8 +30,6 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  Field,
-  Input,
   PageHeader,
   PageLoader,
   Tooltip,
@@ -94,7 +84,6 @@ export const Page = () => {
   ] as const);
 
   const [isPermissionAuditOpen, setIsPermissionAuditOpen] = useState(false);
-  const [removeConfirmation, setRemoveConfirmation] = useState("");
 
   const handleRemoveUser = async () => {
     if (!currentOrg?.id || !currentProject?.id || !membershipDetails?.user?.username) return;
@@ -109,7 +98,6 @@ export const Page = () => {
       text: "Successfully removed user from project",
       type: "success"
     });
-    setRemoveConfirmation("");
     navigate({
       to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
       params: {
@@ -297,61 +285,24 @@ export const Page = () => {
               )}
             </div>
           </div>
-          <AlertDialog
-            open={popUp.removeMember.isOpen}
+          <DeleteConfirmDialog
+            isOpen={popUp.removeMember.isOpen}
             onOpenChange={(isOpen) => {
-              if (removeUserMutation.isPending) return;
-              if (!isOpen) setRemoveConfirmation("");
               handlePopUpToggle("removeMember", isOpen);
             }}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  Remove {memberDisplayName} from the{" "}
-                  {isCertManager ? "certificate manager" : "project"}?
-                </AlertDialogTitle>
-                <Alert variant="danger" appearance="borderless">
-                  <AlertDescription>
-                    This user will lose access granted by this membership. This cannot be undone.
-                  </AlertDescription>
-                </Alert>
-              </AlertDialogHeader>
-              <AlertDialogConfirmationField>
-                <Field>
-                  <AlertDialogConfirmationLabel
-                    htmlFor="remove-member-detail-confirmation"
-                    confirmationValue="remove"
-                  />
-                  <Input
-                    id="remove-member-detail-confirmation"
-                    value={removeConfirmation}
-                    onChange={(event) => setRemoveConfirmation(event.target.value)}
-                    placeholder="remove"
-                    autoComplete="off"
-                    autoFocus
-                    disabled={removeUserMutation.isPending}
-                  />
-                </Field>
-              </AlertDialogConfirmationField>
-              <AlertDialogFooter>
-                <AlertDialogCancel variant="outline" isDisabled={removeUserMutation.isPending}>
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  variant="danger"
-                  isPending={removeUserMutation.isPending}
-                  isDisabled={removeConfirmation !== "remove"}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    handleRemoveUser().catch(() => undefined);
-                  }}
-                >
-                  Remove User
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            title={`Remove ${memberDisplayName} from the ${isCertManager ? "certificate manager" : "project"}?`}
+            description={
+              <Alert variant="danger" appearance="borderless">
+                <AlertDescription>
+                  This user will lose access granted by this membership. This cannot be undone.
+                </AlertDescription>
+              </Alert>
+            }
+            confirmKey="remove"
+            confirmLabel="Remove User"
+            isPending={removeUserMutation.isPending}
+            onConfirm={handleRemoveUser}
+          />
           <AssumePrivilegesModal
             isOpen={popUp.assumePrivileges.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}

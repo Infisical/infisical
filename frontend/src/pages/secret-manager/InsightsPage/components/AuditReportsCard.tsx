@@ -174,7 +174,7 @@ export const AuditReportsCard = () => {
                   <TableHead className="w-[28%]">Recipients</TableHead>
                   <TableHead className="w-[14%]">Status</TableHead>
                   <TableHead>Requested</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>

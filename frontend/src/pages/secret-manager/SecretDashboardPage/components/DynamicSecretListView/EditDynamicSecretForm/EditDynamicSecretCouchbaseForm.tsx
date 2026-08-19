@@ -750,7 +750,7 @@ export const EditDynamicSecretCouchbaseForm = ({
                       </Tooltip>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="p-6">
+                  <AccordionContent>
                     <div className="mb-4 text-sm text-mineshaft-300">
                       Set constraints on the generated Couchbase user password (8-128 characters)
                       <br />

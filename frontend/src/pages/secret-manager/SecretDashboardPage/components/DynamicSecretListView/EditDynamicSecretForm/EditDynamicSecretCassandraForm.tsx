@@ -326,7 +326,7 @@ export const EditDynamicSecretCassandraForm = ({
               <Accordion type="multiple" className="w-full bg-mineshaft-700">
                 <AccordionItem value="modify-sql-statement">
                   <AccordionTrigger>Modify CQL Statements</AccordionTrigger>
-                  <AccordionContent className="p-6">
+                  <AccordionContent>
                     <Controller
                       control={control}
                       name="usernameTemplate"

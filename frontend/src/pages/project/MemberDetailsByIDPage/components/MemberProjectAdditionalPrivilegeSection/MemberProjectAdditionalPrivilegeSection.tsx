@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format, formatDistance } from "date-fns";
 import {
@@ -17,13 +17,6 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Alert,
   AlertDescription,
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   AlertTitle,
   Badge,
   Button,
@@ -33,6 +26,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DeleteConfirmDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -43,10 +37,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  Field,
-  FieldLabel,
   IconButton,
-  Input,
   PageLoader,
   Sheet,
   SheetContent,
@@ -103,9 +94,6 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
     "revokeAccess"
   ] as const);
   const { permission } = useProjectPermission();
-  const [deletePrivilegeConfirmation, setDeletePrivilegeConfirmation] = useState("");
-  const [revokeAccessConfirmation, setRevokeAccessConfirmation] = useState("");
-
   const deletePrivilegeMutation = useDeleteProjectUserAdditionalPrivilege();
   const revokeAccessMutation = useRevokeAccessRequest();
 
@@ -142,7 +130,6 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
       projectMembershipId: membershipDetails.id
     });
     createNotification({ type: "success", text: "Successfully removed the privilege" });
-    setDeletePrivilegeConfirmation("");
     handlePopUpClose("deletePrivilege");
   };
 
@@ -158,7 +145,6 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
       queryKey: projectUserPrivilegeKeys.list(membershipDetails.id)
     });
     createNotification({ type: "success", text: "Successfully revoked access" });
-    setRevokeAccessConfirmation("");
     handlePopUpClose("revokeAccess");
   };
 
@@ -477,105 +463,44 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
           />
         </SheetContent>
       </Sheet>
-      <AlertDialog
-        open={popUp.deletePrivilege.isOpen}
+      <DeleteConfirmDialog
+        isOpen={popUp.deletePrivilege.isOpen}
         onOpenChange={(isOpen) => {
-          if (deletePrivilegeMutation.isPending) return;
-          if (!isOpen) setDeletePrivilegeConfirmation("");
           handlePopUpToggle("deletePrivilege", isOpen);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Remove additional privilege &quot;
-              {(popUp?.deletePrivilege?.data as { slug: string; id: string })?.slug}&quot;?
-            </AlertDialogTitle>
-            <Alert variant="danger" appearance="borderless">
-              <AlertDescription>
-                This policy will no longer grant additional access to this user.
-              </AlertDescription>
-            </Alert>
-          </AlertDialogHeader>
-          <Field>
-            <FieldLabel htmlFor="remove-member-privilege-confirmation">
-              Type &quot;remove&quot; to confirm
-            </FieldLabel>
-            <Input
-              id="remove-member-privilege-confirmation"
-              value={deletePrivilegeConfirmation}
-              onChange={(event) => setDeletePrivilegeConfirmation(event.target.value)}
-              autoComplete="off"
-              disabled={deletePrivilegeMutation.isPending}
-            />
-          </Field>
-          <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={deletePrivilegeMutation.isPending}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="danger"
-              isPending={deletePrivilegeMutation.isPending}
-              isDisabled={deletePrivilegeConfirmation !== "remove"}
-              onClick={(event) => {
-                event.preventDefault();
-                handlePrivilegeDelete().catch(() => undefined);
-              }}
-            >
-              Remove Privilege
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <AlertDialog
-        open={popUp.revokeAccess.isOpen}
+        title={`Remove additional privilege "${
+          (popUp?.deletePrivilege?.data as { slug: string; id: string })?.slug
+        }"?`}
+        description={
+          <Alert variant="danger" appearance="borderless">
+            <AlertDescription>
+              This policy will no longer grant additional access to this user.
+            </AlertDescription>
+          </Alert>
+        }
+        confirmKey="remove"
+        confirmLabel="Remove Privilege"
+        isPending={deletePrivilegeMutation.isPending}
+        onConfirm={handlePrivilegeDelete}
+      />
+      <DeleteConfirmDialog
+        isOpen={popUp.revokeAccess.isOpen}
         onOpenChange={(isOpen) => {
-          if (revokeAccessMutation.isPending) return;
-          if (!isOpen) setRevokeAccessConfirmation("");
           handlePopUpToggle("revokeAccess", isOpen);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Revoke access for &quot;{(popUp?.revokeAccess?.data as { slug: string })?.slug}&quot;?
-            </AlertDialogTitle>
-            <Alert variant="danger" appearance="borderless">
-              <AlertDescription>
-                This will revoke the access approval request and remove its associated privilege.
-              </AlertDescription>
-            </Alert>
-          </AlertDialogHeader>
-          <Field>
-            <FieldLabel htmlFor="revoke-member-access-confirmation">
-              Type &quot;revoke&quot; to confirm
-            </FieldLabel>
-            <Input
-              id="revoke-member-access-confirmation"
-              value={revokeAccessConfirmation}
-              onChange={(event) => setRevokeAccessConfirmation(event.target.value)}
-              autoComplete="off"
-              disabled={revokeAccessMutation.isPending}
-            />
-          </Field>
-          <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={revokeAccessMutation.isPending}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="danger"
-              isPending={revokeAccessMutation.isPending}
-              isDisabled={revokeAccessConfirmation !== "revoke"}
-              onClick={(event) => {
-                event.preventDefault();
-                handleRevokeAccess().catch(() => undefined);
-              }}
-            >
-              Revoke Access
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={`Revoke access for "${(popUp?.revokeAccess?.data as { slug: string })?.slug}"?`}
+        description={
+          <Alert variant="danger" appearance="borderless">
+            <AlertDescription>
+              This will revoke the access approval request and remove its associated privilege.
+            </AlertDescription>
+          </Alert>
+        }
+        confirmKey="revoke"
+        confirmLabel="Revoke Access"
+        isPending={revokeAccessMutation.isPending}
+        onConfirm={handleRevokeAccess}
+      />
     </>
   );
 };

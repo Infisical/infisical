@@ -220,7 +220,7 @@ export const RelayTab = withPermission(
                       Health Check
                     </TableHeadLabel>
                   </TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -267,7 +267,7 @@ export const RelayTab = withPermission(
                     <TableCell>
                       <RelayHealthStatus heartbeat={el.heartbeat} />
                     </TableCell>
-                    <TableCell className="w-12" onClick={(event) => event.stopPropagation()}>
+                    <TableCell onClick={(event) => event.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton aria-label="Relay options" variant="ghost" size="sm">

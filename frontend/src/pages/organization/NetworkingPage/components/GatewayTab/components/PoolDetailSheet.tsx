@@ -220,7 +220,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                   <TableHead className="w-36">
                     <TableHeadLabel>Status</TableHeadLabel>
                   </TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>

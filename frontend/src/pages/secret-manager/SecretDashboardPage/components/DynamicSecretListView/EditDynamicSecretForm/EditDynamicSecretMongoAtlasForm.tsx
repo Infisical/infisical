@@ -361,7 +361,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
             <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
               <AccordionItem value="advance-section">
                 <AccordionTrigger>Advanced</AccordionTrigger>
-                <AccordionContent className="p-6">
+                <AccordionContent>
                   <Controller
                     control={control}
                     name="usernameTemplate"

@@ -674,7 +674,7 @@ export const SecretValidationRulesSection = () => {
                   <TableHead>Type</TableHead>
                   <TableHead>Scope</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>

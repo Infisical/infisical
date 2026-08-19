@@ -226,7 +226,7 @@ export const DuplicatedSecretsCard = () => {
                       </Badge>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="p-6">
+                  <AccordionContent className="group-data-[variant=default]/accordion:p-0">
                     {group.secrets.length > 0 && (
                       <Table
                         containerClassName="rounded-t-none overflow-x-hidden"
@@ -237,7 +237,7 @@ export const DuplicatedSecretsCard = () => {
                             <TableHead className="w-[35%]">Secret Key</TableHead>
                             <TableHead className="w-[25%]">Environment</TableHead>
                             <TableHead>Path</TableHead>
-                            <TableHead className="w-12" />
+                            <TableHead />
                           </TableRow>
                         </TableHeader>
                         <TableBody>

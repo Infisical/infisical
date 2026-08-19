@@ -118,7 +118,7 @@ export const GatewayPoolsContent = ({ search }: Props) => {
               <TableHead className="w-40">
                 <TableHeadLabel>Health</TableHeadLabel>
               </TableHead>
-              <TableHead className="w-12" />
+              <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -157,7 +157,7 @@ export const GatewayPoolsContent = ({ search }: Props) => {
                 <TableCell>
                   <PoolHealthBadge pool={pool} />
                 </TableCell>
-                <TableCell className="w-12">
+                <TableCell>
                   <div
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}

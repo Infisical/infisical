@@ -422,7 +422,7 @@ export const WithActions: Story = {
         <TableRow>
           <TableHead>Name</TableHead>
           <TableHead>Role</TableHead>
-          <TableHead className="w-12 text-right" />
+          <TableHead className="text-right" />
         </TableRow>
       </TableHeader>
       <TableBody>

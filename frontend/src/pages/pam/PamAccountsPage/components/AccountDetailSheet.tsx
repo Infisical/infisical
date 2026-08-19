@@ -361,7 +361,7 @@ const PermissionsTab = ({
                   <TableHead>Assignee</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Expiry</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>

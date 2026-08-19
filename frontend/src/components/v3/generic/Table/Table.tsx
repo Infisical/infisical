@@ -156,7 +156,7 @@ function TableCell({
     <td
       data-slot="table-cell"
       className={cn(
-        "h-[40px] border-b border-border px-3 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>svg]:size-4",
+        "border-b border-border px-3 py-1.5 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&:last-child:has([data-slot=dropdown-menu-trigger])]:pr-1.5 [&>svg]:size-4",
         isTruncatable && "max-w-0 truncate",
         className
       )}

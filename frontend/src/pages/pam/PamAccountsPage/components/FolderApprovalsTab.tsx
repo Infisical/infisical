@@ -336,7 +336,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                 <TableRow>
                   <TableHead>Approver</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -452,7 +452,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                     <TableHead>Requester</TableHead>
                     <TableHead>Account</TableHead>
                     <TableHead>Status</TableHead>
-                    {canRevoke && <TableHead className="w-12" />}
+                    {canRevoke && <TableHead />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>

@@ -312,7 +312,7 @@ export const GatewayTab = withPermission(
                           Health Check
                         </TableHeadLabel>
                       </TableHead>
-                      <TableHead className="w-12" />
+                      <TableHead />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -396,7 +396,7 @@ export const GatewayTab = withPermission(
                               heartbeatTTL={"heartbeatTTL" in el ? el.heartbeatTTL : null}
                             />
                           </TableCell>
-                          <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <IconButton aria-label="Gateway options" variant="ghost" size="sm">

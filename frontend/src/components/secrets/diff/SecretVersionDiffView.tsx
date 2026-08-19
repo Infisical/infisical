@@ -277,7 +277,7 @@ export const SecretVersionDiffView = ({
             )}
           </AccordionTrigger>
         )}
-        <AccordionContent className="p-6">{diffContent}</AccordionContent>
+        <AccordionContent className="p-0">{diffContent}</AccordionContent>
       </AccordionItem>
     </Accordion>
   );

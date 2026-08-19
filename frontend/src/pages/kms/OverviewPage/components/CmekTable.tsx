@@ -448,7 +448,7 @@ export const CmekTable = () => {
                   <TableHead>Status</TableHead>
                   <TableHead>Version</TableHead>
                   <TableHead className="w-5" />
-                  <TableHead className="w-12" />
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>

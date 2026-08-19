@@ -243,7 +243,7 @@ export const SnowflakeInputForm = ({
               <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
                 <AccordionItem value="advance-statements">
                   <AccordionTrigger>Modify SQL Statements</AccordionTrigger>
-                  <AccordionContent className="p-6">
+                  <AccordionContent>
                     <Controller
                       control={control}
                       name="usernameTemplate"
