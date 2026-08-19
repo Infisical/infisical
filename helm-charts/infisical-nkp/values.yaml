@@ -25,17 +25,19 @@ secrets:
   # the chart wires REDIS_URL to the in-cluster Redis service automatically.
   redisUrl: ""
 
-# Lightweight in-cluster Redis (Infisical requires REDIS_URL). Set enabled=false
-# to point at an external Redis via secrets.redisUrl instead.
+# Lightweight in-cluster Valkey, the open-source Redis-compatible fork
+# (Infisical requires REDIS_URL). The values keys keep the redis.* naming since
+# the wire protocol and connection URL are Redis-compatible. Set enabled=false
+# to point at an external Redis/Valkey via secrets.redisUrl instead.
 redis:
   enabled: true
   image:
-    repository: redis
-    tag: "7.4-alpine"
+    repository: valkey/valkey
+    tag: "8.1-alpine"
     pullPolicy: IfNotPresent
   port: 6379
-  # Restrict Redis ingress to the Infisical pods (enforced where the CNI
-  # supports NetworkPolicy). The bundled Redis is also password-protected with
+  # Restrict Valkey ingress to the Infisical pods (enforced where the CNI
+  # supports NetworkPolicy). The bundled Valkey is also password-protected with
   # a generated password stored in the chart Secret (REDIS_PASSWORD).
   networkPolicy: true
 
@@ -60,6 +62,24 @@ postgres:
 # Run "npm run migration:latest" as an initContainer before the app starts.
 migration:
   enabled: true
+
+# Additional environment variables for the Infisical container, in Kubernetes
+# EnvVar format. Useful for optional configuration such as SMTP, for example:
+# extraEnv:
+#   - name: SMTP_HOST
+#     value: smtp.example.com
+#   - name: SMTP_PORT
+#     value: "587"
+#   - name: SMTP_FROM_ADDRESS
+#     value: infisical@example.com
+#   - name: SMTP_USERNAME
+#     value: mailer
+#   - name: SMTP_PASSWORD          # reference a Secret for sensitive values
+#     valueFrom:
+#       secretKeyRef:
+#         name: my-smtp-secret
+#         key: password
+extraEnv: []
 
 service:
   type: ClusterIP
