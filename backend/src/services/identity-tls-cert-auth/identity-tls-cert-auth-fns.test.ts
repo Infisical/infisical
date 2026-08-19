@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 import { GeneralName, GeneralSubtree, NameConstraints } from "pkijs";
-import { beforeAll, describe, expect, test } from "vitest";
+import { beforeAll, describe, expect, test, vi } from "vitest";
 
 import {
   isSubjectAltNameAllowed,
@@ -14,6 +14,13 @@ import {
   TCertificateSanItem,
   verifyClientCertificateChain
 } from "./identity-tls-cert-auth-fns";
+
+// The singleton logger is only initialized by the server bootstrap, so it is undefined under vitest.
+vi.mock("@app/lib/logger", () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+  initLogger: vi.fn(),
+  sanitizeUrlForLog: (url: string) => url
+}));
 
 describe("parseSubjectDetails", () => {
   test("parses a single CN field", () => {
@@ -289,6 +296,17 @@ describe("permitsClientAuth", () => {
 
   test("rejects a codeSigning-only certificate", async () => {
     expect(permitsClientAuth(await makeLeafWithUsages(["1.3.6.1.5.5.7.3.3"]))).toBe(false);
+  });
+
+  // Node's OpenSSL-backed parser accepts encodings @peculiar/x509 rejects, so this stands in for a
+  // certificate that reached the check and then fails to parse: it must deny, not throw.
+  test("rejects a certificate whose extensions cannot be parsed", () => {
+    const unparseable = {
+      raw: Buffer.from("not a certificate"),
+      subject: "CN=broken"
+    } as unknown as crypto.X509Certificate;
+
+    expect(permitsClientAuth(unparseable)).toBe(false);
   });
 });
 

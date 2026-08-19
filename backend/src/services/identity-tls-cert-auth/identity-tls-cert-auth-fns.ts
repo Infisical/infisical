@@ -127,9 +127,20 @@ const enforceNameConstraints = async (orderedPath: TNativeX509[], now: Date): Pr
  * A certificate that omits the extension is unconstrained and stays accepted, which is how OpenSSL
  * and Go read a missing EKU and what keeps existing leaves that carry no EKU working. Only a
  * certificate that explicitly enumerates purposes and leaves client authentication out is rejected.
+ *
+ * Node's X509Certificate is OpenSSL-backed and accepts DER that @peculiar/x509 rejects, so a
+ * certificate can parse at the edge and still fail here. Reading the extension is what establishes
+ * that client authentication is permitted, so a certificate whose extensions cannot be read has not
+ * established it and is denied rather than failing the request as an internal error.
  */
 export const permitsClientAuth = (cert: TNativeX509): boolean => {
-  const usages = new x509.X509Certificate(cert.raw).getExtension(x509.ExtendedKeyUsageExtension)?.usages;
+  let usages: readonly string[] | undefined;
+  try {
+    usages = new x509.X509Certificate(cert.raw).getExtension(x509.ExtendedKeyUsageExtension)?.usages;
+  } catch (err) {
+    logger.warn(err, `TLS certificate auth: could not read extended key usage [subject=${cert.subject}]`);
+    return false;
+  }
   if (!usages) return true;
   return usages.some((oid) => oid === CLIENT_AUTH_EKU_OID || oid === ANY_PURPOSE_EKU_OID);
 };
