@@ -185,7 +185,7 @@ const ServerAdminsPanelTable = ({
                       </Td>
                       <Td className="w-5/12 max-w-0">
                         <p className="truncate">
-                          {name ?? <span className="text-mineshaft-400">Not Set</span>}
+                          {name ?? <span className="text-muted">Not Set</span>}
                         </p>
                       </Td>
                       <Td className="w-5/12 max-w-0">
@@ -416,10 +416,8 @@ export const ServerAdminsTable = () => {
           onDeleteApproved={() => handleRemoveUsers()}
           buttonText="Remove"
         >
-          <div className="mt-4 text-sm text-mineshaft-400">
-            The following users will be deleted:
-          </div>
-          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
+          <div className="mt-4 text-sm text-muted">The following users will be deleted:</div>
+          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-border bg-danger/10 p-4 pl-8 text-sm text-danger">
             <ul className="list-disc">
               {selectedUsers?.map((user) => {
                 const email = user.email ?? user.username;

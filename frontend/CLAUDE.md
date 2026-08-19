@@ -74,7 +74,7 @@ CASL-based (`@casl/ability`). Contexts: `OrgPermissionContext` and `ProjectPermi
 
 ### Styling
 
-Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in `src/index.css` (`@theme` directive). Custom breakpoint `dashboard: 1100px`. Typography roles: Inter is the default product UI face, Alliance is the display face, `font-mono` remains the functional application mono, and `font-jetbrains-mono` is reserved for decorative technical microcopy. See the root `DESIGN.md` before assigning a non-default face. Color palette: primary (blue), mineshaft (dark gray), bunker (darker bg), success/warning/danger/info.
+Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in `src/index.css` (`@theme` directive). Custom breakpoint `dashboard: 1100px`. Typography roles: Inter is the default product UI face, Alliance is the display face, `font-mono` remains the functional application mono, and `font-jetbrains-mono` is reserved for decorative technical microcopy. See the root `DESIGN.md` before assigning a non-default face. Colors use semantic roles from `src/index.css`, including surfaces, content, structure, status, scope, and product/resource accents.
 
 ### Layouts
 

@@ -5,34 +5,28 @@ import { Field, FieldDescription, FieldLabel, Input } from "../v3";
 
 export const GlobPatternTooltip = () => (
   <div className="space-y-1.5 text-left text-xs">
-    <p className="font-medium text-mineshaft-200">This field supports glob patterns:</p>
-    <div className="text-mineshaft-300">
-      <code className="text-yellow-500/80">*</code> matches a single path segment
+    <p className="font-medium text-foreground">This field supports glob patterns:</p>
+    <div className="text-label">
+      <code className="text-warning/80">*</code> matches a single path segment
       <br />
-      <span className="text-mineshaft-400">
-        user/* matches user/admin but not user/admin/service
-      </span>
+      <span className="text-muted">user/* matches user/admin but not user/admin/service</span>
     </div>
-    <div className="text-mineshaft-300">
-      <code className="text-yellow-500/80">**</code> matches zero or more segments at any depth
+    <div className="text-label">
+      <code className="text-warning/80">**</code> matches zero or more segments at any depth
       <br />
-      <span className="text-mineshaft-400">
-        user/** matches user/admin, user/admin/service, etc.
-      </span>
+      <span className="text-muted">user/** matches user/admin, user/admin/service, etc.</span>
     </div>
   </div>
 );
 
 export const BashGlobPatternTooltip = () => (
   <div className="space-y-1.5 text-left text-xs">
-    <p className="font-medium text-mineshaft-200">This field supports glob patterns:</p>
-    <p className="text-mineshaft-300">
-      <code className="text-yellow-500/80">*</code> matches any characters
+    <p className="font-medium text-foreground">This field supports glob patterns:</p>
+    <p className="text-label">
+      <code className="text-warning/80">*</code> matches any characters
     </p>
     <p>
-      <span className="text-mineshaft-400">
-        user/* matches user/admin, user/admin/service, etc.
-      </span>
+      <span className="text-muted">user/* matches user/admin, user/admin/service, etc.</span>
     </p>
   </div>
 );

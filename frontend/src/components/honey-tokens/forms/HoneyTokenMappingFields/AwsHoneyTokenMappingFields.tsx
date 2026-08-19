@@ -108,11 +108,11 @@ export const AwsHoneyTokenMappingFields = () => {
         </tbody>
       </table>
       {mappingError && (
-        <div className="mt-2 rounded-sm border border-red/40 bg-red/10 p-3 text-xs text-mineshaft-200">
+        <div className="mt-2 rounded-sm border border-danger/40 bg-danger/10 p-3 text-xs text-foreground">
           {mappingError}
         </div>
       )}
-      <div className="mt-2 flex items-start gap-2 rounded-sm border border-info/40 bg-info/10 p-3 text-xs text-mineshaft-200">
+      <div className="mt-2 flex items-start gap-2 rounded-sm border border-info/40 bg-info/10 p-3 text-xs text-foreground">
         <InfoIcon className="mt-0.5 size-3.5 shrink-0 text-info" />
         These keys will appear as normal secrets in your project but are tied to a sandboxed IAM
         user with zero permissions. Any API call made with these credentials triggers an alert.

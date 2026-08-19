@@ -123,7 +123,7 @@ export const RequestOrgAuditReportModal = ({
                     <FieldLabel>Reports</FieldLabel>
                     <button
                       type="button"
-                      className="cursor-pointer text-xs font-medium text-muted transition-colors hover:text-mineshaft-300"
+                      className="cursor-pointer text-xs font-medium text-muted transition-colors hover:text-label"
                       onClick={() => field.onChange(allSelected ? [] : [...availableReportTypes])}
                     >
                       {allSelected ? "Deselect All" : "Select All"}

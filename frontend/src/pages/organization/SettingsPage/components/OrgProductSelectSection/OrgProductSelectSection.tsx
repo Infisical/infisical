@@ -63,8 +63,8 @@ export const OrgProductSelectSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-6 py-5">
-      <h2 className="text-xl font-medium text-mineshaft-100">Enabled Products</h2>
+    <div className="mb-6 rounded-lg border border-border bg-card px-6 py-5">
+      <h2 className="text-xl font-medium text-foreground">Enabled Products</h2>
       <p className="mb-4 text-muted">Select which products are available for your organization.</p>
 
       <div className="grid grid-cols-2 gap-3">

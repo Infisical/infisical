@@ -499,7 +499,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             onMouseDown={(e) => {
               if (showWizard) e.preventDefault();
             }}
-            className={`relative top-2 z-100 max-h-80 thin-scrollbar overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md ${showWizard ? "w-64" : "min-w-80"}`}
+            className={`relative top-2 z-100 max-h-80 thin-scrollbar overflow-auto rounded-md border border-border bg-popover font-inter text-foreground shadow-md ${showWizard ? "w-64" : "min-w-80"}`}
             style={showWizard ? undefined : { width: "var(--radix-popover-trigger-width)" }}
           >
             {showWizard ? (
@@ -523,13 +523,13 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                     entryIcon = <FontAwesomeIcon icon={faSearch} className="text-muted" />;
                     subText = "No results";
                   } else if (item.type === ReferenceType.SECRET) {
-                    entryIcon = <FontAwesomeIcon icon={faKey} className="text-bunker-300" />;
+                    entryIcon = <FontAwesomeIcon icon={faKey} className="text-label" />;
                     subText = "Secret";
                   } else if (item.type === ReferenceType.ENVIRONMENT) {
-                    entryIcon = <FontAwesomeIcon icon={faLayerGroup} className="text-green-700" />;
+                    entryIcon = <FontAwesomeIcon icon={faLayerGroup} className="text-success" />;
                     subText = "Environment";
                   } else {
-                    entryIcon = <FontAwesomeIcon icon={faFolder} className="text-yellow-700" />;
+                    entryIcon = <FontAwesomeIcon icon={faFolder} className="text-warning" />;
                     subText = "Folder";
                   }
 
@@ -537,7 +537,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                     <div
                       role="status"
                       aria-label="no-match-message"
-                      className="flex w-full items-center justify-between border-mineshaft-600 text-left"
+                      className="flex w-full items-center justify-between border-border text-left"
                       key={`secret-reference-secret-${i + 1}`}
                     >
                       <div className="text-md relative flex w-full cursor-default items-center justify-between px-2 py-2 opacity-75 outline-hidden transition-all select-none">
@@ -545,7 +545,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                           <div className="mt-1 flex items-center">{entryIcon}</div>
                           <div className="text-md w-10/12 truncate text-left">
                             <span className="text-muted">{item.label}</span>
-                            <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
+                            <div className="mb-[0.1rem] text-xs leading-3 text-muted">
                               {subText}
                             </div>
                           </div>
@@ -566,19 +566,19 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                         handleSuggestionSelect(i);
                       }}
                       onMouseEnter={() => setHighlightedIndex(i)}
-                      className="flex w-full items-center justify-between border-none border-mineshaft-600 bg-transparent p-0 text-left"
+                      className="flex w-full items-center justify-between border-none border-border bg-transparent p-0 text-left"
                       key={`secret-reference-secret-${i + 1}`}
                     >
                       <div
                         className={`${
-                          highlightedIndex === i ? "bg-mineshaft-500" : ""
-                        } text-md relative flex w-full cursor-pointer items-center justify-between px-2 py-2 outline-hidden transition-all select-none hover:bg-mineshaft-700 data-highlighted:bg-mineshaft-700`}
+                          highlightedIndex === i ? "bg-foreground/10" : ""
+                        } text-md relative flex w-full cursor-pointer items-center justify-between px-2 py-2 outline-hidden transition-all select-none hover:bg-container-hover data-highlighted:bg-container-hover`}
                       >
                         <div className="flex w-full items-start gap-2">
                           <div className="mt-1 flex items-center">{entryIcon}</div>
                           <div className="text-md w-10/12 truncate text-left">
                             <span>{item.label}</span>
-                            <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
+                            <div className="mb-[0.1rem] text-xs leading-3 text-muted">
                               {subText}
                             </div>
                           </div>

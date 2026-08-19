@@ -83,7 +83,7 @@ export const SettingsPage = () => {
   const ActiveTabComponent = activeTab?.Component;
 
   return (
-    <div className="flex h-full w-full justify-center bg-bunker-800 text-foreground">
+    <div className="flex h-full w-full justify-center bg-background text-foreground">
       <Helmet>
         <title>{t("common.head-title", { title: pageTitle })}</title>
       </Helmet>

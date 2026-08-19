@@ -179,7 +179,7 @@ export const EditDynamicSecretCassandraForm = ({
           </div>
         </div>
         <div>
-          <div className="mb-4 border-b border-b-mineshaft-600 pb-2">Configuration</div>
+          <div className="mb-4 border-b border-b-border pb-2">Configuration</div>
           <div className="flex flex-col">
             <div className="flex items-center space-x-2">
               <Controller
@@ -287,7 +287,7 @@ export const EditDynamicSecretCassandraForm = ({
                   >
                     <SecretInput
                       {...field}
-                      containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                      containerClassName="text-label hover:border-project/50 border border-border bg-card px-2 py-1.5"
                     />
                   </FormControl>
                 )}
@@ -298,9 +298,9 @@ export const EditDynamicSecretCassandraForm = ({
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
                     <Switch
-                      className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                      className="bg-muted/50 shadow-inner data-[state=checked]:bg-success/80"
                       id="ssl-reject-unauthorized"
-                      thumbClassName="bg-mineshaft-800"
+                      thumbClassName="bg-container"
                       isChecked={value}
                       onCheckedChange={onChange}
                     >
@@ -323,7 +323,7 @@ export const EditDynamicSecretCassandraForm = ({
                   </FormControl>
                 )}
               />
-              <Accordion type="multiple" className="w-full bg-mineshaft-700">
+              <Accordion type="multiple" className="w-full bg-container-hover">
                 <AccordionItem value="modify-sql-statement">
                   <AccordionTrigger>Modify CQL Statements</AccordionTrigger>
                   <AccordionContent>
@@ -340,7 +340,7 @@ export const EditDynamicSecretCassandraForm = ({
                           <Input
                             {...field}
                             value={field.value || undefined}
-                            className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                            className="border-border bg-card text-sm"
                           />
                         </FormControl>
                       )}
@@ -362,7 +362,7 @@ export const EditDynamicSecretCassandraForm = ({
                             {...field}
                             reSize="none"
                             rows={3}
-                            className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                            className="border-border bg-card text-sm"
                           />
                         </FormControl>
                       )}
@@ -382,7 +382,7 @@ export const EditDynamicSecretCassandraForm = ({
                             {...field}
                             reSize="none"
                             rows={3}
-                            className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                            className="border-border bg-card text-sm"
                           />
                         </FormControl>
                       )}
@@ -402,7 +402,7 @@ export const EditDynamicSecretCassandraForm = ({
                             {...field}
                             reSize="none"
                             rows={3}
-                            className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                            className="border-border bg-card text-sm"
                           />
                         </FormControl>
                       )}

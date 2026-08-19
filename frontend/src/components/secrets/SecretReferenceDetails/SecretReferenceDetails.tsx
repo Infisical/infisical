@@ -159,7 +159,7 @@ const SecretTree = ({
           <span className={isRoot ? "font-medium" : ""}>{title}</span>
         )}
         <Tooltip className="max-w-md break-words" content={value || "No value"}>
-          <span className={`px-1 text-xs ${value ? "text-mineshaft-400" : "text-red-400"}`}>
+          <span className={`px-1 text-xs ${value ? "text-muted" : "text-danger"}`}>
             <FontAwesomeIcon icon={value ? faEye : faEyeSlash} size="sm" />
           </span>
         </Tooltip>
@@ -242,7 +242,7 @@ const SecretDependencyTree = ({ secretPath, environment, secretKey }: Props) => 
   if (isPending) {
     return (
       <div className="flex items-center justify-center py-4">
-        <Spinner className="text-mineshaft-400" />
+        <Spinner className="text-muted" />
       </div>
     );
   }
@@ -250,18 +250,18 @@ const SecretDependencyTree = ({ secretPath, environment, secretKey }: Props) => 
   if (!flowData || flowData.nodes.length === 0) {
     return (
       <div className="flex items-center justify-center py-4">
-        <span className="text-sm text-mineshaft-400">No secrets reference this secret</span>
+        <span className="text-sm text-muted">No secrets reference this secret</span>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="h-72 w-full rounded-md border border-mineshaft-600">
+      <div className="h-72 w-full rounded-md border border-border">
         {isError ? (
           <div className="flex h-full items-center justify-center">
-            <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2 text-red-500" />
-            <p className="text-red-500">Error fetching secret dependency tree</p>
+            <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2 text-danger" />
+            <p className="text-danger">Error fetching secret dependency tree</p>
           </div>
         ) : (
           <ReactFlowProvider>
@@ -286,7 +286,7 @@ const SecretDependencyTree = ({ secretPath, environment, secretKey }: Props) => 
           </ReactFlowProvider>
         )}
       </div>
-      <div className="mt-2 text-xs text-mineshaft-400">
+      <div className="mt-2 text-xs text-muted">
         Shows secrets that depend on this secret. Each level is referenced by the one above it.
       </div>
     </div>
@@ -365,7 +365,7 @@ export const SecretReferenceTree = ({
   if (isPending) {
     return (
       <div className="flex items-center justify-center py-4">
-        <Spinner className="text-mineshaft-400" />
+        <Spinner className="text-muted" />
       </div>
     );
   }
@@ -388,7 +388,7 @@ export const SecretReferenceTree = ({
             key="value-overriden"
             isReadOnly
             value={secretValue}
-            containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-700 px-2 py-1.5"
+            containerClassName="text-label hover:border-project/50 border border-border bg-popover px-2 py-1.5"
           />
         </FormControl>
 
@@ -397,11 +397,11 @@ export const SecretReferenceTree = ({
           className="mb-2"
           label="Reference Tree"
         />
-        <div className="secret-tree-container relative max-h-96 thin-scrollbar overflow-auto rounded-md border border-mineshaft-600 bg-bunker-700 p-3 text-sm text-mineshaft-200">
+        <div className="secret-tree-container relative max-h-96 thin-scrollbar overflow-auto rounded-md border border-border bg-popover p-3 text-sm text-foreground">
           {isError && (
             <div className="flex items-center justify-center py-4">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2 text-red-500" />
-              <p className="text-red-500">Error fetching secret reference tree</p>
+              <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2 text-danger" />
+              <p className="text-danger">Error fetching secret reference tree</p>
             </div>
           )}
           {!isError && hasReferences && treeItems.rootId && (
@@ -415,11 +415,11 @@ export const SecretReferenceTree = ({
           )}
           {!isError && !hasReferences && (
             <div className="flex items-center justify-center py-4">
-              <span className="text-mineshaft-400">This secret does not contain references</span>
+              <span className="text-muted">This secret does not contain references</span>
             </div>
           )}
         </div>
-        <div className="mt-2 text-xs text-mineshaft-400">
+        <div className="mt-2 text-xs text-muted">
           Click a secret key to navigate to it (expand/collapse with the arrow).
         </div>
 

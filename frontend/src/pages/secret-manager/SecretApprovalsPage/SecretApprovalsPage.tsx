@@ -82,7 +82,7 @@ export const SecretApprovalsPage = () => {
         <meta property="og:title" content={String(t("approval.og-title"))} />
         <meta name="og:description" content={String(t("approval.og-description"))} />
       </Helmet>
-      <div className="mx-auto h-full w-full max-w-8xl bg-bunker-800 text-foreground">
+      <div className="mx-auto h-full w-full max-w-8xl bg-background text-foreground">
         <PageHeader
           scope={ProjectType.SecretManager}
           title="Approval Workflows"

@@ -38,7 +38,7 @@ export const AuthPageLayout = ({
   return (
     <div
       className={cn(
-        "min-h-screen bg-linear-to-r from-card to-bunker-900 to-75%",
+        "min-h-screen bg-linear-to-r from-card to-background to-75%",
         isSplit &&
           "lg:grid lg:grid-cols-[minmax(440px,44%)_minmax(0,1fr)] xl:grid-cols-[minmax(520px,40%)_minmax(0,1fr)]"
       )}

@@ -251,8 +251,8 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
 
           return (
             <TableRow key={id} className="bg-warning/[0.025]">
-              <TableCell className="text-mineshaft-400 line-through">{name}</TableCell>
-              <TableCell className="text-mineshaft-400">{slug}</TableCell>
+              <TableCell className="text-muted line-through">{name}</TableCell>
+              <TableCell className="text-muted">{slug}</TableCell>
               <TableCell>
                 <div className="flex items-center justify-end gap-2">
                   <Tooltip>
@@ -269,12 +269,12 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                             ? `${remaining} until permanent deletion`
                             : "Will be permanently deleted soon"}
                         </span>
-                        <span className="text-xs text-mineshaft-300">
+                        <span className="text-xs text-label">
                           {remaining
                             ? `Scheduled for ${format(deleteAfterDate, "MMM d, yyyy, h:mm a")}`
                             : "Awaiting the next daily cleanup sweep"}
                         </span>
-                        <span className="text-xs text-mineshaft-300">
+                        <span className="text-xs text-label">
                           Soft-deleted by {getActorLabel(deletedBy)} ·{" "}
                           {format(new Date(softDeletedAt), "MMM d, yyyy")}
                         </span>

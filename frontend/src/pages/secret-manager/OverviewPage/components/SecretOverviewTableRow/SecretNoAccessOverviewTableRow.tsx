@@ -15,15 +15,15 @@ export const SecretNoAccessOverviewTableRow = ({ environments = [], count }: Pro
     <>
       {Array.from(Array(count)).map((_, j) => (
         <Tr key={`no-access-secret-overview-${j + 1}`} isHoverable isSelectable className="group">
-          <Td className="sticky left-0 z-10 bg-mineshaft-800 bg-clip-padding px-0 py-0 group-hover:bg-mineshaft-700">
-            <div className="h-full w-full border-r border-mineshaft-600 px-5 py-2.5">
+          <Td className="sticky left-0 z-10 bg-container bg-clip-padding px-0 py-0 group-hover:bg-container-hover">
+            <div className="h-full w-full border-r border-border px-5 py-2.5">
               <Tooltip
                 asChild
                 content="You do not have permission to view this secret"
                 className="max-w-sm"
               >
                 <div className="flex items-center space-x-5">
-                  <div className="text-bunker-300">
+                  <div className="text-label">
                     <FontAwesomeIcon className="block" icon={faLock} />
                   </div>
                   <Blur />
@@ -35,9 +35,9 @@ export const SecretNoAccessOverviewTableRow = ({ environments = [], count }: Pro
             return (
               <Td
                 key={`sec-overview-${slug}-${i + 1}-value`}
-                className="px-0 py-0 group-hover:bg-mineshaft-700"
+                className="px-0 py-0 group-hover:bg-container-hover"
               >
-                <div className="h-full w-full border-r border-mineshaft-600 px-5 py-[0.85rem]">
+                <div className="h-full w-full border-r border-border px-5 py-[0.85rem]">
                   <div className="flex justify-center">
                     <FontAwesomeIcon icon={faCircle} />
                   </div>

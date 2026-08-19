@@ -62,13 +62,13 @@ export const AccessTreeSecretPathInput = ({
       <div
         className={twMerge(
           "flex items-center overflow-hidden rounded-sm transition-all duration-300 ease-in-out",
-          isFocused ? "bg-mineshaft-800 shadow-md" : "bg-mineshaft-700",
+          isFocused ? "bg-container shadow-md" : "bg-container-hover",
           isExpanded ? "w-64" : "h-10 w-10"
         )}
       >
         {isExpanded ? (
           <div
-            className="flex h-10 w-10 cursor-pointer items-center justify-center text-mineshaft-300 hover:text-foreground"
+            className="flex h-10 w-10 cursor-pointer items-center justify-center text-label hover:text-foreground"
             onClick={toggleSearch}
             role="button"
             tabIndex={0}
@@ -83,7 +83,7 @@ export const AccessTreeSecretPathInput = ({
         ) : (
           <Tooltip position="bottom" content="Search Paths">
             <div
-              className="flex h-10 w-10 cursor-pointer items-center justify-center text-mineshaft-300 hover:text-foreground"
+              className="flex h-10 w-10 cursor-pointer items-center justify-center text-label hover:text-foreground"
               onClick={toggleSearch}
               role="button"
               tabIndex={0}

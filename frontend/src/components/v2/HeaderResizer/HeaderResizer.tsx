@@ -16,8 +16,8 @@ export const HeaderResizer = ({
       <div
         tabIndex={-1}
         role="button"
-        className={`absolute left-0 z-40 h-0.5 w-full cursor-ns-resize hover:bg-blue-400/20 ${
-          isActive ? "bg-blue-400/75" : "bg-transparent"
+        className={`absolute left-0 z-40 h-0.5 w-full cursor-ns-resize hover:bg-info/20 ${
+          isActive ? "bg-info/75" : "bg-transparent"
         }`}
         onMouseDown={onMouseDown}
         style={{

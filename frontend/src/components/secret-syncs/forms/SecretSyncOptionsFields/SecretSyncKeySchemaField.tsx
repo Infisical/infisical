@@ -116,11 +116,11 @@ export const SecretSyncKeySchemaField = () => {
               {!error && (
                 <FieldDescription>
                   Provide a template to rewrite each key — use{" "}
-                  <code className="rounded bg-mineshaft-800/80 px-1 py-0.5 font-mono text-[11px] text-foreground/80">
+                  <code className="rounded bg-container/80 px-1 py-0.5 font-mono text-[11px] text-foreground/80">
                     {"{{secretKey}}"}
                   </code>{" "}
                   as a placeholder, and optionally include{" "}
-                  <code className="rounded bg-mineshaft-800/80 px-1 py-0.5 font-mono text-[11px] text-foreground/80">
+                  <code className="rounded bg-container/80 px-1 py-0.5 font-mono text-[11px] text-foreground/80">
                     {"{{environment}}"}
                   </code>
                   .{" "}

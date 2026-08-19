@@ -231,10 +231,8 @@ export const EmailDomainsTable = () => {
     <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xl font-medium text-mineshaft-100">Email Domains</p>
-          <p className="text-sm text-bunker-300">
-            Manage verified email domains across your instance.
-          </p>
+          <p className="text-xl font-medium text-foreground">Email Domains</p>
+          <p className="text-sm text-label">Manage verified email domains across your instance.</p>
         </div>
         <Button
           colorSchema="secondary"

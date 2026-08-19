@@ -148,12 +148,12 @@ export const RequestsTab = () => {
   const isTableFiltered = filter !== ApprovalRequestStatus.Pending;
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="mb-6 rounded-lg border border-border bg-card p-4">
       <div className="mb-4">
         <div className="flex items-center gap-x-2">
-          <p className="text-xl font-medium text-mineshaft-100">Certificate Approval Requests</p>
+          <p className="text-xl font-medium text-foreground">Certificate Approval Requests</p>
         </div>
-        <p className="text-sm text-bunker-300">
+        <p className="text-sm text-label">
           Review and manage certificate requests that require approval
         </p>
       </div>
@@ -166,8 +166,8 @@ export const RequestsTab = () => {
                 variant="plain"
                 size="sm"
                 className={twMerge(
-                  "flex h-9.5 w-[2.6rem] items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                  isTableFiltered && "border-primary/50 text-primary"
+                  "flex h-9.5 w-[2.6rem] items-center justify-center overflow-hidden border border-border bg-container p-0 transition-all hover:border-project/60 hover:bg-project/10",
+                  isTableFiltered && "border-project/50 text-project"
                 )}
               >
                 <FontAwesomeIcon icon={faFilter} />
@@ -197,7 +197,7 @@ export const RequestsTab = () => {
                   Closed Requests
                 </DropdownSubMenuTrigger>
                 <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
-                  <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
+                  <DropdownMenuLabel className="sticky top-0 bg-card">
                     Filter by Status
                   </DropdownMenuLabel>
                   <DropdownMenuItem
@@ -288,7 +288,7 @@ export const RequestsTab = () => {
                   return (
                     <Tr
                       key={request.id}
-                      className="h-14 cursor-pointer transition-colors hover:bg-mineshaft-700"
+                      className="h-14 cursor-pointer transition-colors hover:bg-container-hover"
                       onClick={() =>
                         navigate({
                           to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
@@ -305,26 +305,24 @@ export const RequestsTab = () => {
                     >
                       <Td>
                         <div>
-                          <div className="text-sm font-medium text-mineshaft-100">
+                          <div className="text-sm font-medium text-foreground">
                             {request.requesterName || "Unknown"}
                           </div>
-                          <div className="text-xs text-mineshaft-400">{request.requesterEmail}</div>
+                          <div className="text-xs text-muted">{request.requesterEmail}</div>
                         </div>
                       </Td>
                       <Td>
-                        <span className="text-sm text-mineshaft-200">
-                          {requestData.profileName}
-                        </span>
+                        <span className="text-sm text-foreground">{requestData.profileName}</span>
                       </Td>
                       <Td>
-                        <span className="text-sm text-mineshaft-200">
+                        <span className="text-sm text-foreground">
                           {requestData.certificateRequest?.commonName || "-"}
                         </span>
                       </Td>
                       <Td>
                         <div className="flex items-center gap-2">
                           {needsApproval ? (
-                            <div className="flex items-center gap-1 rounded bg-primary/20 px-2 py-0.5 text-xs text-primary">
+                            <div className="flex items-center gap-1 rounded bg-project/20 px-2 py-0.5 text-xs text-project">
                               <FontAwesomeIcon icon={faExclamationCircle} className="h-3 w-3" />
                               <span>Approval Required</span>
                             </div>
@@ -339,7 +337,7 @@ export const RequestsTab = () => {
                         </div>
                       </Td>
                       <Td>
-                        <span className="text-sm text-mineshaft-400">
+                        <span className="text-sm text-muted">
                           {formatDistance(new Date(request.createdAt), new Date(), {
                             addSuffix: true
                           })}

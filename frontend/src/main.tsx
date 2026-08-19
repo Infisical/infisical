@@ -70,7 +70,7 @@ const router = createRouter({
   routeTree,
   context: { serverConfig: null, queryClient },
   defaultPendingComponent: () => (
-    <div className="flex h-full w-full items-center justify-center bg-bunker-800 [#root>&]:h-screen">
+    <div className="flex h-full w-full items-center justify-center bg-background [#root>&]:h-screen">
       <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
     </div>
   ),

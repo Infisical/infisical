@@ -287,7 +287,7 @@ export const SecretEditRow = ({
           <FontAwesomeIcon className="pl-2" size="sm" icon={faEyeSlash} />
         </Tooltip>
       )}
-      <div className="grow border-r border-r-mineshaft-600 pr-2 pl-1">
+      <div className="grow border-r border-r-border pr-2 pl-1">
         <Controller
           control={control}
           name="value"
@@ -368,7 +368,7 @@ export const SecretEditRow = ({
                   onClick={handleFormReset}
                   isDisabled={isSubmitting}
                 >
-                  <FontAwesomeIcon icon={faXmark} className="hover:text-red" />
+                  <FontAwesomeIcon icon={faXmark} className="hover:text-danger" />
                 </IconButton>
               </Tooltip>
             </div>

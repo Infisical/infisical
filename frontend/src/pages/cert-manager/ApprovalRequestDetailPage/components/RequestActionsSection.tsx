@@ -62,8 +62,8 @@ export const RequestActionsSection = ({ request }: Props) => {
 
   if (hasAlreadyActed) {
     return (
-      <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-        <p className="text-sm text-mineshaft-300">
+      <div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-card px-4 py-3">
+        <p className="text-sm text-label">
           You have already provided your approval for this request.
         </p>
       </div>
@@ -106,12 +106,12 @@ export const RequestActionsSection = ({ request }: Props) => {
 
   return (
     <>
-      <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-4">
+      <div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-card px-4 py-4">
         <div className="flex items-center gap-2">
           <TriangleAlertIcon />
-          <h3 className="font-medium text-mineshaft-100">Action Required</h3>
+          <h3 className="font-medium text-foreground">Action Required</h3>
         </div>
-        <p className="text-sm text-mineshaft-300">
+        <p className="text-sm text-label">
           You are an approver for this request. Please review the details carefully before making
           your decision.
         </p>

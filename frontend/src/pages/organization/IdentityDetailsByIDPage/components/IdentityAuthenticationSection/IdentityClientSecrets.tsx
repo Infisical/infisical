@@ -36,9 +36,9 @@ export const IdentityClientSecrets = ({ identityId, handlePopUpOpen }: Props) =>
   return (
     <div>
       <div className="mb-4">
-        <p className="text-sm font-medium text-mineshaft-300">Client ID</p>
+        <p className="text-sm font-medium text-label">Client ID</p>
         <div className="group flex align-top">
-          <p className="text-sm text-mineshaft-300">{identityUniversalAuth?.clientId ?? ""}</p>
+          <p className="text-sm text-label">{identityUniversalAuth?.clientId ?? ""}</p>
           <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
             <Tooltip content={copyTextClientId}>
               <IconButton
@@ -58,7 +58,7 @@ export const IdentityClientSecrets = ({ identityId, handlePopUpOpen }: Props) =>
       </div>
       {clientSecrets?.length ? (
         <div className="flex justify-between">
-          <p className="text-sm font-medium text-mineshaft-300">{`Client Secrets (${clientSecrets.length})`}</p>
+          <p className="text-sm font-medium text-label">{`Client Secrets (${clientSecrets.length})`}</p>
           <Button
             variant="link"
             onClick={() => {
@@ -90,10 +90,8 @@ export const IdentityClientSecrets = ({ identityId, handlePopUpOpen }: Props) =>
               <div className="flex items-center">
                 <FontAwesomeIcon size="1x" icon={faKey} />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-mineshaft-300">
-                    {`${clientSecretPrefix}****`}
-                  </p>
-                  <p className="text-sm text-mineshaft-300">
+                  <p className="text-sm font-medium text-label">{`${clientSecretPrefix}****`}</p>
+                  <p className="text-sm text-label">
                     {expiresAt ? `Expires on ${format(expiresAt, "yyyy-MM-dd")}` : "No Expiry"}
                   </p>
                 </div>

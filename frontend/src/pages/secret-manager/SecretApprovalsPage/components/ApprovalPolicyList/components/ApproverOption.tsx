@@ -32,9 +32,7 @@ export const ApproverOption = ({
       <div className="flex flex-row items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <TypeIcon type={type} />
-          <span className={twMerge("truncate", isInactive && "text-mineshaft-400")}>
-            {children}
-          </span>
+          <span className={twMerge("truncate", isInactive && "text-muted")}>{children}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {isInactive && (

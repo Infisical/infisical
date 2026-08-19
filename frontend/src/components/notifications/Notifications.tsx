@@ -85,9 +85,7 @@ const NotificationBody = ({
           >
             {copyActions.map((action) => (
               <div className="flex flex-row items-center gap-1.5" key={`copy-${action.name}`}>
-                {action.label && (
-                  <span className="ml-2 text-xs text-mineshaft-400">{action.label}</span>
-                )}
+                {action.label && <span className="ml-2 text-xs text-muted">{action.label}</span>}
                 <ToastCopyButton value={action.value} name={action.name} />
               </div>
             ))}

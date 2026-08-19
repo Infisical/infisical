@@ -25,8 +25,8 @@ export const MenuIconButton = <T extends ElementType = "button">({
         type="button"
         role="menuitem"
         className={twMerge(
-          "group relative my-1 flex w-full cursor-pointer flex-col items-center justify-center rounded-sm p-2 font-inter text-sm text-bunker-100 transition-all duration-150 hover:bg-mineshaft-700",
-          isSelected && "rounded-none bg-bunker-800 hover:bg-mineshaft-600",
+          "group relative my-1 flex w-full cursor-pointer flex-col items-center justify-center rounded-sm p-2 font-inter text-sm text-foreground transition-all duration-150 hover:bg-container-hover",
+          isSelected && "rounded-none bg-background hover:bg-foreground/10",
           isDisabled && "cursor-not-allowed hover:bg-transparent",
           className
         )}
@@ -38,7 +38,7 @@ export const MenuIconButton = <T extends ElementType = "button">({
         <div
           className={`${
             isSelected ? "opacity-100" : "opacity-0"
-          } absolute left-0 h-full w-1 bg-primary transition-all duration-150`}
+          } absolute left-0 h-full w-1 bg-project transition-all duration-150`}
         />
         {icon && (
           <div className="my-auto mb-2 h-6 w-6">

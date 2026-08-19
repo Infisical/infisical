@@ -51,7 +51,7 @@ export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => 
     >
       <ModalContent title={`Renew Certificate: ${certificateData?.commonName || ""}`}>
         <div className="mb-6">
-          <p className="mb-4 text-sm text-mineshaft-300">
+          <p className="mb-4 text-sm text-label">
             Are you sure you want to renew this certificate now?
           </p>
         </div>

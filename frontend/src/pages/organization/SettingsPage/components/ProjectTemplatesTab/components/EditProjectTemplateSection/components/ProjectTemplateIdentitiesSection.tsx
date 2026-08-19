@@ -290,12 +290,12 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
     <>
       <form
         onSubmit={handleSubmit(onFormSubmit)}
-        className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+        className="mb-6 rounded-lg border border-border bg-card p-4"
       >
-        <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
+        <div className="mb-4 flex items-center justify-between border-b border-border pb-4">
           <div>
             <h2 className="text-lg font-medium">Project Machine Identities</h2>
-            <p className="text-sm text-mineshaft-400">
+            <p className="text-sm text-muted">
               Add machine identities that will be automatically added to projects created from this
               template
             </p>
@@ -342,10 +342,12 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
           </OrgPermissionCan>
         </div>
         {errors.identities && (
-          <span className="my-4 text-sm text-red">{errors.identities.message}</span>
+          <span className="my-4 text-sm text-danger">{errors.identities.message}</span>
         )}
         {errors.projectManagedIdentities && (
-          <span className="my-4 text-sm text-red">{errors.projectManagedIdentities.message}</span>
+          <span className="my-4 text-sm text-danger">
+            {errors.projectManagedIdentities.message}
+          </span>
         )}
         <TableContainer>
           <Table>
@@ -485,7 +487,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
           subTitle="Create a new machine identity or assign an existing one"
         >
           <div className="mb-4 flex items-center justify-center gap-x-2">
-            <div className="flex w-3/4 gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+            <div className="flex w-3/4 gap-x-0.5 rounded-md border border-border bg-container p-1">
               <Button
                 variant="outline_bg"
                 onClick={() => {
@@ -493,9 +495,9 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                 }}
                 size="xs"
                 className={twMerge(
-                  "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
+                  "min-w-[2.4rem] flex-1 rounded border-none hover:bg-foreground/10",
                   addMachineIdentityType === AddIdentityType.CreateNew
-                    ? "bg-mineshaft-500"
+                    ? "bg-foreground/10"
                     : "bg-transparent"
                 )}
               >
@@ -508,9 +510,9 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                 }}
                 size="xs"
                 className={twMerge(
-                  "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
+                  "min-w-[2.4rem] flex-1 rounded border-none hover:bg-foreground/10",
                   addMachineIdentityType === AddIdentityType.AssignExisting
-                    ? "bg-mineshaft-500"
+                    ? "bg-foreground/10"
                     : "bg-transparent"
                 )}
               >
@@ -523,21 +525,21 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
               align="start"
               content={
                 <>
-                  <p className="mb-2 text-mineshaft-300">
+                  <p className="mb-2 text-label">
                     You can add machine identities to your template in one of two ways:
                   </p>
                   <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
-                    <li className="text-mineshaft-200">
-                      <strong className="font-medium text-mineshaft-100">Create New</strong> -
-                      Define a new machine identity that will be created when a project is made from
-                      this template.
+                    <li className="text-foreground">
+                      <strong className="font-medium text-foreground">Create New</strong> - Define a
+                      new machine identity that will be created when a project is made from this
+                      template.
                       <p className="mt-2">
                         This method is recommended for autonomous teams that need to manage machine
                         identity authentication at the project level.
                       </p>
                     </li>
                     <li>
-                      <strong className="font-medium text-mineshaft-100">Assign Existing</strong> -
+                      <strong className="font-medium text-foreground">Assign Existing</strong> -
                       Assign an existing machine identity from your organization.
                       <p className="mt-2">
                         This method is recommended for organizations that need to maintain
@@ -548,7 +550,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                 </>
               }
             >
-              <InfoIcon size={16} className="text-mineshaft-400" />
+              <InfoIcon size={16} className="text-muted" />
             </Tooltip>
           </div>
           {addMachineIdentityType === AddIdentityType.CreateNew && (

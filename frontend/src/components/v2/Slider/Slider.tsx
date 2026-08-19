@@ -26,7 +26,7 @@ type Props = {
   onChangeComplete?: (value: number) => void;
 };
 
-const sliderTrackVariants = cva("h-1 w-full bg-mineshaft-600 rounded-full relative", {
+const sliderTrackVariants = cva("h-1 w-full bg-foreground/10 rounded-full relative", {
   variants: {
     variant: {
       default: "",
@@ -43,9 +43,9 @@ const sliderTrackVariants = cva("h-1 w-full bg-mineshaft-600 rounded-full relati
 const sliderFillVariants = cva("absolute h-full rounded-full", {
   variants: {
     variant: {
-      default: "bg-primary-500",
+      default: "bg-project",
       secondary: "bg-secondary-500",
-      danger: "bg-red-500"
+      danger: "bg-danger"
     },
     isDisabled: {
       true: "opacity-50",
@@ -59,9 +59,9 @@ const sliderThumbVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary-500 focus:ring-2 focus:ring-primary-400/50",
+        default: "bg-project focus:ring-2 focus:ring-project/50",
         secondary: "bg-secondary-500 focus:ring-2 focus:ring-secondary-400/50",
-        danger: "bg-red-500 focus:ring-2 focus:ring-red-400/50"
+        danger: "bg-danger focus:ring-2 focus:ring-danger/50"
       },
       isDisabled: {
         true: "opacity-50 cursor-not-allowed",
@@ -175,7 +175,7 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
     }, [isDragging, handleChangeComplete]);
 
     const ValueDisplay = showValue ? (
-      <div className="text-xs text-bunker-300">{currentValue}</div>
+      <div className="text-xs text-label">{currentValue}</div>
     ) : null;
 
     return (
@@ -226,7 +226,7 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
           />
 
           {showValue && valuePosition === "right" && (
-            <div className="ml-2 text-xs text-bunker-300">{currentValue}</div>
+            <div className="ml-2 text-xs text-label">{currentValue}</div>
           )}
         </div>
       </div>

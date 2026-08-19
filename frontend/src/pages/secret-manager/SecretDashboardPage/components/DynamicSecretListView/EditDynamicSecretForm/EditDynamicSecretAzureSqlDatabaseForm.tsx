@@ -242,7 +242,7 @@ export const EditDynamicSecretAzureSqlDatabaseForm = ({
           </div>
           <MetadataForm control={control} />
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-border pb-2 pl-1 font-medium text-foreground">
               Configuration
             </div>
             <div>
@@ -363,9 +363,9 @@ export const EditDynamicSecretAzureSqlDatabaseForm = ({
                     render={({ field: { value, onChange }, fieldState: { error } }) => (
                       <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
                         <Switch
-                          className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                          className="bg-muted/50 shadow-inner data-[state=checked]:bg-success/80"
                           id="azure-sql-edit-ssl-enabled"
-                          thumbClassName="bg-mineshaft-800"
+                          thumbClassName="bg-container"
                           isChecked={value}
                           onCheckedChange={onChange}
                         >
@@ -389,7 +389,7 @@ export const EditDynamicSecretAzureSqlDatabaseForm = ({
                         >
                           <SecretInput
                             {...field}
-                            containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                            containerClassName="text-label hover:border-project/50 border border-border bg-card px-2 py-1.5"
                           />
                         </FormControl>
                       )}
@@ -400,9 +400,9 @@ export const EditDynamicSecretAzureSqlDatabaseForm = ({
                       render={({ field: { value, onChange }, fieldState: { error } }) => (
                         <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
                           <Switch
-                            className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                            className="bg-muted/50 shadow-inner data-[state=checked]:bg-success/80"
                             id="ssl-reject-unauthorized"
-                            thumbClassName="bg-mineshaft-800"
+                            thumbClassName="bg-container"
                             isChecked={value}
                             onCheckedChange={onChange}
                           >
@@ -431,7 +431,7 @@ export const EditDynamicSecretAzureSqlDatabaseForm = ({
                     />
                   </>
                 )}
-                <Accordion type="multiple" className="mb-2 w-full bg-mineshaft-700">
+                <Accordion type="multiple" className="mb-2 w-full bg-container-hover">
                   <AccordionItem value="advanced">
                     <AccordionTrigger>
                       Creation, Revocation & Renew Statements (optional)
@@ -449,13 +449,13 @@ export const EditDynamicSecretAzureSqlDatabaseForm = ({
                             <Input
                               {...field}
                               value={field.value || undefined}
-                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              className="border-border bg-card text-sm"
                               placeholder="{{randomUsername}}"
                             />
                           </FormControl>
                         )}
                       />
-                      <div className="mb-4 text-sm text-mineshaft-300">
+                      <div className="mb-4 text-sm text-label">
                         Customize SQL statements for managing Azure SQL Database user lifecycle
                       </div>
                       <Controller
@@ -472,7 +472,7 @@ export const EditDynamicSecretAzureSqlDatabaseForm = ({
                               {...field}
                               reSize="none"
                               rows={3}
-                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              className="border-border bg-card text-sm"
                             />
                           </FormControl>
                         )}
@@ -491,7 +491,7 @@ export const EditDynamicSecretAzureSqlDatabaseForm = ({
                               {...field}
                               reSize="none"
                               rows={3}
-                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              className="border-border bg-card text-sm"
                             />
                           </FormControl>
                         )}
@@ -510,7 +510,7 @@ export const EditDynamicSecretAzureSqlDatabaseForm = ({
                               {...field}
                               reSize="none"
                               rows={3}
-                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              className="border-border bg-card text-sm"
                             />
                           </FormControl>
                         )}
@@ -529,7 +529,7 @@ export const EditDynamicSecretAzureSqlDatabaseForm = ({
                               {...field}
                               reSize="none"
                               rows={3}
-                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              className="border-border bg-card text-sm"
                             />
                           </FormControl>
                         )}
@@ -537,11 +537,11 @@ export const EditDynamicSecretAzureSqlDatabaseForm = ({
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
-                <Accordion type="multiple" className="mt-4 mb-2 w-full bg-mineshaft-700">
+                <Accordion type="multiple" className="mt-4 mb-2 w-full bg-container-hover">
                   <AccordionItem value="password-config">
                     <AccordionTrigger>Password Configuration (optional)</AccordionTrigger>
                     <AccordionContent>
-                      <div className="mb-4 text-sm text-mineshaft-300">
+                      <div className="mb-4 text-sm text-label">
                         Set constraints on the generated database password
                       </div>
                       <div className="space-y-4">
@@ -577,7 +577,7 @@ export const EditDynamicSecretAzureSqlDatabaseForm = ({
                               const length = watch("inputs.passwordRequirements.length") || 0;
                               const isError = total > length;
                               return (
-                                <span className={isError ? "text-red-500" : ""}>
+                                <span className={isError ? "text-danger" : ""}>
                                   Total required characters: {total}{" "}
                                   {isError ? `(exceeds length of ${length})` : ""}
                                 </span>

@@ -23,13 +23,13 @@ export const FolderBreadCrumbs = ({ secretPath = "/", onResetSearch }: Props) =>
   return (
     <div className="flex items-center space-x-2">
       <div
-        className="breadcrumb relative z-20 border-solid border-mineshaft-600 bg-mineshaft-800 py-1 pr-2 pl-5 text-sm hover:bg-mineshaft-600"
+        className="breadcrumb relative z-20 border-solid border-border bg-container py-1 pr-2 pl-5 text-sm hover:bg-foreground/10"
         onClick={() => onFolderCrumbClick(0)}
         onKeyDown={() => null}
         role="button"
         tabIndex={0}
       >
-        <FontAwesomeIcon icon={faFolderOpen} className="text-primary-700" />
+        <FontAwesomeIcon icon={faFolderOpen} className="text-project" />
       </div>
       {(secretPath || "")
         .split("/")
@@ -39,7 +39,7 @@ export const FolderBreadCrumbs = ({ secretPath = "/", onResetSearch }: Props) =>
             key={`secret-path-${index + 1}`}
             className={`breadcrumb relative z-20 ${
               index + 1 === arr.length ? "cursor-default" : "cursor-pointer"
-            } border-solid border-mineshaft-600 py-1 pr-2 pl-5 text-sm text-mineshaft-200`}
+            } border-solid border-border py-1 pr-2 pl-5 text-sm text-foreground`}
             onClick={() => onFolderCrumbClick(index + 1)}
             onKeyDown={() => null}
             role="button"

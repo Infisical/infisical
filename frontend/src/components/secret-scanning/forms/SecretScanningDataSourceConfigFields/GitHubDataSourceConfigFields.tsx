@@ -61,7 +61,7 @@ export const GitHubDataSourceConfigFields = () => {
           onValueChange={(val) => {
             setValue("config.includeRepos", val === ScanMethod.AllRepositories ? ["*"] : []);
           }}
-          className="w-full border border-mineshaft-500 capitalize"
+          className="w-full border border-border capitalize"
           position="popper"
           dropdownContainerClassName="max-w-none"
           isDisabled={!connectionId}
@@ -92,7 +92,7 @@ export const GitHubDataSourceConfigFields = () => {
                 >
                   <div>
                     <span>Don&#39;t see the repository you&#39;re looking for?</span>{" "}
-                    <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+                    <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
                   </div>
                 </Tooltip>
               }

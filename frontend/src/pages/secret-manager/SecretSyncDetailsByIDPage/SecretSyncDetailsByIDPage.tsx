@@ -82,13 +82,13 @@ const PageContent = () => {
 
   return (
     <>
-      <div className="container mx-auto flex flex-col justify-between bg-bunker-800 font-inter text-foreground">
+      <div className="container mx-auto flex flex-col justify-between bg-background font-inter text-foreground">
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <Link
             to={ROUTE_PATHS.SecretManager.IntegrationsListPage.path}
             params={{ orgId, projectId }}
             search={{ selectedTab: IntegrationsListPageTabs.SecretSyncs }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
           >
             <FontAwesomeIcon icon={faChevronLeft} />
             Secret Syncs

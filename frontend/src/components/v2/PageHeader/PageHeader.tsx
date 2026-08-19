@@ -56,7 +56,7 @@ export const PageHeader = ({ title, description, children, className, scope, ico
         </div>
         <div className="flex items-center gap-2">{children}</div>
       </div>
-      <div className="mt-1.5 text-mineshaft-300">{description}</div>
+      <div className="mt-1.5 text-label">{description}</div>
     </div>
   );
 };

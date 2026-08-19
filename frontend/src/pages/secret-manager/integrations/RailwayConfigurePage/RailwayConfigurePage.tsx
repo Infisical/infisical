@@ -139,7 +139,7 @@ export const RailwayConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
+            className="w-full border border-border"
           >
             {currentProject?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -162,7 +162,7 @@ export const RailwayConfigurePage = () => {
           <Select
             value={targetAppId}
             onValueChange={(val) => setTargetAppId(val)}
-            className="w-full border border-mineshaft-500"
+            className="w-full border border-border"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
@@ -185,7 +185,7 @@ export const RailwayConfigurePage = () => {
           <Select
             value={targetEnvironmentId}
             onValueChange={(val) => setTargetEnvironmentId(val)}
-            className="w-full border border-mineshaft-500"
+            className="w-full border border-border"
             isDisabled={targetEnvironments.length === 0}
           >
             {targetEnvironments.length > 0 ? (
@@ -208,7 +208,7 @@ export const RailwayConfigurePage = () => {
           <Select
             value={targetServiceId}
             onValueChange={(val) => setTargetServiceId(val)}
-            className="w-full border border-mineshaft-500"
+            className="w-full border border-border"
             isDisabled={targetServices.length === 0}
           >
             {filteredTargetServices.map((targetService) => (
@@ -223,7 +223,7 @@ export const RailwayConfigurePage = () => {
         </FormControl>
         <Button
           onClick={handleButtonClick}
-          color="mineshaft"
+          colorSchema="secondary"
           className="mt-4"
           isLoading={isLoading}
           isDisabled={integrationAuthApps.length === 0}

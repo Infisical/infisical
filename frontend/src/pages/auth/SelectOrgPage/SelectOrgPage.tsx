@@ -436,7 +436,7 @@ export const SelectOrgPage = () => {
 
   if (userLoading || !user) {
     return (
-      <div className="h-screen w-screen bg-bunker-800">
+      <div className="h-screen w-screen bg-background">
         <ContentLoader />
       </div>
     );

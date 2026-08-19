@@ -23,18 +23,18 @@ export const AppConnectionHeader = ({ app, isConnected }: Props) => {
         {appDetails.icon && (
           <FontAwesomeIcon
             icon={appDetails.icon}
-            className="absolute right-0.5 bottom-0.5 text-primary-700"
+            className="absolute right-0.5 bottom-0.5 text-project"
           />
         )}
       </div>
       <div>
-        <div className="flex items-center gap-x-2 text-mineshaft-300">
+        <div className="flex items-center gap-x-2 text-label">
           {appDetails.name}
           <DocumentationLinkBadge
             href={`https://infisical.com/docs/integrations/app-connections/${app}`}
           />
         </div>
-        <p className="text-sm leading-4 font-normal text-mineshaft-400">
+        <p className="text-sm leading-4 font-normal text-muted">
           {isConnected ? `${appDetails.name} Connection` : `Connect to ${appDetails.name}`}
         </p>
       </div>

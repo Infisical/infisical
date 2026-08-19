@@ -15,16 +15,16 @@ export const SecretScanningDataSourceModalHeader = ({ type, isConfigured }: Prop
       <img
         alt={`${dataSourceDetails.name} logo`}
         src={`/images/integrations/${dataSourceDetails.image}`}
-        className="h-12 rounded-md bg-bunker-500 p-2"
+        className="h-12 rounded-md bg-container p-2"
       />
       <div>
-        <div className="flex items-center gap-x-2 text-mineshaft-300">
+        <div className="flex items-center gap-x-2 text-label">
           {dataSourceDetails.name} Data Source
           <DocumentationLinkBadge
             href={`https://infisical.com/docs/documentation/platform/secret-scanning/${type}`}
           />
         </div>
-        <p className="text-sm leading-4 text-mineshaft-400">
+        <p className="text-sm leading-4 text-muted">
           {isConfigured ? "Edit" : "Connect a"} {dataSourceDetails.name} Data Source
         </p>
       </div>

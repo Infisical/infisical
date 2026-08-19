@@ -170,12 +170,12 @@ export const PermissionAuditSheet = ({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex h-full flex-col gap-y-0 p-0 sm:max-w-6xl">
-        <SheetHeader className="border-b border-mineshaft-700 px-6 py-5">
+        <SheetHeader className="border-b border-border px-6 py-5">
           <div className="min-w-0 flex-1">
             <SheetTitle className="flex items-center gap-2">
               Permission Audit
               <span className="text-muted">·</span>
-              <span className="inline-flex items-center gap-1 text-sm font-normal text-mineshaft-200">
+              <span className="inline-flex items-center gap-1 text-sm font-normal text-foreground">
                 <TargetIcon className="size-3.5" />
                 {targetName}
               </span>
@@ -183,11 +183,11 @@ export const PermissionAuditSheet = ({
             </SheetTitle>
             <SheetDescription className="mt-1 text-xs">
               Combined view of all permissions granted to{" "}
-              <span className="text-mineshaft-100">{targetName}</span>
+              <span className="text-foreground">{targetName}</span>
               {projectName ? (
                 <>
                   {" "}
-                  in <span className="text-mineshaft-100">{projectName}</span>
+                  in <span className="text-foreground">{projectName}</span>
                 </>
               ) : null}{" "}
               — direct roles, group-inherited roles, and additional privileges.
@@ -195,7 +195,7 @@ export const PermissionAuditSheet = ({
           </div>
         </SheetHeader>
 
-        <div className="flex flex-wrap items-center gap-3 border-b border-mineshaft-700 px-6 py-3">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-3">
           <Select
             value={stateFilter}
             onValueChange={(value) => setStateFilter(value as StateFilter)}
@@ -239,7 +239,7 @@ export const PermissionAuditSheet = ({
             <TooltipContent>Export CSV</TooltipContent>
           </Tooltip>
 
-          <div className="flex shrink-0 items-center gap-3 text-xs text-mineshaft-400">
+          <div className="flex shrink-0 items-center gap-3 text-xs text-muted">
             <span className="flex items-center gap-1">
               <CheckIcon className="size-3 text-success" /> Allow
             </span>

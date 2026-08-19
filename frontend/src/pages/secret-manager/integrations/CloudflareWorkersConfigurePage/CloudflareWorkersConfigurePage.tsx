@@ -80,8 +80,8 @@ export const CloudflareWorkersConfigurePage = () => {
   };
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps && targetApp ? (
-    <div className="flex h-full w-full items-center justify-center bg-linear-to-tr from-mineshaft-900 to-bunker-900">
-      <Card className="max-w-lg rounded-md border border-mineshaft-600 p-0">
+    <div className="flex h-full w-full items-center justify-center bg-linear-to-tr from-card to-background">
+      <Card className="max-w-lg rounded-md border border-border p-0">
         <CardTitle
           className="px-6 text-left"
           subTitle="Choose which environment in Infisical you want to sync with your Cloudflare Workers project."
@@ -92,7 +92,7 @@ export const CloudflareWorkersConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
+            className="w-full border border-border"
           >
             {currentProject?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -116,7 +116,7 @@ export const CloudflareWorkersConfigurePage = () => {
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
-            className="w-full border border-mineshaft-500"
+            className="w-full border border-border"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
@@ -137,7 +137,7 @@ export const CloudflareWorkersConfigurePage = () => {
         </FormControl>
         <Button
           onClick={handleButtonClick}
-          color="mineshaft"
+          colorSchema="secondary"
           variant="outline_bg"
           className="mt-2 mr-6 mb-6 ml-auto"
           isFullWidth={false}

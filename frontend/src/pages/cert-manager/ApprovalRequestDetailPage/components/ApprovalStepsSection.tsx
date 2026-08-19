@@ -29,12 +29,12 @@ const getMemberLabel = (member: {
 
 const getStepCircleClasses = (isCurrentStep: boolean, isCompleted: boolean) => {
   if (isCurrentStep) {
-    return "bg-primary/20 text-primary ring-2 ring-primary/50";
+    return "bg-project/20 text-project ring-2 ring-project/50";
   }
   if (isCompleted) {
-    return "bg-primary text-black";
+    return "bg-project text-black";
   }
-  return "bg-mineshaft-600 text-mineshaft-300";
+  return "bg-foreground/10 text-label";
 };
 
 export const ApprovalStepsSection = ({ request }: Props) => {
@@ -59,19 +59,17 @@ export const ApprovalStepsSection = ({ request }: Props) => {
   );
 
   return (
-    <div className="flex w-full flex-col rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-4">
-      <h3 className="mb-4 text-base font-medium text-mineshaft-100">Approval Workflow</h3>
+    <div className="flex w-full flex-col rounded-lg border border-border bg-card px-4 py-4">
+      <h3 className="mb-4 text-base font-medium text-foreground">Approval Workflow</h3>
 
       {request.steps.length === 0 && request.status === ApprovalRequestStatus.Approved ? (
-        <div className="flex items-start gap-3 rounded-md border border-mineshaft-600 bg-mineshaft-800 px-3 py-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+        <div className="flex items-start gap-3 rounded-md border border-border bg-container px-3 py-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-project/15 text-project">
             <CheckCircle2 className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-mineshaft-100">Pre-approved</p>
-            <p className="mt-0.5 text-xs text-mineshaft-400">
-              An Administrator pre-approved this request.
-            </p>
+            <p className="text-sm font-medium text-foreground">Pre-approved</p>
+            <p className="mt-0.5 text-xs text-muted">An Administrator pre-approved this request.</p>
           </div>
         </div>
       ) : (
@@ -86,7 +84,7 @@ export const ApprovalStepsSection = ({ request }: Props) => {
                 {!isLast && (
                   <div
                     className={`absolute top-6 left-[11px] h-[calc(100%-26px)] w-0.5 ${
-                      isCompleted ? "bg-primary" : "bg-mineshaft-600"
+                      isCompleted ? "bg-project" : "bg-foreground/10"
                     }`}
                   />
                 )}
@@ -100,7 +98,7 @@ export const ApprovalStepsSection = ({ request }: Props) => {
                 <div className={`flex-1 pb-4 ${isLast ? "pb-0" : ""}`}>
                   <div className="flex items-center gap-2">
                     <span
-                      className={`text-sm font-medium ${isCurrentStep || isCompleted ? "text-mineshaft-100" : "text-mineshaft-400"}`}
+                      className={`text-sm font-medium ${isCurrentStep || isCompleted ? "text-foreground" : "text-muted"}`}
                     >
                       {step.name || `Step ${index + 1}`}
                     </span>
@@ -110,7 +108,7 @@ export const ApprovalStepsSection = ({ request }: Props) => {
                       </Badge>
                     )}
                   </div>
-                  <p className="mt-0.5 text-xs text-mineshaft-400">
+                  <p className="mt-0.5 text-xs text-muted">
                     {step.requiredApprovals} approval{step.requiredApprovals > 1 ? "s" : ""}{" "}
                     required
                   </p>
@@ -126,17 +124,17 @@ export const ApprovalStepsSection = ({ request }: Props) => {
                       return (
                         <div
                           key={approver.id}
-                          className="flex items-center gap-2 rounded-md bg-mineshaft-700 px-3 py-1.5 text-sm text-mineshaft-300"
+                          className="flex items-center gap-2 rounded-md bg-container-hover px-3 py-1.5 text-sm text-label"
                         >
                           <User className="h-3.5 w-3.5" />
                           <span className="flex-1">
                             {getApproverLabel(approver.id, approver.type)}
                           </span>
-                          {isApproved && <span className="text-xs text-green-500">Approved</span>}
-                          {isRejected && <span className="text-xs text-red-500">Rejected</span>}
+                          {isApproved && <span className="text-xs text-success">Approved</span>}
+                          {isRejected && <span className="text-xs text-danger">Rejected</span>}
                           {hasComment && (
                             <Tooltip content={approval.comment}>
-                              <Eye className="h-3.5 w-3.5 cursor-pointer text-mineshaft-400 hover:text-mineshaft-200" />
+                              <Eye className="h-3.5 w-3.5 cursor-pointer text-muted hover:text-foreground" />
                             </Tooltip>
                           )}
                         </div>

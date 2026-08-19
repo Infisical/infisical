@@ -56,12 +56,12 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <div className="h-full">
-        <div className="mx-auto h-full w-full max-w-8xl bg-bunker-800 text-foreground">
+        <div className="mx-auto h-full w-full max-w-8xl bg-background text-foreground">
           <Button
             variant="ghost"
             type="button"
             onClick={onBack}
-            className="mb-2 px-0 text-mineshaft-300 hover:bg-transparent hover:text-mineshaft-100"
+            className="mb-2 px-0 text-label hover:bg-transparent hover:text-foreground"
           >
             <ChevronLeft className="size-4" />
             Back to Templates
@@ -74,7 +74,7 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
                 {getProjectTitle(projectType)}
                 {projectTemplate?.description && (
                   <>
-                    <span className="px-2 text-mineshaft-500">&bull;</span>
+                    <span className="px-2 text-muted">&bull;</span>
                     {projectTemplate.description}
                   </>
                 )}

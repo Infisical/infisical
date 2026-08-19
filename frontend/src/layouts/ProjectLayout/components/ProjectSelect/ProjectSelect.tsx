@@ -222,9 +222,7 @@ const ProjectSelectInner = () => {
                     >
                       <Star
                         className={
-                          workspace.isFavorite
-                            ? "fill-yellow-600 text-yellow-600"
-                            : "text-yellow-600"
+                          workspace.isFavorite ? "fill-warning text-warning" : "text-warning"
                         }
                       />
                     </IconButton>

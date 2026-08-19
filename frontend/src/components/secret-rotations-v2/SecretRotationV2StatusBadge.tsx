@@ -32,16 +32,16 @@ export const SecretRotationV2StatusBadge = ({ secretRotation }: Props) => {
         content={
           <div className="flex flex-col gap-2 py-1 whitespace-normal">
             <div>
-              <div className="mb-2 flex self-start text-red">
+              <div className="mb-2 flex self-start text-danger">
                 <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
                 <div className="text-xs">Failure Reason</div>
               </div>
-              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
+              <div className="rounded-sm bg-foreground/10 p-2 text-xs break-words">
                 {errorMessage}
               </div>
             </div>
             {nextRotationAt && (
-              <span className="text-xs text-mineshaft-300">
+              <span className="text-xs text-label">
                 Next rotation attempt on {format(nextRotationAt, "MM/dd/yyyy")} at{" "}
                 {format(nextRotationAt, "h:mm aa")}.
               </span>
@@ -77,7 +77,7 @@ export const SecretRotationV2StatusBadge = ({ secretRotation }: Props) => {
           <span>
             Rotates on {format(nextRotationAt, "MM/dd/yyyy")} at {format(nextRotationAt, "h:mm aa")}
           </span>{" "}
-          <span className="text-mineshaft-300">(Local Time)</span>
+          <span className="text-label">(Local Time)</span>
         </>
       }
       asChild

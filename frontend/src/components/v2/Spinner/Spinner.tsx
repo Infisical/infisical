@@ -20,7 +20,7 @@ export const Spinner = ({ className, size = "md" }: Props): JSX.Element => {
       <svg
         aria-hidden="true"
         className={twMerge(
-          "m-1 animate-spin fill-primary text-label dark:text-muted",
+          "m-1 animate-spin fill-project text-label dark:text-muted",
           sizeChart[size],
           className
         )}

@@ -121,12 +121,12 @@ export const PolicyDetailsStep = ({ applicationId }: Props) => {
               id="bypassForMachineIdentities"
               isChecked={value}
               onCheckedChange={onChange}
-              checkIndicatorBg="text-primary"
+              checkIndicatorBg="text-project"
             >
-              <span className="text-sm text-mineshaft-200">
+              <span className="text-sm text-foreground">
                 Bypass approval for machine identities
               </span>
-              <p className="text-xs text-mineshaft-400">
+              <p className="text-xs text-muted">
                 When enabled, machine identities can issue certificates without requiring approval
               </p>
             </Checkbox>

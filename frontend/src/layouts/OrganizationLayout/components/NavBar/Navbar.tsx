@@ -844,7 +844,7 @@ export const Navbar = () => {
         <ModalContent
           title={
             <div className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="text-lg text-primary-400" />
+              <FontAwesomeIcon icon={faExclamationTriangle} className="text-lg text-project" />
               Your payment could not be processed.
             </div>
           }

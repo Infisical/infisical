@@ -45,13 +45,13 @@ export const PolicyTab = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="mb-6 rounded-lg border border-border bg-card p-4">
       <div className="mb-4 flex items-start">
         <div className="flex-1">
           <div className="flex items-center gap-x-2">
-            <p className="text-xl font-medium text-mineshaft-100">Certificate Approval Policies</p>
+            <p className="text-xl font-medium text-foreground">Certificate Approval Policies</p>
           </div>
-          <p className="text-sm text-bunker-300">
+          <p className="text-sm text-label">
             Existing project-level policies remain editable. Create new approval policies inside an
             Application.
           </p>

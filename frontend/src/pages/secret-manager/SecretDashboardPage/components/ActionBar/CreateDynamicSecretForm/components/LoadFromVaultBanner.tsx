@@ -25,10 +25,10 @@ export const LoadFromVaultBanner = ({ onClick }: Props) => {
 
   if (hasVaultConnection && canUseAppConnectionImport) {
     return (
-      <div className="mb-4 flex items-center justify-between rounded-md border border-primary-400/30 bg-primary/10 px-3 py-2.5">
+      <div className="mb-4 flex items-center justify-between rounded-md border border-project/30 bg-project/10 px-3 py-2.5">
         <div className="flex items-center gap-2 text-sm">
-          <FontAwesomeIcon icon={faInfoCircle} className="text-primary" />
-          <span className="text-mineshaft-200">Load values from HashiCorp Vault</span>
+          <FontAwesomeIcon icon={faInfoCircle} className="text-project" />
+          <span className="text-foreground">Load values from HashiCorp Vault</span>
         </div>
         <Tooltip
           content={

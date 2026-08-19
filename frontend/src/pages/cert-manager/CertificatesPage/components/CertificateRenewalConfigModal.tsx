@@ -92,16 +92,16 @@ export const CertificateRenewalConfigModal = ({ popUp, handlePopUpToggle }: Prop
       <ModalContent title={`Configure Auto-Renewal: ${certificateData?.commonName || ""}`}>
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="mb-4">
-            <p className="mb-4 text-sm text-mineshaft-300">
+            <p className="mb-4 text-sm text-label">
               Configure when this certificate should be automatically renewed. The certificate will
               be renewed when it has the specified number of days remaining before expiration.
             </p>
 
-            <div className="mb-4 rounded border bg-mineshaft-800 p-3">
-              <p className="text-sm text-mineshaft-300">
+            <div className="mb-4 rounded border bg-container p-3">
+              <p className="text-sm text-label">
                 <strong>Certificate TTL:</strong> {certificateData?.ttlDays} days
               </p>
-              <p className="text-sm text-mineshaft-300">
+              <p className="text-sm text-label">
                 <strong>Current Setting:</strong>{" "}
                 {certificateData?.renewBeforeDays
                   ? `${certificateData.renewBeforeDays} days before expiration`
@@ -134,8 +134,8 @@ export const CertificateRenewalConfigModal = ({ popUp, handlePopUpToggle }: Prop
             />
 
             {renewBeforeDays && certificateData?.ttlDays && (
-              <div className="mt-2 rounded bg-primary-900/20 p-2">
-                <p className="text-sm text-primary-300">
+              <div className="mt-2 rounded bg-project/20 p-2">
+                <p className="text-sm text-project">
                   {renewBeforeDays >= certificateData.ttlDays
                     ? "⚠️ Renewal days must be less than certificate TTL"
                     : `✓ Certificate will be renewed ${renewBeforeDays} days before expiration`}

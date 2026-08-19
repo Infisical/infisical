@@ -14,7 +14,7 @@ export const HoneyTokenConfigurationFields = ({ environments }: Props) => {
 
   return (
     <>
-      <p className="mb-4 text-sm text-bunker-300">Select where to plant the honey token secrets.</p>
+      <p className="mb-4 text-sm text-label">Select where to plant the honey token secrets.</p>
       {environments && (
         <Controller
           control={control}

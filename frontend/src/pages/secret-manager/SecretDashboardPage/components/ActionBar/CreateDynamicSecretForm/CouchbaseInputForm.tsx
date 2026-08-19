@@ -52,7 +52,7 @@ const BucketScopesConfiguration = ({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-mineshaft-300">Scopes</label>
+        <label className="text-sm font-medium text-label">Scopes</label>
         <Button
           type="button"
           variant="outline_bg"
@@ -67,10 +67,10 @@ const BucketScopesConfiguration = ({
       {scopeFields.map((_scope: any, scopeIndex: number) => (
         <div
           key={`scope-${scopeIndex + 1}`}
-          className="space-y-3 rounded-sm border border-mineshaft-600 bg-mineshaft-700 p-3"
+          className="space-y-3 rounded-sm border border-border bg-container-hover p-3"
         >
           <div className="flex items-center justify-between">
-            <h5 className="text-xs font-medium text-mineshaft-200">Scope {scopeIndex + 1}</h5>
+            <h5 className="text-xs font-medium text-foreground">Scope {scopeIndex + 1}</h5>
             <IconButton
               type="button"
               variant="plain"
@@ -78,7 +78,7 @@ const BucketScopesConfiguration = ({
               size="sm"
               onClick={() => removeScope(bucketIndex, scopeIndex)}
             >
-              <FontAwesomeIcon icon={faTrash} className="text-red-400" />
+              <FontAwesomeIcon icon={faTrash} className="text-danger" />
             </IconButton>
           </div>
 
@@ -94,7 +94,7 @@ const BucketScopesConfiguration = ({
 
           <div className="space-y-2 pl-4">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-mineshaft-300">Collections</label>
+              <label className="text-xs font-medium text-label">Collections</label>
               <Button
                 type="button"
                 variant="outline_bg"
@@ -137,7 +137,7 @@ const BucketScopesConfiguration = ({
                     size="sm"
                     onClick={() => removeCollection(bucketIndex, scopeIndex, collectionIndex)}
                   >
-                    <FontAwesomeIcon icon={faTrash} className="text-red-400" />
+                    <FontAwesomeIcon icon={faTrash} className="text-danger" />
                   </IconButton>
                 </div>
               )
@@ -145,7 +145,7 @@ const BucketScopesConfiguration = ({
 
             {(!scopeFields[scopeIndex]?.collections ||
               scopeFields[scopeIndex].collections.length === 0) && (
-              <div className="text-xs text-mineshaft-400 italic">
+              <div className="text-xs text-muted italic">
                 No collections specified (access to all collections in scope)
               </div>
             )}
@@ -154,8 +154,8 @@ const BucketScopesConfiguration = ({
       ))}
 
       {scopeFields.length === 0 && (
-        <div className="rounded-sm border border-dashed border-mineshaft-600 bg-mineshaft-700 p-4 text-center">
-          <p className="mb-2 text-xs text-mineshaft-400">
+        <div className="rounded-sm border border-dashed border-border bg-container-hover p-4 text-center">
+          <p className="mb-2 text-xs text-muted">
             No scopes configured (access to all scopes in bucket)
           </p>
           <Button
@@ -454,7 +454,7 @@ export const CouchbaseInputForm = ({
             </div>
           </div>
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-border pb-2 pl-1 font-medium text-foreground">
               Configuration
             </div>
             <div className="flex flex-col">
@@ -607,10 +607,10 @@ export const CouchbaseInputForm = ({
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="text-sm font-medium text-mineshaft-200">
+                        <div className="text-sm font-medium text-foreground">
                           Advanced Bucket Configuration
                         </div>
-                        <div className="text-sm text-mineshaft-400">
+                        <div className="text-sm text-muted">
                           Configure specific buckets with their scopes and collections. Leave scopes
                           empty for access to all scopes in a bucket.
                         </div>
@@ -631,10 +631,10 @@ export const CouchbaseInputForm = ({
                         (bucketsValue as any[]).map((_, bucketIndex) => (
                           <div
                             key={`bucket-${bucketIndex + 1}`}
-                            className="space-y-4 rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-4"
+                            className="space-y-4 rounded-sm border border-border bg-container p-4"
                           >
                             <div className="flex items-center justify-between">
-                              <h4 className="text-sm font-medium text-mineshaft-200">
+                              <h4 className="text-sm font-medium text-foreground">
                                 Bucket {bucketIndex + 1}
                               </h4>
                               <IconButton
@@ -643,7 +643,7 @@ export const CouchbaseInputForm = ({
                                 ariaLabel="Remove bucket"
                                 onClick={() => removeBucket(bucketIndex)}
                               >
-                                <FontAwesomeIcon icon={faTrash} className="text-red-400" />
+                                <FontAwesomeIcon icon={faTrash} className="text-danger" />
                               </IconButton>
                             </div>
 
@@ -675,8 +675,8 @@ export const CouchbaseInputForm = ({
                         ))}
 
                       {(!Array.isArray(bucketsValue) || bucketsValue.length === 0) && (
-                        <div className="rounded-sm border border-dashed border-mineshaft-600 p-8 text-center">
-                          <p className="mb-2 text-sm text-mineshaft-400">No buckets configured</p>
+                        <div className="rounded-sm border border-dashed border-border p-8 text-center">
+                          <p className="mb-2 text-sm text-muted">No buckets configured</p>
                           <Button
                             type="button"
                             variant="outline_bg"
@@ -702,7 +702,7 @@ export const CouchbaseInputForm = ({
                       label="API Key"
                     >
                       <SecretInput
-                        containerClassName="text-muted group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                        containerClassName="text-muted group-focus-within:border-project/50! border border-border bg-card px-2.5 py-1.5"
                         valueAlwaysHidden
                         value={value}
                         rows={1}
@@ -727,29 +727,29 @@ export const CouchbaseInputForm = ({
                     <Input
                       {...field}
                       value={field.value || undefined}
-                      className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                      className="border-border bg-card text-sm"
                       placeholder="{{randomUsername}}"
                     />
                   </FormControl>
                 )}
               />
-              <Accordion type="multiple" className="mt-4 mb-2 w-full bg-mineshaft-700">
+              <Accordion type="multiple" className="mt-4 mb-2 w-full bg-container-hover">
                 <AccordionItem value="password-config">
                   <AccordionTrigger>
                     <div className="flex items-center space-x-2">
                       <span>Password Configuration (optional)</span>
                       <Tooltip content="Couchbase password requirements: minimum 8 characters, at least 1 uppercase, 1 lowercase, 1 digit, 1 special character. Cannot contain: < > ; . * & | £">
-                        <div className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-mineshaft-600 text-xs text-mineshaft-300">
+                        <div className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-foreground/10 text-xs text-label">
                           ?
                         </div>
                       </Tooltip>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
-                    <div className="mb-4 text-sm text-mineshaft-300">
+                    <div className="mb-4 text-sm text-label">
                       Set constraints on the generated Couchbase user password (8-128 characters)
                       <br />
-                      <span className="text-xs text-mineshaft-400">
+                      <span className="text-xs text-muted">
                         Forbidden characters: &lt; &gt; ; . * &amp; | £
                       </span>
                     </div>
@@ -787,7 +787,7 @@ export const CouchbaseInputForm = ({
                             const length = watch("provider.passwordRequirements.length") || 0;
                             const isError = total > length;
                             return (
-                              <span className={isError ? "text-red-500" : ""}>
+                              <span className={isError ? "text-danger" : ""}>
                                 Total required characters: {total}{" "}
                                 {isError ? `(exceeds length of ${length})` : ""}
                               </span>

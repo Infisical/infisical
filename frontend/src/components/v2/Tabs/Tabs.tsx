@@ -23,7 +23,7 @@ export type TabListProps = TabsPrimitive.TabsListProps;
 export const TabList = ({ className, children, ...props }: TabListProps) => (
   <TabsPrimitive.List
     className={twMerge(
-      "no-scrollbar flex shrink-0 overflow-auto border-b-2 border-mineshaft-800",
+      "no-scrollbar flex shrink-0 overflow-auto border-b-2 border-border",
       "data-[orientation=vertical]:xl:flex-col data-[orientation=vertical]:xl:items-start data-[orientation=vertical]:xl:gap-y-6 data-[orientation=vertical]:xl:border-b-0",
       className
     )}
@@ -48,15 +48,15 @@ export const Tab = ({
   <TabsPrimitive.Trigger
     className={twMerge(
       "flex h-11 cursor-pointer items-center justify-center border-transparent",
-      "px-3 text-sm font-medium whitespace-nowrap text-mineshaft-300/75 transition-all select-none",
+      "px-3 text-sm font-medium whitespace-nowrap text-label/75 transition-all select-none",
       "data-[orientation=vertical]:xl:h-5 data-[orientation=vertical]:xl:border-b-0 data-[orientation=vertical]:xl:border-l",
-      "border-b hover:text-mineshaft-200",
-      "data-[state=active]:border-mineshaft-400 data-[state=active]:text-foreground",
-      "hover:border-mineshaft-400",
-      variant === "project" && "data-[state=active]:border-primary",
-      variant === "namespace" && "data-[state=active]:border-namespace-v1",
-      variant === "org" && "data-[state=active]:border-org-v1",
-      variant === "instance" && "data-[state=active]:border-mineshaft-300",
+      "border-b hover:text-foreground",
+      "data-[state=active]:border-border data-[state=active]:text-foreground",
+      "hover:border-foreground/20",
+      variant === "project" && "data-[state=active]:border-project",
+      variant === "namespace" && "data-[state=active]:border-sub-org",
+      variant === "org" && "data-[state=active]:border-org",
+      variant === "instance" && "data-[state=active]:border-border",
       className
     )}
     {...props}

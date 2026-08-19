@@ -61,7 +61,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           <SelectPrimitive.Trigger
             ref={ref}
             className={twMerge(
-              "inline-flex items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-hidden focus:bg-mineshaft-700/80 data-placeholder:text-mineshaft-400",
+              "inline-flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 font-inter text-sm font-normal text-foreground outline-hidden focus:bg-container-hover/80 data-placeholder:text-muted",
               className,
               isDisabled && "cursor-not-allowed opacity-50"
             )}
@@ -86,7 +86,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
             <SelectPrimitive.Content
               side={side}
               className={twMerge(
-                "relative top-1 z-100 max-w-sm overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md",
+                "relative top-1 z-100 max-w-sm overflow-hidden rounded-md border border-border bg-popover font-inter text-foreground shadow-md",
                 position === "popper" && "max-h-72",
                 dropdownContainerClassName
               )}
@@ -136,14 +136,14 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
         {...props}
         disabled={isDisabled}
         className={twMerge(
-          "relative mb-0.5 cursor-pointer items-center truncate overflow-hidden rounded-md py-2 pr-4 pl-10 text-sm outline-hidden transition-all select-none hover:bg-mineshaft-500 data-highlighted:bg-mineshaft-700/80",
-          isSelected && "bg-primary",
+          "relative mb-0.5 cursor-pointer items-center truncate overflow-hidden rounded-md py-2 pr-4 pl-10 text-sm outline-hidden transition-all select-none hover:bg-foreground/10 data-highlighted:bg-container-hover/80",
+          isSelected && "bg-project",
           isDisabled && "cursor-not-allowed text-muted opacity-80 hover:bg-transparent!",
           className
         )}
         ref={forwardedRef}
       >
-        <SelectPrimitive.ItemIndicator className="absolute left-3.5 text-primary">
+        <SelectPrimitive.ItemIndicator className="absolute left-3.5 text-project">
           <FontAwesomeIcon icon={props.customIcon ? props.customIcon : faCheck} />
         </SelectPrimitive.ItemIndicator>
         <SelectPrimitive.ItemText className="">{children}</SelectPrimitive.ItemText>
@@ -171,17 +171,16 @@ export const SelectClear = forwardRef<HTMLDivElement, SelectClearProps>(
         onSelect={() => onClear()}
         onClick={() => onClear()}
         className={twMerge(
-          "relative mb-0.5 flex cursor-pointer items-center rounded-md py-2 pr-4 pl-10 text-sm outline-hidden transition-all select-none hover:bg-mineshaft-500 data-highlighted:bg-mineshaft-700/80",
-          isSelected && "bg-primary",
-          isDisabled &&
-            "cursor-not-allowed text-muted hover:bg-transparent hover:text-mineshaft-600",
+          "relative mb-0.5 flex cursor-pointer items-center rounded-md py-2 pr-4 pl-10 text-sm outline-hidden transition-all select-none hover:bg-foreground/10 data-highlighted:bg-container-hover/80",
+          isSelected && "bg-project",
+          isDisabled && "cursor-not-allowed text-muted hover:bg-transparent hover:text-muted",
           className
         )}
         ref={forwardedRef}
       >
         <div
           className={twMerge(
-            "absolute left-3.5 text-primary",
+            "absolute left-3.5 text-project",
             selectValue === "" ? "visible" : "hidden"
           )}
         >

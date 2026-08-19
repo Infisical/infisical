@@ -203,7 +203,7 @@ export const AzureEntraIdInputForm = ({
             </div>
           </div>
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-border pb-2 pl-1 font-medium text-foreground">
               Configuration
             </div>
             <div className="flex flex-col">
@@ -271,10 +271,10 @@ export const AzureEntraIdInputForm = ({
             </div>
           </div>
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-border pb-2 pl-1 font-medium text-foreground">
               Select Users
             </div>
-            <div className="mb-4 flex items-center text-sm font-normal text-mineshaft-400">
+            <div className="mb-4 flex items-center text-sm font-normal text-muted">
               &nbsp; We create a unique dynamic secret for each user in Entra Id.
             </div>
             <div className="flex flex-col">
@@ -296,15 +296,19 @@ export const AzureEntraIdInputForm = ({
                                 {(() => {
                                   let icon;
                                   if (errored) {
-                                    icon = <FontAwesomeIcon icon={faWarning} color="red" />;
+                                    icon = (
+                                      <FontAwesomeIcon icon={faWarning} className="text-danger" />
+                                    );
                                   } else if (loading || !configurationComplete) {
-                                    icon = <FontAwesomeIcon icon={faWarning} color="yellow" />;
+                                    icon = (
+                                      <FontAwesomeIcon icon={faWarning} className="text-warning" />
+                                    );
                                   } else {
                                     icon = null;
                                   }
                                   return icon;
                                 })()}
-                                <span className="ml-4 cursor-default text-mineshaft-300 hover:text-mineshaft-200">
+                                <span className="ml-4 cursor-default text-label hover:text-foreground">
                                   {(() => {
                                     let message;
                                     if (loading) {

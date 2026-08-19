@@ -274,7 +274,7 @@ export const WinRMConnectionForm = ({ appConnection, onSubmit }: Props) => {
           render={({ field, fieldState: { error } }) => (
             <Field className={sslEnabled ? "mb-4" : "mb-4 opacity-50"}>
               <FieldLabel htmlFor="ssl-certificate">
-                SSL Certificate <span className="text-mineshaft-400">(optional)</span>
+                SSL Certificate <span className="text-muted">(optional)</span>
               </FieldLabel>
               <TextArea
                 id="ssl-certificate"

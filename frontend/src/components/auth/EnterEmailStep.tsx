@@ -57,7 +57,7 @@ export default function EnterEmailStep({
     <div className="mx-auto flex w-full flex-col items-center justify-center">
       <AuthPagePanel>
         <CardHeader className="mb-4 gap-4">
-          <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
+          <CardTitle className="ml-0.5 bg-linear-to-b from-white to-label bg-clip-text text-[1.65rem] font-medium text-transparent">
             {t("signup.step1-start")}
           </CardTitle>
         </CardHeader>

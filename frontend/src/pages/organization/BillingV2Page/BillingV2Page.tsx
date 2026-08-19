@@ -147,7 +147,7 @@ export const BillingV2Page = () => {
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
-      <div className="mb-8 flex w-full justify-center bg-bunker-800 text-foreground">
+      <div className="mb-8 flex w-full justify-center bg-background text-foreground">
         <div className="w-full max-w-8xl">
           <PageHeader scope="org" title={t("billing.title")} description={pageDescription} />
           <OrgPermissionCan

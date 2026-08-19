@@ -82,7 +82,7 @@ export const IntegrationDetailsByIDPage = () => {
         <meta property="og:title" content="Manage your .env files in seconds" />
         <meta name="og:description" content={t("integrations.description") as string} />
       </Helmet>
-      <div className="mx-auto flex max-w-8xl flex-col justify-between bg-bunker-800 text-foreground">
+      <div className="mx-auto flex max-w-8xl flex-col justify-between bg-background text-foreground">
         {integration ? (
           <div className="mx-auto mb-6 w-full max-w-8xl">
             <PageHeader
@@ -91,7 +91,7 @@ export const IntegrationDetailsByIDPage = () => {
             >
               <DropdownMenu>
                 <DropdownMenuTrigger asChild className="rounded-lg">
-                  <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                  <div className="hover:text-project data-[state=open]:text-project">
                     <Tooltip content="More options">
                       <Button variant="outline_bg">More</Button>
                     </Tooltip>
@@ -120,7 +120,7 @@ export const IntegrationDetailsByIDPage = () => {
                       <DropdownMenuItem
                         className={twMerge(
                           isAllowed
-                            ? "hover:bg-red-500! hover:text-white!"
+                            ? "hover:bg-danger! hover:text-white!"
                             : "pointer-events-none cursor-not-allowed opacity-50"
                         )}
                         onClick={() => {

@@ -178,7 +178,7 @@ export const GcpSecretManagerConfigurePage = () => {
       })}
       className="flex h-full w-full flex-col items-center justify-center"
     >
-      <Card className="max-w-lg rounded-md border border-mineshaft-600">
+      <Card className="max-w-lg rounded-md border border-border">
         <Helmet>
           <title>Set Up GCP Secret Manager Integration</title>
         </Helmet>
@@ -201,7 +201,7 @@ export const GcpSecretManagerConfigurePage = () => {
               rel="noopener noreferrer"
               href="https://infisical.com/docs/integrations/cloud/gcp-secret-manager"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
@@ -214,7 +214,7 @@ export const GcpSecretManagerConfigurePage = () => {
         </CardTitle>
         <Tabs defaultValue={TabSections.Connection} className="px-6">
           <TabList>
-            <div className="flex w-full flex-row border-b border-mineshaft-600">
+            <div className="flex w-full flex-row border-b border-border">
               <Tab value={TabSections.Connection}>Connection</Tab>
               <Tab value={TabSections.Options}>Options</Tab>
             </div>
@@ -405,13 +405,13 @@ export const GcpSecretManagerConfigurePage = () => {
           Create Integration
         </Button>
       </Card>
-      {/* <div className="border-t border-mineshaft-800 w-full max-w-md mt-6"/>
-      <div className="flex flex-col bg-mineshaft-800 border border-mineshaft-600 w-full p-4 max-w-lg mt-6 rounded-md">
+      {/* <div className="border-t border-border w-full max-w-md mt-6"/>
+      <div className="flex flex-col bg-container border border-border w-full p-4 max-w-lg mt-6 rounded-md">
         <div className="flex flex-row items-center">
-          <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-200 text-xl"/>
-          <span className="ml-3 text-md text-mineshaft-100">Pro Tip</span>
+          <FontAwesomeIcon icon={faCircleInfo} className="text-foreground text-xl"/>
+          <span className="ml-3 text-md text-foreground">Pro Tip</span>
         </div>
-        <span className="text-mineshaft-300 text-sm mt-4">
+        <span className="text-label text-sm mt-4">
           After creating an integration, your secrets will start syncing immediately.
 
           To avoid overwriting existing secrets in GCP Secret Manager, you may consider adding a secret prefix/suffix and/or enabling labeling in the options tab.
@@ -459,12 +459,12 @@ export const GcpSecretManagerConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-border bg-container p-6 text-center text-foreground">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}
             <a
-              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              className="inline cursor-pointer text-foreground underline decoration-project underline-offset-4 opacity-80 duration-200 hover:opacity-100"
               target="_blank"
               rel="noopener noreferrer"
               href="mailto:support@infisical.com"

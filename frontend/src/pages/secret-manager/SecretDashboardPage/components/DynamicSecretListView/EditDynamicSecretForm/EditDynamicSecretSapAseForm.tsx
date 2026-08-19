@@ -176,7 +176,7 @@ export const EditDynamicSecretSapAseForm = ({
             </div>
           </div>
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-border pb-2 pl-1 font-medium text-foreground">
               Configuration
             </div>
             <div className="flex flex-col">
@@ -266,12 +266,12 @@ export const EditDynamicSecretSapAseForm = ({
                     >
                       <SecretInput
                         {...field}
-                        containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                        containerClassName="text-label hover:border-project/50 border border-border bg-card px-2 py-1.5"
                       />
                     </FormControl>
                   )}
                 />
-                <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
+                <Accordion type="single" collapsible className="mb-2 w-full bg-container-hover">
                   <AccordionItem value="advance-statements">
                     <AccordionTrigger>Modify SQL Statements</AccordionTrigger>
                     <AccordionContent>
@@ -288,7 +288,7 @@ export const EditDynamicSecretSapAseForm = ({
                             <Input
                               {...field}
                               value={field.value || undefined}
-                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              className="border-border bg-card text-sm"
                             />
                           </FormControl>
                         )}
@@ -307,7 +307,7 @@ export const EditDynamicSecretSapAseForm = ({
                               {...field}
                               reSize="none"
                               rows={3}
-                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              className="border-border bg-card text-sm"
                             />
                           </FormControl>
                         )}
@@ -326,7 +326,7 @@ export const EditDynamicSecretSapAseForm = ({
                               {...field}
                               reSize="none"
                               rows={3}
-                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              className="border-border bg-card text-sm"
                             />
                           </FormControl>
                         )}

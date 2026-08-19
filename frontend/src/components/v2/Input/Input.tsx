@@ -16,7 +16,7 @@ type Props = {
 };
 
 const inputVariants = cva(
-  "input w-full py-1.5 text-muted placeholder:text-sm placeholder:text-muted/50 outline-hidden focus:ring-2 hover:ring-bunker-400/60 duration-100",
+  "input w-full py-1.5 text-muted placeholder:text-sm placeholder:text-muted/50 outline-hidden focus:ring-2 hover:ring-ring/60 duration-100",
   {
     variants: {
       size: {
@@ -30,13 +30,13 @@ const inputVariants = cva(
         false: ""
       },
       variant: {
-        filled: ["bg-mineshaft-900", "text-muted"],
+        filled: ["bg-card", "text-muted"],
         outline: ["bg-transparent"],
         plain: "bg-transparent outline-hidden"
       },
       isError: {
-        true: "focus:ring-red/50 placeholder-red-300",
-        false: "focus:ring-primary-400/50 focus:ring-1"
+        true: "focus:ring-danger/50 placeholder:text-danger",
+        false: "focus:ring-project/50 focus:ring-1"
       }
     },
     compoundVariants: []
@@ -50,15 +50,15 @@ const inputParentContainerVariants = cva("inline-flex font-inter items-center bo
       false: ""
     },
     isError: {
-      true: "border-red",
-      false: "border-mineshaft-500"
+      true: "border-danger",
+      false: "border-border"
     },
     isFullWidth: {
       true: "w-full",
       false: ""
     },
     variant: {
-      filled: ["bg-bunker-800", "text-muted"],
+      filled: ["bg-background", "text-muted"],
       outline: ["bg-transparent"],
       plain: "border-none"
     }

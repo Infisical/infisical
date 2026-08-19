@@ -72,7 +72,7 @@ export const PkiCollectionPage = () => {
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-foreground">
+    <div className="mx-auto flex flex-col justify-between bg-background text-foreground">
       {data && (
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <Link
@@ -81,7 +81,7 @@ export const PkiCollectionPage = () => {
               orgId: currentOrg.id,
               projectId: params.projectId
             }}
-            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+            className="mb-4 flex items-center gap-x-2 text-sm text-muted"
           >
             <FontAwesomeIcon icon={faChevronLeft} />
             Certificates
@@ -93,7 +93,7 @@ export const PkiCollectionPage = () => {
           >
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
-                <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                <div className="hover:text-project data-[state=open]:text-project">
                   <Tooltip content="More options">
                     <Button variant="outline_bg">More</Button>
                   </Tooltip>
@@ -128,7 +128,7 @@ export const PkiCollectionPage = () => {
                     <DropdownMenuItem
                       className={twMerge(
                         isAllowed
-                          ? "hover:bg-red-500! hover:text-white!"
+                          ? "hover:bg-danger! hover:text-white!"
                           : "pointer-events-none cursor-not-allowed opacity-50"
                       )}
                       onClick={() =>

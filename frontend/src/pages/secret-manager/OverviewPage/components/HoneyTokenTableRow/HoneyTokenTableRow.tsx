@@ -263,9 +263,9 @@ export const HoneyTokenTableRow = ({
               className={twMerge(
                 "group-hover:!hidden",
                 isSelected && "!hidden",
-                isTriggered && "text-red",
-                !isTriggered && !isAllRevoked && "text-yellow",
-                isAllRevoked && "text-mineshaft-400"
+                isTriggered && "text-danger",
+                !isTriggered && !isAllRevoked && "text-warning",
+                isAllRevoked && "text-muted"
               )}
             />
           )}

@@ -100,9 +100,9 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
   );
 
   return pkiSubscriber ? (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">PKI Subscriber Details</h3>
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center justify-between border-b border-border pb-4">
+        <h3 className="text-lg font-medium text-foreground">PKI Subscriber Details</h3>
         <ProjectPermissionCan
           I={ProjectPermissionPkiSubscriberActions.Edit}
           a={ProjectPermissionSub.PkiSubscribers}
@@ -131,9 +131,9 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
       </div>
       <div className="pt-4">
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">PKI Subscriber ID</p>
+          <p className="text-sm font-medium text-label">PKI Subscriber ID</p>
           <div className="group flex align-top">
-            <p className="text-sm text-mineshaft-300">{pkiSubscriber.id}</p>
+            <p className="text-sm text-label">{pkiSubscriber.id}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
               <Tooltip content={copyTextId}>
                 <IconButton
@@ -152,31 +152,29 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Name</p>
-          <p className="text-sm text-mineshaft-300">{pkiSubscriber.name}</p>
+          <p className="text-sm font-medium text-label">Name</p>
+          <p className="text-sm text-label">{pkiSubscriber.name}</p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Status</p>
-          <p className="text-sm text-mineshaft-300">
-            {pkiSubscriberStatusToNameMap[pkiSubscriber.status]}
-          </p>
+          <p className="text-sm font-medium text-label">Status</p>
+          <p className="text-sm text-label">{pkiSubscriberStatusToNameMap[pkiSubscriber.status]}</p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Common Name</p>
-          <p className="text-sm text-mineshaft-300">{pkiSubscriber.commonName}</p>
+          <p className="text-sm font-medium text-label">Common Name</p>
+          <p className="text-sm text-label">{pkiSubscriber.commonName}</p>
         </div>
         {pkiSubscriber.lastOperationAt && (
           <div className="mb-4">
-            <p className="text-sm font-medium text-mineshaft-300">Last Operation (Local Time)</p>
-            <p className="text-sm text-mineshaft-300">
+            <p className="text-sm font-medium text-label">Last Operation (Local Time)</p>
+            <p className="text-sm text-label">
               {new Date(pkiSubscriber.lastOperationAt).toLocaleString()}
             </p>
           </div>
         )}
         {pkiSubscriber.lastOperationStatus === SubscriberOperationStatus.FAILED && (
           <div className="mb-4">
-            <GenericFieldLabel labelClassName="text-red" label="Last Operation Status">
-              <p className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
+            <GenericFieldLabel labelClassName="text-danger" label="Last Operation Status">
+              <p className="rounded-sm bg-foreground/10 p-2 text-xs break-words">
                 {pkiSubscriber.lastOperationMessage}
               </p>
             </GenericFieldLabel>

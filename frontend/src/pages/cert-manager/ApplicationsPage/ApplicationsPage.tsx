@@ -124,7 +124,7 @@ export const ApplicationsPage = () => {
             >
               <TableCell className="w-full">
                 <div className="flex items-center gap-x-2 font-mono">
-                  <ResourceIcon className="size-4 shrink-0 text-primary" />
+                  <ResourceIcon className="size-4 shrink-0 text-project" />
                   <span>{app.name}</span>
                   {app.description?.length ? (
                     <Tooltip>
@@ -178,7 +178,7 @@ export const ApplicationsPage = () => {
       <Helmet>
         <title>Applications</title>
       </Helmet>
-      <div className="h-full bg-bunker-800">
+      <div className="h-full bg-background">
         <div className="mx-auto flex flex-col text-foreground">
           <div className="mx-auto mb-6 w-full max-w-8xl">
             <PageHeader

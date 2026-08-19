@@ -392,7 +392,9 @@ const RuleFormContent = ({
                   pattern and the min/max length constraints are ignored. Define the length
                   requirement inside the regex pattern itself
                   <br /> (e.g.{" "}
-                  <code className="rounded-md bg-mineshaft-700 px-1 py-0.5">{"[A-Z]{12,20}"}</code>
+                  <code className="rounded-md bg-container-hover px-1 py-0.5">
+                    {"[A-Z]{12,20}"}
+                  </code>
                   ).
                 </p>
               </AlertDescription>

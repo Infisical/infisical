@@ -122,13 +122,13 @@ const VerifyForm = ({ cmek }: FormProps) => {
           </div>
           <div className="mt-3">
             <span className="text-sm opacity-60">Signature:</span>{" "}
-            <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 p-2 text-sm break-words whitespace-pre-wrap">
+            <div className="rounded-md border border-border bg-card p-2 text-sm break-words whitespace-pre-wrap">
               {signature}
             </div>
           </div>
           <div>
             <span className="text-sm opacity-60">Data:</span>{" "}
-            <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 p-2 text-sm">
+            <div className="rounded-md border border-border bg-card p-2 text-sm">
               {isBase64Encoded ? decodeBase64(data).toString() : data}
             </div>
           </div>
@@ -179,7 +179,7 @@ const VerifyForm = ({ cmek }: FormProps) => {
                 <Switch id="encode-base-64" isChecked={value} onCheckedChange={onChange}>
                   Data is Base64 encoded{" "}
                   <Tooltip content="Toggle this switch on if your data is already Base64 encoded to avoid redundant encoding.">
-                    <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400" />
+                    <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
                   </Tooltip>
                 </Switch>
               )}

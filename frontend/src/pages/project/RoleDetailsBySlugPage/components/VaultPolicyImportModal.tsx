@@ -131,7 +131,7 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
     if (!mounts || mounts.length === 0) {
       return (
         <div>
-          <p className="font-medium text-yellow-400">No KV mounts found</p>
+          <p className="font-medium text-warning">No KV mounts found</p>
           <p className="mt-1 text-xs">This namespace has no KV secret engines configured.</p>
           <p className="mt-1 text-xs">Policy translation requires KV mounts.</p>
         </div>
@@ -211,9 +211,9 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
 
   return (
     <>
-      <div className="mb-4 rounded-md bg-primary/10 p-3 text-sm text-mineshaft-200">
+      <div className="mb-4 rounded-md bg-project/10 p-3 text-sm text-foreground">
         <div className="flex items-start gap-2">
-          <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-primary" />
+          <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-project" />
           <div>
             <div className="mb-2">
               <strong>How Policy Translation Works</strong>
@@ -265,7 +265,7 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
             isClearable
             className="w-full"
           />
-          <p className="mt-1 text-xs text-mineshaft-400">
+          <p className="mt-1 text-xs text-muted">
             Select a policy to auto-populate the HCL editor below, or skip to paste your own
           </p>
         </>
@@ -287,7 +287,7 @@ path "secret/metadata/prod/*" {
               rows={20}
               className="h-[30rem] px-4 py-0.5 font-mono text-xs leading-6"
             />
-            <p className="mt-1 text-xs text-mineshaft-400">
+            <p className="mt-1 text-xs text-muted">
               Paste your HCL policy here or select one from the dropdown above.
             </p>
           </>
@@ -298,7 +298,7 @@ path "secret/metadata/prod/*" {
             {analysisResult ? (
               <VaultPolicyPreview blocks={analysisResult.blocks} lines={analysisResult.lines} />
             ) : (
-              <div className="flex h-[30rem] items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-900 text-center text-sm text-mineshaft-400">
+              <div className="flex h-[30rem] items-center justify-center rounded-md border border-border bg-card text-center text-sm text-muted">
                 {renderEmptyState()}
               </div>
             )}

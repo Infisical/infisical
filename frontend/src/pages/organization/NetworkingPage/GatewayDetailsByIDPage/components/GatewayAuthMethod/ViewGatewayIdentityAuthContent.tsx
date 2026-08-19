@@ -23,7 +23,7 @@ export const ViewGatewayIdentityAuthContent = ({ config }: Props) => {
             className="inline-flex items-center gap-1 underline"
           >
             {config.identityName}
-            <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+            <ExternalLinkIcon className="size-3.5 text-muted" />
           </Link>
         ) : (
           <span className="text-muted">Identity has been deleted</span>

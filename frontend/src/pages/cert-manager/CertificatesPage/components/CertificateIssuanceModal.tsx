@@ -778,7 +778,7 @@ export const CertificateIssuanceModal = ({
                 {currentStepKey !== "profile" && (actualSelectedProfile || profileId) && (
                   <div className="space-y-4">
                     {currentStepKey === "options" && profileId && isAdcsProfile && (
-                      <p className="mb-4 text-xs text-mineshaft-400">{externalCaHint}</p>
+                      <p className="mb-4 text-xs text-muted">{externalCaHint}</p>
                     )}
 
                     {currentStepKey === "csr" && (

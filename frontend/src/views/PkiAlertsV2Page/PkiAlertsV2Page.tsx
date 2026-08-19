@@ -130,15 +130,15 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
 
   return (
     <div className={hideContainer ? "" : "container mx-auto p-6"}>
-      <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-        <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
+      <div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-card px-4 py-3">
+        <div className="flex items-center justify-between border-b border-border pb-2">
           <div className="flex items-center gap-x-2">
-            <h3 className="text-lg font-medium text-mineshaft-100">Certificate Alerts</h3>
-            <span className="rounded bg-mineshaft-600 px-2 py-0.5 text-xs tracking-wide text-mineshaft-200 uppercase">
+            <h3 className="text-lg font-medium text-foreground">Certificate Alerts</h3>
+            <span className="rounded bg-foreground/10 px-2 py-0.5 text-xs tracking-wide text-foreground uppercase">
               Legacy
             </span>
           </div>
-          <p className="text-xs text-bunker-300">Create new alerts inside an Application.</p>
+          <p className="text-xs text-label">Create new alerts inside an Application.</p>
         </div>
 
         <div className="mb-4 flex items-center">

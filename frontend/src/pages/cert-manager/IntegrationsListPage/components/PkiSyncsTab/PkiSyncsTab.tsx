@@ -91,16 +91,16 @@ export const PkiSyncsTab = () => {
 
   return (
     <>
-      <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="w-full rounded-lg border border-border bg-card p-4">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <div className="flex items-start gap-1">
               <div className="flex items-center gap-x-2">
-                <p className="text-xl font-medium text-mineshaft-100">Certificate Syncs</p>
+                <p className="text-xl font-medium text-foreground">Certificate Syncs</p>
                 <DocumentationLinkBadge href={PkiDocsUrls.applications.syncs.overview} />
               </div>
             </div>
-            <p className="text-sm text-bunker-300">
+            <p className="text-sm text-label">
               Existing project-level syncs remain editable. Create new syncs inside an Application.
             </p>
           </div>

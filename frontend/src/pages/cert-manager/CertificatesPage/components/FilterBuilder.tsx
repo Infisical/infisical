@@ -275,7 +275,7 @@ const FilterRow = ({
         size="xs"
         onClick={onRemove}
         aria-label="Remove filter"
-        className="mt-1.5 shrink-0 hover:text-red-400"
+        className="mt-1.5 shrink-0 hover:text-danger"
       >
         <Trash2Icon />
       </IconButton>

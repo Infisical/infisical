@@ -133,7 +133,7 @@ const UserPanelTable = ({
             <V3Button
               aria-label="Filter Users"
               variant="outline"
-              className={twMerge("px-3", isTableFiltered && "border-primary/50 text-primary")}
+              className={twMerge("px-3", isTableFiltered && "border-project/50 text-project")}
             >
               <FontAwesomeIcon icon={faFilter} />
             </V3Button>
@@ -149,7 +149,7 @@ const UserPanelTable = ({
               iconPos="right"
             >
               <div className="flex items-center gap-x-2">
-                <FontAwesomeIcon icon={faUserShield} className="text-yellow-700" />
+                <FontAwesomeIcon icon={faUserShield} className="text-warning" />
                 <span>Server Admins</span>
               </div>
             </DropdownMenuItem>
@@ -213,7 +213,7 @@ const UserPanelTable = ({
                       <Td className="w-5/12 max-w-0">
                         <div className="flex items-center">
                           <p className="truncate">
-                            {name ?? <span className="text-mineshaft-400">Not Set</span>}
+                            {name ?? <span className="text-muted">Not Set</span>}
                           </p>
                           {superAdmin && (
                             <Badge variant="info" className="ml-2">
@@ -443,8 +443,8 @@ export const UserIdentitiesTable = () => {
       <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <p className="text-xl font-medium text-mineshaft-100">User Identities</p>
-            <p className="text-sm text-bunker-300">Manage user identities across your instance.</p>
+            <p className="text-xl font-medium text-foreground">User Identities</p>
+            <p className="text-sm text-label">Manage user identities across your instance.</p>
           </div>
         </div>
         <UserPanelTable
@@ -512,10 +512,8 @@ export const UserIdentitiesTable = () => {
           onDeleteApproved={() => handleRemoveUsers()}
           buttonText="Delete"
         >
-          <div className="mt-4 text-sm text-mineshaft-400">
-            The following users will be deleted:
-          </div>
-          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
+          <div className="mt-4 text-sm text-muted">The following users will be deleted:</div>
+          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-border bg-danger/10 p-4 pl-8 text-sm text-danger">
             <ul className="list-disc">
               {selectedUsers?.map((user) => {
                 const email = user.email ?? user.username;

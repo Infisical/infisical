@@ -121,13 +121,13 @@ export const SecretOverviewTableRow = ({
     <>
       <Tr isHoverable isSelectable onClick={() => setIsFormExpanded.toggle()} className="group">
         <Td
-          className={`sticky left-0 z-10 bg-mineshaft-800 bg-clip-padding px-0 py-0 group-hover:bg-mineshaft-700 ${
-            isFormExpanded && "border-t-2 border-mineshaft-500"
+          className={`sticky left-0 z-10 bg-container bg-clip-padding px-0 py-0 group-hover:bg-container-hover ${
+            isFormExpanded && "border-t-2 border-border"
           }`}
         >
-          <div className="h-full w-full border-r border-mineshaft-600 px-5 py-2.5">
+          <div className="h-full w-full border-r border-border px-5 py-2.5">
             <div className="flex items-center space-x-5">
-              <div className="text-bunker-300">
+              <div className="text-label">
                 <Checkbox
                   id={`checkbox-${secretKey}`}
                   isChecked={isSelected}
@@ -159,11 +159,11 @@ export const SecretOverviewTableRow = ({
             <Td
               key={`sec-overview-${slug}-${i + 1}-value`}
               className={twMerge(
-                "border-r border-mineshaft-600 px-0 py-3 group-hover:bg-mineshaft-700",
-                isFormExpanded && "border-t-2 border-mineshaft-500",
-                (isSecretPresent && !isSecretEmpty) || isSecretImported ? "text-green-600" : "",
-                isSecretPresent && isSecretEmpty && !isSecretImported ? "text-mineshaft-400" : "",
-                !isSecretPresent && !isSecretEmpty && !isSecretImported ? "text-red-600" : ""
+                "border-r border-border px-0 py-3 group-hover:bg-container-hover",
+                isFormExpanded && "border-t-2 border-border",
+                (isSecretPresent && !isSecretEmpty) || isSecretImported ? "text-success" : "",
+                isSecretPresent && isSecretEmpty && !isSecretImported ? "text-muted" : "",
+                !isSecretPresent && !isSecretEmpty && !isSecretImported ? "text-danger" : ""
               )}
             >
               <div className="mx-auto flex w-[0.03rem] justify-center">
@@ -188,7 +188,7 @@ export const SecretOverviewTableRow = ({
                   )}
                   {isSecretEmpty && (
                     <Tooltip content="Empty value">
-                      <FontAwesomeIcon size="sm" icon={faCircle} className="text-yellow" />
+                      <FontAwesomeIcon size="sm" icon={faCircle} className="text-warning" />
                     </Tooltip>
                   )}
                 </div>
@@ -201,9 +201,7 @@ export const SecretOverviewTableRow = ({
         <Tr>
           <Td
             colSpan={totalCols}
-            className={`bg-bunker-600 px-0 py-0 ${
-              isFormExpanded && "border-b-2 border-mineshaft-500"
-            }`}
+            className={`bg-card px-0 py-0 ${isFormExpanded && "border-b-2 border-border"}`}
           >
             <div className="ml-2 p-2" style={getExpandedRowStyle(scrollOffset)}>
               <SecretRenameRow
@@ -215,7 +213,7 @@ export const SecretOverviewTableRow = ({
               <TableContainer>
                 <table className="secret-table">
                   <thead>
-                    <tr className="h-10 border-b-2 border-mineshaft-600">
+                    <tr className="h-10 border-b-2 border-border">
                       <th style={{ padding: "0.5rem 1rem" }} className="min-table-row min-w-44">
                         Environment
                       </th>
@@ -234,7 +232,7 @@ export const SecretOverviewTableRow = ({
                       </div>
                     </tr>
                   </thead>
-                  <tbody className="border-t-2 border-mineshaft-600">
+                  <tbody className="border-t-2 border-border">
                     {environments.map(({ name, slug }) => {
                       const secret = getSecretByKey(slug, secretKey);
                       const isCreatable = !secret;
@@ -245,7 +243,7 @@ export const SecretOverviewTableRow = ({
                       return (
                         <tr
                           key={`secret-expanded-${slug}-${secretKey}`}
-                          className="hover:bg-mineshaft-700"
+                          className="hover:bg-container-hover"
                         >
                           <td
                             className="flex h-full items-center"
@@ -267,7 +265,7 @@ export const SecretOverviewTableRow = ({
                               )}
                               {secret?.isHoneyTokenSecret && (
                                 <Tooltip content="Honey Token Secret">
-                                  <FontAwesomeIcon icon={faShieldHalved} className="text-yellow" />
+                                  <FontAwesomeIcon icon={faShieldHalved} className="text-warning" />
                                 </Tooltip>
                               )}
                               {secret?.idOverride && (

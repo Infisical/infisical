@@ -37,15 +37,15 @@ export const SecretScanningScanStatusBadge = ({
         content={
           <div className="flex flex-col gap-2 py-1 whitespace-normal">
             <div>
-              <div className="mb-2 flex self-start text-red">
+              <div className="mb-2 flex self-start text-danger">
                 <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
                 <div className="text-xs">Failure Reason</div>
               </div>
-              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
+              <div className="rounded-sm bg-foreground/10 p-2 text-xs break-words">
                 {errorMessage}
               </div>
               {scannedAt && (
-                <div className="mt-1 text-xs text-mineshaft-400">
+                <div className="mt-1 text-xs text-muted">
                   Attempted {formatDistance(new Date(scannedAt), new Date(), { addSuffix: true })}
                 </div>
               )}

@@ -145,25 +145,25 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
             to your next invoice, and your other products are unaffected.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <div className="rounded-md border border-border bg-mineshaft-700/40 px-4 py-3 text-sm">
+        <div className="rounded-md border border-border bg-container-hover/40 px-4 py-3 text-sm">
           {preview.isPending && (
-            <span className="text-mineshaft-300">Calculating your prorated credit...</span>
+            <span className="text-label">Calculating your prorated credit...</span>
           )}
           {preview.isError && (
-            <span className="text-mineshaft-300">
+            <span className="text-label">
               We couldn&apos;t calculate the credit, but you can still remove this product.
             </span>
           )}
           {preview.data && (
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-mineshaft-300">Prorated credit to next invoice</span>
+                <span className="text-label">Prorated credit to next invoice</span>
                 <span className="font-semibold text-foreground tabular-nums">
                   {fmtMoney(credit, 2)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-mineshaft-300">New recurring total</span>
+                <span className="text-label">New recurring total</span>
                 <span className="font-semibold text-foreground tabular-nums">
                   {fmtMoney(preview.data.nextRecurringTotal, 2)}
                 </span>

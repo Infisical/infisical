@@ -105,7 +105,7 @@ export const DatePicker = ({
       <PopoverContent
         {...popUpContentProps}
         className={twMerge(
-          "w-fit border border-mineshaft-600 bg-mineshaft-800 p-2 font-inter",
+          "w-fit border border-border bg-popover p-2 font-inter",
           popUpContentProps.className
         )}
       >
@@ -115,17 +115,17 @@ export const DatePicker = ({
             mode="single"
             selected={value ? new TZDate(value, displayUtc ? "UTC" : undefined) : undefined}
             onSelect={(date) => handleDaySelect(date ? new TZDate(date, undefined) : undefined)}
-            className="font-inter text-mineshaft-200"
+            className="font-inter text-foreground"
             timeZone={displayUtc ? "UTC" : undefined}
             classNames={{
-              today: "text-primary border-primary",
-              selected: " text-mineshaft-100 bg-mineshaft-500",
-              root: `text-mineshaft-300  ${defaultClassNames}`,
+              today: "text-project border-project",
+              selected: " text-foreground bg-foreground/10",
+              root: `text-label  ${defaultClassNames}`,
               [UI.DayButton]:
-                "p-3 w-full cursor-pointer text-center  rounded-sm hover:text-mineshaft-100",
+                "p-3 w-full cursor-pointer text-center  rounded-sm hover:text-foreground",
               [UI.Weekday]: "px-3 pt-3",
-              [UI.Chevron]: "fill-mineshaft-300/70 hover:fill-mineshaft-300",
-              disabled: "text-mineshaft-400 pointer-events-none",
+              [UI.Chevron]: "fill-label/70 hover:fill-label",
+              disabled: "text-muted pointer-events-none",
               nav: cn(
                 "flex items-center gap-1 w-full absolute top-0 inset-x-0 justify-between",
                 defaultClassNames.nav
@@ -153,7 +153,7 @@ export const DatePicker = ({
               type="time"
               value={displayUtc ? localTimeToUTC(timeValue) : timeValue}
               onChange={handleTimeChange}
-              className="bg-mineshaft-700 text-foreground scheme-dark"
+              className="bg-container-hover text-foreground scheme-dark"
             />
           </div>
         )}

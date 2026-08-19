@@ -48,7 +48,7 @@ const InputField = ({
           placeholder={placeholder}
           value={value}
           required={isRequired}
-          className="text-md w-full min-w-16 rounded-md border border-border bg-bunker-800 p-2 text-muted outline-hidden"
+          className="text-md w-full min-w-16 rounded-md border border-border bg-background p-2 text-muted outline-hidden"
           name={name}
           readOnly
           autoComplete={autoComplete}
@@ -59,12 +59,12 @@ const InputField = ({
   }
   return (
     <div className="w-full flex-col">
-      <div className="mb-0.5 flex flex-row items-center text-mineshaft-300">
+      <div className="mb-0.5 flex flex-row items-center text-label">
         <p className="mr-1 text-sm font-medium">{label}</p>
       </div>
       <div
         className={`group relative flex w-full max-w-2xl flex-col justify-center border ${
-          error ? "border-red" : "border-mineshaft-500"
+          error ? "border-danger" : "border-border"
         } rounded-md`}
       >
         <input
@@ -75,11 +75,11 @@ const InputField = ({
           required={isRequired}
           className={`${
             blurred
-              ? "text-bunker-800 group-hover:text-muted focus:text-muted active:text-muted"
+              ? "text-background group-hover:text-muted focus:text-muted active:text-muted"
               : ""
           } ${
-            error ? "focus:ring-red/50" : "focus:ring-primary/50"
-          } text-md peer relative w-full min-w-16 rounded-md bg-mineshaft-900 p-2 text-muted outline-hidden duration-200 focus:ring-4`}
+            error ? "focus:ring-danger/50" : "focus:ring-project/50"
+          } text-md peer relative w-full min-w-16 rounded-md bg-card p-2 text-muted outline-hidden duration-200 focus:ring-4`}
           name={name}
           spellCheck="false"
           autoComplete={autoComplete}
@@ -121,7 +121,7 @@ const InputField = ({
 						</div>
 					)} */}
       </div>
-      {error && <p className="mx-0 mt-0.5 mb-2 max-w-xs text-xs text-red">{errorText}</p>}
+      {error && <p className="mx-0 mt-0.5 mb-2 max-w-xs text-xs text-danger">{errorText}</p>}
     </div>
   );
 };

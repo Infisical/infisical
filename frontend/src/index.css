@@ -224,7 +224,6 @@ html[data-theme="light"] {
   --color-product-ss: oklch(0.4908 0.1979 307.4);
   --color-product-pam: oklch(0.5432 0.2015 13.8);
   --color-admin: oklch(0.4420 0.0035 264.5);
-  --color-primary: oklch(0.6046 0.1440 123.9);
 
   /* Sidebar */
   --color-sidebar: oklch(0.9702 0.0000 0);
@@ -274,9 +273,9 @@ html[data-platform="ios"] {
 
 @utility secret-table {
   width: 100%;
-  background: var(--color-mineshaft-800);
+  background: var(--color-container);
   text-align: left;
-  color: var(--color-bunker-300);
+  color: var(--color-label);
 
   /* padding except for comment column */
   & th {
@@ -289,17 +288,17 @@ html[data-platform="ios"] {
 
   & th:not(:last-child) {
     @apply border-r;
-    border-color: var(--color-mineshaft-600);
+    border-color: var(--color-border);
   }
 
   & td:not(:last-child) {
     @apply border-r;
-    border-color: var(--color-mineshaft-600);
+    border-color: var(--color-border);
   }
 
   & tr {
     @apply border-b;
-    border-color: var(--color-mineshaft-600);
+    border-color: var(--color-border);
   }
 }
 
@@ -311,7 +310,7 @@ html[data-platform="ios"] {
     z-index: -1;
     display: block;
     position: absolute;
-    background: var(--color-mineshaft-800);
+    background: var(--color-container);
   }
 
   &::before {
@@ -321,15 +320,15 @@ html[data-platform="ios"] {
     z-index: -1;
     display: block;
     position: absolute;
-    background: var(--color-mineshaft-800);
+    background: var(--color-container);
   }
 
   &:hover::before {
-    background: var(--color-mineshaft-600);
+    background: var(--color-container-hover);
   }
 
   &:hover::after {
-    background: var(--color-mineshaft-600);
+    background: var(--color-container-hover);
   }
 
   &::after {
@@ -521,7 +520,7 @@ html[data-platform="ios"] {
 
 /* Compatibility styles */
 #nprogress .bar {
-  background: var(--color-primary-400);
+  background: var(--color-project);
 }
 
 [contentEditable="true"]:before {

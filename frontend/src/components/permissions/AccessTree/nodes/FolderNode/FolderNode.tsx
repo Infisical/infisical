@@ -14,9 +14,9 @@ import { createFolderNode, formatActionName } from "../../utils";
 import { FolderNodeTooltipContent } from "./components";
 
 const AccessMap = {
-  [PermissionAccess.Full]: { className: "text-green", icon: faCheckCircle },
-  [PermissionAccess.Partial]: { className: "text-yellow", icon: faCircleMinus },
-  [PermissionAccess.None]: { className: "text-red", icon: faCircleXmark }
+  [PermissionAccess.Full]: { className: "text-success", icon: faCheckCircle },
+  [PermissionAccess.Partial]: { className: "text-warning", icon: faCircleMinus },
+  [PermissionAccess.None]: { className: "text-danger", icon: faCircleXmark }
 };
 
 export const FolderNode = ({
@@ -36,13 +36,13 @@ export const FolderNode = ({
         position={Position.Top}
       />
       <div
-        className={`flex ${hasMinimalAccess ? "" : "opacity-40"} h-full w-full flex-col items-center justify-center rounded-md border border-mineshaft bg-mineshaft-800 px-2 py-3 font-inter shadow-lg transition-opacity duration-500`}
+        className={`flex ${hasMinimalAccess ? "" : "opacity-40"} h-full w-full flex-col items-center justify-center rounded-md border border-border bg-container px-2 py-3 font-inter shadow-lg transition-opacity duration-500`}
       >
-        <div className="flex items-center space-x-2 text-xs text-mineshaft-100">
-          <FontAwesomeIcon className="mb-0.5 font-medium text-yellow" icon={faFolder} />
+        <div className="flex items-center space-x-2 text-xs text-foreground">
+          <FontAwesomeIcon className="mb-0.5 font-medium text-warning" icon={faFolder} />
           <span>{parentId ? `/${name}` : "/"}</span>
         </div>
-        <div className="mt-1.5 flex w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-sm bg-mineshaft-600 px-2 py-1 text-xs">
+        <div className="mt-1.5 flex w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-sm bg-foreground/10 px-2 py-1 text-xs">
           {Object.entries(actions).map(([action, access]) => {
             const { className, icon } = AccessMap[access];
 

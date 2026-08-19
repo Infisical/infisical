@@ -82,7 +82,7 @@ const ModalBody = ({
     return renderCredentials(honeyToken, credentials);
   }
 
-  return <p className="text-sm text-red">No credentials found for this honey token.</p>;
+  return <p className="text-sm text-danger">No credentials found for this honey token.</p>;
 };
 
 export const ViewHoneyTokenCredentialsModal = ({

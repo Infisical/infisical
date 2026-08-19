@@ -110,7 +110,7 @@ export const AzureKeyVaultConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
+            className="w-full border border-border"
           >
             {workspace?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -157,7 +157,7 @@ export const AzureKeyVaultConfigurePage = () => {
         </FormControl>
         <Button
           onClick={handleButtonClick}
-          color="mineshaft"
+          colorSchema="secondary"
           className="mt-4"
           isLoading={isLoading}
         >

@@ -91,13 +91,13 @@ export const CertificateDetailsSection = ({ request }: Props) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <h2 className="text-lg font-medium text-mineshaft-100">
+      <div className="rounded-lg border border-border bg-card p-4">
+        <h2 className="text-lg font-medium text-foreground">
           Request for {certRequest?.altNames?.[0]?.value || certRequest?.commonName || "-"}
         </h2>
 
         <div className="mt-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-mineshaft-700 text-sm font-medium text-mineshaft-200">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-container-hover text-sm font-medium text-foreground">
             {(request.requesterName || "U")
               .split(" ")
               .map((n) => n[0])
@@ -106,45 +106,45 @@ export const CertificateDetailsSection = ({ request }: Props) => {
               .toUpperCase()}
           </div>
           <div>
-            <p className="text-sm font-medium text-mineshaft-100">
+            <p className="text-sm font-medium text-foreground">
               {request.requesterName || "Unknown"}
             </p>
-            <p className="text-sm text-mineshaft-400">{request.requesterEmail}</p>
+            <p className="text-sm text-muted">{request.requesterEmail}</p>
           </div>
         </div>
       </div>
 
-      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-mineshaft-100">
-          <FontAwesomeIcon icon={faLock} className="text-sm text-mineshaft-400" />
+      <div className="rounded-lg border border-border bg-card p-4">
+        <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
+          <FontAwesomeIcon icon={faLock} className="text-sm text-muted" />
           Certificate Specifications
         </h3>
 
         <div className="grid grid-cols-2 gap-x-8 gap-y-3">
           {certRequest?.keyAlgorithm && (
             <div>
-              <p className="text-xs text-mineshaft-400">Key Algorithm</p>
-              <p className="mt-0.5 text-sm text-mineshaft-100">
+              <p className="text-xs text-muted">Key Algorithm</p>
+              <p className="mt-0.5 text-sm text-foreground">
                 {formatKeyAlgorithm(certRequest.keyAlgorithm)}
               </p>
             </div>
           )}
           {certRequest?.signatureAlgorithm && (
             <div>
-              <p className="text-xs text-mineshaft-400">Signature Algorithm</p>
-              <p className="mt-0.5 text-sm text-mineshaft-100">{certRequest.signatureAlgorithm}</p>
+              <p className="text-xs text-muted">Signature Algorithm</p>
+              <p className="mt-0.5 text-sm text-foreground">{certRequest.signatureAlgorithm}</p>
             </div>
           )}
           {certRequest?.validity?.ttl && (
             <div>
-              <p className="text-xs text-mineshaft-400">Validity</p>
-              <p className="mt-0.5 text-sm text-mineshaft-100">
+              <p className="text-xs text-muted">Validity</p>
+              <p className="mt-0.5 text-sm text-foreground">
                 {formatValidity(certRequest.validity.ttl)}
               </p>
             </div>
           )}
           <div>
-            <p className="text-xs text-mineshaft-400">Certificate Authority</p>
+            <p className="text-xs text-muted">Certificate Authority</p>
             {isProfileLoading && <Skeleton className="mt-0.5 h-4 w-24" />}
             {!isProfileLoading && isInternalCa && caId && (
               <Badge variant="outline" asChild className="mt-1">
@@ -162,71 +162,71 @@ export const CertificateDetailsSection = ({ request }: Props) => {
               </Badge>
             )}
             {!isProfileLoading && !(isInternalCa && caId) && (
-              <p className="mt-0.5 text-sm text-mineshaft-100">
+              <p className="mt-0.5 text-sm text-foreground">
                 {profile?.certificateAuthority?.name || "N/A"}
               </p>
             )}
           </div>
           <div>
-            <p className="text-xs text-mineshaft-400">Certificate Profile</p>
-            <p className="mt-0.5 text-sm text-mineshaft-100">{requestData.profileName}</p>
+            <p className="text-xs text-muted">Certificate Profile</p>
+            <p className="mt-0.5 text-sm text-foreground">{requestData.profileName}</p>
           </div>
         </div>
       </div>
 
-      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-mineshaft-100">
-          <FontAwesomeIcon icon={faGlobe} className="text-sm text-mineshaft-400" />
+      <div className="rounded-lg border border-border bg-card p-4">
+        <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
+          <FontAwesomeIcon icon={faGlobe} className="text-sm text-muted" />
           Subject Information
         </h3>
 
         <div className="grid grid-cols-2 gap-x-8 gap-y-3">
           {certRequest?.commonName && (
             <div>
-              <p className="text-xs text-mineshaft-400">Common Name (CN)</p>
-              <p className="mt-0.5 text-sm text-mineshaft-100">{certRequest.commonName}</p>
+              <p className="text-xs text-muted">Common Name (CN)</p>
+              <p className="mt-0.5 text-sm text-foreground">{certRequest.commonName}</p>
             </div>
           )}
           {organization && (
             <div>
-              <p className="text-xs text-mineshaft-400">Organization (O)</p>
-              <p className="mt-0.5 text-sm text-mineshaft-100">{organization}</p>
+              <p className="text-xs text-muted">Organization (O)</p>
+              <p className="mt-0.5 text-sm text-foreground">{organization}</p>
             </div>
           )}
           {organizationalUnit && (
             <div>
-              <p className="text-xs text-mineshaft-400">Organizational Unit (OU)</p>
-              <p className="mt-0.5 text-sm text-mineshaft-100">{organizationalUnit}</p>
+              <p className="text-xs text-muted">Organizational Unit (OU)</p>
+              <p className="mt-0.5 text-sm text-foreground">{organizationalUnit}</p>
             </div>
           )}
           {country && (
             <div>
-              <p className="text-xs text-mineshaft-400">Country (C)</p>
-              <p className="mt-0.5 text-sm text-mineshaft-100">{country}</p>
+              <p className="text-xs text-muted">Country (C)</p>
+              <p className="mt-0.5 text-sm text-foreground">{country}</p>
             </div>
           )}
           {state && (
             <div>
-              <p className="text-xs text-mineshaft-400">State (ST)</p>
-              <p className="mt-0.5 text-sm text-mineshaft-100">{state}</p>
+              <p className="text-xs text-muted">State (ST)</p>
+              <p className="mt-0.5 text-sm text-foreground">{state}</p>
             </div>
           )}
           {locality && (
             <div>
-              <p className="text-xs text-mineshaft-400">Locality (L)</p>
-              <p className="mt-0.5 text-sm text-mineshaft-100">{locality}</p>
+              <p className="text-xs text-muted">Locality (L)</p>
+              <p className="mt-0.5 text-sm text-foreground">{locality}</p>
             </div>
           )}
         </div>
 
         {hasDomainComponents && (
-          <div className="mt-4 border-t border-mineshaft-600 pt-4">
-            <p className="mb-3 text-xs text-mineshaft-400">Domain Components (DC)</p>
+          <div className="mt-4 border-t border-border pt-4">
+            <p className="mb-3 text-xs text-muted">Domain Components (DC)</p>
             <div className="flex flex-wrap gap-2">
               {domainComponents!.map((dc) => (
                 <span
                   key={dc}
-                  className="rounded bg-mineshaft-700 px-2.5 py-1 text-sm text-mineshaft-200"
+                  className="rounded bg-container-hover px-2.5 py-1 text-sm text-foreground"
                 >
                   {dc}
                 </span>
@@ -236,13 +236,13 @@ export const CertificateDetailsSection = ({ request }: Props) => {
         )}
 
         {hasAltNames && (
-          <div className="mt-4 border-t border-mineshaft-600 pt-4">
-            <p className="mb-3 text-xs text-mineshaft-400">Subject Alternative Names (SANs)</p>
+          <div className="mt-4 border-t border-border pt-4">
+            <p className="mb-3 text-xs text-muted">Subject Alternative Names (SANs)</p>
             <div className="flex flex-wrap gap-2">
               {filteredAltNames.map((san: { type: string; value: string }) => (
                 <span
                   key={`${san.type}-${san.value}`}
-                  className="rounded bg-mineshaft-700 px-2.5 py-1 text-sm text-mineshaft-200"
+                  className="rounded bg-container-hover px-2.5 py-1 text-sm text-foreground"
                 >
                   {san.value}
                 </span>
@@ -258,27 +258,25 @@ export const CertificateDetailsSection = ({ request }: Props) => {
           !state &&
           !locality &&
           !hasDomainComponents &&
-          !hasAltNames && (
-            <p className="text-sm text-mineshaft-400">No subject information specified</p>
-          )}
+          !hasAltNames && <p className="text-sm text-muted">No subject information specified</p>}
       </div>
 
       {basicConstraints?.isCA && (
-        <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-mineshaft-100">
-            <FontAwesomeIcon icon={faShieldHalved} className="text-sm text-mineshaft-400" />
+        <div className="rounded-lg border border-border bg-card p-4">
+          <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
+            <FontAwesomeIcon icon={faShieldHalved} className="text-sm text-muted" />
             Basic Constraints
           </h3>
 
           <div className="grid grid-cols-2 gap-x-8 gap-y-3">
             <div>
-              <p className="text-xs text-mineshaft-400">Certificate Authority</p>
-              <p className="mt-0.5 text-sm text-mineshaft-100">Yes (CA Certificate)</p>
+              <p className="text-xs text-muted">Certificate Authority</p>
+              <p className="mt-0.5 text-sm text-foreground">Yes (CA Certificate)</p>
             </div>
             {basicConstraints.pathLength !== undefined && (
               <div>
-                <p className="text-xs text-mineshaft-400">Path Length</p>
-                <p className="mt-0.5 text-sm text-mineshaft-100">{basicConstraints.pathLength}</p>
+                <p className="text-xs text-muted">Path Length</p>
+                <p className="mt-0.5 text-sm text-foreground">{basicConstraints.pathLength}</p>
               </div>
             )}
           </div>
@@ -286,20 +284,20 @@ export const CertificateDetailsSection = ({ request }: Props) => {
       )}
 
       {(hasKeyUsages || hasExtendedKeyUsages) && (
-        <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-mineshaft-100">
-            <FontAwesomeIcon icon={faKey} className="text-sm text-mineshaft-400" />
+        <div className="rounded-lg border border-border bg-card p-4">
+          <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
+            <FontAwesomeIcon icon={faKey} className="text-sm text-muted" />
             Key Usages
           </h3>
 
           {hasKeyUsages && certRequest?.keyUsages && (
             <div className="mb-4">
-              <p className="mb-3 text-xs text-mineshaft-400">Key Usages</p>
+              <p className="mb-3 text-xs text-muted">Key Usages</p>
               <div className="flex flex-wrap gap-2">
                 {certRequest.keyUsages.map((usage: string) => (
                   <span
                     key={usage}
-                    className="rounded bg-mineshaft-700 px-2.5 py-1 text-sm text-mineshaft-200"
+                    className="rounded bg-container-hover px-2.5 py-1 text-sm text-foreground"
                   >
                     {formatKeyUsageDisplay(usage)}
                   </span>
@@ -309,13 +307,13 @@ export const CertificateDetailsSection = ({ request }: Props) => {
           )}
 
           {hasExtendedKeyUsages && certRequest?.extendedKeyUsages && (
-            <div className={hasKeyUsages ? "border-t border-mineshaft-600 pt-4" : ""}>
-              <p className="mb-3 text-xs text-mineshaft-400">Extended Key Usages</p>
+            <div className={hasKeyUsages ? "border-t border-border pt-4" : ""}>
+              <p className="mb-3 text-xs text-muted">Extended Key Usages</p>
               <div className="flex flex-wrap gap-2">
                 {certRequest.extendedKeyUsages.map((usage: string) => (
                   <span
                     key={usage}
-                    className="rounded bg-mineshaft-700 px-2.5 py-1 text-sm text-mineshaft-200"
+                    className="rounded bg-container-hover px-2.5 py-1 text-sm text-foreground"
                   >
                     {formatExtendedKeyUsageDisplay(usage)}
                   </span>
@@ -326,9 +324,9 @@ export const CertificateDetailsSection = ({ request }: Props) => {
         </div>
       )}
 
-      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-mineshaft-100">
-          <FontAwesomeIcon icon={faTags} className="text-sm text-mineshaft-400" />
+      <div className="rounded-lg border border-border bg-card p-4">
+        <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
+          <FontAwesomeIcon icon={faTags} className="text-sm text-muted" />
           Metadata
         </h3>
         {metadata.length > 0 ? (
@@ -351,7 +349,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
             )}
           </div>
         ) : (
-          <p className="text-sm text-mineshaft-400">No metadata attached to this request.</p>
+          <p className="text-sm text-muted">No metadata attached to this request.</p>
         )}
       </div>
     </div>

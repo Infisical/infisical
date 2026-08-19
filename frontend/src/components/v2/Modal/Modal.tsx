@@ -60,7 +60,7 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
         <Card
           isRounded
           className={twMerge(
-            "animate-pop-in fixed top-1/2 left-1/2 z-[60] thin-scrollbar max-w-xl -translate-x-2/4 -translate-y-2/4 border border-mineshaft-600 drop-shadow-2xl dark:scheme-dark",
+            "animate-pop-in fixed top-1/2 left-1/2 z-[60] thin-scrollbar max-w-xl -translate-x-2/4 -translate-y-2/4 border border-border bg-popover drop-shadow-2xl dark:scheme-dark",
             className
           )}
           style={{ maxHeight: "90%" }}
@@ -84,7 +84,7 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
               <IconButton
                 variant="plain"
                 ariaLabel="close"
-                className="absolute top-4 right-6 rounded-sm text-bunker-400 hover:text-bunker-50"
+                className="absolute top-4 right-6 rounded-sm text-muted hover:text-foreground"
               >
                 <FontAwesomeIcon icon={faTimes} size="lg" className="cursor-pointer" />
               </IconButton>

@@ -90,7 +90,7 @@ export const EnterPasswordStep = ({ verificationToken, onComplete, onBack }: Pro
       onSubmit={handleSubmit(handlePasswordReset)}
       className="mx-auto flex w-full max-w-md flex-col items-center justify-center gap-y-4"
     >
-      <h1 className="bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
+      <h1 className="bg-gradient-to-b from-white to-label bg-clip-text text-center text-xl font-medium text-transparent">
         Enter new password
       </h1>
       <p className="w-max justify-center text-center text-sm text-muted">
@@ -161,7 +161,7 @@ export const EnterPasswordStep = ({ verificationToken, onComplete, onBack }: Pro
         Change Password
       </Button>
       <div>
-        <Button type="button" variant="ghost" className="mt-6 text-mineshaft-300" onClick={onBack}>
+        <Button type="button" variant="ghost" className="mt-6 text-label" onClick={onBack}>
           <ChevronLeft className="mr-2 h-4 w-4" />
           <span className="text-sm">Back to recovery options</span>
         </Button>

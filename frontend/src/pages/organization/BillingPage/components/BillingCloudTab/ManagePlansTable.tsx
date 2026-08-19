@@ -121,7 +121,7 @@ export const ManagePlansTable = ({ billingCycle }: Props) => {
 
                         window.location.href = "https://infisical.com/scheduledemo";
                       }}
-                      color="mineshaft"
+                      colorSchema="secondary"
                       className="w-full"
                     >
                       {subscriptionText}

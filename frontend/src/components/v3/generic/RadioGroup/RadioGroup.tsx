@@ -32,7 +32,7 @@ function RadioGroupItem({ className, isError, ...props }: RadioGroupItemProps) {
         "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
         "aria-invalid:border-danger aria-invalid:ring-danger/40",
         "hover:border-foreground/30",
-        "data-[state=checked]:border-primary data-[state=checked]:bg-primary",
+        "data-[state=checked]:border-project data-[state=checked]:bg-project",
         className
       )}
       {...props}

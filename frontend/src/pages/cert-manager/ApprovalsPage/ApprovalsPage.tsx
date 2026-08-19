@@ -16,7 +16,7 @@ export const ApprovalsPage = () => {
   const activeTab = selectedTab || "requests";
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-foreground">
+    <div className="mx-auto flex flex-col justify-between bg-background text-foreground">
       <Helmet>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>

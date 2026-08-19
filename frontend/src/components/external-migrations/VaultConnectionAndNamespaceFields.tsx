@@ -54,7 +54,7 @@ export const VaultConnectionAndNamespaceFields = ({
               className="w-full"
               components={{ Option: AppConnectionOption }}
             />
-            <p className="mt-1 text-xs text-mineshaft-400">
+            <p className="mt-1 text-xs text-muted">
               Project-scoped HashiCorp Vault app connections available to you
             </p>
           </>
@@ -79,7 +79,7 @@ export const VaultConnectionAndNamespaceFields = ({
             }
             className="w-full"
           />
-          <p className="mt-1 text-xs text-mineshaft-400">{namespaceHelpText}</p>
+          <p className="mt-1 text-xs text-muted">{namespaceHelpText}</p>
         </>
       </FormControl>
     </>

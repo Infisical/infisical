@@ -15,16 +15,16 @@ export const PkiSyncModalHeader = ({ destination, isConfigured }: Props) => {
       <img
         alt={`${destinationDetails.name} logo`}
         src={`/images/integrations/${destinationDetails.image}`}
-        className="h-12 w-12 rounded-md bg-bunker-500 object-contain p-2"
+        className="h-12 w-12 rounded-md bg-container object-contain p-2"
       />
       <div>
-        <div className="flex items-center gap-x-2 text-mineshaft-300">
+        <div className="flex items-center gap-x-2 text-label">
           {destinationDetails.name} Certificate Sync
           <DocumentationLinkBadge
             href={`https://infisical.com/docs/documentation/platform/pki/applications/certificate-syncs/${destination}`}
           />
         </div>
-        <p className="text-sm leading-4 text-mineshaft-400">
+        <p className="text-sm leading-4 text-muted">
           {isConfigured
             ? `Edit ${destinationDetails.name} Certificate Sync`
             : `Sync certificates to ${destinationDetails.name}`}

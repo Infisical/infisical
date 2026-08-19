@@ -115,11 +115,11 @@ export const PreviewSection = () => {
         subscription?.slug !== SubscriptionPlanTypes.Pro &&
         subscription?.slug !== SubscriptionPlanTypes.ProAnnual && (
           <div className="flex flex-row space-x-6">
-            <div className="mb-6 flex flex-1 items-center rounded-lg border border-primary/40 bg-primary/10 p-4">
+            <div className="mb-6 flex flex-1 items-center rounded-lg border border-project/40 bg-project/10 p-4">
               <div className="flex-1">
-                <h2 className="text-xl font-medium text-mineshaft-100">
+                <h2 className="text-xl font-medium text-foreground">
                   Unleash the full power of{" "}
-                  <span className="bg-linear-to-r from-primary-500 to-yellow bg-clip-text font-medium text-transparent">
+                  <span className="bg-linear-to-r from-project to-warning bg-clip-text font-medium text-transparent">
                     Infisical
                   </span>
                 </h2>
@@ -134,7 +134,7 @@ export const PreviewSection = () => {
                 {(isAllowed) => (
                   <Button
                     onClick={() => handleUpgradeBtnClick()}
-                    color="mineshaft"
+                    colorSchema="secondary"
                     isDisabled={!isAllowed}
                   >
                     {getUpgradePlanLabel()}
@@ -142,8 +142,8 @@ export const PreviewSection = () => {
                 )}
               </OrgPermissionCan>
             </div>
-            <div className="mb-6 flex w-full max-w-48 flex-col items-center rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
-              <div className="mb-4 flex w-full justify-center font-medium text-mineshaft-200">
+            <div className="mb-6 flex w-full max-w-48 flex-col items-center rounded-lg border border-border bg-container p-4">
+              <div className="mb-4 flex w-full justify-center font-medium text-foreground">
                 Want to learn more?{" "}
               </div>
               <div className="flex w-full justify-center">
@@ -152,7 +152,7 @@ export const PreviewSection = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <span className="cursor-pointer rounded-full border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 duration-200 hover:border-primary/40 hover:bg-primary/10">
+                  <span className="cursor-pointer rounded-full border border-border bg-foreground/10 px-4 py-2 duration-200 hover:border-project/40 hover:bg-project/10">
                     Book a demo{" "}
                     <FontAwesomeIcon
                       icon={faArrowUpRightFromSquare}
@@ -166,9 +166,9 @@ export const PreviewSection = () => {
         )}
       {!isPending && subscription && data && (
         <div className="mb-6 flex">
-          <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+          <div className="mr-4 flex-1 rounded-lg border border-border bg-card p-4">
             <p className="mb-2 text-muted">Current plan</p>
-            <p className="mb-8 text-2xl font-medium text-mineshaft-50">
+            <p className="mb-8 text-2xl font-medium text-foreground">
               {`${formatPlanSlug(subscription.slug)} ${
                 subscription.status === "trialing" ? "(Trial)" : ""
               }`}
@@ -187,7 +187,7 @@ export const PreviewSection = () => {
                       window.location.href = url;
                     }}
                     disabled={!isAllowed}
-                    className="text-primary"
+                    className="text-project"
                   >
                     Manage plan &rarr;
                   </button>
@@ -196,9 +196,9 @@ export const PreviewSection = () => {
             )}
           </div>
           {subscription.slug !== SubscriptionPlanTypes.Enterprise ? (
-            <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+            <div className="mr-4 flex-1 rounded-lg border border-border bg-card p-4">
               <p className="mb-2 text-muted">Price</p>
-              <p className="mb-8 text-2xl font-medium text-mineshaft-50">
+              <p className="mb-8 text-2xl font-medium text-foreground">
                 {subscription.status === "trialing" ? (
                   "$0.00 / month"
                 ) : (
@@ -218,9 +218,9 @@ export const PreviewSection = () => {
               </p>
             </div>
           ) : null}
-          <div className="flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+          <div className="flex-1 rounded-lg border border-border bg-card p-4">
             <p className="mb-2 text-muted">Subscription renews on</p>
-            <p className="mb-8 text-2xl font-medium text-mineshaft-50">
+            <p className="mb-8 text-2xl font-medium text-foreground">
               {data.currentPeriodEnd ? formatDate(data.currentPeriodEnd) : "-"}
             </p>
           </div>

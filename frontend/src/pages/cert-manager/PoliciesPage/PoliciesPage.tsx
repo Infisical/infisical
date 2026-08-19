@@ -129,7 +129,7 @@ export const PoliciesPage = () => {
   }
 
   return (
-    <div className="mx-auto flex h-full flex-col justify-between bg-bunker-800 text-foreground">
+    <div className="mx-auto flex h-full flex-col justify-between bg-background text-foreground">
       <Helmet>
         <title>{t("common.head-title", { title: "Certificate Manager" })}</title>
       </Helmet>

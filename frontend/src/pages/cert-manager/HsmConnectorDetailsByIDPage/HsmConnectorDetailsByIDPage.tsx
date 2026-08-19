@@ -71,7 +71,7 @@ const Page = () => {
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-foreground">
+    <div className="mx-auto flex flex-col justify-between bg-background text-foreground">
       {connector && (
         <ProjectPermissionCan
           I={ProjectPermissionHsmConnectorActions.Read}
@@ -84,7 +84,7 @@ const Page = () => {
                   to="/organizations/$orgId/projects/cert-manager/$projectId/settings"
                   params={{ orgId: currentOrg.id, projectId }}
                   search={{ selectedTab: "hsm-connectors" }}
-                  className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+                  className="mb-4 flex items-center gap-x-2 text-sm text-muted"
                 >
                   <ChevronLeftIcon className="size-4" />
                   HSM Connectors

@@ -48,7 +48,7 @@ export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
             }}
           />
         ) : (
-          <div className="flex h-full items-center justify-center rounded-lg bg-mineshaft-800 text-sm text-mineshaft-200">
+          <div className="flex h-full items-center justify-center rounded-lg bg-container text-sm text-foreground">
             <div className="flex flex-col items-center gap-4 py-20">
               <FingerprintIcon className="size-8" />
               <p>

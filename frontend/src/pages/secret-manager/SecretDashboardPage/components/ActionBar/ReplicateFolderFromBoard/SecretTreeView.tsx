@@ -127,7 +127,7 @@ const Folder: React.FC<FolderProps> = ({
             <FontAwesomeIcon
               // eslint-disable-next-line no-nested-ternary
               icon={level > 0 ? (open ? faFolderOpen : faFolder) : faFolderTree}
-              className={`h-4 w-4 text-${level === 0 ? "mineshaft-300" : "yellow"}`}
+              className={`h-4 w-4 ${level === 0 ? "text-label" : "text-warning"}`}
             />
           </div>
           {!isDisabled && (
@@ -142,14 +142,14 @@ const Folder: React.FC<FolderProps> = ({
 
           <label
             htmlFor={`folder-${path}`}
-            className={`ml-2 flex-1 cursor-pointer truncate ${basePath ? "text-mineshaft-300 italic" : ""}`}
+            className={`ml-2 flex-1 cursor-pointer truncate ${basePath ? "text-label italic" : ""}`}
             title={displayName}
           >
             {displayName || `${basePath}`}
           </label>
 
           {allItemIds.length > 0 && (
-            <span className="ml-2 text-xs text-mineshaft-400">
+            <span className="ml-2 text-xs text-muted">
               {allItemIds.length} {allItemIds.length === 1 ? "item" : "items"}
             </span>
           )}
@@ -157,7 +157,7 @@ const Folder: React.FC<FolderProps> = ({
 
         <CollapsibleContent className="overflow-hidden transition-all duration-300 ease-in-out">
           <div className="relative mt-1">
-            <div className="absolute top-0 bottom-0 left-5 w-px bg-mineshaft-600" />
+            <div className="absolute top-0 bottom-0 left-5 w-px bg-foreground/10" />
             {[...structure.items]
               .sort((a, b) => (a.secretKey ?? "").localeCompare(b.secretKey ?? ""))
               .map((item) => (
@@ -298,11 +298,11 @@ export const SecretTreeView: React.FC<TreeViewProps> = ({
   }, [selectedItems]);
 
   return (
-    <div className="flex w-full items-start gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900">
+    <div className="flex w-full items-start gap-3 rounded-lg border border-border bg-card">
       <div className={`w-full rounded-lg shadow-xs ${className}`}>
         <div className="h-[25vh] overflow-auto p-3">
           {isEmptyData ? (
-            <div className="flex h-full w-full items-center justify-center text-center text-mineshaft-300">
+            <div className="flex h-full w-full items-center justify-center text-center text-label">
               <p>No secrets or folders available</p>
             </div>
           ) : (
@@ -326,7 +326,7 @@ export const SecretTreeView: React.FC<TreeViewProps> = ({
 
         {!isDisabled && (
           <div className="flex justify-end pt-2 pr-2 pb-2">
-            <h3 className="flex items-center text-mineshaft-400">
+            <h3 className="flex items-center text-muted">
               {selectedItems.length} Item{selectedItems.length === 1 ? "" : "s"} Selected
             </h3>
           </div>

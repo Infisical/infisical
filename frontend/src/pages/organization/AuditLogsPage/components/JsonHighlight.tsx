@@ -36,7 +36,7 @@ type Props = {
 export const JsonHighlight = ({ value, className }: Props) => (
   <pre
     className={twMerge(
-      "thin-scrollbar overflow-auto rounded-md border border-border bg-card p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap text-mineshaft-400",
+      "thin-scrollbar overflow-auto rounded-md border border-border bg-card p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap text-muted",
       className
     )}
   >

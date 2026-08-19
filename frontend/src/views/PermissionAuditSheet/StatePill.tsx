@@ -47,7 +47,7 @@ export const StatePill = ({ state, conditions, isForbidden }: Props) => {
           </button>
         </HoverCardTrigger>
         <HoverCardContent align="end" className="w-auto max-w-2xl min-w-72">
-          <div className="mb-2 border-b border-border py-2 text-xs font-semibold text-mineshaft-100">
+          <div className="mb-2 border-b border-border py-2 text-xs font-semibold text-foreground">
             Conditions
           </div>
           <Table>
@@ -69,9 +69,7 @@ export const StatePill = ({ state, conditions, isForbidden }: Props) => {
                     </Badge>
                   </TableCell>
                   <TableCell className="font-mono text-xs">{entry.field}</TableCell>
-                  <TableCell className="font-mono text-xs text-mineshaft-300">
-                    {entry.operator}
-                  </TableCell>
+                  <TableCell className="font-mono text-xs text-label">{entry.operator}</TableCell>
                   <TableCell className="font-mono text-xs">{entry.value}</TableCell>
                 </TableRow>
               ))}

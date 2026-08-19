@@ -21,7 +21,7 @@ export const CredentialDisplay = ({ children, label, isSensitive }: Props) => {
   return (
     <GenericFieldLabel label={label}>
       {children ? (
-        <div className="flex w-full min-w-0 items-center gap-1 text-mineshaft-100">
+        <div className="flex w-full min-w-0 items-center gap-1 text-foreground">
           <span className="min-w-0 flex-1 truncate" title={showCredential ? children : undefined}>
             {showCredential ? children : "****************************"}
           </span>

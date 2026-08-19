@@ -236,7 +236,7 @@ export const CrossProjectSharingSection = () => {
         <p className="max-w-2xl text-sm text-accent">
           Grant another project read access to a slice of this project&apos;s secrets. The target
           project can then import them, or reference them inline with{" "}
-          <code className="rounded bg-mineshaft-700 px-1 py-0.5 font-mono text-xs text-yellow-200">
+          <code className="rounded bg-container-hover px-1 py-0.5 font-mono text-xs text-warning">
             ${"{@project-a.SECRET}"}
           </code>
           .
@@ -244,7 +244,7 @@ export const CrossProjectSharingSection = () => {
       </CardHeader>
       <CardContent>
         <div className="mb-2 flex items-center gap-2">
-          <span className="text-sm text-mineshaft-400">Linked Projects</span>
+          <span className="text-sm text-muted">Linked Projects</span>
           <Badge variant="neutral">{projectGroups.length}</Badge>
         </div>
         {grants.length === 0 ? (
@@ -303,8 +303,8 @@ export const CrossProjectSharingSection = () => {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <div className="rounded-md border border-mineshaft-600">
-                    <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2 text-xs text-muted">
+                  <div className="rounded-md border border-border">
+                    <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-border px-4 py-2 text-xs text-muted">
                       <span>Shared location in this project</span>
                       <span className="w-24 text-right">Secrets shared</span>
                     </div>
@@ -317,7 +317,7 @@ export const CrossProjectSharingSection = () => {
                       .map((grant) => (
                         <div
                           key={grant.id}
-                          className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2.5 last:border-b-0"
+                          className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-border px-4 py-2.5 last:border-b-0"
                         >
                           <Tooltip>
                             <TooltipTrigger asChild>

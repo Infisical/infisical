@@ -18,8 +18,8 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
   if (isPending) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
-        <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="mt-4 text-sm text-mineshaft-400">Loading options...</p>
+        <Spinner size="lg" className="text-muted" />
+        <p className="mt-4 text-sm text-muted">Loading options...</p>
       </div>
     );
   }
@@ -34,7 +34,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
             type="button"
             key={type}
             onClick={() => onSelect(type)}
-            className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
+            className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-border bg-container-hover p-4 duration-200 hover:bg-foreground/10"
           >
             <img
               src={`/images/integrations/${image}`}
@@ -59,7 +59,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
             service you're looking for,`}{" "}
               <a
                 target="_blank"
-                className="underline hover:text-mineshaft-300"
+                className="underline hover:text-label"
                 href="https://infisical.com/slack"
                 rel="noopener noreferrer"
               >
@@ -68,7 +68,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
               or{" "}
               <a
                 target="_blank"
-                className="underline hover:text-mineshaft-300"
+                className="underline hover:text-label"
                 href="https://github.com/Infisical/infisical/discussions"
                 rel="noopener noreferrer"
               >
@@ -79,7 +79,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
           </>
         }
       >
-        <div className="group relative flex h-28 flex-col items-center justify-center rounded-md border border-dashed border-mineshaft-600 bg-mineshaft-800 p-4 hover:bg-mineshaft-900/50">
+        <div className="group relative flex h-28 flex-col items-center justify-center rounded-md border border-dashed border-border bg-container p-4 hover:bg-card/50">
           <FontAwesomeIcon className="mt-auto text-3xl" icon={faWrench} />
           <div className="mt-auto max-w-xs text-center text-xs font-medium text-label duration-200 group-hover:text-foreground">
             Coming Soon

@@ -316,7 +316,7 @@ export const EditDynamicSecretTailscaleForm = ({
           </div>
         </div>
         <div>
-          <div className="mb-4 border-b border-b-mineshaft-600 pb-2">Configuration</div>
+          <div className="mb-4 border-b border-b-border pb-2">Configuration</div>
           <div className="flex flex-col">
             <Controller
               name="inputs.auth.method"
@@ -330,7 +330,7 @@ export const EditDynamicSecretTailscaleForm = ({
                   <Select
                     value={value}
                     onValueChange={onChange}
-                    className="w-full border border-mineshaft-500"
+                    className="w-full border border-border"
                     position="popper"
                     dropdownContainerClassName="max-w-none"
                   >
@@ -357,7 +357,7 @@ export const EditDynamicSecretTailscaleForm = ({
                   >
                     <SecretInput
                       {...field}
-                      containerClassName="text-muted group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                      containerClassName="text-muted group-focus-within:border-project/50! border border-border bg-card px-2.5 py-1.5"
                     />
                   </FormControl>
                 )}
@@ -397,7 +397,7 @@ export const EditDynamicSecretTailscaleForm = ({
                     >
                       <SecretInput
                         {...field}
-                        containerClassName="text-muted group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                        containerClassName="text-muted group-focus-within:border-project/50! border border-border bg-card px-2.5 py-1.5"
                       />
                     </FormControl>
                   )}
@@ -417,7 +417,7 @@ export const EditDynamicSecretTailscaleForm = ({
                   <Select
                     value={value}
                     onValueChange={onChange}
-                    className="w-full border border-mineshaft-500"
+                    className="w-full border border-border"
                     position="popper"
                     dropdownContainerClassName="max-w-none"
                   >
@@ -569,9 +569,9 @@ export const EditDynamicSecretTailscaleForm = ({
                   name="inputs.reusable"
                   render={({ field: { value, onChange } }) => (
                     <Switch
-                      className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                      className="bg-muted/50 shadow-inner data-[state=checked]:bg-success/80"
                       id="tailscale-edit-reusable"
-                      thumbClassName="bg-mineshaft-800"
+                      thumbClassName="bg-container"
                       isChecked={value}
                       onCheckedChange={onChange}
                     >
@@ -585,9 +585,9 @@ export const EditDynamicSecretTailscaleForm = ({
                   name="inputs.preauthorized"
                   render={({ field: { value, onChange } }) => (
                     <Switch
-                      className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                      className="bg-muted/50 shadow-inner data-[state=checked]:bg-success/80"
                       id="tailscale-edit-preauthorized"
-                      thumbClassName="bg-mineshaft-800"
+                      thumbClassName="bg-container"
                       isChecked={value}
                       onCheckedChange={onChange}
                     >

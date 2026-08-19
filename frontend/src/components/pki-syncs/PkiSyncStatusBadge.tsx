@@ -95,7 +95,7 @@ export const PkiSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }: Pr
                 <CalendarCheckIcon className="size-3" />
                 <div className="text-xs">Last Synced</div>
               </div>
-              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs">
+              <div className="rounded-sm bg-foreground/10 p-2 text-xs">
                 {format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}
               </div>
             </div>
@@ -106,7 +106,7 @@ export const PkiSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }: Pr
                 <XIcon className="size-3" />
                 <div className="text-xs">Failure Reason</div>
               </div>
-              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
+              <div className="rounded-sm bg-foreground/10 p-2 text-xs break-words">
                 {failureMessage}
               </div>
             </div>

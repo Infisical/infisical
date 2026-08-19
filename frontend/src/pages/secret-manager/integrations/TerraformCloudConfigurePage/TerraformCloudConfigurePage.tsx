@@ -125,7 +125,7 @@ export const TerraformCloudConfigurePage = () => {
       <Helmet>
         <title>Create Terraform Cloud Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600">
+      <Card className="max-w-lg rounded-md border border-border">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Specify the encironment and path within Infisical that you want to push to which project in Terraform."
@@ -145,7 +145,7 @@ export const TerraformCloudConfigurePage = () => {
               rel="noopener noreferrer"
               href="https://infisical.com/docs/integrations/cloud/terraform-cloud"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
@@ -160,7 +160,7 @@ export const TerraformCloudConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
+            className="w-full border border-border"
           >
             {currentProject?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -188,7 +188,7 @@ export const TerraformCloudConfigurePage = () => {
           <Select
             value={variableType}
             onValueChange={(val) => setVariableType(val)}
-            className="w-full border border-mineshaft-500"
+            className="w-full border border-border"
           >
             {variableTypes.map((variable) => (
               <SelectItem value={variable.name} key={`target-app-${variable.name}`}>
@@ -201,7 +201,7 @@ export const TerraformCloudConfigurePage = () => {
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
-            className="w-full border border-mineshaft-500"
+            className="w-full border border-border"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
@@ -224,7 +224,7 @@ export const TerraformCloudConfigurePage = () => {
           <Select
             value={initialSyncBehavior}
             onValueChange={(e) => setInitialSyncBehavior(e)}
-            className="w-full border border-mineshaft-600"
+            className="w-full border border-border"
           >
             {initialSyncBehaviors.map((b) => {
               return (

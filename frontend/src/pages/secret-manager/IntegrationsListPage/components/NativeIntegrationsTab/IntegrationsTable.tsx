@@ -75,9 +75,9 @@ type IntegrationFilters = {
 };
 
 const STATUS_ICON_MAP = {
-  [IntegrationStatus.Synced]: { icon: faCheck, className: "text-green" },
-  [IntegrationStatus.NotSynced]: { icon: faWarning, className: "text-red" },
-  [IntegrationStatus.PendingSync]: { icon: faClock, className: "text-yellow" }
+  [IntegrationStatus.Synced]: { icon: faCheck, className: "text-success" },
+  [IntegrationStatus.NotSynced]: { icon: faWarning, className: "text-danger" },
+  [IntegrationStatus.PendingSync]: { icon: faClock, className: "text-warning" }
 };
 
 export const IntegrationsTable = ({
@@ -257,8 +257,8 @@ export const IntegrationsTable = ({
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                isTableFiltered && "border-primary/50 text-primary"
+                "flex h-10 w-11 items-center justify-center overflow-hidden border border-border bg-container p-0 transition-all hover:border-project/60 hover:bg-project/10",
+                isTableFiltered && "border-project/50 text-project"
               )}
             >
               <Tooltip content="Filter Integrations" className="mb-2">
@@ -282,7 +282,7 @@ export const IntegrationsTable = ({
                 key={status}
                 icon={
                   filters.status.includes(status) && (
-                    <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                    <FontAwesomeIcon className="text-project" icon={faCheckCircle} />
                   )
                 }
                 iconPos="right"
@@ -311,7 +311,7 @@ export const IntegrationsTable = ({
                 key={integration}
                 icon={
                   filters.integrations.includes(integration) && (
-                    <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                    <FontAwesomeIcon className="text-project" icon={faCheckCircle} />
                   )
                 }
                 iconPos="right"
@@ -341,7 +341,7 @@ export const IntegrationsTable = ({
                 key={env.id}
                 icon={
                   filters.environmentIds.includes(env.id) && (
-                    <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                    <FontAwesomeIcon className="text-project" icon={faCheckCircle} />
                   )
                 }
                 iconPos="right"

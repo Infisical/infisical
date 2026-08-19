@@ -185,7 +185,7 @@ export const PkiApplicationModal = ({ popUp, handlePopUpToggle }: Props) => {
                       <Link
                         to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles"
                         params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-                        className="underline hover:text-yellow-400"
+                        className="underline hover:text-warning"
                       >
                         Create one in Certificate Profiles
                       </Link>

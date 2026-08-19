@@ -211,7 +211,7 @@ export const MongoAtlasInputForm = ({
             </div>
           </div>
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-border pb-2 pl-1 font-medium text-foreground">
               Configuration
             </div>
             <div className="flex flex-col">
@@ -267,7 +267,7 @@ export const MongoAtlasInputForm = ({
                 {roleFields.fields.map(({ id: roleFieldId }, i) => (
                   <div key={roleFieldId} className="flex items-end space-x-2">
                     <div className="grow">
-                      {i === 0 && <span className="text-xs text-mineshaft-400">Database Name</span>}
+                      {i === 0 && <span className="text-xs text-muted">Database Name</span>}
                       <Controller
                         control={control}
                         name={`provider.roles.${i}.databaseName`}
@@ -286,7 +286,7 @@ export const MongoAtlasInputForm = ({
                       {i === 0 && (
                         <FormLabel
                           label="Collection Name"
-                          className="text-xs text-mineshaft-400"
+                          className="text-xs text-muted"
                           isOptional
                         />
                       )}
@@ -308,7 +308,7 @@ export const MongoAtlasInputForm = ({
                       {i === 0 && (
                         <FormLabel
                           label="Role"
-                          className="text-xs text-mineshaft-400"
+                          className="text-xs text-muted"
                           tooltipClassName="max-w-md whitespace-pre-line"
                           tooltipText={`Human-readable label that identifies a group of privileges assigned to a database user. This value can either be a built-in role or a custom role.
 														Built-in: atlasAdmin, backup, clusterMonitor, dbAdmin, dbAdminAnyDatabase, enableSharding, read, readAnyDatabase, readWrite, readWriteAnyDatabase.`}
@@ -356,7 +356,7 @@ export const MongoAtlasInputForm = ({
                   </Button>
                 </div>
               </div>
-              <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
+              <Accordion type="single" collapsible className="mb-2 w-full bg-container-hover">
                 <AccordionItem value="advance-section">
                   <AccordionTrigger>Advanced</AccordionTrigger>
                   <AccordionContent>
@@ -373,7 +373,7 @@ export const MongoAtlasInputForm = ({
                           <Input
                             {...field}
                             value={field.value || undefined}
-                            className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                            className="border-border bg-card text-sm"
                             placeholder="{{randomUsername}}"
                           />
                         </FormControl>
@@ -393,7 +393,7 @@ export const MongoAtlasInputForm = ({
                             {i === 0 && (
                               <FormLabel
                                 label="Label"
-                                className="text-xs text-mineshaft-400"
+                                className="text-xs text-muted"
                                 tooltipClassName="max-w-md whitespace-pre-line"
                                 tooltipText="Human-readable label that identifies the cluster or MongoDB Atlas Data Lake that this database user can access."
                               />
@@ -413,7 +413,7 @@ export const MongoAtlasInputForm = ({
                             />
                           </div>
                           <div className="grow">
-                            {i === 0 && <span className="text-xs text-mineshaft-400">Type</span>}
+                            {i === 0 && <span className="text-xs text-muted">Type</span>}
                             <Controller
                               control={control}
                               name={`provider.scopes.${i}.type`}

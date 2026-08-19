@@ -155,14 +155,14 @@ export const CodeSigningRequestsTab = () => {
   const isTableFiltered = filter !== ApprovalRequestStatus.Pending;
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="mb-6 rounded-lg border border-border bg-card p-4">
       <div className="mb-4 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-x-2">
-            <p className="text-xl font-medium text-mineshaft-100">Signing Requests</p>
+            <p className="text-xl font-medium text-foreground">Signing Requests</p>
             <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.approvals.requestToSign} />
           </div>
-          <p className="text-sm text-bunker-300">Review and manage signing requests</p>
+          <p className="text-sm text-label">Review and manage signing requests</p>
         </div>
         <ProjectPermissionCan
           I={ProjectPermissionCodeSigningActions.Sign}
@@ -188,8 +188,8 @@ export const CodeSigningRequestsTab = () => {
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-9.5 w-[2.6rem] items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                isTableFiltered && "border-primary/50 text-primary"
+                "flex h-9.5 w-[2.6rem] items-center justify-center overflow-hidden border border-border bg-container p-0 transition-all hover:border-project/60 hover:bg-project/10",
+                isTableFiltered && "border-project/50 text-project"
               )}
             >
               <FontAwesomeIcon icon={faFilter} />
@@ -217,7 +217,7 @@ export const CodeSigningRequestsTab = () => {
                 Closed Requests
               </DropdownSubMenuTrigger>
               <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
-                <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
+                <DropdownMenuLabel className="sticky top-0 bg-card">
                   Filter by Status
                 </DropdownMenuLabel>
                 <DropdownMenuItem
@@ -313,7 +313,7 @@ export const CodeSigningRequestsTab = () => {
               return (
                 <Tr
                   key={request.id}
-                  className="h-14 cursor-pointer transition-colors hover:bg-mineshaft-700"
+                  className="h-14 cursor-pointer transition-colors hover:bg-container-hover"
                   onClick={() =>
                     navigate({
                       to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
@@ -330,21 +330,21 @@ export const CodeSigningRequestsTab = () => {
                 >
                   <Td>
                     <div>
-                      <div className="text-sm font-medium text-mineshaft-100">
+                      <div className="text-sm font-medium text-foreground">
                         {request.requesterName || "Unknown"}
                       </div>
-                      <div className="text-xs text-mineshaft-400">{request.requesterEmail}</div>
+                      <div className="text-xs text-muted">{request.requesterEmail}</div>
                     </div>
                   </Td>
                   <Td>
-                    <span className="text-sm text-mineshaft-200">
+                    <span className="text-sm text-foreground">
                       {reqData.signerName || "Unknown Signer"}
                     </span>
                   </Td>
                   <Td>
                     <div className="flex items-center gap-2">
                       {needsApproval ? (
-                        <div className="flex items-center gap-1 rounded bg-primary/20 px-2 py-0.5 text-xs text-primary">
+                        <div className="flex items-center gap-1 rounded bg-project/20 px-2 py-0.5 text-xs text-project">
                           <FontAwesomeIcon icon={faExclamationCircle} className="h-3 w-3" />
                           <span>Approval Required</span>
                         </div>
@@ -359,12 +359,12 @@ export const CodeSigningRequestsTab = () => {
                     </div>
                   </Td>
                   <Td>
-                    <span className="text-sm text-mineshaft-400">
+                    <span className="text-sm text-muted">
                       {format(new Date(request.createdAt), "MMM d, yyyy")}
                     </span>
                   </Td>
                   <Td>
-                    <FontAwesomeIcon icon={faChevronRight} className="text-bunker-300" />
+                    <FontAwesomeIcon icon={faChevronRight} className="text-label" />
                   </Td>
                 </Tr>
               );

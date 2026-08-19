@@ -14,7 +14,7 @@ export const Stepper = ({ activeStep, children, direction, className }: StepperP
   return (
     <div
       className={twMerge(
-        "flex w-full items-center space-x-3 rounded-md border border-bunker-300/30 p-2",
+        "flex w-full items-center space-x-3 rounded-md border border-border/30 p-2",
         className
       )}
     >
@@ -27,9 +27,9 @@ export const Stepper = ({ activeStep, children, direction, className }: StepperP
             <div className="flex shrink-0 items-center space-x-2">
               <div
                 className={twMerge(
-                  "flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium text-mineshaft-800 transition-all",
-                  isCompleted ? "bg-primary" : "border border-primary/30 text-bunker-300",
-                  isActive && "bg-primary text-mineshaft-800"
+                  "flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium text-muted transition-all",
+                  isCompleted ? "bg-project" : "border border-project/30 text-label",
+                  isActive && "bg-project text-muted"
                 )}
               >
                 {isCompleted ? <FontAwesomeIcon icon={faCheck} /> : index + 1}
@@ -44,7 +44,7 @@ export const Stepper = ({ activeStep, children, direction, className }: StepperP
             {isNotLast && (
               <div
                 style={{ height: "1px" }}
-                className={twMerge("grow bg-bunker-300/30", isCompleted && "bg-primary")}
+                className={twMerge("grow bg-label/30", isCompleted && "bg-project")}
               />
             )}
           </div>

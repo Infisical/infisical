@@ -96,7 +96,7 @@ export const ExportSignerCertModal = ({ isOpen, onOpenChange, signerId, signerNa
                     <TooltipContent>Copy serial number</TooltipContent>
                   </Tooltip>
                 </div>
-                <div className="rounded-md border border-border bg-mineshaft-900 px-3 py-2 font-mono text-xs break-all text-foreground">
+                <div className="rounded-md border border-border bg-card px-3 py-2 font-mono text-xs break-all text-foreground">
                   {data.serialNumber || "—"}
                 </div>
               </section>
@@ -135,7 +135,7 @@ export const ExportSignerCertModal = ({ isOpen, onOpenChange, signerId, signerNa
                     </Tooltip>
                   </div>
                 </div>
-                <pre className="max-h-72 thin-scrollbar overflow-y-auto rounded-md border border-border bg-mineshaft-900 px-3 py-2.5 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap text-mineshaft-200">
+                <pre className="max-h-72 thin-scrollbar overflow-y-auto rounded-md border border-border bg-card px-3 py-2.5 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap text-foreground">
                   {data.certificatePem}
                 </pre>
               </section>

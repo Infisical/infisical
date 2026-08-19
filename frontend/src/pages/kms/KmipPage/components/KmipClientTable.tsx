@@ -141,16 +141,16 @@ export const KmipClientTable = () => {
       animate={{ opacity: 1, translateX: 0 }}
       exit={{ opacity: 0, translateX: 30 }}
     >
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="mb-6 rounded-lg border border-border bg-card p-4">
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-xl font-medium whitespace-nowrap text-mineshaft-100">KMIP Clients</p>
+          <p className="text-xl font-medium whitespace-nowrap text-foreground">KMIP Clients</p>
           <div className="flex w-full justify-end pr-4">
             <a
               target="_blank"
               rel="noopener noreferrer"
               href="https://infisical.com/docs/documentation/platform/kms"
             >
-              <span className="flex w-max cursor-pointer items-center rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-foreground">
+              <span className="flex w-max cursor-pointer items-center rounded-md border border-border bg-foreground/10 px-4 py-2 text-foreground duration-200 hover:border-project/40 hover:bg-project/10 hover:text-foreground">
                 Documentation{" "}
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
@@ -224,7 +224,7 @@ export const KmipClientTable = () => {
                   const { name, id, description, permissions } = kmipClient;
 
                   return (
-                    <Tr className="group h-10 hover:bg-mineshaft-700" key={`st-v3-${id}`}>
+                    <Tr className="group h-10 hover:bg-container-hover" key={`st-v3-${id}`}>
                       <Td>{name}</Td>
                       <Td className="max-w-80 break-all">{description}</Td>
                       <Td className="max-w-40">{[permissions.join(", ")]}</Td>
@@ -234,7 +234,7 @@ export const KmipClientTable = () => {
                             <IconButton
                               variant="plain"
                               colorSchema="primary"
-                              className="ml-4 p-0 data-[state=open]:text-primary-400"
+                              className="ml-4 p-0 data-[state=open]:text-project"
                               ariaLabel="More options"
                             >
                               <FontAwesomeIcon size="lg" icon={faEllipsis} />

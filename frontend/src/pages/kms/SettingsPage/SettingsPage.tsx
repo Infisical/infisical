@@ -22,7 +22,7 @@ export const SettingsPage = () => {
   const { currentOrg, isSubOrganization } = useOrganization();
 
   return (
-    <div className="flex h-full w-full justify-center bg-bunker-800 text-foreground">
+    <div className="flex h-full w-full justify-center bg-background text-foreground">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
       </Helmet>

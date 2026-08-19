@@ -82,10 +82,8 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
     <div className="space-y-4">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <span className="text-sm font-medium text-mineshaft-200">Approval Steps</span>
-          <p className="text-xs text-mineshaft-400">
-            Define the approval workflow with sequential steps
-          </p>
+          <span className="text-sm font-medium text-foreground">Approval Steps</span>
+          <p className="text-xs text-muted">Define the approval workflow with sequential steps</p>
         </div>
         <Button
           type="button"
@@ -107,15 +105,13 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
 
       <div className="space-y-4">
         {stepFields.map((field, index) => (
-          <div key={field.id} className="rounded border border-mineshaft-600 bg-mineshaft-700 p-4">
+          <div key={field.id} className="rounded border border-border bg-container-hover p-4">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-primary">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-project/20 text-xs font-semibold text-project">
                   {index + 1}
                 </span>
-                <span className="text-sm font-medium text-mineshaft-300">
-                  Approval Step {index + 1}
-                </span>
+                <span className="text-sm font-medium text-label">Approval Step {index + 1}</span>
               </div>
               {stepFields.length > 1 && (
                 <IconButton
@@ -124,7 +120,7 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
                   size="xs"
                   onClick={() => removeStep(index)}
                 >
-                  <FontAwesomeIcon icon={faTrash} className="text-red-500" />
+                  <FontAwesomeIcon icon={faTrash} className="text-danger" />
                 </IconButton>
               )}
             </div>
@@ -170,7 +166,7 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
               />
 
               <div className="space-y-3">
-                <div className="text-sm font-medium text-mineshaft-200">Approvers</div>
+                <div className="text-sm font-medium text-foreground">Approvers</div>
                 <Controller
                   control={control}
                   name={`steps.${index}.approvers`}
@@ -252,9 +248,9 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
       </div>
 
       {stepFields.length === 0 && (
-        <div className="rounded border border-dashed border-mineshaft-600 bg-mineshaft-800/50 p-8 text-center">
-          <p className="text-sm text-mineshaft-400">No approval steps defined</p>
-          <p className="mt-1 text-xs text-mineshaft-500">
+        <div className="rounded border border-dashed border-border bg-container/50 p-8 text-center">
+          <p className="text-sm text-muted">No approval steps defined</p>
+          <p className="mt-1 text-xs text-muted">
             Click &quot;Add Step&quot; to create your first approval step
           </p>
         </div>

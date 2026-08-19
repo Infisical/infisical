@@ -21,7 +21,7 @@ export const SettingsPage = () => {
   const activeTab = search.selectedTab ?? "app-connections";
 
   return (
-    <div className="flex h-full w-full justify-center bg-bunker-800 text-foreground">
+    <div className="flex h-full w-full justify-center bg-background text-foreground">
       <Helmet>
         <title>Settings</title>
       </Helmet>
