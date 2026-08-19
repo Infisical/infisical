@@ -1,4 +1,5 @@
 import { TProjectPermission } from "@app/lib/types";
+import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
 import { IdentityAuthTemplateMethod } from "./identity-auth-template-enums";
 
@@ -11,9 +12,21 @@ export type TLdapTemplateFields = {
   ldapCaCertificate?: string;
 };
 
+export type TKubernetesTemplateFields = {
+  tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
+  kubernetesHost?: string | null;
+  caCert?: string;
+  verifyTlsCertificate?: boolean;
+  tokenReviewerJwt?: string;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  allowedAudience?: string;
+};
+
 // Union type for all template field types
 export type TTemplateFieldsByMethod = {
   [IdentityAuthTemplateMethod.LDAP]: TLdapTemplateFields;
+  [IdentityAuthTemplateMethod.KUBERNETES]: TKubernetesTemplateFields;
 };
 
 // Generic base types that use conditional types for type safety

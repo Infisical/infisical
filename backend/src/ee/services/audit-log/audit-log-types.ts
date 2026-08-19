@@ -1598,6 +1598,7 @@ interface AddIdentityKubernetesAuthEvent {
   type: EventType.ADD_IDENTITY_KUBERNETES_AUTH;
   metadata: {
     identityId: string;
+    templateId?: string | null;
     kubernetesHost: string;
     allowedNamespaces: string;
     allowedNames: string;
@@ -1626,6 +1627,7 @@ interface UpdateIdentityKubernetesAuthEvent {
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
     accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+    templateId?: string | null;
   };
 }
 

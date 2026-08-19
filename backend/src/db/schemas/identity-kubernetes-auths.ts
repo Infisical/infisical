@@ -35,7 +35,8 @@ export const IdentityKubernetesAuthsSchema = z.object({
   tokenReviewMode: z.string().default("api"),
   gatewayV2Id: z.string().uuid().nullable().optional(),
   gatewayPoolId: z.string().uuid().nullable().optional(),
-  verifyTlsCertificate: z.boolean().default(false)
+  verifyTlsCertificate: z.boolean().default(false),
+  templateId: z.string().uuid().nullable().optional()
 });
 
 export type TIdentityKubernetesAuths = z.infer<typeof IdentityKubernetesAuthsSchema>;

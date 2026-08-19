@@ -1,27 +1,37 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { OrganizationActionScope, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
+import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
+import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
+  OrgPermissionGatewayActions,
+  OrgPermissionGatewayPoolActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn";
 import { TOrgPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
+import { validateKubernetesConnectionFields } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-validators";
 import { TIdentityLdapAuthDALFactory } from "@app/services/identity-ldap-auth/identity-ldap-auth-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TIdentityAuthTemplateDALFactory } from "./identity-auth-template-dal";
-import { IdentityAuthTemplateMethod } from "./identity-auth-template-enums";
+import { IdentityAuthTemplateMethod, TEMPLATE_SECRET_FIELDS_BY_METHOD } from "./identity-auth-template-enums";
+import { templateFieldPatchKeysByMethod } from "./identity-auth-template-schemas";
 import {
   TDeleteIdentityAuthTemplateDTO,
   TFindTemplateUsagesDTO,
   TGetIdentityAuthTemplateDTO,
   TGetTemplatesByAuthMethodDTO,
+  TKubernetesTemplateFields,
   TLdapTemplateFields,
   TListIdentityAuthTemplatesDTO,
   TUnlinkTemplateUsageDTO
@@ -29,7 +39,11 @@ import {
 
 type TIdentityAuthTemplateServiceFactoryDep = {
   identityAuthTemplateDAL: TIdentityAuthTemplateDALFactory;
-  identityLdapAuthDAL: TIdentityLdapAuthDALFactory;
+  identityLdapAuthDAL: Pick<TIdentityLdapAuthDALFactory, "updateByTemplateId">;
+  identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "updateByTemplateId">;
+  gatewayDAL: Pick<TGatewayDALFactory, "find">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
+  gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithInputKey" | "decryptWithInputKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -38,9 +52,15 @@ type TIdentityAuthTemplateServiceFactoryDep = {
 
 export type TIdentityAuthTemplateServiceFactory = ReturnType<typeof identityAuthTemplateServiceFactory>;
 
+const AUDIT_FANOUT_CHUNK_SIZE = 20;
+
 export const identityAuthTemplateServiceFactory = ({
   identityAuthTemplateDAL,
   identityLdapAuthDAL,
+  identityKubernetesAuthDAL,
+  gatewayDAL,
+  gatewayV2DAL,
+  gatewayPoolDAL,
   permissionService,
   kmsService,
   licenseService,
@@ -54,7 +74,138 @@ export const identityAuthTemplateServiceFactory = ({
         message:
           "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
       });
+    return plan;
   };
+
+  // template credentials are write-only: every read path strips them so they never
+  // reach the client (the edit UI keeps a stored secret by omitting the field)
+  const $redactTemplateSecrets = (authMethod: string, fields: Record<string, unknown>) => {
+    const secretFields = TEMPLATE_SECRET_FIELDS_BY_METHOD[authMethod as IdentityAuthTemplateMethod] ?? [];
+    const redacted = { ...fields };
+    secretFields.forEach((key) => {
+      delete redacted[key];
+    });
+    return redacted;
+  };
+
+  // audit the platform-driven rewrite of linked identities; runs after the propagation
+  // transaction commits so the tx never waits on Redis, chunked to bound concurrency
+  const $auditTemplatePropagation = async ({
+    identityIds,
+    authMethod,
+    templateId,
+    orgId
+  }: {
+    identityIds: string[];
+    authMethod: string;
+    templateId: string;
+    orgId: string;
+  }) => {
+    for (const batch of chunkArray(identityIds, AUDIT_FANOUT_CHUNK_SIZE)) {
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.all(
+        batch.map((identityId) =>
+          auditLogService.createAuditLog({
+            actor: {
+              type: ActorType.PLATFORM,
+              metadata: {}
+            },
+            orgId,
+            event:
+              authMethod === IdentityAuthTemplateMethod.LDAP
+                ? { type: EventType.UPDATE_IDENTITY_LDAP_AUTH, metadata: { identityId, templateId } }
+                : { type: EventType.UPDATE_IDENTITY_KUBENETES_AUTH, metadata: { identityId, templateId } }
+          })
+        )
+      );
+    }
+  };
+
+  const $validateKubernetesTemplateFields = (fields: TKubernetesTemplateFields) => {
+    const issues = validateKubernetesConnectionFields(fields);
+    if (issues.length > 0) {
+      throw new BadRequestError({ message: issues[0].message });
+    }
+  };
+
+  // mirrors the checks the identity k8s auth attach flow runs, so a template cannot smuggle
+  // in a gateway its author could not attach directly
+  const $authorizeKubernetesTemplateGateway = ({
+    gatewayId,
+    gatewayPoolId,
+    plan,
+    permission
+  }: {
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+    plan: Awaited<ReturnType<TLicenseServiceFactory["getPlan"]>>;
+    permission: Awaited<ReturnType<TPermissionServiceFactory["getOrgPermission"]>>["permission"];
+  }) => {
+    if (gatewayId) {
+      if (!plan.gateway) {
+        throw new BadRequestError({
+          message:
+            "Your current plan does not support gateway usage with identity k8s auth. Please upgrade your plan or contact Infisical Sales for assistance."
+        });
+      }
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayActions.AttachGateways,
+        OrgPermissionSubjects.Gateway
+      );
+    }
+    if (gatewayPoolId) {
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."
+        });
+      }
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayPoolActions.AttachGatewayPools,
+        OrgPermissionSubjects.GatewayPool
+      );
+    }
+  };
+
+  // resolves the template's user-facing gatewayId onto the v1/v2 column split used by
+  // identity_kubernetes_auths; only called when the caller is setting a gateway, so a
+  // stale reference inside the encrypted blob cannot block unrelated template edits
+  const $resolveKubernetesTemplateGateway = async ({
+    gatewayId,
+    gatewayPoolId,
+    orgId
+  }: {
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+    orgId: string;
+  }) => {
+    let resolvedGatewayId: string | null = null;
+    let resolvedGatewayV2Id: string | null = null;
+    if (gatewayId && !gatewayPoolId) {
+      const [[gateway], [gatewayV2]] = await Promise.all([
+        gatewayDAL.find({ id: gatewayId, orgId }),
+        gatewayV2DAL.find({ id: gatewayId, orgId })
+      ]);
+      if (gateway) {
+        resolvedGatewayId = gatewayId;
+      } else if (gatewayV2) {
+        resolvedGatewayV2Id = gatewayId;
+      } else {
+        throw new BadRequestError({
+          message: `Gateway with ID '${gatewayId}' was not found in this organization. Select an existing gateway for the template.`
+        });
+      }
+    }
+    if (gatewayPoolId) {
+      const pool = await gatewayPoolDAL.findById(gatewayPoolId);
+      if (!pool || pool.orgId !== orgId) {
+        throw new BadRequestError({
+          message: `Gateway pool with ID '${gatewayPoolId}' was not found in this organization. Select an existing gateway pool for the template.`
+        });
+      }
+    }
+    return { resolvedGatewayId, resolvedGatewayV2Id, resolvedGatewayPoolId: gatewayPoolId ?? null };
+  };
+
   const createTemplate = async ({
     name,
     authMethod,
@@ -68,7 +219,7 @@ export const identityAuthTemplateServiceFactory = ({
     authMethod: string;
     templateFields: Record<string, unknown>;
   } & Omit<TOrgPermission, "orgId">) => {
-    await $checkPlan(actorOrgId);
+    const plan = await $checkPlan(actorOrgId);
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
       actor,
@@ -82,6 +233,30 @@ export const identityAuthTemplateServiceFactory = ({
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     );
 
+    let fieldsToPersist: Record<string, unknown> = templateFields;
+    if (authMethod === IdentityAuthTemplateMethod.KUBERNETES) {
+      const kubernetesFields = templateFields as TKubernetesTemplateFields;
+      const normalizedFields: TKubernetesTemplateFields = {
+        ...kubernetesFields,
+        verifyTlsCertificate: kubernetesFields.verifyTlsCertificate ?? Boolean(kubernetesFields.caCert?.length)
+      };
+      $validateKubernetesTemplateFields(normalizedFields);
+      if (normalizedFields.gatewayId || normalizedFields.gatewayPoolId) {
+        $authorizeKubernetesTemplateGateway({
+          gatewayId: normalizedFields.gatewayId,
+          gatewayPoolId: normalizedFields.gatewayPoolId,
+          plan,
+          permission
+        });
+        await $resolveKubernetesTemplateGateway({
+          gatewayId: normalizedFields.gatewayId,
+          gatewayPoolId: normalizedFields.gatewayPoolId,
+          orgId: actorOrgId
+        });
+      }
+      fieldsToPersist = normalizedFields;
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
@@ -89,11 +264,11 @@ export const identityAuthTemplateServiceFactory = ({
     const template = await identityAuthTemplateDAL.create({
       name,
       authMethod,
-      templateFields: encryptor({ plainText: Buffer.from(JSON.stringify(templateFields)) }).cipherTextBlob,
+      templateFields: encryptor({ plainText: Buffer.from(JSON.stringify(fieldsToPersist)) }).cipherTextBlob,
       orgId: actorOrgId
     });
 
-    return { ...template, templateFields };
+    return { ...template, templateFields: $redactTemplateSecrets(authMethod, fieldsToPersist) };
   };
 
   const updateTemplate = async ({
@@ -109,7 +284,7 @@ export const identityAuthTemplateServiceFactory = ({
     name?: string;
     templateFields?: Record<string, unknown>;
   } & Omit<TOrgPermission, "orgId">) => {
-    await $checkPlan(actorOrgId);
+    const plan = await $checkPlan(actorOrgId);
     const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actorOrgId);
     if (!template) {
       throw new NotFoundError({ message: "Template not found" });
@@ -128,37 +303,93 @@ export const identityAuthTemplateServiceFactory = ({
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     );
 
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: template.orgId
     });
 
-    let finalTemplateFields: Record<string, unknown> = {};
+    const fieldPatch = templateFields && Object.keys(templateFields).length > 0 ? templateFields : undefined;
 
-    const updatedTemplate = await identityAuthTemplateDAL.transaction(async (tx) => {
+    if (fieldPatch) {
+      const allowedPatchKeys: readonly string[] =
+        templateFieldPatchKeysByMethod[template.authMethod as IdentityAuthTemplateMethod] ?? [];
+      const invalidKeys = Object.keys(fieldPatch).filter((key) => !allowedPatchKeys.includes(key));
+      if (invalidKeys.length > 0) {
+        throw new BadRequestError({
+          message: `Template fields [${invalidKeys.join(", ")}] are not valid for a '${template.authMethod}' auth template`
+        });
+      }
+    }
+
+    const currentTemplateFields = JSON.parse(
+      decryptor({ cipherTextBlob: template.templateFields }).toString()
+    ) as Record<string, unknown>;
+    const mergedTemplateFields: Record<string, unknown> = fieldPatch
+      ? { ...currentTemplateFields, ...fieldPatch }
+      : currentTemplateFields;
+
+    let kubernetesPropagationData: TIdentityKubernetesAuthsUpdate | undefined;
+    if (fieldPatch && template.authMethod === IdentityAuthTemplateMethod.KUBERNETES) {
+      const merged = mergedTemplateFields as TKubernetesTemplateFields;
+      const patch = fieldPatch as Partial<TKubernetesTemplateFields>;
+      // follow the CA cert with the verification toggle unless the patch sets it explicitly,
+      // mirroring the identity k8s auth update behavior
+      if (!("verifyTlsCertificate" in patch) && "caCert" in patch) {
+        merged.verifyTlsCertificate = Boolean(patch.caCert?.length);
+      }
+      $validateKubernetesTemplateFields(merged);
+      kubernetesPropagationData = {
+        kubernetesHost: merged.kubernetesHost ?? null,
+        tokenReviewMode: merged.tokenReviewMode,
+        allowedAudience: merged.allowedAudience ?? "",
+        verifyTlsCertificate: merged.verifyTlsCertificate ?? Boolean(merged.caCert?.length),
+        encryptedKubernetesCaCertificate: merged.caCert
+          ? encryptor({ plainText: Buffer.from(merged.caCert) }).cipherTextBlob
+          : null,
+        encryptedKubernetesTokenReviewerJwt: merged.tokenReviewerJwt
+          ? encryptor({ plainText: Buffer.from(merged.tokenReviewerJwt) }).cipherTextBlob
+          : null
+      };
+      // gateway references are re-resolved (and re-authorized) only when the patch touches
+      // them; linked rows keep their columns otherwise, so a gateway that was deleted after
+      // authoring cannot block unrelated edits like rotating the reviewer JWT
+      if ("gatewayId" in patch || "gatewayPoolId" in patch) {
+        $authorizeKubernetesTemplateGateway({
+          gatewayId: merged.gatewayId,
+          gatewayPoolId: merged.gatewayPoolId,
+          plan,
+          permission
+        });
+        const { resolvedGatewayId, resolvedGatewayV2Id, resolvedGatewayPoolId } =
+          await $resolveKubernetesTemplateGateway({
+            gatewayId: merged.gatewayId,
+            gatewayPoolId: merged.gatewayPoolId,
+            orgId: template.orgId
+          });
+        kubernetesPropagationData.gatewayId = resolvedGatewayId;
+        kubernetesPropagationData.gatewayV2Id = resolvedGatewayV2Id;
+        kubernetesPropagationData.gatewayPoolId = resolvedGatewayPoolId;
+      }
+    }
+
+    const { updatedTemplate, propagatedIdentityIds } = await identityAuthTemplateDAL.transaction(async (tx) => {
       const authTemplate = await identityAuthTemplateDAL.updateById(
         templateId,
         {
           name,
-          ...(templateFields && {
-            templateFields: encryptor({ plainText: Buffer.from(JSON.stringify(templateFields)) }).cipherTextBlob
+          ...(fieldPatch && {
+            // persist the merged result, not the raw patch, so a partial update cannot
+            // destroy the fields it does not carry
+            templateFields: encryptor({ plainText: Buffer.from(JSON.stringify(mergedTemplateFields)) }).cipherTextBlob
           })
         },
         tx
       );
 
-      if (templateFields && template.authMethod === IdentityAuthTemplateMethod.LDAP) {
-        const { decryptor } = await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.Organization,
-          orgId: template.orgId
-        });
+      let identityIds: string[] = [];
 
-        const currentTemplateFields = JSON.parse(
-          decryptor({ cipherTextBlob: template.templateFields }).toString()
-        ) as TLdapTemplateFields;
-
-        const mergedTemplateFields: TLdapTemplateFields = { ...currentTemplateFields, ...templateFields };
-        finalTemplateFields = mergedTemplateFields;
+      if (fieldPatch && template.authMethod === IdentityAuthTemplateMethod.LDAP) {
+        const mergedLdapFields = mergedTemplateFields as TLdapTemplateFields;
         const ldapUpdateData: {
           url?: string;
           searchBase?: string;
@@ -167,54 +398,54 @@ export const identityAuthTemplateServiceFactory = ({
           encryptedLdapCaCertificate?: Buffer;
         } = {};
 
-        if ("url" in templateFields) {
-          ldapUpdateData.url = mergedTemplateFields.url;
+        if ("url" in fieldPatch) {
+          ldapUpdateData.url = mergedLdapFields.url;
         }
-        if ("searchBase" in templateFields) {
-          ldapUpdateData.searchBase = mergedTemplateFields.searchBase;
+        if ("searchBase" in fieldPatch) {
+          ldapUpdateData.searchBase = mergedLdapFields.searchBase;
         }
-        if ("bindDN" in templateFields) {
+        if ("bindDN" in fieldPatch) {
           ldapUpdateData.encryptedBindDN = encryptor({
-            plainText: Buffer.from(mergedTemplateFields.bindDN)
+            plainText: Buffer.from(mergedLdapFields.bindDN)
           }).cipherTextBlob;
         }
-        if ("bindPass" in templateFields) {
+        if ("bindPass" in fieldPatch) {
           ldapUpdateData.encryptedBindPass = encryptor({
-            plainText: Buffer.from(mergedTemplateFields.bindPass)
+            plainText: Buffer.from(mergedLdapFields.bindPass)
           }).cipherTextBlob;
         }
-        if ("ldapCaCertificate" in templateFields) {
+        if ("ldapCaCertificate" in fieldPatch) {
           ldapUpdateData.encryptedLdapCaCertificate = encryptor({
-            plainText: Buffer.from(mergedTemplateFields.ldapCaCertificate || "")
+            plainText: Buffer.from(mergedLdapFields.ldapCaCertificate || "")
           }).cipherTextBlob;
         }
 
         if (Object.keys(ldapUpdateData).length > 0) {
-          const updatedLdapAuths = await identityLdapAuthDAL.update({ templateId }, ldapUpdateData, tx);
-          await Promise.all(
-            updatedLdapAuths.map(async (updatedLdapAuth) => {
-              await auditLogService.createAuditLog({
-                actor: {
-                  type: ActorType.PLATFORM,
-                  metadata: {}
-                },
-                orgId: actorOrgId,
-                event: {
-                  type: EventType.UPDATE_IDENTITY_LDAP_AUTH,
-                  metadata: {
-                    identityId: updatedLdapAuth.identityId,
-                    templateId: template.id
-                  }
-                }
-              });
-            })
-          );
+          const updatedRows = await identityLdapAuthDAL.updateByTemplateId({ templateId }, ldapUpdateData, tx);
+          identityIds = updatedRows.map((row) => row.identityId);
         }
       }
-      return authTemplate;
+
+      if (kubernetesPropagationData) {
+        const updatedRows = await identityKubernetesAuthDAL.updateByTemplateId(
+          { templateId },
+          kubernetesPropagationData,
+          tx
+        );
+        identityIds = updatedRows.map((row) => row.identityId);
+      }
+
+      return { updatedTemplate: authTemplate, propagatedIdentityIds: identityIds };
     });
 
-    return { ...updatedTemplate, templateFields: finalTemplateFields };
+    await $auditTemplatePropagation({
+      identityIds: propagatedIdentityIds,
+      authMethod: template.authMethod,
+      templateId: template.id,
+      orgId: template.orgId
+    });
+
+    return { ...updatedTemplate, templateFields: $redactTemplateSecrets(template.authMethod, mergedTemplateFields) };
   };
 
   const deleteTemplate = async ({
@@ -243,34 +474,39 @@ export const identityAuthTemplateServiceFactory = ({
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     );
 
-    const deletedTemplate = await identityAuthTemplateDAL.transaction(async (tx) => {
-      // Remove template reference from identityLdapAuth records
-      const updatedLdapAuths = await identityLdapAuthDAL.update({ templateId }, { templateId: null }, tx);
-      await Promise.all(
-        updatedLdapAuths.map(async (updatedLdapAuth) => {
-          await auditLogService.createAuditLog({
-            actor: {
-              type: ActorType.PLATFORM,
-              metadata: {}
-            },
-            orgId: actorOrgId,
-            event: {
-              type: EventType.UPDATE_IDENTITY_LDAP_AUTH,
-              metadata: {
-                identityId: updatedLdapAuth.identityId,
-                templateId: template.id
-              }
-            }
-          });
-        })
-      );
+    const { deletedTemplate, unlinkedIdentityIds } = await identityAuthTemplateDAL.transaction(async (tx) => {
+      // Unlink identity auth records; the copied config values are kept so linked
+      // identities keep authenticating
+      let identityIds: string[] = [];
+      if (template.authMethod === IdentityAuthTemplateMethod.LDAP) {
+        const updatedRows = await identityLdapAuthDAL.updateByTemplateId({ templateId }, { templateId: null }, tx);
+        identityIds = updatedRows.map((row) => row.identityId);
+      } else if (template.authMethod === IdentityAuthTemplateMethod.KUBERNETES) {
+        const updatedRows = await identityKubernetesAuthDAL.updateByTemplateId(
+          { templateId },
+          { templateId: null },
+          tx
+        );
+        identityIds = updatedRows.map((row) => row.identityId);
+      } else {
+        // fail loudly rather than deleting a template whose linked identities we cannot unlink
+        throw new BadRequestError({
+          message: `Deleting templates with auth method '${template.authMethod}' is not supported`
+        });
+      }
 
-      // Delete the template
       const [deletedTpl] = await identityAuthTemplateDAL.delete({ id: templateId }, tx);
-      return deletedTpl;
+      return { deletedTemplate: deletedTpl, unlinkedIdentityIds: identityIds };
     });
 
-    return deletedTemplate;
+    await $auditTemplatePropagation({
+      identityIds: unlinkedIdentityIds,
+      authMethod: template.authMethod,
+      templateId: template.id,
+      orgId: template.orgId
+    });
+
+    return { ...deletedTemplate, templateFields: {} };
   };
 
   const getTemplate = async ({
@@ -303,11 +539,12 @@ export const identityAuthTemplateServiceFactory = ({
       type: KmsDataKey.Organization,
       orgId: template.orgId
     });
-    const decryptedTemplateFields = decryptor({ cipherTextBlob: template.templateFields }).toString();
+    const decryptedTemplateFields = JSON.parse(
+      decryptor({ cipherTextBlob: template.templateFields }).toString()
+    ) as Record<string, unknown>;
     return {
       ...template,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      templateFields: JSON.parse(decryptedTemplateFields)
+      templateFields: $redactTemplateSecrets(template.authMethod, decryptedTemplateFields)
     };
   };
 
@@ -342,11 +579,16 @@ export const identityAuthTemplateServiceFactory = ({
     });
     return {
       totalCount,
-      templates: docs.map((doc) => ({
-        ...doc,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        templateFields: JSON.parse(decryptor({ cipherTextBlob: doc.templateFields }).toString())
-      }))
+      templates: docs.map((doc) => {
+        const parsedTemplateFields = JSON.parse(decryptor({ cipherTextBlob: doc.templateFields }).toString()) as Record<
+          string,
+          unknown
+        >;
+        return {
+          ...doc,
+          templateFields: $redactTemplateSecrets(doc.authMethod, parsedTemplateFields)
+        };
+      })
     };
   };
 
@@ -377,11 +619,16 @@ export const identityAuthTemplateServiceFactory = ({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
     });
-    return docs.map((doc) => ({
-      ...doc,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      templateFields: JSON.parse(decryptor({ cipherTextBlob: doc.templateFields }).toString())
-    }));
+    return docs.map((doc) => {
+      const parsedTemplateFields = JSON.parse(decryptor({ cipherTextBlob: doc.templateFields }).toString()) as Record<
+        string,
+        unknown
+      >;
+      return {
+        ...doc,
+        templateFields: $redactTemplateSecrets(doc.authMethod, parsedTemplateFields)
+      };
+    });
   };
 
   const findTemplateUsages = async ({
@@ -441,13 +688,31 @@ export const identityAuthTemplateServiceFactory = ({
       throw new NotFoundError({ message: "Template not found" });
     }
 
-    switch (template.authMethod) {
-      case IdentityAuthTemplateMethod.LDAP:
-        await identityLdapAuthDAL.update({ $in: { identityId: identityIds }, templateId }, { templateId: null });
-        break;
-      default:
-        break;
+    let unlinkedIdentityIds: string[] = [];
+    if (template.authMethod === IdentityAuthTemplateMethod.LDAP) {
+      const updatedRows = await identityLdapAuthDAL.updateByTemplateId(
+        { templateId, identityIds },
+        { templateId: null }
+      );
+      unlinkedIdentityIds = updatedRows.map((row) => row.identityId);
+    } else if (template.authMethod === IdentityAuthTemplateMethod.KUBERNETES) {
+      const updatedRows = await identityKubernetesAuthDAL.updateByTemplateId(
+        { templateId, identityIds },
+        { templateId: null }
+      );
+      unlinkedIdentityIds = updatedRows.map((row) => row.identityId);
+    } else {
+      throw new BadRequestError({
+        message: `Unlinking templates with auth method '${template.authMethod}' is not supported`
+      });
     }
+
+    await $auditTemplatePropagation({
+      identityIds: unlinkedIdentityIds,
+      authMethod: template.authMethod,
+      templateId: template.id,
+      orgId: template.orgId
+    });
   };
 
   return {

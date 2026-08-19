@@ -1,5 +1,8 @@
+import { IdentityKubernetesAuthTokenReviewMode } from "../identities/types";
+
 export enum MachineIdentityAuthMethod {
-  LDAP = "ldap"
+  LDAP = "ldap",
+  KUBERNETES = "kubernetes"
 }
 
 export interface LdapTemplateFields {
@@ -10,28 +13,50 @@ export interface LdapTemplateFields {
   ldapCaCertificate?: string;
 }
 
-export interface IdentityAuthTemplate {
+export interface KubernetesTemplateFields {
+  tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
+  kubernetesHost?: string | null;
+  caCert?: string;
+  verifyTlsCertificate?: boolean;
+  tokenReviewerJwt?: string;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  allowedAudience?: string;
+}
+
+export type TemplateFieldsByMethod = {
+  [MachineIdentityAuthMethod.LDAP]: LdapTemplateFields;
+  [MachineIdentityAuthMethod.KUBERNETES]: KubernetesTemplateFields;
+};
+
+export interface IdentityAuthTemplateForMethod<
+  T extends MachineIdentityAuthMethod = MachineIdentityAuthMethod
+> {
   id: string;
   name: string;
-  authMethod: MachineIdentityAuthMethod;
+  authMethod: T;
   organizationId: string;
-  templateFields: LdapTemplateFields;
+  templateFields: TemplateFieldsByMethod[T];
   createdAt: string;
   updatedAt: string;
 }
+
+export type IdentityAuthTemplate =
+  | IdentityAuthTemplateForMethod<MachineIdentityAuthMethod.LDAP>
+  | IdentityAuthTemplateForMethod<MachineIdentityAuthMethod.KUBERNETES>;
 
 export interface CreateIdentityAuthTemplateDTO {
   organizationId: string;
   name: string;
   authMethod: MachineIdentityAuthMethod;
-  templateFields: LdapTemplateFields;
+  templateFields: LdapTemplateFields | KubernetesTemplateFields;
 }
 
 export interface UpdateIdentityAuthTemplateDTO {
   templateId: string;
   organizationId: string;
   name?: string;
-  templateFields?: Partial<LdapTemplateFields>;
+  templateFields?: Partial<LdapTemplateFields> | Partial<KubernetesTemplateFields>;
 }
 
 export interface DeleteIdentityAuthTemplateDTO {
