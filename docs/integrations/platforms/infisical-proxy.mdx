@@ -1,5 +1,5 @@
 ---
-title: "Infisical proxy"
+title: "Infisical Proxy"
 description: "Learn how to use the Infisical Proxy to proxy requests to Infisical with built-in caching for high availability."
 ---
 
@@ -44,7 +44,7 @@ For requests that aren't in the cache, the proxy forwards them to Infisical, wai
 
 To keep cached data fresh, the proxy runs two background processes. The first periodically validates that cached access tokens are still valid by making test requests to Infisical. If a token has been revoked, all cache entries associated with that token are immediately evicted. The second process refreshes cached secrets on a configurable interval, re-fetching data from Infisical and updating the cache with the latest values. Both processes use an optimistic strategy: if Infisical is unreachable, the proxy continues serving cached data rather than evicting entries, ensuring your applications remain operational during outages.
 
-## Install the Infisical proxy
+## Install the Infisical Proxy
 
 The Infisical Proxy is available through the Infisical CLI. Please refer to the [CLI installation documentation](/cli/overview) for more information on how to install the Infisical CLI.
 

@@ -1,6 +1,6 @@
 ---
 title: "Kubernetes CSI"
-sidebarTitle: "CSI provider"
+sidebarTitle: "CSI Provider"
 description: "How to use the Infisical Kubernetes CSI provider to inject secrets directly into Kubernetes pods."
 ---
 
@@ -47,7 +47,7 @@ Currently, the Infisical CSI provider only supports static secrets.
 
 ## Deploy to Kubernetes cluster
 
-### Install secrets store CSI driver
+### Install Secrets Store CSI Driver
 
 In order to use the Infisical CSI provider, you will first have to install the [Secrets Store CSI driver](https://secrets-store-csi-driver.sigs.k8s.io/getting-started/installation) to your cluster.
 
@@ -103,7 +103,7 @@ helm install csi secrets-store-csi-driver/secrets-store-csi-driver \
   your SecretProviderClass configuration.
 </Warning>
 
-### Install Infisical CSI provider
+### Install Infisical CSI Provider
 
 You would then have to install the Infisical CSI provider to your cluster.
 
