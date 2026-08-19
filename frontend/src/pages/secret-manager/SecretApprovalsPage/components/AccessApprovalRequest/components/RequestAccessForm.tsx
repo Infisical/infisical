@@ -273,7 +273,7 @@ const RESOURCE_CONFIGS: TResourceConfig[] = [
     subject: ProjectPermissionSub.HoneyTokens,
     label: "Honey Tokens",
     Icon: HexagonIcon,
-    iconTileClassName: "border-yellow-700/10 bg-yellow-700/15 text-yellow-700",
+    iconTileClassName: "border-warning/10 bg-warning/15 text-warning",
     actions: [
       {
         value: ProjectPermissionHoneyTokenActions.Read,

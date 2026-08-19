@@ -24,7 +24,7 @@ export const AdminLayout = () => {
     <>
       <Banner />
       <SidebarProvider
-        className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-background transition-all`}
+        className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-background`}
       >
         <Navbar />
         {!isLoading && !serverDetails?.redisConfigured && <RedisBanner />}

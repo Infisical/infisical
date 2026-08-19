@@ -17,9 +17,7 @@ export const HoneyTokenDetailsFields = () => {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-bunker-300">
-        Provide a name and description for this honey token.
-      </p>
+      <p className="text-sm text-label">Provide a name and description for this honey token.</p>
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>

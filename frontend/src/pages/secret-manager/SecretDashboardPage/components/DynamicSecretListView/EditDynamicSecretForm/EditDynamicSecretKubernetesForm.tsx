@@ -279,7 +279,7 @@ export const EditDynamicSecretKubernetesForm = ({
             </div>
           </div>
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-border pb-2 pl-1 font-medium text-foreground">
               Configuration
             </div>
             <div className="flex flex-col">
@@ -359,7 +359,7 @@ export const EditDynamicSecretKubernetesForm = ({
                       />
 
                       <div className="mb-2 flex items-center">
-                        <span className="mr-3 flex items-center text-sm text-mineshaft-400">
+                        <span className="mr-3 flex items-center text-sm text-muted">
                           Enable SSL
                           <Tooltip
                             className="ml-1 max-w-md"
@@ -378,9 +378,9 @@ export const EditDynamicSecretKubernetesForm = ({
                           control={control}
                           render={({ field: { value, onChange } }) => (
                             <Switch
-                              className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                              className="bg-muted/50 shadow-inner data-[state=checked]:bg-success/80"
                               id="ssl-enabled"
-                              thumbClassName="bg-mineshaft-800"
+                              thumbClassName="bg-container"
                               isChecked={value}
                               onCheckedChange={onChange}
                               aria-label="Enable SSL"
@@ -413,9 +413,9 @@ export const EditDynamicSecretKubernetesForm = ({
                         render={({ field: { value, onChange }, fieldState: { error } }) => (
                           <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
                             <Switch
-                              className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                              className="bg-muted/50 shadow-inner data-[state=checked]:bg-success/80"
                               id="ssl-reject-unauthorized"
-                              thumbClassName="bg-mineshaft-800"
+                              thumbClassName="bg-container"
                               isChecked={value}
                               onCheckedChange={onChange}
                             >
@@ -517,7 +517,7 @@ export const EditDynamicSecretKubernetesForm = ({
                               <Input
                                 {...field}
                                 value={field.value || undefined}
-                                className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                                className="border-border bg-card text-sm"
                               />
                             </FormControl>
                           )}

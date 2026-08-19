@@ -143,7 +143,7 @@ export const AppConnectionRow = ({
               <FontAwesomeIcon
                 icon={connectionDetails.icon}
                 size="xs"
-                className="absolute -right-0.5 -bottom-0.5 text-primary-700"
+                className="absolute -right-0.5 -bottom-0.5 text-project"
               />
             )}
           </div>
@@ -156,7 +156,7 @@ export const AppConnectionRow = ({
           {description && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <InfoIcon className="ml-1 size-3.5 text-mineshaft-400" />
+                <InfoIcon className="ml-1 size-3.5 text-muted" />
               </TooltipTrigger>
               <TooltipContent>{description}</TooltipContent>
             </Tooltip>
@@ -172,32 +172,24 @@ export const AppConnectionRow = ({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1.5 text-mineshaft-100 underline-offset-2 hover:text-primary hover:underline"
+                className="inline-flex items-center gap-1.5 text-foreground underline-offset-2 hover:text-project hover:underline"
               >
-                <FontAwesomeIcon
-                  size="sm"
-                  className="text-mineshaft-300/75"
-                  icon={methodDetails.icon}
-                />
+                <FontAwesomeIcon size="sm" className="text-label/75" icon={methodDetails.icon} />
                 <span className="truncate underline">{methodDetails.name}</span>
               </a>
             </TooltipTrigger>
             <TooltipContent>
               <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] tracking-wider text-mineshaft-400 uppercase">
+                <span className="text-[10px] tracking-wider text-muted uppercase">
                   {methodDetails.name}
                 </span>
-                <span className="font-mono text-sm text-mineshaft-100">{linkedGitHubApp.slug}</span>
+                <span className="font-mono text-sm text-foreground">{linkedGitHubApp.slug}</span>
               </div>
             </TooltipContent>
           </Tooltip>
         ) : (
           <p className="truncate">
-            <FontAwesomeIcon
-              size="sm"
-              className="mr-1.5 text-mineshaft-300/75"
-              icon={methodDetails.icon}
-            />
+            <FontAwesomeIcon size="sm" className="mr-1.5 text-label/75" icon={methodDetails.icon} />
             {methodDetails.name}
           </p>
         )}
@@ -215,13 +207,13 @@ export const AppConnectionRow = ({
               className="underline"
             >
               <p className="flex items-center gap-1.5 truncate">
-                <ProjectIcon className="size-3.5 text-mineshaft-300/75" />
+                <ProjectIcon className="size-3.5 text-label/75" />
                 {project.name}
               </p>
             </Link>
           ) : (
             <p className="flex items-center gap-1.5 truncate">
-              <OrgIcon className="size-3.5 text-mineshaft-300/75" />
+              <OrgIcon className="size-3.5 text-label/75" />
               Organization
             </p>
           )}

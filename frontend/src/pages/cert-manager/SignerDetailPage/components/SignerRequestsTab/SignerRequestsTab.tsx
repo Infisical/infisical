@@ -191,7 +191,7 @@ export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: P
                   <IconButton
                     aria-label="Filter requests"
                     variant={isTableFiltered ? "project" : "outline"}
-                    className={twMerge(isTableFiltered && "text-primary")}
+                    className={twMerge(isTableFiltered && "text-project")}
                   >
                     <FilterIcon />
                   </IconButton>
@@ -251,7 +251,7 @@ export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: P
                   return (
                     <TableRow
                       key={req.id}
-                      className="group cursor-pointer transition-colors hover:bg-mineshaft-700 [&>td]:py-3"
+                      className="group cursor-pointer transition-colors hover:bg-container-hover [&>td]:py-3"
                       onClick={() =>
                         navigate({
                           to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
@@ -269,7 +269,7 @@ export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: P
                     >
                       <TableCell isTruncatable>
                         <div className="flex items-start gap-2">
-                          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-mineshaft-800">
+                          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-container">
                             <KindIcon kind={member.kind} />
                           </div>
                           <div className="min-w-0 flex-1">

@@ -120,7 +120,7 @@ export const EditDynamicSecretGithubForm = ({
             </div>
           </div>
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-border pb-2 pl-1 font-medium text-foreground">
               Configuration
             </div>
 
@@ -170,7 +170,7 @@ export const EditDynamicSecretGithubForm = ({
                   >
                     <SecretInput
                       {...field}
-                      containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                      containerClassName="text-muted group-focus-within:border-project/50! border border-border bg-card px-2.5 py-1.5"
                     />
                   </FormControl>
                 )}

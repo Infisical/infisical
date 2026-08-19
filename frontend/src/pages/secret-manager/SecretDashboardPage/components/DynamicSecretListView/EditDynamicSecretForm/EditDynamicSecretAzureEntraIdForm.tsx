@@ -160,7 +160,7 @@ export const EditDynamicSecretAzureEntraIdForm = ({
                 <FormControl label="Email" isError={Boolean(error)} errorText={error?.message}>
                   <SecretInput
                     value={field.value}
-                    containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                    containerClassName="text-label hover:border-project/50 border border-border bg-card px-2 py-1.5"
                   />
                 </FormControl>
               )}
@@ -176,7 +176,7 @@ export const EditDynamicSecretAzureEntraIdForm = ({
                   <SecretInput
                     isReadOnly
                     value={field.value}
-                    containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                    containerClassName="text-label hover:border-project/50 border border-border bg-card px-2 py-1.5"
                   />
                 </FormControl>
               )}
@@ -194,7 +194,7 @@ export const EditDynamicSecretAzureEntraIdForm = ({
                   <SecretInput
                     isReadOnly
                     value={field.value}
-                    containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                    containerClassName="text-label hover:border-project/50 border border-border bg-card px-2 py-1.5"
                   />
                 </FormControl>
               )}
@@ -213,7 +213,7 @@ export const EditDynamicSecretAzureEntraIdForm = ({
                 >
                   <SecretInput
                     {...field}
-                    containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                    containerClassName="text-label hover:border-project/50 border border-border bg-card px-2 py-1.5"
                   />
                 </FormControl>
               )}
@@ -234,7 +234,7 @@ export const EditDynamicSecretAzureEntraIdForm = ({
                 >
                   <SecretInput
                     {...field}
-                    containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                    containerClassName="text-label hover:border-project/50 border border-border bg-card px-2 py-1.5"
                   />
                 </FormControl>
               )}

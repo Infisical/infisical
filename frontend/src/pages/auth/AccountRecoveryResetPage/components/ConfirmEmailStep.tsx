@@ -25,10 +25,10 @@ export const ConfirmEmailStep = ({ onComplete }: Props) => {
   } = useVerifyAccountRecoveryEmail();
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
-      <h1 className="mb-2 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
+      <h1 className="mb-2 bg-linear-to-b from-white to-label bg-clip-text text-center text-xl font-medium text-transparent">
         Confirm your email
       </h1>
-      <p className="mb-8 w-max justify-center text-center text-sm text-gray-400">
+      <p className="mb-8 w-max justify-center text-center text-sm text-muted">
         Recover account for <span className="italic">{email}</span>.
       </p>
       <div className="w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">

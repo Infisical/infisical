@@ -161,7 +161,7 @@ export const SelectIntegrationAuthPage = () => {
       <Helmet>
         <title>Select Connection</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
+      <Card className="mb-12 max-w-lg rounded-md border border-border">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Select an existing connection below or create a new one for your integration."
@@ -198,9 +198,9 @@ export const SelectIntegrationAuthPage = () => {
               })
             : undefined}
           <div className="mt-6 flex w-full flex-row items-center justify-center">
-            <div className="w-1/5 border-t border-mineshaft-400" />
-            <p className="mx-4 text-xs text-gray-400">OR</p>
-            <div className="w-1/5 border-t border-mineshaft-400" />
+            <div className="w-1/5 border-t border-border" />
+            <p className="mx-4 text-xs text-muted">OR</p>
+            <div className="w-1/5 border-t border-border" />
           </div>
           <Button
             colorSchema="primary"

@@ -190,13 +190,13 @@ export const DuplicateProjectRoleModal = ({ isOpen, onOpenChange, roleSlug }: Pr
         {/* eslint-disable-next-line no-nested-ternary */}
         {isPending ? (
           <div className="flex h-full flex-col items-center justify-center py-2.5">
-            <Spinner size="lg" className="text-mineshaft-500" />
-            <p className="mt-4 text-sm text-mineshaft-400">Loading Role...</p>
+            <Spinner size="lg" className="text-muted" />
+            <p className="mt-4 text-sm text-muted">Loading Role...</p>
           </div>
         ) : role ? (
           <Content role={role!} onClose={() => onOpenChange(false)} />
         ) : (
-          <p className="w-full text-center text-red">
+          <p className="w-full text-center text-danger">
             Error: could not find role with slug &#34;{roleSlug}&#34;
           </p>
         )}

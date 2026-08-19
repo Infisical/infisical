@@ -37,12 +37,12 @@ export const Checkbox = ({
   ...props
 }: CheckboxProps): JSX.Element => {
   return (
-    <div className={twMerge("flex items-center font-inter text-bunker-300", containerClassName)}>
+    <div className={twMerge("flex items-center font-inter text-label", containerClassName)}>
       <CheckboxPrimitive.Root
         className={twMerge(
-          "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-mineshaft-400/50 bg-mineshaft-700 shadow-sm transition-all hover:bg-mineshaft-500",
-          isDisabled && "cursor-not-allowed bg-mineshaft-600 opacity-40",
-          isChecked && "border-primary/50 bg-primary/30",
+          "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-border/50 bg-container-hover shadow-sm transition-all hover:bg-foreground/10",
+          isDisabled && "cursor-not-allowed bg-foreground/10 opacity-40",
+          isChecked && "border-project/50 bg-project/30",
           Boolean(children) && "mr-3",
           className
         )}
@@ -54,7 +54,7 @@ export const Checkbox = ({
       >
         <CheckboxPrimitive.Indicator
           className={twMerge(
-            `${checkIndicatorBg || "mt-[0.1rem] text-mineshaft-200"}`,
+            `${checkIndicatorBg || "mt-[0.1rem] text-foreground"}`,
             indicatorClassName
           )}
         >
@@ -69,12 +69,12 @@ export const Checkbox = ({
         className={twMerge(
           "text-sm",
           !allowMultilineLabel && "truncate whitespace-nowrap",
-          isError && "text-red-400"
+          isError && "text-danger"
         )}
         htmlFor={id}
       >
         {children}
-        {isRequired && <span className="pl-1 text-red">*</span>}
+        {isRequired && <span className="pl-1 text-danger">*</span>}
       </label>
     </div>
   );

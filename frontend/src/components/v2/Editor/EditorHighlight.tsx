@@ -29,7 +29,7 @@ export class HighlightNode extends TextNode {
   constructor(
     text: string,
     highlightTheme: HighlightTheme = {
-      contentClassName: "ph-no-capture text-yellow-200/80"
+      contentClassName: "ph-no-capture text-warning/80"
     },
     trigger: Trigger = { startTrigger: "${", endTrigger: "}" },
     key?: string
@@ -88,7 +88,7 @@ type Props = {
 export const EditorHighlightPlugin = ({
   endTrigger = "}",
   startTrigger = "${",
-  contentClassName = "ph-no-capture text-yellow-200/80"
+  contentClassName = "ph-no-capture text-warning/80"
 }: Props) => {
   const [editor] = useLexicalComposerContext();
 

@@ -132,7 +132,7 @@ export const DiscoveryScanLogsSection = ({
                               </div>
                             }
                           >
-                            <span className="cursor-help truncate text-yellow-500">
+                            <span className="cursor-help truncate text-warning">
                               {scan.errorMessage.length > 20
                                 ? `${scan.errorMessage.substring(0, 20)}...`
                                 : scan.errorMessage}

@@ -2567,7 +2567,7 @@ const OverviewPageContent = () => {
 
   if (!isProjectV3)
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-mineshaft-50 dark:scheme-dark">
+      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-foreground dark:scheme-dark">
         <SecretV2MigrationSection />
       </div>
     );
@@ -2583,16 +2583,16 @@ const OverviewPageContent = () => {
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
-      <div className="relative mx-auto mb-18 max-w-8xl text-mineshaft-50 dark:scheme-dark">
+      <div className="relative mx-auto mb-18 max-w-8xl text-foreground dark:scheme-dark">
         <div className="flex w-full items-baseline justify-between">
           <PageHeader
             scope={ProjectType.SecretManager}
             title="Project Overview"
             description={
-              <p className="text-md text-bunker-300">
+              <p className="text-md text-label">
                 Inject your secrets using
                 <a
-                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  className="ml-1 text-foreground underline decoration-muted/65 underline-offset-3 duration-200 hover:text-foreground hover:decoration-project"
                   href="https://infisical.com/docs/cli/overview"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -2601,7 +2601,7 @@ const OverviewPageContent = () => {
                 </a>
                 ,
                 <a
-                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  className="ml-1 text-foreground underline decoration-muted/65 underline-offset-3 duration-200 hover:text-foreground hover:decoration-project"
                   href="https://infisical.com/docs/api-reference/overview/introduction"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -2610,7 +2610,7 @@ const OverviewPageContent = () => {
                 </a>
                 ,
                 <a
-                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  className="ml-1 text-foreground underline decoration-muted/65 underline-offset-3 duration-200 hover:text-foreground hover:decoration-project"
                   href="https://infisical.com/docs/sdks/overview"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -2619,7 +2619,7 @@ const OverviewPageContent = () => {
                 </a>
                 , and
                 <a
-                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  className="ml-1 text-foreground underline decoration-muted/65 underline-offset-3 duration-200 hover:text-foreground hover:decoration-project"
                   href="https://infisical.com/docs/documentation/getting-started/introduction"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -2782,7 +2782,7 @@ const OverviewPageContent = () => {
                       to={ROUTE_PATHS.SecretManager.ApprovalPage.path}
                       params={{ orgId, projectId }}
                       search={{ selectedTab: "approval-requests", requestId: "" }}
-                      className="ml-auto flex shrink-0 items-center gap-1 text-xs text-white underline underline-offset-2"
+                      className="ml-auto flex shrink-0 items-center gap-1 text-xs text-foreground underline underline-offset-2"
                     >
                       Review
                       <ChevronRightIcon className="mt-px size-4" />
@@ -3870,9 +3870,9 @@ const OverviewPageContent = () => {
               {replicateCreateCount > 1 ? "s" : ""} to this environment?
             </div>
           ) : (
-            <div className="flex flex-col text-gray-300">
+            <div className="flex flex-col text-label">
               <div>Your project already contains the following {replicateUpdateCount} secrets:</div>
-              <div className="mt-2 text-sm text-gray-400">
+              <div className="mt-2 text-sm text-muted">
                 {(popUp?.confirmReplicateUpload?.data as TSecOverwriteOpt)?.update
                   ?.map((sec) => sec.secretKey)
                   .join(", ")}

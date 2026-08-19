@@ -37,31 +37,30 @@ export const CreatableSelect = <T,>({
         container: () => "w-full font-inter",
         control: ({ isFocused }) =>
           twMerge(
-            isFocused ? "border-primary-400/50" : "border-mineshaft-600 hover:border-gray-400",
-            "w-full rounded-md border bg-mineshaft-900 p-0.5 font-inter text-mineshaft-200 hover:cursor-pointer"
+            isFocused ? "border-project/50" : "border-border hover:border-foreground/20",
+            "w-full rounded-md border bg-card p-0.5 font-inter text-foreground hover:cursor-pointer"
           ),
-        placeholder: () => "text-mineshaft-400 text-sm pl-1 py-0.5",
+        placeholder: () => "text-muted text-sm pl-1 py-0.5",
         input: () => "pl-1 py-0.5",
         valueContainer: () => `p-1 max-h-56 ${isMulti ? "overflow-y-auto!" : ""} gap-1`,
         singleValue: () => "leading-7 ml-1",
-        multiValue: () => "bg-mineshaft-600 rounded-sm items-center py-0.5 px-2 gap-1.5",
+        multiValue: () => "bg-foreground/10 rounded-sm items-center py-0.5 px-2 gap-1.5",
         multiValueLabel: () => "leading-6 text-sm",
-        multiValueRemove: () => "hover:text-red text-bunker-400",
+        multiValueRemove: () => "hover:text-danger text-muted",
         indicatorsContainer: () => "p-1 gap-1",
-        clearIndicator: () => "p-1 hover:text-red text-bunker-400",
-        indicatorSeparator: () => "bg-bunker-400",
-        dropdownIndicator: () => "text-bunker-200 p-1",
-        menu: () =>
-          "mt-2 border text-sm text-mineshaft-200 bg-mineshaft-900 border-mineshaft-600 rounded-md",
-        groupHeading: () => "ml-3 mt-2 mb-1 text-mineshaft-400 text-sm",
+        clearIndicator: () => "p-1 hover:text-danger text-muted",
+        indicatorSeparator: () => "bg-muted",
+        dropdownIndicator: () => "text-foreground p-1",
+        menu: () => "mt-2 border text-sm text-foreground bg-popover border-border rounded-md",
+        groupHeading: () => "ml-3 mt-2 mb-1 text-muted text-sm",
         option: ({ isFocused, isSelected }) =>
           twMerge(
-            isFocused && "bg-mineshaft-700 active:bg-mineshaft-600",
-            isSelected && "text-mineshaft-200",
+            isFocused && "bg-container-hover active:bg-foreground/10",
+            isSelected && "text-foreground",
             "px-3 py-2 text-xs hover:cursor-pointer"
           ),
-        noOptionsMessage: () => "text-mineshaft-400 p-2 rounded-md",
-        loadingMessage: () => "text-mineshaft-400 p-2 rounded-md"
+        noOptionsMessage: () => "text-muted p-2 rounded-md",
+        loadingMessage: () => "text-muted p-2 rounded-md"
       }}
       {...props}
     />

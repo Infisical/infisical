@@ -104,8 +104,8 @@ function TableHead({
     <th
       data-slot="table-head"
       className={cn(
-        "h-[30px] border-x-0 border-t-0 border-b border-border px-3 text-left align-middle text-xs whitespace-nowrap text-accent select-none [&:has([role=checkbox])]:pr-0",
-        "has-[>svg]:cursor-pointer [&>svg]:ml-1 [&>svg]:inline-block [&>svg:not([class*='size-'])]:size-4",
+        "h-table-header border-x-0 border-t-0 border-b border-border px-3 text-left align-middle text-xs whitespace-nowrap text-accent select-none [&:has([role=checkbox])]:pr-0",
+        "has-[>svg]:cursor-pointer [&>svg]:ml-1 [&>svg]:inline-block [&>svg:not([class*='size-'])]:size-icon-md",
         onSortChange && "p-0",
         isTruncatable && "truncate",
         className
@@ -117,7 +117,7 @@ function TableHead({
         <button
           type="button"
           data-slot="table-head-sort-trigger"
-          className="flex h-[30px] w-full cursor-pointer items-center gap-1 px-3 text-left text-xs text-accent outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset [&>svg]:shrink-0 [&>svg:not([class*='size-'])]:size-4"
+          className="flex h-table-header w-full cursor-pointer items-center gap-1 px-3 text-left text-xs text-accent outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset [&>svg]:shrink-0 [&>svg:not([class*='size-'])]:size-icon-md"
           onClick={() => onSortChange(nextTableSortDirection[sortDirection])}
         >
           {children}
@@ -156,7 +156,7 @@ function TableCell({
     <td
       data-slot="table-cell"
       className={cn(
-        "h-[40px] border-b border-border px-3 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>svg]:size-4",
+        "h-table-row border-b border-border px-3 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>svg]:size-icon-md",
         isTruncatable && "max-w-0 truncate",
         className
       )}

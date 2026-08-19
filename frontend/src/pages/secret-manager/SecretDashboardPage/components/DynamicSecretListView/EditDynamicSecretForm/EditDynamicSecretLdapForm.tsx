@@ -249,9 +249,9 @@ export const EditDynamicSecretLdapForm = ({
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
                 <Switch
-                  className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                  className="bg-muted/50 shadow-inner data-[state=checked]:bg-success/80"
                   id="ssl-reject-unauthorized"
-                  thumbClassName="bg-mineshaft-800"
+                  thumbClassName="bg-container"
                   isChecked={value}
                   onCheckedChange={onChange}
                 >
@@ -386,7 +386,7 @@ export const EditDynamicSecretLdapForm = ({
                 <Input
                   {...field}
                   value={field.value || undefined}
-                  className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                  className="border-border bg-card text-sm"
                 />
               </FormControl>
             )}

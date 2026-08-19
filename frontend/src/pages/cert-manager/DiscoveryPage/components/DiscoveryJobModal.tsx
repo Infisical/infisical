@@ -425,7 +425,7 @@ export const DiscoveryJobModal = ({ isOpen, onClose, projectId, discovery }: Pro
                       {!isInfisicalCloud() && (
                         <p>
                           Alternatively, you can set the{" "}
-                          <span className="font-medium text-bunker-200">
+                          <span className="font-medium text-foreground">
                             ALLOW_INTERNAL_IP_CONNECTIONS
                           </span>{" "}
                           environment variable to <span className="font-medium">true</span> on your
@@ -458,9 +458,9 @@ export const DiscoveryJobModal = ({ isOpen, onClose, projectId, discovery }: Pro
               <FormControl>
                 <Switch
                   id="auto-scan"
-                  className="mr-2 ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                  className="mr-2 ml-0 bg-muted/80 shadow-inner data-[state=checked]:bg-success/80"
                   containerClassName="flex-row-reverse w-fit"
-                  thumbClassName="bg-mineshaft-800"
+                  thumbClassName="bg-container"
                   isChecked={field.value}
                   onCheckedChange={field.onChange}
                 >

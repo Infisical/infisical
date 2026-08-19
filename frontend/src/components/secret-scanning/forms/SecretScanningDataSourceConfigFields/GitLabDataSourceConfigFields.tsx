@@ -29,7 +29,7 @@ const formatGitLabGroupOptionLabel = (group: TGitLabGroup) => (
   <div className="flex min-w-0 items-center gap-2">
     <span className="shrink-0">{group.name}</span>
     {group.fullPath !== group.name && (
-      <span className="min-w-0 truncate text-mineshaft-400">{group.fullPath}</span>
+      <span className="min-w-0 truncate text-muted">{group.fullPath}</span>
     )}
   </div>
 );
@@ -42,7 +42,7 @@ const formatGitLabProjectOptionLabel = (project: TGitLabProject) => {
     <div className="flex min-w-0 items-center gap-2">
       <span className="shrink-0">{shortName}</span>
       {fullPathWithNamespace !== shortName && (
-        <span className="min-w-0 truncate text-mineshaft-400">{fullPathWithNamespace}</span>
+        <span className="min-w-0 truncate text-muted">{fullPathWithNamespace}</span>
       )}
     </div>
   );
@@ -167,14 +167,14 @@ export const GitLabDataSourceConfigFields = () => {
                 <p>Specify the GitLab scope scanning should be performed at:</p>
                 <ul className="flex list-disc flex-col gap-3 pl-4">
                   <li>
-                    <p className="text-mineshaft-300">
-                      <span className="font-medium text-bunker-200">Project</span>: Scan an
+                    <p className="text-label">
+                      <span className="font-medium text-foreground">Project</span>: Scan an
                       individual GitLab project.
                     </p>
                   </li>
                   <li>
-                    <p className="text-mineshaft-300">
-                      <span className="font-medium text-bunker-200">Group</span>: Scan one or more
+                    <p className="text-label">
+                      <span className="font-medium text-foreground">Group</span>: Scan one or more
                       projects belonging to a GitLab group.
                     </p>
                   </li>
@@ -188,7 +188,7 @@ export const GitLabDataSourceConfigFields = () => {
                 onChange(v);
                 clearAllFields();
               }}
-              className="w-full border border-mineshaft-500 capitalize"
+              className="w-full border border-border capitalize"
               position="popper"
               isDisabled={isUpdate}
               dropdownContainerClassName="max-w-none"
@@ -226,7 +226,7 @@ export const GitLabDataSourceConfigFields = () => {
                 >
                   <div>
                     <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
-                    <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+                    <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
                   </div>
                 </Tooltip>
               }
@@ -278,7 +278,7 @@ export const GitLabDataSourceConfigFields = () => {
                   >
                     <div>
                       <span>Don&#39;t see the group you&#39;re looking for?</span>{" "}
-                      <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+                      <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
                     </div>
                   </Tooltip>
                 }
@@ -311,7 +311,7 @@ export const GitLabDataSourceConfigFields = () => {
               onValueChange={(val) => {
                 setValue("config.includeProjects", val === ScanMethod.AllProjects ? ["*"] : []);
               }}
-              className="w-full border border-mineshaft-500 capitalize"
+              className="w-full border border-border capitalize"
               position="popper"
               dropdownContainerClassName="max-w-none"
               isDisabled={!connectionId}
@@ -348,7 +348,7 @@ export const GitLabDataSourceConfigFields = () => {
                     >
                       <div>
                         <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
-                        <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+                        <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
                       </div>
                     </Tooltip>
                   }

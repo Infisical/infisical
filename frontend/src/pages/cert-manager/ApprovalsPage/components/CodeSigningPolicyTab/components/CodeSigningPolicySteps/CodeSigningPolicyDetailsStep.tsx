@@ -100,7 +100,7 @@ export const CodeSigningPolicyDetailsStep = () => {
         )}
       />
 
-      {constraintsError && <p className="text-xs text-red">{constraintsError}</p>}
+      {constraintsError && <p className="text-xs text-danger">{constraintsError}</p>}
 
       <Controller
         control={control}
@@ -111,12 +111,12 @@ export const CodeSigningPolicyDetailsStep = () => {
               id="csBypassForMachineIdentities"
               isChecked={value}
               onCheckedChange={onChange}
-              checkIndicatorBg="text-primary"
+              checkIndicatorBg="text-project"
             >
-              <span className="text-sm text-mineshaft-200">
+              <span className="text-sm text-foreground">
                 Bypass approval for machine identities
               </span>
-              <p className="text-xs text-mineshaft-400">
+              <p className="text-xs text-muted">
                 When enabled, machine identities can sign without requiring approval
               </p>
             </Checkbox>

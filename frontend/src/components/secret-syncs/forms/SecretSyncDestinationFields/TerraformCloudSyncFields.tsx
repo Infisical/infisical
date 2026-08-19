@@ -108,16 +108,16 @@ export const TerraformCloudSyncFields = () => {
                 <TooltipContent className="max-w-lg">
                   <ul className="flex list-disc flex-col gap-3 pl-4">
                     <li>
-                      <p className="text-mineshaft-300">
-                        <span className="font-medium text-bunker-200">
+                      <p className="text-label">
+                        <span className="font-medium text-foreground">
                           Environment variables configure Terraform&apos;s behavior (e.g.,
                           credentials).
                         </span>
                       </p>
                     </li>
                     <li>
-                      <p className="text-mineshaft-300">
-                        <span className="font-medium text-bunker-200">
+                      <p className="text-label">
+                        <span className="font-medium text-foreground">
                           Terraform variables are used as input values in your configuration.
                         </span>
                       </p>
@@ -169,8 +169,8 @@ export const TerraformCloudSyncFields = () => {
                     <ul className="flex list-disc flex-col gap-3 pl-4">
                       {Object.values(TERRAFORM_CLOUD_SYNC_SCOPES).map(({ name, description }) => (
                         <li key={name}>
-                          <p className="text-mineshaft-300">
-                            <span className="font-medium text-bunker-200">{name}</span>:{" "}
+                          <p className="text-label">
+                            <span className="font-medium text-foreground">{name}</span>:{" "}
                             {description}
                           </p>
                         </li>

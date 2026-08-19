@@ -23,8 +23,8 @@ export const SecretScanningDataSourcesPage = () => {
         I={ProjectPermissionSecretScanningDataSourceActions.Read}
         a={ProjectPermissionSub.SecretScanningDataSources}
       >
-        <div className="h-full bg-bunker-800">
-          <div className="mx-auto flex flex-col justify-between text-white">
+        <div className="h-full bg-background">
+          <div className="mx-auto flex flex-col justify-between bg-background text-foreground">
             <div className="mx-auto mb-6 w-full max-w-8xl">
               <PageHeader
                 scope={ProjectType.SecretScanning}

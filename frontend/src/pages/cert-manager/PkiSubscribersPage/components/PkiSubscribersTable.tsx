@@ -73,7 +73,7 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
               data.map((subscriber) => {
                 return (
                   <Tr
-                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-container-hover"
                     key={`pki-subscriber-${subscriber.id}`}
                     onClick={() =>
                       navigate({
@@ -96,7 +96,7 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
                     <Td className="text-right align-middle">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild className="rounded-lg">
-                          <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                          <div className="hover:text-project data-[state=open]:text-project">
                             <Tooltip content="More options">
                               <FontAwesomeIcon size="lg" icon={faEllipsis} />
                             </Tooltip>

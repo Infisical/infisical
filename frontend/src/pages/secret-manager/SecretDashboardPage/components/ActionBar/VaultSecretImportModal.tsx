@@ -175,9 +175,9 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
 
   return (
     <>
-      <div className="mb-4 rounded-md bg-primary/10 p-3 text-sm text-mineshaft-200">
+      <div className="mb-4 rounded-md bg-project/10 p-3 text-sm text-foreground">
         <div className="flex items-start gap-2">
-          <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-primary" />
+          <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-project" />
           <div>
             <div className="mb-2">
               <strong>Import Secrets from HashiCorp Vault</strong>
@@ -225,7 +225,7 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
             placeholder="Select secrets engine..."
             className="w-full"
           />
-          <p className="mt-1 text-xs text-mineshaft-400">
+          <p className="mt-1 text-xs text-muted">
             Choose a KV secrets engine to filter available secret paths
           </p>
         </>
@@ -255,7 +255,7 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
             isClearable
             className="w-full"
           />
-          <p className="mt-1 text-xs text-mineshaft-400">
+          <p className="mt-1 text-xs text-muted">
             Choose one or more secret paths from the selected mount to import into Infisical
           </p>
         </>
@@ -272,7 +272,7 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
             <p>
               {skippedWildcardPaths.length} secret path
               {skippedWildcardPaths.length > 1 ? "s are" : " is"} not available for selection. Vault
-              imports don&apos;t support wildcard (<code className="text-yellow-500/80">+</code>){" "}
+              imports don&apos;t support wildcard (<code className="text-warning/80">+</code>){" "}
               paths. In Vault, update the policy on the App role or token behind this App Connection
               to grant access to absolute paths instead.
             </p>

@@ -65,29 +65,29 @@ export const DeleteSecretRotationV2Modal = ({
     >
       <Switch
         containerClassName="mt-4"
-        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-red/50"
-        thumbClassName="bg-mineshaft-800"
+        className="bg-muted/50 shadow-inner data-[state=checked]:bg-danger/50"
+        thumbClassName="bg-container"
         isChecked={revokeGeneratedCredentials}
         onCheckedChange={setRevokeGeneratedCredentials}
         id="revoke-credentials"
       >
         Revoke Credentials
       </Switch>
-      <p className="mt-1 font-inter text-sm text-mineshaft-400">
+      <p className="mt-1 font-inter text-sm text-muted">
         Generated credentials will {revokeGeneratedCredentials ? "" : "not"} be revoked on deletion
         {revokeGeneratedCredentials ? "" : " and remain active"}.
       </p>
       <Switch
         containerClassName="mt-4"
-        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-red/50"
-        thumbClassName="bg-mineshaft-800"
+        className="bg-muted/50 shadow-inner data-[state=checked]:bg-danger/50"
+        thumbClassName="bg-container"
         isChecked={deleteSecrets}
         onCheckedChange={setDeleteSecrets}
         id="delete-secrets"
       >
         Delete Secrets
       </Switch>
-      <p className="mt-1 font-inter text-sm text-mineshaft-400">
+      <p className="mt-1 font-inter text-sm text-muted">
         Rotation secrets will {deleteSecrets ? "" : "not"} be removed from your project on deletion.
       </p>
     </DeleteActionModal>

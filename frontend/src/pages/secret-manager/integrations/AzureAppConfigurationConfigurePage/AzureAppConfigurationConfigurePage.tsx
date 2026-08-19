@@ -153,7 +153,7 @@ export const AzureAppConfigurationConfigurePage = () => {
       <Helmet>
         <title>Set Up Azure App Configuration Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600">
+      <Card className="max-w-lg rounded-md border border-border">
         <CardTitle
           className="text-left text-xl"
           subTitle="Choose which environment in Infisical you want to sync to your Azure App Configuration."
@@ -173,7 +173,7 @@ export const AzureAppConfigurationConfigurePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
@@ -196,7 +196,7 @@ export const AzureAppConfigurationConfigurePage = () => {
                   isError={Boolean(error)}
                 >
                   <Select
-                    className="w-full border border-mineshaft-500"
+                    className="w-full border border-border"
                     dropdownContainerClassName="max-w-full"
                     value={field.value}
                     onValueChange={(val) => {
@@ -295,7 +295,7 @@ export const AzureAppConfigurationConfigurePage = () => {
                 <Select
                   defaultValue={field.value}
                   onValueChange={(e) => onChange(e)}
-                  className="w-full border border-mineshaft-500"
+                  className="w-full border border-border"
                   dropdownContainerClassName="max-w-full"
                 >
                   {initialSyncBehaviors.map((b) => {
@@ -315,7 +315,7 @@ export const AzureAppConfigurationConfigurePage = () => {
           />
           <Button
             type="submit"
-            color="mineshaft"
+            colorSchema="secondary"
             variant="outline_bg"
             className="mt-4 mb-6 ml-auto"
             isLoading={isSubmitting}

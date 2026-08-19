@@ -42,22 +42,22 @@ export const CliRedirectPage = () => {
         <title>Infisical CLI | Login Successful!</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <AuthPagePanel className="flex flex-col items-center space-y-4 text-gray-200">
+      <AuthPagePanel className="flex flex-col items-center space-y-4 text-foreground">
         {cliToken ? (
           <>
             <div className="pb-4">
-              <p className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-3xl font-medium text-transparent">
+              <p className="bg-linear-to-b from-white to-label bg-clip-text text-center text-3xl font-medium text-transparent">
                 Unable to reach CLI
               </p>
-              <p className="text-light mt-2 mb-1 text-center text-lg text-mineshaft-400">
+              <p className="text-light mt-2 mb-1 text-center text-lg text-muted">
                 Your login was successful but, Infisical couldn&apos;t automatically push your login
                 token to the CLI.
               </p>
-              <p className="text-light mb-1 text-center text-lg text-mineshaft-400">
+              <p className="text-light mb-1 text-center text-lg text-muted">
                 Please copy the token below and manually provide it to your CLI.
               </p>
             </div>
-            <div className="dark relative flex max-h-36 max-w-xl flex-col items-center space-y-4 overflow-y-auto rounded-md border border-mineshaft-700 bg-mineshaft-900 p-3">
+            <div className="dark relative flex max-h-36 max-w-xl flex-col items-center space-y-4 overflow-y-auto rounded-md border border-border bg-card p-3">
               <SecretInput value={cliToken as string} />
               <div className="mx-1 flex">
                 <IconButton
@@ -75,10 +75,10 @@ export const CliRedirectPage = () => {
           </>
         ) : (
           <>
-            <p className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-3xl font-medium text-transparent">
+            <p className="bg-linear-to-b from-white to-label bg-clip-text text-center text-3xl font-medium text-transparent">
               Head back to your terminal
             </p>
-            <p className="text-light mb-1 text-lg text-mineshaft-400">
+            <p className="text-light mb-1 text-lg text-muted">
               You&apos;ve successfully logged in to the Infisical CLI
             </p>
           </>

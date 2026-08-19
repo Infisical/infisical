@@ -44,7 +44,7 @@ const OutputDisplay = ({
         <SecretInput
           isReadOnly
           value={value}
-          containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+          containerClassName="text-label hover:border-project/50 border border-border bg-card px-2 py-1.5"
         />
       </FormControl>
       <Tooltip content={copyText}>
@@ -103,7 +103,7 @@ const TotpOutputDisplay = ({
       {remainingTime > 0 ? (
         <div
           className={`ml-2 flex items-center text-sm ${
-            remainingTime < 10 ? "text-red-500" : "text-yellow-500"
+            remainingTime < 10 ? "text-danger" : "text-warning"
           } transition-colors duration-500`}
         >
           <FontAwesomeIcon className="mr-1" icon={faClock} size="sm" />
@@ -112,7 +112,7 @@ const TotpOutputDisplay = ({
           </span>
         </div>
       ) : (
-        <div className="ml-2 flex items-center text-sm text-red-500">
+        <div className="ml-2 flex items-center text-sm text-danger">
           <FontAwesomeIcon className="mr-1" icon={faClock} size="sm" />
           Expired
         </div>
@@ -172,7 +172,7 @@ const renderOutputForm = (
         <OutputDisplay label="AWS IAM Access Key" value={ACCESS_KEY} />
         <OutputDisplay label="AWS IAM Secret Key" value={SECRET_ACCESS_KEY} />
         {SESSION_TOKEN && <OutputDisplay label="AWS IAM Session Token" value={SESSION_TOKEN} />}
-        <div className="mt-2 text-xs text-mineshaft-300">
+        <div className="mt-2 text-xs text-label">
           Important: Copy these credentials now. You will not be able to see them again after you
           close the modal.
         </div>
@@ -304,7 +304,7 @@ const renderOutputForm = (
             isReadOnly
             isVisible
             value={JSON.stringify(DN_ARRAY)}
-            containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+            containerClassName="text-label hover:border-project/50 border border-border bg-card px-2 py-1.5"
           />
         </FormControl>
       </div>
@@ -452,7 +452,7 @@ const renderOutputForm = (
           <OutputDisplay label="Federated Credential ID" value={FEDERATED_CREDENTIAL_ID} />
         )}
         {AUDIENCE && <OutputDisplay label="Audience" value={AUDIENCE} />}
-        <div className="mt-2 text-xs text-mineshaft-300">
+        <div className="mt-2 text-xs text-label">
           Important: Copy these credentials now. You will not be able to see them again after you
           close the modal.
         </div>
@@ -1009,7 +1009,7 @@ export const CreateDynamicSecretLease = ({
   const isOutputMode = Boolean(createDynamicSecretLease?.data);
 
   if (isPreloading) {
-    return <Spinner className="mx-auto h-40 text-mineshaft-700" />;
+    return <Spinner className="mx-auto h-40 text-muted" />;
   }
 
   // Github tokens are fixed to 1 hour

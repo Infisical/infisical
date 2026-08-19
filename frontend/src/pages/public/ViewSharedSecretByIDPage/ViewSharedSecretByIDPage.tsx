@@ -210,7 +210,7 @@ export const ViewSharedSecretByIDPage = () => {
 
   if (isLoading || isLoadingBrandingConfig) {
     return (
-      <div className="h-screen w-screen bg-bunker-800">
+      <div className="h-screen w-screen bg-background">
         <PageLoader lottieClassName="w-34" />
       </div>
     );
@@ -270,7 +270,7 @@ export const ViewSharedSecretByIDPage = () => {
 
   // Default: Infisical auth page layout
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-bunker-800 px-4 text-foreground scheme-dark">
+    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-background px-4 text-foreground scheme-dark">
       <AuthPageBackground />
       <Helmet>
         <title>Securely Share Secrets | Infisical</title>

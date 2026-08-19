@@ -37,13 +37,13 @@ export const SelectRecoveryMethodStep = ({ email, onSelect, hasEmailAuthEnabled 
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col items-center justify-center">
-      <h1 className="mb-2 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-2xl font-medium text-transparent">
+      <h1 className="mb-2 bg-gradient-to-b from-white to-label bg-clip-text text-center text-2xl font-medium text-transparent">
         Account Recovery
       </h1>
-      <p className="mb-4 text-center text-sm text-gray-300">
-        Email verified successfully for <span className="font-medium text-white">{email}</span>
+      <p className="mb-4 text-center text-sm text-label">
+        Email verified successfully for <span className="font-medium text-foreground">{email}</span>
       </p>
-      <p className="mb-8 text-center text-sm text-gray-500">
+      <p className="mb-8 text-center text-sm text-muted">
         Select how you&apos;d like to recover access to your account
       </p>
       <div className="flex w-full flex-col gap-4">
@@ -54,7 +54,7 @@ export const SelectRecoveryMethodStep = ({ email, onSelect, hasEmailAuthEnabled 
             onClick={recoveryMethod.onSelect}
             disabled={recoveryMethod.isDisabled}
             className={twMerge(
-              "group w-full rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700",
+              "group w-full rounded-lg border border-border bg-container p-4 text-left transition-colors hover:border-foreground/20 hover:bg-container-hover",
               recoveryMethod.isDisabled && "cursor-not-allowed"
             )}
           >
@@ -64,17 +64,17 @@ export const SelectRecoveryMethodStep = ({ email, onSelect, hasEmailAuthEnabled 
                 recoveryMethod.isDisabled && "opacity-50"
               )}
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-mineshaft-700 group-hover:bg-mineshaft-600">
-                <KeyRound className="text-lg text-mineshaft-300" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-container-hover group-hover:bg-foreground/10">
+                <KeyRound className="text-lg text-label" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-200">{recoveryMethod.label}</span>
+                  <span className="font-medium text-foreground">{recoveryMethod.label}</span>
                 </div>
-                <p className="mt-1 text-sm text-gray-400">{recoveryMethod.description}</p>
-                <p className="mt-2 text-xs text-gray-500">{recoveryMethod.info}</p>
+                <p className="mt-1 text-sm text-muted">{recoveryMethod.description}</p>
+                <p className="mt-2 text-xs text-muted">{recoveryMethod.info}</p>
               </div>
-              <ChevronRight className="mt-3 text-gray-500 transition-transform group-hover:translate-x-1" />
+              <ChevronRight className="mt-3 text-muted transition-transform group-hover:translate-x-1" />
             </div>
             {recoveryMethod.isDisabled && recoveryMethod.disabledReason && (
               <div className="mt-4 flex items-start gap-2 rounded-md bg-muted p-3">
@@ -85,12 +85,12 @@ export const SelectRecoveryMethodStep = ({ email, onSelect, hasEmailAuthEnabled 
           </button>
         ))}
       </div>
-      <div className="mt-6 w-full rounded-lg border border-mineshaft-600 bg-mineshaft-800/50 p-4">
-        <p className="font-medium text-gray-300">Not sure which to choose?</p>
-        <p className="mt-2 text-sm text-gray-500">
+      <div className="mt-6 w-full rounded-lg border border-border bg-container/50 p-4">
+        <p className="font-medium text-label">Not sure which to choose?</p>
+        <p className="mt-2 text-sm text-muted">
           If your company changed email domains (e.g., from @oldcompany.com to @newcompany.com) and
           you used Google sign-in, select{" "}
-          <span className="font-medium text-gray-300">&quot;Domain or SSO change&quot;</span>. This
+          <span className="font-medium text-label">&quot;Domain or SSO change&quot;</span>. This
           will let you set up a password so you can sign in with your new email.
         </p>
       </div>

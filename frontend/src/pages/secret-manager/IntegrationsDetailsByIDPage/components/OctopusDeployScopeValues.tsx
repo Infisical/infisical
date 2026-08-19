@@ -40,7 +40,7 @@ export const OctopusDeployScopeValues = ({ integration }: OctopusDeployScopeValu
   );
 
   if (!integration.metadata?.octopusDeployScopeValues)
-    return <span className="text-sm text-mineshaft-400">Not Configured</span>;
+    return <span className="text-sm text-muted">Not Configured</span>;
 
   if (isPending) return <Spinner size="sm" className="mt-2 ml-2" />;
 
@@ -73,9 +73,9 @@ export const OctopusDeployScopeValues = ({ integration }: OctopusDeployScopeValu
 
         return (
           <div className="mt-4" key={key}>
-            <FormLabel className="text-sm font-medium text-mineshaft-200" label={getLabel(key)} />
+            <FormLabel className="text-sm font-medium text-foreground" label={getLabel(key)} />
 
-            <div className="text-sm text-mineshaft-300">
+            <div className="text-sm text-label">
               {values
                 .map((value) => scopeValuesMap.get(key)?.get(value))
                 .map((name) => (

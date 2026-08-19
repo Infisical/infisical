@@ -83,7 +83,7 @@ const ApplicationSelectInner = ({
             to={
               `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${applicationName}` as never
             }
-            className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-white"
+            className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-foreground"
           >
             <ResourceIcon className="size-[14px] shrink-0 text-project" />
             <span className="truncate">{displayName}</span>

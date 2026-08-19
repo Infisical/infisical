@@ -404,7 +404,7 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
                 openQueryTab().catch(() => {});
               }}
               disabled={tabOpeningDisabled}
-              className="ml-1 flex shrink-0 items-center gap-1.5 rounded border border-border px-2 py-1 text-xs text-muted transition-colors first:ml-0 hover:border-border hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-muted"
+              className="ml-1 flex shrink-0 items-center gap-1.5 rounded border border-border px-2 py-1 text-xs text-muted transition-colors first:ml-0 hover:border-foreground/20 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-muted"
               aria-label="New query tab"
               title={atTabLimit ? `Tab limit (${MAX_TABS}) reached` : "New query tab"}
             >

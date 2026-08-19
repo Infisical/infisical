@@ -301,7 +301,7 @@ const ApiPanel = ({
                 href="https://infisical.com/docs/api-reference/endpoints/certificates/create-certificate"
                 target="_blank"
                 rel="noreferrer"
-                className="font-medium text-primary-400"
+                className="font-medium text-project"
               >
                 View API reference
               </a>
@@ -1118,7 +1118,7 @@ const ScepPanel = ({
                       href={PkiDocsUrls.appConnections.microsoftIntune}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary-500 hover:text-primary-400"
+                      className="text-project hover:text-project"
                     >
                       setup guide
                     </a>{" "}

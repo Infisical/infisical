@@ -181,12 +181,12 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
     <>
       <form
         onSubmit={handleSubmit(onFormSubmit)}
-        className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+        className="mb-6 rounded-lg border border-border bg-card p-4"
       >
-        <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
+        <div className="mb-4 flex items-center justify-between border-b border-border pb-4">
           <div>
             <h2 className="text-lg font-medium">Project Members</h2>
-            <p className="text-sm text-mineshaft-400">
+            <p className="text-sm text-muted">
               Add users who will be automatically added to projects created from this template
             </p>
           </div>
@@ -231,7 +231,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
             )}
           </OrgPermissionCan>
         </div>
-        {errors.users && <span className="my-4 text-sm text-red">{errors.users.message}</span>}
+        {errors.users && <span className="my-4 text-sm text-danger">{errors.users.message}</span>}
         <TableContainer>
           <Table>
             <THead>

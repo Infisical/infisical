@@ -228,7 +228,7 @@ export const ReplicateFolderFromBoard = ({
         bodyClassName="overflow-visible"
         className="max-w-2xl"
         title={
-          <div className="flex items-center gap-x-2 text-mineshaft-300">
+          <div className="flex items-center gap-x-2 text-label">
             <span>Replicate Secrets</span>
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/folder#replicating-folder-contents" />
           </div>

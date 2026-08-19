@@ -102,9 +102,7 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
           <div className="grid grid-cols-2 gap-2 text-sm">
             {conflictingSubjects.map((subject) => (
               <div key={subject}>
-                <span className="text-mineshaft-200">
-                  {PROJECT_PERMISSION_OBJECT[subject].title}
-                </span>
+                <span className="text-foreground">{PROJECT_PERMISSION_OBJECT[subject].title}</span>
               </div>
             ))}
           </div>
@@ -135,17 +133,17 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
           <AccordionItem
             key={id}
             value={id}
-            className="m-0 border border-mineshaft-600 first:rounded-t last:rounded-b data-[state=open]:border-primary/40 data-[state=open]:bg-mineshaft-600/30"
+            className="m-0 border border-border first:rounded-t last:rounded-b data-[state=open]:border-project/40 data-[state=open]:bg-foreground/30"
           >
-            <AccordionTrigger className="w-full justify-start p-4 py-8 text-mineshaft-100 hover:bg-mineshaft-700 hover:text-mineshaft-100 data-[state=open]:bg-primary/3 data-[state=open]:text-mineshaft-100">
+            <AccordionTrigger className="w-full justify-start p-4 py-8 text-foreground hover:bg-container-hover hover:text-foreground data-[state=open]:bg-project/3 data-[state=open]:text-foreground">
               <div className="mr-auto flex flex-col py-2 text-left">
                 <span>{name}</span>
-                <span className="text-sm leading-3 text-mineshaft-400">{description}</span>
+                <span className="text-sm leading-3 text-muted">{description}</span>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="border-t border-mineshaft-600">
+            <AccordionContent className="border-t border-border">
               <div className="max-h-80 thin-scrollbar overflow-y-auto">
-                <span className="text-mineshaft-300">Grants the following permissions:</span>
+                <span className="text-label">Grants the following permissions:</span>
                 <div className="grid grid-cols-2 gap-4 py-2">
                   {permissions
                     .map((permission) => ({
@@ -156,7 +154,7 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
                     .map(({ subject, actions, object }) => {
                       return (
                         <div key={subject}>
-                          <span className="text-mineshaft-200">{object.title}</span>
+                          <span className="text-foreground">{object.title}</span>
                           <ul className="mt-1 flex list-disc flex-col gap-1 pl-4">
                             {actions.map((action) => (
                               <li key={action}>

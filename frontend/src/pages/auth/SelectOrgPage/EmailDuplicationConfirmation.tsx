@@ -58,13 +58,13 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
                 <span>You&apos;re currently logged in as</span>{" "}
                 <b>{duplicateAccounts?.data?.myAccount?.username}</b>.
               </p>
-              <div className="mt-4 mb-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
-                <p className="mt-1 mb-2 text-sm text-bunker-300">
+              <div className="mt-4 mb-4 flex flex-col rounded-r border-l-2 border-l-project bg-label/5 px-4 py-2.5">
+                <p className="mt-1 mb-2 text-sm text-label">
                   We&apos;ve detected multiple accounts using variations of the same email address.
                 </p>
               </div>
             </div>
-            <div className="mb-4 w-full border-b border-mineshaft-400 pb-1 text-sm text-mineshaft-200">
+            <div className="mb-4 w-full border-b border-border pb-1 text-sm text-foreground">
               Your other accounts
             </div>
             <div className="flex h-full max-h-60 thin-scrollbar w-full flex-col items-stretch gap-2 overflow-auto rounded-md">
@@ -73,7 +73,7 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
                 return (
                   <div
                     key={el.id}
-                    className="flex items-center gap-8 rounded-md bg-mineshaft-700 px-4 py-3 text-gray-200"
+                    className="flex items-center gap-8 rounded-md bg-container-hover px-4 py-3 text-foreground"
                   >
                     <div className="group flex grow flex-col">
                       <div className="truncate text-sm transition-colors">{el.username}</div>

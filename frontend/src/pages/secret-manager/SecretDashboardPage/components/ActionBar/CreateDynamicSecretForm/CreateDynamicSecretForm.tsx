@@ -256,12 +256,12 @@ export const CreateDynamicSecretForm = ({
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: -30 }}
             >
-              <div className="mb-4 text-mineshaft-300">Select a service to connect to:</div>
+              <div className="mb-4 text-label">Select a service to connect to:</div>
               <div className="grid grid-cols-4 gap-2">
                 {DYNAMIC_SECRET_LIST.map(({ icon, provider, title }) => (
                   <div
                     key={`dynamic-secret-provider-${provider}`}
-                    className="flex h-30 w-42 cursor-pointer flex-col items-center space-y-4 rounded-sm border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
+                    className="flex h-30 w-42 cursor-pointer flex-col items-center space-y-4 rounded-sm border border-border bg-card p-6 transition-all hover:border-project/70 hover:bg-project/10 hover:text-foreground"
                     role="button"
                     tabIndex={0}
                     onClick={() => {

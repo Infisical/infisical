@@ -68,9 +68,7 @@ export const PermissionAuditSection = ({ resource, stateFilter, search }: Props)
       </AccordionTrigger>
       <AccordionContent className="bg-card">
         {visibleActions.length === 0 ? (
-          <div className="px-4 py-3 text-xs text-mineshaft-400">
-            No actions match the current filter.
-          </div>
+          <div className="px-4 py-3 text-xs text-muted">No actions match the current filter.</div>
         ) : (
           <Table containerClassName="rounded-none! bg-card border-t! border-border border-0">
             <TableHeader>

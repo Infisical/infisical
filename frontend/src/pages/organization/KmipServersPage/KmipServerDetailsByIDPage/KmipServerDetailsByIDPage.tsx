@@ -39,7 +39,7 @@ const Page = () => {
       <Link
         to="/organizations/$orgId/projects/kms/kmip-servers"
         params={{ orgId }}
-        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition hover:text-mineshaft-400/80"
+        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition hover:text-muted/80"
       >
         <ChevronLeftIcon size={16} />
         KMIP Servers

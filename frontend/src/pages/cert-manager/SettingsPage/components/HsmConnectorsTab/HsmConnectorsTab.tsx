@@ -107,10 +107,10 @@ export const HsmConnectorsTab = () => {
   if (!isLicensed) {
     return (
       <div>
-        <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-8 text-center">
+        <div className="rounded-md border border-warning/30 bg-warning/5 p-8 text-center">
           <div className="mb-3 text-2xl">&#x1f6e1;&#xfe0f;</div>
-          <h4 className="mb-2 text-lg font-medium text-mineshaft-100">Enterprise Feature</h4>
-          <p className="mx-auto mb-4 max-w-md text-sm text-mineshaft-300">
+          <h4 className="mb-2 text-lg font-medium text-foreground">Enterprise Feature</h4>
+          <p className="mx-auto mb-4 max-w-md text-sm text-label">
             HSM Connectors let Infisical use keys backed by a Hardware Security Module. Every
             cryptographic operation is routed through your HSM.
           </p>
@@ -220,7 +220,7 @@ export const HsmConnectorsTab = () => {
                   {filtered.map((c) => (
                     <TableRow
                       key={c.id}
-                      className="cursor-pointer hover:bg-mineshaft-700"
+                      className="cursor-pointer hover:bg-container-hover"
                       onClick={() => openDetail(c.id)}
                     >
                       <TableCell>{c.name}</TableCell>

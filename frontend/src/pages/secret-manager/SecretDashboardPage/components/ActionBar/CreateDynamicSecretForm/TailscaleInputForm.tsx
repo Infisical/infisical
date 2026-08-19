@@ -293,7 +293,7 @@ export const TailscaleInputForm = ({
             </div>
           </div>
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-border pb-2 pl-1 font-medium text-foreground">
               Configuration
             </div>
             <div className="flex flex-col">
@@ -309,7 +309,7 @@ export const TailscaleInputForm = ({
                     <Select
                       value={value}
                       onValueChange={onChange}
-                      className="w-full border border-mineshaft-500"
+                      className="w-full border border-border"
                       position="popper"
                       dropdownContainerClassName="max-w-none"
                     >
@@ -336,7 +336,7 @@ export const TailscaleInputForm = ({
                     >
                       <SecretInput
                         {...field}
-                        containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                        containerClassName="text-muted group-focus-within:border-project/50! border border-border bg-card px-2.5 py-1.5"
                       />
                     </FormControl>
                   )}
@@ -376,7 +376,7 @@ export const TailscaleInputForm = ({
                       >
                         <SecretInput
                           {...field}
-                          containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                          containerClassName="text-muted group-focus-within:border-project/50! border border-border bg-card px-2.5 py-1.5"
                         />
                       </FormControl>
                     )}
@@ -396,7 +396,7 @@ export const TailscaleInputForm = ({
                     <Select
                       value={value}
                       onValueChange={onChange}
-                      className="w-full border border-mineshaft-500"
+                      className="w-full border border-border"
                       position="popper"
                       dropdownContainerClassName="max-w-none"
                     >
@@ -551,9 +551,9 @@ export const TailscaleInputForm = ({
                     name="provider.reusable"
                     render={({ field: { value, onChange } }) => (
                       <Switch
-                        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                        className="bg-muted/50 shadow-inner data-[state=checked]:bg-success/80"
                         id="tailscale-reusable"
-                        thumbClassName="bg-mineshaft-800"
+                        thumbClassName="bg-container"
                         isChecked={value}
                         onCheckedChange={onChange}
                       >
@@ -566,9 +566,9 @@ export const TailscaleInputForm = ({
                     name="provider.preauthorized"
                     render={({ field: { value, onChange } }) => (
                       <Switch
-                        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                        className="bg-muted/50 shadow-inner data-[state=checked]:bg-success/80"
                         id="tailscale-preauthorized"
-                        thumbClassName="bg-mineshaft-800"
+                        thumbClassName="bg-container"
                         isChecked={value}
                         onCheckedChange={onChange}
                       >

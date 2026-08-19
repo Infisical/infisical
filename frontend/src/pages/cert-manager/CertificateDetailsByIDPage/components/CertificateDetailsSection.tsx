@@ -46,7 +46,7 @@ export const CertificateDetailsSection = ({ certificateId }: Props) => {
         {["subject", "extensions", "crypto"].map((id) => (
           <Card key={id}>
             <CardContent className="flex items-center justify-center py-8">
-              <p className="text-sm text-mineshaft-400">Loading...</p>
+              <p className="text-sm text-muted">Loading...</p>
             </CardContent>
           </Card>
         ))}

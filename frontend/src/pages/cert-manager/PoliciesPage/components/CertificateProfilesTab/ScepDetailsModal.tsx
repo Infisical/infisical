@@ -28,7 +28,7 @@ export const ScepDetailsModal = ({ isOpen, onClose, profile }: Props) => {
     return (
       <Modal isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
         <ModalContent title="SCEP Enrollment Details">
-          <p className="text-sm text-mineshaft-400">
+          <p className="text-sm text-muted">
             SCEP configuration is not available for this profile.
           </p>
         </ModalContent>
@@ -115,8 +115,8 @@ export const ScepDetailsModal = ({ isOpen, onClose, profile }: Props) => {
           className="mt-4"
           tooltipText="The Registration Authority certificate used by SCEP clients."
         />
-        <div className="flex items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-          <p className="text-xs text-mineshaft-400">Expires: {raCertExpiresAt}</p>
+        <div className="flex items-center justify-between rounded-md border border-border bg-card px-4 py-3">
+          <p className="text-xs text-muted">Expires: {raCertExpiresAt}</p>
           <IconButton
             ariaLabel="download RA certificate"
             variant="outline_bg"

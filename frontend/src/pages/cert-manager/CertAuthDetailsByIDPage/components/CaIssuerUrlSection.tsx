@@ -39,9 +39,7 @@ export const CaIssuerUrlSection = ({ caId }: Props) => {
         <div className="overflow-hidden rounded-md border border-border bg-container">
           <div className="border-b border-border px-3 py-2 text-xs text-accent">CA Issuer URL</div>
           <div className="flex items-start gap-2 px-3 py-2">
-            <span className="min-w-0 flex-1 text-sm break-all text-mineshaft-200">
-              {caIssuerUrl}
-            </span>
+            <span className="min-w-0 flex-1 text-sm break-all text-foreground">{caIssuerUrl}</span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <IconButton variant="ghost" size="xs">

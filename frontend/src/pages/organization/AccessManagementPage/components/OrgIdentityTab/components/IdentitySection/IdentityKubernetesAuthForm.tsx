@@ -461,9 +461,9 @@ export const IdentityKubernetesAuthForm = ({
         <TabsContent value={IdentityFormTab.Configuration}>
           <FieldGroup>
             {hasVaultConnection && canUseAppConnectionImport && !isUpdate && (
-              <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/10 p-3">
+              <div className="flex items-center justify-between rounded-md border border-project/30 bg-project/10 p-3">
                 <div className="flex items-start gap-2 text-sm">
-                  <InfoIcon className="mt-0.5 size-4 text-primary" />
+                  <InfoIcon className="mt-0.5 size-4 text-project" />
                   <span className="text-foreground">Load values from HashiCorp Vault</span>
                 </div>
                 <Tooltip>

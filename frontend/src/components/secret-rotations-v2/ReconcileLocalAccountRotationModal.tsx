@@ -52,11 +52,11 @@ const Content = ({ secretRotation, onComplete }: ContentProps) => {
 
   return (
     <div>
-      <p className="mb-4 text-sm text-mineshaft-200">
+      <p className="mb-4 text-sm text-foreground">
         Reconciliation ensures the password stored in Infisical matches the actual password on the
         server.
       </p>
-      <p className="mb-8 text-sm text-mineshaft-200">
+      <p className="mb-8 text-sm text-foreground">
         Use this if you suspect the credentials are out of sync, for example after a failed rotation
         or manual password change on the server.
       </p>

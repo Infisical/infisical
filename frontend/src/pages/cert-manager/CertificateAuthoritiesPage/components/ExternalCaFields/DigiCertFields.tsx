@@ -183,7 +183,7 @@ export const DigiCertFields = ({
       }}
     />
     {csRequiresContact && (
-      <div className="mt-3 mb-2 rounded-md border border-border bg-mineshaft-800 p-4">
+      <div className="mt-3 mb-2 rounded-md border border-border bg-container p-4">
         <div className="mb-1 text-sm font-medium text-foreground">Verified Contact</div>
         <div className="mb-4 text-xs text-muted">
           This organization has not completed DigiCert code-signing validation yet, so a verified

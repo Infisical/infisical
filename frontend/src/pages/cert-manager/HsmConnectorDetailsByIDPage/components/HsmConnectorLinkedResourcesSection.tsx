@@ -85,7 +85,7 @@ export const HsmConnectorLinkedResourcesSection = ({ connectorId }: Props) => {
         )}
         {!isPending && linkedCas.length > 0 && (
           <div className="mb-6">
-            <p className="mb-2 text-sm font-medium text-mineshaft-200">Certificate authorities</p>
+            <p className="mb-2 text-sm font-medium text-foreground">Certificate authorities</p>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -126,7 +126,7 @@ export const HsmConnectorLinkedResourcesSection = ({ connectorId }: Props) => {
         {!isPending && linked.length > 0 && (
           <>
             {linkedCas.length > 0 && (
-              <p className="mb-2 text-sm font-medium text-mineshaft-200">Certificates</p>
+              <p className="mb-2 text-sm font-medium text-foreground">Certificates</p>
             )}
             <Table>
               <TableHeader>
@@ -141,7 +141,7 @@ export const HsmConnectorLinkedResourcesSection = ({ connectorId }: Props) => {
                 {linked.map((c) => (
                   <TableRow
                     key={c.id}
-                    className="cursor-pointer hover:bg-mineshaft-700"
+                    className="cursor-pointer hover:bg-container-hover"
                     onClick={() => openCert(c.id)}
                   >
                     <TableCell className="font-medium">{c.commonName}</TableCell>

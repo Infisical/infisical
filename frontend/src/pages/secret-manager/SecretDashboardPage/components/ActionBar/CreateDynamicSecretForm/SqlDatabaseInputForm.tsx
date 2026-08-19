@@ -461,7 +461,7 @@ export const SqlDatabaseInputForm = ({
           </div>
           <MetadataForm control={control} />
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-border pb-2 pl-1 font-medium text-foreground">
               Configuration
             </div>
             <div>
@@ -498,7 +498,7 @@ export const SqlDatabaseInputForm = ({
               </OrgPermissionCan>
             </div>
             <div className="flex flex-col">
-              <div className="pb-0.5 pl-1 text-sm text-mineshaft-400">Service</div>
+              <div className="pb-0.5 pl-1 text-sm text-muted">Service</div>
               <Controller
                 control={control}
                 name="provider.client"
@@ -511,7 +511,7 @@ export const SqlDatabaseInputForm = ({
                         onChange(val);
                         handleDatabaseChange(val as SqlProviders);
                       }}
-                      className="w-full border border-mineshaft-500"
+                      className="w-full border border-border"
                     >
                       <SelectItem value={SqlProviders.Postgres}>PostgreSQL</SelectItem>
                       <SelectItem value={SqlProviders.MySql}>MySQL</SelectItem>
@@ -604,9 +604,9 @@ export const SqlDatabaseInputForm = ({
                       render={({ field: { value, onChange }, fieldState: { error } }) => (
                         <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
                           <Switch
-                            className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                            className="bg-muted/50 shadow-inner data-[state=checked]:bg-success/80"
                             id="sql-ds-ssl-enabled"
-                            thumbClassName="bg-mineshaft-800"
+                            thumbClassName="bg-container"
                             isChecked={value}
                             onCheckedChange={onChange}
                           >
@@ -629,7 +629,7 @@ export const SqlDatabaseInputForm = ({
                     >
                       <SecretInput
                         {...field}
-                        containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
+                        containerClassName="text-label hover:border-project/50 border border-border bg-card px-2 py-1.5"
                       />
                     </FormControl>
                   )}
@@ -640,9 +640,9 @@ export const SqlDatabaseInputForm = ({
                   render={({ field: { value, onChange }, fieldState: { error } }) => (
                     <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
                       <Switch
-                        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                        className="bg-muted/50 shadow-inner data-[state=checked]:bg-success/80"
                         id="ssl-reject-unauthorized"
-                        thumbClassName="bg-mineshaft-800"
+                        thumbClassName="bg-container"
                         isChecked={value}
                         onCheckedChange={onChange}
                       >
@@ -665,7 +665,7 @@ export const SqlDatabaseInputForm = ({
                     </FormControl>
                   )}
                 />
-                <Accordion type="multiple" className="mb-2 w-full bg-mineshaft-700">
+                <Accordion type="multiple" className="mb-2 w-full bg-container-hover">
                   <AccordionItem value="advanced">
                     <AccordionTrigger>
                       Creation, Revocation & Renew Statements (optional)
@@ -684,13 +684,13 @@ export const SqlDatabaseInputForm = ({
                             <Input
                               {...field}
                               value={field.value || undefined}
-                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              className="border-border bg-card text-sm"
                               placeholder="{{randomUsername}}"
                             />
                           </FormControl>
                         )}
                       />
-                      <div className="mb-4 text-sm text-mineshaft-300">
+                      <div className="mb-4 text-sm text-label">
                         Customize SQL statements for managing database user lifecycle
                       </div>
                       <Controller
@@ -707,7 +707,7 @@ export const SqlDatabaseInputForm = ({
                               {...field}
                               reSize="none"
                               rows={3}
-                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              className="border-border bg-card text-sm"
                             />
                           </FormControl>
                         )}
@@ -726,7 +726,7 @@ export const SqlDatabaseInputForm = ({
                               {...field}
                               reSize="none"
                               rows={3}
-                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              className="border-border bg-card text-sm"
                             />
                           </FormControl>
                         )}
@@ -745,7 +745,7 @@ export const SqlDatabaseInputForm = ({
                               {...field}
                               reSize="none"
                               rows={3}
-                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              className="border-border bg-card text-sm"
                             />
                           </FormControl>
                         )}
@@ -753,7 +753,7 @@ export const SqlDatabaseInputForm = ({
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
-                <Accordion type="multiple" className="mt-4 mb-2 w-full bg-mineshaft-700">
+                <Accordion type="multiple" className="mt-4 mb-2 w-full bg-container-hover">
                   <AccordionItem value="password-config">
                     <AccordionTrigger>Password Configuration (optional)</AccordionTrigger>
                     <AccordionContent>
@@ -763,7 +763,7 @@ export const SqlDatabaseInputForm = ({
                         environmentSlug={watch("environment")?.slug}
                         secretPath={secretPath}
                       />
-                      <div className="mb-4 text-sm text-mineshaft-300">
+                      <div className="mb-4 text-sm text-label">
                         Set constraints on the generated database password
                       </div>
                       <div className="space-y-4">
@@ -792,7 +792,7 @@ export const SqlDatabaseInputForm = ({
 
                         <div className="space-y-2">
                           <h4 className="text-sm font-medium">Minimum Required Character Counts</h4>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-muted">
                             {(() => {
                               const total = Object.values(
                                 watch("provider.passwordRequirements.required") || {}
@@ -800,7 +800,7 @@ export const SqlDatabaseInputForm = ({
                               const length = watch("provider.passwordRequirements.length") || 0;
                               const isError = total > length;
                               return (
-                                <span className={isError ? "text-red-500" : ""}>
+                                <span className={isError ? "text-danger" : ""}>
                                   Total required characters: {total}{" "}
                                   {isError ? `(exceeds length of ${length})` : ""}
                                 </span>

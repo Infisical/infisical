@@ -119,9 +119,7 @@ export const DynamicSecretTableRow = ({
           <AlertTriangleIcon
             className={twMerge(
               "ml-2 size-4",
-              dynamicSecret.status === DynamicSecretStatus.Deleting
-                ? "text-yellow-600"
-                : "text-red-600"
+              dynamicSecret.status === DynamicSecretStatus.Deleting ? "text-warning" : "text-danger"
             )}
           />
         </TooltipTrigger>

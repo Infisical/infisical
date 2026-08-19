@@ -121,9 +121,9 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
 
   return (
     <>
-      <div className="mb-4 rounded-md bg-primary/10 p-3 text-sm text-mineshaft-200">
+      <div className="mb-4 rounded-md bg-project/10 p-3 text-sm text-foreground">
         <div className="flex items-start gap-2">
-          <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-primary" />
+          <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-project" />
           <div className="space-y-1.5 text-xs leading-relaxed">
             <p>
               Select a database secrets engine role from Vault to pre-fill the form with its
@@ -166,7 +166,7 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
             placeholder="Select database secrets engine..."
             className="w-full"
           />
-          <p className="mt-1 text-xs text-mineshaft-400">
+          <p className="mt-1 text-xs text-muted">
             Choose a database secrets engine mount to list available roles
           </p>
         </>
@@ -193,7 +193,7 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
             isClearable
             className="w-full"
           />
-          <p className="mt-1 text-xs text-mineshaft-400">
+          <p className="mt-1 text-xs text-muted">
             Choose a database dynamic role from the selected mount to load its configuration
           </p>
         </>

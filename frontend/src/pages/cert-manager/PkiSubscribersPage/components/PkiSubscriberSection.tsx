@@ -69,16 +69,16 @@ export const PkiSubscriberSection = () => {
   const subscriberName = subscriberStatusData?.subscriberName || "";
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="mb-6 rounded-lg border border-border bg-card p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">Subscribers</p>
+        <p className="text-xl font-medium text-foreground">Subscribers</p>
         <div className="flex w-full justify-end">
           <a
             target="_blank"
             rel="noopener noreferrer"
             href="https://infisical.com/docs/documentation/platform/pki/subscribers"
           >
-            <span className="flex w-max cursor-pointer items-center rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
+            <span className="flex w-max cursor-pointer items-center rounded-md border border-border bg-foreground/10 px-4 py-2 text-foreground duration-200 hover:border-project/40 hover:bg-project/10 hover:text-foreground">
               Documentation{" "}
               <FontAwesomeIcon
                 icon={faArrowUpRightFromSquare}

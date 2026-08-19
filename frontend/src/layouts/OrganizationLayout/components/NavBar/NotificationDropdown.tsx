@@ -4,13 +4,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useRouter } from "@tanstack/react-router";
 import { Bell, BellIcon } from "lucide-react";
 
+import { ContentLoader } from "@app/components/v2";
 import {
-  ContentLoader,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuTrigger
-} from "@app/components/v2";
-import { IconButton } from "@app/components/v3";
+  DropdownMenuTrigger,
+  IconButton
+} from "@app/components/v3";
 import {
   useDeleteNotification,
   useMarkAllNotificationsAsRead,
@@ -74,21 +74,21 @@ export const NotificationDropdown = () => {
       <DropdownMenuContent
         align="end"
         side="bottom"
-        className="z-999 mt-3 flex h-[550px] w-[400px] overflow-hidden rounded-lg"
+        className="z-999 flex h-[550px] w-[400px] overflow-hidden rounded-lg"
       >
         <div className="flex w-full flex-col">
-          <div className="flex items-center justify-between border-b border-mineshaft-500 px-3 py-2">
+          <div className="flex items-center justify-between border-b border-border px-3 py-2">
             <div className="flex items-center gap-2">
-              <span className="font-medium text-white">Notifications</span>
+              <span className="font-medium text-foreground">Notifications</span>
               {hasCritical && (
-                <span className="rounded-full bg-red-700 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                <span className="rounded-full bg-danger px-1.5 py-0.5 text-[10px] font-medium text-white">
                   {criticalCount > 99 ? "99+" : criticalCount} critical
                 </span>
               )}
             </div>
             <button
               type="button"
-              className="text-xs font-medium text-mineshaft-300 hover:text-primary-400 disabled:pointer-events-none disabled:opacity-50"
+              className="text-xs font-medium text-label hover:text-project disabled:pointer-events-none disabled:opacity-50"
               onClick={(e) => {
                 e.preventDefault();
                 markAllAsRead();
@@ -106,9 +106,9 @@ export const NotificationDropdown = () => {
             )}
             {!isLoading && notifications?.length === 0 && (
               <div className="flex h-full w-full flex-col items-center justify-center">
-                <FontAwesomeIcon icon={faBell} size="3x" className="text-mineshaft-400" />
-                <span className="mt-4 text-sm text-mineshaft-300">No new notifications</span>
-                <span className="text-xs text-mineshaft-400">
+                <FontAwesomeIcon icon={faBell} size="3x" className="text-muted" />
+                <span className="mt-4 text-sm text-label">No new notifications</span>
+                <span className="text-xs text-muted">
                   We&apos;ll let you know when something important happens.
                 </span>
               </div>

@@ -104,7 +104,7 @@ export const NoOrgPage = () => {
         <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="min-h-screen bg-bunker-800">
+      <div className="min-h-screen bg-background">
         {failed ? (
           <CreateOrgModal isOpen logoutOnClose />
         ) : (

@@ -429,20 +429,20 @@ export const SecretItem = memo(
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <div
           className={twMerge(
-            "border-b border-mineshaft-600 bg-mineshaft-800 shadow-none hover:bg-mineshaft-700",
-            isDirty && "border-primary-400/50",
-            isManagedSecret && "bg-mineshaft-700/60",
-            isPending && "bg-mineshaft-700/60",
-            pendingAction === PendingAction.Delete && "border-l-2 border-l-red-600/75",
-            pendingAction === PendingAction.Update && "border-l-2 border-l-yellow-600/75",
-            pendingAction === PendingAction.Create && "border-l-2 border-l-green-600/75"
+            "border-b border-border bg-container shadow-none hover:bg-container-hover",
+            isDirty && "border-project/50",
+            isManagedSecret && "bg-container-hover/60",
+            isPending && "bg-container-hover/60",
+            pendingAction === PendingAction.Delete && "border-l-2 border-l-danger/75",
+            pendingAction === PendingAction.Update && "border-l-2 border-l-warning/75",
+            pendingAction === PendingAction.Create && "border-l-2 border-l-success/75"
           )}
         >
           <div className="group flex">
             <div
               className={twMerge(
-                "flex h-11 w-11 items-center justify-center px-4 py-3 text-mineshaft-300",
-                isDirty && "text-primary",
+                "flex h-11 w-11 items-center justify-center px-4 py-3 text-label",
+                isDirty && "text-project",
                 isPending && "ml-[-2px]"
               )}
             >
@@ -454,7 +454,7 @@ export const SecretItem = memo(
                     size="xs"
                     className={twMerge(
                       "absolute -right-[0.2rem] -bottom-[0.05rem]",
-                      isHoneyTokenSecret ? "text-yellow" : "text-mineshaft-400"
+                      isHoneyTokenSecret ? "text-warning" : "text-muted"
                     )}
                   />
                 </div>
@@ -500,28 +500,25 @@ export const SecretItem = memo(
                               Secret key contains whitespaces.
                               <br />
                               <br /> If this is the desired format, you need to provide it as{" "}
-                              <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
+                              <code className="rounded-md bg-foreground/10 px-1 py-0.5">
                                 {encodeURIComponent(field.value.trim())}
                               </code>{" "}
                               when making API requests.
                             </div>
                           }
                         >
-                          <FontAwesomeIcon
-                            icon={faWarning}
-                            className="text-yellow-600 opacity-60"
-                          />
+                          <FontAwesomeIcon icon={faWarning} className="text-warning opacity-60" />
                         </Tooltip>
                       ) : undefined
                     }
                     {...field}
-                    className="w-full px-0 placeholder:text-red-500 focus:text-bunker-100 focus:ring-transparent"
+                    className="w-full px-0 placeholder:text-danger focus:text-foreground focus:ring-transparent"
                   />
                 )}
               />
             </div>
             <div
-              className="flex w-80 grow items-center border-x border-mineshaft-600 py-1 pr-2 pl-4"
+              className="flex w-80 grow items-center border-x border-border py-1 pr-2 pl-4"
               tabIndex={0}
               role="button"
             >
@@ -625,7 +622,7 @@ export const SecretItem = memo(
                       <IconButton
                         className={twMerge(
                           "w-0 overflow-hidden p-0 group-hover:w-5",
-                          secret.reminder && "w-5 text-primary"
+                          secret.reminder && "w-5 text-project"
                         )}
                         onClick={() => handlePopUpOpen("reminder")}
                         variant="plain"
@@ -683,7 +680,7 @@ export const SecretItem = memo(
                             size="sm"
                             className={twMerge(
                               "w-0 overflow-hidden p-0 group-hover:w-5 data-[state=open]:w-5",
-                              hasTagsApplied && "w-5 text-primary"
+                              hasTagsApplied && "w-5 text-project"
                             )}
                             isDisabled={!isAllowed || isOverridden}
                           >
@@ -754,7 +751,7 @@ export const SecretItem = memo(
                     onClick={handleOverrideClick}
                     className={twMerge(
                       "w-0 overflow-hidden p-0 group-hover:w-5",
-                      isOverridden && "w-5 text-primary"
+                      isOverridden && "w-5 text-project"
                     )}
                   >
                     <Tooltip
@@ -785,7 +782,7 @@ export const SecretItem = memo(
                           <IconButton
                             className={twMerge(
                               "w-0 overflow-hidden p-0 group-hover:w-5",
-                              hasComment && "w-5 text-primary"
+                              hasComment && "w-5 text-project"
                             )}
                             variant="plain"
                             size="md"
@@ -832,12 +829,12 @@ export const SecretItem = memo(
                       </Tooltip>
                     </IconButton>
                     <PopoverContent
-                      className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-2 drop-shadow-2xl"
+                      className="w-auto border border-border bg-container p-2 drop-shadow-2xl"
                       sticky="always"
                     >
                       <FormControl label="Comment" className="mb-0">
                         <TextArea
-                          className="border border-mineshaft-600 text-sm"
+                          className="border border-border text-sm"
                           rows={8}
                           cols={30}
                           {...register("comment")}
@@ -870,7 +867,7 @@ export const SecretItem = memo(
                             size="sm"
                             className={twMerge(
                               "w-0 overflow-hidden p-0 group-hover:w-5 data-[state=open]:w-5",
-                              hasTagsApplied && "w-5 text-primary"
+                              hasTagsApplied && "w-5 text-project"
                             )}
                             isDisabled={!isAllowed}
                           >
@@ -1072,7 +1069,7 @@ export const SecretItem = memo(
                       type="submit"
                       size="md"
                       className={twMerge(
-                        "p-0 text-primary opacity-0 group-hover:opacity-100",
+                        "p-0 text-project opacity-0 group-hover:opacity-100",
                         isDirty && "opacity-100"
                       )}
                       isDisabled={isSubmitting || Boolean(errors.key)}
@@ -1083,8 +1080,8 @@ export const SecretItem = memo(
                         <FontAwesomeSymbol
                           symbolName={FontAwesomeSpriteName.Check}
                           className={twMerge(
-                            "h-4 w-4 text-primary",
-                            Boolean(Object.keys(errors || {}).length) && "text-red"
+                            "h-4 w-4 text-project",
+                            Boolean(Object.keys(errors || {}).length) && "text-danger"
                           )}
                         />
                       )}
@@ -1104,7 +1101,7 @@ export const SecretItem = memo(
                     >
                       <FontAwesomeSymbol
                         symbolName={FontAwesomeSpriteName.Close}
-                        className="h-4 w-4 text-primary"
+                        className="h-4 w-4 text-project"
                       />
                     </IconButton>
                   </Tooltip>

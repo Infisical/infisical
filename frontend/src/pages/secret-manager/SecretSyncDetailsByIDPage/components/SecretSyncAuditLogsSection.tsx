@@ -97,7 +97,7 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
             }}
           />
         ) : (
-          <div className="flex h-full items-center justify-center rounded-lg bg-mineshaft-800 text-sm text-mineshaft-200">
+          <div className="flex h-full items-center justify-center rounded-lg bg-container text-sm text-foreground">
             <div className="flex flex-col items-center gap-4 py-20">
               <FingerprintIcon className="size-8" />
               <p>
@@ -110,7 +110,7 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
                     rel="noopener noreferrer"
                   >
                     <a
-                      className="cursor-pointer underline transition-all hover:text-white"
+                      className="cursor-pointer underline transition-all hover:text-foreground"
                       target="_blank"
                     >
                       upgrade your subscription
@@ -123,7 +123,7 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
                     rel="noopener noreferrer"
                   >
                     <a
-                      className="cursor-pointer underline transition-all hover:text-white"
+                      className="cursor-pointer underline transition-all hover:text-foreground"
                       target="_blank"
                     >
                       upgrade your subscription

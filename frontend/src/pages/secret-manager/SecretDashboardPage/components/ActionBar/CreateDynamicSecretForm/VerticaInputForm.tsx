@@ -215,7 +215,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
             </div>
           </div>
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-border pb-2 pl-1 font-medium text-foreground">
               Configuration
             </div>
             <div>
@@ -328,7 +328,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
                 />
               </div>
               <div>
-                <Accordion type="multiple" className="mb-2 w-full bg-mineshaft-700">
+                <Accordion type="multiple" className="mb-2 w-full bg-container-hover">
                   <AccordionItem value="advance-statements">
                     <AccordionTrigger>Modify SQL Statements</AccordionTrigger>
                     <AccordionContent>
@@ -345,7 +345,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
                             <Input
                               {...field}
                               value={field.value || undefined}
-                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              className="border-border bg-card text-sm"
                               placeholder="{{randomUsername}}"
                             />
                           </FormControl>
@@ -364,7 +364,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
                               {...field}
                               reSize="none"
                               rows={3}
-                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              className="border-border bg-card text-sm"
                             />
                           </FormControl>
                         )}
@@ -382,7 +382,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
                               {...field}
                               reSize="none"
                               rows={3}
-                              className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                              className="border-border bg-card text-sm"
                             />
                           </FormControl>
                         )}
@@ -390,11 +390,11 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
-                <Accordion type="multiple" className="mt-4 mb-2 w-full bg-mineshaft-700">
+                <Accordion type="multiple" className="mt-4 mb-2 w-full bg-container-hover">
                   <AccordionItem value="password-config">
                     <AccordionTrigger>Password Configuration (optional)</AccordionTrigger>
                     <AccordionContent>
-                      <div className="mb-4 text-sm text-mineshaft-300">
+                      <div className="mb-4 text-sm text-label">
                         Set constraints on the generated database password
                       </div>
                       <div className="space-y-4">
@@ -423,7 +423,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
 
                         <div className="space-y-2">
                           <h4 className="text-sm font-medium">Minimum Required Character Counts</h4>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-muted">
                             {(() => {
                               const total = Object.values(
                                 watch("provider.passwordRequirements.required") || {}
@@ -431,7 +431,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
                               const length = watch("provider.passwordRequirements.length") || 0;
                               const isError = total > length;
                               return (
-                                <span className={isError ? "text-red-500" : ""}>
+                                <span className={isError ? "text-danger" : ""}>
                                   Total required characters: {total}{" "}
                                   {isError ? `(exceeds length of ${length})` : ""}
                                 </span>

@@ -30,13 +30,13 @@ export const BillingPage = () => {
   }
 
   return (
-    <div className="h-full bg-bunker-800">
+    <div className="h-full bg-background">
       <Helmet>
         <title>{t("common.head-title", { title: t("billing.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
-      <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
+      <div className="flex h-full w-full justify-center bg-background text-foreground">
         <div className="w-full max-w-8xl">
           <PageHeader
             scope="org"

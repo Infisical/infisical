@@ -118,23 +118,23 @@ const RadioCard = ({
     className={`flex items-center gap-4 rounded-md border px-4 py-4 text-left transition-colors ${
       isSelected
         ? "border-project/50 bg-project/5"
-        : "border-mineshaft-600 bg-mineshaft-700 hover:bg-mineshaft-600"
+        : "border-border bg-container-hover hover:bg-foreground/10"
     } ${className ?? ""}`}
   >
     {icon}
     <div className="flex-1">
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-mineshaft-100">{name}</span>
+        <span className="text-sm font-medium text-foreground">{name}</span>
         {badge && <Badge variant="neutral">{badge}</Badge>}
       </div>
-      <p className="mt-0.5 text-xs text-mineshaft-400">{description}</p>
+      <p className="mt-0.5 text-xs text-muted">{description}</p>
     </div>
     <div
       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-        isSelected ? "border-none bg-project/30" : "border-mineshaft-500"
+        isSelected ? "border-none bg-project/30" : "border-border"
       }`}
     >
-      {isSelected && <div className="h-2 w-2 rounded-full bg-mineshaft-300" />}
+      {isSelected && <div className="h-2 w-2 rounded-full bg-label" />}
     </div>
   </button>
 );
@@ -205,8 +205,8 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
             isSelected={selectedMethod === option.value}
             onClick={() => setSelectedMethod(option.value)}
             icon={
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-mineshaft-600">
-                <option.icon className="h-5 w-5 text-mineshaft-300" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-foreground/10">
+                <option.icon className="h-5 w-5 text-label" />
               </div>
             }
             name={option.name}
@@ -245,7 +245,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <img
                   src={integration.image}
                   alt={`${integration.name} logo`}
-                  className="h-8 w-8 rounded-md bg-bunker-500 object-contain p-1"
+                  className="h-8 w-8 rounded-md bg-container object-contain p-1"
                 />
               ) : undefined
             }
@@ -288,30 +288,30 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
             <img
               src={displayImage}
               alt={`${displayName} logo`}
-              className="mt-0.5 h-8 w-8 shrink-0 rounded-md bg-bunker-500 object-contain p-1"
+              className="mt-0.5 h-8 w-8 shrink-0 rounded-md bg-container object-contain p-1"
             />
           ) : (
             DisplayIcon && (
-              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-bunker-500">
-                <DisplayIcon className="h-4 w-4 text-mineshaft-300" />
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-container">
+                <DisplayIcon className="h-4 w-4 text-label" />
               </div>
             )
           )}
           <div className="flex-1">
             <div className="flex items-center">
-              <span className="flex-1 text-sm font-medium text-mineshaft-100">{displayName}</span>
+              <span className="flex-1 text-sm font-medium text-foreground">{displayName}</span>
               <button
                 type="button"
-                className="shrink-0 text-xs text-mineshaft-400 underline underline-offset-2 hover:text-mineshaft-300"
+                className="shrink-0 text-xs text-muted underline underline-offset-2 hover:text-label"
                 onClick={resetState}
               >
                 Change method
               </button>
             </div>
-            <p className="mt-0.5 text-xs text-mineshaft-400">{displayDesc}</p>
+            <p className="mt-0.5 text-xs text-muted">{displayDesc}</p>
           </div>
         </div>
-        <hr className="-mx-6 mb-4 border-mineshaft-600" />
+        <hr className="-mx-6 mb-4 border-border" />
         {renderForm()}
       </>
     );
@@ -323,7 +323,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
         <div>
           <button
             type="button"
-            className="mb-2 flex items-center gap-1 text-xs text-mineshaft-400 hover:text-mineshaft-300"
+            className="mb-2 flex items-center gap-1 text-xs text-muted hover:text-label"
             onClick={goBackToMethodSelection}
           >
             <ArrowLeftIcon className="h-3 w-3" />

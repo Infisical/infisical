@@ -120,10 +120,10 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
           )}
           <div
             className={twMerge(
-              "flex h-full w-full items-stretch gap-2.5 rounded-md border border-mineshaft bg-mineshaft-800 p-2 font-inter shadow-lg",
-              isCircular && "border-red/40",
+              "flex h-full w-full items-stretch gap-2.5 rounded-md border border-border bg-container p-2 font-inter shadow-lg",
+              isCircular && "border-danger/40",
               isRoot && "border-project/40",
-              !isRoot && "cursor-pointer transition-colors hover:border-mineshaft-400"
+              !isRoot && "cursor-pointer transition-colors hover:border-foreground/20"
             )}
             onClick={!isRoot ? handleNavigate : undefined}
             role={!isRoot ? "button" : undefined}
@@ -144,10 +144,7 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
             </Badge>
             <div className="flex w-full min-w-0 flex-col">
               <span
-                className={twMerge(
-                  "truncate text-xs text-mineshaft-100",
-                  isRoot && "font-semibold"
-                )}
+                className={twMerge("truncate text-xs text-foreground", isRoot && "font-semibold")}
               >
                 {secretKey}
               </span>

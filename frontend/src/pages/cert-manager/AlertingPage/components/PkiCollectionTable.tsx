@@ -62,7 +62,7 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
               data?.collections.map((pkiCollection) => {
                 return (
                   <Tr
-                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-container-hover"
                     key={`pki-collection-${pkiCollection.id}`}
                     onClick={() =>
                       navigate({
@@ -80,7 +80,7 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
                     <Td>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild className="rounded-lg">
-                          <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                          <div className="hover:text-project data-[state=open]:text-project">
                             <FontAwesomeIcon size="sm" icon={faEllipsis} />
                           </div>
                         </DropdownMenuTrigger>
@@ -114,7 +114,7 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
                               <DropdownMenuItem
                                 className={twMerge(
                                   isAllowed
-                                    ? "hover:bg-red-500! hover:text-white!"
+                                    ? "hover:bg-danger! hover:text-white!"
                                     : "pointer-events-none cursor-not-allowed opacity-50"
                                 )}
                                 onClick={(e) => {

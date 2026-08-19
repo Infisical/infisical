@@ -13,11 +13,11 @@ type Props = {
 export const NoticeBanner = ({ icon = faWarning, title, children, className }: Props) => (
   <div
     className={twMerge(
-      "flex w-full flex-row items-center rounded-md border border-primary-600/70 bg-primary/[.07] p-4 text-base text-white",
+      "flex w-full flex-row items-center rounded-md border border-project/70 bg-project/[.07] p-4 text-base text-foreground",
       className
     )}
   >
-    <FontAwesomeIcon icon={icon} className="pr-6 text-4xl text-white/80" />
+    <FontAwesomeIcon icon={icon} className="pr-6 text-4xl text-foreground/80" />
     <div className="flex w-full flex-col text-sm">
       <div className="mb-2 text-lg font-medium">{title}</div>
       <div>{children}</div>

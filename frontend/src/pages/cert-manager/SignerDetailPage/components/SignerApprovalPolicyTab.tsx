@@ -54,7 +54,7 @@ const initialsOf = (label: string): string => {
 };
 
 const ApproverAvatar = ({ approver }: { approver: ApproverDisplay }) => (
-  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-mineshaft-700 bg-mineshaft-800 text-[10px] font-medium text-muted ring-1 ring-mineshaft-900">
+  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-container text-[10px] font-medium text-muted ring-1 ring-ring">
     {approver.kind === "group" ? <UsersIcon className="h-3 w-3" /> : initialsOf(approver.label)}
   </span>
 );
@@ -233,7 +233,7 @@ export const SignerApprovalPolicyTab = ({ signerId }: Props) => {
                   return (
                     <div key={stepNumber} className="flex gap-2">
                       <div className="flex flex-col items-center">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border bg-mineshaft-800 text-[10px] font-medium text-muted">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border bg-container text-[10px] font-medium text-muted">
                           {stepNumber}
                         </span>
                         {!isLast && <span aria-hidden="true" className="w-px flex-1 bg-border" />}

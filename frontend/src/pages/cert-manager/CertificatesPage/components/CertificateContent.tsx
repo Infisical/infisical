@@ -45,7 +45,7 @@ export const CertificateContent = ({
   return (
     <div>
       <h2 className="mb-4">Serial Number</h2>
-      <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+      <div className="mb-8 flex items-center justify-between rounded-md bg-foreground/5 p-2 text-base text-muted">
         <p className="mr-4 break-all">{serialNumber}</p>
         <Tooltip content={copyTextSerialNumber}>
           <IconButton
@@ -91,7 +91,7 @@ export const CertificateContent = ({
           </Tooltip>
         </div>
       </div>
-      <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+      <div className="mb-8 flex items-center justify-between rounded-md bg-foreground/5 p-2 text-base text-muted">
         <p className="mr-4 break-all whitespace-pre-wrap">{certificate}</p>
       </div>
       {certificateChain && (
@@ -126,7 +126,7 @@ export const CertificateContent = ({
               </Tooltip>
             </div>
           </div>
-          <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+          <div className="mb-8 flex items-center justify-between rounded-md bg-foreground/5 p-2 text-base text-muted">
             <p className="mr-4 break-all whitespace-pre-wrap">{certificateChain}</p>
           </div>
         </>
@@ -163,7 +163,7 @@ export const CertificateContent = ({
               </Tooltip>
             </div>
           </div>
-          <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+          <div className="mb-8 flex items-center justify-between rounded-md bg-foreground/5 p-2 text-base text-muted">
             <p className="mr-4 break-all whitespace-pre-wrap">{privateKey}</p>
           </div>
         </>

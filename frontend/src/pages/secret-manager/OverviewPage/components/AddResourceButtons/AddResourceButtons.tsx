@@ -151,7 +151,7 @@ export function AddResourceButtons({
                     onClick={onAddHoneyToken}
                     isDisabled={!isHoneyTokenAvailable || !isAllowed}
                   >
-                    <HexagonIcon className="text-yellow" />
+                    <HexagonIcon className="text-warning" />
                     Add Honey Token
                   </DropdownMenuItem>
                 </TooltipTrigger>

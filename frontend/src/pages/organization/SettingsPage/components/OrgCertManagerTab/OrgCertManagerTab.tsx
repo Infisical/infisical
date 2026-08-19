@@ -162,7 +162,7 @@ export const OrgCertManagerTab = () => {
                     href="https://infisical.com/docs/documentation/platform/pki/migration"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="underline hover:text-mineshaft-200"
+                    className="underline hover:text-foreground"
                   >
                     Learn more →
                   </a>

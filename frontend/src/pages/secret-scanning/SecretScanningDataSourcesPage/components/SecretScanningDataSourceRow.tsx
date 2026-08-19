@@ -110,8 +110,8 @@ export const SecretScanningDataSourceRow = ({
         })
       }
       className={twMerge(
-        "group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700",
-        lastScanStatus === SecretScanningScanStatus.Failed && "bg-red/5 hover:bg-red/10"
+        "group h-10 cursor-pointer transition-colors duration-100 hover:bg-container-hover",
+        lastScanStatus === SecretScanningScanStatus.Failed && "bg-danger/5 hover:bg-danger/10"
       )}
       key={`data-source-${id}`}
     >
@@ -130,7 +130,7 @@ export const SecretScanningDataSourceRow = ({
           <p className="truncate">{name}</p>
           {description && (
             <Tooltip content={description}>
-              <FontAwesomeIcon icon={faInfoCircle} size="xs" className="ml-1 text-mineshaft-400" />
+              <FontAwesomeIcon icon={faInfoCircle} size="xs" className="ml-1 text-muted" />
             </Tooltip>
           )}
         </div>
@@ -169,7 +169,7 @@ export const SecretScanningDataSourceRow = ({
               </button>
             </Badge>
           ) : lastScanStatus === SecretScanningScanStatus.Failed ? (
-            <span className="text-mineshaft-400">No findings</span>
+            <span className="text-muted">No findings</span>
           ) : (
             <Badge variant="success">
               <FontAwesomeIcon icon={faCheck} />
@@ -177,7 +177,7 @@ export const SecretScanningDataSourceRow = ({
             </Badge>
           )
         ) : (
-          <span className="text-mineshaft-400">No findings</span>
+          <span className="text-muted">No findings</span>
         )}
       </Td>
       <Td>
@@ -192,7 +192,7 @@ export const SecretScanningDataSourceRow = ({
           ) : lastScannedAt ? (
             <span>{formatDistance(new Date(lastScannedAt), new Date(), { addSuffix: true })}</span>
           ) : (
-            <span className="text-mineshaft-400">No scans</span>
+            <span className="text-muted">No scans</span>
           )}
           {!isAutoScanEnabled && !isDisconnected && (
             <Tooltip
@@ -266,11 +266,7 @@ export const SecretScanningDataSourceRow = ({
                     >
                       <div className="flex h-full w-full items-center justify-between gap-1">
                         <span>Trigger Scan</span>
-                        <FontAwesomeIcon
-                          className="text-bunker-300"
-                          size="sm"
-                          icon={faInfoCircle}
-                        />
+                        <FontAwesomeIcon className="text-label" size="sm" icon={faInfoCircle} />
                       </div>
                     </Tooltip>
                   </DropdownMenuItem>

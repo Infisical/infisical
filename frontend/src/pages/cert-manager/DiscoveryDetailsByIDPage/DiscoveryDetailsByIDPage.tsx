@@ -88,12 +88,12 @@ const Page = () => {
     discovery.lastScanStatus === PkiDiscoveryScanStatus.Pending;
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
+    <div className="mx-auto flex flex-col justify-between bg-background text-foreground">
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <Link
           to="/organizations/$orgId/projects/cert-manager/$projectId/discovery"
           params={{ orgId: currentOrg.id, projectId: currentProject.id }}
-          className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+          className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
         >
           <ChevronLeftIcon size={16} />
           Jobs

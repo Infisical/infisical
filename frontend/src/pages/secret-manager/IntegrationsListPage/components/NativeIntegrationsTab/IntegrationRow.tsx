@@ -75,8 +75,8 @@ export const IntegrationRow = ({
         })
       }
       className={twMerge(
-        "group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700",
-        isSynced === false && "bg-red/5 hover:bg-red/10"
+        "group h-10 cursor-pointer transition-colors duration-100 hover:bg-container-hover",
+        isSynced === false && "bg-danger/5 hover:bg-danger/10"
       )}
       key={`integration-${id}`}
     >
@@ -104,7 +104,7 @@ export const IntegrationRow = ({
             className="max-w-lg min-w-[20rem]"
             content={<IntegrationDetails integration={integration} />}
           >
-            <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400" />
+            <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
           </Tooltip>
         </div>
       </Td>
@@ -123,7 +123,7 @@ export const IntegrationRow = ({
                 {integration.lastUsed && (
                   <div>
                     <div
-                      className={`mb-2 flex self-start ${!isSynced ? "text-yellow" : "text-green"}`}
+                      className={`mb-2 flex self-start ${!isSynced ? "text-warning" : "text-success"}`}
                     >
                       <FontAwesomeIcon
                         icon={faCalendarCheck}
@@ -131,18 +131,18 @@ export const IntegrationRow = ({
                       />
                       <div className="text-xs">Last Synced</div>
                     </div>
-                    <div className="rounded-sm bg-mineshaft-600 p-2 text-xs">
+                    <div className="rounded-sm bg-foreground/10 p-2 text-xs">
                       {format(new Date(integration.lastUsed!), "yyyy-MM-dd, hh:mm aaa")}
                     </div>
                   </div>
                 )}
                 {failureMessage && (
                   <div>
-                    <div className="mb-2 flex self-start text-red">
+                    <div className="mb-2 flex self-start text-danger">
                       <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
                       <div className="text-xs">Failure Reason</div>
                     </div>
-                    <div className="rounded-sm bg-mineshaft-600 p-2 text-xs">{failureMessage}</div>
+                    <div className="rounded-sm bg-foreground/10 p-2 text-xs">{failureMessage}</div>
                   </div>
                 )}
               </div>

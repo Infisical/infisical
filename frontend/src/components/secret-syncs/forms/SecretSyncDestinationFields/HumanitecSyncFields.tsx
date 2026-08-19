@@ -148,8 +148,8 @@ export const HumanitecSyncFields = () => {
                     <ul className="flex list-disc flex-col gap-3 pl-4">
                       {Object.values(HUMANITEC_SYNC_SCOPES).map(({ name, description }) => (
                         <li key={name}>
-                          <p className="text-mineshaft-300">
-                            <span className="font-medium text-bunker-200">{name}</span>:{" "}
+                          <p className="text-label">
+                            <span className="font-medium text-foreground">{name}</span>:{" "}
                             {description}
                           </p>
                         </li>

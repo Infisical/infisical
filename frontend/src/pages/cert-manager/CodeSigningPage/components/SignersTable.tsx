@@ -125,7 +125,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                 signers.map((signer) => (
                   <TableRow
                     key={signer.id}
-                    className="cursor-pointer hover:bg-mineshaft-700"
+                    className="cursor-pointer hover:bg-container-hover"
                     onClick={() =>
                       navigate({
                         to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",

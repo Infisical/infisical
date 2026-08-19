@@ -226,7 +226,7 @@ export const EditDynamicSecretAwsIamForm = ({
           </div>
         </div>
         <div>
-          <div className="mb-4 border-b border-b-mineshaft-600 pb-2">Configuration</div>
+          <div className="mb-4 border-b border-b-border pb-2">Configuration</div>
           <div className="flex flex-col">
             <Controller
               name="inputs.method"
@@ -240,7 +240,7 @@ export const EditDynamicSecretAwsIamForm = ({
                   <Select
                     value={value}
                     onValueChange={(val) => onChange(val)}
-                    className="w-full border border-mineshaft-500"
+                    className="w-full border border-border"
                     position="popper"
                     dropdownContainerClassName="max-w-none"
                   >
@@ -268,7 +268,7 @@ export const EditDynamicSecretAwsIamForm = ({
                     <Select
                       value={value}
                       onValueChange={(val) => onChange(val)}
-                      className="w-full border border-mineshaft-500"
+                      className="w-full border border-border"
                       position="popper"
                       dropdownContainerClassName="max-w-none"
                     >
@@ -279,7 +279,7 @@ export const EditDynamicSecretAwsIamForm = ({
                         Temporary Credentials
                       </SelectItem>
                     </Select>
-                    <div className="mt-1 text-xs text-mineshaft-300">
+                    <div className="mt-1 text-xs text-label">
                       {value === DynamicSecretAwsIamCredentialType.IamUser
                         ? "Creates temporary IAM users with access keys"
                         : "Uses STS to generate temporary credentials from your connection. Duration is controlled by the Default TTL setting above."}
@@ -445,7 +445,7 @@ export const EditDynamicSecretAwsIamForm = ({
                         {...field}
                         reSize="none"
                         rows={3}
-                        className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                        className="border-border bg-card text-sm"
                       />
                     </FormControl>
                   )}
@@ -485,7 +485,7 @@ export const EditDynamicSecretAwsIamForm = ({
                         {...field}
                         reSize="none"
                         rows={3}
-                        className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                        className="border-border bg-card text-sm"
                       />
                     </FormControl>
                   )}
@@ -506,7 +506,7 @@ export const EditDynamicSecretAwsIamForm = ({
                     <Input
                       {...field}
                       value={field.value || undefined}
-                      className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                      className="border-border bg-card text-sm"
                     />
                   </FormControl>
                 )}

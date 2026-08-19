@@ -89,7 +89,7 @@ const Page = () => {
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
+    <div className="mx-auto flex flex-col justify-between bg-background text-foreground">
       {profile && (
         <ProjectPermissionCan
           I={ProjectPermissionCertificateProfileActions.Read}
@@ -106,7 +106,7 @@ const Page = () => {
                       projectId,
                       applicationName: search.applicationName
                     }}
-                    className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+                    className="mb-4 flex items-center gap-x-2 text-sm text-muted"
                   >
                     <FontAwesomeIcon icon={faChevronLeft} />
                     {search.applicationName}
@@ -118,7 +118,7 @@ const Page = () => {
                       orgId: currentOrg.id,
                       projectId
                     }}
-                    className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+                    className="mb-4 flex items-center gap-x-2 text-sm text-muted"
                   >
                     <FontAwesomeIcon icon={faChevronLeft} />
                     Certificate Profiles

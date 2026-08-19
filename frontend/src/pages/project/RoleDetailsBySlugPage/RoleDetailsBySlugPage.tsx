@@ -203,11 +203,11 @@ const Page = () => {
             )}
           </PageHeader>
           {isCertManager && isCustomRole && (
-            <div className="mb-4 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 text-sm text-mineshaft-200">
-              <p className="font-medium text-mineshaft-100">
+            <div className="mb-4 rounded-md border border-border bg-card p-4 text-sm text-foreground">
+              <p className="font-medium text-foreground">
                 Custom roles act as Member in Certificate Manager
               </p>
-              <p className="mt-1 text-mineshaft-300">
+              <p className="mt-1 text-label">
                 In the new Certificate Manager flow, access is granted through Application
                 memberships (Admin or Member). Permissions defined here only apply to legacy
                 endpoints — users with this role are treated as Member at the project level and only

@@ -214,7 +214,7 @@ export const ProjectTemplateEnvironmentsForm = ({
                     </TableCell>
                     {!isInfisicalTemplate && (
                       <TableCell>
-                        <div className="flex items-center justify-end gap-3 text-mineshaft-400">
+                        <div className="flex items-center justify-end gap-3 text-muted">
                           <OrgPermissionCan
                             I={OrgPermissionActions.Edit}
                             a={OrgPermissionSubjects.ProjectTemplates}
@@ -253,7 +253,7 @@ export const ProjectTemplateEnvironmentsForm = ({
                               </IconButton>
                             )}
                           </OrgPermissionCan>
-                          <div className="h-7 w-px bg-mineshaft-600" />
+                          <div className="h-7 w-px bg-foreground/10" />
                           <OrgPermissionCan
                             I={OrgPermissionActions.Edit}
                             a={OrgPermissionSubjects.ProjectTemplates}

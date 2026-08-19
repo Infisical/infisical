@@ -97,7 +97,7 @@ export const WindmillSyncFields = () => {
                     rel="noopener noreferrer"
                     href="https://www.windmill.dev/docs/core_concepts/roles_and_permissions#path"
                   >
-                    <span className="cursor-pointer underline decoration-primary underline-offset-2 hover:text-mineshaft-200">
+                    <span className="cursor-pointer underline decoration-project underline-offset-2 hover:text-foreground">
                       owner path convention
                     </span>
                     .

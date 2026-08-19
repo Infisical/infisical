@@ -28,19 +28,14 @@ export const FormLabel = ({
   tooltipText
 }: FormLabelProps) => (
   <Label.Root
-    className={twMerge(
-      "mb-0.5 flex items-center text-sm font-normal text-mineshaft-400",
-      className
-    )}
+    className={twMerge("mb-0.5 flex items-center text-sm font-normal text-muted", className)}
     htmlFor={id}
   >
     {label}
-    {isRequired && <span className="ml-1 text-red">*</span>}
-    {isOptional && <span className="ml-1 text-xs text-gray-500 italic">- Optional</span>}
+    {isRequired && <span className="ml-1 text-danger">*</span>}
+    {isOptional && <span className="ml-1 text-xs text-muted italic">- Optional</span>}
     {icon && !tooltipText && (
-      <span className="ml-2 cursor-default text-mineshaft-300 hover:text-mineshaft-200">
-        {icon}
-      </span>
+      <span className="ml-2 cursor-default text-label hover:text-foreground">{icon}</span>
     )}
     {tooltipText && (
       <Tooltip content={tooltipText} className={tooltipClassName}>
@@ -58,8 +53,8 @@ export type FormHelperTextProps = {
 export const FormHelperText = ({ isError, text }: FormHelperTextProps) => (
   <div
     className={twMerge(
-      "text-opacity-90 mt-2 flex items-center font-inter text-xs text-mineshaft-300",
-      isError && "text-red-600"
+      "text-opacity-90 mt-2 flex items-center font-inter text-xs text-label",
+      isError && "text-danger"
     )}
   >
     {isError && (

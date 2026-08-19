@@ -1040,12 +1040,12 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                               />
                               <FieldError errors={[error]} />
                               {!hasCas && (
-                                <FieldDescription className="text-yellow-500">
+                                <FieldDescription className="text-warning">
                                   No certificate authorities available.{" "}
                                   <Link
                                     to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
                                     params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-                                    className="underline hover:text-yellow-400"
+                                    className="underline hover:text-warning"
                                   >
                                     Create one in Certificate Authorities
                                   </Link>

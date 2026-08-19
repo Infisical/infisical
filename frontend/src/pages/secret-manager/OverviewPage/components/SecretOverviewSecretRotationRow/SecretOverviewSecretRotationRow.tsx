@@ -74,9 +74,9 @@ export const SecretOverviewSecretRotationRow = ({
   return (
     <>
       <Tr isHoverable isSelectable onClick={setIsExpanded.toggle} className="group">
-        <Td className="sticky left-0 z-10 border-0 bg-mineshaft-800 bg-clip-padding p-0 group-hover:bg-mineshaft-700">
-          <div className="flex w-full items-center space-x-5 border-r border-mineshaft-600 py-2.5 pr-2 pl-5">
-            <div className="text-mineshaft-400">
+        <Td className="sticky left-0 z-10 border-0 bg-container bg-clip-padding p-0 group-hover:bg-container-hover">
+          <div className="flex w-full items-center space-x-5 border-r border-border py-2.5 pr-2 pl-5">
+            <div className="text-muted">
               <FontAwesomeIcon icon={faRotate} />
             </div>
             <div className="flex-1">{secretRotationName}</div>
@@ -97,8 +97,8 @@ export const SecretOverviewSecretRotationRow = ({
             <Td
               key={`sec-overview-${slug}-${i + 1}-folder`}
               className={twMerge(
-                "border-r border-mineshaft-600 py-3 group-hover:bg-mineshaft-700",
-                isPresent ? "text-green-600" : "text-red-600"
+                "border-r border-border py-3 group-hover:bg-container-hover",
+                isPresent ? "text-success" : "text-danger"
               )}
             >
               <div className="mx-auto flex w-[0.03rem] justify-center">
@@ -135,7 +135,7 @@ export const SecretOverviewSecretRotationRow = ({
             <Tr key={`secret-rotation-${slug}-${secretRotationName}`}>
               <Td
                 colSpan={totalCols}
-                className={`bg-bunker-600 px-0 py-0 ${isExpanded && "border-b-2 border-mineshaft-500"}`}
+                className={`bg-card px-0 py-0 ${isExpanded && "border-b-2 border-border"}`}
               >
                 <div style={getExpandedRowStyle(scrollOffset)} className="ml-2 p-2">
                   <TableContainer>
@@ -160,10 +160,7 @@ export const SecretOverviewSecretRotationRow = ({
                               </Tag>
                               {description && (
                                 <Tooltip content={description}>
-                                  <FontAwesomeIcon
-                                    icon={faInfoCircle}
-                                    className="text-mineshaft-400"
-                                  />
+                                  <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
                                 </Tooltip>
                               )}
                             </div>
@@ -308,7 +305,7 @@ export const SecretOverviewSecretRotationRow = ({
                           </div>
                         </tr>
                       </thead>
-                      <tbody className="border-t-2 border-mineshaft-600">
+                      <tbody className="border-t-2 border-border">
                         {secrets.map((secret, index) => {
                           return (
                             <SecretOverviewRotationSecretRow

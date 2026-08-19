@@ -108,7 +108,7 @@ export const HoneyTokenForm = ({
             : "Token was created, but stack is not deployed yet.",
           callToAction: (
             <Link
-              className="inline-flex h-7 items-center rounded border border-mineshaft-500 px-2 text-xs text-primary transition-colors hover:bg-mineshaft-700 hover:text-primary"
+              className="inline-flex h-7 items-center rounded border border-border px-2 text-xs text-project transition-colors hover:bg-container-hover hover:text-project"
               to={ROUTE_PATHS.Organization.SettingsPage.path}
               params={{ orgId: currentOrg.id }}
               search={{ selectedTab: "product-settings" }}
@@ -229,7 +229,7 @@ export const HoneyTokenForm = ({
       <div className="min-h-0 flex-1">
         <FormProvider {...formMethods}>
           <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-            <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
+            <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-border">
               {formTabs.map((tab, index) => (
                 <Tab
                   onClick={async (e) => {
@@ -239,9 +239,7 @@ export const HoneyTokenForm = ({
                   }}
                   className={({ selected }) =>
                     `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
-                      selected
-                        ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                        : "text-bunker-300"
+                      selected ? "border-b-2 border-border text-foreground" : "text-label"
                     }`
                   }
                   key={tab.key}

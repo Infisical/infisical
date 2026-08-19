@@ -70,12 +70,12 @@ const getStatusBadgeColor = (status: ApprovalRequestStatus) => {
 
 const getStepNumberClass = (status: ApprovalRequestStepStatus) => {
   if (status === ApprovalRequestStepStatus.Completed) {
-    return "bg-green-500/20 text-green-500";
+    return "bg-success/20 text-success";
   }
   if (status === ApprovalRequestStepStatus.InProgress) {
-    return "bg-primary/20 text-primary";
+    return "bg-project/20 text-project";
   }
-  return "bg-mineshaft-600 text-mineshaft-400";
+  return "bg-foreground/10 text-muted";
 };
 
 const getStepBadgeVariant = (status: ApprovalRequestStepStatus) => {
@@ -251,40 +251,40 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
             <Badge variant={getStatusBadgeColor(request.status)} className="capitalize">
               {request.status.split("-").join(" ")}
             </Badge>
-            <span className="text-sm text-mineshaft-400">
+            <span className="text-sm text-muted">
               Requested{" "}
               {formatDistance(new Date(request.createdAt), new Date(), { addSuffix: true })}
             </span>
           </div>
 
           <div>
-            <h4 className="mb-2 text-sm font-medium text-mineshaft-200">Requester</h4>
-            <div className="rounded border border-mineshaft-600 bg-mineshaft-700 p-3">
-              <div className="text-sm font-medium text-mineshaft-100">
+            <h4 className="mb-2 text-sm font-medium text-foreground">Requester</h4>
+            <div className="rounded border border-border bg-container-hover p-3">
+              <div className="text-sm font-medium text-foreground">
                 {request.requesterName || "Unknown"}
               </div>
-              <div className="text-xs text-mineshaft-400">{request.requesterEmail}</div>
+              <div className="text-xs text-muted">{request.requesterEmail}</div>
             </div>
           </div>
 
           <div>
-            <h4 className="mb-2 text-sm font-medium text-mineshaft-200">Certificate Details</h4>
-            <div className="space-y-2 rounded border border-mineshaft-600 bg-mineshaft-700 p-3">
+            <h4 className="mb-2 text-sm font-medium text-foreground">Certificate Details</h4>
+            <div className="space-y-2 rounded border border-border bg-container-hover p-3">
               <div className="flex justify-between">
-                <span className="text-sm text-mineshaft-400">Profile</span>
-                <span className="text-sm text-mineshaft-200">{requestData.profileName}</span>
+                <span className="text-sm text-muted">Profile</span>
+                <span className="text-sm text-foreground">{requestData.profileName}</span>
               </div>
               {requestData.certificateRequest?.commonName && (
                 <div className="flex justify-between">
-                  <span className="text-sm text-mineshaft-400">Common Name</span>
-                  <span className="text-sm text-mineshaft-200">
+                  <span className="text-sm text-muted">Common Name</span>
+                  <span className="text-sm text-foreground">
                     {requestData.certificateRequest.commonName}
                   </span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-sm text-mineshaft-400">Validity</span>
-                <span className="text-sm text-mineshaft-200">
+                <span className="text-sm text-muted">Validity</span>
+                <span className="text-sm text-foreground">
                   {requestData.certificateRequest?.validity?.ttl
                     ? formatValidity(requestData.certificateRequest.validity.ttl)
                     : "Not specified"}
@@ -293,12 +293,12 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
               {requestData.certificateRequest?.domainComponents &&
                 requestData.certificateRequest.domainComponents.length > 0 && (
                   <div>
-                    <span className="text-sm text-mineshaft-400">Domain Components</span>
+                    <span className="text-sm text-muted">Domain Components</span>
                     <div className="mt-1 flex flex-wrap gap-1">
                       {requestData.certificateRequest.domainComponents.map((dc) => (
                         <span
                           key={dc}
-                          className="rounded bg-mineshaft-600 px-2 py-0.5 text-xs text-mineshaft-200"
+                          className="rounded bg-foreground/10 px-2 py-0.5 text-xs text-foreground"
                         >
                           {dc}
                         </span>
@@ -309,13 +309,13 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
               {requestData.certificateRequest?.altNames &&
                 requestData.certificateRequest.altNames.length > 0 && (
                   <div>
-                    <span className="text-sm text-mineshaft-400">Alt Names</span>
+                    <span className="text-sm text-muted">Alt Names</span>
                     <div className="mt-1 flex flex-wrap gap-1">
                       {requestData.certificateRequest.altNames.map(
                         (san: { type: string; value: string }) => (
                           <span
                             key={`${san.type}-${san.value}`}
-                            className="rounded bg-mineshaft-600 px-2 py-0.5 text-xs text-mineshaft-200"
+                            className="rounded bg-foreground/10 px-2 py-0.5 text-xs text-foreground"
                           >
                             {san.type}: {san.value}
                           </span>
@@ -329,21 +329,18 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
 
           {request.justification && (
             <div>
-              <h4 className="mb-2 text-sm font-medium text-mineshaft-200">Justification</h4>
-              <div className="rounded border border-mineshaft-600 bg-mineshaft-700 p-3 text-sm text-mineshaft-300">
+              <h4 className="mb-2 text-sm font-medium text-foreground">Justification</h4>
+              <div className="rounded border border-border bg-container-hover p-3 text-sm text-label">
                 {request.justification}
               </div>
             </div>
           )}
 
           <div>
-            <h4 className="mb-2 text-sm font-medium text-mineshaft-200">Approval Progress</h4>
+            <h4 className="mb-2 text-sm font-medium text-foreground">Approval Progress</h4>
             <div className="space-y-2">
               {request.steps.map((step, index) => (
-                <div
-                  key={step.id}
-                  className="rounded border border-mineshaft-600 bg-mineshaft-700 p-3"
-                >
+                <div key={step.id} className="rounded border border-border bg-container-hover p-3">
                   <div className="mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span
@@ -351,7 +348,7 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
                       >
                         {index + 1}
                       </span>
-                      <span className="text-sm font-medium text-mineshaft-200">
+                      <span className="text-sm font-medium text-foreground">
                         {step.name || `Step ${index + 1}`}
                       </span>
                     </div>
@@ -359,7 +356,7 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
                       {step.status.split("-").join(" ")}
                     </Badge>
                   </div>
-                  <div className="text-xs text-mineshaft-400">
+                  <div className="text-xs text-muted">
                     {step.approvals.length} of {step.requiredApprovals} approvals
                   </div>
                   {step.approvals.length > 0 && (
@@ -367,7 +364,7 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
                       {step.approvals.map((approval) => (
                         <div
                           key={approval.id}
-                          className="flex items-center gap-1 rounded bg-green-500/10 px-2 py-0.5 text-xs text-green-400"
+                          className="flex items-center gap-1 rounded bg-success/10 px-2 py-0.5 text-xs text-success"
                         >
                           <FontAwesomeIcon icon={faUsers} />
                           {getApproverLabel(approval.approverUserId, ApproverType.User)}
@@ -415,7 +412,7 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
           )}
 
           {!showCommentForm && (showApprovalButtons || showCancelButton) && (
-            <div className="flex gap-2 border-t border-mineshaft-600 pt-4">
+            <div className="flex gap-2 border-t border-border pt-4">
               {showApprovalButtons && (
                 <>
                   <Button

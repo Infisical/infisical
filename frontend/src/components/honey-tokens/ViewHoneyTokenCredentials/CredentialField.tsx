@@ -44,7 +44,7 @@ export const CredentialField = ({ label, value }: Props) => {
               setCopied(true);
             }}
           >
-            <FontAwesomeIcon icon={faCopy} className={isCopied ? "text-green-500" : ""} />
+            <FontAwesomeIcon icon={faCopy} className={isCopied ? "text-success" : ""} />
           </IconButton>
         </div>
       </FieldContent>

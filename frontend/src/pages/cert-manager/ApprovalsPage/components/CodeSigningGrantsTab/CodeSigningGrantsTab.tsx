@@ -241,7 +241,7 @@ export const CodeSigningGrantsTab = () => {
                 aria-label="Filter Grants"
                 variant={isTableFiltered ? "project" : "outline"}
                 size="md"
-                className={twMerge(isTableFiltered && "text-primary")}
+                className={twMerge(isTableFiltered && "text-project")}
               >
                 <FilterIcon className="size-4" />
               </IconButton>

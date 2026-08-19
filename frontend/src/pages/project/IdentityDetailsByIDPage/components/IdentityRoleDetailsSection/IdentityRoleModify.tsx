@@ -221,7 +221,7 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
                       {...field}
                       isDisabled={isIdentityEditDisabled || !canModifyIdentityRoles}
                       onValueChange={(e) => onChange(e)}
-                      className="w-full bg-mineshaft-600 duration-200 hover:bg-mineshaft-500"
+                      className="w-full bg-foreground/10 duration-200 hover:bg-foreground/10"
                       containerClassName="w-1/2"
                     >
                       {rolesForSelect.map(({ name, slug, id: projectRoleId }) => {
@@ -278,9 +278,9 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
                         rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
                         isDisabled={isIdentityEditDisabled || !canModifyIdentityRoles}
                         className={twMerge(
-                          "w-full border-none bg-mineshaft-600 py-2.5 text-xs capitalize hover:bg-mineshaft-500",
-                          isTemporary && "text-primary",
-                          isExpired && "text-red-600"
+                          "w-full border-none bg-foreground/10 py-2.5 text-xs capitalize hover:bg-foreground/10",
+                          isTemporary && "text-project",
+                          isExpired && "text-danger"
                         )}
                       >
                         {temporaryAccess?.isTemporary
@@ -300,10 +300,10 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
                   side="right"
                   sideOffset={12}
                   hideCloseBtn
-                  className="border border-gray-600 pt-4"
+                  className="border border-border pt-4"
                 >
                   <div className="flex flex-col space-y-4">
-                    <div className="border-b border-b-gray-700 pb-2 text-sm text-mineshaft-300">
+                    <div className="border-b border-b-gray-700 pb-2 text-sm text-label">
                       Configure Timed Access
                     </div>
                     {isExpired && <Tag colorSchema="red">Expired</Tag>}
@@ -373,7 +373,7 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
               </Popover>
               <IconButton
                 variant="outline_bg"
-                className="border border-mineshaft-500 bg-mineshaft-600 py-3 hover:border-red/70 hover:bg-red/20"
+                className="border border-border bg-foreground/10 py-3 hover:border-danger/70 hover:bg-danger/20"
                 ariaLabel="delete-role"
                 isDisabled={
                   isIdentityEditDisabled ||

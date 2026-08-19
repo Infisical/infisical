@@ -154,14 +154,14 @@ function SecretRenameForm({ environments, getSecretByKey, secretKey, secretPath 
                           Secret key contains whitespaces.
                           <br />
                           <br /> If this is the desired format, you need to provide it as{" "}
-                          <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
+                          <code className="rounded-md bg-foreground/10 px-1 py-0.5">
                             {encodeURIComponent(secretKey.trim())}
                           </code>{" "}
                           when making API requests.
                         </div>
                       }
                     >
-                      <FontAwesomeIcon icon={faWarning} className="text-yellow-600" />
+                      <FontAwesomeIcon icon={faWarning} className="text-warning" />
                     </Tooltip>
                   )
                 )

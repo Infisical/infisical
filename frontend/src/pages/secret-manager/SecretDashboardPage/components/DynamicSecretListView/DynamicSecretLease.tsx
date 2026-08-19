@@ -97,7 +97,7 @@ export const DynamicSecretLease = ({
   return (
     <div>
       <TableContainer>
-        <Table className="bg-mineshaft-600">
+        <Table className="bg-foreground/10">
           <THead>
             <Tr>
               <Td>Lease ID</Td>
@@ -128,7 +128,7 @@ export const DynamicSecretLease = ({
                   {id}
                   {Boolean(status) && (
                     <Tooltip content={statusDetails || status || ""}>
-                      <FontAwesomeIcon className="ml-2 text-yellow-600" icon={faWarning} />
+                      <FontAwesomeIcon className="ml-2 text-warning" icon={faWarning} />
                     </Tooltip>
                   )}
                 </Td>
@@ -205,7 +205,7 @@ export const DynamicSecretLease = ({
                             ariaLabel="delete-folder"
                             variant="plain"
                             size="md"
-                            className="p-0 text-red-600"
+                            className="p-0 text-danger"
                             isDisabled={!isAllowed}
                             onClick={() =>
                               handlePopUpOpen("deleteSecret", { leaseId: id, isForced: true })

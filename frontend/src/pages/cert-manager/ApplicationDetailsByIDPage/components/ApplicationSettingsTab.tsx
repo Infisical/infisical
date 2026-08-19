@@ -295,7 +295,7 @@ const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: Alert
         {alert.eventType === PkiAlertEventTypeV2.EXPIRATION ? (
           formatAlertBefore(alert.alertBefore)
         ) : (
-          <span className="text-mineshaft-500">—</span>
+          <span className="text-muted">—</span>
         )}
       </TableCell>
       <TableCell className="whitespace-nowrap">
@@ -307,21 +307,21 @@ const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: Alert
               </Badge>
             </TooltipTrigger>
             <TooltipContent side="left" className="max-w-sm">
-              <div className="text-xs text-mineshaft-300">
+              <div className="text-xs text-label">
                 {new Date(alert.lastRun.timestamp)
                   .toISOString()
                   .replace("T", " ")
                   .replace("Z", " UTC")}
               </div>
               {alert.lastRun.error ? (
-                <div className="mt-1 max-h-32 thin-scrollbar overflow-y-auto text-xs break-words text-red-400">
+                <div className="mt-1 max-h-32 thin-scrollbar overflow-y-auto text-xs break-words text-danger">
                   {alert.lastRun.error}
                 </div>
               ) : null}
             </TooltipContent>
           </Tooltip>
         ) : (
-          <span className="text-mineshaft-500">—</span>
+          <span className="text-muted">—</span>
         )}
       </TableCell>
       <TableCell className="text-right">
@@ -490,7 +490,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
           <Link
             to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles"
             params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-            className="text-primary underline hover:text-primary/80"
+            className="text-project underline hover:text-project/80"
           >
             Certificate Profiles
           </Link>{" "}

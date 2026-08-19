@@ -78,13 +78,13 @@ export const ACCENT_STYLES: Record<
   }
 > = {
   primary: {
-    selectedBorderBg: "border-primary bg-primary/5",
-    selectedCard: "border-primary/40 bg-primary/5 shadow-xs",
-    selectedBadge: "rounded-sm bg-primary/5 px-1.5 py-0.5 text-[11px] font-medium text-primary",
-    selectedChip: "border-primary/40 bg-primary/5 text-foreground",
+    selectedBorderBg: "border-project bg-project/5",
+    selectedCard: "border-project/40 bg-project/5 shadow-xs",
+    selectedBadge: "rounded-sm bg-project/5 px-1.5 py-0.5 text-[11px] font-medium text-project",
+    selectedChip: "border-project/40 bg-project/5 text-foreground",
     switchChecked:
-      "data-[state=checked]:border-primary/25 data-[state=checked]:bg-primary/10 data-[state=checked]:hover:border-primary/30 data-[state=checked]:hover:bg-primary/15",
-    applyButton: "border-primary/25 bg-primary/10 hover:bg-primary/15 hover:border-primary/30",
+      "data-[state=checked]:border-project/25 data-[state=checked]:bg-project/10 data-[state=checked]:hover:border-project/30 data-[state=checked]:hover:bg-project/15",
+    applyButton: "border-project/25 bg-project/10 hover:bg-project/15 hover:border-project/30",
     calendarMiddle: "data-[range-middle=true]:!bg-muted/[12%]",
     activeVariant: "project"
   },
@@ -490,7 +490,7 @@ export function DateRangeFilter({
                       </div>
                     </div>
                     {isInvalidFixedRange && (
-                      <p className="text-xs text-red-400">Start date must be before end date.</p>
+                      <p className="text-xs text-danger">Start date must be before end date.</p>
                     )}
                   </div>
                 </div>

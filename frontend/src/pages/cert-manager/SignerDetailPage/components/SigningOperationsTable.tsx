@@ -174,7 +174,7 @@ export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) =
                     {Array.from({ length: 5 }).map((__, j) => (
                       // eslint-disable-next-line react/no-array-index-key
                       <TableCell key={`skeleton-cell-${j}`}>
-                        <div className="h-4 w-full animate-pulse rounded bg-mineshaft-700" />
+                        <div className="h-4 w-full animate-pulse rounded bg-container-hover" />
                       </TableCell>
                     ))}
                   </TableRow>

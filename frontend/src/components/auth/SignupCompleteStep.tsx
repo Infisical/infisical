@@ -115,7 +115,7 @@ export default function SignupCompleteStep({
           <p className="font-jetbrains-mono text-xs tracking-[0.02em] text-project uppercase">
             Organization ready
           </p>
-          <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
+          <CardTitle className="bg-linear-to-b from-white to-label bg-clip-text font-alliance text-2xl font-normal text-transparent">
             {title}
           </CardTitle>
           <CardDescription className="text-sm text-label">{description}</CardDescription>

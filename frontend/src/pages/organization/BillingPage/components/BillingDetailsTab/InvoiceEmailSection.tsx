@@ -52,15 +52,15 @@ export const InvoiceEmailSection = () => {
   return (
     <form
       onSubmit={handleSubmit(onFormSubmit)}
-      className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+      className="mb-6 rounded-lg border border-border bg-card p-4"
     >
-      <h2 className="mb-8 flex-1 text-xl font-medium text-white">Invoice email recipient</h2>
+      <h2 className="mb-8 flex-1 text-xl font-medium text-foreground">Invoice email recipient</h2>
       <div className="max-w-md">
         <Controller
           defaultValue=""
           render={({ field, fieldState: { error } }) => (
             <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Input placeholder="jane@acme.com" {...field} className="bg-mineshaft-800" />
+              <Input placeholder="jane@acme.com" {...field} className="bg-container" />
             </FormControl>
           )}
           control={control}
