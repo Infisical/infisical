@@ -1,0 +1,107 @@
+{
+  "guide": "docs/documentation/platform/access-controls/assume-privilege.mdx",
+  "guideDocHash": "46a200e3235ae3a7a14b496f117241cc672f33431129d734c0ad557d4725d224",
+  "compiledAt": "2026-08-12T18:55:15.652Z",
+  "model": "claude-sonnet-5",
+  "steps": [
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 1,
+      "instruction": "Navigate to Project Access and select the user or identity to assume.",
+      "actions": [
+        {
+          "kind": "navigate",
+          "path": [
+            "Project",
+            "Access Control"
+          ],
+          "sourceQuote": {
+            "text": "Go to Project Access.",
+            "file": "docs/documentation/platform/access-controls/assume-privilege.mdx",
+            "line": 23
+          }
+        },
+        {
+          "kind": "click",
+          "target": "user or identity",
+          "role": null,
+          "sourceQuote": {
+            "text": "Click on the user or identity you want to assume.",
+            "file": "docs/documentation/platform/access-controls/assume-privilege.mdx",
+            "line": 24
+          }
+        },
+        {
+          "kind": "expect_screenshot",
+          "docImage": "/images/platform/access-controls/assume-privileges/access-control.png",
+          "sourceQuote": {
+            "text": "/images/platform/access-controls/assume-privileges/access-control.png",
+            "file": "docs/documentation/platform/access-controls/assume-privilege.mdx",
+            "line": 26
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 2,
+      "instruction": "Click Assume Privilege and confirm by typing assume.",
+      "actions": [
+        {
+          "kind": "click",
+          "target": "Assume Privilege",
+          "role": null,
+          "sourceQuote": {
+            "text": "Click Assume Privilege",
+            "file": "docs/documentation/platform/access-controls/assume-privilege.mdx",
+            "line": 29
+          }
+        },
+        {
+          "kind": "fill",
+          "field": "confirm",
+          "value": "assume",
+          "sourceQuote": {
+            "text": "type assume to confirm and start your session",
+            "file": "docs/documentation/platform/access-controls/assume-privilege.mdx",
+            "line": 30
+          }
+        },
+        {
+          "kind": "expect_screenshot",
+          "docImage": "/images/platform/access-controls/assume-privileges/access-control-detail.png",
+          "sourceQuote": {
+            "text": "/images/platform/access-controls/assume-privileges/access-control-detail.png",
+            "file": "docs/documentation/platform/access-controls/assume-privilege.mdx",
+            "line": 32
+          }
+        }
+      ]
+    },
+    {
+      "procedureIndex": 1,
+      "docStepIndex": 3,
+      "instruction": "Observe the active session banner and know you can exit it.",
+      "actions": [
+        {
+          "kind": "expect_visible",
+          "text": "assume privilege session is active",
+          "sourceQuote": {
+            "text": "You will see a yellow banner indicating that your assume privilege session is active.",
+            "file": "docs/documentation/platform/access-controls/assume-privilege.mdx",
+            "line": 36
+          }
+        },
+        {
+          "kind": "expect_screenshot",
+          "docImage": "/images/platform/access-controls/assume-privileges/session-start.png",
+          "sourceQuote": {
+            "text": "/images/platform/access-controls/assume-privileges/session-start.png",
+            "file": "docs/documentation/platform/access-controls/assume-privilege.mdx",
+            "line": 38
+          }
+        }
+      ]
+    }
+  ]
+}

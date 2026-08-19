@@ -23,6 +23,7 @@ infisical/
 ├── wasm/                  # Rust crates compiled to WASM for the frontend (see wasm/<crate>/CLAUDE.md)
 ├── e2e/                   # External Playwright suite — gates prod deploys against gamma (see e2e/CLAUDE.md)
 ├── docs/                  # Documentation site (Mintlify-based)
+├── guiderails/            # Agent-verified documentation guides (see guiderails/CLAUDE.md)
 ├── docker-compose.dev.yml        # Local dev (PostgreSQL, Redis, backend, frontend, Nginx)
 ├── docker-compose.prod.yml       # Production deployment stack
 ├── docker-compose.bdd.yml        # BDD testing environment
@@ -39,6 +40,7 @@ infisical/
 - **`wasm/`** — Rust crates that compile to WASM for the frontend. Generated bindings are committed under `frontend/src/lib/<crate>/` so the frontend builds without a Rust toolchain. Each crate has its own `CLAUDE.md` with the rebuild command (e.g. [`wasm/ironrdp-decoder/CLAUDE.md`](wasm/ironrdp-decoder/CLAUDE.md)) — run it after any change to that crate's `src/` or `Cargo.toml` so source and bindings stay in sync.
 - **`docs/`** — Product documentation site. Has its own Dockerfile for building. Reference docs for up-to-date feature descriptions and API usage.
 - **`e2e/`** — Playwright suite that runs against a deployed environment (gamma) between deploy and prod promotion. Distinct from `backend/e2e-test/` (in-process Vitest). Failure blocks every prod-deploy job. Covers SCIM + SAML flows (SP-initiated, IdP-initiated, deactivation, response rejection) against a mock IdP we control — see [`e2e/CLAUDE.md`](e2e/CLAUDE.md) for the harness and the one-time gamma bootstrap.
+- **`guiderails/`** — Agent-driven documentation checker. Walks procedural guides from `docs/` against a live self-hosted instance and reports where the guide and the app disagree, attributing each finding to either stale docs or an app regression. Advisory, never gates a merge. `e2e/` tests the product; this tests the documentation. See [`guiderails/CLAUDE.md`](guiderails/CLAUDE.md) — read it before changing docs tooling, and note the instance-bootstrap gotchas it records.
 
 Enterprise features live in `backend/src/ee/` (services and routes), registered before community routes so they can override/extend them.
 
@@ -79,6 +81,11 @@ The v3 visual system (colors, typography, components, layout) and product voice/
 ### Documentation
 
 When writing or editing documentation in `docs/`, follow the [Documentation Style Guide](docs/STYLE_GUIDE.md). It covers writing for users (not implementers), Mintlify component usage, cross-referencing, page structure, and more.
+
+Procedural UI walkthroughs can be verified against a running instance by `guiderails/`. Two consequences worth knowing when editing one:
+
+- **Registered guides have a committed plan.** If you change a guide listed in `guiderails/guides/`, its plan goes stale and CI fails until it is recompiled (`cd guiderails && npx tsx src/cli.ts compile`). This mirrors how `validate-db-schemas.yml` fails on an un-regenerated schema.
+- **Markup helps the checker.** Bolding the UI target (`click **Create**`) and writing nav paths as `**Settings → Folders**` gives it a high-precision anchor. Both are already style-guide rules; roughly half of core-product imperatives currently omit them.
 
 ### Auth & Permissions
 
