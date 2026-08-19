@@ -19,22 +19,22 @@ It works with private CAs, external providers such as Let's Encrypt or Microsoft
 
 ```
 Infisical
-├── Certificate Authorities                  one per environment, private or external
+├── Certificate Authorities (one per environment, private or external)
 │   ├── Production CA
 │   ├── Staging CA
 │   └── Development CA
 │
-├── Certificate Policies                     the rules
-│   ├── prod-tls-rules        90 days   *.example.com
-│   ├── staging-tls-rules     90 days   *.stg.example.com
-│   └── dev-tls-rules         30 days   *.dev.example.com
+├── Certificate Policies (the rules)
+│   ├── prod-tls-rules       90 days   *.example.com
+│   ├── staging-tls-rules    90 days   *.stg.example.com
+│   └── dev-tls-rules        30 days   *.dev.example.com
 │
-├── Certificate Profiles                     what teams request from
-│   ├── prod-tls-server       Production CA  + prod-tls-rules
-│   ├── staging-tls-server    Staging CA     + staging-tls-rules
-│   └── dev-tls-server        Development CA + dev-tls-rules
+├── Certificate Profiles (what teams request from)
+│   ├── prod-tls-server      Production CA  + prod-tls-rules
+│   ├── staging-tls-server   Staging CA     + staging-tls-rules
+│   └── dev-tls-server       Development CA + dev-tls-rules
 │
-└── Applications                             where teams work
+└── Applications (where teams work)
     ├── payments-api-prod      prod-tls-server
     ├── payments-api-staging   staging-tls-server
     ├── payments-api-dev       dev-tls-server
@@ -62,7 +62,10 @@ graph LR
     PRO -->|"attached to"| APP
 ```
 
-Policies decide what a certificate may contain. Applications decide who can get one. Product Admins own the Certificate Authorities, policies, and profiles, and they create each Application. Teams operate the Applications they are assigned to.
+- **Policies** decide what a certificate may contain.
+- **Applications** decide who can get one.
+- **Product Admins** own the Certificate Authorities, policies, and profiles, and create each Application.
+- **Teams** operate the Applications they are assigned to.
 
 The rest of the page walks down the tree, one decision at a time.
 
@@ -72,7 +75,7 @@ A separate CA on each side is the strongest form of the boundary. If one environ
 
 With [private CAs](/documentation/platform/pki/ca/private-ca), create one root and one issuing CA per environment, sign the issuing CAs with the root, then take the root offline. If you already operate a root outside Infisical, keep it and sign the issuing CAs with it. Decide three things as you create them: [key protection](/documentation/platform/pki/settings/hsm-connectors) if the signing key belongs in your own HSM, [CA lifetimes](/documentation/platform/pki/ca/ca-renewal) comfortably longer than the certificates they issue, and whether your validators can reach the [CRL distribution point](/documentation/platform/pki/ca/crl-distribution).
 
-With [external CAs](/documentation/platform/pki/ca/external-ca), register one per environment where the provider allows it. AWS Private CA, Microsoft ADCS, and DigiCert generally do. Public CAs often offer fewer: Let's Encrypt publishes a staging and a production directory, so development and staging share an issuer. That works, because the boundary moves down a layer to the policy, and using the staging directory below production also keeps test issuance off production rate limits.
+With [external CAs](/documentation/platform/pki/ca/external-ca), register one per environment when the provider allows it. AWS Private CA, Microsoft ADCS, and DigiCert generally do. Public CAs often offer fewer: Let's Encrypt publishes a staging and a production directory, so development and staging share an issuer. That works, because the boundary moves down a layer to the policy, and using the staging directory below production also keeps test issuance off production rate limits.
 
 <Note>
   Private and external CAs sit side by side. Issue internal service certificates from a private CA
@@ -117,7 +120,7 @@ A Product Admin creates each Application and attaches only that environment's pr
 
 Two things change across the rows. The attached profile decides what the team can produce. The membership decides who can produce it, so in production the wider team is read-only and issuance is limited to the on-call rotation and the deployment pipeline's identity. Users, groups, and machine identities can all be members; prefer groups so access follows your directory instead of a hand-maintained list, and give each pipeline its own identity per environment.
 
-Issuance begins once an [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview) is configured on the attached profile, which the team can do itself: API for custom integrations, ACME for certbot and cert-manager, EST and SCEP for devices and MDM. Each method's endpoint is unique to one Application and profile pair, which keeps issuance on each side of the boundary separate. On production, consider [approvals](/documentation/platform/pki/applications/approvals) with machine identity bypass, so review applies to people while automated renewal continues.
+Issuance begins once an [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview) is configured on the attached profile, which the team can do itself: API for custom integrations, ACME for certbot and cert-manager, EST and SCEP for devices and MDM. Each method's endpoint is unique to one Application and profile pair, which keeps issuance on each side of the boundary separate. On production, consider [approvals](/documentation/platform/pki/applications/approvals) to require review before a certificate is issued.
 
 Adding a service later reuses everything above. Create its Applications, attach the profiles that already exist, and the team configures its own enrollment.
 
@@ -169,7 +172,7 @@ Each sub-organization runs its own Certificate Authorities, policies, profiles, 
 ## Limits of this model
 
 - **CA, policy, and profile administration is organization-wide.** Product Admins administer all of them, and that scope covers every CA and every environment. Where one environment's operators must be kept away from another environment's CA, use a sub-organization.
-- **Audit visibility covers the whole product.** Anyone who can read audit logs sees all of it. The audit log export carries CA and Application in event metadata, so a reviewer can narrow an exported set, though everyone with access still sees everything.
+- **Audit logs are read by Product Admins and cover the whole product.** Reading them takes the Product Admin role, and an admin who opens them sees all of it, every CA and every Application. The export carries CA and Application in event metadata, so a reviewer can narrow an exported set.
 - **Approvals cover issuance.** Approval policies gate certificate issuance and code signing. CA lifecycle actions such as create, renew, and revoke fall outside approvals today.
 
 ## Next steps
