@@ -34,7 +34,7 @@ import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/c
 import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { diff, groupBy } from "@app/lib/fn";
+import { diff, groupBy, takeDistinctKeyScanWindow } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -1133,11 +1133,7 @@ export const secretV2BridgeServiceFactory = ({
       filters: limit ? { ...filters, limit: limit + 1 } : filters
     });
 
-    const scannedKeys = [...new Set(scannedSecrets.map((secret) => secret.key))];
-    const isLimitReached = limit ? scannedKeys.length > limit : false;
-    const secrets = isLimitReached
-      ? scannedSecrets.filter((secret) => secret.key !== scannedKeys[scannedKeys.length - 1])
-      : scannedSecrets;
+    const { items: secrets, isLimitReached } = takeDistinctKeyScanWindow(scannedSecrets, limit, (secret) => secret.key);
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,

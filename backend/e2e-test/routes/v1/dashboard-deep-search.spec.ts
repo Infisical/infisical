@@ -2,7 +2,7 @@ import { SecretType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 
 type TDeepSearchResponse = {
-  secrets?: { secretKey: string }[];
+  secrets?: { secretKey: string; type?: string }[];
   folders?: { name: string }[];
   totalSecretCount: number;
   totalFolderCount: number;
@@ -15,7 +15,7 @@ type TDeepSearchResponse = {
 const SEARCH_TERM = "E2E_DEEP_SEARCH";
 const TEST_PATH = "/";
 
-const createSecret = async (key: string) => {
+const createSecret = async (key: string, type: SecretType = SecretType.Shared) => {
   const res = await testServer.inject({
     method: "POST",
     url: `/api/v3/secrets/raw/${key}`,
@@ -25,7 +25,7 @@ const createSecret = async (key: string) => {
     body: {
       workspaceId: seedData1.projectV3.id,
       environment: seedData1.environment.slug,
-      type: SecretType.Shared,
+      type,
       secretPath: TEST_PATH,
       secretKey: key,
       secretValue: "test-value"
@@ -34,7 +34,7 @@ const createSecret = async (key: string) => {
   expect(res.statusCode).toBe(200);
 };
 
-const deleteSecret = async (key: string) => {
+const deleteSecret = async (key: string, type: SecretType = SecretType.Shared) => {
   const res = await testServer.inject({
     method: "DELETE",
     url: `/api/v3/secrets/raw/${key}`,
@@ -44,6 +44,7 @@ const deleteSecret = async (key: string) => {
     body: {
       workspaceId: seedData1.projectV3.id,
       environment: seedData1.environment.slug,
+      type,
       secretPath: TEST_PATH
     }
   });
@@ -190,6 +191,43 @@ describe("Dashboard - deep search pagination", async () => {
       expect(secondPage.folders ?? []).toEqual([]);
       expect(secondPage.secrets?.map((secret) => secret.secretKey)).toEqual(secretKeys.slice(2));
       expect(secondPage.isSearchLimitReached).toBe(false);
+    });
+  });
+
+  describe("with a personal override on one match", async () => {
+    const overriddenKey = secretKeys[1];
+
+    beforeAll(async () => {
+      await createSecret(overriddenKey, SecretType.Personal);
+    });
+
+    afterAll(async () => {
+      await deleteSecret(overriddenKey, SecretType.Personal);
+    });
+
+    test("keeps the shared/personal pair on one page and counts rendered entries", async () => {
+      const fullRes = await deepSearch();
+      expect(fullRes.statusCode).toBe(200);
+      const full = JSON.parse(fullRes.payload) as TDeepSearchResponse;
+
+      // four rows come back, but the client merges the pair into one rendered entry, so the count is three
+      expect(full.secrets?.length).toBe(secretKeys.length + 1);
+      expect(full.totalSecretCount).toBe(secretKeys.length);
+
+      const pairPageRes = await deepSearch({ limit: 1, offset: 1 });
+      expect(pairPageRes.statusCode).toBe(200);
+      const pairPage = JSON.parse(pairPageRes.payload) as TDeepSearchResponse;
+
+      expect(pairPage.secrets?.map((secret) => secret.secretKey)).toEqual([overriddenKey, overriddenKey]);
+      expect(new Set(pairPage.secrets?.map((secret) => secret.type))).toEqual(
+        new Set([SecretType.Shared, SecretType.Personal])
+      );
+
+      const lastPageRes = await deepSearch({ limit: 1, offset: 2 });
+      expect(lastPageRes.statusCode).toBe(200);
+      const lastPage = JSON.parse(lastPageRes.payload) as TDeepSearchResponse;
+      expect(lastPage.secrets?.map((secret) => secret.secretKey)).toEqual([secretKeys[2]]);
+      expect(lastPage.totalSecretCount).toBe(secretKeys.length);
     });
   });
 });

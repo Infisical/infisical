@@ -1619,23 +1619,25 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           req.permission
         );
 
-      const dynamicSecrets = await server.services.dynamicSecret.listDynamicSecretsByFolderIds(
-        {
-          projectId,
-          folderMappings,
-          filters: sharedFilters
-        },
-        req.permission
-      );
+      const { dynamicSecrets, isLimitReached: isDynamicSecretLimitReached } =
+        await server.services.dynamicSecret.listDynamicSecretsByFolderIds(
+          {
+            projectId,
+            folderMappings,
+            filters: sharedFilters
+          },
+          req.permission
+        );
 
-      const secretRotations = await server.services.secretRotationV2.getQuickSearchSecretRotations(
-        {
-          projectId,
-          folderMappings,
-          filters: sharedFilters
-        },
-        req.permission
-      );
+      const { secretRotations, isLimitReached: isSecretRotationLimitReached } =
+        await server.services.secretRotationV2.getQuickSearchSecretRotations(
+          {
+            projectId,
+            folderMappings,
+            filters: sharedFilters
+          },
+          req.permission
+        );
 
       for await (const environment of environments) {
         const envSecrets = secrets.filter((secret) => secret.environment === environment);
@@ -1694,6 +1696,21 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       const matchedSecrets = searchPath ? secrets.filter((secret) => secret.secretPath.endsWith(searchPath)) : secrets;
 
+      // page secrets by rendered entry (env + path + key): a shared secret and its personal override
+      // are two adjacent rows the client merges into one, so slicing raw rows would split the pair
+      // across a page boundary and over-count what actually renders
+      const secretUnitsByEntry = new Map<string, typeof matchedSecrets>();
+      for (const secret of matchedSecrets) {
+        const entryKey = `${secret.environment}\0${secret.secretPath}\0${secret.secretKey}`;
+        const unit = secretUnitsByEntry.get(entryKey);
+        if (unit) {
+          unit.push(secret);
+        } else {
+          secretUnitsByEntry.set(entryKey, [secret]);
+        }
+      }
+      const secretUnits = [...secretUnitsByEntry.values()];
+
       const matchedDynamicSecrets = searchPath
         ? dynamicSecrets.filter((dynamicSecret) => dynamicSecret.path.endsWith(searchPath))
         : dynamicSecrets;
@@ -1745,22 +1762,19 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }
 
       return {
-        secrets: paginate(matchedSecrets),
+        secrets: paginate(secretUnits).flat(),
         dynamicSecrets: paginatedDynamicSecrets,
         secretRotations: paginate(matchedSecretRotations),
         folders: paginate(matchedFolders),
         totalFolderCount: matchedFolders.length,
         totalDynamicSecretCount: matchedDynamicSecrets.length,
-        totalSecretCount: matchedSecrets.length,
+        totalSecretCount: secretUnits.length,
         totalSecretRotationCount: matchedSecretRotations.length,
         totalCount:
-          matchedFolders.length + matchedDynamicSecrets.length + matchedSecrets.length + matchedSecretRotations.length,
+          matchedFolders.length + matchedDynamicSecrets.length + secretUnits.length + matchedSecretRotations.length,
         searchLimit: MAX_DEEP_SEARCH_LIMIT,
         // counts only cover what the search window scanned, so flag when it filled up
-        isSearchLimitReached:
-          isSecretLimitReached ||
-          dynamicSecrets.length >= MAX_DEEP_SEARCH_LIMIT ||
-          secretRotations.length >= MAX_DEEP_SEARCH_LIMIT
+        isSearchLimitReached: isSecretLimitReached || isDynamicSecretLimitReached || isSecretRotationLimitReached
       };
     }
   });

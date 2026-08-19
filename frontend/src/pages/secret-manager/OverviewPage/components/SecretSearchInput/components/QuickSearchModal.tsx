@@ -1,4 +1,12 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import {
   FilterIcon,
   FingerprintIcon,
@@ -20,14 +28,20 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-  PageLoader,
   Pagination,
+  ScrollableContent,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  Skeleton,
+  Table,
+  TableBody,
+  TableCell,
   TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -97,13 +111,68 @@ const QUICK_SEARCH_RESOURCE_TYPES: ResourceTypeOption[] = [
   { type: RowType.Secret, label: "Secrets", icon: <KeyIcon className="text-secret" /> }
 ];
 
+const QUICK_SEARCH_SKELETON_ROWS = [
+  { key: "row-a", name: "w-40", path: "w-72" },
+  { key: "row-b", name: "w-28", path: "w-56" },
+  { key: "row-c", name: "w-48", path: "w-80" },
+  { key: "row-d", name: "w-36", path: "w-64" },
+  { key: "row-e", name: "w-44", path: "w-72" },
+  { key: "row-f", name: "w-32", path: "w-60" },
+  { key: "row-g", name: "w-40", path: "w-80" },
+  { key: "row-h", name: "w-28", path: "w-64" }
+];
+
+// Mirrors QuickSearchEnvTable's heading + column layout so results swap in without shifting
+const QuickSearchResultsSkeleton = () => (
+  <div role="status" aria-label="Loading search results">
+    <div className="mb-2 flex h-5 items-center">
+      <Skeleton className="h-3.5 w-28" />
+    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-8" />
+          <TableHead>Name</TableHead>
+          <TableHead>Location</TableHead>
+          <TableHead className="w-24" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {QUICK_SEARCH_SKELETON_ROWS.map((row) => (
+          <TableRow key={row.key}>
+            <TableCell>
+              <div className="flex h-6 items-center">
+                <Skeleton className="size-5" />
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex h-5 items-center">
+                <Skeleton className={`h-3.5 ${row.name}`} />
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex h-5 items-center">
+                <Skeleton className={`h-3.5 ${row.path}`} />
+              </div>
+            </TableCell>
+            <TableCell />
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </div>
+);
+
 const Content = ({
   environments,
   projectId,
   onClose,
   tags,
-  initialValue = ""
-}: Omit<QuickSearchModalProps, "isOpen" | "onOpenChange" | "isSingleEnv">) => {
+  initialValue = "",
+  searchInputRef
+}: Omit<QuickSearchModalProps, "isOpen" | "onOpenChange" | "isSingleEnv"> & {
+  searchInputRef: RefObject<HTMLInputElement>;
+}) => {
   const [search, setSearch] = useState(initialValue);
   const [debouncedSearch] = useDebounce(search);
   const [page, setPage] = useState(1);
@@ -375,7 +444,7 @@ const Content = ({
   let resultsContent: ReactNode;
   if (isMetadataMode) {
     if (isMetadataPending) {
-      resultsContent = <PageLoader />;
+      resultsContent = <QuickSearchResultsSkeleton />;
     } else if (metadataResultsByEnv.length === 0) {
       resultsContent = (
         <Empty className="mt-7 border">
@@ -409,7 +478,7 @@ const Content = ({
     }
   } else if (isDeepSearchEnabled) {
     if (isDeepSearchPending) {
-      resultsContent = <PageLoader />;
+      resultsContent = <QuickSearchResultsSkeleton />;
     } else if (resultsByEnv.length === 0) {
       resultsContent = noResultsEmpty;
     } else {
@@ -478,7 +547,7 @@ const Content = ({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col p-4">
+    <div className="flex min-h-0 flex-1 flex-col p-4 pb-6">
       <div className="flex gap-2 border-b border-border pb-4">
         <DropdownMenu>
           <Tooltip>
@@ -511,6 +580,7 @@ const Content = ({
             <SearchIcon />
           </InputGroupAddon>
           <InputGroupInput
+            ref={searchInputRef}
             placeholder="Search by resource name, secret metadata or tag..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -518,7 +588,15 @@ const Content = ({
         </InputGroup>
       </div>
 
-      <div className="min-h-0 thin-scrollbar flex-1 overflow-y-auto pt-4">
+      <ScrollableContent
+        aria-label="Search results"
+        edgeBehavior="fade"
+        outline={false}
+        maxHeight="100%"
+        containerClassName="flex min-h-0 flex-1 flex-col"
+        className="flex-1 pt-4"
+        contentClassName="pb-4"
+      >
         {isBuilderOpen && (
           <SecretMetadataSearchBuilder
             conditions={metadataConditions}
@@ -535,9 +613,9 @@ const Content = ({
           />
         )}
         {resultsContent}
-      </div>
+      </ScrollableContent>
       {isDeepSearchEnabled && !isDeepSearchPending && visibleResultCount > 0 && (
-        <div className="border-t border-border">
+        <div className="mt-3 border-t border-border pt-1">
           <Pagination
             startAdornment={
               <div className="flex items-center gap-3">
@@ -578,9 +656,20 @@ export const QuickSearchModal = ({
   onOpenChange,
   ...props
 }: QuickSearchModalProps) => {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex flex-col overflow-hidden sm:max-w-7xl">
+      <SheetContent
+        className="flex flex-col overflow-hidden sm:max-w-7xl"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          const input = searchInputRef.current;
+          if (!input) return;
+          input.focus();
+          input.setSelectionRange(input.value.length, input.value.length);
+        }}
+      >
         <SheetHeader>
           <SheetTitle>{`Search All Folders${isSingleEnv ? " In Environment" : ""}`}</SheetTitle>
           <SheetDescription>
@@ -589,7 +678,7 @@ export const QuickSearchModal = ({
             } to quickly reference secrets and navigate deeply.`}
           </SheetDescription>
         </SheetHeader>
-        <Content {...props} />
+        <Content {...props} searchInputRef={searchInputRef} />
       </SheetContent>
     </Sheet>
   );
