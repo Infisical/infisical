@@ -41,7 +41,7 @@ type TGatewayLoadTracker = {
   markSuspect: (gatewayId: string) => Promise<void>;
   getScores: (gatewayIds: string[]) => Promise<Map<string, TGatewayScore>>;
   getSuspect: (gatewayIds: string[]) => Promise<Set<string>>;
-  shutdown: () => void;
+  shutdown: () => Promise<void>;
 };
 
 let tracker: TGatewayLoadTracker | undefined;
@@ -175,7 +175,10 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
 
   const reserve = async (gatewayId: string) => {
     try {
-      await keyStore.incrementByWithExpiry(reservationKey(gatewayId), 1, RESERVATION_TTL_SECONDS);
+      // Routed through the same claim path as a pool selection so the expiry is set only on the
+      // first increment. incrementByWithExpiry refreshes it on every call, which on a busy gateway
+      // means the key never elapses and a crashed pod's reservations stay counted forever.
+      await keyStore.claimLeastLoaded([reservationKey(gatewayId)], [0], RESERVATION_TTL_SECONDS);
     } catch (err) {
       logger.debug({ err, gatewayId }, `Failed to reserve gateway capacity [gatewayId=${gatewayId}]`);
       return;
@@ -284,12 +287,28 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
     return suspect;
   };
 
-  const shutdown = () => {
+  const shutdown = async () => {
+    tracker = undefined;
     clearInterval(refreshTimer);
     if (debounceTimer) clearTimeout(debounceTimer);
     for (const timer of reservationTimers) clearTimeout(timer);
     pendingReservations.clear();
     reservationTimers.clear();
+    publishChain.clear();
+
+    // Without this the published fields linger for the freshness window, so a rolling deploy leaves
+    // this pod's already-dead channels counting against those gateways.
+    const held = [...openChannels.keys()];
+    openChannels.clear();
+    await Promise.all(
+      held.map(async (gatewayId) => {
+        try {
+          await keyStore.hashDelete(loadKey(gatewayId), podId);
+        } catch (err) {
+          logger.debug({ err, gatewayId }, `Failed to clear published load on shutdown [gatewayId=${gatewayId}]`);
+        }
+      })
+    );
   };
 
   tracker = {

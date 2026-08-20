@@ -34,7 +34,7 @@ describe("gatewayLoadTracker", () => {
     const scores = await tracker.getScores([GW_A, GW_B]);
     expect(scores.get(GW_A)?.score).toBe(0);
     expect(scores.get(GW_B)?.score).toBe(0);
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("counts open channels and releases them on close", async () => {
@@ -50,7 +50,7 @@ describe("gatewayLoadTracker", () => {
     tracker.channelClosed(GW_A);
     expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(0);
 
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("a reservation counts toward the score before the channel opens", async () => {
@@ -62,7 +62,7 @@ describe("gatewayLoadTracker", () => {
     expect((await tracker.getScores([GW_A, GW_B])).get(GW_A)?.score).toBe(1);
     expect((await tracker.getScores([GW_A, GW_B])).get(GW_B)?.score).toBe(0);
 
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("hands the reservation off to the channel instead of double counting", async () => {
@@ -80,7 +80,7 @@ describe("gatewayLoadTracker", () => {
     tracker.channelClosed(GW_A);
     expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(0);
 
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("releases a reservation whose channel never opens", async () => {
@@ -98,7 +98,7 @@ describe("gatewayLoadTracker", () => {
     await vi.advanceTimersByTimeAsync(240_000);
     expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(0);
 
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("sums another pod's published count alongside local channels", async () => {
@@ -109,7 +109,7 @@ describe("gatewayLoadTracker", () => {
     tracker.channelOpened(GW_A);
 
     expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(6);
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("ignores a dead pod's stale count instead of counting it forever", async () => {
@@ -119,7 +119,7 @@ describe("gatewayLoadTracker", () => {
     await keyStore.hashSet(KeyStorePrefixes.GatewayLoad(GW_A), "dead-pod", `9:${Date.now() - 120_000}`);
 
     expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(0);
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("ignores a malformed published entry rather than scoring NaN", async () => {
@@ -129,7 +129,7 @@ describe("gatewayLoadTracker", () => {
     await keyStore.hashSet(KeyStorePrefixes.GatewayLoad(GW_A), "bad-pod", "not-a-count");
 
     expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(0);
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("drops its own field once it holds nothing, so the hash does not grow per restart", async () => {
@@ -144,7 +144,7 @@ describe("gatewayLoadTracker", () => {
     await flushPublishes();
     expect(Object.keys(await keyStore.hashGetAll(KeyStorePrefixes.GatewayLoad(GW_A)))).toHaveLength(0);
 
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("does not double count its own published field against its live count", async () => {
@@ -155,7 +155,7 @@ describe("gatewayLoadTracker", () => {
     await flushPublishes();
 
     expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(1);
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("prefers the gateway's own count over the platform's partial view", async () => {
@@ -168,7 +168,7 @@ describe("gatewayLoadTracker", () => {
 
     expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(50);
 
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("adds channels opened since the gateway's last report", async () => {
@@ -184,7 +184,7 @@ describe("gatewayLoadTracker", () => {
 
     expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(6);
 
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("does not sum its own view into the gateway's count", async () => {
@@ -199,7 +199,7 @@ describe("gatewayLoadTracker", () => {
 
     expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(3);
 
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("still adds reservations on top of a reported count", async () => {
@@ -211,7 +211,7 @@ describe("gatewayLoadTracker", () => {
 
     expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(5);
 
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("falls back to the platform's view for a gateway too old to report, and flags the scale", async () => {
@@ -225,7 +225,7 @@ describe("gatewayLoadTracker", () => {
     expect(scores.get(GW_A)).toEqual({ base: 2, score: 2, reported: false });
     expect(scores.get(GW_B)).toEqual({ base: 7, score: 7, reported: true });
 
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("falls back when a gateway stops reporting", async () => {
@@ -239,7 +239,7 @@ describe("gatewayLoadTracker", () => {
     await vi.advanceTimersByTimeAsync(40_000);
     expect((await tracker.getScores([GW_A])).get(GW_A)?.score).toBe(1);
 
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("claims the least loaded member and reserves it in the same call", async () => {
@@ -256,7 +256,7 @@ describe("gatewayLoadTracker", () => {
     // is the caller's view; the score here is this gateway's real occupancy plus that reservation.
     expect((await tracker.getScores([GW_B])).get(GW_B)?.score).toBe(1);
 
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("concurrent claims stop piling on once the minimum catches up", async () => {
@@ -277,7 +277,7 @@ describe("gatewayLoadTracker", () => {
     expect(claims.filter((c) => c === GW_A)).toHaveLength(3);
     expect(claims.filter((c) => c === GW_B)).toHaveLength(1);
 
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("resolves a tie by the order it is given, so callers control the tie-break", async () => {
@@ -296,13 +296,27 @@ describe("gatewayLoadTracker", () => {
       ])
     ).toBe(GW_B);
 
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("claims nothing when given no candidates", async () => {
     const tracker = initGatewayLoadTracker(inMemoryKeyStore());
     expect(await tracker.claimLeastLoaded([])).toBeUndefined();
-    tracker.shutdown();
+    void tracker.shutdown();
+  });
+
+  test("clears its published counts on shutdown", async () => {
+    const keyStore = inMemoryKeyStore();
+    const tracker = initGatewayLoadTracker(keyStore);
+
+    tracker.channelOpened(GW_A);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(Object.keys(await keyStore.hashGetAll(KeyStorePrefixes.GatewayLoad(GW_A)))).toHaveLength(1);
+
+    // A rolling deploy would otherwise leave this pod's dead channels counting for the whole
+    // freshness window.
+    await tracker.shutdown();
+    expect(Object.keys(await keyStore.hashGetAll(KeyStorePrefixes.GatewayLoad(GW_A)))).toHaveLength(0);
   });
 
   test("marks and reports suspect gateways", async () => {
@@ -313,7 +327,7 @@ describe("gatewayLoadTracker", () => {
 
     expect(suspect.has(GW_A)).toBe(true);
     expect(suspect.has(GW_B)).toBe(false);
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 
   test("returns empty results for an empty gateway list without touching the store", async () => {
@@ -321,6 +335,6 @@ describe("gatewayLoadTracker", () => {
 
     expect((await tracker.getScores([])).size).toBe(0);
     expect((await tracker.getSuspect([])).size).toBe(0);
-    tracker.shutdown();
+    void tracker.shutdown();
   });
 });

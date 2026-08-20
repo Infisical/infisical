@@ -79,6 +79,9 @@ export const mockKeyStore = (): TKeyStoreFactory => {
     },
     claimLeastLoaded: async (keys, baseOccupancies) => {
       if (keys.length === 0) return 0;
+      if (keys.length !== baseOccupancies.length) {
+        throw new Error("claimLeastLoaded: baseOccupancies must have one entry per key");
+      }
       let bestIdx = 0;
       let bestTotal: number | null = null;
       keys.forEach((key, i) => {

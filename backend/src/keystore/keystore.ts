@@ -82,10 +82,14 @@ export const KeyStorePrefixes = {
   ProxiedServiceUsageDebounce: (serviceId: string) => `proxied-service-usage-debounce:${serviceId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
+  // The braces are a Redis Cluster hash tag: only the tagged part picks the slot, so these land on
+  // one node. Selection reads them for several gateways at once (one Lua script and two MGETs), and
+  // cluster refuses a multi-key command whose keys span slots. They are small counters, so
+  // concentrating them costs nothing. GatewayLoad is read one key at a time and needs no tag.
   GatewayLoad: (gatewayId: string) => `gateway-load:${gatewayId}` as const,
-  GatewayReportedLoad: (gatewayId: string) => `gateway-reported-load:${gatewayId}` as const,
-  GatewayLoadReservation: (gatewayId: string) => `gateway-reservation:${gatewayId}` as const,
-  GatewaySuspect: (gatewayId: string) => `gateway-suspect:${gatewayId}` as const,
+  GatewayReportedLoad: (gatewayId: string) => `gateway-reported-load:{gw-pool}:${gatewayId}` as const,
+  GatewayLoadReservation: (gatewayId: string) => `gateway-reservation:{gw-pool}:${gatewayId}` as const,
+  GatewaySuspect: (gatewayId: string) => `gateway-suspect:{gw-pool}:${gatewayId}` as const,
   ActiveSSEConnectionsSet: (projectId: string, identityId: string) =>
     `sse-connections:${projectId}:${identityId}` as const,
   ActiveSSEConnections: (projectId: string, identityId: string, connectionId: string) =>
@@ -490,8 +494,11 @@ export const keyStoreFactory = (
       end
     end
     if bestIdx == 0 then return 0 end
-    redis.call("INCR", KEYS[bestIdx])
-    redis.call("EXPIRE", KEYS[bestIdx], ttl)
+    -- Set the expiry only on the first increment. Refreshing it on every claim means a busy key
+    -- never elapses, so a crashed pod's leaked reservations would stay counted indefinitely.
+    if redis.call("INCR", KEYS[bestIdx]) == 1 then
+      redis.call("EXPIRE", KEYS[bestIdx], ttl)
+    end
     return bestIdx
   `;
 
@@ -502,6 +509,9 @@ export const keyStoreFactory = (
     expiryInSeconds: number
   ): Promise<number> => {
     if (keys.length === 0) return 0;
+    if (keys.length !== baseOccupancies.length) {
+      throw new Error("claimLeastLoaded: baseOccupancies must have one entry per key");
+    }
     const result = await primaryRedis.eval(
       CLAIM_LEAST_LOADED_SCRIPT,
       keys.length,
