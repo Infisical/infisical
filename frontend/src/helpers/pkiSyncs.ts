@@ -40,6 +40,12 @@ export const PKI_SYNC_MAP: Record<
     category: "Infrastructure",
     description: "Sync certificates to a Chef data bag."
   },
+  [PkiSync.GcpCertificateManager]: {
+    name: "GCP Certificate Manager",
+    image: "Google Cloud Platform.png",
+    category: "GCP",
+    description: "Sync certificates to GCP Certificate Manager."
+  },
   [PkiSync.CloudflareCustomCertificate]: {
     name: "Cloudflare Custom SSL",
     image: "Cloudflare.png",
@@ -117,6 +123,7 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.AwsSecretsManager]: AppConnection.AWS,
   [PkiSync.AwsElasticLoadBalancer]: AppConnection.AWS,
   [PkiSync.Chef]: AppConnection.Chef,
+  [PkiSync.GcpCertificateManager]: AppConnection.GCP,
   [PkiSync.CloudflareCustomCertificate]: AppConnection.Cloudflare,
   [PkiSync.NetScaler]: AppConnection.NetScaler,
   [PkiSync.F5BigIp]: AppConnection.F5BigIp,
@@ -138,6 +145,21 @@ export const BOOLEAN_SYNC_OPTION_FIELDS = [
   { key: "combineCertificateChain", label: "Combine Certificate and Chain" },
   { key: "includePrivateKey", label: "Include Private Key" }
 ] as const;
+
+export const KEY_VALUE_SYNC_OPTION_FIELDS = [{ key: "labels", label: "Labels" }] as const;
+
+export const PRESERVE_ARN_DESTINATIONS: PkiSync[] = [
+  PkiSync.AwsCertificateManager,
+  PkiSync.AwsElasticLoadBalancer
+];
+
+export const PRESERVE_ITEM_ON_RENEWAL_DESTINATIONS: PkiSync[] = [
+  PkiSync.Chef,
+  PkiSync.F5BigIp,
+  PkiSync.GcpCertificateManager,
+  PkiSync.KempLoadMaster,
+  PkiSync.NetScaler
+];
 
 export const VALUE_SYNC_OPTION_FIELDS = [
   { key: "certificateNameSchema", label: "Certificate Name Schema" },

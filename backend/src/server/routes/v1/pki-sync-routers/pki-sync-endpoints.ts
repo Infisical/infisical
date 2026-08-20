@@ -78,7 +78,10 @@ export const registerSyncPkiEndpoints = ({
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
 
-      const pkiSyncs = await server.services.pkiSync.listPkiSyncsByProjectId({ projectId }, req.permission);
+      const pkiSyncs = await server.services.pkiSync.listPkiSyncsByProjectId(
+        { projectId, destination },
+        req.permission
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
