@@ -1,0 +1,42 @@
+version: v0.162.22
+releasedAt: 2026-08-20T15:37:54-07:00
+sourceTag: v0.162.22
+previousTag: v0.162.21
+impactLevel: low
+summary: Adds two startup-run database migrations for gateway Kubernetes auth
+  and org-scoped audit reports. No required config or deployment changes were
+  found.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Gateway Kubernetes auth tables
+    description: Adds the resource_kubernetes_auths table and indexes for gateway
+      Kubernetes token review settings.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260804134122_resource-kubernetes-auth.ts
+        path: backend/src/db/migrations/20260804134122_resource-kubernetes-auth.ts
+        description: Creates resource_kubernetes_auths table and indexes
+  - title: Audit reports org scope
+    description: Adds nullable orgId to audit_reports, makes projectId nullable, and
+      enforces exactly one scope with a check constraint.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260807120000_add-org-scope-to-audit-reports.ts
+        path: backend/src/db/migrations/20260807120000_add-org-scope-to-audit-reports.ts
+        description: Adds orgId and scope check constraint
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-08-20T23:15:31.241Z
+  sourceRange:
+    from: v0.162.21
+    to: v0.162.22
