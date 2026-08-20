@@ -100,7 +100,7 @@ export COSIGN_PKCS11_MODULE_PATH="/usr/local/lib/libinfisical-pkcs11.so"
 cosign sign \
   --key "pkcs11:token=release-signer;object=release-signer;type=private" \
   --tlog-upload=false \
-  myregistry.example.com/myapp@sha256:abc123...
+  myregistry.example.com/myapp@sha256:<digest>
 ```
 
 <Note>

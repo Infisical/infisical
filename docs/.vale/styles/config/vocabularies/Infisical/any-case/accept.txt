@@ -1,0 +1,389 @@
+# Accepted vocabulary: spelling coverage WITHOUT casing enforcement.
+#
+# Entries here are deliberately case-insensitive. They cover terms that
+# legitimately appear in more than one case, so pinning a single canonical form
+# would produce false positives. Comments need a hash AND a space.
+#
+# Terms whose casing IS enforced live in ../enforced/accept.txt.
+
+# Product nouns that are Title Case as UI labels and lowercase as common nouns.
+[Gg]ateway
+[Gg]ateways
+[Rr]elay
+[Rr]elays
+[Ss]igner
+[Ss]igners
+[Ll]ease
+[Ll]eases
+[Cc]onnector
+[Cc]onnectors
+
+# Tool and CLI names that are lowercase as commands and capitalized as
+# projects, plus the Infisical CLI's own subcommands. The command list is
+# spelled out rather than matched loosely so that prose like "infisical is a
+# platform" is still reported.
+(?i)cosign
+(?i)etcd
+(?i)helm
+(?i)docker
+(?i)ansible
+(?i)terraform
+(?i)prometheus
+(?i)python
+(?i)ruby
+(?i)php
+(?i)rust
+(?i)golang
+(?i)java
+(?i)express
+(?i)chef
+(?i)render
+(?i)nginx
+(?i)npm
+(?i)sudo
+(?i)apk
+(?i)scan
+(?i)flags
+(?i)sub commands
+(?i)infisical (?:agent|agent-proxy|bootstrap|dynamic-secrets|export|gateway|init|kmip|login|pam|relay|reset|run|scan|secrets|service-token|token|user|vault)
+
+# Acronyms that collide with ordinary English words, shell commands, or
+# Kubernetes units.
+(?i)MAC
+(?i)PIN
+(?i)SAN
+(?i)SANs
+(?i)CD
+(?i)HA
+(?i)RA
+(?i)KV
+(?i)CS
+(?i)DN
+(?i)CN
+(?i)Mi
+(?i)PEM
+(?i)JSON
+(?i)REST
+(?i)Workspace
+(?i)Workspaces
+I
+
+# Deprecated or non-canonical forms that Infisical.Terminology rewrites. They
+# are real words, so they belong in the dictionary; the terminology rule is
+# what reports them.
+(?i)Postgres
+(?i)Nginx
+(?i)Mongo
+
+# Generic technical vocabulary the en_US dictionary does not carry.
+(?i)airgapped
+(?i)allowlist
+(?i)allowlists
+(?i)allowlisted
+(?i)allowlisting
+(?i)approver
+(?i)approvers
+(?i)async
+(?i)auditability
+(?i)auditable
+(?i)autoscale
+(?i)autoscaled
+(?i)autoscaler
+(?i)autoscaling
+(?i)backend
+(?i)backends
+(?i)bool
+(?i)boolean
+(?i)breakpoint
+(?i)bubblewrap
+(?i)bursty
+(?i)bypassers
+(?i)callout
+(?i)callouts
+(?i)ciphertext
+(?i)ciphertexts
+(?i)clickjacking
+(?i)clientside
+(?i)config
+(?i)configs
+(?i)cron
+(?i)crypto
+(?i)cutover
+(?i)cybersecurity
+(?i)dal
+(?i)datastore
+(?i)datetime
+(?i)datetimes
+(?i)decryptable
+(?i)deduplicate
+(?i)deduplicated
+(?i)deduplicates
+(?i)deprovision
+(?i)deprovisioning
+(?i)deregister
+(?i)dev
+(?i)dockerized
+(?i)donut
+(?i)downloader
+(?i)enqueued
+(?i)enum
+(?i)enums
+(?i)env
+(?i)envars
+(?i)errored
+(?i)exfiltrate
+(?i)exfiltration
+(?i)failover
+(?i)fns
+(?i)frontmatter
+(?i)hardcode
+(?i)hardcoded
+(?i)hardcoding
+(?i)hoc
+(?i)hostname
+(?i)hostnames
+(?i)idempotency
+(?i)keygen
+(?i)keypair
+(?i)keypairs
+(?i)keystore
+(?i)kubeconfig
+(?i)liveness
+(?i)lookups
+(?i)loopback
+(?i)misconfiguration
+(?i)misconfigurations
+(?i)misconfigured
+(?i)monorepo
+(?i)monorepos
+(?i)multiline
+(?i)namespace
+(?i)namespaces
+(?i)namespaced
+(?i)netns
+(?i)nonce
+(?i)nonces
+(?i)nullable
+(?i)offboarding
+(?i)onboarding
+(?i)onwards
+(?i)paginations
+(?i)passthrough
+(?i)permissioned
+(?i)permissioning
+(?i)plaintext
+(?i)pooler
+(?i)preload
+(?i)preloaded
+(?i)prepended
+(?i)proxied
+(?i)proxying
+(?i)reachability
+(?i)redeployment
+(?i)redeployments
+(?i)repo
+(?i)repos
+(?i)requester
+(?i)requesters
+(?i)requestor
+(?i)resync
+(?i)reusability
+(?i)rollout
+(?i)runbook
+(?i)runbooks
+(?i)sandboxed
+(?i)sarif
+(?i)serverless
+(?i)signup
+(?i)signups
+(?i)stderr
+(?i)stdin
+(?i)stdout
+(?i)subcommand
+(?i)subcommands
+(?i)subfolder
+(?i)subfolders
+(?i)subnet
+(?i)subnets
+(?i)subprocess
+(?i)subprocesses
+(?i)subtree
+(?i)superadmin
+(?i)switchover
+(?i)switchovers
+(?i)systemd
+(?i)timeframe
+(?i)toolchain
+(?i)toolset
+(?i)tolerations
+(?i)uncontained
+(?i)unconfigured
+(?i)uncredentialed
+(?i)unencrypted
+(?i)unproxied
+(?i)unreplicated
+(?i)unreviewed
+(?i)unrotated
+(?i)unsynced
+(?i)untrusted
+(?i)upstreams
+(?i)validator
+(?i)validators
+(?i)walkthrough
+(?i)yaml
+(?i)csv
+(?i)www
+
+# Hyphenated house terms. Sentence-initial and mid-sentence forms both occur.
+(?i)self-hosted
+(?i)self-hosting
+(?i)self-host
+(?i)self-managed
+(?i)self-service
+(?i)self-signed
+(?i)short-lived
+(?i)long-lived
+(?i)time-to-live
+(?i)on-demand
+(?i)third-party
+(?i)zero-downtime
+(?i)break-glass
+(?i)fine-grained
+(?i)end-entity
+(?i)post-quantum
+(?i)pre-commit
+(?i)base64-encoded
+(?i)key-value
+(?i)role-based
+(?i)attribute-based
+(?i)platform-agnostic
+(?i)non-interactive
+(?i)slug-friendly
+(?i)auto-sync
+(?i)auto-rotation
+(?i)auto-renewal
+(?i)post-sync
+(?i)dual-phase
+(?i)single-phase
+(?i)point-in-time
+(?i)machine-to-machine
+(?i)ACME-compatible
+(?i)HSM-backed
+
+# Product phrases that are Title Case as UI labels and lowercase as common
+# nouns. A multi-word canonical entry forces its casing on every heading, so
+# these have to be case-insensitive.
+(?i)Infisical Agent
+(?i)Infisical Gateway
+(?i)Infisical Relay
+(?i)Agent Injector
+(?i)Agent Proxy
+(?i)Secrets Management
+(?i)Certificate Management
+(?i)Privileged Access Management
+(?i)Honey Token
+(?i)Honey Tokens
+(?i)Product Admin
+(?i)Product Member
+(?i)Provision Lease
+(?i)Universal Auth
+(?i)Machine Identity
+(?i)Machine Identities
+(?i)Windows Server
+(?i)Sub-organization
+(?i)Sub-organizations
+(?i)Parameter Store
+(?i)Elastic Load Balancer
+(?i)Key Management Service
+(?i)Infisical Operator
+(?i)tailnet
+
+# Ordinary technical vocabulary the en_US dictionary does not carry.
+(?i)accessor
+(?i)accessors
+(?i)agentic
+(?i)architected
+(?i)balancer
+(?i)balancer's
+(?i)balancers
+(?i)certkey
+(?i)certkeys
+(?i)js
+(?i)vservers
+
+# Product phrases. These are case-insensitive on purpose: a multi-word
+# canonical entry forces its casing on every heading that contains it.
+(?i)Vault
+(?i)HashiCorp Vault
+(?i)Azure Key Vault
+(?i)Key Vault
+(?i)OCI Vault
+(?i)OVH Cloud
+(?i)Alibaba Cloud
+(?i)Google Cloud
+(?i)Google Cloud Run
+(?i)Google Cloud Platform
+(?i)Linux Server
+(?i)CSI Provider
+(?i)CSI Driver
+(?i)Secrets Store CSI Driver
+(?i)IBM API Connect
+(?i)API Connect
+(?i)1Password Connect
+(?i)Infisical Proxy
+(?i)Infisical Enterprise
+(?i)Fluent Bit
+(?i)Microsoft Power Apps
+(?i)Power Apps
+(?i)App Platform
+(?i)Create React App
+(?i)Visual Basic
+(?i)Code of Conduct
+(?i)CertCentral Services API
+(?i)GCP Secret Manager
+(?i)Google Secret Manager
+(?i)Go SDK
+
+# PAM is both the product and a lowercase CLI subcommand.
+(?i)PAM
+# Case-insensitive because a canonical entry makes the converter capitalize the
+# verb "go" and rewrite the `git-changes` subcommand.
+(?i)Git\b
+(?i)Go\b
+(?i)unlinks
+(?i)href
+(?i)quickstart
+(?i)quickstarts
+
+# Ordinary technical vocabulary the en_US dictionary does not carry.
+(?i)alphanumerics
+(?i)automounted
+(?i)backfill
+(?i)backfilled
+(?i)backfilling
+(?i)backoff
+(?i)cmdlet
+(?i)cmdlets
+(?i)dedup
+(?i)deprovisioned
+(?i)desync
+(?i)destructure
+(?i)enqueueing
+(?i)keystores
+(?i)metacharacters
+(?i)passwordless
+(?i)prebuild
+(?i)presigned
+(?i)queryable
+(?i)reinstalls
+(?i)sanitization
+(?i)substring
+(?i)templatized
+(?i)unchecking
+(?i)auth's
+# Sentence case would otherwise lowercase these.
+(?i)PAT
+(?i)SSM
+# Case-insensitive because a canonical entry makes the converter capitalize the
+# common noun "node".
+(?i)Node

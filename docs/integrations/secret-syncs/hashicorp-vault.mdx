@@ -1,11 +1,11 @@
 ---
-title: "Hashicorp Vault sync"
-description: "Learn how to configure a Hashicorp Vault Sync for Infisical."
+title: "HashiCorp Vault sync"
+description: "Learn how to configure a HashiCorp Vault Sync for Infisical."
 ---
 
 **Prerequisites:**
     - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
-    - Create a [Hashicorp Vault Connection](/integrations/app-connections/hashicorp-vault)
+    - Create a [HashiCorp Vault Connection](/integrations/app-connections/hashicorp-vault)
 
 <Tabs>
     <Tab title="Infisical UI">
@@ -15,8 +15,8 @@ description: "Learn how to configure a Hashicorp Vault Sync for Infisical."
 
                 ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
             </Step>
-            <Step title="Select Hashicorp Vault">
-                ![Select Hashicorp Vault](/images/secret-syncs/hashicorp-vault/select-option.png)
+            <Step title="Select HashiCorp Vault">
+                ![Select HashiCorp Vault](/images/secret-syncs/hashicorp-vault/select-option.png)
             </Step>
             <Step title="Configure Source">
                 Configure the **Source** from where secrets should be retrieved, then click **Next**.
@@ -35,7 +35,7 @@ description: "Learn how to configure a Hashicorp Vault Sync for Infisical."
 
                 ![Configure Destination](/images/secret-syncs/hashicorp-vault/sync-destination.png)
 
-                - **Hashicorp Vault Connection**: The Vault Connection to authenticate with.
+                - **HashiCorp Vault Connection**: The Vault Connection to authenticate with.
                 - **Secrets Engine Mount**: The secrets engine to sync secrets with (e.g., 'secret', 'kv').
                 - **Path**: The specific path within the secrets engine where secrets will be stored.
 
@@ -52,8 +52,8 @@ description: "Learn how to configure a Hashicorp Vault Sync for Infisical."
 
                 - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
                     - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
-                    - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over Hashicorp Vault when keys conflict.
-                    - **Import Secrets (Prioritize Hashicorp Vault)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Hashicorp Vault over Infisical when keys conflict.
+                    - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over HashiCorp Vault when keys conflict.
+                    - **Import Secrets (Prioritize HashiCorp Vault)**: Imports secrets from the destination endpoint before syncing, prioritizing values from HashiCorp Vault over Infisical when keys conflict.
                 - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
                 <Note>
                     We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
@@ -62,7 +62,7 @@ description: "Learn how to configure a Hashicorp Vault Sync for Infisical."
                 - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
             </Step>
             <Step title="Configure Details">
-                Configure the **Details** of your Hashicorp Vault Sync, then click **Next**.
+                Configure the **Details** of your HashiCorp Vault Sync, then click **Next**.
 
                 ![Configure Details](/images/secret-syncs/hashicorp-vault/sync-details.png)
 
@@ -70,19 +70,19 @@ description: "Learn how to configure a Hashicorp Vault Sync for Infisical."
                 - **Description**: An optional description for your sync.
             </Step>
             <Step title="Review Configuration">
-                Review your Hashicorp Vault Sync configuration, then click **Create Sync**.
+                Review your HashiCorp Vault Sync configuration, then click **Create Sync**.
 
                 ![Confirm Configuration](/images/secret-syncs/hashicorp-vault/sync-review.png)
             </Step>
             <Step title="Sync Created">
-                If enabled, your Hashicorp Vault Sync will begin syncing your secrets to the destination endpoint.
+                If enabled, your HashiCorp Vault Sync will begin syncing your secrets to the destination endpoint.
 
                 ![Sync Created](/images/secret-syncs/hashicorp-vault/sync-created.png)
             </Step>
         </Steps>
     </Tab>
     <Tab title="API">
-        To create an **Hashicorp Vault Sync**, make an API request to the [Create Hashicorp Vault Sync](/api-reference/endpoints/secret-syncs/hashicorp-vault/create) API endpoint.
+        To create an **HashiCorp Vault Sync**, make an API request to the [Create HashiCorp Vault Sync](/api-reference/endpoints/secret-syncs/hashicorp-vault/create) API endpoint.
 
         ### Sample request
 

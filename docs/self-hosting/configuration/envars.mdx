@@ -155,7 +155,7 @@ Example values:
   When unset, Infisical trusts all forwarded-IP headers (legacy behavior, preserved for backwards compatibility with existing self-hosted deployments).
 
   <Warning>
-    If your deployment sits behind a reverse proxy (e.g. Nginx, AWS ALB, Cloudflare), you should set this to the CIDR range of your proxy to prevent clients from spoofing their source IP. Leaving this unset is only safe when Infisical is not reachable directly from the internet.
+    If your deployment sits behind a reverse proxy (e.g. NGINX, AWS ALB, Cloudflare), you should set this to the CIDR range of your proxy to prevent clients from spoofing their source IP. Leaving this unset is only safe when Infisical is not reachable directly from the internet.
   </Warning>
 </ParamField>
 
@@ -183,7 +183,7 @@ Defaults to reflecting the headers specified in the request's Access-Control-Req
 
 ## Data layer
 
-The platform uses Postgres to persist all of its data and Redis for caching and background tasks.
+The platform uses PostgreSQL to persist all of its data and Redis for caching and background tasks.
 
 ### PostgreSQL
 
@@ -194,11 +194,11 @@ The platform uses Postgres to persist all of its data and Redis for caching and 
 </Info>
 
 <ParamField query="DB_CONNECTION_URI" type="string" default="" required>
-  Postgres database connection string.
+  PostgreSQL database connection string.
 </ParamField>
 
 <ParamField query="DB_ROOT_CERT" type="string" default="" optional>
-  Configure the SSL certificate for securing a Postgres connection by first encoding it in base64.
+  Configure the SSL certificate for securing a PostgreSQL connection by first encoding it in base64.
   Use the following command to encode your certificate: `echo "<certificate>" | base64`
 
   Many cloud providers provide a CA certificate for their data regions that you can use to secure your connection with SSL.
@@ -224,16 +224,16 @@ The platform uses Postgres to persist all of its data and Redis for caching and 
 </ParamField>
 
 <ParamField query="DB_READ_REPLICAS" type="string" default="" optional>
-  Postgres database read replica connection strings. It accepts a JSON string.
+  PostgreSQL database read replica connection strings. It accepts a JSON string.
 ```
 DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
 ```
   <Expandable title="Format">
 	  <ParamField query="DB_CONNECTION_URI" type="string" default="" required>
-	    Postgres read replica connection string.
+	    PostgreSQL read replica connection string.
     </ParamField>
     <ParamField query="DB_ROOT_CERT" type="string" default="" optional>
-      Configure the SSL certificate for securing a Postgres replica connection by first encoding it in base64.
+      Configure the SSL certificate for securing a PostgreSQL replica connection by first encoding it in base64.
 	    Use the following command to encode your certificate: `echo "<certificate>" | base64`
 
       If not provided it will use master SSL certificate.
@@ -244,7 +244,7 @@ DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
 
 #### Connection pool sizing (optional)
 
-Each Infisical instance keeps its own pool of Postgres connections. The defaults suit a small deployment and
+Each Infisical instance keeps its own pool of PostgreSQL connections. The defaults suit a small deployment and
 most self-hosters never need to change them, but they become relevant once you run many instances: pools are
 **per instance**, so the total number of connections your database sees grows with your instance count.
 
@@ -268,7 +268,7 @@ easy to miss:
 
 Aim to keep the peak comfortably under `max_connections`, leaving headroom for migrations, admin tools, and
 your own `psql` sessions. If you are close to the limit, **lower `DB_POOL_MAX`** rather than raising
-`max_connections`: each Postgres connection costs memory on the server, and a large number of mostly-idle
+`max_connections`: each PostgreSQL connection costs memory on the server, and a large number of mostly-idle
 connections wastes it. If instead you see queries queueing while your database is idle, the pool is too small
 and raising it is the right move.
 
@@ -580,7 +580,7 @@ SMTP_FROM_NAME=Infisical
   1. Create an account and configure [Mailgun](https://www.mailgun.com) to send emails.
   2. Obtain your Mailgun credentials in Sending > Overview > SMTP
 
-![obtain mailhog api key estriction](../../images/self-hosting/configuration/email/email-mailhog-credentials.png)
+![obtain Mailhog credentials](../../images/self-hosting/configuration/email/email-mailhog-credentials.png)
 
 3. With your Mailgun credentials, you can now set up your SMTP environment variables:
 

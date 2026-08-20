@@ -1,0 +1,616 @@
+# Enforced vocabulary: the canonical spelling is the ONLY accepted spelling.
+#
+# Vale builds Vale.Terms from this file, so any other casing of these terms is
+# reported as an error. The terms are also injected as exceptions into the
+# sentence-case rules, which is why product and vendor names have to be listed
+# here for headings to pass.
+#
+# Entries are regexes and are case-sensitive. Comments need a hash AND a space
+# -- `#Foo` is loaded as a regex, not ignored.
+#
+# A term that legitimately appears in more than one case belongs in
+# ../accepted/accept.txt instead, or it will produce false positives.
+
+# --- Infisical ---
+Infisical
+Infisical Cloud
+Infisical Issuer
+Infisical Core
+Secrets Manager
+Certificate Manager
+InfisicalSecret
+InfisicalPushSecret
+InfisicalDynamicSecret
+InfisicalStaticSecret
+InfisicalCore
+InfisicalConnection
+InfisicalAuth
+TSecret
+
+# --- Clouds, platforms, runtimes ---
+AWS
+Azure
+GCP
+Amazon
+Microsoft
+Google
+Google Workspace
+Kubernetes
+Docker
+Docker Compose
+Podman
+Helm
+Terraform
+Terraform Cloud
+Pulumi
+Ansible
+Packer
+Chef
+Vagrant
+Crossplane
+Linux
+Windows
+Active Directory
+macOS
+Debian
+Ubuntu
+CentOS
+RHEL
+Alpine
+Unix
+Homebrew
+Scoop
+Chocolatey
+winget
+Node.js
+Python
+Ruby
+Java
+Golang
+Rust
+PHP
+Bun
+Deno
+Maven
+Gradle
+CMake
+Apple
+Android
+TypeScript
+JavaScript
+Django
+Flask
+Fastify
+Express
+Koa
+NestJS
+Laravel
+Laravel Forge
+Vite
+Vue
+React
+Next.js
+Nuxt
+Svelte
+Spring Boot
+PM2
+BullBoard
+Gemfile
+Dockerfile
+Dockerfiles
+ConfigMap
+ConfigMaps
+StatefulSet
+DaemonSet
+ClusterRole
+ClusterRoleBinding
+ServiceAccount
+TokenReview
+ServiceMonitor
+serviceMonitor
+SecretProviderClass
+CustomResourceDefinition
+Kubebuilder
+Kyverno
+minikube
+Traefik
+Bitnami
+Connaisseur
+Valkey
+Istio
+Gloo
+Gloo Mesh
+Etcd
+Knex
+Pino
+zod
+jq
+psql
+pgAdmin
+htpasswd
+kubectl
+gcloud
+Kerberos
+NVMe
+
+# --- Cloud provider services ---
+ElastiCache
+MemoryDB
+Memorystore
+CloudHSM
+CloudFormation
+CloudFront
+CloudWatch
+CloudTrail
+Fargate
+Amplify
+Lambda
+Route53
+DynamoDB
+Aurora
+Athena
+Redshift
+Cognito
+CodeBuild
+CodePipeline
+Azure Key Vault
+Azure App Configuration
+Azure DevOps
+Azure SQL Database
+Entra ID
+Microsoft Teams
+Microsoft SQL Server
+Microsoft Intune
+Jamf Pro
+Ivanti
+WinRM
+PowerShell
+Authenticode
+signtool
+DevOps
+BigQuery
+Cloud SQL
+Cloud 66
+
+# --- Git, CI/CD, PaaS, SaaS ---
+GitHub
+GitHub App
+GitHub Actions
+GitLab
+Bitbucket
+Jenkins
+CircleCI
+TeamCity
+Codefresh
+Travis CI
+Spacelift
+Rundeck
+Octopus Deploy
+Vercel
+Netlify
+Heroku
+Render
+Railway
+Qovery
+Northflank
+Fly.io
+DigitalOcean
+Cloudflare
+Cloudflare Pages
+Cloudflare Workers
+Windmill
+Humanitec
+Trigger.dev
+Supabase
+Convex
+Hasura
+Hasura Cloud
+PlanetScale
+Databricks
+Snowflake
+Snowsight
+Doppler
+ClickHouse
+Zabbix
+Checkly
+Camunda
+Salesforce
+ServiceNow
+Backstage
+Cribl
+Splunk
+Grafana
+Prometheus
+OpenTelemetry
+OTel
+OTEL
+Dynatrace
+Datadog
+PagerDuty
+Slack
+Gmail
+SendGrid
+SocketLabs
+Mailgun
+Mailhog
+Zoho
+Tailscale
+1Password
+Cloudsmith
+Gitpod
+Spotify
+Alibaba
+Nutanix
+Nutanix Prism Central
+Devin
+Mintlify
+Ona
+DBT
+Ab Initio
+
+# --- Identity ---
+Okta
+Auth0
+JumpCloud
+Keycloak
+PingOne
+PingFederate
+OpenLDAP
+OpenID
+Foxpass
+Authy
+IdP
+SPIFFE
+SPIRE
+
+# --- PKI, HSM, crypto, signing ---
+HashiCorp
+DigiCert
+CertCentral
+Venafi
+Venafi TPP
+Venafi TLS Protect Cloud
+Sectigo
+GoDaddy
+Buypass
+Let's Encrypt
+DNS Made Easy
+Certbot
+cert-manager
+win-acme
+sscep
+OpenSSL
+GnuPG
+gnupg-pkcs11-scd
+jarsigner
+osslsigncode
+apksigner
+keytool
+Cosign
+Sigstore
+Fortanix
+Thales
+Luna
+SunPKCS11
+SEKM
+NGINX
+Apache
+Tomcat
+HAProxy
+JBoss
+WildFly
+Kemp
+LoadMaster
+NetScaler
+Citrix
+F5
+BIG-IP
+iControl
+Dell
+PowerEdge
+iDRAC
+HP
+iLO
+Patroni
+
+# --- Databases ---
+PostgreSQL
+MySQL
+MongoDB
+MongoDB Atlas
+Redis
+Sentinel
+Elasticsearch
+Cassandra
+Couchbase
+RabbitMQ
+Vertica
+Milvus
+OracleDB
+Oracle
+SAP ASE
+SAP HANA
+mongodump
+mongorestore
+
+# --- AI ---
+OpenAI
+OpenRouter
+Anthropic
+Claude
+Codex
+LiteLLM
+Fireworks
+
+# --- Acronyms and initialisms ---
+# The `(?:s|'s)?` suffix accepts the plural and possessive forms.
+2FA
+ABAC
+ACL
+ACM
+ACME
+AD
+ADCS
+AES
+AI
+API(?:s|'s)?
+APK(?:s|'s)?
+ARN(?:s|'s)?
+AZ(?:s)?
+BYOK
+CA(?:s|'s)?
+CI
+CIDR(?:s)?
+CLI
+CMK(?:s)?
+CNAME(?:s)?
+CORS
+CPA(?:s)?
+CPU(?:s)?
+CRD(?:s)?
+CRL(?:s)?
+CRUD
+CSI
+CSR(?:s)?
+DLL(?:s)?
+DNS
+DSA
+DSM
+E2EE
+EAB
+EBS
+ECDSA
+ECR
+ECS
+EdDSA
+EFS
+EKS
+ELB
+ALB
+EST
+EU
+FAQ(?:s)?
+FIPS
+FQDN(?:s)?
+GCM
+GKE
+GPG
+GUID(?:s)?
+HIPAA
+HMAC
+HSM(?:s)?
+HTTP
+HTTPS
+IAM
+IaC
+IBM
+ID(?:s)?
+IIS
+IoT
+IP(?:s)?
+IRSA
+JAR(?:s)?
+JDBC
+JSON
+JWKS
+JWT(?:s)?
+KMIP
+KMS
+KSP
+LDAP
+LDAPS
+LDIF
+MCP
+MDM
+MFA
+MI(?:s)?
+MS SQL
+MSI(?:s)?
+mTLS
+NAT
+NIST
+NLB(?:s)?
+NSG(?:s)?
+NTLM
+OAuth
+OCI
+OCID
+OIDC
+OKMS
+OTLP
+OVH
+OVHcloud
+PKCE
+PKCS
+PKI
+PM
+PQC
+PR(?:s)?
+PVC(?:s)?
+RBAC
+RDP
+RDS
+REST
+RFC(?:s)?
+RSA
+S3
+R2
+SAML
+SCEP
+SCIM
+SDK(?:s)?
+SED(?:s)?
+SHA
+SIEM(?:s)?
+SLA(?:s)?
+SMB
+SMTP
+SOC
+SQL
+SSH
+SSL
+SSO
+SSRF
+STS
+SVID(?:s)?
+TCP
+TLS
+TOTP(?:s)?
+TPP
+TS
+TTL(?:s)?
+TUI(?:s)?
+UI
+UPN
+URI(?:s)?
+URL(?:s)?
+US
+UUID(?:s)?
+VM(?:s)?
+VPC(?:s)?
+VPN(?:s)?
+vCPU(?:s)?
+
+walkthrough
+walkthroughs
+
+# --- Tokens with punctuation that the tokenizer keeps whole ---
+\.NET
+\.infisicalignore
+\.infisical-scan\.toml
+C\+\+
+PKCS#11
+PKCS12
+RSA-PSS
+ML-DSA
+SHA-256
+SHA-384
+SHA-512
+HTTP-01
+DNS-01
+P-256
+P-384
+V1
+V2
+V3
+
+# --- Example-company names. These exist so "Acme" inside them is not reported
+# --- as a miscasing of the ACME protocol.
+Acme Corp
+Acme Mobile
+
+# --- Terms surfaced by Vale.Spelling on the existing corpus ---
+Entra
+Intune
+Jamf
+Timestamping
+PKIOperation
+PKCSReq
+Clustermgmt
+OOMKilled
+ioredis
+infisicalsdk
+vServer
+vServers
+pg_dump
+pg_restore
+container_definitions
+cache_ttl
+access_token
+userAgent
+signingAlgorithm
+projectId
+orgId
+keyId
+ipAddress
+dynamicSecret
+Shor's
+PAM's
+ECA's
+CA's
+
+# --- Acronyms and names still missing after the first corpus sweep ---
+AAB
+Gatsby
+Fiber
+Enterprise
+NET
+infisicalignore
+infisical-ctl
+
+# --- Surfaced once component-indented prose became visible ---
+# Identifiers and field names that appear in prose and reference tables.
+auth_method
+auth_error
+client_error
+server_error
+rate_limit_error
+invalid_token
+invalid_credentials
+expired_token
+scep_challenge_provider
+SCEPChallenge
+x_infis_approvals_access_request
+identity_id
+organization_id
+project_id
+user_id
+userId
+userinfo
+externalId
+locationId
+lastName
+firstName
+givenName
+stripPrefix
+demo_mount
+db_owner
+data_writer
+data_reader
+loginmanager
+approle
+Objectclass
+Keyspace
+keyspace
+_default
+sshd
+sshd_config
+firewalld
+busybox
+xfreerdp
+Remmina
+dotenv
+octocat
+Codespaces
+milliCPUs
+Palo
+Addons
+Enablement
+ECAs
+OUs
+DCs
+dce
+dcr
+als
+ua
+iss
