@@ -410,16 +410,22 @@ export const verifyClientCertificateChain = async ({
   const orderedPaths = completePaths.sort((a, b) => a.length - b.length);
   let constraintFailure: TVerificationFailure | null = null;
 
-  try {
-    for (const path of orderedPaths) {
+  for (const path of orderedPaths) {
+    let failure: TVerificationFailure | null;
+    try {
       const pathLengthFailure = enforcePathLength(path);
       // eslint-disable-next-line no-await-in-loop -- stop at the first path that validates
-      const failure = pathLengthFailure ?? (await enforceNameConstraints(path, now));
-      if (!failure) return { ok: true };
-      constraintFailure ??= failure;
+      failure = pathLengthFailure ?? (await enforceNameConstraints(path, now));
+    } catch (err) {
+      logger.warn(
+        err,
+        `TLS certificate auth: could not evaluate a candidate path [pathLength=${path.length}] [leafSubject=${path[0].subject}] [anchorSubject=${path[path.length - 1].subject}]`
+      );
+      failure = { ok: false, reasonCode: "ca_verification_failed" };
     }
-  } catch {
-    return { ok: false, reasonCode: "ca_verification_failed" };
+
+    if (!failure) return { ok: true };
+    constraintFailure ??= failure;
   }
 
   return reportFailure(constraintFailure ?? { ok: false, reasonCode: "ca_verification_failed" });
