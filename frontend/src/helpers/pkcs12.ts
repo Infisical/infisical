@@ -1,24 +1,20 @@
-import crypto from "node:crypto";
-
 import * as x509 from "@peculiar/x509";
 import forge from "node-forge";
-import RE2 from "re2";
 
-// The extraction worker imports this module directly, and in development Node strips its types
-// without a compiler: no enums or other non-erasable TypeScript anywhere this module reaches.
-export const Pkcs12ErrorCode = {
+const Pkcs12ErrorCode = {
   NotAKeystore: "not_a_keystore",
   BadPassword: "bad_password",
   UnsupportedEntries: "unsupported_entries",
-  TooManyBags: "too_many_bags",
+  TooManyKeys: "too_many_keys",
+  TooManyCertificates: "too_many_certificates",
   TooExpensive: "too_expensive",
   NoEntries: "no_entries",
   NoPairs: "no_pairs"
 } as const;
 
-export type TPkcs12ErrorCode = (typeof Pkcs12ErrorCode)[keyof typeof Pkcs12ErrorCode];
+type TPkcs12ErrorCode = (typeof Pkcs12ErrorCode)[keyof typeof Pkcs12ErrorCode];
 
-export class Pkcs12ExtractionError extends Error {
+class Pkcs12ExtractionError extends Error {
   code: TPkcs12ErrorCode;
 
   count?: number;
@@ -30,12 +26,12 @@ export class Pkcs12ExtractionError extends Error {
   }
 }
 
-type TPkcs12Entry = {
+export type TPkcs12Entry = {
   alias: string | null;
   subject: string;
   commonName: string | null;
   altNames: string | null;
-  keyAlgorithm: string;
+  keyAlgorithm?: string;
   notAfter: string;
   fingerprintSha256: string;
   chainWarning: string | null;
@@ -44,39 +40,41 @@ type TPkcs12Entry = {
   privateKeyPem?: string;
 };
 
-export type TExtractPkcs12Result = {
-  entries: TPkcs12Entry[];
-};
-
 const MAX_KEY_BAGS = 8;
 const MAX_CERT_BAGS = 100;
 const MAX_CHAIN_DEPTH = 10;
 
-const CHAIN_WARNING = "No usable issuer chain was found in the keystore, so this will be imported on its own.";
+const CHAIN_WARNING =
+  "No issuer chain was found in the keystore. This certificate will be imported on its own.";
 
 const MAX_SUBJECT_LENGTH = 2048;
 const MAX_ALIAS_LENGTH = 1024;
 
-const toPem = (type: string, derBytes: string) => forge.pem.encode({ type, body: derBytes });
+const derBytes = (der: string) => Uint8Array.from(der, (char) => char.charCodeAt(0));
 
-const bagAttribute = (bag: forge.pkcs12.Bag, name: "friendlyName" | "localKeyId"): string | null => {
+// forge writes CRLF line endings, which @peculiar/x509 refuses to parse.
+const toPem = (type: string, der: string) =>
+  forge.pem.encode({ type, body: der }).replace(/\r\n/g, "\n");
+
+const bagAttribute = (
+  bag: forge.pkcs12.Bag,
+  name: "friendlyName" | "localKeyId"
+): string | null => {
   const values = (bag.attributes as Record<string, string[] | undefined>)[name];
   return values?.length ? values[0] : null;
 };
 
 // forge leaves `bag.key` / `bag.cert` null for anything non-RSA and hands back the decrypted ASN.1
 // instead, so never consume its parsed objects: the ASN.1 is what makes EC, Ed25519 and PQC work.
-const certBagToPem = (bag: forge.pkcs12.Bag) => {
+const certBagToDer = (bag: forge.pkcs12.Bag) => {
   const asn1 = bag.cert ? forge.pki.certificateToAsn1(bag.cert) : bag.asn1;
   if (!asn1) return null;
-  return toPem("CERTIFICATE", forge.asn1.toDer(asn1).getBytes());
+  return forge.asn1.toDer(asn1).getBytes();
 };
 
-const keyBagToPem = (bag: forge.pkcs12.Bag) => {
-  const asn1 = bag.asn1 ?? (bag.key ? forge.pki.wrapRsaPrivateKey(forge.pki.privateKeyToAsn1(bag.key)) : null);
-  if (!asn1) return null;
-  return toPem("PRIVATE KEY", forge.asn1.toDer(asn1).getBytes());
-};
+// forge parses RSA into `bag.key` and leaves the ASN.1 unset, so it is rebuilt for those.
+const keyBagAsn1 = (bag: forge.pkcs12.Bag) =>
+  bag.asn1 ?? (bag.key ? forge.pki.wrapRsaPrivateKey(forge.pki.privateKeyToAsn1(bag.key)) : null);
 
 const readAltNames = (cert: x509.X509Certificate) => {
   const extension = cert.extensions.find((ext) => ext.type === "2.5.29.17");
@@ -93,9 +91,11 @@ const readAltNames = (cert: x509.X509Certificate) => {
   }
 };
 
-const sha256Fingerprint = (der: Buffer) => {
-  const hex = crypto.createHash("sha256").update(der).digest("hex").toUpperCase();
-  return new RE2(".{2}", "g").match(hex)?.join(":") ?? hex;
+const sha256Fingerprint = async (der: ArrayBuffer) => {
+  const digest = await crypto.subtle.digest("SHA-256", der);
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0").toUpperCase())
+    .join(":");
 };
 
 type TParsedCert = {
@@ -108,72 +108,112 @@ type TParsedCert = {
 
 type TParsedKey = {
   pem: string;
-  spki: string;
   keyAlgorithm: string;
   localKeyId: string | null;
   friendlyName: string | null;
 };
 
 const EC_CURVE_LABELS: Record<string, string> = {
-  prime256v1: "P-256",
-  secp384r1: "P-384",
-  secp521r1: "P-521",
-  secp256k1: "secp256k1"
+  "1.2.840.10045.3.1.7": "P-256",
+  "1.3.132.0.34": "P-384",
+  "1.3.132.0.35": "P-521",
+  "1.3.132.0.10": "secp256k1"
 };
 
-const describeKey = (key: crypto.KeyObject) => {
-  const type = key.asymmetricKeyType ?? "unknown";
-  const details = key.asymmetricKeyDetails;
+const KEY_ALGORITHM_LABELS: Record<string, string> = {
+  "1.3.101.112": "Ed25519",
+  "1.3.101.113": "Ed448",
+  "2.16.840.1.101.3.4.3.17": "ML-DSA-44",
+  "2.16.840.1.101.3.4.3.18": "ML-DSA-65",
+  "2.16.840.1.101.3.4.3.19": "ML-DSA-87"
+};
 
-  if (type === "rsa" || type === "rsa-pss") {
-    return details?.modulusLength ? `RSA ${details.modulusLength}` : "RSA";
+const RSA_OIDS = new Set(["1.2.840.113549.1.1.1", "1.2.840.113549.1.1.10"]);
+const EC_OID = "1.2.840.10045.2.1";
+
+// The browser has no equivalent of Node's key inspection, so the algorithm is read straight out of
+// the PrivateKeyInfo: an OID, and for RSA a modulus whose length is the key size.
+const describeKey = (keyAsn1: forge.asn1.Asn1) => {
+  if (!Array.isArray(keyAsn1.value)) return "";
+  const algorithm = keyAsn1.value[1];
+  if (!Array.isArray(algorithm?.value)) return "";
+
+  const [oidNode, paramNode] = algorithm.value;
+  if (oidNode?.type !== forge.asn1.Type.OID || typeof oidNode.value !== "string") return "";
+  const oid = forge.asn1.derToOid(oidNode.value);
+
+  if (RSA_OIDS.has(oid)) {
+    const keyBytes = keyAsn1.value[2];
+    if (typeof keyBytes?.value !== "string") return "RSA";
+    try {
+      const inner = forge.asn1.fromDer(keyBytes.value);
+      const modulus = Array.isArray(inner.value) ? inner.value[1] : null;
+      if (typeof modulus?.value !== "string") return "RSA";
+      // A leading zero byte keeps the modulus positive and is not part of the key size.
+      const bytes =
+        modulus.value.charCodeAt(0) === 0 ? modulus.value.length - 1 : modulus.value.length;
+      return `RSA ${bytes * 8}`;
+    } catch {
+      return "RSA";
+    }
   }
-  if (type === "ec") {
-    const curve = details?.namedCurve;
-    return `ECDSA ${curve ? (EC_CURVE_LABELS[curve] ?? curve) : ""}`.trim();
+
+  if (oid === EC_OID) {
+    if (paramNode?.type === forge.asn1.Type.OID && typeof paramNode.value === "string") {
+      const curve = forge.asn1.derToOid(paramNode.value);
+      return `ECDSA ${EC_CURVE_LABELS[curve] ?? curve}`;
+    }
+    return "ECDSA";
   }
-  if (type === "ed25519") return "Ed25519";
-  if (type === "ed448") return "Ed448";
-  if (type === "unknown") return "";
-  return type.toUpperCase();
+
+  return KEY_ALGORITHM_LABELS[oid] ?? "";
 };
 
 const readBags = (p12: forge.pkcs12.Pkcs12Pfx) => {
   const certBags = p12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag] ?? [];
   const shrouded =
-    p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[forge.pki.oids.pkcs8ShroudedKeyBag] ?? [];
+    p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[
+      forge.pki.oids.pkcs8ShroudedKeyBag
+    ] ?? [];
   const plain = p12.getBags({ bagType: forge.pki.oids.keyBag })[forge.pki.oids.keyBag] ?? [];
   const keyBags = [...shrouded, ...plain];
 
-  if (keyBags.length > MAX_KEY_BAGS) throw new Pkcs12ExtractionError(Pkcs12ErrorCode.TooManyBags, keyBags.length);
-  if (certBags.length > MAX_CERT_BAGS) throw new Pkcs12ExtractionError(Pkcs12ErrorCode.TooManyBags, certBags.length);
+  if (keyBags.length > MAX_KEY_BAGS)
+    throw new Pkcs12ExtractionError(Pkcs12ErrorCode.TooManyKeys, keyBags.length);
+  if (certBags.length > MAX_CERT_BAGS)
+    throw new Pkcs12ExtractionError(Pkcs12ErrorCode.TooManyCertificates, certBags.length);
 
   return { certBags, keyBags };
 };
 
-const parseCertBags = (certBags: forge.pkcs12.Bag[]) => {
+const parseCertBags = async (certBags: forge.pkcs12.Bag[]) => {
   const byFingerprint = new Map<string, TParsedCert>();
 
-  certBags.forEach((bag) => {
-    const pem = certBagToPem(bag);
-    if (!pem) return;
+  await Promise.all(
+    certBags.map(async (bag) => {
+      const der = certBagToDer(bag);
+      if (!der) return;
 
-    try {
-      const cert = new x509.X509Certificate(pem);
-      const fingerprint = sha256Fingerprint(Buffer.from(cert.rawData));
-      if (!byFingerprint.has(fingerprint)) {
-        byFingerprint.set(fingerprint, {
-          pem,
-          cert,
-          fingerprint,
-          localKeyId: bagAttribute(bag, "localKeyId"),
-          friendlyName: bagAttribute(bag, "friendlyName")
-        });
+      try {
+        // Parsed from DER rather than the PEM text, so the certificate never depends on how the
+        // PEM was formatted.
+        const cert = new x509.X509Certificate(derBytes(der));
+        const pem = toPem("CERTIFICATE", der);
+        const fingerprint = await sha256Fingerprint(cert.rawData);
+        if (!byFingerprint.has(fingerprint)) {
+          byFingerprint.set(fingerprint, {
+            pem,
+            cert,
+            fingerprint,
+            localKeyId: bagAttribute(bag, "localKeyId"),
+            friendlyName: bagAttribute(bag, "friendlyName")
+          });
+        }
+      } catch {
+        // A malformed entry must not fail the rest.
       }
-    } catch {
-      // A malformed entry must not fail the rest.
-    }
-  });
+    })
+  );
 
   return [...byFingerprint.values()];
 };
@@ -182,33 +222,43 @@ const parseKeyBags = (keyBags: forge.pkcs12.Bag[]) => {
   const keys: TParsedKey[] = [];
 
   keyBags.forEach((bag) => {
-    const pem = keyBagToPem(bag);
-    const friendlyName = bagAttribute(bag, "friendlyName");
+    const asn1 = keyBagAsn1(bag);
+    if (!asn1) return;
 
-    let spki: string | null = null;
-    let keyAlgorithm = "";
-    if (pem) {
-      try {
-        const keyObject = crypto.createPrivateKey(pem);
-        spki = crypto.createPublicKey(keyObject).export({ format: "der", type: "spki" }).toString("hex");
-        keyAlgorithm = describeKey(keyObject);
-      } catch {
-        spki = null;
-      }
-    }
-
-    if (pem && spki) {
-      keys.push({ pem, spki, keyAlgorithm, localKeyId: bagAttribute(bag, "localKeyId"), friendlyName });
-    }
+    keys.push({
+      pem: toPem("PRIVATE KEY", forge.asn1.toDer(asn1).getBytes()),
+      keyAlgorithm: describeKey(asn1),
+      localKeyId: bagAttribute(bag, "localKeyId"),
+      friendlyName: bagAttribute(bag, "friendlyName")
+    });
   });
 
   return keys;
 };
 
-const findLeafForKey = (key: TParsedKey, certs: TParsedCert[]) => {
-  const matches = certs.filter((c) => Buffer.from(c.cert.publicKey.rawData).toString("hex") === key.spki);
-  if (matches.length <= 1) return matches[0] ?? null;
-  return matches.find((c) => c.localKeyId && c.localKeyId === key.localKeyId) ?? matches[0];
+// A keystore links a key to its certificate with a shared localKeyId, which is what the format
+// provides for exactly this. Where a keystore omits it there is nothing to disambiguate, so a lone
+// key is paired with the lone leaf. importCert verifies the pairing again on the server, so a wrong
+// guess is rejected there rather than stored.
+const findLeafForKey = (
+  key: TParsedKey,
+  keys: TParsedKey[],
+  certs: TParsedCert[],
+  leaves: TParsedCert[]
+) => {
+  if (key.localKeyId) {
+    const tagged = certs.find((cert) => cert.localKeyId === key.localKeyId);
+    if (tagged) return tagged;
+  }
+
+  if (keys.length === 1 && leaves.length === 1) return leaves[0];
+
+  if (key.friendlyName) {
+    const named = certs.find((cert) => cert.friendlyName === key.friendlyName);
+    if (named) return named;
+  }
+
+  return null;
 };
 
 // Issuers are matched by signature, not by name: a keystore that has been through a CA renewal
@@ -305,7 +355,11 @@ const declaredKdfRounds = (node: forge.asn1.Asn1, depth = 0): number => {
   let total = 0;
 
   const [first, second, third] = children;
-  if (first?.type === forge.asn1.Type.OID && typeof first.value === "string" && Array.isArray(second?.value)) {
+  if (
+    first?.type === forge.asn1.Type.OID &&
+    typeof first.value === "string" &&
+    Array.isArray(second?.value)
+  ) {
     if (ITERATION_PARAM_OIDS.has(forge.asn1.derToOid(first.value))) {
       const count = second.value.find((param) => param.type === forge.asn1.Type.INTEGER);
       if (count) total += asn1Integer(count);
@@ -329,16 +383,24 @@ const declaredKdfRounds = (node: forge.asn1.Asn1, depth = 0): number => {
   return total;
 };
 
-export const extractPkcs12Entries = async ({
+const binaryString = (bytes: Uint8Array) => {
+  let out = "";
+  for (let i = 0; i < bytes.length; i += 8192) {
+    out += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  }
+  return out;
+};
+
+const extractPkcs12Entries = async ({
   pkcs12,
   password
 }: {
-  pkcs12: Buffer;
+  pkcs12: Uint8Array;
   password: string;
-}): Promise<TExtractPkcs12Result> => {
+}): Promise<{ entries: TPkcs12Entry[] }> => {
   let asn1;
   try {
-    asn1 = forge.asn1.fromDer(forge.util.createBuffer(pkcs12.toString("binary")));
+    asn1 = forge.asn1.fromDer(forge.util.createBuffer(binaryString(pkcs12)));
   } catch {
     throw new Pkcs12ExtractionError(Pkcs12ErrorCode.NotAKeystore);
   }
@@ -361,7 +423,7 @@ export const extractPkcs12Entries = async ({
   }
 
   const { certBags, keyBags } = readBags(p12);
-  const certs = parseCertBags(certBags);
+  const certs = await parseCertBags(certBags);
   const keys = parseKeyBags(keyBags);
 
   const entries: TPkcs12Entry[] = [];
@@ -384,16 +446,22 @@ export const extractPkcs12Entries = async ({
       entries: certs.map((cert) => ({
         ...describeCert(cert),
         alias: cert.friendlyName?.slice(0, MAX_ALIAS_LENGTH) ?? null,
-        keyAlgorithm: cert.cert.publicKey.algorithm.name,
         chainWarning: null
       }))
     };
   }
 
+  // A leaf is a certificate that signed nothing else in the file, which is what a keystore holding
+  // one key and its issuers leaves over.
+  const issuerSubjects = new Set(certs.map((cert) => cert.cert.issuer));
+  const leaves = certs.filter(
+    (cert) => !issuerSubjects.has(cert.cert.subject) || cert.cert.subject === cert.cert.issuer
+  );
+
   // eslint-disable-next-line no-restricted-syntax
   for (const key of keys) {
-    const leaf = findLeafForKey(key, certs);
-    const pairId = leaf ? `${leaf.fingerprint}:${key.spki}` : null;
+    const leaf = findLeafForKey(key, keys, certs, leaves);
+    const pairId = leaf ? `${leaf.fingerprint}:${key.pem}` : null;
 
     if (leaf && pairId && !seenPairs.has(pairId)) {
       seenPairs.add(pairId);
@@ -405,7 +473,9 @@ export const extractPkcs12Entries = async ({
       // expired or not yet valid would fail the whole chain. Send the entry on its own instead.
       const now = Date.now();
       const dateChecked = [leaf, ...chain.slice(0, -1)];
-      const anyOutOfDate = dateChecked.some((c) => c.cert.notAfter.getTime() < now || c.cert.notBefore.getTime() > now);
+      const anyOutOfDate = dateChecked.some(
+        (c) => c.cert.notAfter.getTime() < now || c.cert.notBefore.getTime() > now
+      );
       const keepChain = chain.length > 0 && !anyOutOfDate && !truncated;
 
       entries.push({
@@ -422,4 +492,41 @@ export const extractPkcs12Entries = async ({
   if (!entries.length) throw new Pkcs12ExtractionError(Pkcs12ErrorCode.NoPairs, keys.length);
 
   return { entries };
+};
+
+const pkcs12ErrorMessage = (code: TPkcs12ErrorCode, count?: number) => {
+  switch (code) {
+    case Pkcs12ErrorCode.NotAKeystore:
+      return "This file is not a valid PKCS#12 keystore. Upload a .p12 or .pfx file.";
+    case Pkcs12ErrorCode.UnsupportedEntries:
+      return "This keystore contains unsupported entry types, such as secret keys. Re-export it with only the certificate and its private key.";
+    case Pkcs12ErrorCode.TooManyKeys:
+      return `This keystore contains ${count ?? "too many"} private keys. Import at most ${MAX_KEY_BAGS} at a time, splitting the keystore if needed.`;
+    case Pkcs12ErrorCode.TooManyCertificates:
+      return `This keystore contains ${count ?? "too many"} certificates. Import at most ${MAX_CERT_BAGS} at a time, splitting the keystore if needed.`;
+    case Pkcs12ErrorCode.TooExpensive:
+      return `This keystore declares more than ${MAX_KDF_ROUNDS.toLocaleString()} key-derivation rounds, which is too expensive to open.`;
+    case Pkcs12ErrorCode.NoEntries:
+      return "This keystore contains no certificates or private keys.";
+    case Pkcs12ErrorCode.NoPairs:
+      return `This keystore contains ${count ?? "one or more"} private key${count === 1 ? "" : "s"} with no matching certificate. Re-export it with each certificate and its private key together.`;
+    case Pkcs12ErrorCode.BadPassword:
+    default:
+      return "Could not decrypt the keystore. Check the password and try again.";
+  }
+};
+
+// The dialog's single entry point. Errors come back as a message rather than a throw, so the modal
+// never needs to import this module eagerly just to name the error class.
+export const readKeystore = async (
+  file: ArrayBuffer,
+  password: string
+): Promise<{ entries: TPkcs12Entry[]; error?: never } | { entries?: never; error: string }> => {
+  try {
+    return await extractPkcs12Entries({ pkcs12: new Uint8Array(file), password });
+  } catch (err) {
+    if (err instanceof Pkcs12ExtractionError)
+      return { error: pkcs12ErrorMessage(err.code, err.count) };
+    return { error: "Could not read this keystore." };
+  }
 };

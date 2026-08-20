@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CircleCheck, CircleX, TriangleAlert } from "lucide-react";
@@ -41,13 +41,8 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  useExtractPkcs12,
-  useGetCert,
-  useImportCertificate,
-  useImportPkcs12Entries
-} from "@app/hooks/api";
-import { TPkcs12Entry } from "@app/hooks/api/certificates/types";
+import type { TPkcs12Entry } from "@app/helpers/pkcs12";
+import { useGetCert, useImportCertificate, useImportPkcs12Entries } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { CertificateContent } from "./CertificateContent";
@@ -83,16 +78,6 @@ type TImportOutcome = {
   error?: string;
 };
 
-// Spreading the whole buffer into String.fromCharCode overflows the stack near a megabyte.
-const toBase64 = (buffer: ArrayBuffer) => {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 8192) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
-  }
-  return btoa(binary);
-};
-
 const entryLabel = (entry: TPkcs12Entry) =>
   entry.altNames || entry.commonName || entry.alias || entry.subject;
 
@@ -103,7 +88,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
   );
 
   const { mutateAsync: importCertificate } = useImportCertificate();
-  const { mutateAsync: extractPkcs12, isPending: isExtracting } = useExtractPkcs12();
+  const [isExtracting, setIsExtracting] = useState(false);
   const { mutateAsync: importEntries, isPending: isImportingEntries } = useImportPkcs12Entries();
 
   const [keystoreFiles, setKeystoreFiles] = useState<File[]>([]);
@@ -169,26 +154,26 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
     setKeystoreError(null);
 
     if (file.size > MAX_KEYSTORE_BYTES) {
-      setKeystoreError(
-        "This file is larger than 1 MB, which is bigger than any keystore we expect."
-      );
+      setKeystoreError("This file is larger than 1 MB. Upload a keystore under 1 MB.");
       return;
     }
 
+    setIsExtracting(true);
     try {
-      const result = await extractPkcs12({
-        pkcs12: toBase64(await file.arrayBuffer()),
-        password: keystorePassword,
-        applicationId
-      });
+      // Loaded on demand so node-forge stays out of the main bundle.
+      const { readKeystore } = await import("@app/helpers/pkcs12");
+      const result = await readKeystore(await file.arrayBuffer(), keystorePassword);
 
-      setEntries(result.entries);
-      setSelected(new Set(result.entries.map((entry) => entry.fingerprintSha256)));
-    } catch (err) {
-      setKeystoreError(
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          "Could not read this keystore."
-      );
+      if (!result.entries) {
+        setKeystoreError(result.error);
+        return;
+      }
+
+      const found = result.entries;
+      setEntries(found);
+      setSelected(new Set(found.map((entry) => entry.fingerprintSha256)));
+    } finally {
+      setIsExtracting(false);
     }
   };
 
@@ -223,12 +208,10 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
   };
 
   const isOpen = Boolean(popUp?.certificateImport?.isOpen);
-  const wasOpen = useRef(isOpen);
   useEffect(() => {
     // Radix fires onOpenChange only for its own interactions, so our footer buttons never reach it.
-    if (isOpen && !wasOpen.current) resetAll();
-    wasOpen.current = isOpen;
-  });
+    if (isOpen) resetAll();
+  }, [isOpen]);
 
   const pemFieldsDisabled = Boolean(cert);
 
@@ -338,7 +321,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
             <TableCell className="max-w-0">
               <div className="truncate">{entryLabel(entry)}</div>
             </TableCell>
-            <TableCell>{(entry.privateKeyPem && entry.keyAlgorithm) || "—"}</TableCell>
+            <TableCell>{entry.keyAlgorithm || "—"}</TableCell>
             <TableCell>
               {entry.chainWarning ? (
                 <Tooltip>

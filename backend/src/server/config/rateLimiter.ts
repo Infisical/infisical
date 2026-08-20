@@ -99,14 +99,6 @@ export const invalidateCacheLimit: RateLimitOptions = {
   keyGenerator: (req) => req.realIp
 };
 
-// Opening a keystore is CPU work whose cost the uploaded file chooses
-export const pkcs12ExtractionLimit: RateLimitOptions = {
-  timeWindow: 60 * 1000,
-  hook: "preValidation",
-  max: 20,
-  keyGenerator: (req) => req.realIp
-};
-
 // Makes spamming "request access" harder, preventing email DDoS
 export const requestAccessLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,

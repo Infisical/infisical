@@ -54,7 +54,6 @@ import {
   revocationReasonToCrlCode,
   splitPemChain
 } from "./certificate-fns";
-import { runPkcs12Extraction } from "./certificate-pkcs12-runner";
 import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -66,7 +65,6 @@ import {
   TCertificateFingerprints,
   TCertificateSubject,
   TDeleteCertDTO,
-  TExtractPkcs12DTO,
   TGetCertBodyDTO,
   TGetCertBundleDTO,
   TGetCertDTO,
@@ -709,55 +707,6 @@ export const certificateServiceFactory = ({
     };
   };
 
-  const extractPkcs12 = async ({
-    projectId,
-    applicationId,
-    pkcs12,
-    password,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TExtractPkcs12DTO) => {
-    if (applicationId) {
-      const application = await pkiApplicationDAL.findById(applicationId);
-      if (!application || application.projectId !== projectId) {
-        throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
-      }
-
-      const { permission } = await permissionService.getResourcePermission({
-        actor,
-        actorId,
-        projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: applicationId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ResourcePermissionCertificateActions.Import,
-        ResourcePermissionSub.Certificates
-      );
-    } else {
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Import,
-        ProjectPermissionSub.Certificates
-      );
-    }
-
-    return runPkcs12Extraction({ pkcs12: Buffer.from(pkcs12, "base64"), password });
-  };
-
   /**
    * Import certificate
    */
@@ -1004,7 +953,7 @@ export const certificateServiceFactory = ({
         // @ts-expect-error We're expecting a database error
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         if (error?.error?.code === "23505") {
-          throw new BadRequestError({ message: "Certificate serial already exists in your project" });
+          throw new BadRequestError({ message: "A certificate with this serial number has already been imported" });
         }
         throw error;
       }
@@ -1293,7 +1242,6 @@ export const certificateServiceFactory = ({
     revokeCert,
     getCertBody,
     importCert,
-    extractPkcs12,
     getCertBundle,
     getCertPkcs12,
     assignCertificateToApplication

@@ -11,8 +11,6 @@ import {
   TCertificate,
   TDeleteCertDTO,
   TDownloadPkcs12DTO,
-  TExtractPkcs12DTO,
-  TExtractPkcs12Response,
   TImportCertificateDTO,
   TImportCertificateResponse,
   TImportPkcs12EntriesDTO,
@@ -112,18 +110,6 @@ export const useImportCertificate = () => {
     }
   });
 };
-
-export const useExtractPkcs12 = () =>
-  useMutation<TExtractPkcs12Response, object, TExtractPkcs12DTO>({
-    meta: { handledErrorCodes: ["BadRequest"] },
-    mutationFn: async (body) => {
-      const { data } = await apiRequest.post<TExtractPkcs12Response>(
-        "/api/v1/cert-manager/certificates/pkcs12/extract",
-        body
-      );
-      return data;
-    }
-  });
 
 // Failures are returned rather than thrown, so one bad entry neither aborts the rest nor raises a
 // toast from the global error handler.

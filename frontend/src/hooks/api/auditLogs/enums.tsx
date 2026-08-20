@@ -127,7 +127,6 @@ export enum EventType {
   GET_CERT_PRIVATE_KEY = "get-cert-private-key",
   GET_CERT_BUNDLE = "get-cert-bundle",
   EXPORT_CERT_PKCS12 = "export-cert-pkcs12",
-  EXTRACT_CERT_PKCS12 = "extract-cert-pkcs12",
   CREATE_PKI_ALERT = "create-pki-alert",
   GET_PKI_ALERT = "get-pki-alert",
   UPDATE_PKI_ALERT = "update-pki-alert",

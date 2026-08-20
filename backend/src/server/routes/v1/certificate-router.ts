@@ -5,11 +5,10 @@ import { z } from "zod";
 import { CertificatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
-import { getBase64SizeInBytes, isBase64 } from "@app/lib/base64";
 import { NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { isUuidV4 } from "@app/lib/validator";
-import { pkcs12ExtractionLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -121,21 +120,6 @@ const validateDateOrder = (data: {
   }
   return true;
 };
-
-const MAX_PKCS12_BYTES = 1024 * 1024;
-// A 1MB keystore is ~1.37MB base64, plus the JSON envelope.
-const MAX_PKCS12_BODY_LIMIT_BYTES = 2 * 1024 * 1024;
-
-const createBase64Schema = (field: string, maxBytes: number) =>
-  z.string().superRefine((val, ctx) => {
-    if (!isBase64(val)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${field} must be base64 encoded` });
-    }
-
-    if (getBase64SizeInBytes(val) > maxBytes) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${field} cannot exceed ${maxBytes} bytes` });
-    }
-  });
 
 export const registerCertificateRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -1588,77 +1572,6 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         serialNumber,
         privateKey
       };
-    }
-  });
-
-  // An action rather than a resource, so a deliberate REST deviation, as with /import-certificate.
-  server.route({
-    method: "POST",
-    bodyLimit: MAX_PKCS12_BODY_LIMIT_BYTES,
-    url: "/pkcs12/extract",
-    config: {
-      rateLimit: pkcs12ExtractionLimit
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    schema: {
-      hide: false,
-      operationId: "extractPkcs12",
-      tags: [ApiDocsTags.PkiCertificates],
-      description: "Read the certificates and private keys held in a PKCS#12 keystore",
-      body: z.object({
-        pkcs12: createBase64Schema("pkcs12", MAX_PKCS12_BYTES).describe(CERTIFICATES.EXTRACT_PKCS12.pkcs12),
-        password: z.string().max(1024).describe(CERTIFICATES.EXTRACT_PKCS12.password),
-        applicationId: z.string().trim().uuid().optional().describe(CERTIFICATES.EXTRACT_PKCS12.applicationId)
-      }),
-      response: {
-        200: z.object({
-          entries: z
-            .array(
-              z.object({
-                alias: z.string().max(1024).nullable().describe(CERTIFICATES.EXTRACT_PKCS12.alias),
-                subject: z.string().max(2048).describe(CERTIFICATES.EXTRACT_PKCS12.subject),
-                commonName: z.string().max(1024).nullable().describe(CERTIFICATES.EXTRACT_PKCS12.commonName),
-                altNames: z.string().max(2048).nullable().describe(CERTIFICATES.EXTRACT_PKCS12.altNames),
-                keyAlgorithm: z.string().max(64).describe(CERTIFICATES.EXTRACT_PKCS12.keyAlgorithm),
-                notAfter: z.string().describe(CERTIFICATES.EXTRACT_PKCS12.notAfter),
-                fingerprintSha256: z.string().max(256).describe(CERTIFICATES.EXTRACT_PKCS12.fingerprintSha256),
-                chainWarning: z.string().max(512).nullable().describe(CERTIFICATES.EXTRACT_PKCS12.chainWarning),
-                certificatePem: z.string().describe(CERTIFICATES.EXTRACT_PKCS12.entryCertificatePem),
-                chainPem: z.string().optional().describe(CERTIFICATES.EXTRACT_PKCS12.entryChainPem),
-                privateKeyPem: z.string().optional().describe(CERTIFICATES.EXTRACT_PKCS12.entryPrivateKeyPem)
-              })
-            )
-            .describe(CERTIFICATES.EXTRACT_PKCS12.entries)
-        })
-      }
-    },
-    handler: async (req, reply) => {
-      const { entries } = await server.services.certificate.extractPkcs12({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.internalCertManagerProjectId,
-        ...req.body
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: req.internalCertManagerProjectId,
-        event: {
-          type: EventType.EXTRACT_CERT_PKCS12,
-          metadata: {
-            entryCount: entries.length,
-            subjects: entries.slice(0, 25).map((entry) => entry.subject.slice(0, 256)),
-            applicationId: req.body.applicationId
-          }
-        }
-      });
-
-      // The response carries private keys.
-      addNoCacheHeaders(reply);
-
-      return { entries };
     }
   });
 

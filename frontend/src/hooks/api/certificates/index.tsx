@@ -5,7 +5,6 @@ export {
   useCancelCertificateRequest,
   useDeleteCert,
   useDownloadCertPkcs12,
-  useExtractPkcs12,
   useImportCertificate,
   useImportPkcs12Entries,
   useRenewCertificate,
