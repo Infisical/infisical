@@ -20,6 +20,7 @@ import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege-dal";
@@ -36,6 +37,7 @@ type TProjectAdditionalPrivilegesScopeFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export const newProjectAdditionalPrivilegesFactory = ({
@@ -43,7 +45,8 @@ export const newProjectAdditionalPrivilegesFactory = ({
   additionalPrivilegeDAL,
   orgDAL,
   membershipDAL,
-  userDAL
+  userDAL,
+  projectDAL
 }: TProjectAdditionalPrivilegesScopeFactoryDep): TAdditionalPrivilegesScopeFactory => {
   const $getPermission = (permission: OrgServiceActor, projectId: string) => {
     return permissionService.getProjectPermission({
@@ -414,6 +417,18 @@ export const newProjectAdditionalPrivilegesFactory = ({
           ? ([ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member] as const)
           : ([ProjectPermissionIdentityActions.Edit, ProjectPermissionSub.Identity] as const);
       ForbiddenError.from(permission).throwUnlessCan(...permissionSet);
+
+      const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
+        projectDAL.findById(scope.value)
+      );
+      if (!project) {
+        throw new NotFoundError({ message: `Project with ID '${scope.value}' not found` });
+      }
+      if (!project.isLegacyAdditionalPrivilegesEnabled) {
+        throw new BadRequestError({
+          message: `Additional privileges are not available for project '${project.name}'. Use project roles or folder access controls instead.`
+        });
+      }
 
       const { shouldUseNewPrivilegeSystem } = await requestMemoize(
         requestMemoKeys.orgFindById(dto.permission.orgId),

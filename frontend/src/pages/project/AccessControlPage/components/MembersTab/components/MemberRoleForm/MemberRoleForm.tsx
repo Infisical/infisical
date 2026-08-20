@@ -17,25 +17,27 @@ export const MemberRoleForm = ({ projectMember, onOpenUpgradeModal }: Props) => 
   return (
     <div>
       <MemberRbacSection projectMember={projectMember} onOpenUpgradeModal={onOpenUpgradeModal} />
-      <Alert
-        title="Additional privileges have been moved and now offer full permission customization."
-        className="mt-4 border-primary/50 bg-primary/10"
-      >
-        <AlertDescription>
-          <Link
-            to={`${getProjectBaseURL(currentProject.type)}/members/$membershipId` as const}
-            params={{
-              orgId: currentOrg.id,
-              projectId: currentProject.id,
-              membershipId: projectMember.id
-            }}
-          >
-            <span className="cursor-pointer text-primary underline underline-offset-2">
-              Click here to access them now
-            </span>
-          </Link>
-        </AlertDescription>
-      </Alert>
+      {currentProject.isLegacyAdditionalPrivilegesEnabled && (
+        <Alert
+          title="Additional privileges have been moved and now offer full permission customization."
+          className="mt-4 border-primary/50 bg-primary/10"
+        >
+          <AlertDescription>
+            <Link
+              to={`${getProjectBaseURL(currentProject.type)}/members/$membershipId` as const}
+              params={{
+                orgId: currentOrg.id,
+                projectId: currentProject.id,
+                membershipId: projectMember.id
+              }}
+            >
+              <span className="cursor-pointer text-primary underline underline-offset-2">
+                Click here to access them now
+              </span>
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
     </div>
   );
 };

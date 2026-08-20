@@ -929,7 +929,8 @@ export const registerRoutes = async (
     membershipDAL,
     orgDAL,
     permissionService,
-    userDAL
+    userDAL,
+    projectDAL
   });
 
   const folderPermissionService = folderPermissionServiceFactory({

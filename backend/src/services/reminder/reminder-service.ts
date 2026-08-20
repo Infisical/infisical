@@ -1,12 +1,13 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
+import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -75,6 +76,30 @@ export const reminderServiceFactory = ({
         }))
       );
     }
+  };
+
+  const $getSecretForPermissionCheck = async (secretId: string) => {
+    const secret = await secretV2BridgeDAL.findOneWithTags({ [`${TableName.SecretV2}.id` as "id"]: secretId });
+    if (!secret) {
+      throw new BadRequestError({ message: `Secret ${secretId} not found` });
+    }
+
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(secret.projectId, [secret.folderId]);
+    if (!folderWithPath) {
+      throw new NotFoundError({
+        message: `Folder with id '${secret.folderId}' not found`
+      });
+    }
+
+    return {
+      secret,
+      subjectFields: {
+        environment: folderWithPath.environmentSlug,
+        secretPath: folderWithPath.path,
+        secretName: secret.key,
+        secretTags: secret.tags.map((tag) => tag.slug)
+      }
+    };
   };
 
   const createReminderInternal: TReminderServiceFactory["createReminderInternal"] = async ({
@@ -153,10 +178,7 @@ export const reminderServiceFactory = ({
     actorAuthMethod,
     reminder
   }: TCreateReminderDTO) => {
-    const secret = await secretV2BridgeDAL.findOneWithTags({ [`${TableName.SecretV2}.id` as "id"]: reminder.secretId });
-    if (!secret) {
-      throw new BadRequestError({ message: `Secret ${reminder.secretId} not found` });
-    }
+    const { secret, subjectFields } = await $getSecretForPermissionCheck(reminder.secretId);
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -165,7 +187,10 @@ export const reminderServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Edit, ProjectPermissionSub.Secrets);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretActions.Edit,
+      subject(ProjectPermissionSub.Secrets, subjectFields)
+    );
 
     const response = await createReminderInternal({
       ...reminder,
@@ -187,10 +212,7 @@ export const reminderServiceFactory = ({
     actorOrgId: string;
     actorAuthMethod: ActorAuthMethod;
   }) => {
-    const secret = await secretV2BridgeDAL.findOneWithTags({ [`${TableName.SecretV2}.id` as "id"]: secretId });
-    if (!secret) {
-      throw new BadRequestError({ message: `Secret ${secretId} not found` });
-    }
+    const { secret, subjectFields } = await $getSecretForPermissionCheck(secretId);
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -199,9 +221,10 @@ export const reminderServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
+    throwIfMissingSecretReadValueOrDescribePermission(
+      permission,
       ProjectPermissionSecretActions.DescribeSecret,
-      ProjectPermissionSub.Secrets
+      subjectFields
     );
     const reminder = await reminderDAL.findSecretReminder(secretId);
     return reminder;
@@ -300,10 +323,7 @@ export const reminderServiceFactory = ({
     actorAuthMethod: ActorAuthMethod;
     secretId: string;
   }) => {
-    const secret = await secretV2BridgeDAL.findOneWithTags({ [`${TableName.SecretV2}.id` as "id"]: secretId });
-    if (!secret) {
-      throw new BadRequestError({ message: `Secret ${secretId} not found` });
-    }
+    const { secret, subjectFields } = await $getSecretForPermissionCheck(secretId);
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -313,7 +333,10 @@ export const reminderServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Edit, ProjectPermissionSub.Secrets);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretActions.Edit,
+      subject(ProjectPermissionSub.Secrets, subjectFields)
+    );
     await reminderDAL.delete({ secretId });
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(secret.projectId);
   };
