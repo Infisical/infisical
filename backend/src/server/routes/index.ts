@@ -1844,6 +1844,7 @@ export const registerRoutes = async (
     gatewayPoolDAL,
     gatewayPoolMembershipDAL,
     gatewayV2DAL,
+    gatewayV2Service,
     permissionService,
     licenseService,
     identityKubernetesAuthDAL,

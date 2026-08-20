@@ -36,6 +36,12 @@ export type TRemoveGatewayFromPoolDTO = {
 
 export type TGatewayPoolMemberFilter = (gateway: TGatewaysV2) => boolean;
 
+export type TGetPlatformConnectionDetailsByPoolIdDTO = {
+  poolId: string;
+  targetHost: string;
+  targetPort: number;
+};
+
 export type TSelectGatewayFromPoolDTO = {
   poolId: string;
   exclude?: Set<string>;

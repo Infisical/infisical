@@ -13,6 +13,8 @@ import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubern
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
+import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { TGatewayV2ConnectionDetails } from "../gateway-v2/gateway-v2-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionGatewayPoolActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -26,6 +28,7 @@ import {
   TCreateGatewayPoolDTO,
   TDeleteGatewayPoolDTO,
   TGetGatewayPoolByIdDTO,
+  TGetPlatformConnectionDetailsByPoolIdDTO,
   TListGatewayPoolsDTO,
   TRemoveGatewayFromPoolDTO,
   TRunWithPoolFailoverDTO,
@@ -37,6 +40,7 @@ type TGatewayPoolServiceFactoryDep = {
   gatewayPoolDAL: TGatewayPoolDALFactory;
   gatewayPoolMembershipDAL: TGatewayPoolMembershipDALFactory;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
@@ -51,6 +55,7 @@ export const gatewayPoolServiceFactory = ({
   gatewayPoolDAL,
   gatewayPoolMembershipDAL,
   gatewayV2DAL,
+  gatewayV2Service,
   permissionService,
   licenseService,
   identityKubernetesAuthDAL,
@@ -406,6 +411,20 @@ export const gatewayPoolServiceFactory = ({
       : new BadRequestError({ message: "Failed to reach any gateway in the pool." });
   };
 
+  const getPlatformConnectionDetailsByPoolId = async ({
+    poolId,
+    targetHost,
+    targetPort
+  }: TGetPlatformConnectionDetailsByPoolIdDTO): Promise<TGatewayV2ConnectionDetails | undefined> => {
+    const selectedGateway = await selectGatewayFromPool({ poolId });
+
+    return gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId: selectedGateway.id,
+      targetHost,
+      targetPort
+    });
+  };
+
   const listHealthyGateways = async (poolId: string) => {
     return gatewayPoolMembershipDAL.findHealthyGatewaysByPoolId(poolId);
   };
@@ -505,6 +524,7 @@ export const gatewayPoolServiceFactory = ({
     selectGatewayFromPool,
     runWithPoolFailover,
     listHealthyGateways,
+    getPlatformConnectionDetailsByPoolId,
 
     getConnectedResources,
     getConnectedResourcesCount,
