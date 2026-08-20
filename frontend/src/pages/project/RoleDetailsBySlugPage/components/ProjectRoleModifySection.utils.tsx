@@ -36,6 +36,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSecretScanningDataSourceActions,
@@ -275,6 +276,10 @@ const ProjectFolderGrantPolicyActionSchema = z.object({
   [ProjectPermissionProjectFolderGrantActions.ReadGrant]: z.boolean().optional(),
   [ProjectPermissionProjectFolderGrantActions.CreateGrant]: z.boolean().optional(),
   [ProjectPermissionProjectFolderGrantActions.RevokeGrant]: z.boolean().optional()
+});
+
+const SecretFolderPolicyActionSchema = GeneralPolicyActionSchema.extend({
+  [ProjectPermissionSecretFolderActions.ManageAccess]: z.boolean().optional()
 });
 
 const SecretApprovalRequestPolicyActionSchema = z.object({
@@ -630,7 +635,7 @@ export const projectRoleFormSchema = z.object({
   permissions: z
     .object({
       [ProjectPermissionSub.Secrets]: SecretPolicyActionWithConditionsSchema.array().default([]),
-      [ProjectPermissionSub.SecretFolders]: GeneralPolicyActionSchema.extend({
+      [ProjectPermissionSub.SecretFolders]: SecretFolderPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
       })
@@ -1413,23 +1418,44 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           return;
         }
 
+        if (subject === ProjectPermissionSub.SecretFolders) {
+          const canManageAccess = action.includes(
+            ProjectPermissionSecretFolderActions.ManageAccess
+          );
+          const canReadFolder = action.includes(ProjectPermissionActions.Read);
+          const canEditFolder = action.includes(ProjectPermissionActions.Edit);
+          const canDeleteFolder = action.includes(ProjectPermissionActions.Delete);
+          const canCreateFolder = action.includes(ProjectPermissionActions.Create);
+
+          // remove this condition later
+          // keeping when old routes create permission with folder read
+          if (
+            canReadFolder &&
+            !canEditFolder &&
+            !canDeleteFolder &&
+            !canCreateFolder &&
+            !canManageAccess
+          ) {
+            return;
+          }
+
+          formVal[subject]!.push({
+            read: canReadFolder,
+            create: canCreateFolder,
+            edit: canEditFolder,
+            delete: canDeleteFolder,
+            [ProjectPermissionSecretFolderActions.ManageAccess]: canManageAccess,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+          return;
+        }
+
         // for other subjects
         const canRead = action.includes(ProjectPermissionActions.Read);
         const canEdit = action.includes(ProjectPermissionActions.Edit);
         const canDelete = action.includes(ProjectPermissionActions.Delete);
         const canCreate = action.includes(ProjectPermissionActions.Create);
-
-        // remove this condition later
-        // keeping when old routes create permission with folder read
-        if (
-          subject === ProjectPermissionSub.SecretFolders &&
-          canRead &&
-          !canEdit &&
-          !canDelete &&
-          !canCreate
-        ) {
-          return;
-        }
 
         formVal[subject]!.push({
           read: canRead,
@@ -2013,7 +2039,12 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     actions: [
       { label: "Create", value: "create", description: "Create new folders to organize secrets" },
       { label: "Modify", value: "edit", description: "Rename or modify folder properties" },
-      { label: "Remove", value: "delete", description: "Delete folders and their contents" }
+      { label: "Remove", value: "delete", description: "Delete folders and their contents" },
+      {
+        label: "Manage Access",
+        value: ProjectPermissionSecretFolderActions.ManageAccess,
+        description: "Grant and revoke folder-level access for users and machine identities"
+      }
     ]
   },
   [ProjectPermissionSub.SecretImports]: {

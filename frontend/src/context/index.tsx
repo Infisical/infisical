@@ -35,6 +35,7 @@ export {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSub,
   useProjectPermission
 } from "./ProjectPermissionContext";
