@@ -6,6 +6,7 @@ import { GeneralName, GeneralSubtree, NameConstraints } from "pkijs";
 import { beforeAll, describe, expect, test, vi } from "vitest";
 
 import {
+  findNameConstraintsProblem,
   isSubjectAltNameAllowed,
   isValidAllowedSubjectAltNameEntry,
   normalizeAllowedSubjectAltName,
@@ -372,6 +373,33 @@ const schemaMismatchedNameConstraint = () =>
 
 const undecodableNameConstraint = () => new x509.Extension("2.5.29.30", true, new Uint8Array([0x99, 0x99, 0x99]));
 
+// eslint-disable-next-line no-bitwise
+const NON_SIGNING_KEY_USAGE = x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.cRLSign;
+
+const uriConstraint = (subtrees: { permitted?: string[]; excluded?: string[] }) =>
+  new x509.Extension(
+    "2.5.29.30",
+    true,
+    new NameConstraints({
+      ...(subtrees.permitted
+        ? {
+            permittedSubtrees: subtrees.permitted.map(
+              (uri) => new GeneralSubtree({ base: new GeneralName({ type: 6, value: uri }) })
+            )
+          }
+        : {}),
+      ...(subtrees.excluded
+        ? {
+            excludedSubtrees: subtrees.excluded.map(
+              (uri) => new GeneralSubtree({ base: new GeneralName({ type: 6, value: uri }) })
+            )
+          }
+        : {})
+    })
+      .toSchema()
+      .toBER(false)
+  );
+
 describe("verifyDirectlyIssuedClientCertificate", () => {
   const alg: RsaHashedKeyGenParams = {
     name: "RSASSA-PKCS1-v1_5",
@@ -431,6 +459,25 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
     return { cert, keys };
   };
 
+  const makeLeafWithUriSan = async (issuer: { cert: x509.X509Certificate; keys: CryptoKeyPair }, uri: string) => {
+    const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const cert = await x509.X509CertificateGenerator.create({
+      serialNumber: "02",
+      subject: "CN=workload",
+      issuer: issuer.cert.subject,
+      notBefore: NOT_BEFORE,
+      notAfter: FAR_FUTURE,
+      signingKey: issuer.keys.privateKey,
+      publicKey: keys.publicKey,
+      signingAlgorithm: alg,
+      extensions: [
+        new x509.BasicConstraintsExtension(false),
+        new x509.SubjectAlternativeNameExtension([{ type: "url", value: uri }])
+      ]
+    });
+    return { cert, keys };
+  };
+
   const permittedDnsConstraint = (permitted: string[]) =>
     new x509.Extension(
       "2.5.29.30",
@@ -469,7 +516,7 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
 
     expect(
       await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
-    ).toEqual({ ok: false, reasonCode: "certificate_expired" });
+    ).toEqual({ ok: false, reasonCode: "issuer_certificate_expired" });
   });
 
   test("rejects when the configured CA's extended key usage excludes client authentication", async () => {
@@ -499,6 +546,19 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
     expect(
       await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
     ).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+  });
+
+  test("rejects a leaf that is not yet valid", async () => {
+    const ca = await makeCa("Root CA");
+    const leaf = await makeLeaf(ca, "workload.example.com");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({
+        leaf: toNative(leaf.cert),
+        ca: toNative(ca.cert),
+        now: new Date("2026-05-01T00:00:00Z")
+      })
+    ).toEqual({ ok: false, reasonCode: "certificate_not_yet_valid" });
   });
 
   // Single-hop has always accepted a configured CA that omits basic constraints, unlike the path
@@ -541,6 +601,226 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
       await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
     ).toEqual({ ok: true });
   });
+
+  // The rule above holds whether or not the CA also asserts name constraints. Evaluating those
+  // constraints must not quietly import a CA:TRUE requirement the mode does not have.
+  test("accepts a name-constrained configured CA that omits basic constraints", async () => {
+    const ca = await makeCa("Constraint-less Constrained CA", {
+      omitBasicConstraints: true,
+      extensions: [permittedDnsConstraint(["example.com"])]
+    });
+    const leaf = await makeLeaf(ca, "workload.example.com");
+
+    expect(toNative(ca.cert).ca).toBe(false);
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: true });
+  });
+
+  test("still enforces the constraints of a configured CA that omits basic constraints", async () => {
+    const ca = await makeCa("Constraint-less Constrained CA", {
+      omitBasicConstraints: true,
+      extensions: [permittedDnsConstraint(["allowed.example.com"])]
+    });
+    const leaf = await makeLeaf(ca, "workload.elsewhere.com");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+  });
+
+  // OpenSSL reports `ca === false` for a key usage without keyCertSign, so the path builder rejects
+  // such an issuer and always has. Single-hop does not consult that flag on the configured CA, so
+  // asserting name constraints alongside it must not become grounds for rejection either.
+  test("accepts a name-constrained CA whose key usage omits keyCertSign", async () => {
+    const ca = await makeCa("No KeyCertSign CA", {
+      extensions: [new x509.KeyUsagesExtension(NON_SIGNING_KEY_USAGE, true), permittedDnsConstraint(["example.com"])]
+    });
+    const leaf = await makeLeaf(ca, "workload.example.com");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: true });
+  });
+
+  test("still enforces the constraints of a CA whose key usage omits keyCertSign", async () => {
+    const ca = await makeCa("No KeyCertSign CA", {
+      extensions: [
+        new x509.KeyUsagesExtension(NON_SIGNING_KEY_USAGE, true),
+        permittedDnsConstraint(["allowed.example.com"])
+      ]
+    });
+    const leaf = await makeLeaf(ca, "workload.elsewhere.com");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+  });
+
+  test("accepts a leaf permitted by a URI name constraint written as a domain", async () => {
+    const ca = await makeCa("URI Constrained CA", { extensions: [uriConstraint({ permitted: ["example.org"] })] });
+    const leaf = await makeLeafWithUriSan(ca, "spiffe://example.org/ns/default/sa/svc");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: true });
+  });
+
+  // The constraint has to be a hostname, so this one matches nothing and no reissued certificate
+  // could satisfy it. Reporting a name violation would send the operator after the client's SAN
+  // instead of the CA that has to be fixed.
+  test("rejects a scheme-qualified URI name constraint rather than blaming the client's name", async () => {
+    const ca = await makeCa("Scheme URI CA", {
+      extensions: [uriConstraint({ permitted: ["spiffe://example.org"] })]
+    });
+    const leaf = await makeLeafWithUriSan(ca, "spiffe://example.org/ns/default/sa/svc");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: false, reasonCode: "unsupported_name_constraint" });
+  });
+
+  test("rejects a URI name constraint carrying a path instead of widening it to the host", async () => {
+    const ca = await makeCa("Path URI CA", {
+      extensions: [uriConstraint({ permitted: ["spiffe://example.org/team-a"] })]
+    });
+    const leaf = await makeLeafWithUriSan(ca, "spiffe://example.org/team-a/svc");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: false, reasonCode: "unsupported_name_constraint" });
+  });
+
+  // An exclusion that matches nothing excludes nothing, so it has to fail closed rather than let
+  // through the namespace the CA meant to fence off.
+  test("rejects a scheme-qualified URI exclusion", async () => {
+    const ca = await makeCa("Excluding CA", { extensions: [uriConstraint({ excluded: ["spiffe://evil.org"] })] });
+    const leaf = await makeLeafWithUriSan(ca, "spiffe://example.org/ns/default/sa/svc");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: false, reasonCode: "unsupported_name_constraint" });
+  });
+});
+
+// The engine no longer re-verifies signatures, which is what used to need an Ed25519 shim: pkijs's
+// own algorithm table covers only RSA and ECDSA, so an Ed25519 chain came back unbuildable rather
+// than as a constraint decision.
+describe("name constraints on an Ed25519 chain", () => {
+  const alg = { name: "Ed25519" };
+
+  const toNative = (cert: x509.X509Certificate) => new crypto.X509Certificate(Buffer.from(cert.rawData));
+
+  const NOW = new Date("2026-06-24T12:00:00Z");
+  const NOT_BEFORE = new Date("2026-06-01T00:00:00Z");
+  const FAR_FUTURE = new Date("2030-01-01T00:00:00Z");
+
+  const generateKeys = () =>
+    crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]) as Promise<CryptoKeyPair>;
+
+  const build = async (permitted: string[], dnsName: string) => {
+    const caKeys = await generateKeys();
+    const ca = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "01",
+      name: "CN=Ed25519 Root CA",
+      notBefore: NOT_BEFORE,
+      notAfter: FAR_FUTURE,
+      keys: caKeys,
+      signingAlgorithm: alg,
+      extensions: [
+        new x509.BasicConstraintsExtension(true, undefined, true),
+        new x509.Extension(
+          "2.5.29.30",
+          true,
+          new NameConstraints({
+            permittedSubtrees: permitted.map(
+              (dns) => new GeneralSubtree({ base: new GeneralName({ type: 2, value: dns }) })
+            )
+          })
+            .toSchema()
+            .toBER(false)
+        )
+      ]
+    });
+
+    const leafKeys = await generateKeys();
+    const leaf = await x509.X509CertificateGenerator.create({
+      serialNumber: "02",
+      subject: "CN=workload",
+      issuer: ca.subject,
+      notBefore: NOT_BEFORE,
+      notAfter: FAR_FUTURE,
+      signingKey: caKeys.privateKey,
+      publicKey: leafKeys.publicKey,
+      signingAlgorithm: alg,
+      extensions: [
+        new x509.BasicConstraintsExtension(false),
+        new x509.SubjectAlternativeNameExtension([{ type: "dns", value: dnsName }])
+      ]
+    });
+
+    return { ca: toNative(ca), leaf: toNative(leaf) };
+  };
+
+  test("accepts a leaf inside the permitted namespace", async () => {
+    const { ca, leaf } = await build(["example.com"], "workload.example.com");
+
+    expect(await verifyDirectlyIssuedClientCertificate({ leaf, ca, now: NOW })).toEqual({ ok: true });
+  });
+
+  test("rejects a leaf outside the permitted namespace", async () => {
+    const { ca, leaf } = await build(["allowed.example.com"], "workload.elsewhere.com");
+
+    expect(await verifyDirectlyIssuedClientCertificate({ leaf, ca, now: NOW })).toEqual({
+      ok: false,
+      reasonCode: "name_constraint_violation"
+    });
+  });
+});
+
+describe("findNameConstraintsProblem", () => {
+  const alg: RsaHashedKeyGenParams = {
+    name: "RSASSA-PKCS1-v1_5",
+    hash: "SHA-256",
+    publicExponent: new Uint8Array([1, 0, 1]),
+    modulusLength: 2048
+  };
+
+  const toNative = (cert: x509.X509Certificate) => new crypto.X509Certificate(Buffer.from(cert.rawData));
+
+  const makeCa = async (name: string, extensions: x509.Extension[]) => {
+    const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    return x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "01",
+      name: `CN=${name}`,
+      notBefore: new Date("2026-06-01T00:00:00Z"),
+      notAfter: new Date("2030-01-01T00:00:00Z"),
+      keys,
+      extensions: [new x509.BasicConstraintsExtension(true, undefined, true), ...extensions]
+    });
+  };
+
+  test("reports nothing for a CA that asserts no name constraints", async () => {
+    expect(findNameConstraintsProblem(toNative(await makeCa("Plain CA", [])))).toBeNull();
+  });
+
+  test("reports nothing for a URI constraint written as a domain", async () => {
+    const ca = await makeCa("Domain URI CA", [uriConstraint({ permitted: ["example.org"] })]);
+    expect(findNameConstraintsProblem(toNative(ca))).toBeNull();
+  });
+
+  test("reports the offending constraint for a scheme-qualified URI subtree", async () => {
+    const ca = await makeCa("Scheme URI CA", [uriConstraint({ permitted: ["spiffe://example.org"] })]);
+    expect(findNameConstraintsProblem(toNative(ca))).toEqual({
+      kind: "unsupported_uri_subtree",
+      constraint: "spiffe://example.org"
+    });
+  });
+
+  test("reports a malformed name constraints extension", async () => {
+    const ca = await makeCa("Malformed NC CA", [schemaMismatchedNameConstraint()]);
+    expect(findNameConstraintsProblem(toNative(ca))).toEqual({ kind: "unreadable_extension" });
+  });
 });
 
 describe("verifyClientCertificateChain", () => {
@@ -577,14 +857,20 @@ describe("verifyClientCertificateChain", () => {
   const makeIntermediate = async (
     name: string,
     issuer: TIssued,
-    opts?: { notAfter?: Date; serialNumber?: string; pathLength?: number; extraExtensions?: x509.Extension[] }
+    opts?: {
+      notBefore?: Date;
+      notAfter?: Date;
+      serialNumber?: string;
+      pathLength?: number;
+      extraExtensions?: x509.Extension[];
+    }
   ): Promise<TIssued> => {
     const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const cert = await x509.X509CertificateGenerator.create({
       serialNumber: opts?.serialNumber ?? "02",
       subject: `CN=${name}`,
       issuer: issuer.cert.subject,
-      notBefore: NOT_BEFORE,
+      notBefore: opts?.notBefore ?? NOT_BEFORE,
       notAfter: opts?.notAfter ?? FAR_FUTURE,
       signingKey: issuer.keys.privateKey,
       publicKey: keys.publicKey,
@@ -1175,7 +1461,21 @@ describe("verifyClientCertificateChain", () => {
       trustAnchor: toNative(root.cert),
       now: NOW
     });
-    expect(result).toEqual({ ok: false, reasonCode: "certificate_expired" });
+    expect(result).toEqual({ ok: false, reasonCode: "issuer_certificate_expired" });
+  });
+
+  test("rejects when the intermediate is not yet valid", async () => {
+    const futureIntermediate = await makeIntermediate("Future Intermediate", root, {
+      notBefore: new Date("2026-07-01T00:00:00Z")
+    });
+    const leaf = await makeLeaf("workload", futureIntermediate);
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [toNative(futureIntermediate.cert)],
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: false, reasonCode: "issuer_certificate_not_yet_valid" });
   });
 
   describe("Ed25519", () => {

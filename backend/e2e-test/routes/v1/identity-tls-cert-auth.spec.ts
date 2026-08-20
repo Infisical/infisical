@@ -38,6 +38,17 @@ const permittedDnsConstraint = (permitted: string[]) =>
       .toBER(false)
   );
 
+const permittedUriConstraint = (permitted: string[]) =>
+  new x509.Extension(
+    "2.5.29.30",
+    true,
+    new NameConstraints({
+      permittedSubtrees: permitted.map((uri) => new GeneralSubtree({ base: new GeneralName({ type: 6, value: uri }) }))
+    })
+      .toSchema()
+      .toBER(false)
+  );
+
 const makeRoot = async (name: string, extraExtensions: x509.Extension[] = []): Promise<TIssued> => {
   const keys = await generateKeys();
   const cert = await x509.X509CertificateGenerator.createSelfSigned({
@@ -75,7 +86,7 @@ const makeIntermediate = async (
 const makeLeaf = async (
   name: string,
   issuer: TIssued,
-  opts?: { usages?: string[]; dnsName?: string }
+  opts?: { usages?: string[]; dnsName?: string; uri?: string }
 ): Promise<TIssued> => {
   const keys = await generateKeys();
   const cert = await x509.X509CertificateGenerator.create({
@@ -90,7 +101,8 @@ const makeLeaf = async (
     extensions: [
       new x509.BasicConstraintsExtension(false),
       ...(opts?.usages ? [ekuExtension(opts.usages)] : []),
-      ...(opts?.dnsName ? [new x509.SubjectAlternativeNameExtension([{ type: "dns", value: opts.dnsName }])] : [])
+      ...(opts?.dnsName ? [new x509.SubjectAlternativeNameExtension([{ type: "dns", value: opts.dnsName }])] : []),
+      ...(opts?.uri ? [new x509.SubjectAlternativeNameExtension([{ type: "url", value: opts.uri }])] : [])
     ]
   });
   return { cert, keys };
@@ -191,6 +203,34 @@ describe("Identity TLS certificate auth v1", async () => {
         await deleteIdentity(identity.id);
       }
     });
+
+    // A URI name constraint restricts the host, so one written the way a SPIFFE ID looks matches
+    // nothing and would deny every login. Refusing it at attach names the CA as the problem.
+    test("refuses to attach a CA whose URI name constraint is not a domain", async () => {
+      const ca = await makeRoot("Scheme URI CA", [permittedUriConstraint(["spiffe://example.org"])]);
+      const identity = await createIdentity(`tls-cert-auth-${nextSerial()}`);
+
+      try {
+        const res = await attachTlsCertAuth(identity.id, toPem(ca.cert), false);
+        expect(res.statusCode).toBe(400);
+        expect(res.json().message).toContain("is not a fully qualified domain name");
+      } finally {
+        await deleteIdentity(identity.id);
+      }
+    });
+
+    test("attaches a CA whose URI name constraint is a domain", async () => {
+      const ca = await makeRoot("Domain URI CA", [permittedUriConstraint(["example.org"])]);
+      const leaf = await makeLeaf("workload", ca, {
+        usages: [CLIENT_AUTH_EKU],
+        uri: "spiffe://example.org/ns/default/sa/svc"
+      });
+
+      await withIdentity({ caCertificate: ca.cert, verifyChain: false }, async (identityId) => {
+        const res = await login(identityId, [leaf.cert]);
+        expect(res.statusCode).toBe(200);
+      });
+    });
   });
 
   describe("trust anchor mode", async () => {
@@ -234,6 +274,25 @@ describe("Identity TLS certificate auth v1", async () => {
         const res = await login(identityId, [leaf.cert, constrained.cert]);
         expect(res.statusCode).toBe(401);
         expect(res.json().message).toContain("outside the namespace its issuing CA is permitted to certify");
+      });
+    });
+
+    // The anchor is screened when it is configured, but a presented intermediate is not, so the
+    // login has to report the CA rather than the client's name.
+    test("denies a chain through an intermediate whose URI name constraint is not a domain", async () => {
+      const root = await makeRoot("Stable Root CA");
+      const constrained = await makeIntermediate("Scheme URI Intermediate CA", root, {
+        extraExtensions: [permittedUriConstraint(["spiffe://example.org"])]
+      });
+      const leaf = await makeLeaf("workload", constrained, {
+        usages: [CLIENT_AUTH_EKU],
+        uri: "spiffe://example.org/ns/default/sa/svc"
+      });
+
+      await withIdentity({ caCertificate: root.cert, verifyChain: true }, async (identityId) => {
+        const res = await login(identityId, [leaf.cert, constrained.cert]);
+        expect(res.statusCode).toBe(401);
+        expect(res.json().message).toContain("is not a fully qualified domain name");
       });
     });
 

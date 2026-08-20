@@ -1,7 +1,7 @@
 import { webcrypto } from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
-import { Certificate, CertificateChainValidationEngine, CryptoEngine, NameConstraints } from "pkijs";
+import { Certificate, CertificateChainValidationEngine, CryptoEngine, GeneralSubtree, NameConstraints } from "pkijs";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
@@ -20,9 +20,12 @@ export type TVerifyClientCertificateChainResult =
         | "ca_verification_failed"
         | "certificate_expired"
         | "certificate_not_yet_valid"
+        | "issuer_certificate_expired"
+        | "issuer_certificate_not_yet_valid"
         | "issuer_client_auth_usage_not_allowed"
         | "name_constraint_violation"
-        | "path_length_exceeded";
+        | "path_length_exceeded"
+        | "unsupported_name_constraint";
     };
 
 type TVerificationFailure = Extract<TVerifyClientCertificateChainResult, { ok: false }>;
@@ -35,51 +38,67 @@ const ANY_PURPOSE_EKU_OID = CERT_EXTENDED_KEY_USAGES[CertExtendedKeyUsageType.AN
 const PERMITTED_SUBTREE_VIOLATION_CODE = 41;
 const EXCLUDED_SUBTREE_VIOLATION_CODE = 42;
 
+const URI_GENERAL_NAME_TYPE = 6;
+
 // Caps on how much of a presented chain the path search will explore. See `explore` below.
 const MAX_CANDIDATE_PATHS = 8;
 const MAX_SEARCH_PATH_STEPS = 2000;
 
-const ED25519_SIGNATURE_OID = "1.3.101.112";
+const pkiCryptoEngine = new CryptoEngine({ name: "identity-tls-cert-auth", crypto: webcrypto as Crypto });
 
 /**
- * pkijs re-verifies every signature on the path with its own crypto engine, and that engine's
- * algorithm table covers only RSA and ECDSA. An Ed25519 chain Node already verified therefore comes
- * back from pkijs as unbuildable rather than as a constraint decision, which would deny a valid
- * client the moment its CA asserts name constraints. Node's WebCrypto does implement Ed25519, so
- * route that one algorithm to it and leave every other signature to pkijs.
+ * pkijs's validation engine builds the path itself before it will evaluate name constraints, and
+ * that path building carries structural opinions of its own: it re-verifies every signature with
+ * pkijs's software crypto, re-checks validity windows, and requires every issuer to assert `CA:TRUE`
+ * and, when a key usage is present, `keyCertSign`.
  *
- * Ed448 is deliberately not routed here: Node still marks it experimental, and this is an
- * authentication path. Such a chain keeps failing closed, with the reason logged.
+ * None of that is wanted here, because all of it is already settled by `issuedBy`, `validityFailure`
+ * and the `candidate.ca` gate, against OpenSSL rather than a second implementation. Letting it run
+ * again turned pkijs's opinions into authentication failures: a configured CA that omits basic
+ * constraints is deliberately accepted in single-hop mode, and a CA whose key usage omits
+ * `keyCertSign` has never been rejected here, yet both were denied as soon as their certificate also
+ * asserted name constraints.
+ *
+ * Overriding `sort` hands the engine the path this code already established, so only the subtree
+ * matching runs. It also removes a subtler mismatch: pkijs rebuilt the path from the certificates it
+ * was given and evaluated the shortest one it found, which for a cross-signed chain could be a
+ * different path than the candidate under consideration, skipping the constraints of a CA that was
+ * on it.
+ *
+ * @param orderedPath leaf first, then each issuer in turn, trust anchor last
  */
-class ChainCryptoEngine extends CryptoEngine {
-  async verifyWithPublicKey(...args: Parameters<CryptoEngine["verifyWithPublicKey"]>): Promise<boolean> {
-    const [data, signature, publicKeyInfo, signatureAlgorithm] = args;
-    if (signatureAlgorithm.algorithmId !== ED25519_SIGNATURE_OID) {
-      return super.verifyWithPublicKey(...args);
-    }
+class NameConstraintsEngine extends CertificateChainValidationEngine {
+  private readonly orderedPath: Certificate[];
 
-    const algorithm = { name: "Ed25519" };
-    const publicKey = await webcrypto.subtle.importKey("spki", publicKeyInfo.toSchema().toBER(false), algorithm, true, [
-      "verify"
-    ]);
-    return webcrypto.subtle.verify(algorithm, publicKey, signature.valueBlock.valueHexView, data);
+  constructor(orderedPath: Certificate[]) {
+    super({ trustedCerts: [orderedPath[orderedPath.length - 1]], certs: orderedPath.slice(0, -1).reverse() });
+    this.orderedPath = orderedPath;
+  }
+
+  sort(): Promise<Certificate[]> {
+    return Promise.resolve(this.orderedPath);
   }
 }
-
-const pkiCryptoEngine = new ChainCryptoEngine({ name: "identity-tls-cert-auth", crypto: webcrypto as Crypto });
 
 const isWithinValidityWindow = (cert: TNativeX509, at: Date): boolean =>
   new Date(cert.validFrom) <= at && at <= new Date(cert.validTo);
 
 const isSelfIssued = (cert: TNativeX509): boolean => cert.subject === cert.issuer;
 
-const validityFailure = (cert: TNativeX509, at: Date): TVerificationFailure | null =>
-  isWithinValidityWindow(cert, at)
-    ? null
-    : {
-        ok: false,
-        reasonCode: at < new Date(cert.validFrom) ? "certificate_not_yet_valid" : "certificate_expired"
-      };
+/**
+ * The reason codes distinguish the presented leaf from a CA above it, because the two are the
+ * client's problem in different ways: an expired leaf is reissued by the client, an expired CA is
+ * the operator's to rotate, and a caller that cannot tell them apart cannot act on either.
+ */
+const validityFailure = (cert: TNativeX509, at: Date, role: "leaf" | "issuer"): TVerificationFailure | null => {
+  if (isWithinValidityWindow(cert, at)) return null;
+
+  const notYetValid = at < new Date(cert.validFrom);
+  if (role === "leaf") {
+    return { ok: false, reasonCode: notYetValid ? "certificate_not_yet_valid" : "certificate_expired" };
+  }
+  return { ok: false, reasonCode: notYetValid ? "issuer_certificate_not_yet_valid" : "issuer_certificate_expired" };
+};
 
 /**
  * Returns true when `issuer` issued `child`.
@@ -155,22 +174,71 @@ const nameConstraintsOf = (cert: Certificate): TNameConstraintsState => {
   return { status: "present", constraints };
 };
 
+const uriSubtreeValue = (subtree: GeneralSubtree): string | null =>
+  subtree.base.type === URI_GENERAL_NAME_TYPE && typeof subtree.base.value === "string" ? subtree.base.value : null;
+
+/**
+ * RFC 5280 4.2.1.10: a URI name constraint applies to the host part of the name and has to be a
+ * fully qualified domain name, such as `example.org` or `.example.org`. A constraint written the way
+ * the names themselves look, `spiffe://example.org`, is not a hostname, and neither is one carrying
+ * a path. Go's crypto/x509 and pkijs both read it that way, so such a constraint matches nothing:
+ * as a permitted subtree it denies every client, and as an excluded subtree it excludes none.
+ *
+ * Returning it rather than evaluating it keeps both halves honest. Letting the match run would deny
+ * every client while naming the client's certificate as the problem, when the certificate cannot be
+ * changed to satisfy it. Skipping it would let a CA that meant to restrict its subordinates certify
+ * anything. Note that the host is not extracted and reused: for a constraint like
+ * `spiffe://example.org/team-a`, treating it as `example.org` would permit `team-b` as well, which
+ * is wider than what the CA asserted.
+ */
+const unsupportedUriSubtree = (constraints: NameConstraints): string | null => {
+  const subtrees = [...(constraints.permittedSubtrees ?? []), ...(constraints.excludedSubtrees ?? [])];
+  return subtrees.map(uriSubtreeValue).find((uri) => uri !== null && /[:/]/.test(uri)) ?? null;
+};
+
+export type TNameConstraintsProblem =
+  | { kind: "unparseable_certificate" }
+  | { kind: "unreadable_extension" }
+  | { kind: "unsupported_uri_subtree"; constraint: string };
+
+/**
+ * Why a certificate's name constraints could never permit a client, so an operator hears about it
+ * when they configure the CA rather than at every login it would deny. Null when the certificate
+ * asserts no constraints, or asserts ones that can be evaluated.
+ */
+export const findNameConstraintsProblem = (cert: TNativeX509): TNameConstraintsProblem | null => {
+  let state: TNameConstraintsState;
+  try {
+    state = nameConstraintsOf(Certificate.fromBER(cert.raw));
+  } catch (err) {
+    logger.warn(err, `TLS certificate auth: certificate could not be decoded [subject=${cert.subject}]`);
+    return { kind: "unparseable_certificate" };
+  }
+
+  if (state.status === "absent") return null;
+  if (state.status === "unreadable") return { kind: "unreadable_extension" };
+
+  const constraint = unsupportedUriSubtree(state.constraints);
+  return constraint === null ? null : { kind: "unsupported_uri_subtree", constraint };
+};
+
 /**
  * RFC 5280 6.1.4 (g): a CA may restrict the namespace its subordinates can certify. Without this,
  * the holder of a constrained sub-CA under the configured anchor could mint a leaf for any name and
  * authenticate as any identity pinned to that anchor.
  *
  * Subtree matching (DNS/IP/email/URI/directory-name semantics, permitted and excluded) is delegated
- * to pkijs rather than reimplemented. pkijs applies constraints carried by certificates on the path
- * but not by the trust anchor itself, so the anchor's own constraints are supplied separately as the
- * RFC's initial-permitted/excluded-subtrees inputs. That matters because operators may pin a
- * constrained sub-CA directly rather than the root above it.
+ * to pkijs rather than reimplemented, and only that: see `NameConstraintsEngine` for why the engine
+ * is not allowed to rebuild or re-validate the path. pkijs applies constraints carried by
+ * certificates on the path but not by the trust anchor itself, so the anchor's own constraints are
+ * supplied separately as the RFC's initial-permitted/excluded-subtrees inputs. That matters because
+ * operators may pin a constrained sub-CA directly rather than the root above it.
  *
  * Only runs when some certificate on the path actually asserts constraints, so a chain that has
  * none is validated exactly as before. A CA asserting constraints that cannot be read denies before
  * that point; see `nameConstraintsOf`.
  */
-const enforceNameConstraints = async (orderedPath: TNativeX509[], now: Date): Promise<TVerificationFailure | null> => {
+const enforceNameConstraints = async (orderedPath: TNativeX509[]): Promise<TVerificationFailure | null> => {
   if (orderedPath.length < 2) return null;
 
   const parsedPath = orderedPath.map((cert) => Certificate.fromBER(cert.raw));
@@ -184,20 +252,26 @@ const enforceNameConstraints = async (orderedPath: TNativeX509[], now: Date): Pr
     return { ok: false, reasonCode: "ca_verification_failed" };
   }
 
+  const unsupportedIssuer = pathConstraints
+    .map((state, idx) => ({
+      subject: orderedPath[idx].subject,
+      constraint: idx > 0 && state.status === "present" ? unsupportedUriSubtree(state.constraints) : null
+    }))
+    .find(({ constraint }) => constraint !== null);
+
+  if (unsupportedIssuer) {
+    logger.warn(
+      `TLS certificate auth: a CA on the chain asserts a URI name constraint that no certificate can satisfy [subject=${unsupportedIssuer.subject}] [constraint=${unsupportedIssuer.constraint}]`
+    );
+    return { ok: false, reasonCode: "unsupported_name_constraint" };
+  }
+
   if (!pathConstraints.some((state) => state.status === "present")) return null;
 
-  const anchor = parsedPath[parsedPath.length - 1];
   const anchorState = pathConstraints[pathConstraints.length - 1];
   const anchorConstraints = anchorState.status === "present" ? anchorState.constraints : null;
 
-  const engine = new CertificateChainValidationEngine({
-    trustedCerts: [anchor],
-    // pkijs takes the chain end-entity last.
-    certs: parsedPath.slice(0, -1).reverse(),
-    checkDate: now
-  });
-
-  const { result, resultCode, resultMessage } = await engine.verify(
+  const { result, resultCode, resultMessage } = await new NameConstraintsEngine(parsedPath).verify(
     {
       initialPermittedSubtreesSet: anchorConstraints?.permittedSubtrees ?? [],
       initialExcludedSubtreesSet: anchorConstraints?.excludedSubtrees ?? []
@@ -250,8 +324,9 @@ export const permitsClientAuth = (cert: TNativeX509): boolean => {
  * the presented leaf or it did not. It still applies every rule the path-building mode applies to a
  * one-hop path, because the rules belong to the CA rather than to the length of the path. A CA that
  * has expired, or whose extended key usage does not cover client authentication, cannot authenticate
- * a client in either mode, and a leaf outside the namespace its CA is permitted to certify is
- * outside it whether or not intermediates were presented.
+ * a client in either mode; a leaf outside the namespace its CA is permitted to certify is outside it
+ * whether or not intermediates were presented; and a leaf outside its own validity window is no more
+ * usable here than on a longer path.
  *
  * Unlike the path-building mode, the anchor is not required to assert `CA:TRUE`. It is configured by
  * an operator rather than presented by the client, and a self-signed certificate that omits basic
@@ -271,13 +346,14 @@ export const verifyDirectlyIssuedClientCertificate = async ({
 }): Promise<TVerifyClientCertificateChainResult> => {
   if (!issuedBy(leaf, ca)) return { ok: false, reasonCode: "ca_verification_failed" };
 
-  const caFailure =
-    validityFailure(ca, now) ??
+  const failure =
+    validityFailure(leaf, now, "leaf") ??
+    validityFailure(ca, now, "issuer") ??
     (permitsClientAuth(ca) ? null : ({ ok: false, reasonCode: "issuer_client_auth_usage_not_allowed" } as const));
-  if (caFailure) return caFailure;
+  if (failure) return failure;
 
   try {
-    return (await enforceNameConstraints([leaf, ca], now)) ?? { ok: true };
+    return (await enforceNameConstraints([leaf, ca])) ?? { ok: true };
   } catch {
     return { ok: false, reasonCode: "ca_verification_failed" };
   }
@@ -368,10 +444,10 @@ export const verifyClientCertificateChain = async ({
    * purpose against the whole chain rather than the leaf alone.
    */
   const issuerFailure = (issuer: TNativeX509): TVerificationFailure | null =>
-    validityFailure(issuer, now) ??
+    validityFailure(issuer, now, "issuer") ??
     (issuerPermitsClientAuth(issuer) ? null : { ok: false, reasonCode: "issuer_client_auth_usage_not_allowed" });
 
-  const leafFailure = validityFailure(leaf, now);
+  const leafFailure = validityFailure(leaf, now, "leaf");
   if (leafFailure) return leafFailure;
 
   const candidateIssuers: TNativeX509[] = [];
@@ -449,7 +525,7 @@ export const verifyClientCertificateChain = async ({
     try {
       const pathLengthFailure = enforcePathLength(path);
       // eslint-disable-next-line no-await-in-loop -- stop at the first path that validates
-      failure = pathLengthFailure ?? (await enforceNameConstraints(path, now));
+      failure = pathLengthFailure ?? (await enforceNameConstraints(path));
     } catch (err) {
       logger.warn(
         err,
