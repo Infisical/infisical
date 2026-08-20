@@ -22,6 +22,7 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -87,6 +88,55 @@ const nameConstraintsProblemMessage = (problem: TNameConstraintsProblem) => {
     return "CA certificate's name constraints extension is malformed, so the namespace it restricts cannot be honored and no certificate it issues could be used to log in. Provide a CA certificate whose name constraints are well-formed.";
 
   return `CA certificate restricts the URI name "${problem.constraint}", which is not a fully qualified domain name, so no certificate it issues could be used to log in. A URI name constraint restricts the host only, such as "example.org". To restrict individual workload identities, use allowed subject alternative names instead.`;
+};
+
+/**
+ * The chain arrives percent-encoded, because that is what a TLS-terminating proxy emits (nginx's
+ * `$ssl_client_escaped_cert`, and the equivalent in Envoy or HAProxy). A value that does not decode
+ * did not come from a proxy that encodes correctly, so it is the request that is malformed rather
+ * than the client's certificate that is untrusted.
+ */
+const decodeClientCertificateHeader = (clientCertificate: string) => {
+  try {
+    return decodeURIComponent(clientCertificate);
+  } catch {
+    throw new BadRequestError({
+      message:
+        "Malformed client certificate header: the value is not valid URL-encoded data. The TLS-terminating proxy must URL-encode the certificate chain it forwards."
+    });
+  }
+};
+
+/**
+ * Node's X509Certificate is OpenSSL-backed and rejects DER that carries the PEM markers but does not
+ * parse. Reading the certificate is what establishes who the client is, so a certificate that cannot
+ * be read has not established it and the login is denied, rather than failing the request as an
+ * internal error. Denying also keeps the attempt in the audit log, which only records
+ * `UnauthorizedError`, so a client probing the endpoint with junk stays visible.
+ *
+ * The OpenSSL reason is logged rather than returned, since it describes the encoding rather than
+ * anything the caller can act on.
+ */
+const parsePresentedCertificate = (
+  pem: string,
+  role: "leaf" | "chain",
+  detail: { identityId: string; orgId: string; identityName: string }
+) => {
+  try {
+    return new crypto.nativeCrypto.X509Certificate(pem);
+  } catch (err) {
+    logger.warn(
+      err,
+      `TLS certificate auth: a presented certificate could not be decoded [role=${role}] [identityId=${detail.identityId}]`
+    );
+    throw new UnauthorizedError({
+      message:
+        role === "leaf"
+          ? "Access denied: the client certificate could not be decoded."
+          : "Access denied: a CA certificate in the presented chain could not be decoded.",
+      detail: { reasonCode: "certificate_decode_failed", ...detail }
+    });
+  }
 };
 
 /**
@@ -196,13 +246,15 @@ export const identityTlsCertAuthServiceFactory = ({
         cipherTextBlob: identityTlsCertAuth.encryptedCaCertificate
       }).toString();
 
-      const presentedCertificates = extractX509CertFromChain(decodeURIComponent(clientCertificate));
+      const presentedCertificates = extractX509CertFromChain(decodeClientCertificateHeader(clientCertificate));
       const leafCertificate = presentedCertificates?.[0];
       if (!leafCertificate) {
         throw new BadRequestError({ message: "Missing client certificate" });
       }
 
-      const clientCertificateX509 = new crypto.nativeCrypto.X509Certificate(leafCertificate);
+      const failureDetail = { identityId: identity.id, orgId: identity.orgId, identityName: identity.name };
+
+      const clientCertificateX509 = parsePresentedCertificate(leafCertificate, "leaf", failureDetail);
       const caCertificateX509 = new crypto.nativeCrypto.X509Certificate(caCertificate);
 
       if (identityTlsCertAuth.verifyClientCertificateChain) {
@@ -213,7 +265,7 @@ export const identityTlsCertAuthServiceFactory = ({
         // long-lived root while the client presents the current intermediate alongside its leaf.
         const presentedChain = presentedCertificates
           .slice(1)
-          .map((pem) => new crypto.nativeCrypto.X509Certificate(pem));
+          .map((pem) => parsePresentedCertificate(pem, "chain", failureDetail));
 
         const chainResult = await verifyClientCertificateChain({
           leaf: clientCertificateX509,

@@ -138,13 +138,20 @@ const attachTlsCertAuth = (identityId: string, caCertificate: string, verifyClie
     body: { caCertificate, verifyClientCertificateChain }
   });
 
-const login = (identityId: string, chain: x509.X509Certificate[]) =>
+const loginWithHeader = (identityId: string, clientCertHeader: string) =>
   testServer.inject({
     method: "POST",
     url: "/api/v1/auth/tls-cert-auth/login",
-    headers: { "x-identity-tls-cert-auth-client-cert": encodeURIComponent(chain.map(toPem).join("")) },
+    headers: { "x-identity-tls-cert-auth-client-cert": clientCertHeader },
     body: { identityId }
   });
+
+const login = (identityId: string, chain: x509.X509Certificate[]) =>
+  loginWithHeader(identityId, encodeURIComponent(chain.map(toPem).join("")));
+
+// PEM markers around something that is not a certificate: the chain splitter accepts it and Node's
+// OpenSSL-backed parser is what rejects it.
+const UNDECODABLE_PEM = "-----BEGIN CERTIFICATE-----\nZm9vYmFy\n-----END CERTIFICATE-----\n";
 
 /**
  * Drives the real login route end to end: the CA certificate is stored through the API (KMS
@@ -332,6 +339,46 @@ describe("Identity TLS certificate auth v1", async () => {
         ]);
         expect(res.statusCode).toBe(200);
         expect(res.json().accessToken).toEqual(expect.any(String));
+      });
+    });
+  });
+
+  // Certificate material the proxy forwards but nothing can parse. Each of these reached OpenSSL or
+  // decodeURIComponent unguarded and surfaced as a 500, which tells the caller nothing and keeps the
+  // attempt out of the audit log.
+  describe("malformed certificate material", async () => {
+    test("rejects a client certificate header that is not URL-encoded", async () => {
+      const ca = await makeRoot("Malformed Header CA");
+
+      await withIdentity({ caCertificate: ca.cert, verifyChain: false }, async (identityId) => {
+        const res = await loginWithHeader(identityId, "%zz-----BEGIN CERTIFICATE-----");
+        expect(res.statusCode).toBe(400);
+        expect(res.json().message).toContain("not valid URL-encoded data");
+      });
+    });
+
+    test("denies a client certificate that cannot be decoded", async () => {
+      const ca = await makeRoot("Undecodable Leaf CA");
+
+      await withIdentity({ caCertificate: ca.cert, verifyChain: false }, async (identityId) => {
+        const res = await loginWithHeader(identityId, encodeURIComponent(UNDECODABLE_PEM));
+        expect(res.statusCode).toBe(401);
+        expect(res.json().message).toContain("client certificate could not be decoded");
+      });
+    });
+
+    test("denies a presented chain carrying a certificate that cannot be decoded", async () => {
+      const root = await makeRoot("Undecodable Chain Root CA");
+      const intermediate = await makeIntermediate("Rotating Intermediate CA", root);
+      const leaf = await makeLeaf("workload", intermediate, { usages: [CLIENT_AUTH_EKU] });
+
+      await withIdentity({ caCertificate: root.cert, verifyChain: true }, async (identityId) => {
+        const res = await loginWithHeader(
+          identityId,
+          encodeURIComponent(toPem(leaf.cert) + toPem(intermediate.cert) + UNDECODABLE_PEM)
+        );
+        expect(res.statusCode).toBe(401);
+        expect(res.json().message).toContain("presented chain could not be decoded");
       });
     });
   });
