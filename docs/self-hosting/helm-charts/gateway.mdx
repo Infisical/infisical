@@ -48,6 +48,29 @@ For a full overview of how gateways work, see the [Gateway documentation](/docum
           --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=arn:aws:iam::<account-id>:role/<role-name>
         ```
       </Tab>
+
+      <Tab title="Kubernetes Auth">
+        ```bash
+        helm install infisical-gateway infisical-helm-charts/infisical-gateway \
+          --namespace infisical-gateway \
+          --create-namespace \
+          --set gateway.name=<gateway-name> \
+          --set gateway.enrollment.method=kubernetes \
+          --set gateway.enrollment.kubernetes.gatewayId=<gateway-id> \
+          --set gateway.domain=https://app.infisical.com
+        ```
+
+        The gateway authenticates with the projected service account token of its own pod, so no
+        credential has to be distributed to the cluster. The chart binds its service account to the
+        `system:auth-delegator` ClusterRole by default, which is what lets that token be reviewed.
+
+        <Warning>
+          The release namespace and service account name must match the allowlists configured on the
+          gateway in Infisical. With the command above those are `infisical-gateway` and
+          `infisical-gateway`. See [Gateway Deployment](/documentation/platform/gateways/gateway-deployment)
+          for the full configuration.
+        </Warning>
+      </Tab>
     </Tabs>
   </Step>
 
@@ -70,19 +93,22 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 |-----------|---------|-------------|
 | `gateway.name` | `""` | Name of the gateway as created in the Infisical UI. |
 | `gateway.domain` | `""` | Infisical instance URL (e.g., `https://app.infisical.com`). |
-| `gateway.enrollment.method` | `""` | Enrollment method: `token` or `aws`. |
+| `gateway.enrollment.method` | `""` | Enrollment method: `token`, `aws`, or `kubernetes`. |
 | `gateway.enrollment.token.value` | `""` | Inline enrollment token. Mutually exclusive with `existingSecretRef`. |
 | `gateway.enrollment.token.existingSecretRef` | `""` | Kubernetes secret containing the enrollment token. |
 | `gateway.enrollment.token.secretKey` | `"enrollment-token"` | Key in the secret that holds the token. |
 | `gateway.enrollment.aws.gatewayId` | `""` | Gateway ID from the Infisical UI. Required for AWS auth. |
+| `gateway.enrollment.kubernetes.gatewayId` | `""` | Gateway ID from the Infisical UI. Required for Kubernetes auth. |
+| `gateway.enrollment.kubernetes.serviceAccountTokenPath` | `""` | Override the projected service account token path. Defaults to `/var/run/secrets/kubernetes.io/serviceaccount/token`. |
+| `gateway.enrollment.kubernetes.externalTokenReview` | `false` | Set true when TokenReview permission comes from outside this chart, either a token reviewer JWT configured in Infisical or a binding you manage. Required to install with `serviceAccount.createAsAuthDelegator` disabled. |
 | `gateway.enrollment.credentialsSecretRef` | `""` | Kubernetes secret with credentials injected as env vars. |
 | `gateway.relayName` | `""` | Specific relay to connect to. Empty for automatic selection. |
-| `persistence.enabled` | `true` | Enable persistent storage. Required for token auth. |
+| `persistence.enabled` | `true` | Enable persistent storage. Required for token auth, optional for AWS and Kubernetes auth. |
 | `persistence.storageClass` | `""` | Storage class for the PVC. |
 | `persistence.size` | `5Gi` | PVC size. |
 | `persistence.existingClaim` | `""` | Use an existing PVC. |
 | `image.repository` | `infisical/cli` | Container image. |
-| `image.tag` | `"0.43.84"` | Image tag. |
+| `image.tag` | `"0.43.123"` | Image tag. |
 | `resources.requests.cpu` | `100m` | CPU request. |
 | `resources.requests.memory` | `128Mi` | Memory request. |
 | `resources.limits.cpu` | `500m` | CPU limit. |
@@ -102,7 +128,7 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 ```yaml
 image:
   repository: infisical/cli
-  tag: "0.43.84"
+  tag: "0.43.123"
   pullPolicy: IfNotPresent
 
 # Machine identity flow: name of the K8s Secret containing env vars like INFISICAL_AUTH_METHOD, etc.
@@ -118,7 +144,7 @@ gateway:
   domain: ""
 
   enrollment:
-    # Enrollment method: "token" or "aws".
+    # Enrollment method: "token", "aws", or "kubernetes".
     # Leave empty to use the legacy machine identity flow (env vars from secret.name).
     method: ""
 
@@ -136,6 +162,17 @@ gateway:
       # Required when method=aws. Gateway ID from the Infisical UI.
       gatewayId: ""
 
+    # Kubernetes enrollment settings (method=kubernetes).
+    kubernetes:
+      # Required when method=kubernetes. Gateway ID from the Infisical UI.
+      gatewayId: ""
+      # Path to the projected service account token. Only override for a non-default mount.
+      serviceAccountTokenPath: ""
+      # Set true only if TokenReview permission comes from somewhere other than this chart: a token
+      # reviewer JWT configured on the gateway in Infisical, or a binding you manage yourself.
+      # Required to install with serviceAccount.createAsAuthDelegator disabled.
+      externalTokenReview: false
+
     # Name of a K8s Secret whose key-value pairs are injected as env vars.
     # Use this to provide credentials for the enrollment method (e.g. AWS keys, GCP credentials).
     # Not needed when credentials are provided via workload identity (IRSA, GCP Workload Identity, etc.).
@@ -148,7 +185,8 @@ gateway:
 
 # Persistent storage for the gateway (credentials and session recordings).
 # Required when enrollment.method=token so credentials survive pod restarts.
-# Optional when enrollment.method=aws since it re-authenticates via STS on every start.
+# Optional when enrollment.method=aws or enrollment.method=kubernetes, since both re-authenticate
+# on every start.
 # For legacy machine-identity installs (no enrollment.method), persistence only takes effect
 # when existingClaim is provided.
 persistence:
