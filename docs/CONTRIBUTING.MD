@@ -26,7 +26,7 @@ expected; the config pins `.mdx` to the Markdown parser, so behavior is tied to 
 and CI results match. You can also run `vale <path>` directly on a subset.
 
 What it checks: sentence case in headings and in the `title`/`sidebarTitle` frontmatter
-fields, a required `description`, the enforced spellings in
+fields, the enforced spellings in
 `docs/.vale/styles/Infisical/Terminology.yml`, spelling against the vocabulary in
 `docs/.vale/styles/config/vocabularies/Infisical/`, `$` prompts that break copy-paste,
 placeholders like `foo`, and em dashes piling up in one paragraph.
@@ -41,6 +41,18 @@ placeholders like `foo`, and em dashes piling up in one paragraph.
   or an acronym that collides with an ordinary word.
 
 Comments in those files need a hash **and a space**: `#Foo` is read as a pattern, not a comment.
+
+Prefer listing a distinctive word on its own rather than relying on a multi-word entry to
+cover it. Our Vale masks a multi-word phrase so its parts are accepted; Mintlify's CI Vale
+does not, so `Ab Initio` alone left `Initio` reported there.
+
+**Rules must survive both Vale builds.** Mintlify's CI check runs its own Vale against this
+same config, and the two do not agree on everything. A `conditional` rule scoped to `raw` was
+dropped for this reason: it reported a missing `description` on 148 files that all had one.
+`Infisical.ShellPrompts` and `Infisical.Placeholders` also use `scope: raw`, because they have
+to see inside code blocks; they behave correctly locally, but treat their CI behavior as
+unverified. Anything that needs a whole-file view is safer as a separate check than as a Vale
+rule.
 
 **Enforcing a spelling.** Add a swap to `Infisical/Terminology.yml`. List only forms that are
 always wrong, and remember the lowercase spelling of a product name is usually its binary,

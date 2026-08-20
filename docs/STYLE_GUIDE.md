@@ -405,9 +405,10 @@ Vale cannot see prose indented inside components, which is a large share of this
 run is not evidence that a nested page was checked. See `docs/CONTRIBUTING.MD` for the detail.
 
 Vale covers the mechanical rules only: sentence case in headings and in the `title` and
-`sidebarTitle` fields, the presence of a `description`, consistent product and vendor
-spellings, spelling against a curated vocabulary, `$` prompts in code blocks, placeholder
-names like `foo`, and more than two em dashes in one paragraph.
+`sidebarTitle` fields, consistent product and vendor spellings, spelling against a curated
+vocabulary, `$` prompts in code blocks, placeholder names like `foo`, and more than two em
+dashes in one paragraph. The `description` frontmatter field is not checked automatically --
+watch for it in review.
 
 Everything else here -- providing context, writing for users, cross-referencing, choosing the
 right component, page structure -- is a judgment call that only a reviewer can make. A clean
