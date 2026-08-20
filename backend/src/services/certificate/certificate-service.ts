@@ -953,7 +953,7 @@ export const certificateServiceFactory = ({
         // @ts-expect-error We're expecting a database error
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         if (error?.error?.code === "23505") {
-          throw new BadRequestError({ message: "A certificate with this serial number has already been imported" });
+          throw new BadRequestError({ message: "A certificate with this serial number already exists" });
         }
         throw error;
       }
