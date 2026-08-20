@@ -207,16 +207,16 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
               </OrgPermissionCan>
             </div>
 
-            <Table className="table-fixed">
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>
                     <TableHeadLabel>Name</TableHeadLabel>
                   </TableHead>
-                  <TableHead className="w-36">
+                  <TableHead>
                     <TableHeadLabel>Status</TableHeadLabel>
                   </TableHead>
-                  <TableHead />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -252,7 +252,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                           {isOnline ? "Healthy" : "Unreachable"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell variant="action">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton

@@ -188,19 +188,19 @@ export const RelayTab = withPermission(
               </EmptyHeader>
             </Empty>
           ) : (
-            <Table className="min-w-[62rem] table-fixed">
+            <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-80 min-w-80">
+                  <TableHead>
                     <TableHeadLabel>Name</TableHeadLabel>
                   </TableHead>
-                  <TableHead className="w-72">
+                  <TableHead>
                     <TableHeadLabel>Host</TableHeadLabel>
                   </TableHead>
-                  <TableHead className="w-44">
+                  <TableHead>
                     <TableHeadLabel>Created</TableHeadLabel>
                   </TableHead>
-                  <TableHead className="w-40">
+                  <TableHead>
                     <TableHeadLabel
                       trailing={
                         <Tooltip>
@@ -216,7 +216,7 @@ export const RelayTab = withPermission(
                       Health Check
                     </TableHeadLabel>
                   </TableHead>
-                  <TableHead />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -243,7 +243,7 @@ export const RelayTab = withPermission(
                         : undefined
                     }
                   >
-                    <TableCell className="min-w-80">
+                    <TableCell>
                       <div className="flex min-w-0 items-center gap-2">
                         <span className="min-w-0 flex-1 truncate">{el.name}</span>
                         {!el.orgId && (
@@ -263,7 +263,7 @@ export const RelayTab = withPermission(
                     <TableCell>
                       <RelayHealthStatus heartbeat={el.heartbeat} />
                     </TableCell>
-                    <TableCell onClick={(event) => event.stopPropagation()}>
+                    <TableCell variant="action" onClick={(event) => event.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton aria-label="Relay options" variant="ghost" size="sm">

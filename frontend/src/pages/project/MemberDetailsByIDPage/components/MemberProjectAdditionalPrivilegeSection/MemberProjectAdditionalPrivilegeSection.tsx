@@ -231,7 +231,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                   <TableRow>
                     <TableHead className="w-1/2">Name</TableHead>
                     <TableHead className="w-1/2">Duration</TableHead>
-                    {!isOwnProjectMembershipDetails && <TableHead className="w-5" />}
+                    {!isOwnProjectMembershipDetails && <TableHead variant="action" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -298,7 +298,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                             )}
                           </TableCell>
                           {!isOwnProjectMembershipDetails && (
-                            <TableCell>
+                            <TableCell variant="action">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <IconButton

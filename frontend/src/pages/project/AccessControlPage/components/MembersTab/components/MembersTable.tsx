@@ -343,7 +343,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     />
                   </TableHead>
                   <TableHead>{isCertManager ? "Role" : `${productLabel} Role`}</TableHead>
-                  <TableHead className="w-5" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -498,7 +498,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell variant="action">
                           <DropdownMenu>
                             <Tooltip>
                               <TooltipTrigger>

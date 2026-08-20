@@ -87,7 +87,7 @@ const TemplateRow = ({
       <TableCell className="w-32 text-muted">
         {template.accountCount} account{template.accountCount === 1 ? "" : "s"}
       </TableCell>
-      <TableCell>
+      <TableCell variant="action">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
@@ -274,7 +274,7 @@ export const PamTemplatesPage = () => {
                 <TableRow>
                   <TableHead>Template</TableHead>
                   <TableHead className="w-32">Accounts</TableHead>
-                  <TableHead />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>

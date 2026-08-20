@@ -165,7 +165,7 @@ export const PamDiscoveryPage = () => {
                   <TableHead className="w-32">Status</TableHead>
                   <TableHead className="w-32">Schedule</TableHead>
                   <TableHead className="w-48">Last Run</TableHead>
-                  <TableHead />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -206,7 +206,7 @@ export const PamDiscoveryPage = () => {
                           ? format(new Date(source.lastRunAt), "MMM d, yyyy h:mm a")
                           : "Never"}
                       </TableCell>
-                      <TableCell>
+                      <TableCell variant="action">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton

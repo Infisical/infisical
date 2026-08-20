@@ -85,7 +85,7 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
             </TableHead>
             <TableHead className="w-64">Timestamp</TableHead>
             <TableHead>Event</TableHead>
-            <TableHead />
+            <TableHead variant="action" />
           </TableRow>
         </TableHeader>
         <TableBody>

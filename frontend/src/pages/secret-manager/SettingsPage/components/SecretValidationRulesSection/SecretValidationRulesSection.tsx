@@ -674,7 +674,7 @@ export const SecretValidationRulesSection = () => {
                   <TableHead>Type</TableHead>
                   <TableHead>Scope</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -709,7 +709,7 @@ export const SecretValidationRulesSection = () => {
                         {rule.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="py-3">
+                    <TableCell variant="action" className="py-3">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton aria-label="Actions" variant="ghost" size="xs">

@@ -359,7 +359,7 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
                   <TableHead>Assignee</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Expiry</TableHead>
-                  <TableHead />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -387,7 +387,7 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
                       <TableCell>
                         <MemberExpiry expiresAt={rm.member.expiresAt} />
                       </TableCell>
-                      <TableCell>
+                      <TableCell variant="action">
                         {!isOwnMembership && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>

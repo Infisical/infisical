@@ -361,7 +361,7 @@ const PermissionsTab = ({
                   <TableHead>Assignee</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Expiry</TableHead>
-                  <TableHead />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -386,7 +386,7 @@ const PermissionsTab = ({
                       <TableCell>
                         <MemberExpiry expiresAt={rm.member.expiresAt} />
                       </TableCell>
-                      <TableCell>
+                      <TableCell variant="action">
                         {!isOwnMembership && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>

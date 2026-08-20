@@ -80,6 +80,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.ComponentProps<"tr"
 TableRow.displayName = "TableRow";
 
 type TableSortDirection = "ascending" | "descending" | "none";
+type TableColumnVariant = "default" | "action";
 
 const nextTableSortDirection: Record<TableSortDirection, TableSortDirection> = {
   none: "ascending",
@@ -91,6 +92,7 @@ function TableHead({
   className,
   children,
   isTruncatable,
+  variant = "default",
   "aria-sort": ariaSort,
   onSortChange,
   sortDirection = "none",
@@ -99,15 +101,18 @@ function TableHead({
   isTruncatable?: boolean;
   onSortChange?: (direction: TableSortDirection) => void;
   sortDirection?: TableSortDirection;
+  variant?: TableColumnVariant;
 }) {
   return (
     <th
       data-slot="table-head"
+      data-variant={variant}
       className={cn(
         "h-[30px] border-x-0 border-t-0 border-b border-border px-3 text-left align-middle text-xs whitespace-nowrap text-accent select-none [&:has([role=checkbox])]:pr-0",
         "has-[>svg]:cursor-pointer [&>svg]:ml-1 [&>svg]:inline-block [&>svg:not([class*='size-'])]:size-4",
         onSortChange && "p-0",
         isTruncatable && "truncate",
+        variant === "action" && "min-w-12 pr-1.5 text-end",
         className
       )}
       aria-sort={onSortChange ? sortDirection : ariaSort}
@@ -150,14 +155,20 @@ function TableHeadLabel({
 function TableCell({
   className,
   isTruncatable,
+  variant = "default",
   ...props
-}: React.ComponentProps<"td"> & { isTruncatable?: boolean }) {
+}: React.ComponentProps<"td"> & {
+  isTruncatable?: boolean;
+  variant?: TableColumnVariant;
+}) {
   return (
     <td
       data-slot="table-cell"
+      data-variant={variant}
       className={cn(
-        "border-b border-border px-3 py-1.5 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&:last-child:has([data-slot=dropdown-menu-trigger])]:pr-1.5 [&>svg]:size-4",
+        "h-10 border-b border-border px-3 py-1.5 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>svg]:size-4",
         isTruncatable && "max-w-0 truncate",
+        variant === "action" && "min-w-12 pr-1.5 text-end",
         className
       )}
       {...props}
@@ -183,6 +194,7 @@ export {
   TableBody,
   TableCaption,
   TableCell,
+  type TableColumnVariant,
   TableFooter,
   TableHead,
   TableHeader,
