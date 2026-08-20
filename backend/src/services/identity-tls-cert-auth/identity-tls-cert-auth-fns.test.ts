@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
+import * as asn1js from "asn1js";
 import { GeneralName, GeneralSubtree, NameConstraints } from "pkijs";
 import { beforeAll, describe, expect, test, vi } from "vitest";
 
@@ -358,6 +359,19 @@ describe("readSubjectAltNames", () => {
   });
 });
 
+// A critical name constraints extension whose value is well-formed DER but does not match the
+// NameConstraints schema, and one whose value is not DER at all. pkijs cannot read either, so the
+// namespace the CA meant to restrict is unknown and the chain must be denied rather than accepted as
+// unconstrained.
+const schemaMismatchedNameConstraint = () =>
+  new x509.Extension(
+    "2.5.29.30",
+    true,
+    new asn1js.Sequence({ value: [new asn1js.Integer({ value: 1 })] }).toBER(false)
+  );
+
+const undecodableNameConstraint = () => new x509.Extension("2.5.29.30", true, new Uint8Array([0x99, 0x99, 0x99]));
+
 describe("verifyDirectlyIssuedClientCertificate", () => {
   const alg: RsaHashedKeyGenParams = {
     name: "RSASSA-PKCS1-v1_5",
@@ -393,7 +407,11 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
     return { cert, keys };
   };
 
-  const makeLeaf = async (issuer: { cert: x509.X509Certificate; keys: CryptoKeyPair }, dnsName: string) => {
+  const makeLeaf = async (
+    issuer: { cert: x509.X509Certificate; keys: CryptoKeyPair },
+    dnsName: string,
+    extraExtensions: x509.Extension[] = []
+  ) => {
     const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const cert = await x509.X509CertificateGenerator.create({
       serialNumber: "02",
@@ -406,7 +424,8 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
       signingAlgorithm: alg,
       extensions: [
         new x509.BasicConstraintsExtension(false),
-        new x509.SubjectAlternativeNameExtension([{ type: "dns", value: dnsName }])
+        new x509.SubjectAlternativeNameExtension([{ type: "dns", value: dnsName }]),
+        ...extraExtensions
       ]
     });
     return { cert, keys };
@@ -489,6 +508,35 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
     const leaf = await makeLeaf(ca, "workload.example.com");
 
     expect(toNative(ca.cert).ca).toBe(false);
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: true });
+  });
+
+  test("rejects when the configured CA's name constraints do not match the schema", async () => {
+    const ca = await makeCa("Malformed NC CA", { extensions: [schemaMismatchedNameConstraint()] });
+    const leaf = await makeLeaf(ca, "workload.example.com");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: false, reasonCode: "ca_verification_failed" });
+  });
+
+  test("rejects when the configured CA's name constraints are not decodable", async () => {
+    const ca = await makeCa("Undecodable NC CA", { extensions: [undecodableNameConstraint()] });
+    const leaf = await makeLeaf(ca, "workload.example.com");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: false, reasonCode: "ca_verification_failed" });
+  });
+
+  // Constraints restrict what sits below the certificate carrying them, so a leaf's own copy governs
+  // nothing and an unreadable one is not grounds to deny.
+  test("accepts a leaf whose own name constraints cannot be read", async () => {
+    const ca = await makeCa("Root CA");
+    const leaf = await makeLeaf(ca, "workload.example.com", [schemaMismatchedNameConstraint()]);
+
     expect(
       await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
     ).toEqual({ ok: true });

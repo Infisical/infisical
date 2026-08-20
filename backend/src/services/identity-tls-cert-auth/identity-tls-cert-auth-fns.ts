@@ -128,9 +128,31 @@ const enforcePathLength = (orderedPath: TNativeX509[]): TVerificationFailure | n
   return exceeded ? { ok: false, reasonCode: "path_length_exceeded" } : null;
 };
 
-const nameConstraintsOf = (cert: Certificate): NameConstraints | null => {
+type TNameConstraintsState =
+  | { status: "absent" }
+  | { status: "unreadable" }
+  | { status: "present"; constraints: NameConstraints };
+
+/**
+ * A certificate that carries name constraints this code cannot read has asserted a restriction that
+ * cannot be honored, which is not the same as asserting none: reading it as "no constraints" would
+ * let a CA that means to restrict its subordinates certify anything. The extension is critical per
+ * RFC 5280 4.2.1.10, so an unreadable one has to deny rather than be skipped.
+ *
+ * pkijs surfaces an unreadable extension two ways, both covered here: `parsedValue` is undefined
+ * when the extension value is not valid DER at all, and is an otherwise-empty `NameConstraints`
+ * when the value parses as ASN.1 but not against the schema. Neither carries a subtree list, and a
+ * conforming extension always carries at least one.
+ */
+const nameConstraintsOf = (cert: Certificate): TNameConstraintsState => {
   const extension = cert.extensions?.find((ext) => ext.extnID === NAME_CONSTRAINTS_EXTENSION_OID);
-  return extension?.parsedValue instanceof NameConstraints ? extension.parsedValue : null;
+  if (!extension) return { status: "absent" };
+
+  if (!(extension.parsedValue instanceof NameConstraints)) return { status: "unreadable" };
+
+  const constraints = extension.parsedValue;
+  if (!constraints.permittedSubtrees && !constraints.excludedSubtrees) return { status: "unreadable" };
+  return { status: "present", constraints };
 };
 
 /**
@@ -145,16 +167,28 @@ const nameConstraintsOf = (cert: Certificate): NameConstraints | null => {
  * constrained sub-CA directly rather than the root above it.
  *
  * Only runs when some certificate on the path actually asserts constraints, so a chain that has
- * none is validated exactly as before.
+ * none is validated exactly as before. A CA asserting constraints that cannot be read denies before
+ * that point; see `nameConstraintsOf`.
  */
 const enforceNameConstraints = async (orderedPath: TNativeX509[], now: Date): Promise<TVerificationFailure | null> => {
   if (orderedPath.length < 2) return null;
 
   const parsedPath = orderedPath.map((cert) => Certificate.fromBER(cert.raw));
-  if (!parsedPath.some((cert) => nameConstraintsOf(cert))) return null;
+  const pathConstraints = parsedPath.map(nameConstraintsOf);
+
+  const unreadableIssuer = pathConstraints.findIndex((state, idx) => idx > 0 && state.status === "unreadable");
+  if (unreadableIssuer !== -1) {
+    logger.warn(
+      `TLS certificate auth: a CA on the chain asserts name constraints that could not be read [subject=${orderedPath[unreadableIssuer].subject}]`
+    );
+    return { ok: false, reasonCode: "ca_verification_failed" };
+  }
+
+  if (!pathConstraints.some((state) => state.status === "present")) return null;
 
   const anchor = parsedPath[parsedPath.length - 1];
-  const anchorConstraints = nameConstraintsOf(anchor);
+  const anchorState = pathConstraints[pathConstraints.length - 1];
+  const anchorConstraints = anchorState.status === "present" ? anchorState.constraints : null;
 
   const engine = new CertificateChainValidationEngine({
     trustedCerts: [anchor],
