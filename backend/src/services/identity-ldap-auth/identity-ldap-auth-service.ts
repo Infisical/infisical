@@ -4,7 +4,7 @@ import { requestContext } from "@fastify/request-context";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
-import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
+import { IdentityAuthTemplateMethod, TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
@@ -437,6 +437,9 @@ export const identityLdapAuthServiceFactory = ({
       const template = templateId
         ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.scopeOrgId)
         : undefined;
+      if (templateId && (!template || template.authMethod !== IdentityAuthTemplateMethod.LDAP)) {
+        throw new NotFoundError({ message: `LDAP auth template with ID '${templateId}' not found` });
+      }
 
       let ldapConfig: { bindDN: string; bindPass: string; searchBase: string; url: string; ldapCaCertificate?: string };
       if (template) {
@@ -644,6 +647,9 @@ export const identityLdapAuthServiceFactory = ({
     const template = templateId
       ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.scopeOrgId)
       : undefined;
+    if (templateId && (!template || template.authMethod !== IdentityAuthTemplateMethod.LDAP)) {
+      throw new NotFoundError({ message: `LDAP auth template with ID '${templateId}' not found` });
+    }
     let config: {
       bindDN?: string;
       bindPass?: string;

@@ -16,8 +16,10 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { TOrgPermission } from "@app/lib/types";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
+import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 import { validateKubernetesConnectionFields } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-validators";
 import { TIdentityLdapAuthDALFactory } from "@app/services/identity-ldap-auth/identity-ldap-auth-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -78,12 +80,16 @@ export const identityAuthTemplateServiceFactory = ({
   };
 
   // template credentials are write-only: every read path strips them so they never
-  // reach the client (the edit UI keeps a stored secret by omitting the field)
+  // reach the client (the edit UI keeps a stored secret by omitting the field). A
+  // has<Field> presence flag replaces each secret so the edit UI can offer an explicit
+  // "clear stored value" action without ever reading the credential
   const $redactTemplateSecrets = (authMethod: string, fields: Record<string, unknown>) => {
     const secretFields = TEMPLATE_SECRET_FIELDS_BY_METHOD[authMethod as IdentityAuthTemplateMethod] ?? [];
     const redacted = { ...fields };
     secretFields.forEach((key) => {
+      const value = redacted[key];
       delete redacted[key];
+      redacted[`has${key.charAt(0).toUpperCase()}${key.slice(1)}`] = typeof value === "string" && value.length > 0;
     });
     return redacted;
   };
@@ -91,20 +97,22 @@ export const identityAuthTemplateServiceFactory = ({
   // audit the platform-driven rewrite of linked identities; runs after the propagation
   // transaction commits so the tx never waits on Redis, chunked to bound concurrency
   const $auditTemplatePropagation = async ({
-    identityIds,
+    identities,
     authMethod,
     templateId,
+    templateName,
     orgId
   }: {
-    identityIds: string[];
+    identities: { identityId: string; identityName?: string }[];
     authMethod: string;
     templateId: string;
+    templateName: string;
     orgId: string;
   }) => {
-    for (const batch of chunkArray(identityIds, AUDIT_FANOUT_CHUNK_SIZE)) {
+    for (const batch of chunkArray(identities, AUDIT_FANOUT_CHUNK_SIZE)) {
       // eslint-disable-next-line no-await-in-loop
       await Promise.all(
-        batch.map((identityId) =>
+        batch.map(({ identityId, identityName }) =>
           auditLogService.createAuditLog({
             actor: {
               type: ActorType.PLATFORM,
@@ -113,8 +121,14 @@ export const identityAuthTemplateServiceFactory = ({
             orgId,
             event:
               authMethod === IdentityAuthTemplateMethod.LDAP
-                ? { type: EventType.UPDATE_IDENTITY_LDAP_AUTH, metadata: { identityId, templateId } }
-                : { type: EventType.UPDATE_IDENTITY_KUBENETES_AUTH, metadata: { identityId, templateId } }
+                ? {
+                    type: EventType.UPDATE_IDENTITY_LDAP_AUTH,
+                    metadata: { identityId, identityName, templateId, templateName }
+                  }
+                : {
+                    type: EventType.UPDATE_IDENTITY_KUBENETES_AUTH,
+                    metadata: { identityId, identityName, templateId, templateName }
+                  }
           })
         )
       );
@@ -241,6 +255,17 @@ export const identityAuthTemplateServiceFactory = ({
         verifyTlsCertificate: kubernetesFields.verifyTlsCertificate ?? Boolean(kubernetesFields.caCert?.length)
       };
       $validateKubernetesTemplateFields(normalizedFields);
+      // parity with the identity attach flow: a template-authored host must not let the
+      // backend dial local or private addresses (a gateway-dialed host is exempt; private
+      // hosts are the normal case behind a gateway)
+      if (
+        normalizedFields.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+        normalizedFields.kubernetesHost &&
+        !normalizedFields.gatewayId &&
+        !normalizedFields.gatewayPoolId
+      ) {
+        await blockLocalAndPrivateIpAddresses(normalizedFields.kubernetesHost);
+      }
       if (normalizedFields.gatewayId || normalizedFields.gatewayPoolId) {
         $authorizeKubernetesTemplateGateway({
           gatewayId: normalizedFields.gatewayId,
@@ -321,6 +346,15 @@ export const identityAuthTemplateServiceFactory = ({
       }
     }
 
+    // captured before the propagation writes so the audit entries can carry readable
+    // identity names alongside the ids
+    const linkedIdentities = fieldPatch
+      ? ((await identityAuthTemplateDAL.findTemplateUsages(templateId, template.authMethod)) as {
+          identityId: string;
+          identityName: string;
+        }[])
+      : [];
+
     const currentTemplateFields = JSON.parse(
       decryptor({ cipherTextBlob: template.templateFields }).toString()
     ) as Record<string, unknown>;
@@ -338,6 +372,17 @@ export const identityAuthTemplateServiceFactory = ({
         merged.verifyTlsCertificate = Boolean(patch.caCert?.length);
       }
       $validateKubernetesTemplateFields(merged);
+      // the merged host propagates to every linked identity and is dialed by the backend
+      // at login, so it gets the same local/private-address block as the identity attach
+      // flow (gateway-dialed hosts are exempt)
+      if (
+        merged.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+        merged.kubernetesHost &&
+        !merged.gatewayId &&
+        !merged.gatewayPoolId
+      ) {
+        await blockLocalAndPrivateIpAddresses(merged.kubernetesHost);
+      }
       kubernetesPropagationData = {
         kubernetesHost: merged.kubernetesHost ?? null,
         tokenReviewMode: merged.tokenReviewMode,
@@ -438,10 +483,15 @@ export const identityAuthTemplateServiceFactory = ({
       return { updatedTemplate: authTemplate, propagatedIdentityIds: identityIds };
     });
 
+    const identityNameById = new Map(linkedIdentities.map((usage) => [usage.identityId, usage.identityName]));
     await $auditTemplatePropagation({
-      identityIds: propagatedIdentityIds,
+      identities: propagatedIdentityIds.map((identityId) => ({
+        identityId,
+        identityName: identityNameById.get(identityId)
+      })),
       authMethod: template.authMethod,
       templateId: template.id,
+      templateName: template.name,
       orgId: template.orgId
     });
 
@@ -474,6 +524,11 @@ export const identityAuthTemplateServiceFactory = ({
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     );
 
+    const linkedIdentities = (await identityAuthTemplateDAL.findTemplateUsages(templateId, template.authMethod)) as {
+      identityId: string;
+      identityName: string;
+    }[];
+
     const { deletedTemplate, unlinkedIdentityIds } = await identityAuthTemplateDAL.transaction(async (tx) => {
       // Unlink identity auth records; the copied config values are kept so linked
       // identities keep authenticating
@@ -499,10 +554,15 @@ export const identityAuthTemplateServiceFactory = ({
       return { deletedTemplate: deletedTpl, unlinkedIdentityIds: identityIds };
     });
 
+    const identityNameById = new Map(linkedIdentities.map((usage) => [usage.identityId, usage.identityName]));
     await $auditTemplatePropagation({
-      identityIds: unlinkedIdentityIds,
+      identities: unlinkedIdentityIds.map((identityId) => ({
+        identityId,
+        identityName: identityNameById.get(identityId)
+      })),
       authMethod: template.authMethod,
       templateId: template.id,
+      templateName: template.name,
       orgId: template.orgId
     });
 
@@ -688,6 +748,11 @@ export const identityAuthTemplateServiceFactory = ({
       throw new NotFoundError({ message: "Template not found" });
     }
 
+    const linkedIdentities = (await identityAuthTemplateDAL.findTemplateUsages(templateId, template.authMethod)) as {
+      identityId: string;
+      identityName: string;
+    }[];
+
     let unlinkedIdentityIds: string[] = [];
     if (template.authMethod === IdentityAuthTemplateMethod.LDAP) {
       const updatedRows = await identityLdapAuthDAL.updateByTemplateId(
@@ -707,10 +772,15 @@ export const identityAuthTemplateServiceFactory = ({
       });
     }
 
+    const identityNameById = new Map(linkedIdentities.map((usage) => [usage.identityId, usage.identityName]));
     await $auditTemplatePropagation({
-      identityIds: unlinkedIdentityIds,
+      identities: unlinkedIdentityIds.map((identityId) => ({
+        identityId,
+        identityName: identityNameById.get(identityId)
+      })),
       authMethod: template.authMethod,
       templateId: template.id,
+      templateName: template.name,
       orgId: template.orgId
     });
   };

@@ -1612,6 +1612,7 @@ interface UpdateIdentityKubernetesAuthEvent {
   type: EventType.UPDATE_IDENTITY_KUBENETES_AUTH;
   metadata: {
     identityId: string;
+    identityName?: string;
     kubernetesHost?: string;
     allowedNamespaces?: string;
     allowedNames?: string;
@@ -1620,6 +1621,7 @@ interface UpdateIdentityKubernetesAuthEvent {
     accessTokenNumUsesLimit?: number;
     accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
     templateId?: string | null;
+    templateName?: string;
   };
 }
 
@@ -2062,6 +2064,7 @@ interface UpdateIdentityLdapAuthEvent {
   type: EventType.UPDATE_IDENTITY_LDAP_AUTH;
   metadata: {
     identityId: string;
+    identityName?: string;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
@@ -2069,6 +2072,7 @@ interface UpdateIdentityLdapAuthEvent {
     allowedFields?: TAllowedFields[];
     url?: string;
     templateId?: string | null;
+    templateName?: string;
     lockoutEnabled?: boolean;
     lockoutThreshold?: number;
     lockoutDurationSeconds?: number;

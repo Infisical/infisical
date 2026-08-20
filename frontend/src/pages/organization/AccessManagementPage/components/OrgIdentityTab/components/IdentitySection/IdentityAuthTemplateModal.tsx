@@ -78,6 +78,7 @@ const schema = z
       .default(IdentityKubernetesAuthTokenReviewMode.Api),
     kubernetesHost: z.string().optional(),
     tokenReviewerJwt: z.string().optional(),
+    clearTokenReviewerJwt: z.boolean().default(false),
     gatewayId: z.string().optional().nullable(),
     gatewayPoolId: z.string().optional().nullable(),
     caCert: z.string().optional(),
@@ -134,6 +135,7 @@ const emptyFormValues: FormData = {
   tokenReviewMode: IdentityKubernetesAuthTokenReviewMode.Api,
   kubernetesHost: "",
   tokenReviewerJwt: "",
+  clearTokenReviewerJwt: false,
   gatewayId: null,
   gatewayPoolId: null,
   caCert: "",
@@ -211,6 +213,10 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
 
   const selectedMethod = watch("method");
   const tokenReviewMode = watch("tokenReviewMode");
+  const hasStoredTokenReviewerJwt =
+    isEdit &&
+    template?.authMethod === MachineIdentityAuthMethod.KUBERNETES &&
+    Boolean(template.templateFields?.hasTokenReviewerJwt);
 
   const onFormSubmit = async (data: FormData) => {
     const isApiMode = data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api;
@@ -251,7 +257,10 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
       if (
         data.method === MachineIdentityAuthMethod.KUBERNETES &&
         isApiMode &&
-        !data.tokenReviewerJwt
+        !data.tokenReviewerJwt &&
+        // an explicit clear keeps the "" in the patch, which clears the stored credential
+        // and propagates client-token review to every linked identity
+        !data.clearTokenReviewerJwt
       ) {
         delete (patchFields as Partial<KubernetesTemplateFields>).tokenReviewerJwt;
       }
@@ -582,6 +591,34 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
                         )
                       }
                     />
+
+                    {hasStoredTokenReviewerJwt && !watch("tokenReviewerJwt") && (
+                      <Controller
+                        control={control}
+                        name="clearTokenReviewerJwt"
+                        render={({ field: { value, onChange } }) => (
+                          <Field>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                id="identity-auth-template-clear-token-reviewer-jwt"
+                                checked={value}
+                                onCheckedChange={onChange}
+                              />
+                              <FieldLabel
+                                htmlFor="identity-auth-template-clear-token-reviewer-jwt"
+                                className="mb-0"
+                              >
+                                Remove stored token on save
+                              </FieldLabel>
+                            </div>
+                            <p className="text-xs text-muted">
+                              A token reviewer JWT is currently stored. Removing it switches linked
+                              identities to reviewing tokens with the client&apos;s own JWT.
+                            </p>
+                          </Field>
+                        )}
+                      />
+                    )}
                   </>
                 )}
 

@@ -1090,7 +1090,9 @@ export const identityKubernetesAuthServiceFactory = ({
     return {
       ...identityKubernetesAuth,
       caCert: caCert ?? "",
-      tokenReviewerJwt,
+      // a template's reviewer JWT is an org-scoped write-only credential; identity-level
+      // readers must not be able to recover it through the identity endpoints
+      tokenReviewerJwt: template ? "" : tokenReviewerJwt,
       orgId: identityMembershipOrg.scopeOrgId
     };
   };
@@ -1498,11 +1500,12 @@ export const identityKubernetesAuthServiceFactory = ({
         }).toString()
       : "";
 
-    const updatedTokenReviewerJwt = updatedKubernetesAuth.encryptedKubernetesTokenReviewerJwt
-      ? decryptor({
-          cipherTextBlob: updatedKubernetesAuth.encryptedKubernetesTokenReviewerJwt
-        }).toString()
-      : "";
+    const updatedTokenReviewerJwt =
+      !updatedKubernetesAuth.templateId && updatedKubernetesAuth.encryptedKubernetesTokenReviewerJwt
+        ? decryptor({
+            cipherTextBlob: updatedKubernetesAuth.encryptedKubernetesTokenReviewerJwt
+          }).toString()
+        : "";
 
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.KUBERNETES_AUTH);
     return {
@@ -1578,8 +1581,11 @@ export const identityKubernetesAuthServiceFactory = ({
       caCert = decryptor({ cipherTextBlob: identityKubernetesAuth.encryptedKubernetesCaCertificate }).toString();
     }
 
+    // a template's reviewer JWT is an org-scoped write-only credential copied onto the
+    // identity row; identity-level readers must not be able to recover it. Manually
+    // configured identities keep read-back (the caller supplied that value themselves).
     let tokenReviewerJwt = "";
-    if (identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt) {
+    if (!identityKubernetesAuth.templateId && identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt) {
       tokenReviewerJwt = decryptor({
         cipherTextBlob: identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt
       }).toString();

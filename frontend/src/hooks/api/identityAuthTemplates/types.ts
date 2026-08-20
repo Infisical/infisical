@@ -11,6 +11,8 @@ export interface LdapTemplateFields {
   bindPass: string;
   searchBase: string;
   ldapCaCertificate?: string;
+  // presence flag returned in place of the write-only secret
+  hasBindPass?: boolean;
 }
 
 export interface KubernetesTemplateFields {
@@ -22,6 +24,8 @@ export interface KubernetesTemplateFields {
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
   allowedAudience?: string;
+  // presence flag returned in place of the write-only secret
+  hasTokenReviewerJwt?: boolean;
 }
 
 export type TemplateFieldsByMethod = {
