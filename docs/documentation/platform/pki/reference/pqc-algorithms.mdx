@@ -1,20 +1,20 @@
 ---
-title: "Post-Quantum Cryptography (PQC)"
-sidebarTitle: "Post-Quantum Algorithms"
+title: "Post-quantum cryptography (PQC)"
+sidebarTitle: "Post-quantum algorithms"
 description: "Learn about Infisical's support for post-quantum cryptographic algorithms in certificate management."
 ---
 
-## What is Post-Quantum Cryptography?
+## What is post-quantum cryptography?
 
 Post-Quantum Cryptography (PQC) refers to cryptographic algorithms designed to be secure against attacks by quantum computers. Traditional algorithms like RSA and ECDSA rely on mathematical problems (integer factorization, discrete logarithm) that quantum computers could efficiently solve using Shor's algorithm.
 
 PQC algorithms are based on different mathematical foundations, such as lattice problems, that are believed to resist both classical and quantum attacks.
 
-## Supported PQC Algorithms
+## Supported PQC algorithms
 
 Infisical supports the following NIST-standardized post-quantum signature algorithms for certificate authorities and certificate issuance:
 
-### ML-DSA (Module-Lattice Digital Signature Algorithm)
+### ML-DSA (module-lattice digital signature algorithm)
 
 ML-DSA (formerly known as CRYSTALS-Dilithium) is a lattice-based digital signature scheme standardized in [FIPS 204](https://csrc.nist.gov/pubs/fips/204/final). It offers a strong balance of security, performance, and key/signature size.
 
@@ -22,9 +22,9 @@ ML-DSA (formerly known as CRYSTALS-Dilithium) is a lattice-based digital signatu
 ML-DSA is the recommended PQC algorithm for most use cases due to its efficient key generation, signing, and verification performance.
 </Note>
 
-## Using PQC Algorithms
+## Using PQC algorithms
 
-### Creating a PQC Certificate Authority
+### Creating a PQC certificate authority
 
 You can create a Certificate Authority with a PQC key algorithm through the Infisical UI or API.
 
@@ -56,7 +56,7 @@ You can create a Certificate Authority with a PQC key algorithm through the Infi
   </Tab>
 </Tabs>
 
-## Key Differences from Classical Algorithms
+## Key differences from classical algorithms
 
 When using PQC algorithms, keep the following constraints in mind:
 

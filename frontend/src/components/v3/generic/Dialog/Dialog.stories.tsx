@@ -196,3 +196,43 @@ export const ScrollableContent: Story = {
     </Dialog>
   )
 };
+
+export const AlternativeScroll: Story = {
+  name: "Alternative: Scrollable Body",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "An alternative scroll composition keeps the header, body, and footer in one scroll flow while the sticky footer remains visible at the bottom. Use this when the footer should follow the content naturally but remain available during scrolling."
+      }
+    }
+  },
+  render: () => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline">Open scroll dialog</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Project details</DialogTitle>
+          <DialogDescription>Review the project information before continuing.</DialogDescription>
+        </DialogHeader>
+        <DialogBody className="flex flex-none flex-col gap-3 overflow-visible text-sm text-foreground">
+          {Array.from({ length: 12 }).map((_, i) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <p key={i}>
+              <span className="font-medium">Detail {i + 1}.</span> This content remains inside the
+              scrollable body while the dialog header and footer stay visible.
+            </p>
+          ))}
+        </DialogBody>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="ghost">Cancel</Button>
+          </DialogClose>
+          <Button>Continue</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+};

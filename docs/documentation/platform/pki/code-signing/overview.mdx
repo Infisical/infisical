@@ -1,5 +1,5 @@
 ---
-title: "Code Signing"
+title: "Code signing"
 sidebarTitle: "Overview"
 description: "Sign software artifacts with managed code-signing certificates, central approval, and a full audit trail."
 ---
@@ -13,7 +13,7 @@ Code Signing is where teams digitally sign software (JARs, container images, Win
 
 Each **Signer** represents a single signing identity, like `mobile-app-prod`, `firmware-release`, or `ci-staging-builds`. Product Admins create Signers, attach a code-signing certificate, and assign team members. Teams then operate independently within their assigned Signers.
 
-## What's in a Signer?
+## What's in a signer?
 
 <CardGroup cols={2}>
   <Card title="Certificate" icon="certificate">
@@ -53,7 +53,7 @@ sequenceDiagram
 ```
 
 1. A Product Admin creates a [Signer](/documentation/platform/pki/code-signing/signers) and picks the CA that issues its certificate.
-2. The Admin adds [members](/documentation/platform/pki/code-signing/signers#members) (users, machine identities, or groups) and picks a role for each.
+2. The Admin adds [members](/documentation/platform/pki/code-signing/signers#signer-roles) (users, machine identities, or groups) and picks a role for each.
 3. Optionally, the Admin attaches an [approval policy](/documentation/platform/pki/code-signing/approvals) so signing requires sign-off.
 4. Operators sign through the [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module), the [Windows KSP](/documentation/platform/pki/code-signing/windows-ksp) (`signtool`), or the [Sign API](/api-reference/endpoints/code-signing/signers/sign). Infisical produces the signature and records an audit entry on the Signer.
 

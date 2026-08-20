@@ -53,7 +53,7 @@ const meta = {
     },
     size: {
       control: "select",
-      options: ["xs", "sm", "md", "lg"]
+      options: ["2xs", "xs", "sm", "md", "lg"]
     },
     isPending: {
       control: "boolean"

@@ -12,7 +12,7 @@ The Infisical LDAP dynamic secret allows you to generate user credentials on dem
 1. Create a user with the necessary permissions to create users in your LDAP server.
 2. Ensure your LDAP server is reachable via Infisical instance.
 
-## Create LDAP Credentials
+## Create LDAP credentials
 
 <Tabs>
   <Tab title="Dynamic">
@@ -269,7 +269,7 @@ The Infisical LDAP dynamic secret allows you to generate user credentials on dem
   </Tab>
 </Tabs>
 
-## Active Directory Integration
+## Active Directory integration
 
 - Passwords in Active Directory are set using the `unicodePwd` field. This must be proceeded by two colons `::` as shown in the example. [Source](https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/change-windows-active-directory-user-password)
 - Active directory uses the `userAccountControl` field to enable account. [Read More](https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/useraccountcontrol-manipulate-account-properties)
@@ -278,11 +278,11 @@ The Infisical LDAP dynamic secret allows you to generate user credentials on dem
   - Since `userAccountControl` flag is cumulative set it to `512 + 65536` = `66048` to do both.
 - Active Directory does not permit direct modification of a user's `memberOf` attribute. The member attribute of a group and the `memberOf` attribute of a user are [linked attributes](https://learn.microsoft.com/en-us/windows/win32/ad/linked-attributes), where the member attribute represents the forward link, which can be modified. In the context of AD group membership, the group's `member` attribute serves as the forward link. Therefore, to add a newly created dynamic user to a group, a modification request must be issued to the desired group, updating its membership to include the new user.
 
-## LDIF Entries
+## LDIF entries
 
 User account management is handled through **LDIF entries**.
 
-#### Things to Remember
+#### Things to remember
 
 - **No trailing spaces:** Ensure there are no trailing spaces on any line, including blank lines.
 - **Empty lines before modify blocks:** Every modify block must be preceded by an empty line.

@@ -335,7 +335,8 @@ const IdentitySectionContent = ({ view = "identities" }: Props) => {
 
 export const IdentitySection = withPermission(() => <IdentitySectionContent />, {
   action: OrgPermissionIdentityActions.Read,
-  subject: OrgPermissionSubjects.Identity
+  subject: OrgPermissionSubjects.Identity,
+  accessRestrictedMode: "dialog"
 });
 
 export const IdentityAuthTemplatesSection = () => <IdentitySectionContent view="templates" />;

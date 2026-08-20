@@ -36,7 +36,7 @@ You can either call modules by their Fully Qualified Collection Name (FQCN), suc
 
 The Infisical Ansible Collection supports [Universal Auth](/documentation/platform/identities/universal-auth), [OIDC Auth](/documentation/platform/identities/oidc-auth/general), [LDAP Auth](/documentation/platform/identities/ldap-auth/general), and [Token Auth](/documentation/platform/identities/token-auth) for authenticating against Infisical.
 
-### Login Module (Recommended)
+### Login module (recommended)
 
 The recommended approach is to use the `login` module to authenticate once and reuse the credentials across multiple tasks. This reduces authentication overhead and makes playbooks cleaner. Alternatively, you can still pass credentials directly to each plugin/module if preferred.
 
@@ -181,9 +181,9 @@ The recommended approach is to use the `login` module to authenticate once and r
   </Accordion>
 </AccordionGroup>
 
-## Available Plugins and Modules
+## Available plugins and modules
 
-### Lookup Plugins
+### Lookup plugins
 - `infisical.vault.login` - Authenticate and return reusable login data
 - `infisical.vault.read_secrets` - Read secrets from Infisical
 
@@ -212,7 +212,7 @@ The recommended approach is to use the `login` module to authenticate once and r
 
 ## Examples
 
-### Reading Secrets
+### Reading secrets
 
 ```yaml
 ---
@@ -270,7 +270,7 @@ Use the `raw` option to retrieve complete secret metadata including version, cre
   # Returns: {"HOST": {"id": "...", "secretKey": "HOST", "secretValue": "google.com", "version": 1, ...}, ...}
 ```
 
-#### Using the Lookup Plugin
+#### Using the lookup plugin
 
 The `read_secrets` lookup plugin allows for inline secret retrieval. Unlike modules that run on target hosts, lookup plugins run on the Ansible controller during playbook parsing. This is useful for retrieving secrets to use in variable definitions:
 
@@ -286,7 +286,7 @@ vars:
   # { "key": "HOST", "value": "google.com" }
 ```
 
-### Managing Secrets (CRUD)
+### Managing secrets (CRUD)
 
 Create, update, and delete secrets programmatically:
 
@@ -332,11 +332,11 @@ Create, update, and delete secrets programmatically:
   register: deleted_secret
 ```
 
-### Dynamic Secrets
+### Dynamic secrets
 
 Dynamic secrets generate credentials on-demand with automatic expiration. They support various providers like SQL databases, AWS, GCP, Azure, and more. For the full list of supported providers and their configuration options, see the [Dynamic Secrets documentation](/documentation/platform/dynamic-secrets/overview).
 
-#### Creating a Dynamic Secret
+#### Creating a dynamic secret
 
 ```yaml
 # Create a dynamic secret for PostgreSQL
@@ -366,7 +366,7 @@ Dynamic secrets generate credentials on-demand with automatic expiration. They s
   For the full list of supported provider types and their input configurations, see the [Dynamic Secrets API Documentation](https://infisical.com/docs/api-reference/endpoints/dynamic-secrets/create#body-provider).
 </Note>
 
-#### Getting and Using Dynamic Secret Credentials
+#### Getting and using dynamic secret credentials
 
 To use a dynamic secret, you need to create a **lease** which generates the actual credentials:
 
@@ -392,7 +392,7 @@ To use a dynamic secret, you need to create a **lease** which generates the actu
     query: "SELECT version();"
 ```
 
-#### Managing Leases
+#### Managing leases
 
 ```yaml
 # Get lease details
@@ -426,7 +426,7 @@ To use a dynamic secret, you need to create a **lease** which generates the actu
     lease_id: "{{ lease.lease.id }}"
 ```
 
-#### Updating and Deleting Dynamic Secrets
+#### Updating and deleting dynamic secrets
 
 ```yaml
 # Update a dynamic secret's TTL

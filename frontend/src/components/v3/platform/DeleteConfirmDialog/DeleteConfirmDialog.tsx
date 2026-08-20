@@ -1,15 +1,18 @@
-import { ReactNode, useEffect, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useId, useState } from "react";
 
-import { Button } from "../../generic/Button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "../../generic/Dialog";
-import { Field, FieldLabel } from "../../generic/Field";
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "../../generic/AlertDialog";
+import { Button } from "../../generic/Button";
+import { Field } from "../../generic/Field";
 import { Input } from "../../generic/Input";
 
 type Props = {
@@ -20,7 +23,7 @@ type Props = {
   confirmKey: string;
   confirmLabel?: string;
   isPending?: boolean;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
 };
 
 export const DeleteConfirmDialog = ({
@@ -34,49 +37,77 @@ export const DeleteConfirmDialog = ({
   onConfirm
 }: Props) => {
   const [typedValue, setTypedValue] = useState("");
+  const [isConfirming, setIsConfirming] = useState(false);
+  const confirmationInputId = useId();
+  const isActionPending = Boolean(isPending || isConfirming);
 
   useEffect(() => {
-    if (!isOpen) setTypedValue("");
-  }, [isOpen]);
+    setTypedValue("");
+  }, [confirmKey, isOpen]);
 
-  const canConfirm = typedValue === confirmKey && !isPending;
+  const canConfirm = Boolean(confirmKey) && typedValue === confirmKey && !isActionPending;
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canConfirm) return;
+
+    setIsConfirming(true);
+    Promise.resolve()
+      .then(onConfirm)
+      .catch(() => undefined)
+      .finally(() => setIsConfirming(false));
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          {description ? <DialogDescription>{description}</DialogDescription> : null}
-        </DialogHeader>
-        <Field>
-          <FieldLabel htmlFor="delete-confirm-input">
-            Type <span className="font-semibold text-foreground">{confirmKey}</span> to confirm
-          </FieldLabel>
-          <Input
-            id="delete-confirm-input"
-            autoComplete="off"
-            value={typedValue}
-            placeholder={`Type ${confirmKey} here`}
-            onChange={(e) => setTypedValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && canConfirm) onConfirm();
-            }}
-          />
-        </Field>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            isDisabled={!canConfirm}
-            isPending={isPending}
-            onClick={onConfirm}
-          >
-            {confirmLabel}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <AlertDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && isActionPending) return;
+        onOpenChange(open);
+      }}
+    >
+      <AlertDialogContent>
+        <form className="contents" onSubmit={handleSubmit}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{title}</AlertDialogTitle>
+            {description ? (
+              <AlertDialogDescription asChild>
+                <div>{description}</div>
+              </AlertDialogDescription>
+            ) : null}
+          </AlertDialogHeader>
+          <AlertDialogConfirmationField>
+            <Field>
+              <AlertDialogConfirmationLabel
+                htmlFor={confirmationInputId}
+                confirmationValue={confirmKey}
+              />
+              <Input
+                id={confirmationInputId}
+                autoComplete="off"
+                autoFocus
+                disabled={isActionPending}
+                placeholder={confirmKey}
+                spellCheck={false}
+                value={typedValue}
+                onChange={(event) => setTypedValue(event.target.value)}
+              />
+            </Field>
+          </AlertDialogConfirmationField>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isActionPending}>Cancel</AlertDialogCancel>
+            <Button
+              type="submit"
+              variant="danger"
+              size="sm"
+              isDisabled={!canConfirm}
+              isPending={isActionPending}
+            >
+              {confirmLabel}
+            </Button>
+          </AlertDialogFooter>
+        </form>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };

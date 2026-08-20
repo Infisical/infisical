@@ -9,7 +9,7 @@ This guide demonstrates how to use Infisical to manage secrets for your Next.js 
 
 - Infisical (you can use [Infisical Cloud](https://app.infisical.com) or a [self-hosted instance of Infisical](https://infisical.com/docs/self-hosting/overview)) to store your secrets.
 
-## Project Setup
+## Project setup
 
 To begin, we need to set up a project in Infisical and add secrets to an environment in it.
 
@@ -72,7 +72,7 @@ Next, inside `pages/_app.js`, lets add a `console.log()` to print out the enviro
 
 We'll now use the Infisical CLI to fetch secrets from Infisical into your Next.js app for local development.
 
-### CLI Installation
+### CLI installation
 
 Follow the instructions for your operating system to install the Infisical CLI.
 
@@ -161,7 +161,7 @@ $ infisical login
 
 ### Initialization
 
-Run the `init` command at the root of the Next.js app. This step connects your local project to the project on the Infisical platform and creates a `infisical.json` file containing a reference to that latter project.
+Run the `init` command at the root of the Next.js app. This step connects your local project to the project on the Infisical platform and creates a `.infisical.json` file containing a reference to that latter project.
 
 ```console
 $ infisical init

@@ -13,5 +13,9 @@ export const OrgSecurityTab = withPermission(
       </div>
     );
   },
-  { action: OrgPermissionSsoActions.Read, subject: OrgPermissionSubjects.Sso }
+  {
+    action: OrgPermissionSsoActions.Read,
+    subject: OrgPermissionSubjects.Sso,
+    accessRestrictedMode: "dialog"
+  }
 );

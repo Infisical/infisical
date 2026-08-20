@@ -1,5 +1,5 @@
 import { Link, useLocation, useParams } from "@tanstack/react-router";
-import { ChevronLeft, Server, Share2, SlidersHorizontal } from "lucide-react";
+import { ActivityIcon, ChevronLeft, Server, Share2, SlidersHorizontal } from "lucide-react";
 
 import {
   ProjectIcon,
@@ -33,6 +33,7 @@ export const ProjectTypeNav = () => {
     : false;
   const isOnKmipServers = pathname.includes("/kmip-servers");
   const isOnSecretSharing = pathname.includes("/secret-sharing");
+  const isOnSecretManagementInsights = pathname.includes("/secret-management/insights");
   const isOnSecretManagementProductSettings = pathname.includes(
     "/secret-management/product-settings"
   );
@@ -57,7 +58,10 @@ export const ProjectTypeNav = () => {
             asChild
             closeOnMobile
             isActive={
-              !isOnKmipServers && !isOnSecretSharing && !isOnSecretManagementProductSettings
+              !isOnKmipServers &&
+              !isOnSecretSharing &&
+              !isOnSecretManagementInsights &&
+              !isOnSecretManagementProductSettings
             }
             tooltip="Projects"
           >
@@ -86,6 +90,26 @@ export const ProjectTypeNav = () => {
               >
                 <Server className="size-4" />
                 <span>KMIP Servers</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )}
+        {isSecretManager && (
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              scope="project"
+              asChild
+              closeOnMobile
+              isActive={isOnSecretManagementInsights}
+              tooltip="Insights"
+            >
+              <Link
+                to="/organizations/$orgId/projects/secret-management/insights"
+                params={{ orgId: resolvedOrgId }}
+              >
+                <ActivityIcon className="size-4" />
+                <span>Insights</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

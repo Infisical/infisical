@@ -59,6 +59,7 @@ import {
   PamDetailSheet
 } from "../../components/PamDetailSheet";
 import { PAM_FOLDER_TABS, visiblePamTabs } from "../../components/pamResourceTabs";
+import { PendingInvitationBadge } from "../../components/PendingInvitationBadge";
 import { RemoveMemberConfirm } from "../../components/RemoveMemberConfirm";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { AssignAccessModal, EditMemberTarget } from "./AssignAccessModal";
@@ -167,6 +168,7 @@ type ResolvedMember = {
   displayName: string;
   subtitle: string;
   kind: PamMemberKind;
+  isPendingInvitation?: boolean;
 };
 
 const PermissionsTab = ({ folderId }: { folderId: string }) => {
@@ -238,7 +240,11 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
             [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ") || ou.user.username;
           return [
             ou.user.id,
-            { name, email: ou.user.email ?? ou.inviteEmail ?? ou.user.username }
+            {
+              name,
+              email: ou.user.email ?? ou.inviteEmail ?? ou.user.username,
+              isPendingInvitation: ou.status === "invited"
+            }
           ] as const;
         })
       ),
@@ -252,7 +258,8 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
         member: m,
         displayName: info?.name ?? m.userId ?? "Unknown",
         subtitle: info?.email ?? "",
-        kind: PamMemberKind.User
+        kind: PamMemberKind.User,
+        isPendingInvitation: info?.isPendingInvitation
       };
     });
     const groups: ResolvedMember[] = (folderMembers?.groups ?? []).map((m) => ({
@@ -352,7 +359,7 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
                   <TableHead>Assignee</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Expiry</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -367,7 +374,10 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
                     <TableRow key={rm.member.membershipId} className="[&>td]:h-12">
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-medium text-foreground">{rm.displayName}</span>
+                          <div className="flex items-center gap-x-1.5">
+                            <span className="font-medium text-foreground">{rm.displayName}</span>
+                            <PendingInvitationBadge isPending={Boolean(rm.isPendingInvitation)} />
+                          </div>
                           {rm.subtitle && <span className="text-xs text-muted">{rm.subtitle}</span>}
                         </div>
                       </TableCell>
@@ -377,7 +387,7 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
                       <TableCell>
                         <MemberExpiry expiresAt={rm.member.expiresAt} />
                       </TableCell>
-                      <TableCell>
+                      <TableCell variant="action">
                         {!isOwnMembership && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>

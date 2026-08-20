@@ -239,7 +239,7 @@ const InPopoverStory = () => {
           {selected?.name ?? "Select organization"}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" sideOffset={4} className="w-80 p-0">
+      <PopoverContent align="start" className="w-80 p-0">
         <Command>
           <CommandInput aria-label="Search organizations" placeholder="Search organizations..." />
           <CommandList>

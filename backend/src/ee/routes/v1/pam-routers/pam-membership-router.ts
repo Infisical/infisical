@@ -156,8 +156,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
       response: {
         200: z.object({
           memberships: z.array(MemberResultSchema),
-          skipped: z.array(z.string()),
-          unresolved: z.array(z.string())
+          skipped: z.array(z.string()).describe("Users that were already members of the product")
         })
       }
     },

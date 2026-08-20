@@ -39,6 +39,7 @@ export const PgSqlLock = {
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
   LastAdminGuard: (scope: "org", scopeId: string) => pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
   AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
+  OrgAuditReportRequest: (orgId: string) => pgAdvisoryLockHashText(`audit-report-request:org:${orgId}`),
   OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`)
 } as const;
 
@@ -144,7 +145,9 @@ export const KeyStorePrefixes = {
   EmailSignupOtpHash: (hash: string) => `email-signup-otp:${hash}:hash` as const,
   EmailSignupOtpLock: (hash: string) => `email-signup-otp:${hash}:lock` as const,
   EmailSignupResendCooldown: (hash: string) => `email-signup-otp:${hash}:cd` as const,
-  InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const,
+  // scopeId is a projectId for the per-project dashboard and an orgId for the org-wide aggregates. Both are
+  // UUIDs and the endpoint segments do not overlap, so one prefix serves both without collision.
+  InsightsCache: (scopeId: string, endpoint: string) => `insights-cache:${scopeId}:${endpoint}` as const,
 
   AdminConfig: "infisical-admin-cfg",
   UpdateCheckLatestVersion: "update-check-latest-version",
@@ -166,12 +169,15 @@ export const KeyStorePrefixes = {
     `lockout:identity:${identityId}:${authMethod}:*` as const,
   IdentityLockoutStatePattern: (identityId: string) => `lockout:identity:${identityId}:*` as const,
 
-  TelemetryEvent: (event: string, bucketId: string, distinctId: string, uuid: string) =>
-    `telemetry-event-${event}-${bucketId}-${distinctId}-${uuid}` as const,
-  TelemetryEventByBucketPattern: (event: string, bucketId: string) => `telemetry-event-${event}-${bucketId}-*` as const,
+  TelemetryAggregatedEventStream: (event: string, bucketId: string) =>
+    `telemetry-agg-stream:${event}:${bucketId}` as const,
 
   AuditLogStreamFlushDebounce: (streamId: string) => `audit-log-stream:${streamId}:flush-debounce` as const,
-  AuditLogIngestConsumerLock: "audit-log-ingest:consumer-lock" as const
+  AuditLogIngestConsumerLock: "audit-log-ingest:consumer-lock" as const,
+
+  // period is a YYYY-MM stamp so the monthly notice can only go out once per org per month
+  NativeIntegrationDeprecationNotice: (orgId: string, period: string) =>
+    `native-integration-deprecation-notice:${orgId}:${period}` as const
 };
 
 export const KeyStoreTtls = {
@@ -199,6 +205,8 @@ export const KeyStoreTtls = {
   EmailSignupResendCooldownInSeconds: 60, // 1 minute
   InsightsCacheInSeconds: 300, // 5 minutes
   InsightsDuplicationCacheInSeconds: 3600, // 1 hour
+  InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
+  InsightsOrgCacheInSeconds: 900, // 15 minutes
   AdminConfigInSeconds: 60,
   UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
@@ -223,11 +231,11 @@ export const KeyStoreTtls = {
   StepUpMfaLockoutInSeconds: 300, // 5 minutes - temporary lockout after too many failed step-up attempts
   TelemetryGroupIdentifyInSeconds: 3600, // 1 hour
   TelemetryAuditLogsViewedInSeconds: 3600, // 1 hour
-  TelemetryAggregatedEventInSeconds: 1800, // 30 minutes
   SecretEtagInSeconds: 900, // 15 minutes
   PkiAcmeNonceInSeconds: 300, // 5 minutes
   GatewayRelayCredentialInSeconds: 600, // 10 minutes - TURN credential lifetime
-  SecretReplicationSuccessInSeconds: 10
+  SecretReplicationSuccessInSeconds: 10,
+  NativeIntegrationDeprecationNoticeInSeconds: 3888000 // 45 days - outlives one monthly cycle
 };
 
 type TDeleteItems = {
@@ -280,9 +288,16 @@ export type TKeyStoreFactory = {
   listRemove: (key: string, count: number, value: string) => Promise<number>;
   listLength: (key: string) => Promise<number>;
   // stream operations
-  streamAdd: (key: string, id: string, fieldValue: Record<string, string>, maxLen?: number) => Promise<string | null>;
+  streamAdd: (
+    key: string,
+    id: string,
+    fieldValue: Record<string, string>,
+    maxLen?: number,
+    expiryInSeconds?: number
+  ) => Promise<string | null>;
   streamRange: (key: string, start: string, end: string, count?: number) => Promise<[string, string[]][]>;
   streamTrim: (key: string, minId: string, inclusive?: boolean) => Promise<number>;
+  streamLength: (key: string) => Promise<number>;
   streamCollect: (
     key: string,
     batchSize: number,
@@ -528,12 +543,31 @@ export const keyStoreFactory = (
   const listLength = async (key: string) => pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).llen(key);
 
   // Stream operations
-  const streamAdd = async (key: string, id: string, fieldValue: Record<string, string>, maxLen = 1_000_000) => {
+  const streamAdd = async (
+    key: string,
+    id: string,
+    fieldValue: Record<string, string>,
+    maxLen = 1_000_000,
+    expiryInSeconds?: number
+  ) => {
     const args: string[] = [];
     for (const [field, value] of Object.entries(fieldValue)) {
       args.push(field, value);
     }
-    return primaryRedis.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
+
+    if (!expiryInSeconds) {
+      return primaryRedis.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
+    }
+
+    const results = await primaryRedis
+      .multi()
+      .xadd(key, "MAXLEN", "~", maxLen, id, ...args)
+      .expire(key, expiryInSeconds)
+      .exec();
+
+    const [addError, entryId] = results?.[0] ?? [null, null];
+    if (addError) throw addError;
+    return (entryId as string | null) ?? null;
   };
 
   const streamRange = async (key: string, start: string, end: string, count?: number) => {
@@ -542,6 +576,8 @@ export const keyStoreFactory = (
     }
     return primaryRedis.xrange(key, start, end);
   };
+
+  const streamLength = async (key: string) => primaryRedis.xlen(key);
 
   const streamTrim = async (key: string, minId: string, inclusive = false) => {
     let id = minId;
@@ -627,6 +663,7 @@ export const keyStoreFactory = (
     listRemove,
     listLength,
     streamAdd,
+    streamLength,
     streamRange,
     streamTrim,
     streamCollect

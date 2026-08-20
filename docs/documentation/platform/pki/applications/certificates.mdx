@@ -12,7 +12,7 @@ The certificate inventory shows all certificates issued within your Application.
 
 ![Application Certificates](/images/pki/applications/certificates.png)
 
-## Certificate Details
+## Certificate details
 
 Click any certificate to view its details:
 
@@ -39,7 +39,7 @@ From the certificate details page, use the **Options** menu:
 | **Revoke** | Revoke with a reason code; certificate appears in CRL |
 | **Delete** | Remove from inventory |
 
-## Issuing Certificates
+## Issuing certificates
 
 Go to the **Certificate Requests** tab and click **Request Certificate**. Select a certificate profile and choose a request method:
 
@@ -66,7 +66,7 @@ Server-driven renewal requires [API enrollment](/documentation/platform/pki/appl
 
 Both automatic types reissue the certificate exactly as it is. To change the subject, the names it covers, its validity, or how its key pair is handled, [renew it manually](/documentation/platform/pki/applications/certificate-renewal).
 
-## Export Formats
+## Export formats
 
 | Format | Use Case |
 |--------|----------|
@@ -83,7 +83,7 @@ Revoked certificates are added to the issuing CA's [CRL](/documentation/platform
 openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
 ```
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="Renewal" icon="rotate" href="/documentation/platform/pki/applications/certificate-renewal">

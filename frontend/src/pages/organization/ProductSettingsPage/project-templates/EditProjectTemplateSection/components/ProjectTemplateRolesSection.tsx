@@ -138,7 +138,7 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
           </CardHeader>
           <CardContent>
             {roles.length ? (
-              <Table className="table-fixed">
+              <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>

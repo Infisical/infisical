@@ -893,6 +893,60 @@ export const ORGANIZATIONS = {
   }
 } as const;
 
+export const INSIGHTS = {
+  GET_SECRETS_SUMMARY: {
+    activeLeases:
+      "The number of dynamic secret leases currently active across the organization's secret management projects. Revoked and expired leases are not counted.",
+    users: "The number of users who have accepted an active membership in the organization.",
+    identities: "The number of machine identities that belong to the organization."
+  },
+  GET_SECRETS_PROJECTS: {
+    offset: "The number of projects to skip before returning results.",
+    limit: "The maximum number of projects to return per page.",
+    projectId: "The ID of the project.",
+    projectName: "The name of the project.",
+    projectSlug: "The slug of the project.",
+    duplicatedSecrets:
+      "The number of secrets in the project whose value is shared with at least one other secret in the same project. Secrets whose value is a reference to another secret are counted as duplicates. Null when the project does not have secret blind indexing enabled.",
+    staleSecrets: "The number of secrets in the project that have not been updated in the last 90 days.",
+    failedRotations: "The number of secret rotations in the project whose last rotation attempt failed.",
+    failedSyncs: "The number of secret syncs in the project whose last sync attempt failed.",
+    orphanedLeases:
+      "The number of dynamic secret leases in the project that failed to be revoked and require manual cleanup.",
+    totalSecrets: "The total number of shared secrets in the project.",
+    warnings: "The counts of outstanding issues detected in the project.",
+    severityScore:
+      "A relative score used to rank projects by the severity of their outstanding issues. The scoring heuristic may change over time.",
+    totalProjects: "The total number of secret management projects in the organization.",
+    projectsWithIssues: "The number of secret management projects in the organization with at least one issue."
+  },
+  GET_SECRETS_ACCESS_VOLUME: {
+    days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",
+    date: "The day the accesses happened on, in UTC, as YYYY-MM-DD.",
+    total:
+      "The number of times a secret value was accessed across every project in the organization on this day, by any user or machine identity."
+  },
+  GET_SECRETS_AUTH_METHOD_DISTRIBUTION: {
+    methods:
+      "One entry for each machine identity authentication method that was used to access a secret value in the last seven days, ordered from most to least used. Methods that were not used are not included.",
+    authMethod: "The machine identity authentication method that was used to authenticate the accesses.",
+    count:
+      "The number of times a secret value was accessed across every project in the organization using this authentication method.",
+    totalFetches:
+      "The total number of times a secret value was accessed by a machine identity across every project in the organization in the last seven days. Accesses by users are not counted, and neither are accesses whose authentication method could not be determined, which happens for accesses recorded before the method was captured in audit logs."
+  },
+  GET_STATIC_SECRETS_USAGE: {
+    weeks:
+      "One entry for each of the last twelve weeks, oldest first. Weeks in which no secret was created are included with a count of zero.",
+    weekStart:
+      "The Monday the week starts on, in UTC, as YYYY-MM-DD. Weeks are UTC calendar weeks, not a rolling window anchored on today.",
+    totalSecrets:
+      "The number of static secrets created across every secret management project in the organization during this week. Each week is counted on its own, so this is not a running total. Personal secret overrides are not counted, and neither are secrets in projects or environments that have been deleted. Because deleted secrets leave no record, a week counts only the secrets created then that still exist today, so earlier weeks understate what was created at the time and drift lower as those secrets are deleted.",
+    isPartial:
+      "Whether the week is still in progress. True for the last entry only, which covers Monday through now rather than a full week, so its count is not comparable to the weeks before it."
+  }
+} as const;
+
 export const ORG_IDENTITY_MEMBERSHIP = {
   CREATE_IDENTITY_MEMBERSHIP: {
     identityId: "The ID of the machine identity to create the membership for.",
@@ -3816,24 +3870,45 @@ export const GATEWAYS = {
   CREATE: {
     name: "Name of the gateway.",
     authMethod:
-      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
+      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `kubernetes` carries the cluster host and namespace/service account allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
   },
   UPDATE: {
     authMethod:
-      "Replacement auth method. Same shape as in create — `aws` with allowlists or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
+      "Replacement auth method. Same shape as in create: `aws` with allowlists, `kubernetes` with cluster config, or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
   },
   AUTH_METHOD: {
     stsEndpoint: "The endpoint URL for the AWS STS API.",
     allowedPrincipalArns:
       "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
     allowedAccountIds:
-      "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical."
+      "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical.",
+    kubernetesHost:
+      "The URL of the Kubernetes API server that Infisical reviews the gateway's service account token against (e.g. https://my-cluster.example.com:6443). Omit only when tokenReviewMode is 'gateway', where the reviewing gateway calls its own API server.",
+    tokenReviewMode:
+      "Who performs the TokenReview. 'api' means Infisical does, using the configured token reviewer JWT. 'gateway' means the selected gateway does, using its own in-cluster service account, which requires no Kubernetes host or reviewer token but requires that gateway to run as a pod in the cluster.",
+    gatewayId:
+      "The gateway to route TokenReview traffic through, for clusters whose API server Infisical cannot reach. Must be a different gateway that is already enrolled and connected. Mutually exclusive with gatewayPoolId.",
+    gatewayPoolId:
+      "The gateway pool to route TokenReview traffic through. Any healthy member performs the request, so this survives a single gateway going offline. Mutually exclusive with gatewayId.",
+    caCertificate:
+      "The PEM-encoded CA certificate that issued the Kubernetes API server's TLS certificate. Required when the API server uses a certificate the system trust store does not recognise, which is the usual case for a cluster CA.",
+    tokenReviewerJwt:
+      "A long-lived service account token with the system:auth-delegator ClusterRole used to submit TokenReview requests. Omit to have the gateway's own token act as the reviewer. Write-only: never returned by the API.",
+    allowedNamespaces:
+      "The comma-separated list of Kubernetes namespaces whose service accounts are allowed to authenticate as this gateway. Supports `*` wildcards.",
+    allowedNames:
+      "The comma-separated list of Kubernetes service account names that are allowed to authenticate as this gateway. Supports `*` wildcards.",
+    allowedAudience:
+      "The audience the gateway's service account token must carry. Leave empty to skip the audience check.",
+    verifyTlsCertificate:
+      "Whether to verify the Kubernetes API server's TLS certificate. Verified against the CA certificate when one is configured, otherwise against the system trust store."
   },
   LOGIN: {
-    gatewayId: "The ID of the gateway logging in (AWS method only).",
+    gatewayId: "The ID of the gateway logging in (AWS and Kubernetes methods only).",
     iamHttpRequestMethod: "The HTTP request method used in the signed STS request.",
     iamRequestBody: "The base64-encoded body of the signed STS request.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
+    jwt: "The projected Kubernetes service account token of the pod the gateway runs in (Kubernetes method only).",
     token: "The one-time enrollment token previously issued for this gateway (token method only)."
   }
 } as const;
