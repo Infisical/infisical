@@ -77,6 +77,11 @@ enum RolesOrderBy {
   Slug = "slug"
 }
 
+type RoleSortState = {
+  orderBy: RolesOrderBy | null;
+  orderDirection: OrderByDirection;
+};
+
 export const ProjectRoleList = () => {
   const navigate = useNavigate();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -107,21 +112,18 @@ export const ProjectRoleList = () => {
     handlePopUpClose("deleteRole");
   };
 
-  const [activeSort, setActiveSort] = useState<RolesOrderBy | null>(RolesOrderBy.Name);
-  const {
-    orderDirection,
-    setOrderDirection,
-    setOrderBy,
-    search,
-    setSearch,
-    page,
-    perPage,
-    setPerPage,
-    setPage,
-    offset
-  } = usePagination<RolesOrderBy>(RolesOrderBy.Name, {
-    initPerPage: getUserTablePreference("projectRolesTable", PreferenceKey.PerPage, 20)
+  const [defaultRolesSort, setDefaultRolesSort] = useState<RoleSortState>({
+    orderBy: RolesOrderBy.Name,
+    orderDirection: OrderByDirection.ASC
   });
+  const [customRolesSort, setCustomRolesSort] = useState<RoleSortState>({
+    orderBy: RolesOrderBy.Name,
+    orderDirection: OrderByDirection.ASC
+  });
+  const { search, setSearch, page, perPage, setPerPage, setPage, offset } =
+    usePagination<RolesOrderBy>(RolesOrderBy.Name, {
+      initPerPage: getUserTablePreference("projectRolesTable", PreferenceKey.PerPage, 20)
+    });
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -130,50 +132,62 @@ export const ProjectRoleList = () => {
 
   const filteredRoles = useMemo(
     () =>
-      roles
-        ?.filter((role) => {
-          const { slug, name } = role;
+      roles?.filter((role) => {
+        const { slug, name } = role;
 
-          const searchValue = search.trim().toLowerCase();
+        const searchValue = search.trim().toLowerCase();
 
-          return (
-            name.toLowerCase().includes(searchValue) || slug.toLowerCase().includes(searchValue)
-          );
-        })
-        .sort((a, b) => {
-          if (!activeSort) return 0;
-
-          const [roleOne, roleTwo] = orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
-
-          switch (activeSort) {
-            case RolesOrderBy.Slug:
-              return roleOne.slug.toLowerCase().localeCompare(roleTwo.slug.toLowerCase());
-            case RolesOrderBy.Name:
-            default:
-              return roleOne.name.toLowerCase().localeCompare(roleTwo.name.toLowerCase());
-          }
-        }) ?? [],
-    [activeSort, roles, orderDirection, search]
+        return name.toLowerCase().includes(searchValue) || slug.toLowerCase().includes(searchValue);
+      }) ?? [],
+    [roles, search]
   );
 
-  const handleSort = (column: RolesOrderBy, direction: TableSortDirection) => {
-    if (direction === "none") {
-      setActiveSort(null);
-      return;
-    }
+  const sortRoles = (
+    tableRoles: Array<Omit<TProjectRole, "permissions">>,
+    sortState: RoleSortState
+  ) => {
+    if (!sortState.orderBy) return tableRoles;
 
-    setActiveSort(column);
-    setOrderBy(column);
-    setOrderDirection(direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC);
+    return [...tableRoles].sort((a, b) => {
+      const [roleOne, roleTwo] =
+        sortState.orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
+
+      switch (sortState.orderBy) {
+        case RolesOrderBy.Slug:
+          return roleOne.slug.toLowerCase().localeCompare(roleTwo.slug.toLowerCase());
+        case RolesOrderBy.Name:
+        default:
+          return roleOne.name.toLowerCase().localeCompare(roleTwo.name.toLowerCase());
+      }
+    });
   };
 
-  const getSortDirection = (column: RolesOrderBy): TableSortDirection => {
-    if (activeSort !== column) return "none";
-    return orderDirection === OrderByDirection.ASC ? "ascending" : "descending";
+  const handleSort = (
+    table: "default" | "custom",
+    column: RolesOrderBy,
+    direction: TableSortDirection
+  ) => {
+    const setSortState = table === "default" ? setDefaultRolesSort : setCustomRolesSort;
+
+    setSortState({
+      orderBy: direction === "none" ? null : column,
+      orderDirection: direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC
+    });
   };
 
-  const customRoles = filteredRoles.filter((role) => isCustomProjectRole(role.slug));
-  const defaultRoles = filteredRoles.filter((role) => !isCustomProjectRole(role.slug));
+  const getSortDirection = (sortState: RoleSortState, column: RolesOrderBy): TableSortDirection => {
+    if (sortState.orderBy !== column) return "none";
+    return sortState.orderDirection === OrderByDirection.ASC ? "ascending" : "descending";
+  };
+
+  const customRoles = sortRoles(
+    filteredRoles.filter((role) => isCustomProjectRole(role.slug)),
+    customRolesSort
+  );
+  const defaultRoles = sortRoles(
+    filteredRoles.filter((role) => !isCustomProjectRole(role.slug)),
+    defaultRolesSort
+  );
   const customRolesPage = customRoles.slice(offset, perPage * page);
 
   useResetPageHelper({
@@ -200,6 +214,8 @@ export const ProjectRoleList = () => {
 
   const renderRoleTable = (
     tableRoles: Array<Omit<TProjectRole, "permissions">>,
+    sortState: RoleSortState,
+    onSortChange: (column: RolesOrderBy, direction: TableSortDirection) => void,
     skeletonCount = 4
   ) => (
     <Table>
@@ -207,33 +223,33 @@ export const ProjectRoleList = () => {
         <TableRow>
           <TableHead
             className="w-1/2"
-            sortDirection={getSortDirection(RolesOrderBy.Name)}
-            onSortChange={(direction) => handleSort(RolesOrderBy.Name, direction)}
+            sortDirection={getSortDirection(sortState, RolesOrderBy.Name)}
+            onSortChange={(direction) => onSortChange(RolesOrderBy.Name, direction)}
           >
             Name
             <ChevronDownIcon
               className={twMerge(
                 "transition-transform",
-                orderDirection === OrderByDirection.DESC &&
-                  activeSort === RolesOrderBy.Name &&
+                sortState.orderDirection === OrderByDirection.DESC &&
+                  sortState.orderBy === RolesOrderBy.Name &&
                   "rotate-180",
-                activeSort !== RolesOrderBy.Name && "opacity-30"
+                sortState.orderBy !== RolesOrderBy.Name && "opacity-30"
               )}
             />
           </TableHead>
           <TableHead
             className="w-1/2"
-            sortDirection={getSortDirection(RolesOrderBy.Slug)}
-            onSortChange={(direction) => handleSort(RolesOrderBy.Slug, direction)}
+            sortDirection={getSortDirection(sortState, RolesOrderBy.Slug)}
+            onSortChange={(direction) => onSortChange(RolesOrderBy.Slug, direction)}
           >
             Slug
             <ChevronDownIcon
               className={twMerge(
                 "transition-transform",
-                orderDirection === OrderByDirection.DESC &&
-                  activeSort === RolesOrderBy.Slug &&
+                sortState.orderDirection === OrderByDirection.DESC &&
+                  sortState.orderBy === RolesOrderBy.Slug &&
                   "rotate-180",
-                activeSort !== RolesOrderBy.Slug && "opacity-30"
+                sortState.orderBy !== RolesOrderBy.Slug && "opacity-30"
               )}
             />
           </TableHead>
@@ -456,7 +472,9 @@ export const ProjectRoleList = () => {
                   search ? "No default roles match search" : "No default roles available",
                   search ? "Adjust your search criteria." : "Built-in roles will appear here."
                 )
-              : renderRoleTable(defaultRoles)}
+              : renderRoleTable(defaultRoles, defaultRolesSort, (column, direction) =>
+                  handleSort("default", column, direction)
+                )}
           </section>
           {(!isCertManager || hasCustomRoles) && (
             <section aria-labelledby="custom-roles-heading" className="flex flex-col gap-3">
@@ -473,7 +491,9 @@ export const ProjectRoleList = () => {
                     search ? "No custom roles match search" : "No custom roles yet",
                     search ? "Adjust your search criteria." : "Add a project role to get started."
                   )
-                : renderRoleTable(customRolesPage)}
+                : renderRoleTable(customRolesPage, customRolesSort, (column, direction) =>
+                    handleSort("custom", column, direction)
+                  )}
               {Boolean(customRoles.length) && (
                 <Pagination
                   count={customRoles.length}
