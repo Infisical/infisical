@@ -20,6 +20,7 @@ export const SanitizedFolderAccessSchema = z.object({
 
 export const SanitizedFolderAccessUserSchema = z.object({
   userId: z.string().uuid(),
+  membershipId: z.string().uuid().nullable(),
   username: z.string(),
   email: z.string().nullable(),
   firstName: z.string().nullable(),

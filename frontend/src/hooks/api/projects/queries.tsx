@@ -438,7 +438,11 @@ export const useGetWorkspaceUserDetails = (
   });
 };
 
-export const useGetMembershipPermissionAudit = (projectId: string, membershipId: string) =>
+export const useGetMembershipPermissionAudit = (
+  projectId: string,
+  membershipId: string,
+  options?: { enabled?: boolean; retry?: number | boolean }
+) =>
   useQuery({
     queryKey: projectKeys.getMembershipPermissionAudit(projectId, membershipId),
     queryFn: async () => {
@@ -447,10 +451,15 @@ export const useGetMembershipPermissionAudit = (projectId: string, membershipId:
       );
       return data;
     },
-    enabled: Boolean(projectId && membershipId)
+    enabled: Boolean(projectId && membershipId) && (options?.enabled ?? true),
+    retry: options?.retry
   });
 
-export const useGetIdentityPermissionAudit = (projectId: string, identityId: string) =>
+export const useGetIdentityPermissionAudit = (
+  projectId: string,
+  identityId: string,
+  options?: { enabled?: boolean; retry?: number | boolean }
+) =>
   useQuery({
     queryKey: projectKeys.getIdentityPermissionAudit(projectId, identityId),
     queryFn: async () => {
@@ -459,7 +468,8 @@ export const useGetIdentityPermissionAudit = (projectId: string, identityId: str
       );
       return data;
     },
-    enabled: Boolean(projectId && identityId)
+    enabled: Boolean(projectId && identityId) && (options?.enabled ?? true),
+    retry: options?.retry
   });
 
 export const useDeleteUserFromWorkspace = () => {

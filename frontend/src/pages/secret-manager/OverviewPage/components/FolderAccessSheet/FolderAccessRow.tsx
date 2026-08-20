@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDownIcon, ClockIcon, TriangleAlertIcon } from "lucide-react";
+import { BotIcon, ChevronDownIcon, ClockIcon, TriangleAlertIcon } from "lucide-react";
 
 import {
   Badge,
@@ -63,7 +63,7 @@ export const FolderAccessRow = ({
   return (
     <div className="flex items-center gap-3 border-b border-border py-3">
       <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-neutral/10 text-xs font-semibold text-accent">
-        {actor.initials}
+        {actor.type === "identity" ? <BotIcon className="size-4" /> : actor.initials}
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">{actor.name}</p>
@@ -140,7 +140,11 @@ export const FolderAccessRow = ({
           </div>
         </PopoverAnchor>
 
-        <PopoverContent align="end" className="w-72 space-y-3 p-4">
+        <PopoverContent
+          align="end"
+          className="w-72 space-y-3 p-4"
+          onFocusOutside={(e) => e.preventDefault()}
+        >
           <div className="space-y-1">
             <p className="text-sm font-medium text-foreground">Temporary access</p>
             <p className="text-xs text-muted">

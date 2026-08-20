@@ -10,6 +10,7 @@ import { ms } from "@app/lib/fn/time";
 export type TFolderAccessActor = {
   type: "user" | "identity";
   id: string;
+  membershipId: string | null;
   name: string;
   subtitle: string;
   initials: string;
@@ -30,6 +31,7 @@ export const toUserActor = (user: TFolderAccessUser): TFolderAccessActor => {
   return {
     type: "user",
     id: user.userId,
+    membershipId: user.membershipId,
     name,
     subtitle: user.email ?? user.username,
     initials: initialsOf(name),
@@ -40,6 +42,7 @@ export const toUserActor = (user: TFolderAccessUser): TFolderAccessActor => {
 export const toIdentityActor = (identity: TFolderAccessIdentity): TFolderAccessActor => ({
   type: "identity",
   id: identity.identityId,
+  membershipId: null,
   name: identity.name,
   subtitle: "Machine identity",
   initials: initialsOf(identity.name),

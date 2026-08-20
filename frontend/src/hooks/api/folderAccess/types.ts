@@ -33,6 +33,7 @@ export type TFolderAccess = {
 
 export type TFolderAccessUser = {
   userId: string;
+  membershipId: string | null;
   username: string;
   email: string | null;
   firstName: string | null;

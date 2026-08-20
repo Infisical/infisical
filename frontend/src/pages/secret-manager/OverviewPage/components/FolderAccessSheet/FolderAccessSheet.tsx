@@ -38,6 +38,7 @@ import { AddFolderAccessSheet } from "./AddFolderAccessSheet";
 import { FOLDER_ROLE_TIER_LABELS } from "./folder-access.const";
 import { byName, TFolderAccessActor, toIdentityActor, toUserActor } from "./folder-access.utils";
 import { FolderAccessRow } from "./FolderAccessRow";
+import { RemoveFolderAccessDialog } from "./RemoveFolderAccessDialog";
 
 // users and identities come from two separately paginated endpoints, so the merged list is built
 // from one max-size page of each and paged client side
@@ -65,6 +66,7 @@ export const FolderAccessSheet = ({
   const [debouncedSearch] = useDebounce(search, 300);
   const [page, setPage] = useState(1);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [removalActor, setRemovalActor] = useState<TFolderAccessActor | null>(null);
 
   const listArgs = {
     projectId,
@@ -138,7 +140,10 @@ export const FolderAccessSheet = ({
 
   const removeAccess = (actor: TFolderAccessActor) => {
     const target = { projectId, folderId };
-    const onSuccess = () => notifySuccess(`Removed ${actor.name}'s folder access`);
+    const onSuccess = () => {
+      notifySuccess(`Removed ${actor.name}'s folder access`);
+      setRemovalActor(null);
+    };
 
     if (actor.type === "user")
       deleteUserAccess.mutate({ ...target, userId: actor.id }, { onSuccess });
@@ -225,7 +230,7 @@ export const FolderAccessSheet = ({
                       })
                     }
                     onMakePermanent={() => setAccessType(actor, { isTemporary: false })}
-                    onRemove={() => removeAccess(actor)}
+                    onRemove={() => setRemovalActor(actor)}
                   />
                 ))}
               </div>
@@ -257,6 +262,21 @@ export const FolderAccessSheet = ({
         onOpenChange={setIsAddOpen}
         projectId={projectId}
         folderId={folderId}
+        folderPath={folderPath}
+        environmentName={environmentName}
+      />
+
+      <RemoveFolderAccessDialog
+        actor={removalActor}
+        isOpen={Boolean(removalActor)}
+        onOpenChange={(open) => {
+          if (!open) setRemovalActor(null);
+        }}
+        onConfirm={() => {
+          if (removalActor) removeAccess(removalActor);
+        }}
+        isPending={deleteUserAccess.isPending || deleteIdentityAccess.isPending}
+        projectId={projectId}
         folderPath={folderPath}
         environmentName={environmentName}
       />

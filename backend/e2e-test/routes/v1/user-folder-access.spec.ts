@@ -326,7 +326,12 @@ describe("User folder access CRUD", () => {
     const listUsers = async (
       query = ""
     ): Promise<{
-      users: { userId: string; username: string; folderRBACAccess: Record<string, unknown> | null }[];
+      users: {
+        userId: string;
+        username: string;
+        membershipId: string | null;
+        folderRBACAccess: Record<string, unknown> | null;
+      }[];
       totalCount: number;
     }> => {
       const res = await testServer.inject({
@@ -346,7 +351,7 @@ describe("User folder access CRUD", () => {
       expect(member).toBeDefined();
       expect(member!.folderRBACAccess).toBeNull();
       expect(member).not.toHaveProperty("roles");
-      expect(member).not.toHaveProperty("membershipId");
+      expect(member!.membershipId).toBe(memberProjectMembershipId);
     });
 
     test("excludes project admins from the roster", async () => {
@@ -521,6 +526,7 @@ describe("User folder access CRUD", () => {
 
         expect(groupUser).toBeDefined();
         expect(groupUser!.folderRBACAccess).toBeNull();
+        expect(groupUser!.membershipId).toBeNull();
       });
 
       test("counts an actor once however many memberships reach them", async () => {

@@ -69,6 +69,7 @@ type TUserFolderAccessQueryRow = TFolderAccessRow & {
   email: TMaybe<string>;
   firstName: TMaybe<string>;
   lastName: TMaybe<string>;
+  membershipId: TMaybe<string>;
 };
 
 type TIdentityFolderAccessQueryRow = TFolderAccessRow & {
@@ -166,12 +167,23 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
     };
   };
 
-  const $userSelect = () => [
+  // The direct-membership id is resolved with the same correlated subquery in both union branches
+  // so a user reachable directly and through a group still dedupes; NULL for group-only users,
+  // whose membership rows have actorUserId = NULL.
+  const $userSelect = (projectId: string, orgId: string) => [
     db.ref("id").withSchema(TableName.Users).as("userId"),
     db.ref("username").withSchema(TableName.Users).as("username"),
     db.ref("email").withSchema(TableName.Users).as("email"),
     db.ref("firstName").withSchema(TableName.Users).as("firstName"),
     db.ref("lastName").withSchema(TableName.Users).as("lastName"),
+    db(TableName.Membership)
+      .where(`${TableName.Membership}.scope`, AccessScope.Project)
+      .where(`${TableName.Membership}.scopeProjectId`, projectId)
+      .where(`${TableName.Membership}.scopeOrgId`, orgId)
+      .where(`${TableName.Membership}.actorUserId`, db.ref(`${TableName.Users}.id`))
+      .select(`${TableName.Membership}.id`)
+      .limit(1)
+      .as("membershipId"),
     ...$folderAccessSelect(db)
   ];
 
@@ -205,6 +217,7 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
     email: el.email ?? null,
     firstName: el.firstName ?? null,
     lastName: el.lastName ?? null,
+    membershipId: el.membershipId ?? null,
     folderAccess: $mapFolderAccess(el)
   });
 
@@ -233,7 +246,7 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
       .modify($excludeAdmins)
       .modify($joinFolderGrant(TableName.Users, folderId))
       .modify($searchUsers(search))
-      .select($userSelect());
+      .select($userSelect(projectId, orgId));
 
     // isPending is deliberately not filtered: permission-dal.getPermission grants access on group
     // membership alone and the flag is no longer cleared when a user is accepted, so filtering it
@@ -248,7 +261,7 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
       .modify($excludeAdmins)
       .modify($joinFolderGrant(TableName.Users, folderId))
       .modify($searchUsers(search))
-      .select($userSelect());
+      .select($userSelect(projectId, orgId));
 
     return direct.union([viaGroup], true);
   };
