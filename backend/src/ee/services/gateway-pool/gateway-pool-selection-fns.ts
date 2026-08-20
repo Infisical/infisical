@@ -11,10 +11,16 @@ export const pickRandomGateway = <T extends TSelectableGateway>(
 };
 
 /**
- * False when some members report their own load and others are too old to, because the two numbers
- * are on different scales: a non-reporting member is counted only on channels this platform opened,
- * which is strictly lower than a reporting peer's true occupancy. Comparing them would pull traffic
- * onto un-upgraded gateways for a whole rollout, so such a pool gets no load awareness at all.
+ * Load numbers are only worth comparing when every member is measured the same way.
+ *
+ * A gateway new enough to report sends its real connection count, including PAM sessions the
+ * platform never sees. A gateway too old to report is counted only on the connections the platform
+ * itself opened, which is always the lower number.
+ *
+ * So a pool mid-upgrade is the bad case: the old member always looks emptier and would soak up
+ * traffic for the whole rollout. That pool gets no load awareness at all and falls back to random.
+ * A pool where nobody reports is fine, because every member is measured the same lower way, so
+ * comparing them is still fair.
  */
 export const isPoolComparable = <T extends TSelectableGateway>(
   candidates: T[],

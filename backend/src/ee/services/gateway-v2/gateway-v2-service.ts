@@ -1008,8 +1008,9 @@ export const gatewayV2ServiceFactory = ({
       throw new NotFoundError({ message: `Gateway with ID '${orgPermission.id}' not found` });
     }
 
-    // Deliberately no heartbeat side effect: liveness stays with /heartbeat so a gateway cannot look
-    // healthy purely by reporting load, and so this stays a single Redis write.
+    // Do not mark the gateway alive here. A load report only proves the gateway can reach us;
+    // heartbeat proves we can reach it back through the relay. Updating liveness from this would
+    // keep a gateway whose relay path is broken looking healthy.
     await getGatewayLoadTracker()?.recordReportedLoad(gateway.id, activeChannels);
 
     return { gatewayId: gateway.id, activeChannels };

@@ -62,10 +62,10 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     }
   });
 
-  // Separate from /heartbeat because of what its handler costs, not how it is called: a heartbeat
-  // makes the platform dial back through the relay to probe liveness and then writes to Postgres,
-  // which is far too expensive at the cadence pool selection needs. This one only writes a Redis key,
-  // and deliberately does not touch heartbeat, so a gateway cannot look alive by reporting load.
+  // Heartbeat is expensive: the platform dials back through the relay to check the gateway is
+  // really there, then writes to Postgres. Every gateway reports load every 10 seconds, which is
+  // far too often for that. This one just writes a Redis key. It does not touch heartbeat, so a
+  // gateway cannot look alive just by reporting load.
   server.route({
     method: "POST",
     url: "/load",
