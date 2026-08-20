@@ -67,6 +67,19 @@ const buildSpecPayload = async (fastify: FastifyInstance, format: SpecFormat): P
   };
 };
 
+const appendVary = (reply: FastifyReply, field: string) => {
+  const current = reply.getHeader("vary");
+  const joined = Array.isArray(current) ? current.join(",") : current;
+  const existing = (typeof joined === "string" ? joined : "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  if (existing.some((entry) => entry === "*" || entry.toLowerCase() === field)) return;
+
+  void reply.header("vary", [...existing, field].join(", "));
+};
+
 const pickSpecEncoding = (header: FastifyRequest["headers"]["accept-encoding"]): SpecEncoding | null => {
   if (!header) return null;
 
@@ -144,8 +157,9 @@ export const fastifySwagger = fp(async (fastify) => {
     void reply
       .header("content-type", payload.contentType)
       .header("etag", `"${payload.etagBase}${encoding ? `-${encoding}` : ""}"`)
-      .header("cache-control", `public, max-age=${SPEC_CACHE_MAX_AGE_SECONDS}`)
-      .header("vary", "accept-encoding");
+      .header("cache-control", `public, max-age=${SPEC_CACHE_MAX_AGE_SECONDS}`);
+
+    appendVary(reply, "accept-encoding");
 
     if (encoding) void reply.header("content-encoding", encoding);
 

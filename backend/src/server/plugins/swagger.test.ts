@@ -1,5 +1,6 @@
 import { brotliDecompressSync, gunzipSync } from "node:zlib";
 
+import cors from "@fastify/cors";
 import fastifyEtag from "@fastify/etag";
 import Fastify, { FastifyInstance } from "fastify";
 import { beforeAll, describe, expect, test } from "vitest";
@@ -8,12 +9,13 @@ import { z } from "zod";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./fastify-zod";
 import { fastifySwagger } from "./swagger";
 
-const buildServer = async () => {
+const buildServer = async ({ corsOrigin }: { corsOrigin?: string | string[] } = {}) => {
   const app = Fastify({ logger: false }).withTypeProvider<ZodTypeProvider>();
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
   await app.register(fastifyEtag);
+  if (corsOrigin) await app.register(cors, { credentials: true, origin: corsOrigin });
   await app.register(fastifySwagger);
 
   for (let i = 0; i < 40; i += 1) {
@@ -161,6 +163,36 @@ describe("OpenAPI spec routes", () => {
     expect(ui.statusCode).toBe(200);
     expect(ui.headers["content-type"]).toContain("text/html");
     expect(asset.statusCode).toBe(200);
+  });
+
+  test("keeps the Vary entries other plugins already set", async () => {
+    // app.ts passes an array whenever CORS_ALLOWED_ORIGINS is configured, which makes
+    // @fastify/cors add Vary: Origin on its onRequest hook, before this plugin's preHandler.
+    const withCors = await buildServer({ corsOrigin: ["https://app.example", "https://eu.example"] });
+
+    const res = await withCors.inject({
+      method: "GET",
+      url: "/api/docs/json",
+      headers: { origin: "https://eu.example", "accept-encoding": "br" }
+    });
+
+    const vary = String(res.headers.vary)
+      .split(",")
+      .map((entry) => entry.trim().toLowerCase());
+
+    // Without Origin here, a shared cache could hand this origin's
+    // Access-Control-Allow-Origin to a request from the other one.
+    expect(vary).toContain("origin");
+    expect(vary).toContain("accept-encoding");
+    expect(res.headers["access-control-allow-origin"]).toBe("https://eu.example");
+
+    await withCors.close();
+  });
+
+  test("does not duplicate a Vary entry that is already present", async () => {
+    const res = await getSpec();
+
+    expect(String(res.headers.vary)).toBe("accept-encoding");
   });
 
   test("builds the payload once when a cold server is hit concurrently", async () => {
