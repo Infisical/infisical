@@ -80,6 +80,8 @@ The v3 visual system (colors, typography, components, layout) and product voice/
 
 When writing or editing documentation in `docs/`, follow the [Documentation Style Guide](docs/STYLE_GUIDE.md). It covers writing for users (not implementers), Mintlify component usage, cross-referencing, page structure, and more.
 
+Run `make lint-docs` after any change under `docs/`. It runs [Vale](https://vale.sh) over the docs and enforces the mechanical half of the style guide: sentence case in headings and frontmatter titles, a required `description`, product and vendor spellings, spelling against a curated vocabulary, `$` prompts in code blocks, and em dash density. See [docs/CONTRIBUTING.MD](docs/CONTRIBUTING.MD) for how to extend the vocabulary or suppress a rule. It is the same invocation Mintlify's Vale CI check runs, so local and CI agree. Note that Vale cannot see prose indented four or more spaces inside components -- roughly half of this repo -- and reports nothing about what it skipped, so a clean run does not mean a nested page was checked.
+
 ### Auth & Permissions
 
 Auth modes (JWT, IDENTITY_ACCESS_TOKEN, SCIM_TOKEN) are extracted in `backend/src/server/plugins/auth/`. Authorization uses CASL (`@casl/ability`) with project-level and org-level permission checks — see `backend/CLAUDE.md` for backend details and `frontend/CLAUDE.md` for frontend permission hooks/HOCs. Note: `API_KEY` and `SERVICE_TOKEN` auth modes are deprecated — do not use them in new code.
