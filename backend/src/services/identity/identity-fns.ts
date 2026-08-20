@@ -33,6 +33,11 @@ export type TIdentityLockoutLookup = {
 
 type TLockoutKeyStore = Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem" | "getItems">;
 
+// Whatever writes a lockout key for one of these methods must stay resolvable by this reader.
+// Adding a method here without teaching `isExactlyResolvable` about it still returns correct
+// results, just via the scan fallback below rather than the batched exact-key path.
+export const LOCKOUT_CAPABLE_AUTH_METHODS = [IdentityAuthMethod.UNIVERSAL_AUTH, IdentityAuthMethod.LDAP_AUTH];
+
 const isLockedOut = (raw: string | null) => {
   if (!raw) return false;
   try {
@@ -41,6 +46,12 @@ const isLockedOut = (raw: string | null) => {
     return false;
   }
 };
+
+// Universal auth keys its lockout by client id, which the caller already has, so it is the only
+// lockout-capable method resolvable by exact key. Every other lockout-capable method falls
+// through to the pattern scan below.
+const isExactlyResolvable = (el: TIdentityLockoutLookup, method: IdentityAuthMethod) =>
+  method === IdentityAuthMethod.UNIVERSAL_AUTH && Boolean(el.universalAuthClientId);
 
 export const getActiveLockoutAuthMethodsForIdentities = async (
   identities: TIdentityLockoutLookup[],
@@ -54,10 +65,9 @@ export const getActiveLockoutAuthMethodsForIdentities = async (
     if (!result[identityId].includes(method)) result[identityId].push(method);
   };
 
-  // Universal auth keys its lockout by client id, which the caller already has, so the
-  // whole page resolves in one MGET instead of a keyspace scan per row.
+  // The whole page resolves in one MGET instead of a keyspace scan per row.
   const exactLookups = identities
-    .filter((el) => el.authMethods.includes(IdentityAuthMethod.UNIVERSAL_AUTH) && el.universalAuthClientId)
+    .filter((el) => el.authMethods.some((method) => isExactlyResolvable(el, method)))
     .map((el) => ({
       identityId: el.id,
       key: KeyStorePrefixes.IdentityLockoutState(
@@ -74,16 +84,18 @@ export const getActiveLockoutAuthMethodsForIdentities = async (
         if (isLockedOut(raw)) add(exactLookups[idx].identityId, IdentityAuthMethod.UNIVERSAL_AUTH);
       });
     } catch (err) {
-      logger.error(err, "Failed to read universal auth lockout state, omitting lockout indicators");
+      logger.error(
+        err,
+        `Failed to read universal auth lockout state, omitting lockout indicators [identityCount=${exactLookups.length}]`
+      );
     }
   }
 
-  // LDAP keys its lockout by the submitted username, which lives in the customer's
-  // directory and is never persisted here, so those rows still need a pattern lookup.
-  const scanLookups = identities.filter(
-    (el) =>
-      el.authMethods.includes(IdentityAuthMethod.LDAP_AUTH) ||
-      (el.authMethods.includes(IdentityAuthMethod.UNIVERSAL_AUTH) && !el.universalAuthClientId)
+  // LDAP keys its lockout by the submitted username, which lives in the customer's directory and
+  // is never persisted here, so it (and any other lockout-capable method not exactly resolvable
+  // above) still needs a pattern lookup.
+  const scanLookups = identities.filter((el) =>
+    el.authMethods.some((method) => LOCKOUT_CAPABLE_AUTH_METHODS.includes(method) && !isExactlyResolvable(el, method))
   );
 
   await Promise.all(
@@ -92,7 +104,7 @@ export const getActiveLockoutAuthMethodsForIdentities = async (
         const methods = await getIdentityActiveLockoutAuthMethods(el.id, keyStore);
         methods.forEach((method) => add(el.id, method as IdentityAuthMethod));
       } catch (err) {
-        logger.error(err, `Failed to read lockout state for identity ${el.id}, omitting lockout indicators`);
+        logger.error(err, `Failed to read lockout state, omitting lockout indicators [identityId=${el.id}]`);
       }
     })
   );
