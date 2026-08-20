@@ -37,36 +37,9 @@ import {
 } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import { isSecretPathMatch, resolveSecretDeepSearch } from "./dashboard-secret-search-fns";
+
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
-
-const parseSecretPathSearch = (search?: string) => {
-  if (!search)
-    return {
-      searchName: "",
-      searchPath: ""
-    };
-
-  if (!search.includes("/"))
-    return {
-      searchName: search,
-      searchPath: ""
-    };
-
-  if (search === "/")
-    return {
-      searchName: "",
-      searchPath: "/"
-    };
-
-  const [searchName, ...searchPathSegments] = search.split("/").reverse();
-  let searchPath = removeTrailingSlash(searchPathSegments.reverse().join("/").toLowerCase());
-  if (!searchPath.startsWith("/")) searchPath = `/${searchPath}`;
-
-  return {
-    searchName,
-    searchPath
-  };
-};
 
 const SECRET_METADATA_SEARCH_MAX_FILTERS = 20;
 
@@ -1562,7 +1535,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         req.permission
       );
 
-      const { searchName, searchPath } = parseSecretPathSearch(search);
+      const { searchName, searchPath } = resolveSecretDeepSearch(
+        search,
+        allFolders.map((folder) => folder.path)
+      );
 
       const folderMappings = allFolders.map((folder) => ({
         folderId: folder.id,
@@ -1667,7 +1643,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const sliceQuickSearch = <T>(array: T[]) => array.slice(0, 25);
 
       const filteredDynamicSecrets = sliceQuickSearch(
-        searchPath ? dynamicSecrets.filter((dynamicSecret) => dynamicSecret.path.endsWith(searchPath)) : dynamicSecrets
+        searchPath
+          ? dynamicSecrets.filter((dynamicSecret) => isSecretPathMatch(dynamicSecret.path, searchPath))
+          : dynamicSecrets
       );
 
       if (filteredDynamicSecrets?.length) {
@@ -1689,15 +1667,17 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       return {
         secrets: sliceQuickSearch(
-          searchPath ? secrets.filter((secret) => secret.secretPath.endsWith(searchPath)) : secrets
+          searchPath ? secrets.filter((secret) => isSecretPathMatch(secret.secretPath, searchPath)) : secrets
         ),
         dynamicSecrets: sliceQuickSearch(
           searchPath
-            ? dynamicSecrets.filter((dynamicSecret) => dynamicSecret.path.endsWith(searchPath))
+            ? dynamicSecrets.filter((dynamicSecret) => isSecretPathMatch(dynamicSecret.path, searchPath))
             : dynamicSecrets
         ),
         secretRotations: sliceQuickSearch(
-          searchPath ? secretRotations.filter((rotation) => rotation.folder.path.endsWith(searchPath)) : secretRotations
+          searchPath
+            ? secretRotations.filter((rotation) => isSecretPathMatch(rotation.folder.path, searchPath))
+            : secretRotations
         ),
         folders: sliceQuickSearch(
           allFolders.filter((folder) => {
@@ -1714,7 +1694,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               }
 
               // support ending partial path match
-              return folderPath.endsWith(searchPath) && folderName.toLowerCase().startsWith(searchName.toLowerCase());
+              return (
+                isSecretPathMatch(folderPath, searchPath) &&
+                folderName.toLowerCase().startsWith(searchName.toLowerCase())
+              );
             }
 
             // no search path, "fuzzy" match all folders
