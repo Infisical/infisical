@@ -1,6 +1,6 @@
 ---
-title: "CRL Distribution Points"
-sidebarTitle: "CRL Distribution"
+title: "CRL distribution points"
+sidebarTitle: "CRL distribution"
 description: "Configure Certificate Revocation List (CRL) distribution points for your Certificate Authorities."
 ---
 
@@ -10,7 +10,7 @@ Every certificate issued by an internal CA embeds a CRL Distribution Point (CDP)
   This page is for product admins managing PKI infrastructure. CRL configuration is an advanced topic — most users don't need to configure custom mirrors.
 </Info>
 
-## How It Works
+## How it works
 
 - The **Infisical-managed URL** is included as the primary CDP by default. It can be disabled per CA.
 - Up to **4 mirror URLs** can be configured per CA.
@@ -21,7 +21,7 @@ Every certificate issued by an internal CA embeds a CRL Distribution Point (CDP)
   Infisical only **advertises** the mirror URLs in issued certificates — it does not publish your CRL to them. You are responsible for fetching the latest CRL from Infisical and serving an up-to-date copy at every mirror URL you register. If a mirror serves a stale CRL, validators that fall back to it will get outdated revocation information and may continue to trust certificates you have already revoked.
 </Warning>
 
-## Configure CRL Mirrors
+## Configure CRL mirrors
 
 <Tabs>
   <Tab title="Infisical UI">
@@ -86,7 +86,7 @@ Every certificate issued by an internal CA embeds a CRL Distribution Point (CDP)
   </Tab>
 </Tabs>
 
-## Keeping Mirrors in Sync
+## Keeping mirrors in sync
 
 Infisical regenerates each CA's CRL automatically — CRLs are rebuilt whenever a certificate is revoked or the existing CRL is approaching its `nextUpdate` time. To keep your mirrors useful, pull the latest CRL on a schedule and republish it at each mirror URL.
 
@@ -116,7 +116,7 @@ echo "$CRL" | aws s3 cp - s3://my-bucket/crl/internal-ca.crl \
   --content-type "application/pkix-crl"
 ```
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="CA Renewal" icon="arrows-rotate" href="/documentation/platform/pki/ca/ca-renewal">

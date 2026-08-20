@@ -1,5 +1,5 @@
 ---
-title: "Gateway Deployment"
+title: "Gateway deployment"
 description: "Complete guide to deploying Infisical Gateways including network configuration and firewall requirements"
 ---
 
@@ -10,7 +10,7 @@ This guide covers everything you need to deploy and configure Infisical Gateways
   For a complete Helm chart reference for Kubernetes deployments, see the [Gateway Helm chart documentation](/self-hosting/helm-charts/gateway).
 </Tip>
 
-## Deployment Steps
+## Deployment steps
 
 <Steps>
   <Step title="Set Up a Relay Server">
@@ -24,9 +24,10 @@ This guide covers everything you need to deploy and configure Infisical Gateways
     ![Create Gateway button](/images/platform/gateways/gateway-create-button.png)
     3. Enter a name for the gateway.
     ![Create Gateway form](/images/platform/gateways/gateway-create-form.png)
-    4. (Optional) Open the new gateway's detail page and click the edit icon next to **Authentication** to switch the auth method. Two methods are supported:
+    4. (Optional) Open the new gateway's detail page and change the method under **Authentication** in the **Details** card. Three methods are supported:
         - **Token** (default): a one-time enrollment token (1h expiry) bootstraps the gateway.
         - **AWS**: the gateway authenticates by signing an `sts:GetCallerIdentity` request with whatever AWS credentials it can resolve on the host (instance role, env vars, shared profile). Configure the allowed principal ARNs and/or account IDs that match your hosts.
+        - **Kubernetes**: the gateway authenticates with the projected service account token of the pod it runs in, so no credential has to be distributed to the cluster. Configure the cluster's API server URL and the allowed namespaces and/or service account names.
     5. Click **Show deploy command** in the **Deployment** card. Pick a relay (or "Auto Select Relay") and copy the generated CLI command.
   </Step>
   <Step title="Install the Infisical CLI">
@@ -154,6 +155,82 @@ This guide covers everything you need to deploy and configure Infisical Gateways
           </Tab>
         </Tabs>
       </Accordion>
+      <Accordion title="Kubernetes Auth">
+        The gateway sends the projected service account token of its own pod, and Infisical verifies it against your cluster's TokenReview API. Nothing has to be copied into the cluster, so this is the method to use when gateway creation is automated. The gateway re-authenticates on every start.
+
+        Before deploying, configure the Kubernetes auth method on the gateway's detail page:
+
+        | Field | Description |
+        | --- | --- |
+        | **Gateway** | Optional. Routes the check through an existing gateway or gateway pool instead of Infisical calling the API server directly. Use this when the API server has no address Infisical can reach. |
+        | **Review Mode** | Shown once a proxy is selected. See the private cluster section below. |
+        | **Kubernetes Host** | The cluster API server URL, reachable from Infisical (for example `https://my-cluster.example.com:6443`). Not required when Review Mode is Gateway as Reviewer. |
+        | **Allowed Namespaces** | Namespaces whose service accounts may authenticate as this gateway. Supports `*` wildcards. |
+        | **Allowed Service Account Names** | Service account names that may authenticate as this gateway. Supports `*` wildcards. |
+        | **Allowed Audience** | Optional. The audience the token must carry. |
+        | **CA Certificate** | The CA that issued the API server's certificate. Needed unless that certificate is already trusted by the public trust store, which for a cluster CA it will not be. |
+        | **Token Reviewer JWT** | Optional. A token with the `system:auth-delegator` ClusterRole. Leave empty to let the gateway's own service account review its token, which the Helm chart configures by default. |
+
+        At least one of **Allowed Namespaces** or **Allowed Service Account Names** must be set, so that not every pod in the cluster can enroll as the gateway.
+
+        ### Clusters with a private API server
+
+        By default Infisical calls your API server directly, which requires an address it can reach. If your API server is private, select a gateway or gateway pool under **Gateway** and the check is tunnelled through it instead. Two modes are available:
+
+        | Review Mode | Who performs the check | Requires |
+        | --- | --- | --- |
+        | **Gateway as Reviewer** | The selected gateway, using its own service account | That gateway runs as a pod in the same cluster. No host or reviewer token needed. |
+        | **Manual Token Reviewer JWT (API)** | Infisical, tunnelling through the gateway | A Kubernetes host and a reviewer token. Works from any gateway that can reach the API server, including one on a VM in the same network. |
+
+        A gateway pool can only be used with **Manual Token Reviewer JWT (API)**, where any healthy member performs the check and one gateway going offline does not stop the others from authenticating. **Gateway as Reviewer** requires a specific gateway, because in that mode the selected gateway decides the outcome and pool membership can change after the config is saved.
+
+        <Warning>
+          A gateway cannot review its own token. The proxy runs over the gateway's own tunnel, which only exists once it has already authenticated, so the reviewer must be a different gateway that is already enrolled and connected.
+
+          This means the **first** gateway in a private cluster cannot use Kubernetes auth. Enrol it with an enrollment token or AWS auth, then point later gateways at it. Deleting a gateway that other gateways use as their reviewer is refused until they are pointed elsewhere.
+        </Warning>
+
+        <Tabs>
+          <Tab title="Kubernetes (Helm)">
+            Install the Infisical Helm chart repository:
+            ```bash
+            helm repo add infisical https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
+            helm repo update
+            ```
+
+            Install the gateway:
+            ```bash
+            helm install infisical-gateway infisical/infisical-gateway \
+              --namespace infisical-gateway --create-namespace \
+              --set gateway.name=<gateway-name> \
+              --set gateway.enrollment.method=kubernetes \
+              --set gateway.enrollment.kubernetes.gatewayId=<gateway-id> \
+              --set gateway.domain=<your-infisical-domain>
+            ```
+
+            <Info>
+              The chart binds the gateway's service account to the `system:auth-delegator` ClusterRole by default, which is what lets its own token act as the token reviewer. Set `serviceAccount.createAsAuthDelegator=false` only if you configure a separate **Token Reviewer JWT** on the gateway instead.
+            </Info>
+
+            Make sure the release namespace and service account name match the allowlists you configured. With the command above, that is namespace `infisical-gateway` and service account `infisical-gateway`.
+          </Tab>
+          <Tab title="Other in-cluster deployment">
+            If you deploy the gateway container yourself rather than through the chart, run it with:
+            ```bash
+            infisical gateway start <gateway-name> \
+              --enroll-method=kubernetes \
+              --gateway-id=<gateway-id> \
+              --domain=<your-infisical-domain>
+            ```
+
+            The pod needs its service account token automounted (the default), and either the service account must hold the `system:auth-delegator` ClusterRole or a separate **Token Reviewer JWT** must be configured on the gateway.
+          </Tab>
+        </Tabs>
+
+        <Warning>
+          Infisical must be able to reach the cluster's API server to review the token. For a cluster with no publicly reachable API server, use Token or AWS auth instead.
+        </Warning>
+      </Accordion>
     </AccordionGroup>
 
     <Warning>
@@ -180,14 +257,14 @@ This guide covers everything you need to deploy and configure Infisical Gateways
 
 From the gateway's detail page (click the gateway row in the list):
 
-- **Show deploy command** — Generates a fresh enrollment token (token method) or re-displays the AWS start command. Clicking this on a token-method gateway does **not** disconnect the running gateway; the next login with the new token rotates credentials atomically.
-- **Edit auth method** — Switch between Token and AWS, or update the AWS allowlists. Existing gateways keep their JWT until they restart and re-authenticate.
+- **Show deploy command**: Generates a fresh enrollment token (token method) or re-displays the start command for the AWS and Kubernetes methods. Clicking this on a token-method gateway does **not** disconnect the running gateway; the next login with the new token rotates credentials atomically.
+- **Edit auth method**: Switch between Token, AWS, and Kubernetes, or update the allowlists of the current method. Existing gateways keep their JWT until they restart and re-authenticate.
 - **Options → Revoke Access** — Disconnects the running gateway and invalidates outstanding enrollment tokens. The gateway must re-authenticate to reconnect. Gated by the dedicated `revoke-gateway-access` permission, separate from `edit-gateways`.
 - **Options → Delete Gateway** — Permanently removes the gateway.
 
 To migrate a gateway to a different host with zero downtime: click **Show deploy command** to generate a fresh token, run it on the new host, and the new login will rotate credentials away from the old host.
 
-## Frequently Asked Questions
+## Frequently asked questions
 
 <AccordionGroup>
 <Accordion title="Do I need to open any inbound ports on my firewall?">
@@ -230,6 +307,8 @@ If the gateway cannot connect to the relay:
 For token method: ensure the enrollment token has not expired or already been used. Open the gateway's detail page and click **Show deploy command** to generate a fresh token.
 
 For AWS method: ensure the host has AWS credentials available (instance role, env vars, or shared profile) and the resolved principal/account is in the allowlist on the gateway's detail page.
+
+For Kubernetes method: ensure Infisical can reach the configured Kubernetes host, that the pod's namespace and service account are in the allowlists, and that the reviewer (the gateway's own service account by default) holds the `system:auth-delegator` ClusterRole. The gateway's audit log records the reviewed namespace and service account name for each login, and the reason code for each failure.
 </Accordion>
 
 <Accordion title="Where can I find gateway logs?">
@@ -252,7 +331,7 @@ For **token-method** gateways, the access token and domain are saved to a config
 - **Running as root/sudo:** `/etc/infisical/gateways/<gateway-name>.conf`
 - **Running as a regular user:** `~/.infisical/gateways/<gateway-name>.conf`
 
-For **AWS-method** gateways, no JWT is persisted to disk. The gateway re-authenticates by signing a fresh STS request on every start using the host's AWS credentials. Only the gateway id and domain are stored locally.
+For **AWS-method** and **Kubernetes-method** gateways, no JWT is persisted to disk. The gateway re-authenticates on every start, by signing a fresh STS request with the host's AWS credentials or by presenting the pod's service account token. Only the gateway id and domain are stored locally.
 
 For systemd-based installations, the configuration is at `/etc/infisical/gateways/<gateway-name>.conf`. All config files are created with restricted permissions (0600).
 </Accordion>

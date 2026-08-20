@@ -285,9 +285,9 @@ The Infisical Agent Injector supports the following annotations:
 
 </AccordionGroup>
 
-## ConfigMap Configuration
+## ConfigMap configuration
 
-### Supported Fields
+### Supported fields
 
 When you are configuring a pod to use the injector, you must create a config map in the same namespace as the pod you want to inject secrets into.
 The entire config needs to be of string format and needs to be assigned to the `config.yaml` key in the config map. You can find a full example of the config at the end of this section.
@@ -535,7 +535,7 @@ spec:
 ```
 
 
-## Quick Start
+## Quick start
 In this section we'll walk through a full example of how to inject secrets into a pod using the Infisical Agent Injector.
 In this example we'll create a basic nginx deployment and print a Infisical secret called `API_KEY` to the container logs.
 

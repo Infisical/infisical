@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check } from "lucide-react";
 
 import {
   Badge,
@@ -10,15 +10,15 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  IconButton,
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-  PopoverTrigger,
   ResourceIcon
 } from "@app/components/v3";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { useDebounce } from "@app/hooks/useDebounce";
+import {
+  NavbarSwitcher,
+  NavbarSwitcherContent,
+  NavbarSwitcherTrigger
+} from "@app/layouts/NavbarSwitcher";
 
 // Modified and middle clicks belong to the browser: it opens the row's href in a new tab
 // or window, so we neither preventDefault nor navigate programmatically on those paths.
@@ -68,7 +68,7 @@ const ApplicationSelectInner = ({
 
   return (
     <div className="mr-2 flex min-w-16 items-center gap-1 pr-1 pl-1">
-      <Popover
+      <NavbarSwitcher
         open={open}
         onOpenChange={(nextOpen) => {
           // Clearing on open lets cmdk pick the first row again, as it did while its
@@ -78,26 +78,20 @@ const ApplicationSelectInner = ({
           setOpen(nextOpen);
         }}
       >
-        <PopoverAnchor asChild>
-          <Link
-            to={
-              `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${applicationName}` as never
-            }
-            className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-white"
-          >
-            <ResourceIcon className="size-[14px] shrink-0 text-project" />
-            <span className="truncate">{displayName}</span>
-            <Badge variant="project" className="hidden lg:inline-flex">
-              Application
-            </Badge>
-          </Link>
-        </PopoverAnchor>
-        <PopoverTrigger asChild>
-          <IconButton variant="ghost" size="xs" aria-label="switch-application">
-            <ChevronsUpDown />
-          </IconButton>
-        </PopoverTrigger>
-        <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
+        <Link
+          to={
+            `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${applicationName}` as never
+          }
+          className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-white"
+        >
+          <ResourceIcon className="size-[14px] shrink-0 text-project" />
+          <span className="truncate">{displayName}</span>
+          <Badge variant="project" className="hidden lg:inline-flex">
+            Application
+          </Badge>
+        </Link>
+        <NavbarSwitcherTrigger aria-label="switch-application" />
+        <NavbarSwitcherContent className="w-96">
           <Command shouldFilter={false} value={selectedValue} onValueChange={setSelectedValue}>
             <CommandInput
               aria-label="Search applications"
@@ -142,8 +136,8 @@ const ApplicationSelectInner = ({
               </CommandGroup>
             </CommandList>
           </Command>
-        </PopoverContent>
-      </Popover>
+        </NavbarSwitcherContent>
+      </NavbarSwitcher>
     </div>
   );
 };

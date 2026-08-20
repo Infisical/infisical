@@ -757,7 +757,7 @@ export const CertificatesTable = ({
               )}
             </div>
           </PopoverTrigger>
-          <PopoverContent sideOffset={4} className="w-[680px] overflow-visible p-0" align="end">
+          <PopoverContent className="w-[680px] overflow-visible p-0" align="end">
             <FilterBuilder
               rules={pendingFilters}
               onChange={setPendingFilters}

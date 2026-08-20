@@ -1,5 +1,5 @@
 ---
-title: "Credential Rotation"
+title: "Credential rotation"
 sidebarTitle: "Overview"
 description: "Automatically rotate the passwords of your PAM accounts on a fixed schedule."
 ---
@@ -27,7 +27,7 @@ The rotation account is the account whose credentials are used to connect to the
   A delegated rotation account must connect to the **same resource** as the account being rotated, because the password change runs over the rotation account's own connection. For databases this means the same host and port; for Windows AD it means the same domain. The two accounts can still be different users (for example, a privileged administrator rotating a less privileged account).
 </Note>
 
-## How it Works
+## How it works
 
 When a rotation runs, Infisical:
 
@@ -36,7 +36,7 @@ When a rotation runs, Infisical:
 3. Verifies the new password by opening a fresh connection with it.
 4. Promotes the new password to the live credential once verification succeeds. If any step fails, the existing credential is left untouched and the account's rotation status records the error.
 
-## Configuring a Template
+## Configuring a template
 
 Template-level rotation settings are managed by a [Product Admin](/documentation/platform/pam/concepts/access-control#product-membership). Go to **Privileged Access Management → Account Templates** and open the template used by the accounts you want to rotate. In the **Credential settings** section:
 
@@ -57,7 +57,7 @@ Template-level rotation settings are managed by a [Product Admin](/documentation
   Changing a template's rotation settings updates the rotation schedule for every account created from it. Accounts that do not yet have a rotation account remain unscheduled until one is set.
 </Note>
 
-## Configuring an Account
+## Configuring an account
 
 Setting an account's rotation account and running manual rotations require an [Admin](/documentation/platform/pam/concepts/access-control#folder-and-account-memberships) role on the account's folder or on the account itself. Open an account that belongs to a rotation-enabled template and go to the **Rotation** tab.
 
@@ -69,7 +69,7 @@ To rotate immediately without waiting for the next scheduled run, click **Rotate
   If an account shows that it will not rotate until it is configured, set a rotation account (or configure the account's own credentials for self-rotation) to make it ready.
 </Note>
 
-## Supported Resources
+## Supported resources
 
 Each resource type applies the password change differently and has its own requirements for the rotation account. See the resource-specific page for the exact statement, the privileges the rotation account needs, and any special cases.
 

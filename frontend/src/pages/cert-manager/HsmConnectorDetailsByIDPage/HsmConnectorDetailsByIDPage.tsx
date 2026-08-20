@@ -5,7 +5,7 @@ import { ChevronLeftIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { AccessRestrictedBanner, PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -74,6 +74,7 @@ const Page = () => {
     <div className="mx-auto flex flex-col justify-between text-white">
       {connector && (
         <ProjectPermissionCan
+          renderGuardBanner
           I={ProjectPermissionHsmConnectorActions.Read}
           a={ProjectPermissionSub.HsmConnectors}
         >
@@ -120,11 +121,7 @@ const Page = () => {
                   onDeleted={navigateBackToList}
                 />
               </div>
-            ) : (
-              <div className="container mx-auto flex h-full items-center justify-center">
-                <AccessRestrictedBanner />
-              </div>
-            )
+            ) : null
           }
         </ProjectPermissionCan>
       )}

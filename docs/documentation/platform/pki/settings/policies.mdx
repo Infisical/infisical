@@ -1,6 +1,6 @@
 ---
-title: "Certificate Policies"
-sidebarTitle: "Certificate Policies"
+title: "Certificate policies"
+sidebarTitle: "Certificate policies"
 description: "Define rules and constraints for certificates issued across your organization."
 ---
 
@@ -10,13 +10,13 @@ A certificate policy defines the rules that certificates must follow — allowed
   Certificate policies are created by product admins and shared across the organization. Teams consume policies through [Certificate Profiles](/documentation/platform/pki/settings/profiles).
 </Info>
 
-## How Policies Work
+## How policies work
 
 When a certificate is requested, Certificate Manager validates the request against the policy bound to its profile. If the request violates any policy constraint, the certificate is not issued.
 
 This enforcement happens automatically — teams don't need to know the policy details. They just request certificates, and the policy ensures compliance.
 
-### Policy Enforcement Model
+### Policy enforcement model
 
 Each policy field (Subject Attributes, SANs, Key Usages, etc.) follows a three-state enforcement model:
 
@@ -30,11 +30,11 @@ Each policy field (Subject Attributes, SANs, Key Usages, etc.) follows a three-s
   This model lets you be precise about intent. Leave a field unconfigured to allow anything, or configure it with an empty rule set to explicitly forbid it entirely.
 </Info>
 
-## Create a Certificate Policy
+## Create a certificate policy
 
 Navigate to **Certificate Manager → Certificate Policies** and click **Create**.
 
-### Policy Presets
+### Policy presets
 
 For common use cases, select a **preset** to pre-fill all the right settings:
 
@@ -53,7 +53,7 @@ For common use cases, select a **preset** to pre-fill all the right settings:
   For most TLS use cases, start with the **TLS Server Certificate** preset. You can customize any settings after selecting a preset.
 </Tip>
 
-### Basic Settings
+### Basic settings
 
 | Field | Description |
 |-------|-------------|
@@ -61,7 +61,7 @@ For common use cases, select a **preset** to pre-fill all the right settings:
 | **Description** | Optional context about this policy's purpose |
 | **Certificate Validity** | Maximum lifetime for certificates (e.g., 90 days, 1 year) |
 
-### Subject Attributes
+### Subject attributes
 
 Control what X.509 distinguished name attributes can appear in certificates:
 
@@ -113,7 +113,7 @@ For each attribute, configure enforcement:
 
 Once you define subject attribute rules, only the attribute types you explicitly include are permitted — any other attribute in a request will be rejected. An empty configuration forbids all subject attributes; leave the section unconfigured to allow any attribute.
 
-### Subject Alternative Names (SANs)
+### Subject alternative names (SANs)
 
 Control which SANs can appear on certificates:
 
@@ -129,7 +129,7 @@ Each SAN rule specifies the type, a pattern (fixed or wildcard), and whether to 
 
 Once you define SAN rules, only the SAN types you explicitly include are permitted — any other SAN type in a request will be rejected. An empty SAN configuration forbids all SANs; leave the section unconfigured to allow any SAN type.
 
-### Key & Signature Algorithms
+### Key & signature algorithms
 
 Restrict which cryptographic algorithms are permitted:
 
@@ -150,7 +150,7 @@ Restrict which cryptographic algorithms are permitted:
   </Card>
 </Columns>
 
-### Key Usages
+### Key usages
 
 Define the cryptographic purposes of certificates:
 
@@ -164,7 +164,7 @@ Define the cryptographic purposes of certificates:
 
 If you configure Key Usages, only the usages listed in **Required** or **Allowed** are permitted. Leave Key Usages unconfigured to allow any key usage.
 
-### Extended Key Usages
+### Extended key usages
 
 Define higher-level intended uses:
 
@@ -180,7 +180,7 @@ Define higher-level intended uses:
 
 If you configure Extended Key Usages, only the usages listed in **Required** or **Allowed** are permitted. Leave Extended Key Usages unconfigured to allow any extended key usage.
 
-### Basic Constraints
+### Basic constraints
 
 Control whether certificates can act as CAs:
 
@@ -192,6 +192,6 @@ Control whether certificates can act as CAs:
 
 **Maximum Path Length**: Limits how many intermediate CAs can exist below this certificate. `0` means the CA can only sign end-entity certificates.
 
-## Next Steps
+## Next steps
 
 Once you've created a policy, combine it with a CA in a [Certificate Profile](/documentation/platform/pki/settings/profiles) that teams can consume.

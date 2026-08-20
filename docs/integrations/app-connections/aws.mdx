@@ -1,5 +1,5 @@
 ---
-title: "AWS Connection"
+title: "AWS connection"
 description: "Learn how to configure an AWS Connection for Infisical."
 ---
 
@@ -470,7 +470,7 @@ Infisical supports two methods for connecting to AWS.
                                     Recording chunks are encrypted with a per-session AES-256-GCM key on the gateway before they leave your network, and the session key is wrapped with Infisical's KMS using session-bound AAD. Even if the bucket policy is wider than the principle of least privilege suggests, the ciphertext is not readable without an authenticated session-key unwrap.
                                 </Note>
 
-                                #### Bucket CORS Configuration
+                                #### Bucket CORS configuration
 
                                 During playback the browser fetches encrypted chunks directly from S3 using presigned GET URLs. For this to work the bucket needs a CORS policy that allows requests from your Infisical domain.
 
@@ -958,7 +958,7 @@ Infisical supports two methods for connecting to AWS.
                                     Recording chunks are encrypted with a per-session AES-256-GCM key on the gateway before they leave your network, and the session key is wrapped with Infisical's KMS using session-bound AAD. Even if the bucket policy is wider than the principle of least privilege suggests, the ciphertext is not readable without an authenticated session-key unwrap.
                                 </Note>
 
-                                #### Bucket CORS Configuration
+                                #### Bucket CORS configuration
 
                                 During playback the browser fetches encrypted chunks directly from S3 using presigned GET URLs. For this to work the bucket needs a CORS policy that allows requests from your Infisical domain.
 

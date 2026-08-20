@@ -1,6 +1,6 @@
 ---
-title: "Sign Container Images with cosign"
-sidebarTitle: "Sign Container Images"
+title: "Sign container images with cosign"
+sidebarTitle: "Sign container images"
 description: "Use the Infisical PKCS#11 module to sign OCI container images with Sigstore cosign."
 ---
 
@@ -19,7 +19,7 @@ Sign OCI container images using `cosign` (from the Sigstore project) with the In
 - `cosign` v2.0 or later, **built with PKCS#11 support** (see below)
 - Write access to an OCI-compatible container registry
 
-## Step 1: Set Up Authentication
+## Step 1: Set up authentication
 
 Configure the Infisical PKCS#11 module with your machine identity credentials. Without this, the signing commands below fail with an auth error.
 
@@ -49,7 +49,7 @@ export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<machine-identity-client-secret>"
 
 For the full set of options, see the [PKCS#11 module configuration reference](/documentation/platform/pki/code-signing/pkcs11-module#configuration).
 
-## Step 2: Install cosign with PKCS#11 Support
+## Step 2: Install cosign with PKCS#11 support
 
 <Warning>
   Pre-built cosign binaries (including Homebrew) do **not** include PKCS#11 support. You must build cosign from source with the `pkcs11key` build tag enabled.
@@ -79,7 +79,7 @@ cosign pkcs11-tool --help
 
 If you see `This cosign was not built with pkcs11-tool support!`, you need to rebuild with the `pkcs11key` tag.
 
-## Step 3: Sign a Container Image
+## Step 3: Sign a container image
 
 First, list the available tokens and key URIs to find the correct PKCS#11 URI for your signer:
 
@@ -112,7 +112,7 @@ cosign sign \
   - Prefer signing by digest (`@sha256:...`) rather than tag for reproducible builds.
 </Note>
 
-## Step 4: Verify the Signature
+## Step 4: Verify the signature
 
 Verify a signed image using the public key or certificate from the signer:
 
@@ -134,7 +134,7 @@ cosign verify \
   Use `--insecure-ignore-tlog` if you signed without uploading to a transparency log. In production, configure a transparency log for auditability.
 </Note>
 
-## CI/CD Integration
+## CI/CD integration
 
 Example for a container build pipeline:
 
@@ -158,7 +158,7 @@ cosign sign \
   "${DIGEST}"
 ```
 
-### Kubernetes Admission Control
+### Kubernetes admission control
 
 Combine cosign verification with a Kubernetes admission controller (e.g., [Kyverno](https://kyverno.io/) or [Connaisseur](https://github.com/sse-secure-systems/connaisseur)) to enforce that only signed images are deployed:
 
@@ -202,7 +202,7 @@ For any issue, enable debug logging in your config file (`"log_level": "debug"`,
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="Sign JARs" icon="java" href="/documentation/platform/pki/guides/code-signing/jarsigner">

@@ -22,7 +22,7 @@ Store certificates in Chef data bags for distribution to nodes via Chef Infra. C
   Certificates are stored as data bag items with configurable field names for certificate, private key, and chain.
 </Note>
 
-## Create a Chef Sync
+## Create a Chef sync
 
 <Tabs>
     <Tab title="Infisical UI">
@@ -113,7 +113,7 @@ Store certificates in Chef data bags for distribution to nodes via Chef Infra. C
         }'
         ```
 
-        ### Example with Default Field Mappings
+        ### Example with default field mappings
 
         ```bash Request
         curl --request POST \
@@ -183,7 +183,7 @@ Store certificates in Chef data bags for distribution to nodes via Chef Infra. C
 
 </Tabs>
 
-## Certificate Management
+## Certificate management
 
 The Chef Certificate Sync provides:
 
@@ -200,7 +200,7 @@ The Chef Certificate Sync provides:
   automatically deployed as they are issued or renewed.
 </Note>
 
-## Manual Certificate Sync
+## Manual certificate sync
 
 You can manually trigger certificate synchronization to Chef using the sync certificates functionality. This is useful for:
 
@@ -219,7 +219,7 @@ To manually sync certificates, use the [Sync Certificates](/api-reference/endpoi
   rather than managed certificate objects.
 </Accordion>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="AWS Certificate Manager" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">

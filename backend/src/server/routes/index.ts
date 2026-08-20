@@ -157,6 +157,8 @@ import { orgRelayConfigDalFactory } from "@app/ee/services/relay/org-relay-confi
 import { relayDalFactory } from "@app/ee/services/relay/relay-dal";
 import { relayServiceFactory } from "@app/ee/services/relay/relay-service";
 import { resourceAwsAuthDALFactory } from "@app/ee/services/resource-auth-method/aws-auth-dal";
+import { gatewayProxyRegistryFactory } from "@app/ee/services/resource-auth-method/gateway-proxy-registry";
+import { resourceKubernetesAuthDALFactory } from "@app/ee/services/resource-auth-method/kubernetes-auth-dal";
 import { resourceAuthMethodDALFactory } from "@app/ee/services/resource-auth-method/resource-auth-method-dal";
 import { resourceAuthMethodServiceFactory } from "@app/ee/services/resource-auth-method/resource-auth-method-service";
 import { resourceTokenAuthDALFactory } from "@app/ee/services/resource-auth-method/token-auth-dal";
@@ -1465,7 +1467,7 @@ export const registerRoutes = async (
     userAliasDAL,
     emailDomainDAL,
     identityTokenAuthDAL,
-    identityAccessTokenDAL,
+    identityAccessTokenService,
     authService: loginService,
     serverCfgDAL: superAdminDAL,
     kmsRootConfigDAL,
@@ -1632,6 +1634,7 @@ export const registerRoutes = async (
   const resourceTokenAuthDAL = resourceTokenAuthDALFactory(db);
   const resourceAuthMethodDAL = resourceAuthMethodDALFactory(db);
   const resourceAwsAuthDAL = resourceAwsAuthDALFactory(db);
+  const resourceKubernetesAuthDAL = resourceKubernetesAuthDALFactory(db);
   const gatewayPoolDAL = gatewayPoolDalFactory(db);
   const gatewayPoolMembershipDAL = gatewayPoolMembershipDalFactory(db);
 
@@ -1774,15 +1777,25 @@ export const registerRoutes = async (
     keyStore
   });
 
+  // Populated after gatewayV2Service and gatewayPoolService exist; both depend on
+  // resourceAuthMethodService, so the proxy resolver cannot be a constructor dependency.
+  const gatewayProxyRegistry = gatewayProxyRegistryFactory();
+
   const resourceAuthMethodService = resourceAuthMethodServiceFactory({
     resourceAuthMethodDAL,
     resourceAwsAuthDAL,
+    resourceKubernetesAuthDAL,
     resourceTokenAuthDAL,
+    kmsService,
     gatewayV2DAL,
+    gatewayPoolDAL,
+    gatewayPoolMembershipDAL,
     relayDAL,
     kmipServerDAL,
     identityDAL,
-    permissionService
+    permissionService,
+    licenseService,
+    gatewayProxyRegistry
   });
 
   const relayService = relayServiceFactory({
@@ -1833,6 +1846,14 @@ export const registerRoutes = async (
     pkiDiscoveryConfigDAL,
     appConnectionDAL,
     dynamicSecretDAL
+  });
+
+  gatewayProxyRegistry.register(async ({ gatewayV2Id, gatewayPoolId, targetHost, targetPort }) => {
+    if (gatewayPoolId) {
+      return gatewayPoolService.getPlatformConnectionDetailsByPoolId({ poolId: gatewayPoolId, targetHost, targetPort });
+    }
+    if (!gatewayV2Id) return undefined;
+    return gatewayV2Service.getPlatformConnectionDetailsByGatewayId({ gatewayId: gatewayV2Id, targetHost, targetPort });
   });
 
   const pamAccountTemplateService = pamAccountTemplateServiceFactory({
