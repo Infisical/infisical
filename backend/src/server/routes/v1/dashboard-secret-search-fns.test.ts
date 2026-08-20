@@ -41,9 +41,25 @@ describe("resolveSecretDeepSearch", () => {
     });
   });
 
+  test("searches a slash-containing query with LIKE metacharacters literally", () => {
+    expect(resolveSecretDeepSearch("https://service.ariba/a_b", folderPaths)).toEqual({
+      searchName: "https://service.ariba/a_b",
+      searchPath: ""
+    });
+    expect(resolveSecretDeepSearch("https://service.ariba/100%", folderPaths)).toEqual({
+      searchName: "https://service.ariba/100%",
+      searchPath: ""
+    });
+  });
+
   test("scopes to a folder when the derived path exists", () => {
     expect(resolveSecretDeepSearch("prod/api", folderPaths)).toEqual({ searchName: "api", searchPath: "/prod" });
     expect(resolveSecretDeepSearch("prod/", folderPaths)).toEqual({ searchName: "", searchPath: "/prod" });
+  });
+
+  test("scopes to a folder even when the name contains LIKE metacharacters", () => {
+    expect(resolveSecretDeepSearch("prod/a_b", folderPaths)).toEqual({ searchName: "a_b", searchPath: "/prod" });
+    expect(resolveSecretDeepSearch("prod/100%", folderPaths)).toEqual({ searchName: "100%", searchPath: "/prod" });
   });
 
   test("supports multi-segment paths", () => {
