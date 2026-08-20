@@ -832,6 +832,9 @@ export const honeyTokenServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager,
       projectId
     });
+    // FOLDER-RBAC-REVIEW: bare subject check on a project-scoped endpoint with no environment/secretPath in
+    // scope. A folder-scoped-only actor passes (their honey-token create flow needs the limits) and learns
+    // the org-wide honey token count.
     ForbiddenError.from(limitPermission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.Read,
       ProjectPermissionSub.HoneyTokens

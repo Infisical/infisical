@@ -55,7 +55,6 @@ const applyFolderEditRules = (can: TProjectCan) => {
     [ProjectPermissionSecretActions.Create, ProjectPermissionSecretActions.Edit, ProjectPermissionSecretActions.Delete],
     ProjectPermissionSub.Secrets
   );
-  can([ProjectPermissionActions.Create, ProjectPermissionActions.Edit], ProjectPermissionSub.SecretFolders);
   can(
     [ProjectPermissionActions.Create, ProjectPermissionActions.Edit, ProjectPermissionActions.Delete],
     ProjectPermissionSub.SecretImports

@@ -34,6 +34,7 @@ const privilege = (overrides: Partial<TProjectFolderScopedPrivilege> = {}): TPro
 });
 
 const adminRoles = [{ role: ProjectMembershipRole.Admin, permissions: [] }];
+const memberRoles = [{ role: ProjectMembershipRole.Member, permissions: [] }];
 const viewerRoles = [{ role: ProjectMembershipRole.Viewer, permissions: [] }];
 
 const abilityFor = (roles: { role: string; permissions?: unknown }[], privileges?: TProjectFolderScopedPrivilege[]) =>
@@ -112,8 +113,10 @@ describe("folder-scoped privilege deny coverage", () => {
 });
 
 describe("folder-scoped privilege precedence", () => {
-  test("a read grant overrides an admin's base permissions at the granted path only", () => {
-    const ability = abilityFor(adminRoles, [privilege({ role: SecretFolderRole.Read })]);
+  // admins never reach these rules: getProjectPermission skips folder grants for the built-in
+  // admin role, so precedence is exercised against the member base role
+  test("a read grant overrides a member's base permissions at the granted path only", () => {
+    const ability = abilityFor(memberRoles, [privilege({ role: SecretFolderRole.Read })]);
 
     const grantedPath = { environment: "dev", secretPath: "/a/b" };
     expect(

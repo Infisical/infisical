@@ -14,12 +14,19 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { AuthMethod } from "@app/services/auth/auth-type";
 
 const projectId = seedData1.project.id;
-const userId = seedData1.id;
+const orgId = seedData1.organization.id;
+// the seed user is the project admin; admins cannot receive folder grants, so tests grant to a
+// dedicated member user created in beforeAll
+const adminUserId = seedData1.id;
 
-const folderAccessUrl = (folderId?: string) =>
-  `/api/v1/user-project-additional-privilege/projects/${projectId}/users/${userId}/folder-access${
-    folderId ? `/${folderId}` : ""
-  }`;
+let memberUserId: string;
+let memberEmail: string;
+let memberProjectMembershipId: string;
+
+const folderAccessUrl = (folderId: string, targetUserId?: string) =>
+  `/api/v1/user-project-additional-privilege/projects/${projectId}/users/${
+    targetUserId ?? memberUserId
+  }/folder-access/${folderId}`;
 
 const folderAccessUsersUrl = (folderId: string, query = "") =>
   `/api/v1/user-project-additional-privilege/projects/${projectId}/folder-access/${folderId}/users${query}`;
@@ -58,6 +65,45 @@ const deleteFolder = async (dto: { path: string; id: string }) => {
   return res.json().folder;
 };
 
+const createProjectUser = async (role: ProjectMembershipRole) => {
+  const username = `folder-access-${alphaNumericNanoId(8)}@example.com`.toLowerCase();
+  const [user] = await testDb(TableName.Users)
+    .insert({ username, email: username, isGhost: false, isAccepted: true, authMethods: [AuthMethod.EMAIL] })
+    .returning("*");
+
+  const [orgMembership] = await testDb(TableName.Membership)
+    .insert({
+      scope: AccessScope.Organization,
+      scopeOrgId: orgId,
+      actorUserId: user.id,
+      status: OrgMembershipStatus.Accepted,
+      isActive: true
+    })
+    .returning("*");
+  await testDb(TableName.MembershipRole).insert({ membershipId: orgMembership.id, role: OrgMembershipRole.Member });
+
+  const [projectMembership] = await testDb(TableName.Membership)
+    .insert({
+      scope: AccessScope.Project,
+      scopeOrgId: orgId,
+      scopeProjectId: projectId,
+      actorUserId: user.id
+    })
+    .returning("*");
+  await testDb(TableName.MembershipRole).insert({ membershipId: projectMembership.id, role });
+
+  return {
+    userId: user.id,
+    email: username,
+    projectMembershipId: projectMembership.id
+  };
+};
+
+const deleteProjectUser = async (id: string) => {
+  await testDb(TableName.Membership).where({ actorUserId: id }).del();
+  await testDb(TableName.Users).where({ id }).del();
+};
+
 const getFolderPermissionVersion = async () => {
   const row = await testDb(TableName.KeyValueStore)
     .where({ key: KeyStorePrefixes.ProjectFolderPermissionVersion(projectId) })
@@ -70,10 +116,15 @@ describe("User folder access CRUD", () => {
 
   beforeAll(async () => {
     folder = await createFolder({ path: "/", name: "user-folder-access" });
+    const member = await createProjectUser(ProjectMembershipRole.Member);
+    memberUserId = member.userId;
+    memberEmail = member.email;
+    memberProjectMembershipId = member.projectMembershipId;
   });
 
   afterAll(async () => {
     await deleteFolder({ path: "/", id: folder.id });
+    await deleteProjectUser(memberUserId);
   });
 
   test("full lifecycle: create, conflict, get, list, patch, delete", async () => {
@@ -91,7 +142,7 @@ describe("User folder access CRUD", () => {
       expect.objectContaining({
         projectId,
         folderId: folder.id,
-        userId,
+        userId: memberUserId,
         permission: SecretFolderRole.Read,
         environment: seedData1.environment.slug,
         secretPath: "/user-folder-access",
@@ -199,7 +250,7 @@ describe("User folder access CRUD", () => {
   test("returns 404 for a target that is not a project member", async () => {
     const res = await testServer.inject({
       method: "POST",
-      url: `/api/v1/user-project-additional-privilege/projects/${projectId}/users/00000000-0000-0000-0000-000000000000/folder-access/${folder.id}`,
+      url: folderAccessUrl(folder.id, "00000000-0000-0000-0000-000000000000"),
       headers: authHeaders(),
       body: { permission: SecretFolderRole.Read }
     });
@@ -216,11 +267,66 @@ describe("User folder access CRUD", () => {
     expect(res.statusCode).toBe(422);
   });
 
+  test("rejects granting to or updating a project admin", async () => {
+    const createRes = await testServer.inject({
+      method: "POST",
+      url: folderAccessUrl(folder.id, adminUserId),
+      headers: authHeaders(),
+      body: { permission: SecretFolderRole.Read }
+    });
+    expect(createRes.statusCode).toBe(400);
+    expect(createRes.json().message).toContain("project admin role");
+
+    const patchRes = await testServer.inject({
+      method: "PATCH",
+      url: folderAccessUrl(folder.id, adminUserId),
+      headers: authHeaders(),
+      body: { permission: SecretFolderRole.Edit }
+    });
+    expect(patchRes.statusCode).toBe(400);
+    expect(patchRes.json().message).toContain("project admin role");
+  });
+
+  test("still allows revoking a grant whose holder became a project admin", async () => {
+    const createRes = await testServer.inject({
+      method: "POST",
+      url: folderAccessUrl(folder.id),
+      headers: authHeaders(),
+      body: { permission: SecretFolderRole.Read }
+    });
+    expect(createRes.statusCode).toBe(200);
+
+    await testDb(TableName.MembershipRole)
+      .where({ membershipId: memberProjectMembershipId })
+      .update({ role: ProjectMembershipRole.Admin });
+
+    try {
+      const patchRes = await testServer.inject({
+        method: "PATCH",
+        url: folderAccessUrl(folder.id),
+        headers: authHeaders(),
+        body: { permission: SecretFolderRole.Edit }
+      });
+      expect(patchRes.statusCode).toBe(400);
+
+      const deleteRes = await testServer.inject({
+        method: "DELETE",
+        url: folderAccessUrl(folder.id),
+        headers: authHeaders()
+      });
+      expect(deleteRes.statusCode).toBe(200);
+    } finally {
+      await testDb(TableName.MembershipRole)
+        .where({ membershipId: memberProjectMembershipId })
+        .update({ role: ProjectMembershipRole.Member });
+    }
+  });
+
   describe("roster", () => {
     const listUsers = async (
       query = ""
     ): Promise<{
-      users: { userId: string; username: string; folderAccess: Record<string, unknown> | null }[];
+      users: { userId: string; username: string; folderRBACAccess: Record<string, unknown> | null }[];
       totalCount: number;
     }> => {
       const res = await testServer.inject({
@@ -232,15 +338,20 @@ describe("User folder access CRUD", () => {
       return res.json();
     };
 
-    test("lists project users without a grant as folderAccess null", async () => {
+    test("lists project users without a grant as folderRBACAccess null", async () => {
       const { users, totalCount } = await listUsers();
 
       expect(totalCount).toBeGreaterThan(0);
-      const seedUser = users.find((user) => user.userId === userId);
-      expect(seedUser).toBeDefined();
-      expect(seedUser!.folderAccess).toBeNull();
-      expect(seedUser).not.toHaveProperty("roles");
-      expect(seedUser).not.toHaveProperty("membershipId");
+      const member = users.find((user) => user.userId === memberUserId);
+      expect(member).toBeDefined();
+      expect(member!.folderRBACAccess).toBeNull();
+      expect(member).not.toHaveProperty("roles");
+      expect(member).not.toHaveProperty("membershipId");
+    });
+
+    test("excludes project admins from the roster", async () => {
+      const { users } = await listUsers("?limit=100");
+      expect(users.map((user) => user.userId)).not.toContain(adminUserId);
     });
 
     test("annotates the granted user and clears the annotation on revoke", async () => {
@@ -253,8 +364,8 @@ describe("User folder access CRUD", () => {
       expect(createRes.statusCode).toBe(200);
 
       const { users } = await listUsers();
-      const granted = users.find((user) => user.userId === userId);
-      expect(granted!.folderAccess).toEqual(
+      const granted = users.find((user) => user.userId === memberUserId);
+      expect(granted!.folderRBACAccess).toEqual(
         expect.objectContaining({
           projectId,
           folderId: folder.id,
@@ -264,8 +375,8 @@ describe("User folder access CRUD", () => {
           isTemporary: false
         })
       );
-      expect(granted!.folderAccess).not.toHaveProperty("name");
-      expect(granted!.folderAccess).not.toHaveProperty("permissions");
+      expect(granted!.folderRBACAccess).not.toHaveProperty("name");
+      expect(granted!.folderRBACAccess).not.toHaveProperty("permissions");
 
       const deleteRes = await testServer.inject({
         method: "DELETE",
@@ -275,9 +386,9 @@ describe("User folder access CRUD", () => {
       expect(deleteRes.statusCode).toBe(200);
 
       const { users: afterRevoke } = await listUsers();
-      const revoked = afterRevoke.find((user) => user.userId === userId);
+      const revoked = afterRevoke.find((user) => user.userId === memberUserId);
       expect(revoked).toBeDefined();
-      expect(revoked!.folderAccess).toBeNull();
+      expect(revoked!.folderRBACAccess).toBeNull();
     });
 
     test("keeps totalCount stable across pages and past the end", async () => {
@@ -293,8 +404,13 @@ describe("User folder access CRUD", () => {
     });
 
     test("filters by search", async () => {
-      const matching = await listUsers(`?search=${encodeURIComponent(seedData1.email)}`);
-      expect(matching.users.map((user) => user.userId)).toContain(userId);
+      const matching = await listUsers(`?search=${encodeURIComponent(memberEmail)}`);
+      expect(matching.users.map((user) => user.userId)).toContain(memberUserId);
+
+      // the seed admin cannot be reached even by an exact search
+      const adminSearch = await listUsers(`?search=${encodeURIComponent(seedData1.email)}`);
+      expect(adminSearch.users).toEqual([]);
+      expect(adminSearch.totalCount).toBe(0);
 
       const nonMatching = await listUsers("?search=zzz-no-such-member");
       expect(nonMatching.users).toEqual([]);
@@ -320,15 +436,12 @@ describe("User folder access CRUD", () => {
     });
 
     describe("group-derived users", () => {
-      const orgId = seedData1.organization.id;
       let groupUserId: string;
       let groupId: string;
       let secondGroupId: string;
 
-      const createGroupInProject = async (slug: string) => {
-        const [group] = await testDb(TableName.Groups)
-          .insert({ orgId, name: slug, slug })
-          .returning("*");
+      const createGroupInProject = async (slug: string, projectRole: ProjectMembershipRole) => {
+        const [group] = await testDb(TableName.Groups).insert({ orgId, name: slug, slug }).returning("*");
 
         for (const scope of [AccessScope.Organization, AccessScope.Project] as const) {
           // eslint-disable-next-line no-await-in-loop
@@ -343,26 +456,24 @@ describe("User folder access CRUD", () => {
           // eslint-disable-next-line no-await-in-loop
           await testDb(TableName.MembershipRole).insert({
             membershipId: membership.id,
-            role: scope === AccessScope.Project ? ProjectMembershipRole.Member : OrgMembershipRole.Member
+            role: scope === AccessScope.Project ? projectRole : OrgMembershipRole.Member
           });
         }
 
-        return group.id as string;
+        return group.id;
       };
 
-      beforeAll(async () => {
+      const createOrgOnlyUser = async () => {
         const username = `group-only-${alphaNumericNanoId(8)}@example.com`;
         const [user] = await testDb(TableName.Users)
           .insert({ username, email: username, isGhost: false, isAccepted: true, authMethods: [AuthMethod.EMAIL] })
           .returning("*");
-        groupUserId = user.id as string;
 
-        // org membership only; the project is reached purely through the group
         const [orgMembership] = await testDb(TableName.Membership)
           .insert({
             scope: AccessScope.Organization,
             scopeOrgId: orgId,
-            actorUserId: groupUserId,
+            actorUserId: user.id,
             status: OrgMembershipStatus.Accepted,
             isActive: true
           })
@@ -372,26 +483,36 @@ describe("User folder access CRUD", () => {
           role: OrgMembershipRole.Member
         });
 
-        groupId = await createGroupInProject(`folder-access-grp-${alphaNumericNanoId(8)}`.toLowerCase());
-        secondGroupId = await createGroupInProject(`folder-access-grp2-${alphaNumericNanoId(8)}`.toLowerCase());
+        return user.id;
+      };
 
-        // the new user reaches the project through two groups; the seed admin is both a direct
+      beforeAll(async () => {
+        // org membership only; the project is reached purely through the group
+        groupUserId = await createOrgOnlyUser();
+
+        groupId = await createGroupInProject(
+          `folder-access-grp-${alphaNumericNanoId(8)}`.toLowerCase(),
+          ProjectMembershipRole.Member
+        );
+        secondGroupId = await createGroupInProject(
+          `folder-access-grp2-${alphaNumericNanoId(8)}`.toLowerCase(),
+          ProjectMembershipRole.Member
+        );
+
+        // the new user reaches the project through two groups; the member user is both a direct
         // member and a group member
         await testDb(TableName.UserGroupMembership).insert([
           { userId: groupUserId, groupId },
           { userId: groupUserId, groupId: secondGroupId },
-          { userId, groupId }
+          { userId: memberUserId, groupId }
         ]);
       });
 
       afterAll(async () => {
-        await testDb(TableName.UserGroupMembership)
-          .whereIn("groupId", [groupId, secondGroupId])
-          .del();
+        await testDb(TableName.UserGroupMembership).whereIn("groupId", [groupId, secondGroupId]).del();
         await testDb(TableName.Membership).whereIn("actorGroupId", [groupId, secondGroupId]).del();
         await testDb(TableName.Groups).whereIn("id", [groupId, secondGroupId]).del();
-        await testDb(TableName.Membership).where({ actorUserId: groupUserId }).del();
-        await testDb(TableName.Users).where({ id: groupUserId }).del();
+        await deleteProjectUser(groupUserId);
       });
 
       test("lists a user whose only project access is a group", async () => {
@@ -399,21 +520,21 @@ describe("User folder access CRUD", () => {
         const groupUser = users.find((user) => user.userId === groupUserId);
 
         expect(groupUser).toBeDefined();
-        expect(groupUser!.folderAccess).toBeNull();
+        expect(groupUser!.folderRBACAccess).toBeNull();
       });
 
       test("counts an actor once however many memberships reach them", async () => {
         const { users, totalCount } = await listUsers("?limit=100");
 
-        // groupUserId is in two groups, userId is direct + in a group
+        // groupUserId is in two groups, memberUserId is direct + in a group
         expect(users.filter((user) => user.userId === groupUserId)).toHaveLength(1);
-        expect(users.filter((user) => user.userId === userId)).toHaveLength(1);
+        expect(users.filter((user) => user.userId === memberUserId)).toHaveLength(1);
         expect(totalCount).toBe(users.length);
         expect(new Set(users.map((user) => user.userId)).size).toBe(users.length);
       });
 
       test("grants folder access to a group-derived user and shows it on the roster", async () => {
-        const grantUrl = `/api/v1/user-project-additional-privilege/projects/${projectId}/users/${groupUserId}/folder-access/${folder.id}`;
+        const grantUrl = folderAccessUrl(folder.id, groupUserId);
 
         const createRes = await testServer.inject({
           method: "POST",
@@ -425,7 +546,7 @@ describe("User folder access CRUD", () => {
 
         const { users } = await listUsers("?limit=100");
         const granted = users.find((user) => user.userId === groupUserId);
-        expect(granted!.folderAccess).toEqual(
+        expect(granted!.folderRBACAccess).toEqual(
           expect.objectContaining({ folderId: folder.id, permission: SecretFolderRole.Read })
         );
 
@@ -436,6 +557,43 @@ describe("User folder access CRUD", () => {
       test("finds a group-derived user by search", async () => {
         const { users } = await listUsers(`?search=group-only`);
         expect(users.map((user) => user.userId)).toContain(groupUserId);
+      });
+
+      describe("group-conferred admins", () => {
+        let adminGroupId: string;
+        let groupAdminUserId: string;
+
+        beforeAll(async () => {
+          groupAdminUserId = await createOrgOnlyUser();
+          adminGroupId = await createGroupInProject(
+            `folder-access-admin-grp-${alphaNumericNanoId(8)}`.toLowerCase(),
+            ProjectMembershipRole.Admin
+          );
+          await testDb(TableName.UserGroupMembership).insert({ userId: groupAdminUserId, groupId: adminGroupId });
+        });
+
+        afterAll(async () => {
+          await testDb(TableName.UserGroupMembership).where({ groupId: adminGroupId }).del();
+          await testDb(TableName.Membership).where({ actorGroupId: adminGroupId }).del();
+          await testDb(TableName.Groups).where({ id: adminGroupId }).del();
+          await deleteProjectUser(groupAdminUserId);
+        });
+
+        test("excludes a user whose admin role comes from a group", async () => {
+          const { users } = await listUsers("?limit=100");
+          expect(users.map((user) => user.userId)).not.toContain(groupAdminUserId);
+        });
+
+        test("rejects granting to a user whose admin role comes from a group", async () => {
+          const res = await testServer.inject({
+            method: "POST",
+            url: folderAccessUrl(folder.id, groupAdminUserId),
+            headers: authHeaders(),
+            body: { permission: SecretFolderRole.Read }
+          });
+          expect(res.statusCode).toBe(400);
+          expect(res.json().message).toContain("project admin role");
+        });
       });
     });
   });

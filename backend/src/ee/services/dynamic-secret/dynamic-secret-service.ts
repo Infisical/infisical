@@ -984,6 +984,9 @@ export const dynamicSecretServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
+    // FOLDER-RBAC-REVIEW: bare subject check, deliberate project-level capability gate. No environment/secretPath
+    // exists in this DTO or route (credentials come from the caller, no stored data is read), and a folder-scoped-only
+    // actor must pass for their create flow; a real folder-scoped check would require adding environment + path to the API.
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.ReadRootCredential,
       ProjectPermissionSub.DynamicSecrets
@@ -1020,6 +1023,9 @@ export const dynamicSecretServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
+    // FOLDER-RBAC-REVIEW: bare subject check, deliberate project-level capability gate. No environment/secretPath
+    // exists in this DTO or route (credentials come from the caller, no stored data is read), and a folder-scoped-only
+    // actor must pass for their create flow; a real folder-scoped check would require adding environment + path to the API.
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.ReadRootCredential,
       ProjectPermissionSub.DynamicSecrets
@@ -1052,6 +1058,9 @@ export const dynamicSecretServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
+    // FOLDER-RBAC-REVIEW: bare subject check, deliberate project-level capability gate. No environment/secretPath
+    // exists in this DTO or route (credentials come from the caller, no stored data is read), and a folder-scoped-only
+    // actor must pass for their create flow; a real folder-scoped check would require adding environment + path to the API.
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.ReadRootCredential,
       ProjectPermissionSub.DynamicSecrets
@@ -1085,6 +1094,9 @@ export const dynamicSecretServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
+    // FOLDER-RBAC-REVIEW: bare subject check, deliberate project-level capability gate. No environment/secretPath
+    // exists in this DTO or route (credentials come from the caller, no stored data is read), and a folder-scoped-only
+    // actor must pass for their create flow; a real folder-scoped check would require adding environment + path to the API.
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionDynamicSecretActions.ReadRootCredential,
       ProjectPermissionSub.DynamicSecrets

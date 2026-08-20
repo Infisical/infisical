@@ -11,12 +11,18 @@ import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 const projectId = seedData1.project.id;
-const identityId = seedData1.machineIdentity.id;
+const orgId = seedData1.organization.id;
+// the seed identity is a project admin; admins cannot receive folder grants, so tests grant to a
+// dedicated member identity created in beforeAll
+const adminIdentityId = seedData1.machineIdentity.id;
 
-const folderAccessUrl = (folderId?: string) =>
-  `/api/v2/identity-project-additional-privilege/projects/${projectId}/identities/${identityId}/folder-access${
-    folderId ? `/${folderId}` : ""
-  }`;
+let memberIdentityId: string;
+let memberIdentityName: string;
+
+const folderAccessUrl = (folderId: string, targetIdentityId?: string) =>
+  `/api/v2/identity-project-additional-privilege/projects/${projectId}/identities/${
+    targetIdentityId ?? memberIdentityId
+  }/folder-access/${folderId}`;
 
 const folderAccessIdentitiesUrl = (folderId: string, query = "") =>
   `/api/v2/identity-project-additional-privilege/projects/${projectId}/folder-access/${folderId}/identities${query}`;
@@ -55,15 +61,50 @@ const deleteFolder = async (dto: { path: string; id: string }) => {
   return res.json().folder;
 };
 
+const createProjectIdentity = async (role: ProjectMembershipRole) => {
+  const name = `folder-access-identity-${alphaNumericNanoId(8)}`.toLowerCase();
+  const [identity] = await testDb(TableName.Identity).insert({ name, orgId }).returning("*");
+
+  const [orgMembership] = await testDb(TableName.Membership)
+    .insert({
+      scope: AccessScope.Organization,
+      scopeOrgId: orgId,
+      actorIdentityId: identity.id
+    })
+    .returning("*");
+  await testDb(TableName.MembershipRole).insert({ membershipId: orgMembership.id, role: OrgMembershipRole.Member });
+
+  const [projectMembership] = await testDb(TableName.Membership)
+    .insert({
+      scope: AccessScope.Project,
+      scopeOrgId: orgId,
+      scopeProjectId: projectId,
+      actorIdentityId: identity.id
+    })
+    .returning("*");
+  await testDb(TableName.MembershipRole).insert({ membershipId: projectMembership.id, role });
+
+  return { identityId: identity.id, name };
+};
+
+const deleteProjectIdentity = async (id: string) => {
+  await testDb(TableName.Membership).where({ actorIdentityId: id }).del();
+  await testDb(TableName.Identity).where({ id }).del();
+};
+
 describe("Identity folder access CRUD", () => {
   let folder: { id: string; name: string };
 
   beforeAll(async () => {
     folder = await createFolder({ path: "/", name: "identity-folder-access" });
+    const member = await createProjectIdentity(ProjectMembershipRole.Member);
+    memberIdentityId = member.identityId;
+    memberIdentityName = member.name;
   });
 
   afterAll(async () => {
     await deleteFolder({ path: "/", id: folder.id });
+    await deleteProjectIdentity(memberIdentityId);
   });
 
   test("full lifecycle: create, conflict, get, list, patch, delete", async () => {
@@ -88,7 +129,7 @@ describe("Identity folder access CRUD", () => {
       expect.objectContaining({
         projectId,
         folderId: folder.id,
-        identityId,
+        identityId: memberIdentityId,
         permission: SecretFolderRole.Manage,
         environment: seedData1.environment.slug,
         secretPath: "/identity-folder-access",
@@ -134,27 +175,54 @@ describe("Identity folder access CRUD", () => {
     expect(await testDb(TableName.AdditionalPrivilege).where({ id: created.id })).toEqual([]);
   });
 
+  test("rejects granting to or updating a project admin identity", async () => {
+    const createRes = await testServer.inject({
+      method: "POST",
+      url: folderAccessUrl(folder.id, adminIdentityId),
+      headers: authHeaders(),
+      body: { permission: SecretFolderRole.Read }
+    });
+    expect(createRes.statusCode).toBe(400);
+    expect(createRes.json().message).toContain("project admin role");
+
+    const patchRes = await testServer.inject({
+      method: "PATCH",
+      url: folderAccessUrl(folder.id, adminIdentityId),
+      headers: authHeaders(),
+      body: { permission: SecretFolderRole.Edit }
+    });
+    expect(patchRes.statusCode).toBe(400);
+    expect(patchRes.json().message).toContain("project admin role");
+  });
+
   describe("roster", () => {
-    const listIdentities = async (query = "") => {
+    const listIdentities = async (
+      query = ""
+    ): Promise<{
+      identities: { identityId: string; name: string; folderRBACAccess: Record<string, unknown> | null }[];
+      totalCount: number;
+    }> => {
       const res = await testServer.inject({
         method: "GET",
         url: folderAccessIdentitiesUrl(folder.id, query),
         headers: authHeaders()
       });
       expect(res.statusCode).toBe(200);
-      return res.json() as {
-        identities: { identityId: string; name: string; folderAccess: Record<string, unknown> | null }[];
-        totalCount: number;
-      };
+      return res.json();
     };
+
+    test("excludes project admin identities from the roster", async () => {
+      const { identities } = await listIdentities("?limit=100");
+      expect(identities.map((identity) => identity.identityId)).not.toContain(adminIdentityId);
+    });
 
     test("lists project identities and annotates only the granted one", async () => {
       const before = await listIdentities();
       expect(before.totalCount).toBeGreaterThan(0);
-      const seedIdentityBefore = before.identities.find((identity) => identity.identityId === identityId);
-      expect(seedIdentityBefore).toBeDefined();
-      expect(seedIdentityBefore!.folderAccess).toBeNull();
-      expect(seedIdentityBefore).not.toHaveProperty("roles");
+      const memberBefore = before.identities.find((identity) => identity.identityId === memberIdentityId);
+      expect(memberBefore).toBeDefined();
+      expect(memberBefore!.folderRBACAccess).toBeNull();
+      expect(memberBefore).not.toHaveProperty("roles");
 
       const createRes = await testServer.inject({
         method: "POST",
@@ -165,8 +233,8 @@ describe("Identity folder access CRUD", () => {
       expect(createRes.statusCode).toBe(200);
 
       const after = await listIdentities();
-      const granted = after.identities.find((identity) => identity.identityId === identityId);
-      expect(granted!.folderAccess).toEqual(
+      const granted = after.identities.find((identity) => identity.identityId === memberIdentityId);
+      expect(granted!.folderRBACAccess).toEqual(
         expect.objectContaining({
           projectId,
           folderId: folder.id,
@@ -185,10 +253,15 @@ describe("Identity folder access CRUD", () => {
       expect(deleteRes.statusCode).toBe(200);
 
       const afterRevoke = await listIdentities();
-      expect(afterRevoke.identities.find((identity) => identity.identityId === identityId)!.folderAccess).toBeNull();
+      expect(
+        afterRevoke.identities.find((identity) => identity.identityId === memberIdentityId)!.folderRBACAccess
+      ).toBeNull();
     });
 
     test("filters by search and keeps totalCount stable past the end", async () => {
+      const matching = await listIdentities(`?search=${encodeURIComponent(memberIdentityName)}`);
+      expect(matching.identities.map((identity) => identity.identityId)).toContain(memberIdentityId);
+
       const { totalCount } = await listIdentities();
 
       const pastTheEnd = await listIdentities(`?limit=1&offset=${totalCount + 10}`);
@@ -201,19 +274,11 @@ describe("Identity folder access CRUD", () => {
     });
 
     describe("group-derived identities", () => {
-      const orgId = seedData1.organization.id;
       let groupIdentityId: string;
       let groupId: string;
 
-      beforeAll(async () => {
-        const [identity] = await testDb(TableName.Identity)
-          .insert({ name: `group-only-identity-${alphaNumericNanoId(8)}`, orgId })
-          .returning("*");
-        groupIdentityId = identity.id as string;
-
-        const slug = `identity-folder-grp-${alphaNumericNanoId(8)}`.toLowerCase();
+      const createGroupInProject = async (slug: string, projectRole: ProjectMembershipRole) => {
         const [group] = await testDb(TableName.Groups).insert({ orgId, name: slug, slug }).returning("*");
-        groupId = group.id as string;
 
         for (const scope of [AccessScope.Organization, AccessScope.Project] as const) {
           // eslint-disable-next-line no-await-in-loop
@@ -222,21 +287,35 @@ describe("Identity folder access CRUD", () => {
               scope,
               scopeOrgId: orgId,
               scopeProjectId: scope === AccessScope.Project ? projectId : null,
-              actorGroupId: groupId
+              actorGroupId: group.id
             })
             .returning("*");
           // eslint-disable-next-line no-await-in-loop
           await testDb(TableName.MembershipRole).insert({
             membershipId: membership.id,
-            role: scope === AccessScope.Project ? ProjectMembershipRole.Member : OrgMembershipRole.Member
+            role: scope === AccessScope.Project ? projectRole : OrgMembershipRole.Member
           });
         }
 
-        // the new identity reaches the project only through the group; the seed identity is both a
-        // direct member and a group member
+        return group.id;
+      };
+
+      beforeAll(async () => {
+        const [identity] = await testDb(TableName.Identity)
+          .insert({ name: `group-only-identity-${alphaNumericNanoId(8)}`, orgId })
+          .returning("*");
+        groupIdentityId = identity.id;
+
+        groupId = await createGroupInProject(
+          `identity-folder-grp-${alphaNumericNanoId(8)}`.toLowerCase(),
+          ProjectMembershipRole.Member
+        );
+
+        // the new identity reaches the project only through the group; the member identity is both
+        // a direct member and a group member
         await testDb(TableName.IdentityGroupMembership).insert([
           { identityId: groupIdentityId, groupId },
-          { identityId, groupId }
+          { identityId: memberIdentityId, groupId }
         ]);
       });
 
@@ -252,16 +331,16 @@ describe("Identity folder access CRUD", () => {
 
         const groupIdentity = identities.find((identity) => identity.identityId === groupIdentityId);
         expect(groupIdentity).toBeDefined();
-        expect(groupIdentity!.folderAccess).toBeNull();
+        expect(groupIdentity!.folderRBACAccess).toBeNull();
 
-        // the seed identity is reachable directly and via the group, and must not be duplicated
-        expect(identities.filter((identity) => identity.identityId === identityId)).toHaveLength(1);
+        // the member identity is reachable directly and via the group, and must not be duplicated
+        expect(identities.filter((identity) => identity.identityId === memberIdentityId)).toHaveLength(1);
         expect(new Set(identities.map((identity) => identity.identityId)).size).toBe(identities.length);
         expect(totalCount).toBe(identities.length);
       });
 
       test("grants folder access to a group-derived identity and shows it on the roster", async () => {
-        const grantUrl = `/api/v2/identity-project-additional-privilege/projects/${projectId}/identities/${groupIdentityId}/folder-access/${folder.id}`;
+        const grantUrl = folderAccessUrl(folder.id, groupIdentityId);
 
         const createRes = await testServer.inject({
           method: "POST",
@@ -273,12 +352,56 @@ describe("Identity folder access CRUD", () => {
 
         const { identities } = await listIdentities("?limit=100");
         const granted = identities.find((identity) => identity.identityId === groupIdentityId);
-        expect(granted!.folderAccess).toEqual(
+        expect(granted!.folderRBACAccess).toEqual(
           expect.objectContaining({ folderId: folder.id, permission: SecretFolderRole.Read })
         );
 
         const deleteRes = await testServer.inject({ method: "DELETE", url: grantUrl, headers: authHeaders() });
         expect(deleteRes.statusCode).toBe(200);
+      });
+
+      describe("group-conferred admins", () => {
+        let adminGroupId: string;
+        let groupAdminIdentityId: string;
+
+        beforeAll(async () => {
+          const [identity] = await testDb(TableName.Identity)
+            .insert({ name: `group-admin-identity-${alphaNumericNanoId(8)}`, orgId })
+            .returning("*");
+          groupAdminIdentityId = identity.id;
+
+          adminGroupId = await createGroupInProject(
+            `identity-folder-admin-grp-${alphaNumericNanoId(8)}`.toLowerCase(),
+            ProjectMembershipRole.Admin
+          );
+          await testDb(TableName.IdentityGroupMembership).insert({
+            identityId: groupAdminIdentityId,
+            groupId: adminGroupId
+          });
+        });
+
+        afterAll(async () => {
+          await testDb(TableName.IdentityGroupMembership).where({ groupId: adminGroupId }).del();
+          await testDb(TableName.Membership).where({ actorGroupId: adminGroupId }).del();
+          await testDb(TableName.Groups).where({ id: adminGroupId }).del();
+          await testDb(TableName.Identity).where({ id: groupAdminIdentityId }).del();
+        });
+
+        test("excludes an identity whose admin role comes from a group", async () => {
+          const { identities } = await listIdentities("?limit=100");
+          expect(identities.map((identity) => identity.identityId)).not.toContain(groupAdminIdentityId);
+        });
+
+        test("rejects granting to an identity whose admin role comes from a group", async () => {
+          const res = await testServer.inject({
+            method: "POST",
+            url: folderAccessUrl(folder.id, groupAdminIdentityId),
+            headers: authHeaders(),
+            body: { permission: SecretFolderRole.Read }
+          });
+          expect(res.statusCode).toBe(400);
+          expect(res.json().message).toContain("project admin role");
+        });
       });
     });
   });

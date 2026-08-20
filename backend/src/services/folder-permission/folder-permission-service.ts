@@ -11,6 +11,7 @@ import { TFolderPermissionDALFactory } from "./folder-permission-dal";
 import {
   assertManageFolderAccess,
   assertTargetMembership,
+  assertTargetNotProjectAdmin,
   computeTemporaryFields,
   resolveFolder,
   targetActorField,
@@ -33,7 +34,7 @@ type TFolderPermissionServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
   folderPermissionDAL: Pick<
     TFolderPermissionDALFactory,
-    "findUsersWithFolderAccess" | "findIdentitiesWithFolderAccess" | "hasProjectAccess"
+    "findUsersWithFolderAccess" | "findIdentitiesWithFolderAccess" | "hasProjectAccess" | "isProjectAdmin"
   >;
 };
 
@@ -50,6 +51,7 @@ export const folderPermissionServiceFactory = ({
     const folder = await resolveFolder(projectId, folderId, secretFolderDAL);
     await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
     await assertTargetMembership(dto.permission.orgId, projectId, target, folderPermissionDAL);
+    await assertTargetNotProjectAdmin(dto.permission.orgId, projectId, target, folderPermissionDAL);
 
     const actorField = targetActorField(target);
     const alreadyExistsError = () =>
@@ -93,6 +95,7 @@ export const folderPermissionServiceFactory = ({
     const folder = await resolveFolder(projectId, folderId, secretFolderDAL);
     await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
     await assertTargetMembership(dto.permission.orgId, projectId, target, folderPermissionDAL);
+    await assertTargetNotProjectAdmin(dto.permission.orgId, projectId, target, folderPermissionDAL);
 
     const actorField = targetActorField(target);
     const grant = await additionalPrivilegeDAL.transaction(async (tx) => {

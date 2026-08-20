@@ -78,6 +78,7 @@ export const reminderServiceFactory = ({
     }
   };
 
+  // TODO: check this.
   const $getSecretForPermissionCheck = async (secretId: string) => {
     const secret = await secretV2BridgeDAL.findOneWithTags({ [`${TableName.SecretV2}.id` as "id"]: secretId });
     if (!secret) {
@@ -178,7 +179,7 @@ export const reminderServiceFactory = ({
     actorAuthMethod,
     reminder
   }: TCreateReminderDTO) => {
-    const { secret, subjectFields } = await $getSecretForPermissionCheck(reminder.secretId);
+    const { secret, subjectFields } = await $getSecretForPermissionCheck(reminder.secretId!);
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,

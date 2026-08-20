@@ -107,6 +107,27 @@ export const targetActorField = (target: TFolderGrantActor) =>
 export const targetLabel = (target: TFolderGrantActor) =>
   target.actorType === ActorType.USER ? "User" : "Machine identity";
 
+// Folder grants replace base permissions at the granted path, so for a project admin they could
+// only remove privileges, which is not allowed.
+export const assertTargetNotProjectAdmin = async (
+  orgId: string,
+  projectId: string,
+  target: TFolderGrantActor,
+  folderPermissionDAL: Pick<TFolderPermissionDALFactory, "isProjectAdmin">
+) => {
+  const isAdmin = await folderPermissionDAL.isProjectAdmin({
+    orgId,
+    projectId,
+    actorId: target.actorId,
+    actorType: target.actorType
+  });
+  if (isAdmin) {
+    throw new BadRequestError({
+      message: `${targetLabel(target)} with ID '${target.actorId}' has the project admin role. Project admins already have full access to every folder, so folder access cannot be granted to them.`
+    });
+  }
+};
+
 export const toFolderGrant = (
   row: Pick<
     TAdditionalPrivileges,

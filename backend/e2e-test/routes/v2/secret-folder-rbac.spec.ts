@@ -1,6 +1,14 @@
 import { subject } from "@casl/ability";
 
-import { ActionProjectType, SecretFolderRole, TableName } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  OrgMembershipRole,
+  OrgMembershipStatus,
+  ProjectMembershipRole,
+  SecretFolderRole,
+  TableName
+} from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
@@ -11,6 +19,7 @@ import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { keyStoreFactory, KeyStorePrefixes } from "@app/keystore/keystore";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { initLogger, logger } from "@app/lib/logger";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
@@ -21,20 +30,31 @@ import { serviceTokenDALFactory } from "@app/services/service-token/service-toke
 import { userDALFactory } from "@app/services/user/user-dal";
 
 const projectId = seedData1.project.id;
-const userId = seedData1.id;
+const orgId = seedData1.organization.id;
 
-const permissionArg = {
-  actor: ActorType.USER,
-  actorId: userId,
-  projectId,
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: seedData1.organization.id,
-  actionProjectType: ActionProjectType.SecretManager
+// the seed user is the project admin, and getProjectPermission skips folder grants for admins, so
+// permission evaluation runs against a dedicated member user created in beforeAll
+let memberUserId: string;
+let memberMembershipId: string;
+
+let permissionArg: {
+  actor: ActorType;
+  actorId: string;
+  projectId: string;
+  actorAuthMethod: AuthMethod;
+  actorOrgId: string;
+  actionProjectType: ActionProjectType;
 };
 
 // the `services` decoration is encapsulated inside the routes plugin, so build the
 // permission service directly against the same DB/Redis the test server runs on
 let permissionService: TPermissionServiceFactory;
+
+let permissionDataKey: string;
+let permissionMarkerKey: string;
+let folderDataKey: string;
+let folderMarkerKey: string;
+const folderVersionKey = KeyStorePrefixes.ProjectFolderPermissionVersion(projectId);
 
 beforeAll(async () => {
   initLogger();
@@ -53,23 +73,68 @@ beforeAll(async () => {
     groupDAL: groupDALFactory(testDb),
     secretFolderDAL: secretFolderDALFactory(testDb)
   });
+
+  const username = `folder-rbac-${alphaNumericNanoId(8)}@example.com`.toLowerCase();
+  const [user] = await testDb(TableName.Users)
+    .insert({ username, email: username, isGhost: false, isAccepted: true, authMethods: [AuthMethod.EMAIL] })
+    .returning("*");
+  memberUserId = user.id;
+
+  const [orgMembership] = await testDb(TableName.Membership)
+    .insert({
+      scope: AccessScope.Organization,
+      scopeOrgId: orgId,
+      actorUserId: memberUserId,
+      status: OrgMembershipStatus.Accepted,
+      isActive: true
+    })
+    .returning("*");
+  await testDb(TableName.MembershipRole).insert({ membershipId: orgMembership.id, role: OrgMembershipRole.Member });
+
+  const [projectMembership] = await testDb(TableName.Membership)
+    .insert({
+      scope: AccessScope.Project,
+      scopeOrgId: orgId,
+      scopeProjectId: projectId,
+      actorUserId: memberUserId
+    })
+    .returning("*");
+  memberMembershipId = projectMembership.id;
+  await testDb(TableName.MembershipRole).insert({
+    membershipId: memberMembershipId,
+    role: ProjectMembershipRole.Member
+  });
+
+  permissionArg = {
+    actor: ActorType.USER,
+    actorId: memberUserId,
+    projectId,
+    actorAuthMethod: AuthMethod.EMAIL,
+    actorOrgId: orgId,
+    actionProjectType: ActionProjectType.SecretManager
+  };
+
+  permissionDataKey = KeyStorePrefixes.ProjectPermissionData(
+    projectId,
+    ActorType.USER,
+    memberUserId,
+    ActionProjectType.SecretManager
+  );
+  permissionMarkerKey = KeyStorePrefixes.ProjectPermissionMarker(
+    projectId,
+    ActorType.USER,
+    memberUserId,
+    ActionProjectType.SecretManager
+  );
+  folderDataKey = KeyStorePrefixes.ProjectFolderPermissionData(projectId, ActorType.USER, memberUserId);
+  folderMarkerKey = KeyStorePrefixes.ProjectFolderPermissionMarker(projectId, ActorType.USER, memberUserId);
 });
 
-const permissionDataKey = KeyStorePrefixes.ProjectPermissionData(
-  projectId,
-  ActorType.USER,
-  userId,
-  ActionProjectType.SecretManager
-);
-const permissionMarkerKey = KeyStorePrefixes.ProjectPermissionMarker(
-  projectId,
-  ActorType.USER,
-  userId,
-  ActionProjectType.SecretManager
-);
-const folderDataKey = KeyStorePrefixes.ProjectFolderPermissionData(projectId, ActorType.USER, userId);
-const folderMarkerKey = KeyStorePrefixes.ProjectFolderPermissionMarker(projectId, ActorType.USER, userId);
-const folderVersionKey = KeyStorePrefixes.ProjectFolderPermissionVersion(projectId);
+afterAll(async () => {
+  await testRedis.del(permissionDataKey, permissionMarkerKey, folderDataKey, folderMarkerKey);
+  await testDb(TableName.Membership).where({ actorUserId: memberUserId }).del();
+  await testDb(TableName.Users).where({ id: memberUserId }).del();
+});
 
 const createFolder = async (dto: { path: string; name: string }) => {
   const res = await testServer.inject({
@@ -164,7 +229,7 @@ describe("Folder-scoped privilege permissions", () => {
 
     await testDb(TableName.AdditionalPrivilege).insert({
       name: "e2e-folder-rbac",
-      actorUserId: userId,
+      actorUserId: memberUserId,
       projectId,
       folderId: folderB.id,
       role: SecretFolderRole.Read,
@@ -184,8 +249,8 @@ describe("Folder-scoped privilege permissions", () => {
       })
     ]);
 
-    // the seed user is a project admin: the read grant must override admin at the granted path
-    // (readValue yes, edit no) while leaving every other path on the base admin permissions
+    // the read grant must override the member base role at the granted path (readValue yes,
+    // edit no) while leaving every other path on the base member permissions
     const grantedPath = { environment: seedData1.environment.slug, secretPath: "/rbac-a/rbac-b" };
     expect(
       before.permission.can(
@@ -234,8 +299,52 @@ describe("Folder-scoped privilege permissions", () => {
     expect(versionAfterDelete).toBeGreaterThan(versionAfter);
 
     // the folder cache marker lives 15s past the grant's deletion; drop it so later specs sharing
-    // the seed user don't build abilities from the stale folder deny
+    // this user don't build abilities from the stale folder deny
     await testRedis.del(folderDataKey, folderMarkerKey);
+  });
+
+  test("ignores folder grants once the holder becomes a project admin", async () => {
+    const folder = await createFolder({ path: "/", name: "rbac-admin-skip" });
+
+    await testDb(TableName.AdditionalPrivilege).insert({
+      name: "e2e-folder-rbac-admin-skip",
+      actorUserId: memberUserId,
+      projectId,
+      folderId: folder.id,
+      role: SecretFolderRole.Read,
+      permissions: null,
+      isTemporary: false
+    });
+
+    const grantedPath = { environment: seedData1.environment.slug, secretPath: "/rbac-admin-skip" };
+
+    await testRedis.del(permissionDataKey, permissionMarkerKey, folderDataKey, folderMarkerKey);
+    const asMember = await permissionService.getProjectPermission(permissionArg);
+    expect(
+      asMember.permission.can(ProjectPermissionSecretActions.Edit, subject(ProjectPermissionSub.Secrets, grantedPath))
+    ).toBe(false);
+
+    // grants cannot be created for admins, but a grant can predate a promotion to admin; the
+    // promoted admin's ability must ignore it entirely
+    await testDb(TableName.MembershipRole)
+      .where({ membershipId: memberMembershipId })
+      .update({ role: ProjectMembershipRole.Admin });
+
+    try {
+      await testRedis.del(permissionDataKey, permissionMarkerKey, folderDataKey, folderMarkerKey);
+      const asAdmin = await permissionService.getProjectPermission(permissionArg);
+      expect(asAdmin.folderScopedPrivileges).toEqual([]);
+      expect(
+        asAdmin.permission.can(ProjectPermissionSecretActions.Edit, subject(ProjectPermissionSub.Secrets, grantedPath))
+      ).toBe(true);
+    } finally {
+      await testDb(TableName.MembershipRole)
+        .where({ membershipId: memberMembershipId })
+        .update({ role: ProjectMembershipRole.Member });
+    }
+
+    await deleteFolder({ path: "/", id: folder.id, forceDelete: true });
+    await testRedis.del(permissionDataKey, permissionMarkerKey, folderDataKey, folderMarkerKey);
   });
 });
 
@@ -245,7 +354,7 @@ describe("Folder deletion reaps folder-scoped privileges", () => {
 
     await testDb(TableName.AdditionalPrivilege).insert({
       name: "e2e-folder-rbac-leaf",
-      actorUserId: userId,
+      actorUserId: memberUserId,
       projectId,
       folderId: folder.id,
       role: SecretFolderRole.Read,
@@ -264,7 +373,7 @@ describe("Folder deletion reaps folder-scoped privileges", () => {
 
     await testDb(TableName.AdditionalPrivilege).insert({
       name: "e2e-folder-rbac-child",
-      actorUserId: userId,
+      actorUserId: memberUserId,
       projectId,
       folderId: child.id,
       role: SecretFolderRole.Read,

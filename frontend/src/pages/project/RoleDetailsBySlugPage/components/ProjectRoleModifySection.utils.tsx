@@ -2043,7 +2043,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Manage Access",
         value: ProjectPermissionSecretFolderActions.ManageAccess,
-        description: "Grant and revoke folder-level access for users and machine identities"
+        description:
+          "Grant and revoke folder-level access for users and machine identities. Granted through folder-level access controls"
       }
     ]
   },

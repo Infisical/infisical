@@ -84,11 +84,14 @@ const buildAdminPermissionRules = () => {
 
   // Folder read is implied for all, so admins only need write actions on folders
   can(
-    [ProjectPermissionActions.Edit, ProjectPermissionActions.Create, ProjectPermissionActions.Delete],
+    [
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Delete,
+      ProjectPermissionSecretFolderActions.ManageAccess
+    ],
     ProjectPermissionSub.SecretFolders
   );
-
-  can([ProjectPermissionSecretFolderActions.ManageAccess], ProjectPermissionSub.SecretFolders);
 
   can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
 

@@ -700,9 +700,15 @@ export const permissionServiceFactory = ({
         });
       }
 
-      // Folder-scoped privileges live in their own cache because they need to be outlive the project permission cache
+      const hasActiveAdminRole = permissionData.some((m) =>
+        m.roles.some((r) => r.role === ProjectMembershipRole.Admin && isActiveRole(r))
+      );
+
+      // Folder-scoped privileges live in their own cache because they need to be outlive the project permission cache.
+      // Admins cannot receive folder grants, but a grant can predate a promotion to admin; skip
+      // evaluation so such a stale grant never restricts an admin.
       let folderScopedPrivileges: TProjectFolderScopedPrivilege[] = [];
-      if (projectDetails.type === ProjectType.SecretManager) {
+      if (projectDetails.type === ProjectType.SecretManager && !hasActiveAdminRole) {
         const folderCached = await $getFolderScopedPrivileges(projectId, narrowedActor, actorId);
         folderScopedPrivileges = folderCached.privileges
           .filter(isActiveRole)

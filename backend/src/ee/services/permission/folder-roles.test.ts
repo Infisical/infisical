@@ -79,7 +79,7 @@ describe("Secret folder roles", () => {
       const edit = abilityFor(SecretFolderRole.Edit);
 
       expect(edit.can(ProjectPermissionSecretActions.Create, ProjectPermissionSub.Secrets)).toBe(true);
-      expect(edit.can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretFolders)).toBe(true);
+      expect(edit.cannot(ProjectPermissionActions.Create, ProjectPermissionSub.SecretFolders)).toBe(true);
       expect(
         edit.can(ProjectPermissionDynamicSecretActions.CreateRootCredential, ProjectPermissionSub.DynamicSecrets)
       ).toBe(false);
