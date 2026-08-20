@@ -1716,9 +1716,10 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretFolders).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    ),
+    action: CASL_ACTION_SCHEMA_ENUM([
+      ...Object.values(ProjectPermissionActions),
+      ...Object.values(ProjectPermissionSecretFolderActions)
+    ] as [string, ...string[]]).describe("Describe what action an entity can take."),
     conditions: SecretConditionV1Schema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()

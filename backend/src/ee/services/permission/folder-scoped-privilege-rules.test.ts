@@ -11,11 +11,8 @@ import { buildProjectPermissionRules } from "./permission-service";
 import { TProjectFolderScopedPrivilege } from "./permission-service-types";
 import {
   ProjectPermissionActions,
-  ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionHoneyTokenActions,
-  ProjectPermissionProjectFolderGrantActions,
-  ProjectPermissionProxiedServiceActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
@@ -49,8 +46,12 @@ const abilityFor = (roles: { role: string; permissions?: unknown }[], privileges
 
 describe("folder-scoped privilege deny coverage", () => {
   // Subjects that support a secretPath condition but are deliberately NOT denied at granted folder
-  // paths: no folder role tier re-allows them, so the base project role keeps applying there.
-  const DENY_EXEMPT_SUBJECTS: string[] = [ProjectPermissionSub.ProxiedServices];
+  // paths, so the base project role keeps applying there.
+  const DENY_EXEMPT_SUBJECTS: string[] = [
+    ProjectPermissionSub.ProxiedServices,
+    ProjectPermissionSub.Commits,
+    ProjectPermissionSub.ProjectFolderGrant
+  ];
 
   // The single source of truth for "which subjects can be scoped by secretPath" is the permission
   // API schema itself, so enumerate it rather than hardcoding the list here.
@@ -85,16 +86,18 @@ describe("folder-scoped privilege deny coverage", () => {
 
   const ALL_ACTIONS_BY_SUBJECT: Record<string, string[]> = {
     [ProjectPermissionSub.Secrets]: Object.values(ProjectPermissionSecretActions),
-    [ProjectPermissionSub.SecretFolders]: Object.values(ProjectPermissionActions),
+    [ProjectPermissionSub.SecretFolders]: [
+      ProjectPermissionActions.Create,
+      ProjectPermissionActions.Edit,
+      ProjectPermissionActions.Delete,
+      ProjectPermissionSecretFolderActions.ManageAccess
+    ],
     [ProjectPermissionSub.SecretImports]: Object.values(ProjectPermissionActions),
     [ProjectPermissionSub.DynamicSecrets]: Object.values(ProjectPermissionDynamicSecretActions),
     [ProjectPermissionSub.SecretSyncs]: Object.values(ProjectPermissionSecretSyncActions),
     [ProjectPermissionSub.SecretRotation]: Object.values(ProjectPermissionSecretRotationActions),
     [ProjectPermissionSub.SecretEventSubscriptions]: Object.values(ProjectPermissionSecretEventActions),
-    [ProjectPermissionSub.Commits]: Object.values(ProjectPermissionCommitsActions),
-    [ProjectPermissionSub.HoneyTokens]: Object.values(ProjectPermissionHoneyTokenActions),
-    [ProjectPermissionSub.ProxiedServices]: Object.values(ProjectPermissionProxiedServiceActions),
-    [ProjectPermissionSub.ProjectFolderGrant]: Object.values(ProjectPermissionProjectFolderGrantActions)
+    [ProjectPermissionSub.HoneyTokens]: Object.values(ProjectPermissionHoneyTokenActions)
   };
 
   test.each(FOLDER_SCOPED_DENY_RULES.map((rule) => String(rule.subject)))(

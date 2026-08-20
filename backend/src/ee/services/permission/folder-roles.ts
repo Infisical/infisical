@@ -60,10 +60,6 @@ const applyFolderEditRules = (can: TProjectCan) => {
     [ProjectPermissionActions.Create, ProjectPermissionActions.Edit, ProjectPermissionActions.Delete],
     ProjectPermissionSub.SecretImports
   );
-  can(
-    [ProjectPermissionActions.Create, ProjectPermissionActions.Edit, ProjectPermissionActions.Delete],
-    ProjectPermissionSub.Tags
-  );
 };
 
 const applyFolderManageRules = (can: TProjectCan) => {
