@@ -133,7 +133,11 @@ export const ACCOUNT_TYPE_CONFIGS = {
         defaultValue: PamPostgresAuthMethod.Password,
         options: [
           { label: "Password", value: PamPostgresAuthMethod.Password },
-          { label: "AWS IAM (RDS / Aurora)", value: PamPostgresAuthMethod.AwsIam }
+          {
+            label: "AWS IAM (RDS / Aurora)",
+            value: PamPostgresAuthMethod.AwsIam,
+            docsUrl: "https://infisical.com/docs/documentation/platform/pam/accounts/postgresql#aws-iam-authentication"
+          }
         ]
       },
       awsRegion: {
@@ -763,7 +767,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
           showWhen?: TFieldConditionHint;
           forceWhen?: readonly TFieldForcedRuleHint[];
           tooltip?: string;
-          options?: { label: string; value: string }[];
+          options?: { label: string; value: string; docsUrl?: string }[];
         }
       >;
       internalMetadata?: z.ZodTypeAny;
@@ -1060,7 +1064,7 @@ export const PamFieldDescriptorSchema = z.object({
   required: z.boolean(),
   secret: z.boolean(),
   optional: z.boolean().optional(),
-  options: z.array(z.object({ label: z.string(), value: z.string() })).optional(),
+  options: z.array(z.object({ label: z.string(), value: z.string(), docsUrl: z.string().optional() })).optional(),
 
   // Value the form prefills the field with on create
   defaultValue: z.union([z.string(), z.number(), z.boolean()]).optional(),
@@ -1111,7 +1115,7 @@ type TFieldUiHint = {
   showWhen?: TFieldConditionHint;
   forceWhen?: readonly TFieldForcedRuleHint[];
   tooltip?: string;
-  options?: { label: string; value: string }[];
+  options?: { label: string; value: string; docsUrl?: string }[];
 };
 
 const humanizeKey = (key: string) => {

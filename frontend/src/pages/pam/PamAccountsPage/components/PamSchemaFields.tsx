@@ -7,7 +7,7 @@ import {
   UseFormSetValue,
   useWatch
 } from "react-hook-form";
-import { Info } from "lucide-react";
+import { ExternalLink, Info } from "lucide-react";
 
 import {
   Field,
@@ -195,6 +195,9 @@ export const PamSchemaFields = ({ control, setValue, namePrefix, fields, smartPa
       {fields.map((descriptor, idx) => {
         if (!isFieldVisible(descriptor, namePrefix, values)) return null;
         const forcedRule = forcedRules[idx];
+        const selectedDocsUrl = descriptor.options?.find(
+          (option) => option.value === values[namePrefix][descriptor.key]
+        )?.docsUrl;
 
         return (
           <Controller
@@ -235,6 +238,19 @@ export const PamSchemaFields = ({ control, setValue, namePrefix, fields, smartPa
                       isDisabled={Boolean(forcedRule)}
                       smartPaste={smartPaste?.fieldKey === descriptor.key ? smartPaste : undefined}
                     />
+                    {selectedDocsUrl && (
+                      <FieldDescription>
+                        <a
+                          href={selectedDocsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1"
+                        >
+                          Documentation
+                          <ExternalLink className="size-3" />
+                        </a>
+                      </FieldDescription>
+                    )}
                     {forcedRule && <FieldDescription>{forcedRule.reason}</FieldDescription>}
                     <FieldError>{fieldState.error?.message}</FieldError>
                   </FieldContent>

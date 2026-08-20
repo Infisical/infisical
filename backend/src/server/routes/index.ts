@@ -1954,7 +1954,8 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     pamAccountDependencyDAL,
-    pamDiscoverySourceDAL
+    pamDiscoverySourceDAL,
+    projectDAL
   });
 
   const pamSessionService = pamSessionServiceFactory({
