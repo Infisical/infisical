@@ -430,35 +430,6 @@ const OverviewPageContent = () => {
   const isMoreEnvironmentsAllowed = subscription?.environmentLimit
     ? userAvailableEnvs.length < subscription.environmentLimit
     : true;
-  const userAvailableDynamicSecretEnvs = userAvailableEnvs.filter((env) =>
-    permission.can(
-      ProjectPermissionDynamicSecretActions.CreateRootCredential,
-      subject(ProjectPermissionSub.DynamicSecrets, {
-        environment: env.slug,
-        secretPath,
-        metadata: ["*"]
-      })
-    )
-  );
-  const userAvailableSecretRotationEnvs = userAvailableEnvs.filter((env) =>
-    permission.can(
-      ProjectPermissionSecretRotationActions.Create,
-      subject(ProjectPermissionSub.SecretRotation, {
-        environment: env.slug,
-        secretPath
-      })
-    )
-  );
-  const userAvailableSecretImportEnvs = userAvailableEnvs.filter((env) =>
-    permission.can(
-      ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.SecretImports, {
-        environment: env.slug,
-        secretPath
-      })
-    )
-  );
-
   const [storedEnvIds, setStoredEnvIds] = useLocalStorageState<string[]>(
     `overview-selected-envs-${projectId}`,
     userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
@@ -592,6 +563,31 @@ const OverviewPageContent = () => {
   const isSingleEnvView = visibleEnvs.length === 1;
   const singleEnvSlug = isSingleEnvView ? visibleEnvs[0].slug : "";
   const singleEnvName = isSingleEnvView ? visibleEnvs[0].name : "";
+  const visibleDynamicSecretEnvs = visibleEnvs.filter((env) =>
+    permission.can(
+      ProjectPermissionDynamicSecretActions.CreateRootCredential,
+      subject(ProjectPermissionSub.DynamicSecrets, {
+        environment: env.slug,
+        secretPath,
+        metadata: ["*"]
+      })
+    )
+  );
+  const visibleSecretRotationEnvs = visibleEnvs.filter((env) =>
+    permission.can(
+      ProjectPermissionSecretRotationActions.Create,
+      subject(ProjectPermissionSub.SecretRotation, {
+        environment: env.slug,
+        secretPath
+      })
+    )
+  );
+  const visibleSecretImportEnvs = visibleEnvs.filter((env) =>
+    permission.can(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.SecretImports, { environment: env.slug, secretPath })
+    )
+  );
   const { pathPolicies, hasPathPolicies } = usePathAccessPolicies({
     secretPath,
     environment: singleEnvSlug
@@ -2874,12 +2870,12 @@ const OverviewPageContent = () => {
                       });
                     }}
                     onReplicateSecrets={() => handlePopUpOpen("replicateFolder")}
-                    isDyanmicSecretAvailable={userAvailableDynamicSecretEnvs.length > 0}
-                    isSecretRotationAvailable={userAvailableSecretRotationEnvs.length > 0}
+                    isDyanmicSecretAvailable={visibleDynamicSecretEnvs.length > 0}
+                    isSecretRotationAvailable={visibleSecretRotationEnvs.length > 0}
                     isHoneyTokenAvailable
                     isReplicateSecretsAvailable={visibleEnvs.length === 1}
                     onAddSecretImport={handleAddSecretImport}
-                    isSecretImportAvailable={userAvailableSecretImportEnvs.length > 0}
+                    isSecretImportAvailable={visibleSecretImportEnvs.length > 0}
                     isSingleEnvSelected={isSingleEnvView}
                     hasVaultConnection={hasVaultConnection}
                     hasDopplerConnection={hasDopplerConnection}
@@ -3685,7 +3681,7 @@ const OverviewPageContent = () => {
         isOpen={popUp.addDynamicSecret.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("addDynamicSecret", isOpen)}
         projectSlug={projectSlug}
-        environments={userAvailableDynamicSecretEnvs}
+        environments={visibleDynamicSecretEnvs}
         secretPath={secretPath}
       />
       <Modal
@@ -3838,7 +3834,7 @@ const OverviewPageContent = () => {
       />
       <CreateSecretRotationV2Modal
         secretPath={secretPath}
-        environments={userAvailableSecretRotationEnvs}
+        environments={visibleSecretRotationEnvs}
         isOpen={popUp.addSecretRotation.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretRotation", isOpen)}
       />
