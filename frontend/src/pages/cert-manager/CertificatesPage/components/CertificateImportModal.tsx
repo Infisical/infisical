@@ -192,7 +192,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
     const imported = results.filter((result) => !result.error).length;
     if (imported) {
       createNotification({
-        text: `Imported ${imported} of ${results.length} certificates`,
+        text: `Imported ${imported} of ${results.length} certificate${results.length === 1 ? "" : "s"}`,
         type: "success"
       });
     }
@@ -298,7 +298,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
             />
           </TableHead>
           <TableHead>SAN / CN</TableHead>
-          <TableHead className="w-40">Key</TableHead>
+          <TableHead className="w-40">Private Key</TableHead>
           <TableHead className="w-24">Chain</TableHead>
           <TableHead className="w-44">Expires</TableHead>
         </TableRow>
