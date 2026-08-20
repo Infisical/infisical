@@ -573,6 +573,22 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
     ).toEqual({ ok: true });
   });
 
+  // The same relaxation covers key usage: chain mode will not walk through a CA whose key usage
+  // omits keyCertSign, because Node's `.ca` is false for it, but single-hop never consults `.ca`.
+  // A configured CA is trusted by an operator rather than delegated to by a parent, so the bit its
+  // own issuer wrote is not what decides whether it may authenticate a client here.
+  test("accepts a configured CA whose key usage omits keyCertSign", async () => {
+    const ca = await makeCa("Non-signing CA", {
+      extensions: [new x509.KeyUsagesExtension(x509.KeyUsageFlags.cRLSign, true)]
+    });
+    const leaf = await makeLeaf(ca, "workload.example.com");
+
+    expect(toNative(ca.cert).ca).toBe(false);
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: true });
+  });
+
   test("rejects when the configured CA's name constraints do not match the schema", async () => {
     const ca = await makeCa("Malformed NC CA", { extensions: [schemaMismatchedNameConstraint()] });
     const leaf = await makeLeaf(ca, "workload.example.com");
@@ -1448,6 +1464,65 @@ describe("verifyClientCertificateChain", () => {
       now: NOW
     });
     expect(result).toEqual({ ok: false, reasonCode: "path_length_exceeded" });
+  });
+
+  // RFC 5280 6.1.4 (n). The rule is carried by Node's `.ca`, which is false for a certificate whose
+  // key usage omits keyCertSign even when basic constraints assert CA:TRUE, so a non-signing CA is
+  // never a candidate issuer and the path simply does not build. These pin that, because a refactor
+  // that read basic constraints directly would drop the rule without failing anything else.
+  test("rejects a chain through an intermediate whose key usage omits keyCertSign", async () => {
+    const nonSigning = await makeIntermediate("Non-signing Intermediate", root, {
+      extraExtensions: [new x509.KeyUsagesExtension(x509.KeyUsageFlags.cRLSign, true)]
+    });
+    const leaf = await makeLeaf("workload", nonSigning);
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [toNative(nonSigning.cert)],
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: false, reasonCode: "ca_verification_failed" });
+  });
+
+  test("accepts a chain through an intermediate whose key usage includes keyCertSign", async () => {
+    const signing = await makeIntermediate("Signing Intermediate", root, {
+      extraExtensions: [
+        // eslint-disable-next-line no-bitwise
+        new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true)
+      ]
+    });
+    const leaf = await makeLeaf("workload", signing);
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [toNative(signing.cert)],
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
+  test("rejects a trust anchor whose own key usage omits keyCertSign", async () => {
+    const keys = (await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"])) as CryptoKeyPair;
+    const anchorCert = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber: "01",
+      name: "CN=Non-signing Root",
+      notBefore: NOT_BEFORE,
+      notAfter: FAR_FUTURE,
+      keys,
+      extensions: [
+        new x509.BasicConstraintsExtension(true, undefined, true),
+        new x509.KeyUsagesExtension(x509.KeyUsageFlags.cRLSign, true)
+      ]
+    });
+    const anchor = { cert: anchorCert, keys };
+    const leaf = await makeLeaf("workload", anchor);
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [],
+      trustAnchor: toNative(anchor.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: false, reasonCode: "ca_verification_failed" });
   });
 
   test("rejects when the intermediate has expired", async () => {

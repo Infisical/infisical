@@ -53,11 +53,11 @@ const pkiCryptoEngine = new CryptoEngine({ name: "identity-tls-cert-auth", crypt
  * and, when a key usage is present, `keyCertSign`.
  *
  * None of that is wanted here, because all of it is already settled by `issuedBy`, `validityFailure`
- * and the `candidate.ca` gate, against OpenSSL rather than a second implementation. Letting it run
- * again turned pkijs's opinions into authentication failures: a configured CA that omits basic
- * constraints is deliberately accepted in single-hop mode, and a CA whose key usage omits
- * `keyCertSign` has never been rejected here, yet both were denied as soon as their certificate also
- * asserted name constraints.
+ * and the `.ca` gate, against OpenSSL rather than a second implementation. Letting it run again turned
+ * pkijs's opinions into authentication failures, because it holds the configured CA to them too: a
+ * configured CA that omits basic constraints, or whose key usage omits `keyCertSign`, is deliberately
+ * accepted in single-hop mode, yet both were denied as soon as their certificate also asserted name
+ * constraints.
  *
  * Overriding `sort` hands the engine the path this code already established, so only the subtree
  * matching runs. It also removes a subtler mismatch: pkijs rebuilt the path from the certificates it
@@ -125,8 +125,42 @@ const issuedBy = (child: TNativeX509, issuer: TNativeX509): boolean => {
   }
 };
 
+/**
+ * Decoding a certificate is the most expensive thing a login does that is not a signature check, and
+ * a single certificate is read by several checks that have no reason to know about each other: the
+ * extended key usage gate, the subject alternative names, the path length, and whether it asserts
+ * name constraints at all. Caching on the certificate object rather than its bytes keeps the parse
+ * to one per certificate per request without a lifetime to manage: the entry dies with the
+ * `X509Certificate` the request built, and a certificate's bytes never change under it.
+ *
+ * Both parsers are kept because they are not interchangeable. @peculiar/x509 gives typed extension
+ * accessors, and pkijs gives the `Certificate` its validation engine requires. Only the parse is
+ * shared; a failure is not cached, so each caller keeps its own error handling.
+ */
+const parsedCertificates = new WeakMap<TNativeX509, x509.X509Certificate>();
+
+const parseCertificate = (cert: TNativeX509): x509.X509Certificate => {
+  const cached = parsedCertificates.get(cert);
+  if (cached) return cached;
+
+  const parsed = new x509.X509Certificate(cert.raw);
+  parsedCertificates.set(cert, parsed);
+  return parsed;
+};
+
+const pkiCertificates = new WeakMap<TNativeX509, Certificate>();
+
+const toPkiCertificate = (cert: TNativeX509): Certificate => {
+  const cached = pkiCertificates.get(cert);
+  if (cached) return cached;
+
+  const parsed = Certificate.fromBER(cert.raw);
+  pkiCertificates.set(cert, parsed);
+  return parsed;
+};
+
 const basicConstraintsPathLength = (cert: TNativeX509): number | undefined =>
-  new x509.X509Certificate(cert.raw).getExtension(x509.BasicConstraintsExtension)?.pathLength;
+  parseCertificate(cert).getExtension(x509.BasicConstraintsExtension)?.pathLength;
 
 /**
  * RFC 5280 6.1.4 (l)/(m): a CA's `pathLenConstraint` caps how many non-self-issued CA certificates
@@ -174,6 +208,20 @@ const nameConstraintsOf = (cert: Certificate): TNameConstraintsState => {
   return { status: "present", constraints };
 };
 
+/**
+ * Whether the certificate carries a name constraints extension, answered from the extension list
+ * alone so a chain that asserts none never pays for the pkijs decode the evaluation needs. A
+ * certificate that cannot be read here is reported as carrying one, so it reaches `nameConstraintsOf`
+ * and is denied there rather than passing as unconstrained.
+ */
+const assertsNameConstraints = (cert: TNativeX509): boolean => {
+  try {
+    return parseCertificate(cert).getExtension(NAME_CONSTRAINTS_EXTENSION_OID) !== null;
+  } catch {
+    return true;
+  }
+};
+
 const uriSubtreeValue = (subtree: GeneralSubtree): string | null =>
   subtree.base.type === URI_GENERAL_NAME_TYPE && typeof subtree.base.value === "string" ? subtree.base.value : null;
 
@@ -209,7 +257,7 @@ export type TNameConstraintsProblem =
 export const findNameConstraintsProblem = (cert: TNativeX509): TNameConstraintsProblem | null => {
   let state: TNameConstraintsState;
   try {
-    state = nameConstraintsOf(Certificate.fromBER(cert.raw));
+    state = nameConstraintsOf(toPkiCertificate(cert));
   } catch (err) {
     logger.warn(err, `TLS certificate auth: certificate could not be decoded [subject=${cert.subject}]`);
     return { kind: "unparseable_certificate" };
@@ -240,8 +288,9 @@ export const findNameConstraintsProblem = (cert: TNativeX509): TNameConstraintsP
  */
 const enforceNameConstraints = async (orderedPath: TNativeX509[]): Promise<TVerificationFailure | null> => {
   if (orderedPath.length < 2) return null;
+  if (!orderedPath.some(assertsNameConstraints)) return null;
 
-  const parsedPath = orderedPath.map((cert) => Certificate.fromBER(cert.raw));
+  const parsedPath = orderedPath.map(toPkiCertificate);
   const pathConstraints = parsedPath.map(nameConstraintsOf);
 
   const unreadableIssuer = pathConstraints.findIndex((state, idx) => idx > 0 && state.status === "unreadable");
@@ -266,6 +315,9 @@ const enforceNameConstraints = async (orderedPath: TNativeX509[]): Promise<TVeri
     return { ok: false, reasonCode: "unsupported_name_constraint" };
   }
 
+  // The gate above admits a certificate whose extensions could not be read, so a path pkijs finds
+  // no constraints on still reaches here. Nothing on it restricts anything, and running the engine
+  // anyway would subject the path to its unrelated policy processing.
   if (!pathConstraints.some((state) => state.status === "present")) return null;
 
   const anchorState = pathConstraints[pathConstraints.length - 1];
@@ -308,7 +360,7 @@ const enforceNameConstraints = async (orderedPath: TNativeX509[]): Promise<TVeri
 export const permitsClientAuth = (cert: TNativeX509): boolean => {
   let usages: x509.ExtendedKeyUsageExtension["usages"] | undefined;
   try {
-    usages = new x509.X509Certificate(cert.raw).getExtension(x509.ExtendedKeyUsageExtension)?.usages;
+    usages = parseCertificate(cert).getExtension(x509.ExtendedKeyUsageExtension)?.usages;
   } catch (err) {
     logger.warn(err, `TLS certificate auth: could not read extended key usage [subject=${cert.subject}]`);
     return false;
@@ -365,10 +417,10 @@ export const verifyDirectlyIssuedClientCertificate = async ({
  * Unlike single-hop verification (leaf signed directly by the configured CA), this builds paths
  * from the leaf through the presented intermediates up to the configured trust anchor and accepts
  * the client if any one of them is valid end to end. A path is valid when every hop has a real
- * issuer relationship (subject/issuer match + signature), every issuer is a CA (including the
- * trust anchor itself) that is within its validity window and whose extended key usage permits
- * client authentication, and the path as a whole satisfies the RFC 5280 delegation constraints its
- * CAs assert: `pathLenConstraint` and name constraints.
+ * issuer relationship (subject/issuer match + signature), every issuer is a CA permitted to sign
+ * certificates (including the trust anchor itself) that is within its validity window and whose
+ * extended key usage permits client authentication, and the path as a whole satisfies the RFC 5280
+ * delegation constraints its CAs assert: `pathLenConstraint` and name constraints.
  *
  * Every one of those checks participates in path selection. A cross-signed PKI presents the same
  * logical CA under more than one issuer, so a single certificate can sit on both a path that
@@ -482,6 +534,11 @@ export const verifyClientCertificateChain = async ({
       return;
     }
 
+    // `.ca` is OpenSSL's `X509_check_ca`, which carries RFC 5280 6.1.4 (k) and (n) together: it is
+    // false unless basic constraints assert `CA:TRUE` and, when a key usage is present, it includes
+    // `keyCertSign`. So a sub-CA its parent issued for CRL signing or TLS termination alone cannot
+    // extend a path here, and neither can such a certificate configured as the anchor. Replacing this
+    // with a direct read of basic constraints would silently drop the key usage half.
     if (trustAnchor.ca && issuedByCached(current, trustAnchor)) {
       const anchorFailure = issuerFailure(trustAnchor);
       if (anchorFailure) search.prunedFailure ??= anchorFailure;
@@ -569,7 +626,7 @@ export type TCertificateSanItem = { type: string; value: string };
  */
 export const readSubjectAltNames = (cert: TNativeX509): ReadonlyArray<TCertificateSanItem> | undefined => {
   try {
-    return new x509.X509Certificate(cert.raw).getExtension(x509.SubjectAlternativeNameExtension)?.names.items;
+    return parseCertificate(cert).getExtension(x509.SubjectAlternativeNameExtension)?.names.items;
   } catch (err) {
     logger.warn(err, `TLS certificate auth: could not read subject alternative names [subject=${cert.subject}]`);
     return undefined;
