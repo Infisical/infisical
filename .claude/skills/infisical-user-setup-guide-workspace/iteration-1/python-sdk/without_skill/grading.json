@@ -1,0 +1,34 @@
+{
+  "expectations": [
+    {
+      "text": "Recommends installing 'infisicalsdk' (not 'infisical-python' or 'infisical')",
+      "passed": false,
+      "evidence": "Found 'infisicalsdk': False, Found 'infisical-python': False"
+    },
+    {
+      "text": "Uses 'from infisical_sdk' import (not 'from infisical_client' or 'from infisical')",
+      "passed": false,
+      "evidence": "Found 'infisical_sdk': False, Found wrong import: True"
+    },
+    {
+      "text": "Uses 'InfisicalSDKClient' class name (not 'InfisicalClient')",
+      "passed": false,
+      "evidence": "Found 'InfisicalSDKClient': False"
+    },
+    {
+      "text": "References machine identity for Universal Auth (not service tokens or API keys)",
+      "passed": false,
+      "evidence": "Found 'machine identity': False"
+    },
+    {
+      "text": "Does not recommend deprecated Service Tokens (st.* prefix) or API Keys",
+      "passed": true,
+      "evidence": "Service token mention: False, st.* prefix: False"
+    },
+    {
+      "text": "Shows client ID + client secret auth flow for Universal Auth",
+      "passed": true,
+      "evidence": "Client ID: True, Client Secret: True"
+    }
+  ]
+}

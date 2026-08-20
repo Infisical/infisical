@@ -1,0 +1,13 @@
+{
+  "eval_id": 1,
+  "eval_name": "agent-ecs-sidecar-aws-iam",
+  "prompt": "I'm deploying to AWS ECS and want the Infisical Agent to inject secrets as a sidecar container. We're using ECS task roles so I don't want to manage any credentials manually. How do I configure this?",
+  "assertions": [
+    "Uses aws-iam auth type (not universal-auth with client-id/secret)",
+    "Shows correct auth config with identity-id field",
+    "Shows ECS task definition pattern with shared volume between agent and app containers",
+    "Uses correct template function (listSecrets or listSecretsByProjectSlug) with proper signature",
+    "Mentions exit-after-auth option for init-style sidecar pattern",
+    "Does not require manually managing any credentials or access keys"
+  ]
+}

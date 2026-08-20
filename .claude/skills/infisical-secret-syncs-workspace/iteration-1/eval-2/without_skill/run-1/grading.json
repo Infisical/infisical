@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Correctly warns that Azure Key Vault converts underscores to hyphens (DATABASE_URL becomes DATABASE-URL)",
+      "passed": true,
+      "evidence": "\"Azure Key Vault naming constraints: Only alphanumeric characters (a-z, A-Z, 0-9) and hyphens (-) are permitted...Underscores are not allowed\""
+    },
+    {
+      "text": "Lists required permissions: secrets/list, secrets/get, secrets/set, and secrets/recover",
+      "passed": false,
+      "evidence": "Lists permissions table but does NOT include secrets/recover. Shows: 'secrets/set or secrets/createOrUpdate', 'secrets/get', 'secrets/delete', 'secrets/list', 'secrets/backup', 'secrets/restore' - missing secrets/recover specifically"
+    },
+    {
+      "text": "Recommends Key Vault Secrets Officer role as the appropriate built-in role",
+      "passed": true,
+      "evidence": "\"Minimum Built-in Role: Assign your service principal the Key Vault Secrets Officer role\""
+    },
+    {
+      "text": "Explains why secrets/recover is needed (Azure soft-delete behavior)",
+      "passed": false,
+      "evidence": "Does not mention secrets/recover or explain Azure soft-delete behavior and why recovery permissions are needed"
+    },
+    {
+      "text": "Mentions App Connection prerequisite",
+      "passed": false,
+      "evidence": "Does not use the term 'App Connection'. Discusses setting up service principal with credentials but not within Infisical's App Connection context"
+    },
+    {
+      "text": "Mentions the vault base URL as a required destination config field",
+      "passed": false,
+      "evidence": "Does not mention vault base URL as a required field in the destination configuration"
+    }
+  ],
+  "summary": {
+    "passed": 2,
+    "failed": 4,
+    "total": 6,
+    "pass_rate": 0.33
+  },
+  "timing": {
+    "total_duration_seconds": 20.2
+  }
+}

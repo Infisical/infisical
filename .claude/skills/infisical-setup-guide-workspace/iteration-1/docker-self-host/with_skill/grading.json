@@ -1,0 +1,50 @@
+{
+  "expectations": [
+    {
+      "text": "Recommends Docker Compose for small team",
+      "passed": true,
+      "evidence": "Found in with_skill response (9053 chars)"
+    },
+    {
+      "text": "References docker-compose.prod.yml",
+      "passed": true,
+      "evidence": "Found in with_skill response (9053 chars)"
+    },
+    {
+      "text": "Instructs user to generate ENCRYPTION_KEY themselves",
+      "passed": true,
+      "evidence": "Found in with_skill response (9053 chars)"
+    },
+    {
+      "text": "Mentions FIPS variant or FIPS compliance option",
+      "passed": false,
+      "evidence": "Not found in with_skill response (9053 chars)"
+    },
+    {
+      "text": "Warns about pg_data volume or data persistence",
+      "passed": true,
+      "evidence": "Found in with_skill response (9053 chars)"
+    },
+    {
+      "text": "Mentions HTTPS or reverse proxy for production",
+      "passed": true,
+      "evidence": "Found in with_skill response (9053 chars)"
+    },
+    {
+      "text": "Does NOT generate actual secrets/keys in the response",
+      "passed": true,
+      "evidence": "Found in with_skill response (9053 chars)"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 1,
+    "total": 7,
+    "pass_rate": 0.86
+  },
+  "timing": {
+    "total_tokens": 39116,
+    "duration_ms": 63763,
+    "total_duration_seconds": 63.8
+  }
+}

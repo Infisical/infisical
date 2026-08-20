@@ -1,0 +1,6 @@
+{
+  "eval_id": 1,
+  "eval_name": "local-dev-setup",
+  "prompt": "I just cloned the infisical repo and want to get it running locally on my mac for development. Can you walk me through the setup?",
+  "assertions": []
+}

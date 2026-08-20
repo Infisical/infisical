@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Template uses listSecrets or listSecretsByProjectSlug for static secrets",
+      "passed": true,
+      "evidence": "Template 1 uses '{{- with listSecretsByProjectSlug \"my-project\" \"prod\" \"/\" }}' for static secrets"
+    },
+    {
+      "text": "Template uses dynamicSecret function for PostgreSQL credentials",
+      "passed": true,
+      "evidence": "Template 2 uses '{{ with dynamicSecret \"my-project\" \"prod\" \"/\" \"postgres-creds\" \"1h\" }}' for PostgreSQL credentials"
+    },
+    {
+      "text": "dynamicSecret function has correct 5-arg signature (project-slug, env, path, name, ttl)",
+      "passed": true,
+      "evidence": "dynamicSecret call shows all 5 args: project-slug (my-project), env (prod), path (/), name (postgres-creds), ttl (1h)"
+    },
+    {
+      "text": "Shows .DB_USERNAME and .DB_PASSWORD fields from dynamic secret output",
+      "passed": true,
+      "evidence": "Template shows 'DB_USER={{ .DB_USERNAME }}' and 'DB_PASSWORD={{ .DB_PASSWORD }}'"
+    },
+    {
+      "text": "Mentions auto-renewal behavior (agent renews before expiration)",
+      "passed": true,
+      "evidence": "\"Auto-renewal: Before TTL expires (typically at 80% of TTL), agent auto-renews the lease\" and detailed lease lifecycle explanation"
+    },
+    {
+      "text": "Recommends revoke-credentials-on-shutdown: true for cleanup",
+      "passed": true,
+      "evidence": "Top-level config shows 'revoke-credentials-on-shutdown: true' with explanation in best practices"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "total_duration_seconds": 44.1
+  }
+}
