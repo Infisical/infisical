@@ -24,7 +24,7 @@ import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard, HomeStack, HomeS
           tabs: [
             { label: "macOS", command: "brew install infisical/get-cli/infisical" },
             { label: "Windows", command: "winget install infisical" },
-            { label: "npm", command: "npm install -g @infisical/cli" }
+            { label: "Debian/Ubuntu", command: "curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash && sudo apt-get update && sudo apt-get install -y infisical" }
           ]
         },
         { label: "Inject your secrets.", href: "/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret" }
