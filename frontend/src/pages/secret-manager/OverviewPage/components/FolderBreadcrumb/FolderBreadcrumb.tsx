@@ -23,7 +23,6 @@ import { useTimedReset } from "@app/hooks";
 
 type Props = {
   secretPath?: string;
-  onResetSearch: (secretPath: string) => void;
 };
 
 type Measurements = {
@@ -34,7 +33,7 @@ type Measurements = {
   separatorWidth: number;
 };
 
-export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
+export function FolderBreadcrumb({ secretPath = "" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const measureContainerRef = useRef<HTMLDivElement>(null);
 
@@ -55,9 +54,8 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
     [secretPath]
   );
 
-  // The crumb is a real link, so the browser owns the navigation; this only restores the
-  // filters previously used at that depth, and must not run when the click is a new-tab
-  // gesture that leaves this tab where it is.
+  // The crumb is a real link, so the browser owns the navigation and preserves the other search
+  // parameters through the route transition.
   const onFolderCrumbClick = useCallback(
     (event: React.MouseEvent, index: number) => {
       if (event.defaultPrevented) return;
@@ -65,9 +63,8 @@ export function FolderBreadcrumb({ secretPath = "", onResetSearch }: Props) {
         return;
       const newSecPath = getCrumbPath(index);
       if (secretPath === newSecPath) return;
-      onResetSearch(newSecPath);
     },
-    [getCrumbPath, secretPath, onResetSearch]
+    [getCrumbPath, secretPath]
   );
 
   // Measure all elements and track container width

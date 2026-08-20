@@ -69,7 +69,11 @@ export const ResourceSearchInput = ({
       <ButtonGroup>
         <Tooltip>
           <TooltipTrigger asChild>
-            <IconButton variant="outline" onClick={() => setIsOpen(true)}>
+            <IconButton
+              aria-label="Search all folders"
+              variant="outline"
+              onClick={() => setIsOpen(true)}
+            >
               <SearchIcon />
             </IconButton>
           </TooltipTrigger>
@@ -117,7 +121,12 @@ export const ResourceSearchInput = ({
                 />
                 {hasSearch && (
                   <InputGroupAddon align="inline-end">
-                    <IconButton variant="ghost" size="xs" onClick={handleClear}>
+                    <IconButton
+                      aria-label="Clear search"
+                      variant="ghost"
+                      size="xs"
+                      onClick={handleClear}
+                    >
                       <XIcon />
                     </IconButton>
                   </InputGroupAddon>
