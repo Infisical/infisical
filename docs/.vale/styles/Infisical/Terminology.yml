@@ -22,10 +22,8 @@ exceptions:
   - Create Sub-Organization
 swap:
   # --- Product naming ---
-  # Google's product is genuinely named "Secret Manager"; ours is plural.
-  # "AWS Secret Manager" is caught on purpose -- AWS's is plural too.
-  '(?<!GCP )(?<!Google )\bSecret Manager\b': Secrets Manager
-  '\bSecret Management\b': Secrets Management
+  # Secret Manager / Secrets Management live in SecretsManager.yml, which GCP
+  # pages switch off.
   # Microsoft renamed this. "Azure AD CS" is Certificate Services, not the
   # identity product, so it is excluded.
   '\bAzure Active Directory\b': Entra ID
