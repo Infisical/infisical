@@ -34,7 +34,7 @@ const SPEC_FORMAT_BY_ROUTE: Record<string, SpecFormat> = {
 const buildSpecPayload = async (fastify: FastifyInstance, format: SpecFormat): Promise<SpecPayload> => {
   const isYaml = format === "yaml";
   const body = isYaml ? fastify.swagger({ yaml: true }) : JSON.stringify(fastify.swagger());
-  const contentType = isYaml ? "application/x-yaml; charset=utf-8" : "application/json; charset=utf-8";
+  const contentType = isYaml ? "application/x-yaml" : "application/json; charset=utf-8";
 
   const identity = Buffer.from(body, "utf8");
 

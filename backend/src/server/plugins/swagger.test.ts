@@ -130,11 +130,27 @@ describe("OpenAPI spec routes", () => {
     expect(second.headers.etag).toBe(first.headers.etag);
   });
 
+  test("keeps the exact content types @fastify/swagger-ui sent, charset included", async () => {
+    const json = await getSpec();
+    const yamlRes = await getSpec({}, "/api/docs/yaml");
+
+    // A consumer comparing the header exactly must not notice the handler swap.
+    expect(json.headers["content-type"]).toBe("application/json; charset=utf-8");
+    expect(yamlRes.headers["content-type"]).toBe("application/x-yaml");
+  });
+
+  test("still answers HEAD", async () => {
+    const res = await app.inject({ method: "HEAD", url: "/api/docs/json" });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["content-type"]).toBe("application/json; charset=utf-8");
+  });
+
   test("serves the yaml spec the same way", async () => {
     const res = await getSpec({ "accept-encoding": "br" }, "/api/docs/yaml");
 
     expect(res.statusCode).toBe(200);
-    expect(res.headers["content-type"]).toBe("application/x-yaml; charset=utf-8");
+    expect(res.headers["content-type"]).toBe("application/x-yaml");
     expect(brotliDecompressSync(res.rawPayload).toString("utf8")).toContain("openapi:");
   });
 
