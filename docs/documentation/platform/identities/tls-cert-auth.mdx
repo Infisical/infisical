@@ -114,6 +114,10 @@ Here's some information about each field:
   `spiffe://example.org`, or writing one that carries a path, is not a hostname, so no client
   certificate can satisfy it and every login is denied. Infisical rejects such a CA Certificate when you save it.
 
+  A client certificate that carries several names of a constrained type has to keep **every** one of
+  them inside the permitted namespace. Pairing an in-scope name with an out-of-scope one does not
+  make the out-of-scope name acceptable; the login is denied.
+
   Name constraints cannot scope individual workloads, because a URI constraint applies to the host
   and ignores the path. Use **Allowed Subject Alternative Names** for that.
 </Note>

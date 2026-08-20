@@ -478,6 +478,30 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
     return { cert, keys };
   };
 
+  // Each group becomes its own subject alternative name extension, so a caller can build both the
+  // conforming shape (one group) and a certificate that splits its names across two extensions.
+  const makeLeafWithSans = async (
+    issuer: { cert: x509.X509Certificate; keys: CryptoKeyPair },
+    ...sanGroups: x509.JsonGeneralName[][]
+  ) => {
+    const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const cert = await x509.X509CertificateGenerator.create({
+      serialNumber: "02",
+      subject: "CN=workload",
+      issuer: issuer.cert.subject,
+      notBefore: NOT_BEFORE,
+      notAfter: FAR_FUTURE,
+      signingKey: issuer.keys.privateKey,
+      publicKey: keys.publicKey,
+      signingAlgorithm: alg,
+      extensions: [
+        new x509.BasicConstraintsExtension(false),
+        ...sanGroups.map((sans) => new x509.SubjectAlternativeNameExtension(sans))
+      ]
+    });
+    return { cert, keys };
+  };
+
   const permittedDnsConstraint = (permitted: string[]) =>
     new x509.Extension(
       "2.5.29.30",
@@ -542,6 +566,45 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
   test("rejects a leaf outside the namespace its CA is permitted to certify", async () => {
     const ca = await makeCa("Constrained CA", { extensions: [permittedDnsConstraint(["allowed.example.com"])] });
     const leaf = await makeLeaf(ca, "workload.elsewhere.com");
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+  });
+
+  test("rejects a leaf pairing a permitted name with one outside the CA's namespace", async () => {
+    const ca = await makeCa("Constrained CA", { extensions: [permittedDnsConstraint(["allowed.example.com"])] });
+    const leaf = await makeLeafWithSans(ca, [
+      { type: "dns", value: "workload.allowed.example.com" },
+      { type: "dns", value: "victim.elsewhere.com" }
+    ]);
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+  });
+
+  test("accepts a leaf whose every name is inside the CA's namespace", async () => {
+    const ca = await makeCa("Constrained CA", { extensions: [permittedDnsConstraint(["allowed.example.com"])] });
+    const leaf = await makeLeafWithSans(ca, [
+      { type: "dns", value: "one.allowed.example.com" },
+      { type: "dns", value: "two.allowed.example.com" }
+    ]);
+
+    expect(
+      await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
+    ).toEqual({ ok: true });
+  });
+
+  test("rejects an out-of-namespace name carried in a second subject alternative name extension", async () => {
+    // A second extension is not conforming, but its names count all the same, so a leaf that keeps
+    // the out-of-scope name out of the first extension must not slip past.
+    const ca = await makeCa("Constrained CA", { extensions: [permittedDnsConstraint(["allowed.example.com"])] });
+    const leaf = await makeLeafWithSans(
+      ca,
+      [{ type: "dns", value: "workload.allowed.example.com" }],
+      [{ type: "dns", value: "victim.elsewhere.com" }]
+    );
 
     expect(
       await verifyDirectlyIssuedClientCertificate({ leaf: toNative(leaf.cert), ca: toNative(ca.cert), now: NOW })
@@ -942,9 +1005,10 @@ describe("verifyClientCertificateChain", () => {
   const makeLeaf = async (
     name: string,
     issuer: TIssued,
-    opts?: { notBefore?: Date; notAfter?: Date; dnsName?: string }
+    opts?: { notBefore?: Date; notAfter?: Date; dnsName?: string; sans?: x509.JsonGeneralName[] }
   ) => {
     const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const sans: x509.JsonGeneralName[] = opts?.sans ?? (opts?.dnsName ? [{ type: "dns", value: opts.dnsName }] : []);
     const cert = await x509.X509CertificateGenerator.create({
       serialNumber: "03",
       subject: `CN=${name}`,
@@ -956,7 +1020,7 @@ describe("verifyClientCertificateChain", () => {
       signingAlgorithm: alg,
       extensions: [
         new x509.BasicConstraintsExtension(false),
-        ...(opts?.dnsName ? [new x509.SubjectAlternativeNameExtension([{ type: "dns", value: opts.dnsName }])] : [])
+        ...(sans.length ? [new x509.SubjectAlternativeNameExtension(sans)] : [])
       ]
     });
     return { cert, keys };
@@ -1192,6 +1256,99 @@ describe("verifyClientCertificateChain", () => {
       extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
     });
     const leaf = await makeLeaf("team-a.example.com", constrained, { dnsName: "team-a.example.com" });
+
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [toNative(constrained.cert)],
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
+  test("rejects a leaf pairing a permitted name with one outside its issuing CA's namespace", async () => {
+    // The constrained sub-CA mints a leaf whose first name is inside team-a and whose second names a
+    // workload it was never authorised to certify. Deciding the certificate on whichever name
+    // happens to match would let the second one through, and an identity that pins it would then
+    // authenticate the holder of the sub-CA.
+    const constrained = await makeIntermediate("Constrained Intermediate CA", root, {
+      serialNumber: "23",
+      extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
+    });
+    const leaf = await makeLeaf("svc.team-a.example.com", constrained, {
+      sans: [
+        { type: "dns", value: "svc.team-a.example.com" },
+        { type: "dns", value: "victim.team-b.example.com" }
+      ]
+    });
+
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [toNative(constrained.cert)],
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+  });
+
+  test("rejects an out-of-namespace name that trails several permitted ones", async () => {
+    const constrained = await makeIntermediate("Constrained Intermediate CA", root, {
+      serialNumber: "24",
+      extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
+    });
+    const leaf = await makeLeaf("svc.team-a.example.com", constrained, {
+      sans: [
+        { type: "dns", value: "one.team-a.example.com" },
+        { type: "dns", value: "two.team-a.example.com" },
+        { type: "dns", value: "victim.team-b.example.com" }
+      ]
+    });
+
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [toNative(constrained.cert)],
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+  });
+
+  test("accepts a leaf whose every name is inside the permitted namespace", async () => {
+    const constrained = await makeIntermediate("Constrained Intermediate CA", root, {
+      serialNumber: "25",
+      extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
+    });
+    const leaf = await makeLeaf("svc.team-a.example.com", constrained, {
+      sans: [
+        { type: "dns", value: "one.team-a.example.com" },
+        { type: "dns", value: "two.team-a.example.com" },
+        { type: "dns", value: "three.team-a.example.com" }
+      ]
+    });
+
+    const result = await verifyClientCertificateChain({
+      leaf: toNative(leaf.cert),
+      presentedChain: [toNative(constrained.cert)],
+      trustAnchor: toNative(root.cert),
+      now: NOW
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
+  test("leaves names of an unconstrained type alone", async () => {
+    // Only DNS is constrained, so the URI names are outside what the CA restricted and must not be
+    // held to the DNS subtrees.
+    const constrained = await makeIntermediate("Constrained Intermediate CA", root, {
+      serialNumber: "26",
+      extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
+    });
+    const leaf = await makeLeaf("svc.team-a.example.com", constrained, {
+      sans: [
+        { type: "dns", value: "svc.team-a.example.com" },
+        { type: "url", value: "spiffe://elsewhere.org/svc" },
+        { type: "url", value: "spiffe://elsewhere.org/other" }
+      ]
+    });
 
     const result = await verifyClientCertificateChain({
       leaf: toNative(leaf.cert),
