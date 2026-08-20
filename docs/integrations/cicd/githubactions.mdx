@@ -91,11 +91,17 @@ Choose how your workflow should authenticate with Infisical:
     | --- | --- |
     | **OIDC Discovery URL** | `https://token.actions.githubusercontent.com` |
     | **Issuer** | `https://token.actions.githubusercontent.com` |
-    | **Subject** | The workflow allowed to authenticate, in the form `repo:<owner>/<repo>:<context>` |
+    | **Subject** | The exact GitHub workflow identity allowed to authenticate. The format depends on whether the repository uses legacy or immutable subject claims, as described below. |
     | **Audiences** | The intended recipient of the token. Unless you set `oidc-audience` in your workflow, GitHub issues tokens for the repository owner's URL (e.g., `https://github.com/octo-org`) |
     | **Claims** | Optional token claims that must match, entered as property and value pairs |
 
-    The context in the **Subject** field determines how narrowly the identity is scoped. For example:
+    <Note>
+      GitHub.com repositories created after July 15, 2026 use immutable subject claims. For these repositories, use `repo:<owner>@<owner-id>/<repo>@<repo-id>:<context>`. Configure the exact subject present in your workflow's token.
+      
+      If authentication returns a `403`, see the [troubleshooting section](#troubleshooting).
+    </Note>
+
+    The context in the **Subject** field determines how narrowly the identity is scoped. These examples use the legacy subject prefix; for an immutable subject, append the same context to `repo:<owner>@<owner-id>/<repo>@<repo-id>`:
 
     - `repo:octocat/orders-service:ref:refs/heads/main` allows only workflows running on the `main` branch
     - `repo:octocat/orders-service:environment:production` allows only workflows running in the `production` environment
