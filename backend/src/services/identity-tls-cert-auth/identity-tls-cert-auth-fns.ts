@@ -7,6 +7,10 @@ import {
   CertificateChainValidationEngine,
   CryptoEngine,
   GeneralSubtree,
+  id_CertificatePolicies,
+  id_InhibitAnyPolicy,
+  id_PolicyConstraints,
+  id_PolicyMappings,
   NameConstraints
 } from "pkijs";
 
@@ -156,14 +160,76 @@ const parseCertificate = (cert: TNativeX509): x509.X509Certificate => {
   return parsed;
 };
 
+const POLICY_EXTENSION_OIDS = new Set<string>([
+  id_CertificatePolicies,
+  id_PolicyMappings,
+  id_PolicyConstraints,
+  id_InhibitAnyPolicy
+]);
+
+/**
+ * pkijs's validation engine runs RFC 5280's certificate policy processing before it will look at
+ * name constraints, and returns on the first policy problem it finds. Nothing here validates
+ * policies, so each of those outcomes is a login denied over something the caller never asked about:
+ * a chain whose CAs assert `requireExplicitPolicy` over policy identifiers that do not chain fails
+ * outright, and a `policyMappings` on an intermediate of a three-certificate chain reads a policy
+ * list the certificate below it does not carry, which the engine catches and reports as a generic
+ * failure. Both land before the subtree matching, so a chain that also violates a name constraint is
+ * reported as `ca_verification_failed` instead of `name_constraint_violation`.
+ *
+ * Dropping the policy extensions leaves that pass with nothing to process and no way to fail, so
+ * every chain reaches the stage this parse exists for. Only pkijs loses sight of them: these objects
+ * feed the name constraints engine and the subject alternative name reads, and the @peculiar parse
+ * that the extended key usage gate, the path length check and the identity's allow-list go through
+ * still sees the certificate whole.
+ */
+const parsePkiCertificate = (raw: BufferSource): Certificate => {
+  const parsed = Certificate.fromBER(raw);
+  if (parsed.extensions) {
+    parsed.extensions = parsed.extensions.filter((ext) => !POLICY_EXTENSION_OIDS.has(ext.extnID));
+  }
+  return parsed;
+};
+
 const pkiCertificates = new WeakMap<TNativeX509, Certificate>();
 
 const toPkiCertificate = (cert: TNativeX509): Certificate => {
   const cached = pkiCertificates.get(cert);
   if (cached) return cached;
 
-  const parsed = Certificate.fromBER(cert.raw);
+  const parsed = parsePkiCertificate(cert.raw);
   pkiCertificates.set(cert, parsed);
+  return parsed;
+};
+
+const parseWithoutNameConstraints = (raw: BufferSource): Certificate => {
+  const parsed = parsePkiCertificate(raw);
+  if (parsed.extensions) {
+    parsed.extensions = parsed.extensions.filter((ext) => ext.extnID !== NAME_CONSTRAINTS_EXTENSION_OID);
+  }
+  return parsed;
+};
+
+const nameConstraintFreeCertificates = new WeakMap<TNativeX509, Certificate>();
+
+/**
+ * The certificate as pkijs sees it with its own name constraints extension removed, so that a path
+ * built from these carries no constraints at all and the only ones in play are the single
+ * certificate's worth `enforceNameConstraints` supplies to each pass. See there for why every
+ * constraint has to be handed over that way rather than left on the path.
+ *
+ * A certificate that asserts none needs no copy, so the shared parse is returned unchanged and the
+ * ordinary chain that constrains nothing pays nothing here.
+ */
+const toNameConstraintFreeCertificate = (cert: TNativeX509): Certificate => {
+  const shared = toPkiCertificate(cert);
+  if (!shared.extensions?.some((ext) => ext.extnID === NAME_CONSTRAINTS_EXTENSION_OID)) return shared;
+
+  const cached = nameConstraintFreeCertificates.get(cert);
+  if (cached) return cached;
+
+  const parsed = parseWithoutNameConstraints(cert.raw);
+  nameConstraintFreeCertificates.set(cert, parsed);
   return parsed;
 };
 
@@ -288,11 +354,9 @@ const subjectAltNamesOf = (cert: Certificate): AltName[] =>
     ext.extnID === SUBJECT_ALT_NAME_EXTENSION_OID && ext.parsedValue instanceof AltName ? [ext.parsedValue] : []
   );
 
-const permittedSubtreeTypes = (states: TNameConstraintsState[]): Set<number> =>
+const permittedSubtreeTypes = (constraints: NameConstraints[]): Set<number> =>
   new Set(
-    states.flatMap((state) =>
-      state.status === "present" ? (state.constraints.permittedSubtrees ?? []).map((subtree) => subtree.base.type) : []
-    )
+    constraints.flatMap((constraint) => (constraint.permittedSubtrees ?? []).map((subtree) => subtree.base.type))
   );
 
 /**
@@ -318,6 +382,9 @@ type TPerNameEvaluation = { certificate: Certificate; rounds: number; selectRoun
  * identity's allow-list included, still has to see all of its names. It is also only made once the
  * shared parse has shown a copy is needed, so the ordinary certificate naming one workload does not
  * pay for a second decode.
+ *
+ * Its own name constraints are dropped for the same reason the rest of the path drops them: this
+ * copy is substituted into a path that must carry no constraints of its own.
  */
 const perNameEvaluation = (
   cert: TNativeX509,
@@ -328,7 +395,7 @@ const perNameEvaluation = (
   const rounds = roundsToCoverEveryName(shared.map((name) => name.type).filter((type) => constrainedTypes.has(type)));
   if (rounds < 2) return null;
 
-  const certificate = Certificate.fromBER(cert.raw);
+  const certificate = parseWithoutNameConstraints(cert.raw);
   const extensions = subjectAltNamesOf(certificate);
   if (!extensions.length) return null;
   const names = extensions.map((altName) => altName.altNames);
@@ -356,12 +423,25 @@ const perNameEvaluation = (
  *
  * Subtree matching (DNS/IP/email/URI/directory-name semantics, permitted and excluded) is delegated
  * to pkijs rather than reimplemented, and only that: see `NameConstraintsEngine` for why the engine
- * is not allowed to rebuild or re-validate the path. pkijs applies constraints carried by
- * certificates on the path but not by the trust anchor itself, so the anchor's own constraints are
- * supplied separately as the RFC's initial-permitted/excluded-subtrees inputs. That matters because
- * operators may pin a constrained sub-CA directly rather than the root above it.
+ * is not allowed to rebuild or re-validate the path.
  *
- * What is not delegated is how the names of one certificate combine. pkijs decides a permitted
+ * What is not delegated is how the constraints of different certificates combine. 6.1.4 (g) narrows
+ * the permitted set at every hop, by intersection, so a name has to sit inside what *every* CA above
+ * it permits. pkijs unions them instead: it collects the subtrees it meets into one list and lets a
+ * name match any entry. So the widest CA on the path decided the outcome, and a CA could be escaped
+ * by one below it asserting something broader. That is not a corner case, because a sub-CA writes
+ * the certificates it issues: the holder of a CA restricted to `team-a.example.com` could issue
+ * itself a sub-CA permitting `example.com` and mint a leaf for any name under it.
+ *
+ * Since a name is inside an intersection exactly when it is inside each of its members, this runs
+ * one pass per constraining CA and denies if any of them denies. Each pass covers the path from the
+ * leaf up to that CA, and only that CA's constraints are in play: they are handed over as the RFC's
+ * initial-permitted/excluded-subtrees inputs, and every certificate on the path is substituted for a
+ * copy without its own name constraints extension so pkijs has nothing left to union them with. The
+ * initial inputs are also what lets a constrained CA that is itself the anchor be honored, since
+ * pkijs never reads the constraints of the certificate it treats as the trust anchor.
+ *
+ * How the names of a single certificate combine is not delegated either. pkijs decides a permitted
  * subtree group by OR-ing every name of that type, so one name inside the permitted subtree carries
  * the rest, whereas 6.1.4 (g) requires every name of a constrained type to be within a permitted
  * subtree. Left alone, the holder of a constrained sub-CA could mint a leaf pairing one in-scope
@@ -404,16 +484,17 @@ const enforceNameConstraints = async (orderedPath: TNativeX509[]): Promise<TVeri
     return { ok: false, reasonCode: "unsupported_name_constraint" };
   }
 
-  if (!pathConstraints.some((state) => state.status === "present")) return null;
+  // A leaf's own constraints restrict nothing below it, so only the CAs above it constrain the path.
+  const constrainingCertificates = pathConstraints.flatMap((state, idx) =>
+    idx > 0 && state.status === "present" ? [{ idx, constraints: state.constraints }] : []
+  );
+  if (!constrainingCertificates.length) return null;
 
-  const anchorState = pathConstraints[pathConstraints.length - 1];
-  const anchorConstraints = anchorState.status === "present" ? anchorState.constraints : null;
-
-  const evaluate = async (path: Certificate[]): Promise<TVerificationFailure | null> => {
+  const evaluate = async (path: Certificate[], constraints: NameConstraints): Promise<TVerificationFailure | null> => {
     const { result, resultCode, resultMessage } = await new NameConstraintsEngine(path).verify(
       {
-        initialPermittedSubtreesSet: anchorConstraints?.permittedSubtrees ?? [],
-        initialExcludedSubtreesSet: anchorConstraints?.excludedSubtrees ?? []
+        initialPermittedSubtreesSet: constraints.permittedSubtrees ?? [],
+        initialExcludedSubtreesSet: constraints.excludedSubtrees ?? []
       },
       pkiCryptoEngine
     );
@@ -429,30 +510,39 @@ const enforceNameConstraints = async (orderedPath: TNativeX509[]): Promise<TVeri
     return { ok: false, reasonCode: "ca_verification_failed" };
   };
 
-  const failure = await evaluate(parsedPath);
-  if (failure) return failure;
+  const constrainedTypes = permittedSubtreeTypes(constrainingCertificates.map(({ constraints }) => constraints));
 
-  const constrainedTypes = permittedSubtreeTypes(pathConstraints);
-  if (!constrainedTypes.size) return null;
+  const perName = constrainedTypes.size
+    ? orderedPath.slice(0, -1).flatMap((cert, idx) => {
+        const evaluation = perNameEvaluation(cert, parsedPath[idx], constrainedTypes);
+        return evaluation ? [{ idx, evaluation }] : [];
+      })
+    : [];
 
-  const perName = orderedPath.slice(0, -1).flatMap((cert, idx) => {
-    const evaluation = perNameEvaluation(cert, parsedPath[idx], constrainedTypes);
-    return evaluation ? [{ idx, evaluation }] : [];
-  });
+  const constraintFreePath = orderedPath.map(toNameConstraintFreeCertificate);
 
-  const rounds = Math.max(0, ...perName.map(({ evaluation }) => evaluation.rounds));
+  for (const { idx: constrainingIdx, constraints } of constrainingCertificates) {
+    const basePath = constraintFreePath.slice(0, constrainingIdx + 1);
 
-  for (let round = 0; round < rounds; round += 1) {
-    const path = [...parsedPath];
-    perName.forEach(({ idx, evaluation }) => {
-      if (evaluation.rounds <= round) return;
-      evaluation.selectRound(round);
-      path[idx] = evaluation.certificate;
-    });
+    // eslint-disable-next-line no-await-in-loop -- stop at the first CA whose namespace the path leaves
+    const failure = await evaluate(basePath, constraints);
+    if (failure) return failure;
 
-    // eslint-disable-next-line no-await-in-loop -- stop at the first name the path does not permit
-    const roundFailure = await evaluate(path);
-    if (roundFailure) return roundFailure;
+    const perNameBelow = perName.filter(({ idx }) => idx < constrainingIdx);
+    const rounds = Math.max(0, ...perNameBelow.map(({ evaluation }) => evaluation.rounds));
+
+    for (let round = 0; round < rounds; round += 1) {
+      const path = [...basePath];
+      perNameBelow.forEach(({ idx, evaluation }) => {
+        if (evaluation.rounds <= round) return;
+        evaluation.selectRound(round);
+        path[idx] = evaluation.certificate;
+      });
+
+      // eslint-disable-next-line no-await-in-loop -- stop at the first name the path does not permit
+      const roundFailure = await evaluate(path, constraints);
+      if (roundFailure) return roundFailure;
+    }
   }
 
   return null;

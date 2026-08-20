@@ -2,7 +2,16 @@ import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 import * as asn1js from "asn1js";
-import { GeneralName, GeneralSubtree, NameConstraints } from "pkijs";
+import {
+  CertificatePolicies,
+  GeneralName,
+  GeneralSubtree,
+  NameConstraints,
+  PolicyConstraints,
+  PolicyInformation,
+  PolicyMapping,
+  PolicyMappings
+} from "pkijs";
 import { beforeAll, describe, expect, test, vi } from "vitest";
 
 import {
@@ -392,6 +401,30 @@ const uriConstraint = (subtrees: { permitted?: string[]; excluded?: string[] }) 
         ? {
             excludedSubtrees: subtrees.excluded.map(
               (uri) => new GeneralSubtree({ base: new GeneralName({ type: 6, value: uri }) })
+            )
+          }
+        : {})
+    })
+      .toSchema()
+      .toBER(false)
+  );
+
+const dnsConstraint = (subtrees: { permitted?: string[]; excluded?: string[] }) =>
+  new x509.Extension(
+    "2.5.29.30",
+    true,
+    new NameConstraints({
+      ...(subtrees.permitted
+        ? {
+            permittedSubtrees: subtrees.permitted.map(
+              (dns) => new GeneralSubtree({ base: new GeneralName({ type: 2, value: dns }) })
+            )
+          }
+        : {}),
+      ...(subtrees.excluded
+        ? {
+            excludedSubtrees: subtrees.excluded.map(
+              (dns) => new GeneralSubtree({ base: new GeneralName({ type: 2, value: dns }) })
             )
           }
         : {})
@@ -1005,7 +1038,13 @@ describe("verifyClientCertificateChain", () => {
   const makeLeaf = async (
     name: string,
     issuer: TIssued,
-    opts?: { notBefore?: Date; notAfter?: Date; dnsName?: string; sans?: x509.JsonGeneralName[] }
+    opts?: {
+      notBefore?: Date;
+      notAfter?: Date;
+      dnsName?: string;
+      sans?: x509.JsonGeneralName[];
+      extraExtensions?: x509.Extension[];
+    }
   ) => {
     const keys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const sans: x509.JsonGeneralName[] = opts?.sans ?? (opts?.dnsName ? [{ type: "dns", value: opts.dnsName }] : []);
@@ -1020,7 +1059,8 @@ describe("verifyClientCertificateChain", () => {
       signingAlgorithm: alg,
       extensions: [
         new x509.BasicConstraintsExtension(false),
-        ...(sans.length ? [new x509.SubjectAlternativeNameExtension(sans)] : [])
+        ...(sans.length ? [new x509.SubjectAlternativeNameExtension(sans)] : []),
+        ...(opts?.extraExtensions ?? [])
       ]
     });
     return { cert, keys };
@@ -1375,6 +1415,166 @@ describe("verifyClientCertificateChain", () => {
     expect(result).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
   });
 
+  // RFC 5280 6.1.4 (g) intersects the permitted subtrees at every hop, so a name has to satisfy
+  // every CA above it. Each of these passes if the sets are unioned instead, which lets the widest
+  // CA on the path decide and hands a constrained sub-CA a way out of its own namespace.
+  describe("intersects the permitted subtrees of every CA on the path", () => {
+    test("rejects a name only the wider CA permits", async () => {
+      const wide = await makeIntermediate("Corp CA", root, {
+        serialNumber: "80",
+        extraExtensions: [permittedDnsConstraint(["corp.example.com"])]
+      });
+      const narrow = await makeIntermediate("Team A CA", wide, {
+        serialNumber: "81",
+        extraExtensions: [permittedDnsConstraint(["team-a.corp.example.com"])]
+      });
+      const leaf = await makeLeaf("admin", narrow, { dnsName: "admin.corp.example.com" });
+
+      const result = await verifyClientCertificateChain({
+        leaf: toNative(leaf.cert),
+        presentedChain: [toNative(wide.cert), toNative(narrow.cert)],
+        trustAnchor: toNative(root.cert),
+        now: NOW
+      });
+      expect(result).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+    });
+
+    test("accepts a name every CA on the path permits", async () => {
+      const wide = await makeIntermediate("Corp CA", root, {
+        serialNumber: "82",
+        extraExtensions: [permittedDnsConstraint(["corp.example.com"])]
+      });
+      const narrow = await makeIntermediate("Team A CA", wide, {
+        serialNumber: "83",
+        extraExtensions: [permittedDnsConstraint(["team-a.corp.example.com"])]
+      });
+      const leaf = await makeLeaf("svc", narrow, { dnsName: "svc.team-a.corp.example.com" });
+
+      const result = await verifyClientCertificateChain({
+        leaf: toNative(leaf.cert),
+        presentedChain: [toNative(wide.cert), toNative(narrow.cert)],
+        trustAnchor: toNative(root.cert),
+        now: NOW
+      });
+      expect(result).toEqual({ ok: true });
+    });
+
+    // The escalation the intersection exists to stop: a sub-CA writes what it issues, so if a
+    // subordinate's wider subtrees counted, the holder of a restricted CA could issue itself one.
+    test("rejects a leaf a constrained sub-CA reached by issuing a wider sub-CA", async () => {
+      const teamA = await makeIntermediate("Team A CA", root, {
+        serialNumber: "84",
+        extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
+      });
+      const widened = await makeIntermediate("Team A Widened CA", teamA, {
+        serialNumber: "85",
+        extraExtensions: [permittedDnsConstraint(["example.com"])]
+      });
+      const leaf = await makeLeaf("admin", widened, { dnsName: "admin.corp.example.com" });
+
+      const result = await verifyClientCertificateChain({
+        leaf: toNative(leaf.cert),
+        presentedChain: [toNative(teamA.cert), toNative(widened.cert)],
+        trustAnchor: toNative(root.cert),
+        now: NOW
+      });
+      expect(result).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+    });
+
+    // Two CAs whose subtrees do not overlap permit nothing at all between them, so a leaf matching
+    // either one is still outside the intersection.
+    test("rejects every name when two CAs on the path permit disjoint namespaces", async () => {
+      const first = await makeIntermediate("Example Com CA", root, {
+        serialNumber: "86",
+        extraExtensions: [permittedDnsConstraint(["example.com"])]
+      });
+      const second = await makeIntermediate("Example Net CA", first, {
+        serialNumber: "87",
+        extraExtensions: [permittedDnsConstraint(["other.example.net"])]
+      });
+      const leaf = await makeLeaf("svc", second, { dnsName: "svc.other.example.net" });
+
+      const result = await verifyClientCertificateChain({
+        leaf: toNative(leaf.cert),
+        presentedChain: [toNative(first.cert), toNative(second.cert)],
+        trustAnchor: toNative(root.cert),
+        now: NOW
+      });
+      expect(result).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+    });
+
+    test("holds a CA below the configured anchor to the anchor's own subtrees", async () => {
+      // Operators may pin a constrained sub-CA directly, so the anchor's constraints have to bind
+      // the CAs presented beneath it rather than only the leaf.
+      const pinned = await makeIntermediate("Pinned Constrained CA", root, {
+        serialNumber: "88",
+        extraExtensions: [permittedDnsConstraint(["team-a.example.com"])]
+      });
+      const widened = await makeIntermediate("Widening CA", pinned, {
+        serialNumber: "89",
+        extraExtensions: [permittedDnsConstraint(["example.com"])]
+      });
+      const leaf = await makeLeaf("svc", widened, { dnsName: "svc.team-b.example.com" });
+
+      const result = await verifyClientCertificateChain({
+        leaf: toNative(leaf.cert),
+        presentedChain: [toNative(widened.cert)],
+        trustAnchor: toNative(pinned.cert),
+        now: NOW
+      });
+      expect(result).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+    });
+
+    // Excluded subtrees accumulate rather than narrow, so a subordinate permitting what an ancestor
+    // excluded must not re-open it.
+    test("rejects a name a lower CA permits but a higher CA excludes", async () => {
+      const excluding = await makeIntermediate("Excluding CA", root, {
+        serialNumber: "8a",
+        extraExtensions: [dnsConstraint({ excluded: ["secret.example.com"] })]
+      });
+      const permitting = await makeIntermediate("Permitting CA", excluding, {
+        serialNumber: "8b",
+        extraExtensions: [permittedDnsConstraint(["secret.example.com"])]
+      });
+      const leaf = await makeLeaf("svc", permitting, { dnsName: "svc.secret.example.com" });
+
+      const result = await verifyClientCertificateChain({
+        leaf: toNative(leaf.cert),
+        presentedChain: [toNative(excluding.cert), toNative(permitting.cert)],
+        trustAnchor: toNative(root.cert),
+        now: NOW
+      });
+      expect(result).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+    });
+
+    test("still evaluates each name of a multi-name leaf against every CA on the path", async () => {
+      // The per-name pass and the per-CA pass have to compose: one in-scope name must not carry an
+      // out-of-scope one past the narrower CA.
+      const wide = await makeIntermediate("Corp CA", root, {
+        serialNumber: "8c",
+        extraExtensions: [permittedDnsConstraint(["corp.example.com"])]
+      });
+      const narrow = await makeIntermediate("Team A CA", wide, {
+        serialNumber: "8d",
+        extraExtensions: [permittedDnsConstraint(["team-a.corp.example.com"])]
+      });
+      const leaf = await makeLeaf("svc", narrow, {
+        sans: [
+          { type: "dns", value: "svc.team-a.corp.example.com" },
+          { type: "dns", value: "admin.corp.example.com" }
+        ]
+      });
+
+      const result = await verifyClientCertificateChain({
+        leaf: toNative(leaf.cert),
+        presentedChain: [toNative(wide.cert), toNative(narrow.cert)],
+        trustAnchor: toNative(root.cert),
+        now: NOW
+      });
+      expect(result).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+    });
+  });
+
   test("rejects a chain deeper than a CA's pathLenConstraint permits", async () => {
     const limited = await makeIntermediate("PathLen Zero CA", root, { serialNumber: "30", pathLength: 0 });
     const extra = await makeIntermediate("Extra Intermediate CA", limited, { serialNumber: "31" });
@@ -1708,6 +1908,116 @@ describe("verifyClientCertificateChain", () => {
       now: NOW
     });
     expect(result).toEqual({ ok: false, reasonCode: "issuer_certificate_not_yet_valid" });
+  });
+
+  // Nothing here validates certificate policies, so a chain carrying policy extensions has to be
+  // decided by its name constraints alone. pkijs's engine runs its policy processing first and
+  // returns on the first problem it finds, which denied valid logins and masked real namespace
+  // violations until those extensions were kept out of its view.
+  describe("certificate policy extensions", () => {
+    const policyMappings = () =>
+      new x509.Extension(
+        "2.5.29.33",
+        false,
+        new PolicyMappings({
+          mappings: [
+            new PolicyMapping({ issuerDomainPolicy: "1.3.6.1.4.1.1.1", subjectDomainPolicy: "1.3.6.1.4.1.1.2" })
+          ]
+        })
+          .toSchema()
+          .toBER(false)
+      );
+
+    const requireExplicitPolicy = () =>
+      new x509.Extension(
+        "2.5.29.36",
+        true,
+        new PolicyConstraints({ requireExplicitPolicy: 0 }).toSchema().toBER(false)
+      );
+
+    const certificatePolicies = (oid: string) =>
+      new x509.Extension(
+        "2.5.29.32",
+        false,
+        new CertificatePolicies({ certificatePolicies: [new PolicyInformation({ policyIdentifier: oid })] })
+          .toSchema()
+          .toBER(false)
+      );
+
+    // pkijs reads the policy mappings of one certificate against the policy list of the certificate
+    // below it, which only has a certificate below it on a chain of three or more.
+    const threeHopChain = async (leafName: string, upperExtensions: x509.Extension[]) => {
+      const upper = await makeIntermediate("Upper Intermediate CA", root, {
+        serialNumber: "40",
+        extraExtensions: [permittedDnsConstraint(["team-a.example.com"]), ...upperExtensions]
+      });
+      const lower = await makeIntermediate("Lower Intermediate CA", upper, { serialNumber: "41" });
+      const leaf = await makeLeaf(leafName, lower, { dnsName: leafName });
+      return { presentedChain: [toNative(lower.cert), toNative(upper.cert)], leaf: toNative(leaf.cert) };
+    };
+
+    test("accepts an in-namespace leaf under a CA asserting policy mappings", async () => {
+      const { leaf, presentedChain } = await threeHopChain("team-a.example.com", [policyMappings()]);
+
+      const result = await verifyClientCertificateChain({
+        leaf,
+        presentedChain,
+        trustAnchor: toNative(root.cert),
+        now: NOW
+      });
+      expect(result).toEqual({ ok: true });
+    });
+
+    test("reports a namespace violation under a CA asserting policy mappings", async () => {
+      const { leaf, presentedChain } = await threeHopChain("victim.example.com", [policyMappings()]);
+
+      const result = await verifyClientCertificateChain({
+        leaf,
+        presentedChain,
+        trustAnchor: toNative(root.cert),
+        now: NOW
+      });
+      expect(result).toEqual({ ok: false, reasonCode: "name_constraint_violation" });
+    });
+
+    test("accepts an in-namespace leaf under a CA requiring an explicit policy", async () => {
+      const constrained = await makeIntermediate("Explicit Policy CA", root, {
+        serialNumber: "42",
+        extraExtensions: [permittedDnsConstraint(["team-a.example.com"]), requireExplicitPolicy()]
+      });
+      const leaf = await makeLeaf("team-a.example.com", constrained, { dnsName: "team-a.example.com" });
+
+      const result = await verifyClientCertificateChain({
+        leaf: toNative(leaf.cert),
+        presentedChain: [toNative(constrained.cert)],
+        trustAnchor: toNative(root.cert),
+        now: NOW
+      });
+      expect(result).toEqual({ ok: true });
+    });
+
+    test("accepts an in-namespace leaf whose certificate policies do not chain", async () => {
+      const constrained = await makeIntermediate("Disjoint Policy CA", root, {
+        serialNumber: "43",
+        extraExtensions: [
+          permittedDnsConstraint(["team-a.example.com"]),
+          requireExplicitPolicy(),
+          certificatePolicies("1.3.6.1.4.1.1.1")
+        ]
+      });
+      const leaf = await makeLeaf("team-a.example.com", constrained, {
+        dnsName: "team-a.example.com",
+        extraExtensions: [certificatePolicies("1.3.6.1.4.1.2.1")]
+      });
+
+      const result = await verifyClientCertificateChain({
+        leaf: toNative(leaf.cert),
+        presentedChain: [toNative(constrained.cert)],
+        trustAnchor: toNative(root.cert),
+        now: NOW
+      });
+      expect(result).toEqual({ ok: true });
+    });
   });
 
   describe("Ed25519", () => {
