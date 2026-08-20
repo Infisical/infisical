@@ -11,6 +11,7 @@ import {
 } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
+import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
@@ -93,7 +94,10 @@ type TSuperAdminServiceFactoryDep = {
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
-  licenseService: Pick<TLicenseServiceFactory, "onPremFeatures" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<
+    TLicenseServiceFactory,
+    "onPremFeatures" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount"
+  >;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
   invalidateCacheQueue: TInvalidateCacheQueueFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -855,7 +859,7 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "This endpoint is not supported for cloud instances" });
 
     const serverAdmin = await userDAL.findById(actor.id);
-    const plan = licenseService.onPremFeatures;
+    const identityLimit = getEnforcedIdentityLimit(licenseService.onPremFeatures);
 
     const isEmailInvalid = await isDisposableEmail(inviteAdminEmails);
     if (isEmailInvalid) {
@@ -888,6 +892,16 @@ export const superAdminServiceFactory = ({
         },
         tx
       );
+
+      if (identityLimit) {
+        const { identitiesUsed } = await licenseService.getOrgSeatUsage(org.id, tx);
+        if (identitiesUsed >= identityLimit) {
+          throw new BadRequestError({
+            name: "InviteUser",
+            message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
+          });
+        }
+      }
 
       const users: Pick<TUsers, "id" | "firstName" | "lastName" | "email" | "username" | "isAccepted">[] = [];
 
@@ -922,15 +936,6 @@ export const superAdminServiceFactory = ({
             },
             tx
           );
-        }
-
-        const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
-        if (!isEnterpriseBypass && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
-          // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
-          throw new BadRequestError({
-            name: "InviteUser",
-            message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
-          });
         }
 
         const membership = await orgDAL.createMembership(

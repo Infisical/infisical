@@ -1,10 +1,22 @@
 import { useState } from "react";
-import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { TriangleAlertIcon } from "lucide-react";
+import { CheckIcon, TriangleAlertIcon, XIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormLabel, Modal, ModalContent, TextArea } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldContent,
+  FieldLabel,
+  TextArea
+} from "@app/components/v3";
 import { useProjectPermission, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies";
@@ -62,11 +74,13 @@ export const RequestActionsSection = ({ request }: Props) => {
 
   if (hasAlreadyActed) {
     return (
-      <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-        <p className="text-sm text-mineshaft-300">
-          You have already provided your approval for this request.
-        </p>
-      </div>
+      <Card>
+        <CardContent>
+          <p className="text-sm text-muted">
+            You have already provided your approval for this request.
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -106,105 +120,124 @@ export const RequestActionsSection = ({ request }: Props) => {
 
   return (
     <>
-      <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-4">
-        <div className="flex items-center gap-2">
-          <TriangleAlertIcon />
-          <h3 className="font-medium text-mineshaft-100">Action Required</h3>
-        </div>
-        <p className="text-sm text-mineshaft-300">
-          You are an approver for this request. Please review the details carefully before making
-          your decision.
-        </p>
-        <div className="flex flex-col gap-2">
-          <Button
-            colorSchema="primary"
-            leftIcon={<FontAwesomeIcon icon={faCheck} />}
-            onClick={() => handlePopUpOpen("approveModal")}
-            isDisabled={isRejecting}
-            className="w-full"
-          >
-            Approve Request
-          </Button>
-          <Button
-            colorSchema="danger"
-            variant="outline_bg"
-            leftIcon={<FontAwesomeIcon icon={faXmark} />}
-            onClick={() => handlePopUpOpen("rejectModal")}
-            isDisabled={isApproving}
-            className="w-full"
-          >
-            Reject Request
-          </Button>
-        </div>
-      </div>
-
-      <Modal
-        isOpen={popUp.approveModal.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("approveModal", isOpen)}
-      >
-        <ModalContent title="Approve Request">
-          <FormLabel label="Comment (optional)" />
-          <TextArea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Add a comment about your approval..."
-            rows={3}
-            reSize="vertical"
-            className="mb-4"
-          />
-          <div className="flex gap-3">
+      <Card>
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <TriangleAlertIcon className="size-4 text-warning" />
+            <h3 className="font-medium text-foreground">Action Required</h3>
+          </div>
+          <p className="text-sm text-muted">
+            You are an approver for this request. Please review the details carefully before making
+            your decision.
+          </p>
+          <div className="flex flex-col gap-2">
             <Button
-              colorSchema="primary"
-              onClick={handleApprove}
-              isLoading={isApproving}
-              className="flex-1"
+              variant="project"
+              onClick={() => handlePopUpOpen("approveModal")}
+              isDisabled={isRejecting}
+              className="w-full"
             >
-              Confirm Approval
+              <CheckIcon className="mr-1.5 size-4" />
+              Approve Request
             </Button>
             <Button
-              variant="outline_bg"
+              variant="danger"
+              onClick={() => handlePopUpOpen("rejectModal")}
+              isDisabled={isApproving}
+              className="w-full"
+            >
+              <XIcon className="mr-1.5 size-4" />
+              Reject Request
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={popUp.approveModal.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("approveModal", isOpen)}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Approve request</DialogTitle>
+            <DialogDescription>
+              The requester gets the access described on this request as soon as you approve.
+            </DialogDescription>
+          </DialogHeader>
+          <Field>
+            <FieldLabel>Comment (optional)</FieldLabel>
+            <FieldContent>
+              <TextArea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Add a comment about your approval..."
+                rows={3}
+                className="resize-y"
+              />
+            </FieldContent>
+          </Field>
+          <DialogFooter>
+            <Button
+              variant="outline"
               onClick={() => handlePopUpToggle("approveModal", false)}
               className="flex-1"
             >
               Cancel
             </Button>
-          </div>
-        </ModalContent>
-      </Modal>
-
-      <Modal
-        isOpen={popUp.rejectModal.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("rejectModal", isOpen)}
-      >
-        <ModalContent title="Reject Request">
-          <FormLabel label="Reason for rejection (optional)" />
-          <TextArea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Explain why you're rejecting this request..."
-            rows={3}
-            reSize="vertical"
-            className="mb-4"
-          />
-          <div className="flex gap-3">
             <Button
-              colorSchema="danger"
-              onClick={handleReject}
-              isLoading={isRejecting}
+              variant="project"
+              onClick={handleApprove}
+              isPending={isApproving}
               className="flex-1"
             >
-              Confirm Rejection
+              Confirm approval
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={popUp.rejectModal.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("rejectModal", isOpen)}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Reject request</DialogTitle>
+            <DialogDescription>
+              The request is closed and the requester gets no access. They can open a new one.
+            </DialogDescription>
+          </DialogHeader>
+          <Field>
+            <FieldLabel>Reason for rejection (optional)</FieldLabel>
+            <FieldContent>
+              <TextArea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Explain why you're rejecting this request..."
+                rows={3}
+                className="resize-y"
+              />
+            </FieldContent>
+          </Field>
+          <DialogFooter>
             <Button
-              variant="outline_bg"
+              variant="outline"
               onClick={() => handlePopUpToggle("rejectModal", false)}
               className="flex-1"
             >
               Cancel
             </Button>
-          </div>
-        </ModalContent>
-      </Modal>
+            <Button
+              variant="danger"
+              onClick={handleReject}
+              isPending={isRejecting}
+              className="flex-1"
+            >
+              Confirm rejection
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

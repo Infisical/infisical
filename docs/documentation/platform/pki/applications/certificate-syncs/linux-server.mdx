@@ -113,7 +113,7 @@ When syncing certificates, Infisical opens an SSH session to the server and, for
 
 ## Post-sync commands
 
-Delivering a certificate file does not make the service use it. Nginx keeps serving the old certificate until something reloads it. A post-sync command is that last step, run for you right after the files land.
+Delivering a certificate file does not make the service use it. NGINX keeps serving the old certificate until something reloads it. A post-sync command is that last step, run for you right after the files land.
 
 Set one command on the sync. It runs on the target server, in that server's own shell, once per sync run that delivers at least one file. Leaving the field empty means nothing runs, so there is no separate toggle. If a sync run does not complete, Infisical may attempt it again and the command runs with it, so prefer a command that is safe to run more than once.
 
