@@ -327,7 +327,7 @@ export const OrgRoleTable = () => {
                           )}
                         />
                       </TableHead>
-                      <TableHead className="w-5" />
+                      <TableHead variant="action" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -343,7 +343,7 @@ export const OrgRoleTable = () => {
                           <TableCell>
                             <Skeleton className="h-4 w-full" />
                           </TableCell>
-                          <TableCell>
+                          <TableCell variant="action">
                             <Skeleton className="h-4 w-4" />
                           </TableCell>
                         </TableRow>
@@ -402,7 +402,7 @@ export const OrgRoleTable = () => {
                               )}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell variant="action">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <IconButton

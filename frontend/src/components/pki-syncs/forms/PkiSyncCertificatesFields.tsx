@@ -94,7 +94,7 @@ export const PkiSyncCertificatesFields = ({ applicationId }: Props = {}) => {
                         <TableHead className="w-1/5">Serial Number</TableHead>
                         <TableHead className="w-1/6">Issued At</TableHead>
                         <TableHead className="w-1/6">Expires At</TableHead>
-                        <TableHead className="w-12" />
+                        <TableHead variant="action" />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -136,7 +136,7 @@ export const PkiSyncCertificatesFields = ({ applicationId }: Props = {}) => {
                                 {new Date(cert.notAfter).toLocaleDateString()}
                               </span>
                             </TableCell>
-                            <TableCell>
+                            <TableCell variant="action">
                               <IconButton
                                 type="button"
                                 size="xs"
