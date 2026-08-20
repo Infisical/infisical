@@ -64,6 +64,23 @@ const isLockedOut = (raw: string | null) => {
 const isExactlyResolvable = (el: TIdentityLockoutLookup, method: IdentityAuthMethod) =>
   method === IdentityAuthMethod.UNIVERSAL_AUTH && Boolean(el.universalAuthClientId);
 
+// A multi-key read is a single round trip on a single-node Redis, but Redis Cluster rejects one
+// whose keys span hash slots — and these keys are spread by identity id, so any page holding more
+// than one universal auth identity trips it. Retrying as concurrent single-key reads keeps
+// clustered deployments accurate, since Cluster routes each read independently: it costs N
+// commands but still one round trip of latency, against the N full keyspace scans this path
+// replaced. Hash-tagging the keys would avoid the retry entirely, but it would change the key
+// format the login path writes and orphan every lockout already held in Redis, so a properly
+// cluster-aware batched read is left to the Go rewrite.
+const readLockoutStates = async (keyStore: TLockoutKeyStore, keys: string[]) => {
+  try {
+    return await keyStore.getItems(keys);
+  } catch (err) {
+    if (!(err instanceof Error) || !err.message.includes("CROSSSLOT")) throw err;
+    return Promise.all(keys.map((key) => keyStore.getItem(key)));
+  }
+};
+
 export const getActiveLockoutAuthMethodsForIdentities = async (
   identities: TIdentityLockoutLookup[],
   keyStore: TLockoutKeyStore
@@ -92,7 +109,10 @@ export const getActiveLockoutAuthMethodsForIdentities = async (
 
   if (exactLookups.length) {
     try {
-      const values = await keyStore.getItems(exactLookups.map((el) => el.key));
+      const values = await readLockoutStates(
+        keyStore,
+        exactLookups.map((el) => el.key)
+      );
       values.forEach((raw, idx) => {
         if (isLockedOut(raw)) add(exactLookups[idx].identityId, IdentityAuthMethod.UNIVERSAL_AUTH);
       });
@@ -114,8 +134,18 @@ export const getActiveLockoutAuthMethodsForIdentities = async (
   await Promise.all(
     scanLookups.map(async (el) => {
       try {
+        // The scan matches every lockout key under this identity, including ones no longer
+        // reachable: a method since revoked, or a universal auth key from an earlier attach whose
+        // client id has changed. Reporting those resurrects badges for credentials that cannot be
+        // used, so keep only methods the identity still holds, and let the exact-key read above be
+        // the sole authority for the ones it resolves.
         const methods = await getIdentityActiveLockoutAuthMethods(el.id, keyStore);
-        methods.forEach((method) => add(el.id, method as IdentityAuthMethod));
+        methods.forEach((method) => {
+          const authMethod = method as IdentityAuthMethod;
+          if (el.authMethods.includes(authMethod) && !isExactlyResolvable(el, authMethod)) {
+            add(el.id, authMethod);
+          }
+        });
       } catch (err) {
         logger.error(err, `Failed to read lockout state, omitting lockout indicators [identityId=${el.id}]`);
       }

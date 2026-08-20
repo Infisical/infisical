@@ -143,4 +143,48 @@ describe("getActiveLockoutAuthMethodsForIdentities", () => {
     );
     expect(result).toEqual({});
   });
+
+  test("retries as single-key reads when a clustered batch read is rejected cross-slot", async () => {
+    const keyStore = makeKeyStore({
+      getItems: vi.fn().mockRejectedValue(new Error("CROSSSLOT Keys in request don't hash to the same slot")),
+      getItem: vi.fn().mockResolvedValue(lockedValue)
+    });
+    const result = await getActiveLockoutAuthMethodsForIdentities(
+      [{ id: "i1", authMethods: [IdentityAuthMethod.UNIVERSAL_AUTH], universalAuthClientId: "client-1" }],
+      keyStore as never
+    );
+    expect(keyStore.getItem).toHaveBeenCalledWith("lockout:identity:i1:universal-auth:client-1");
+    expect(result).toEqual({ i1: [IdentityAuthMethod.UNIVERSAL_AUTH] });
+  });
+
+  test("does not resurrect a universal auth lockout whose client id has since changed", async () => {
+    const keyStore = makeKeyStore({
+      getItems: vi.fn().mockResolvedValue([null]),
+      getKeysByPattern: vi.fn().mockResolvedValue(["lockout:identity:i1:universal-auth:old-client"]),
+      getItem: vi.fn().mockResolvedValue(lockedValue)
+    });
+    const result = await getActiveLockoutAuthMethodsForIdentities(
+      [
+        {
+          id: "i1",
+          authMethods: [IdentityAuthMethod.UNIVERSAL_AUTH, IdentityAuthMethod.LDAP_AUTH],
+          universalAuthClientId: "current-client"
+        }
+      ],
+      keyStore as never
+    );
+    expect(result).toEqual({});
+  });
+
+  test("does not report a lockout for an auth method the identity no longer holds", async () => {
+    const keyStore = makeKeyStore({
+      getKeysByPattern: vi.fn().mockResolvedValue(["lockout:identity:i1:universal-auth:stale-client"]),
+      getItem: vi.fn().mockResolvedValue(lockedValue)
+    });
+    const result = await getActiveLockoutAuthMethodsForIdentities(
+      [{ id: "i1", authMethods: [IdentityAuthMethod.LDAP_AUTH], universalAuthClientId: null }],
+      keyStore as never
+    );
+    expect(result).toEqual({});
+  });
 });
