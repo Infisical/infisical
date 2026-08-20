@@ -436,7 +436,7 @@ export const OrgMembersTable = ({
                     )}
                   />
                 </TableHead>
-                <TableHead className="w-5" />
+                <TableHead variant="action" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -455,7 +455,7 @@ export const OrgMembersTable = ({
                     <TableCell>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
-                    <TableCell>
+                    <TableCell variant="action">
                       <Skeleton className="h-4 w-4" />
                     </TableCell>
                   </TableRow>
@@ -576,7 +576,7 @@ export const OrgMembersTable = ({
                             )}
                           </OrgPermissionCan>
                         </TableCell>
-                        <TableCell>
+                        <TableCell variant="action">
                           <div className="flex items-center justify-end gap-6">
                             {isActive &&
                               (status === "invited" || status === "verified") &&

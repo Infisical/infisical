@@ -1,5 +1,5 @@
 ---
-title: "Sub-Organizations"
+title: "Sub-organizations"
 description: "Learn how to use sub-organizations to create autonomous units within your organization."
 ---
 
@@ -18,7 +18,7 @@ Sub-organizations are ideal when you need to:
 - **Delegate administration**: Allow team leads to manage their own organization without root-level access
 - **Maintain clear boundaries**: Keep projects and resources isolated between teams while sharing a common user directory
 
-## Key Concepts
+## Key concepts
 
 - **Sub-organizations work like regular organizations.** Visually and functionally, there's little difference.
 - **One level of nesting.** Root organization to sub-organizations. Sub-organizations cannot create their own sub-organizations.
@@ -42,7 +42,7 @@ graph TD
     SubOrg2 --> SubProjects2
 ```
 
-## Resource Inheritance
+## Resource inheritance
 
 The following resources from a root organization can be added to sub-organizations:
 
@@ -52,14 +52,14 @@ The following resources from a root organization can be added to sub-organizatio
 
 App connections, gateways, and relays are specific to each organization. Each organization (root or sub) manages their own.
 
-## Project Visibility
+## Project visibility
 
 Projects are scoped to the organization where they are created. This ensures clear boundaries between teams and means users only see projects relevant to their scope of work.
 
 - **In a root organization**: You see only root organization projects
 - **In a sub-organization**: You see only that sub-organization's projects
 
-## Working with Users
+## Working with users
 
 Users exist at the root organization level where authentication is configured. Sub-organizations can add users from the root organization to grant them access to sub-organization projects.
 
@@ -71,7 +71,7 @@ Users exist at the root organization level where authentication is configured. S
 - Projects can only see users who have been added to the sub-organization
 - Users must be added to the sub-organization before they can join projects
 
-## Working with Machine Identities
+## Working with machine identities
 
 Machine identities represent services, CI/CD pipelines, or automated processes. They can be created at the root organization level and shared with sub-organizations, or created directly within a sub-organization.
 
@@ -82,7 +82,7 @@ Machine identities represent services, CI/CD pipelines, or automated processes. 
 - Root-level machine identities must be added to the sub-organization first
 - Sub-organizations can also create their own machine identities
 
-## Working with Groups
+## Working with groups
 
 Groups let you manage access for multiple users at once. Root organization groups can be shared with sub-organizations, and sub-organizations can also create their own groups.
 
@@ -90,7 +90,7 @@ Groups let you manage access for multiple users at once. Root organization group
 - Once added, the group is available to all projects in that sub-organization
 - Sub-organizations can create their own groups with users or nested groups
 
-## Creating a Sub-Organization
+## Creating a sub-organization
 
 ![sub-organization list](/images/platform/organization/sub-org-list.png)
 
@@ -101,7 +101,7 @@ Groups let you manage access for multiple users at once. Root organization group
 
 ![create sub-organization](/images/platform/organization/sub-org-create.png)
 
-## Adding Resources to a Sub-Organization
+## Adding resources to a sub-organization
 
 To use root organization resources in a sub-organization:
 

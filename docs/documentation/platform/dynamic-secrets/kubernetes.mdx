@@ -33,7 +33,7 @@ This feature is ideal for scenarios where you need to:
 - Maintain a secure audit trail of cluster access
 - Manage access to multiple Kubernetes clusters
 
-## Set up Dynamic Secrets with Kubernetes
+## Set up dynamic secrets with Kubernetes
 
 <Steps>
   <Step title="Open Secret Overview Dashboard">
@@ -69,7 +69,7 @@ This feature is ideal for scenarios where you need to:
         - Cluster access token with permissions to create service account tokens
         - (Optional) [Gateway](/documentation/platform/gateways/overview) for private cluster access
 
-        ### Authentication Setup
+        ### Authentication setup
 
         Choose your authentication method:
 
@@ -220,7 +220,7 @@ This feature is ideal for scenarios where you need to:
         - Cluster access token with permissions to create service accounts and manage RBAC
         - (Optional) [Gateway](/documentation/platform/gateways/overview) for private cluster access
 
-        ### Namespace Support
+        ### Namespace support
 
         When configuring a dynamic secret, you can specify multiple allowed namespaces as a comma-separated list. During lease creation, you can then specify which namespace to use from this allowed list. This provides flexibility while maintaining security by:
 
@@ -230,7 +230,7 @@ This feature is ideal for scenarios where you need to:
 
         For example, if you configure a dynamic secret with allowed namespaces "default,kube-system,monitoring", you can create leases that use any of these namespaces while preventing access to other namespaces in your cluster.
 
-        ### Authentication Setup
+        ### Authentication setup
 
         Choose your authentication method:
 
@@ -481,7 +481,7 @@ This feature is ideal for scenarios where you need to:
   </Step>
 </Steps>
 
-## Generate and Manage Tokens
+## Generate and manage tokens
 
 Once you've successfully configured the dynamic secret, you're ready to generate on-demand service account tokens.
 To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
@@ -503,7 +503,7 @@ Once you click the `Submit` button, a new secret lease will be generated and the
 
 ![Provision Lease](/images/platform/dynamic-secrets/kubernetes-lease-value.png)
 
-## Audit or Revoke Leases
+## Audit or revoke leases
 
 Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
 This will allow you to see the lease details and delete the lease ahead of its expiration time.

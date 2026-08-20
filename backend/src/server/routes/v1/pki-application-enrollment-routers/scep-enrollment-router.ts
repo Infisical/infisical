@@ -74,8 +74,9 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          enrollmentMethod: "scep",
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          enrollmentMethod: "scep"
         }
       });
 
@@ -119,8 +120,9 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          enrollmentMethod: "scep",
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          enrollmentMethod: "scep"
         }
       });
 

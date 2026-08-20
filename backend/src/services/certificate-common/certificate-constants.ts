@@ -31,6 +31,8 @@ export const domainComponentSchema = z
   .max(255)
   .refine((value) => !value.includes(","), { message: "Domain component cannot contain a comma" });
 
+export const MAX_DOMAIN_COMPONENTS = 50;
+
 /**
  * Domain components are persisted comma-joined into a single `varchar(255)` column
  * (certificate_requests.domainComponents, certificates.subjectDomainComponents), so the combined
@@ -38,7 +40,7 @@ export const domainComponentSchema = z
  */
 export const domainComponentsSchema = z
   .array(domainComponentSchema)
-  .max(50)
+  .max(MAX_DOMAIN_COMPONENTS)
   .refine(
     (components) => components.join(",").length <= PKI_TEXT_COLUMN_MAX_LENGTH,
     `Domain components cannot exceed ${PKI_TEXT_COLUMN_MAX_LENGTH} characters in total`

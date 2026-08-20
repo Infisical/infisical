@@ -81,7 +81,11 @@ const TabbedContent = ({
       className={`flex min-h-full flex-col ${showTabBar ? "" : "pt-3"}`}
     >
       {showTabBar && (
-        <TabsList variant="pam" className="sticky top-0 z-10 shrink-0 bg-popover">
+        <TabsList
+          variant="pam"
+          aria-label="PAM detail sections"
+          className="sticky top-0 z-10 shrink-0 bg-popover"
+        >
           {tabs.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value}>
               {tab.icon}
@@ -92,7 +96,7 @@ const TabbedContent = ({
         </TabsList>
       )}
       {tabs.map((tab) => (
-        <TabsContent key={tab.value} value={tab.value} className="m-0 flex flex-1 flex-col">
+        <TabsContent key={tab.value} value={tab.value} className="flex flex-1 flex-col">
           {tab.content}
         </TabsContent>
       ))}

@@ -1,10 +1,22 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogConfirmationLabel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Card,
   CardAction,
@@ -12,7 +24,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DocumentationLinkBadge
+  DocumentationLinkBadge,
+  Field,
+  Input
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
@@ -29,22 +43,33 @@ export const ServiceTokenSection = withProjectPermission(
     const { t } = useTranslation();
 
     const deleteServiceToken = useDeleteServiceToken();
+    const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
     const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
       "createAPIToken",
       "deleteAPITokenConfirmation"
     ] as const);
 
-    const onDeleteApproved = async () => {
-      await deleteServiceToken.mutateAsync(
-        (popUp?.deleteAPITokenConfirmation?.data as DeleteModalData)?.id
-      );
-      createNotification({
-        text: "Successfully deleted service token",
-        type: "success"
-      });
+    const deleteModalData = popUp.deleteAPITokenConfirmation.data as DeleteModalData | undefined;
+    const deleteConfirmationText = deleteModalData?.name.trim() || "service token";
+    const isDeleteConfirmed =
+      Boolean(deleteModalData) && deleteConfirmation === deleteConfirmationText;
 
-      handlePopUpClose("deleteAPITokenConfirmation");
+    const onDeleteApproved = async () => {
+      if (!deleteModalData?.id) return;
+
+      try {
+        await deleteServiceToken.mutateAsync(deleteModalData.id);
+        createNotification({
+          text: "Successfully deleted service token",
+          type: "success"
+        });
+
+        setDeleteConfirmation("");
+        handlePopUpClose("deleteAPITokenConfirmation");
+      } catch {
+        // MutationCache reports request errors globally; keep the dialog available for another attempt.
+      }
     };
 
     return (
@@ -81,18 +106,65 @@ export const ServiceTokenSection = withProjectPermission(
           </CardContent>
         </Card>
         <AddServiceTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-        <DeleteActionModal
-          isOpen={popUp.deleteAPITokenConfirmation.isOpen}
-          title={`Delete ${
-            (popUp?.deleteAPITokenConfirmation?.data as DeleteModalData)?.name || " "
-          } service token?`}
-          onChange={(isOpen) => handlePopUpToggle("deleteAPITokenConfirmation", isOpen)}
-          deleteKey={(popUp?.deleteAPITokenConfirmation?.data as DeleteModalData)?.name}
-          onClose={() => handlePopUpClose("deleteAPITokenConfirmation")}
-          onDeleteApproved={onDeleteApproved}
-        />
+        <AlertDialog
+          open={popUp.deleteAPITokenConfirmation.isOpen}
+          onOpenChange={(isOpen) => {
+            if (deleteServiceToken.isPending) return;
+            if (!isOpen) setDeleteConfirmation("");
+            handlePopUpToggle("deleteAPITokenConfirmation", isOpen);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete token?</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <Alert variant="danger" appearance="borderless">
+                  <AlertDescription>
+                    This permanently revokes the service token and cannot be undone.
+                  </AlertDescription>
+                </Alert>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogConfirmationField>
+              <Field>
+                <AlertDialogConfirmationLabel
+                  htmlFor="delete-service-token-confirmation"
+                  confirmationValue={deleteConfirmationText}
+                />
+                <Input
+                  id="delete-service-token-confirmation"
+                  value={deleteConfirmation}
+                  onChange={(event) => setDeleteConfirmation(event.target.value)}
+                  placeholder={deleteConfirmationText}
+                  autoComplete="off"
+                  autoFocus
+                />
+              </Field>
+            </AlertDialogConfirmationField>
+            <AlertDialogFooter>
+              <AlertDialogCancel isDisabled={deleteServiceToken.isPending}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                variant="danger"
+                isPending={deleteServiceToken.isPending}
+                isDisabled={!isDeleteConfirmed}
+                onClick={(event) => {
+                  event.preventDefault();
+                  onDeleteApproved();
+                }}
+              >
+                Delete Token
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </>
     );
   },
-  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.ServiceTokens }
+  {
+    action: ProjectPermissionActions.Read,
+    subject: ProjectPermissionSub.ServiceTokens,
+    accessRestrictedMode: "dialog"
+  }
 );

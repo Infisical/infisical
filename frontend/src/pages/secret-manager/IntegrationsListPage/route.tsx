@@ -30,6 +30,19 @@ export const Route = createFileRoute(
   component: IntegrationsListPage,
   validateSearch: zodValidator(IntegrationsListPageQuerySchema),
   beforeLoad: async ({ context, search, params: { projectId, orgId } }) => {
+    const redirectToTab = (selectedTab: IntegrationsListPageTabs) =>
+      redirect({
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
+        params: { orgId, projectId },
+        search: { selectedTab }
+      });
+
+    const getIntegrations = () =>
+      context.queryClient.ensureQueryData({
+        queryKey: projectKeys.getProjectIntegrations(projectId),
+        queryFn: () => fetchWorkspaceIntegrations(projectId)
+      });
+
     if (!search.selectedTab) {
       let secretSyncs: TSecretSync[];
 
@@ -39,58 +52,41 @@ export const Route = createFileRoute(
           queryFn: () => fetchSecretSyncsByProjectId(projectId)
         });
       } catch {
-        throw redirect({
-          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
-          params: { orgId, projectId },
-          search: { selectedTab: IntegrationsListPageTabs.NativeIntegrations }
-        });
+        throw redirectToTab(IntegrationsListPageTabs.NativeIntegrations);
       }
 
       if (secretSyncs.length) {
-        throw redirect({
-          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
-          params: { orgId, projectId },
-          search: { selectedTab: IntegrationsListPageTabs.SecretSyncs }
-        });
+        throw redirectToTab(IntegrationsListPageTabs.SecretSyncs);
       }
 
       let integrations: TIntegration[];
       try {
-        integrations = await context.queryClient.ensureQueryData({
-          queryKey: projectKeys.getProjectIntegrations(projectId),
-          queryFn: () => fetchWorkspaceIntegrations(projectId)
-        });
+        integrations = await getIntegrations();
       } catch {
-        throw redirect({
-          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
-          params: {
-            orgId,
-            projectId
-          },
-          search: { selectedTab: IntegrationsListPageTabs.AppConnections }
-        });
+        throw redirectToTab(IntegrationsListPageTabs.AppConnections);
       }
 
       if (integrations.length) {
-        throw redirect({
-          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
-          params: {
-            orgId,
-            projectId
-          },
-          search: { selectedTab: IntegrationsListPageTabs.NativeIntegrations }
-        });
+        throw redirectToTab(IntegrationsListPageTabs.NativeIntegrations);
       }
 
       // Default to App Connections tab if no existing syncs or integrations
-      throw redirect({
-        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
-        params: {
-          orgId,
-          projectId
-        },
-        search: { selectedTab: IntegrationsListPageTabs.AppConnections }
-      });
+      throw redirectToTab(IntegrationsListPageTabs.AppConnections);
+    }
+
+    // Native integrations are deprecated: only projects that already have one can access the tab
+    if (search.selectedTab === IntegrationsListPageTabs.NativeIntegrations) {
+      let integrations: TIntegration[] = [];
+
+      try {
+        integrations = await getIntegrations();
+      } catch {
+        // fall through to the redirect below
+      }
+
+      if (!integrations.length) {
+        throw redirectToTab(IntegrationsListPageTabs.AppConnections);
+      }
     }
 
     return {

@@ -74,6 +74,7 @@ import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { identityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { identityAuthTemplateServiceFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-service";
+import { insightsDALFactory } from "@app/ee/services/insights/insights-dal";
 import { insightsServiceFactory } from "@app/ee/services/insights/insights-service";
 import { kmipClientCertificateDALFactory } from "@app/ee/services/kmip/kmip-client-certificate-dal";
 import { kmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
@@ -156,6 +157,8 @@ import { orgRelayConfigDalFactory } from "@app/ee/services/relay/org-relay-confi
 import { relayDalFactory } from "@app/ee/services/relay/relay-dal";
 import { relayServiceFactory } from "@app/ee/services/relay/relay-service";
 import { resourceAwsAuthDALFactory } from "@app/ee/services/resource-auth-method/aws-auth-dal";
+import { gatewayProxyRegistryFactory } from "@app/ee/services/resource-auth-method/gateway-proxy-registry";
+import { resourceKubernetesAuthDALFactory } from "@app/ee/services/resource-auth-method/kubernetes-auth-dal";
 import { resourceAuthMethodDALFactory } from "@app/ee/services/resource-auth-method/resource-auth-method-dal";
 import { resourceAuthMethodServiceFactory } from "@app/ee/services/resource-auth-method/resource-auth-method-service";
 import { resourceTokenAuthDALFactory } from "@app/ee/services/resource-auth-method/token-auth-dal";
@@ -358,6 +361,7 @@ import { identityV2DALFactory } from "@app/services/identity-v2/identity-dal";
 import { identityMembershipV2DALFactory } from "@app/services/identity-v2/identity-membership-dal";
 import { identityV2ServiceFactory } from "@app/services/identity-v2/identity-service";
 import { integrationDALFactory } from "@app/services/integration/integration-dal";
+import { integrationDeprecationQueueFactory } from "@app/services/integration/integration-deprecation-queue";
 import { integrationServiceFactory } from "@app/services/integration/integration-service";
 import { integrationAuthDALFactory } from "@app/services/integration-auth/integration-auth-dal";
 import { integrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
@@ -617,6 +621,7 @@ export const registerRoutes = async (
   const integrationDAL = integrationDALFactory(db);
   const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
   const orgProductStatsDAL = orgProductStatsDALFactory(db);
+  const insightsDAL = insightsDALFactory(db);
   const integrationAuthDAL = integrationAuthDALFactory(db);
   const webhookDAL = webhookDALFactory(db);
   const serviceTokenDAL = serviceTokenDALFactory(db);
@@ -1462,7 +1467,7 @@ export const registerRoutes = async (
     userAliasDAL,
     emailDomainDAL,
     identityTokenAuthDAL,
-    identityAccessTokenDAL,
+    identityAccessTokenService,
     authService: loginService,
     serverCfgDAL: superAdminDAL,
     kmsRootConfigDAL,
@@ -1629,6 +1634,7 @@ export const registerRoutes = async (
   const resourceTokenAuthDAL = resourceTokenAuthDALFactory(db);
   const resourceAuthMethodDAL = resourceAuthMethodDALFactory(db);
   const resourceAwsAuthDAL = resourceAwsAuthDALFactory(db);
+  const resourceKubernetesAuthDAL = resourceKubernetesAuthDALFactory(db);
   const gatewayPoolDAL = gatewayPoolDalFactory(db);
   const gatewayPoolMembershipDAL = gatewayPoolMembershipDalFactory(db);
 
@@ -1720,20 +1726,6 @@ export const registerRoutes = async (
   const pamFolderDAL = pamFolderDALFactory(db);
   const pamFolderNotificationConfigDAL = pamFolderNotificationConfigDALFactory(db);
 
-  const pamMembershipService = pamMembershipServiceFactory({
-    membershipDAL,
-    membershipRoleDAL,
-    approvalPolicyDAL,
-    projectAccessRequestDAL,
-    pamFolderDAL,
-    pamAccountDAL,
-    userDAL,
-    groupDAL,
-    identityDAL,
-    permissionService,
-    usageMeteringService
-  });
-
   const certManagerInstanceService = certManagerInstanceServiceFactory({
     db,
     orgDAL,
@@ -1785,15 +1777,25 @@ export const registerRoutes = async (
     keyStore
   });
 
+  // Populated after gatewayV2Service and gatewayPoolService exist; both depend on
+  // resourceAuthMethodService, so the proxy resolver cannot be a constructor dependency.
+  const gatewayProxyRegistry = gatewayProxyRegistryFactory();
+
   const resourceAuthMethodService = resourceAuthMethodServiceFactory({
     resourceAuthMethodDAL,
     resourceAwsAuthDAL,
+    resourceKubernetesAuthDAL,
     resourceTokenAuthDAL,
+    kmsService,
     gatewayV2DAL,
+    gatewayPoolDAL,
+    gatewayPoolMembershipDAL,
     relayDAL,
     kmipServerDAL,
     identityDAL,
-    permissionService
+    permissionService,
+    licenseService,
+    gatewayProxyRegistry
   });
 
   const relayService = relayServiceFactory({
@@ -1846,6 +1848,14 @@ export const registerRoutes = async (
     dynamicSecretDAL
   });
 
+  gatewayProxyRegistry.register(async ({ gatewayV2Id, gatewayPoolId, targetHost, targetPort }) => {
+    if (gatewayPoolId) {
+      return gatewayPoolService.getPlatformConnectionDetailsByPoolId({ poolId: gatewayPoolId, targetHost, targetPort });
+    }
+    if (!gatewayV2Id) return undefined;
+    return gatewayV2Service.getPlatformConnectionDetailsByGatewayId({ gatewayId: gatewayV2Id, targetHost, targetPort });
+  });
+
   const pamAccountTemplateService = pamAccountTemplateServiceFactory({
     pamAccountTemplateDAL,
     pamAccountDAL,
@@ -1858,6 +1868,26 @@ export const registerRoutes = async (
 
   const pamSessionDAL = pamSessionDALFactory(db);
   const pamSessionEventChunkDAL = pamSessionEventChunkDALFactory(db);
+
+  // Wired after pamSessionDAL/gatewayV2Service: narrowing a member's access has to close the PAM
+  // sessions that access was holding open.
+  const pamMembershipService = pamMembershipServiceFactory({
+    membershipDAL,
+    membershipRoleDAL,
+    approvalPolicyDAL,
+    projectAccessRequestDAL,
+    pamFolderDAL,
+    pamAccountDAL,
+    pamSessionDAL,
+    userDAL,
+    groupDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL,
+    identityDAL,
+    permissionService,
+    gatewayV2Service,
+    usageMeteringService
+  });
 
   const pamSessionExpirationService = pamSessionExpirationServiceFactory({
     queueService,
@@ -1911,6 +1941,8 @@ export const registerRoutes = async (
     pamAccountTemplateDAL,
     membershipDAL,
     membershipRoleDAL,
+    pamSessionDAL,
+    userDAL,
     permissionService,
     kmsService,
     gatewayV2DAL,
@@ -2313,7 +2345,8 @@ export const registerRoutes = async (
     secretImportDAL,
     secretV2BridgeService,
     reminderDAL,
-    reminderService
+    reminderService,
+    keyStore
   });
 
   const secretSharingService = secretSharingServiceFactory({
@@ -2429,7 +2462,6 @@ export const registerRoutes = async (
     identityOrgMembershipDAL,
     identityProjectDAL,
     licenseService,
-    licenseDAL,
     identityMetadataDAL,
     keyStore,
     orgDAL,
@@ -2478,6 +2510,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     orgDAL,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2506,6 +2539,7 @@ export const registerRoutes = async (
     gatewayV2DAL,
     gatewayDAL,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     gatewayPoolService,
     gatewayPoolDAL,
@@ -2518,6 +2552,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     permissionService,
     licenseService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2529,6 +2564,7 @@ export const registerRoutes = async (
     identityAliCloudAuthDAL,
     licenseService,
     permissionService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2540,6 +2576,7 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     orgDAL,
     identityAccessTokenService
@@ -2552,6 +2589,7 @@ export const registerRoutes = async (
     identityAwsAuthDAL,
     licenseService,
     permissionService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2563,6 +2601,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     permissionService,
     licenseService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2574,6 +2613,7 @@ export const registerRoutes = async (
     identityOciAuthDAL,
     licenseService,
     permissionService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2601,6 +2641,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2613,6 +2654,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     licenseService,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2625,6 +2667,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     licenseService,
     kmsService,
+    keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
   });
@@ -2779,6 +2822,17 @@ export const registerRoutes = async (
 
   const dailyReminderQueueService = dailyReminderQueueServiceFactory({
     reminderService,
+    cronJob
+  });
+
+  const integrationDeprecationQueue = integrationDeprecationQueueFactory({
+    integrationDAL,
+    orgDAL,
+    projectMembershipDAL,
+    smtpService,
+    notificationService,
+    keyStore,
+    queueService,
     cronJob
   });
 
@@ -3075,6 +3129,7 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     auditLogDAL,
+    clickhouseAuditLogDAL,
     secretRotationV2DAL,
     reminderDAL,
     folderDAL,
@@ -3085,7 +3140,11 @@ export const registerRoutes = async (
     projectDAL,
     userDAL,
     kmsService,
-    keyStore
+    keyStore,
+    orgDAL,
+    identityOrgMembershipDAL,
+    dynamicSecretLeaseDAL,
+    insightsDAL
   });
 
   const auditReportDAL = auditReportDALFactory(db);
@@ -3096,6 +3155,7 @@ export const registerRoutes = async (
     projectDAL,
     projectBotService,
     userDAL,
+    orgDAL,
     queueService
   });
   // Registers the BullMQ worker that generates the CSVs and emails them.
@@ -3103,6 +3163,7 @@ export const registerRoutes = async (
     queueService,
     auditReportDAL,
     projectDAL,
+    orgDAL,
     smtpService,
     secretV2BridgeDAL,
     folderDAL,
@@ -3111,7 +3172,10 @@ export const registerRoutes = async (
     auditLogDAL,
     clickhouseAuditLogDAL,
     secretValidationRuleDAL,
-    kmsService
+    kmsService,
+    insightsDAL,
+    dynamicSecretLeaseDAL,
+    identityOrgMembershipDAL
   });
 
   const pkiSyncQueue = pkiSyncQueueFactory({
@@ -3608,7 +3672,8 @@ export const registerRoutes = async (
     cronJob,
     gatewayV2Service,
     gatewayV2DAL,
-    gatewayPoolService
+    gatewayPoolService,
+    telemetryService
   });
 
   const pkiDiscoveryService = pkiDiscoveryServiceFactory({
@@ -3829,6 +3894,7 @@ export const registerRoutes = async (
   certificateAuthorityQueue.startCaCrlRebuildJob();
   pkiSubscriberQueue.startDailyAutoRenewalJob();
   pkiAlertV2Queue.init();
+  integrationDeprecationQueue.init();
   certificateCleanupQueue.init();
   certificateV3Queue.init();
   digicertCaQueue.init();

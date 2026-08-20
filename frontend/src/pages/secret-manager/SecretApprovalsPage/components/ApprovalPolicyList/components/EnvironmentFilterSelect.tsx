@@ -56,6 +56,7 @@ export const EnvironmentFilterSelect = ({
       <PopoverContent align="start" className="w-[240px] p-0">
         <Command>
           <CommandInput
+            aria-label="Filter environments"
             value={inputValue}
             onValueChange={setInputValue}
             placeholder="Filter environments"

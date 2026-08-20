@@ -16,7 +16,7 @@ PAM uses a proxy-based architecture. Nothing connects directly to your databases
 
 **Actor** — the user or [machine identity](/documentation/platform/identities/machine-identities) the session belongs to. Permissions, policies, and the audit trail all follow the actor.
 
-## How a Connection Works
+## How a connection works
 
 When an actor connects to an [account](/documentation/platform/pam/accounts/overview):
 
@@ -32,7 +32,7 @@ When an actor connects to an [account](/documentation/platform/pam/accounts/over
 
 The actor never sees the credentials. The database/server never sees the actor directly.
 
-## Network Security
+## Network security
 
 The Gateway uses outbound connections only:
 
@@ -54,7 +54,7 @@ All connections are encrypted:
 
 The Relay server (which routes traffic between clients and Gateways) cannot decrypt or inspect the traffic passing through it.
 
-## Recording Architecture
+## Recording architecture
 
 Recording happens at the Gateway:
 
@@ -66,7 +66,7 @@ Recording happens at the Gateway:
 
 This ensures no data is lost, even during network issues.
 
-## Deployment Options
+## Deployment options
 
 | Setup | Use case |
 |-------|----------|
@@ -76,7 +76,7 @@ This ensures no data is lost, even during network issues.
 
 For deployment instructions, see [Deploy a Gateway](/documentation/platform/gateways/gateway-deployment).
 
-## Next Steps
+## Next steps
 
 <CardGroup cols={2}>
   <Card title="Deploy a Gateway" icon="server" href="/documentation/platform/gateways/gateway-deployment">

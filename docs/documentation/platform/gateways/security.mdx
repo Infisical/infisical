@@ -1,13 +1,13 @@
 ---
-title: "Security Architecture"
+title: "Security architecture"
 description: "Security model, tenant isolation, and best practices for Infisical Gateways and Relays"
 ---
 
 The Infisical Gateway enables secure access to private resources using SSH reverse tunnels, certificate-based authentication, and a comprehensive PKI (Public Key Infrastructure) system. The architecture provides end-to-end encryption and complete tenant isolation through multiple certificate authorities.
 
-## Security Model Overview
+## Security model overview
 
-### Certificate Architecture
+### Certificate architecture
 
 The gateway system uses multiple certificate authorities depending on deployment configuration:
 
@@ -23,7 +23,7 @@ The gateway system uses multiple certificate authorities depending on deployment
 - **Organization relay PKI Client CA & Server CA** - Platform ↔ Customer Relay Server authentication
 - **Organization Gateway Client CA & Server CA** - Platform ↔ Gateway authentication
 
-### Certificate Hierarchy
+### Certificate hierarchy
 
 ```
 Instance Level (Shared Relays):
@@ -36,9 +36,9 @@ Organization Level:
 └── Organization Gateway CA (Platform ↔ Gateway)
 ```
 
-## Communication Security
+## Communication security
 
-### 1. Gateway Registration
+### 1. Gateway registration
 
 When a gateway is first deployed:
 
@@ -49,7 +49,7 @@ When a gateway is first deployed:
    - **Infisical-managed relay**: Receives Instance relay SSH client certificate + Instance relay SSH Server CA
    - **Customer-deployed relay**: Receives Organization relay SSH client certificate + Organization relay SSH Server CA
 
-### 2. SSH Tunnel Authentication
+### 2. SSH tunnel authentication
 
 Gateway ↔ Relay Server communication uses SSH certificate authentication:
 
@@ -64,7 +64,7 @@ Gateway ↔ Relay Server communication uses SSH certificate authentication:
   - Gateway validates certificate against appropriate SSH Server CA
   - Ensures gateway connects to legitimate relay infrastructure
 
-### 3. Platform-to-Gateway Direct Connection
+### 3. Platform-to-Gateway direct connection
 
 The platform establishes secure direct connections with gateways through a **TLS-pinned tunnel** mechanism:
 
@@ -94,9 +94,9 @@ The platform establishes secure direct connections with gateways through a **TLS
    - **Relay server isolation**: Relay cannot decrypt either TLS or application data
    - **Tenant isolation**: Each organization's traffic flows through separate authenticated channels
 
-## Tenant Isolation
+## Tenant isolation
 
-### Multi-Layer Certificate Isolation
+### Multi-layer certificate isolation
 
 The architecture provides tenant isolation through multiple certificate authority layers:
 
@@ -105,7 +105,7 @@ The architecture provides tenant isolation through multiple certificate authorit
 - **Relay deployment flexibility**: Organizations can choose shared or dedicated relay infrastructure
 - **Cryptographic separation**: Cross-tenant communication is cryptographically impossible
 
-### Authentication Flows by Deployment Type
+### Authentication flows by deployment type
 
 **Infisical-Managed Relay Deployments:**
 
@@ -119,7 +119,7 @@ The architecture provides tenant isolation through multiple certificate authorit
 - Platform authenticates with relay using Organization relay PKI certificates
 - Platform authenticates with gateway using Organization Gateway certificates
 
-### Resource Access Control
+### Resource access control
 
 1. **Certificate Validation**:
 

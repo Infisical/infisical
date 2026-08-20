@@ -1184,6 +1184,7 @@ export function MultiSelectCell<TData>({
                   );
                 })}
                 <CommandInput
+                  aria-label="Search options"
                   ref={inputRef}
                   value={searchValue}
                   onValueChange={setSearchValue}

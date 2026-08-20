@@ -1,5 +1,5 @@
 ---
-title: "AWS ACM Public CA"
+title: "AWS ACM public CA"
 description: "Issue and manage publicly-trusted certificates using AWS Certificate Manager (ACM) with Infisical."
 ---
 
@@ -20,7 +20,7 @@ Each certificate has a fixed 198-day validity and is generated and stored by AWS
 - Two [AWS App Connections](/integrations/app-connections/aws): one for ACM, one for Route 53. They can be the same connection if it has permissions for both services.
 - A Route 53 **public** hosted zone for the domains you will issue certificates for.
 
-### IAM Permissions
+### IAM permissions
 
 **ACM connection** — needs the following on certificates in your account:
 
@@ -96,7 +96,7 @@ Each certificate has a fixed 198-day validity and is generated and stored by AWS
   </Step>
 </Steps>
 
-## Auto-Renewal
+## Auto-renewal
 
 ACM certificates expire after 198 days. There are two renewal paths that both end up producing a fresh certificate in Infisical.
 

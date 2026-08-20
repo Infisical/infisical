@@ -69,7 +69,7 @@ import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
-import { sendPamSessionCancellationSignal } from "../pam-session/pam-session-fns";
+import { terminatePamSessions } from "../pam-session/pam-session-fns";
 import { getSlackSendTargets, parseNotificationChannels, parseNotificationEvents } from "./pam-access-request-fns";
 import {
   TAccessRequestActor,
@@ -122,7 +122,7 @@ type TPamAccessRequestServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "find" | "findOne">;
   pamAccountTemplateDAL: Pick<TPamAccountTemplateDALFactory, "find">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById" | "find" | "findOne">;
-  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "terminateSessionById">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
@@ -1255,15 +1255,17 @@ export const pamAccessRequestServiceFactory = ({
     return { request: updatedRequest, accountId: requestData?.requestData?.accountId, folderId };
   };
 
-  // Marks a grant Revoked and terminates the grantee's live sessions on the granted account. An
-  // undefined userId in the session filter would throw in knex; granteeUserId is null when the
-  // grantee user was deleted, and their sessions carry a null userId too.
+  // Marks a grant Revoked and terminates the grantee's live sessions on the granted account.
+  //
+  // Returns the tunnel-cancellation callback rather than firing it, so a caller that revokes inside a
+  // transaction which can still roll back (account deletion) only cuts tunnels once the revocation is
+  // durable. Callers outside a transaction invoke it immediately.
   const revokeGrantRow = async (
     grant: TApprovalRequestGrants,
     actorId: string,
     reason: string,
     tx?: Knex
-  ): Promise<TApprovalRequestGrants> => {
+  ): Promise<{ revoked: TApprovalRequestGrants; sendCancellationSignals: () => void }> => {
     const revoked = await approvalRequestGrantsDAL.updateById(
       grant.id,
       {
@@ -1275,47 +1277,43 @@ export const pamAccessRequestServiceFactory = ({
       tx
     );
 
-    const attrs = grant.attributes as { accountId?: string } | null;
-    // granteeUserId is SET NULL when the grantee user is deleted, so an orphaned grant has neither
-    // actor column. Sweeping on a null userId would match every machine identity session on the
-    // account (they carry userId null), so skip the sweep when there is no actor to scope it to.
-    const hasGrantee = Boolean(grant.granteeMachineIdentityId || grant.granteeUserId);
-    if (attrs?.accountId && hasGrantee) {
-      // Cover both active and starting sessions; a session mid-handshake would otherwise slip past
-      // revocation and go live. terminateSessionById flips the row, and the ALPN signal cuts the live
-      // tunnel, since neither the gateway nor the web-access loop watches the status column.
-      const liveSessions = await pamSessionDAL.find(
-        {
-          accountId: attrs.accountId,
-          // Sessions mirror the grant's actor column: machine identity sessions carry identityId
-          // with a null userId, so filter on whichever the grant was issued to.
-          ...(grant.granteeMachineIdentityId
-            ? { identityId: grant.granteeMachineIdentityId }
-            : { userId: grant.granteeUserId }),
-          $in: { status: [PamSessionStatus.Active, PamSessionStatus.Starting] }
-        },
-        { tx }
-      );
-      if (liveSessions.length > 0) {
-        const actor = await userDAL.findById(actorId);
-        for (const session of liveSessions) {
-          // eslint-disable-next-line no-await-in-loop
-          await pamSessionDAL.terminateSessionById(session.id, tx);
-          if (session.gatewayId) {
-            sendPamSessionCancellationSignal({
-              sessionId: session.id,
-              gatewayId: session.gatewayId,
-              accountType: session.accountType,
-              actorId,
-              actorEmail: actor?.email ?? "",
-              gatewayV2Service
-            });
-          }
-        }
-      }
-    }
+    const noSignals = { revoked, sendCancellationSignals: () => {} };
 
-    return revoked;
+    // Sessions mirror the grant's actor column: a machine identity session carries identityId with a null
+    // userId, so scope the sweep to whichever column the grant was issued to. granteeUserId is SET NULL
+    // when the grantee user is deleted, leaving a grant with neither column — filtering on a null userId
+    // there would match every machine identity session on the account, so bail instead.
+    let granteeFilter: { userId: string } | { identityId: string } | null = null;
+    if (grant.granteeMachineIdentityId) granteeFilter = { identityId: grant.granteeMachineIdentityId };
+    else if (grant.granteeUserId) granteeFilter = { userId: grant.granteeUserId };
+
+    const attrs = grant.attributes as { accountId?: string } | null;
+    if (!attrs?.accountId || !granteeFilter) return noSignals;
+
+    // Cover both active and starting sessions; a session mid-handshake would otherwise slip past
+    // revocation and go live. terminateSessionById flips the row, and the ALPN signal cuts the live
+    // tunnel, since neither the gateway nor the web-access loop watches the status column.
+    const liveSessions = await pamSessionDAL.find(
+      {
+        accountId: attrs.accountId,
+        ...granteeFilter,
+        $in: { status: [PamSessionStatus.Active, PamSessionStatus.Starting] }
+      },
+      { tx }
+    );
+    if (liveSessions.length === 0) return noSignals;
+
+    const actor = await userDAL.findById(actorId, tx);
+    const sendCancellationSignals = await terminatePamSessions({
+      sessions: liveSessions,
+      actorId,
+      actorEmail: actor?.email ?? "",
+      pamSessionDAL,
+      gatewayV2Service,
+      tx
+    });
+
+    return { revoked, sendCancellationSignals };
   };
 
   const revokeGrant = async ({ requestId, projectId, ...ctx }: TRevokeAccessRequestDTO) => {
@@ -1354,7 +1352,12 @@ export const pamAccessRequestServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not authorized to revoke this approval" });
     }
 
-    const revokedGrant = await revokeGrantRow(grant, ctx.actorId, "Revoked by admin");
+    const { revoked: revokedGrant, sendCancellationSignals } = await revokeGrantRow(
+      grant,
+      ctx.actorId,
+      "Revoked by admin"
+    );
+    sendCancellationSignals();
 
     return { grant: revokedGrant, accountId, folderId: requestData?.requestData?.folderId, grantId: grant.id };
   };
@@ -1386,6 +1389,8 @@ export const pamAccessRequestServiceFactory = ({
     );
   };
 
+  // Returns the callback that cuts the tunnels of the sessions it terminated. It runs inside the caller's
+  // delete transaction, which can still fail, so the signals are the caller's to fire after COMMIT.
   const cleanupAccountResources = async (
     {
       accountId,
@@ -1394,7 +1399,7 @@ export const pamAccessRequestServiceFactory = ({
       actorId
     }: { accountId: string; folderId: string | null | undefined; projectId: string; actorId: string },
     tx: Knex
-  ) => {
+  ): Promise<() => void> => {
     // Requests are folder-scoped with the account id in requestData JSON, so filter in memory.
     if (folderId) {
       const pending = await approvalRequestDAL.find(
@@ -1421,13 +1426,17 @@ export const pamAccessRequestServiceFactory = ({
       { type: ApprovalPolicyType.PamAccess, status: ApprovalRequestGrantStatus.Active, projectId },
       { tx }
     );
+    const pendingSignals: (() => void)[] = [];
     for (const grant of activeGrants) {
       const attrs = grant.attributes as { accountId?: string } | null;
       if (attrs?.accountId === accountId) {
         // eslint-disable-next-line no-await-in-loop
-        await revokeGrantRow(grant, actorId, "Account deleted", tx);
+        const { sendCancellationSignals } = await revokeGrantRow(grant, actorId, "Account deleted", tx);
+        pendingSignals.push(sendCancellationSignals);
       }
     }
+
+    return () => pendingSignals.forEach((send) => send());
   };
 
   const checkGrant = async ({

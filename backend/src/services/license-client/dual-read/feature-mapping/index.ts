@@ -23,8 +23,6 @@ export const EXCLUDED_FIELDS: ReadonlySet<string> = new Set([
   "trial_end",
   "has_used_trial",
   "workspacesUsed",
-  "membersUsed",
-  "identitiesUsed",
   "environmentsUsed",
   "workspaceLimit",
   "memberLimit",

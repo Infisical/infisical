@@ -29,14 +29,18 @@ export const GroupMembershipIdentityRow = ({
   return (
     <TableRow>
       <TableCell>
-        <HardDriveIcon size={14} className="text-mineshaft-400" />
+        <HardDriveIcon size={14} className="text-muted" />
       </TableCell>
       <TableCell isTruncatable>{name}</TableCell>
       <TableCell>{new Date(joinedGroupAt).toLocaleDateString()}</TableCell>
       <TableCell>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <IconButton variant="ghost" size="xs">
+            <IconButton
+              variant="ghost"
+              size="xs"
+              aria-label={`Actions for machine identity ${name}`}
+            >
               <EllipsisIcon />
             </IconButton>
           </DropdownMenuTrigger>

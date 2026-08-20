@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { BanIcon, CopyIcon, EllipsisIcon, TrashIcon } from "lucide-react";
 
@@ -21,10 +20,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
-  Field,
-  FieldLabel,
-  Input
+  DropdownMenuTrigger
 } from "@app/components/v3";
 import {
   OrgPermissionSubjects,
@@ -48,7 +44,6 @@ export const RelayPageHeader = ({
     "deleteRelay",
     "revokeRelay"
   ] as const);
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
   const onDelete = async () => {
     try {
@@ -138,10 +133,8 @@ export const RelayPageHeader = ({
 
       <AlertDialog
         open={popUp.deleteRelay.isOpen}
-        onOpenChange={(open) => {
-          if (!open) setDeleteConfirmation("");
-          handlePopUpToggle("deleteRelay", open);
-        }}
+        confirmationValue={relay.name}
+        onOpenChange={(open) => handlePopUpToggle("deleteRelay", open)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -150,23 +143,7 @@ export const RelayPageHeader = ({
               This permanently removes the relay from your organization.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogConfirmationField>
-            <Field>
-              <FieldLabel htmlFor="delete-relay-confirmation" size="sm">
-                <span>
-                  Type &quot;<span className="text-foreground">{relay.name}</span>&quot; to confirm.
-                </span>
-              </FieldLabel>
-              <Input
-                id="delete-relay-confirmation"
-                value={deleteConfirmation}
-                onChange={(event) => setDeleteConfirmation(event.target.value)}
-                placeholder={relay.name}
-                autoComplete="off"
-                autoFocus
-              />
-            </Field>
-          </AlertDialogConfirmationField>
+          <AlertDialogConfirmationField inputProps={{ placeholder: relay.name }} />
           <Alert variant="danger" appearance="borderless">
             <AlertDescription>Deleting this relay cannot be undone.</AlertDescription>
           </Alert>
@@ -175,7 +152,6 @@ export const RelayPageHeader = ({
             <AlertDialogAction
               variant="danger"
               isPending={isDeleting}
-              isDisabled={deleteConfirmation !== relay.name}
               onClick={(event) => {
                 event.preventDefault();
                 onDelete();

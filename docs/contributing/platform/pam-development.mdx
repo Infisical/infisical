@@ -1,5 +1,5 @@
 ---
-title: "PAM Local Development"
+title: "PAM local development"
 description: "Set up relay and gateway servers for local PAM development."
 ---
 
@@ -9,7 +9,7 @@ This guide covers setting up the relay and gateway components for local PAM (Pri
 If you haven't set up the Infisical platform yet, follow the [local development guide](/contributing/platform/developing) first.
 </Note>
 
-## Local Development Setup
+## Local development setup
 
 In a local dev environment, the Infisical platform runs inside Docker while the relay and gateway run directly on your host machine:
 
@@ -55,7 +55,7 @@ For more details on the production architecture, see:
 - [Go](https://golang.org/dl/) installed
 - A machine identity with Token Auth configured (see [Token Auth docs](/documentation/platform/identities/token-auth))
 
-## Clone the CLI Repository
+## Clone the CLI repository
 
 The relay and gateway live in the [Infisical CLI repository](https://github.com/Infisical/cli). For local development, run them via `go run main.go` rather than the pre-built binary:
 
@@ -64,7 +64,7 @@ git clone https://github.com/Infisical/cli.git
 cd cli
 ```
 
-## Start the Relay Server
+## Start the Relay server
 
 From the CLI repository root:
 
@@ -101,14 +101,14 @@ Verify registration at **Organization Settings** > **Networking** > **Gateways**
 
 For all available flags, see the [Gateway CLI Reference](/cli/commands/gateway).
 
-## Quick Reference
+## Quick reference
 
 | Component | Command |
 |-----------|---------|
 | Relay | `go run main.go relay start --name=local-relay --token=<token> --domain=http://localhost:8080 --host=host.docker.internal` |
 | Gateway | `go run main.go gateway start --token=<token> --domain=http://localhost:8080 --target-relay-name=local-relay --name=local-gateway --pam-session-recording-path=$(pwd)/session` |
 
-## Seed Test Resources
+## Seed test resources
 
 Once your relay and gateway are up, you still need actual databases and SSH servers to point PAM at. Spinning those up by hand — running each container, creating users, then clicking through the UI to register every resource and account — is the slow part of any PAM dev loop.
 
@@ -168,7 +168,7 @@ docker compose -f docker-compose.dev.yml logs -f backend
 </Accordion>
 </AccordionGroup>
 
-## Next Steps
+## Next steps
 
 - [Launch your first session](/documentation/platform/pam/quick-starts/launch-first-session) and test connections through the gateway
 - Explore [session recording](/documentation/platform/pam/sessions/session-recording) functionality

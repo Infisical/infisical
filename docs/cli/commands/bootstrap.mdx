@@ -157,7 +157,7 @@ This flag is required when using `k8-secret` output.
 
 ## Response
 
-### JSON Output (Default)
+### JSON output (default)
 
 The command returns a JSON response with details about the created user, organization, and machine identity:
 
@@ -187,13 +187,13 @@ The command returns a JSON response with details about the created user, organiz
 }
 ```
 
-### Kubernetes Secret Output
+### Kubernetes secret output
 
 When using `--output=k8-secret`, the command creates or updates a Kubernetes secret in your cluster and logs the operation result. This is particularly useful for automated bootstrapping scenarios such as Kubernetes Jobs, GitOps workflows, or when you need to immediately store the admin credentials for use by other applications in your cluster.
 
-## Kubernetes Integration
+## Kubernetes integration
 
-### Prerequisites for k8-secret Output
+### Prerequisites for k8-secret output
 
 When running with `--output=k8-secret`, the command must be executed from within a Kubernetes pod with proper service account permissions. The command automatically:
 
@@ -201,7 +201,7 @@ When running with `--output=k8-secret`, the command must be executed from within
 2. Reads the CA certificate from `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt`
 3. Gets the Kubernetes API server URL from environment variables (`KUBERNETES_SERVICE_HOST` and `KUBERNETES_SERVICE_PORT_HTTPS`)
 
-### Required RBAC Permissions
+### Required RBAC permissions
 
 Your service account needs the following permissions:
 
@@ -228,7 +228,7 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ```
 
-## Usage with Automation
+## Usage with automation
 
 For automation purposes, you can extract just the machine identity token from the response:
 
@@ -238,7 +238,7 @@ infisical bootstrap --domain=https://your-infisical-instance.com --email=admin@e
 
 This extracts only the token, which can be captured in a variable or piped to other commands.
 
-## Example: Capture Token in a Variable
+## Example: Capture token in a variable
 
 ```bash
 TOKEN=$(infisical bootstrap --domain=https://your-infisical-instance.com --email=admin@example.com --password=your-secure-password --organization=your-org-name | jq -r ".identity.credentials.token")

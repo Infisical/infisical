@@ -171,7 +171,8 @@ export const registerCertificateAuthorityEndpoints = <
         organizationId: req.permission.orgId,
         properties: {
           caType,
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: certificateAuthority.projectId
         }
       });
 
@@ -223,6 +224,18 @@ export const registerCertificateAuthorityEndpoints = <
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CaUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          caType,
+          orgId: req.permission.orgId,
+          projectId: certificateAuthority.projectId,
+          status: certificateAuthority.status
+        }
+      });
+
       return certificateAuthority;
     }
   });
@@ -271,7 +284,8 @@ export const registerCertificateAuthorityEndpoints = <
         organizationId: req.permission.orgId,
         properties: {
           caType,
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: certificateAuthority.projectId
         }
       });
 

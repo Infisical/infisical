@@ -1,5 +1,5 @@
 ---
-title: "Programmatic Provisioning"
+title: "Programmatic provisioning"
 description: "Learn how to provision and configure Infisical instances programmatically without UI interaction"
 ---
 
@@ -13,14 +13,14 @@ The bootstrapping workflow automates creating an admin user account, initializin
 - Access to the Infisical CLI or the ability to make API calls to the instance
 - Network connectivity to the Infisical instance
 
-## Key Concepts
+## Key concepts
 
 - **Instance Initialization**: Infisical requires [configuration variables](/self-hosting/configuration/envars) to be set during launch, after which the bootstrap process can be triggered.
 - **Instance Admin Machine Identity**: The bootstrapping process creates a machine identity with instance-level admin privileges, which can be used to programmatically manage all aspects of the Infisical instance.
   ![Instance Admin Identity](/images/self-hosting/guides/automated-bootstrapping/identity-instance-admin.png)
 - **Token Auth**: The instance admin machine identity uses [Token Auth](/documentation/platform/identities/token-auth), providing a JWT token that can be used directly to make authenticated requests to the Infisical API.
 
-## Bootstrap Methods
+## Bootstrap methods
 
 You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
 
@@ -46,7 +46,7 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
       http://your-infisical-instance.com/api/v1/admin/bootstrap
     ```
 
-    ### API Response Structure
+    ### API response structure
 
     The bootstrap process returns a JSON response with details about the created user, organization, and machine identity:
 
@@ -86,7 +86,7 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
 
     This example command pipes the output through `jq` to extract only the machine identity token, making it easy to capture and use directly in automation scripts or export as an environment variable for tools like Terraform.
     
-    ### API Response Structure
+    ### API response structure
 
     The bootstrap process returns a JSON response with details about the created user, organization, and machine identity:
 
@@ -148,7 +148,7 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
       --namespace=release-namespace
     ```
 
-    ### How It Works
+    ### How it works
 
     The Helm chart auto bootstrap feature:
 
@@ -158,7 +158,7 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
     4. **Kubernetes Secret Creation**: Creates a Kubernetes secret directly via the Kubernetes API using the rendered template
     5. **RBAC**: Automatically configures the necessary permissions (`get`, `create`, `update` on secrets) for the bootstrap job
 
-    ### Template System
+    ### Template system
 
     The `secretTemplate` field allows you to customize the data section of the created Kubernetes secret. The template has access to the full bootstrap response with the following available data fields:
 
@@ -195,7 +195,7 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
     - **Secure Token Storage**: Admin identity credentials are immediately stored in Kubernetes secrets
     - **Integration Ready**: The created secret can be referenced by other applications or automation tools
 
-    ### Security Considerations
+    ### Security considerations
 
     - The bootstrap job requires permissions to create secrets in the specified namespace
     - Bootstrap credentials should be stored securely and rotated regularly
@@ -205,17 +205,17 @@ You can bootstrap an Infisical instance using the API, CLI, or Helm chart.
   </Tab>
 </Tabs>
 
-## Using the Instance Admin Machine Identity Token
+## Using the instance admin machine identity token
 
 The bootstrap process automatically creates a machine identity with Token Auth configured. The returned token has instance-level admin privileges (the highest level of access) and should be treated with the same security considerations as a root credential.
 
 The token enables full programmatic control of your Infisical instance and can be used in the following ways:
 
-### 1. Infrastructure Automation
+### 1. Infrastructure automation
 
 Store the token securely for use with infrastructure automation tools. Due to the sensitive nature of this token, ensure it's protected using appropriate secret management practices:
 
-#### Kubernetes Secret (with appropriate RBAC restrictions)
+#### Kubernetes secret (with appropriate RBAC restrictions)
 
 ```yaml
 apiVersion: v1
@@ -227,14 +227,14 @@ data:
   token: <base64-encoded-token>
 ```
 
-#### Environment Variable for Terraform
+#### Environment variable for Terraform
 
 ```bash
 export INFISICAL_TOKEN=your-access-token
 terraform apply
 ```
 
-### 2. Programmatic Resource Management
+### 2. Programmatic resource management
 
 Use the token to authenticate API calls for creating and managing Infisical resources. The token works exactly like any other Token Auth access token in the Infisical API:
 
@@ -252,7 +252,7 @@ curl -X POST \
   https://your-infisical-instance.com/api/v1/projects
 ```
 
-## Important Notes
+## Important notes
 
 - **Security Warning**: The instance admin machine identity has the highest level of privileges in your Infisical deployment. The token should be treated with the utmost security and handled like a root credential. Unauthorized access to this token could compromise your entire Infisical instance.
 - Security controls prevent privilege escalation: instance admin identities cannot be managed by non-instance admin users and identities

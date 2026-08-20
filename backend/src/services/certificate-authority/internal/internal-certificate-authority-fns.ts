@@ -32,6 +32,7 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus } from "../certificate-authority-enums";
 import {
   buildCrlDistributionPointUrls,
+  createDistinguishedName,
   createSerialNumber,
   getCaCertChain,
   getCaCredentials,
@@ -125,7 +126,7 @@ export const InternalCertificateAuthorityFns = ({
       : x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment;
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
-      name: `CN=${subscriber.commonName}`,
+      name: createDistinguishedName({ commonName: subscriber.commonName }),
       keys: leafKeys,
       signingAlgorithm: alg,
       extensions: [new x509.KeyUsagesExtension(csrKeyUsages)],
@@ -378,7 +379,7 @@ export const InternalCertificateAuthorityFns = ({
       : x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment;
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
-      name: `CN=${commonName}`,
+      name: createDistinguishedName({ commonName }),
       keys: leafKeys,
       signingAlgorithm: alg,
       extensions: [new x509.KeyUsagesExtension(templateCsrKeyUsages)],

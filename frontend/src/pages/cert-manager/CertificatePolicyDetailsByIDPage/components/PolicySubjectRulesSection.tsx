@@ -14,6 +14,12 @@ import {
 
 import { RuleList } from "./RuleList";
 
+const formatDomainComponentChain = (value: string) =>
+  value
+    .split(",")
+    .map((component) => `DC=${component.trim()}`)
+    .join(" ");
+
 type Props = {
   policy: TCertificatePolicy;
 };
@@ -44,20 +50,40 @@ export const PolicySubjectRulesSection = ({ policy }: Props) => {
           </p>
         ) : (
           <DetailGroup>
-            {entries.map((rule, idx) => (
-              <div
-                // eslint-disable-next-line react/no-array-index-key
-                key={`${rule.type}-${idx}`}
-                className="flex flex-col gap-y-3 border-b border-mineshaft-700 pb-3 last:border-b-0 last:pb-0"
-              >
-                <div className="text-sm font-medium text-foreground">
-                  {formatSubjectAttributeType(rule.type as CertSubjectAttributeType)}
+            {entries.map((rule, idx) => {
+              const isDomainComponent = rule.type === CertSubjectAttributeType.DOMAIN_COMPONENT;
+              const formatter = isDomainComponent ? formatDomainComponentChain : undefined;
+
+              return (
+                <div
+                  // eslint-disable-next-line react/no-array-index-key
+                  key={`${rule.type}-${idx}`}
+                  className="flex flex-col gap-y-3 border-b border-mineshaft-700 pb-3 last:border-b-0 last:pb-0"
+                >
+                  <div className="text-sm font-medium text-foreground">
+                    {formatSubjectAttributeType(rule.type as CertSubjectAttributeType)}
+                  </div>
+                  <RuleList
+                    label="Allowed"
+                    values={rule.allowed}
+                    formatter={formatter}
+                    isMonospace={isDomainComponent}
+                  />
+                  <RuleList
+                    label="Required"
+                    values={rule.required}
+                    formatter={formatter}
+                    isMonospace={isDomainComponent}
+                  />
+                  <RuleList
+                    label="Denied"
+                    values={rule.denied}
+                    formatter={formatter}
+                    isMonospace={isDomainComponent}
+                  />
                 </div>
-                <RuleList label="Allowed" values={rule.allowed} />
-                <RuleList label="Required" values={rule.required} />
-                <RuleList label="Denied" values={rule.denied} />
-              </div>
-            ))}
+              );
+            })}
           </DetailGroup>
         )}
       </CardContent>

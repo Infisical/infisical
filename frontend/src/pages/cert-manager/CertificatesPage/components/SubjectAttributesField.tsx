@@ -57,6 +57,7 @@ type SubjectAttributesFieldProps = {
   control: Control<any>;
   allowedAttributeTypes: CertSubjectAttributeType[];
   error?: string;
+  rowErrors?: (string | undefined)[];
   shouldUnregister?: boolean;
   namePrefix?: string;
 };
@@ -65,6 +66,7 @@ export const SubjectAttributesField = ({
   control,
   allowedAttributeTypes,
   error,
+  rowErrors,
   shouldUnregister,
   namePrefix = "subjectAttributes"
 }: SubjectAttributesFieldProps) => {
@@ -118,16 +120,20 @@ export const SubjectAttributesField = ({
                         ))}
                       </SelectContent>
                     </Select>
-                    <Input
-                      value={attr.value}
-                      onChange={(e) => {
-                        const newValue = [...currentValues];
-                        newValue[index] = { ...attr, value: e.target.value };
-                        onChange(newValue);
-                      }}
-                      placeholder={getSubjectAttributePlaceholder(attr.type)}
-                      className="flex-1"
-                    />
+                    <div className="flex-1">
+                      <Input
+                        value={attr.value}
+                        onChange={(e) => {
+                          const newValue = [...currentValues];
+                          newValue[index] = { ...attr, value: e.target.value };
+                          onChange(newValue);
+                        }}
+                        placeholder={getSubjectAttributePlaceholder(attr.type)}
+                        isError={Boolean(rowErrors?.[index])}
+                        className="w-full"
+                      />
+                      <FieldError>{rowErrors?.[index]}</FieldError>
+                    </div>
                     <IconButton
                       type="button"
                       variant="ghost"

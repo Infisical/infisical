@@ -1,5 +1,5 @@
 ---
-title: TLS Certificate Auth
+title: TLS certificate auth
 description: "Learn how to authenticate with Infisical using TLS Certificate."
 ---
 
@@ -165,7 +165,7 @@ try {
 
 </Note>
 
-## Security Requirements for Self-Hosted Deployments
+## Security requirements for self-hosted deployments
 
 ALL TLS cert [login](/api-reference/endpoints/tls-cert-auth/login) requests **MUST** go through a load balancer/proxy that verifies certificate ownership:
 
@@ -174,7 +174,7 @@ ALL TLS cert [login](/api-reference/endpoints/tls-cert-auth/login) requests **MU
 - **NEVER** allow direct connections to Infisical for TLS cert auth - this enables header injection attacks
 - **NEVER** forward certificate headers without requiring proper TLS certificate presentation
 
-### Load Balancer Configuration Examples
+### Load balancer configuration examples
 
 - **AWS ALB:** Use mTLS listeners which require client certificate presentation during the TLS handshake
 - **NGINX/HAProxy:** Configure SSL client certificate requirement with proper TLS handshake verification

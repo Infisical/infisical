@@ -29,17 +29,16 @@ export const GroupMembershipUserRow = ({
   return (
     <TableRow>
       <TableCell>
-        <UserIcon size={14} className="text-mineshaft-400" />
+        <UserIcon size={14} className="text-muted" />
       </TableCell>
       <TableCell isTruncatable>
-        {`${firstName ?? "-"} ${lastName ?? ""}`}{" "}
-        <span className="text-mineshaft-400">({email})</span>
+        {`${firstName ?? "-"} ${lastName ?? ""}`} <span className="text-muted">({email})</span>
       </TableCell>
       <TableCell>{new Date(joinedGroupAt).toLocaleDateString()}</TableCell>
       <TableCell>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <IconButton size="xs" variant="ghost">
+            <IconButton size="xs" variant="ghost" aria-label={`Actions for ${email}`}>
               <EllipsisIcon />
             </IconButton>
           </DropdownMenuTrigger>

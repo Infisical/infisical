@@ -10,9 +10,9 @@ Azure CLI accounts let you broker credential-less access to Azure. Instead of ha
 Azure CLI accounts are available through the **CLI and API only**. There is no in-browser (web) access.
 </Note>
 
-## How It Works
+## How it works
 
-Each account points at a single Microsoft Entra ID (Azure AD) service principal, identified by its tenant ID and client ID, with a client secret stored encrypted. When a user starts a session:
+Each account points at a single Microsoft Entra ID service principal, identified by its tenant ID and client ID, with a client secret stored encrypted. When a user starts a session:
 
 1. Infisical obtains short-lived access tokens for the service principal (via the OAuth 2.0 client-credentials grant), one per supported Azure plane: Resource Manager, Microsoft Graph, Key Vault, and Storage.
 2. The user's `az` traffic is routed through a local proxy to the Infisical **Gateway**, which reaches Azure on their behalf.
@@ -20,7 +20,7 @@ Each account points at a single Microsoft Entra ID (Azure AD) service principal,
 
 A plane is only usable if the service principal has permission for it (RBAC for Resource Manager, Key Vault, and Storage; application permissions with admin consent for Microsoft Graph). Planes the principal can't get a token for are simply not brokered.
 
-## Creating an Account
+## Creating an account
 
 Before adding the account, create a service principal in Azure and give it access.
 
@@ -78,7 +78,7 @@ Type `exit` to end the session (or press **Ctrl+C**, or wait for it to expire). 
 An Azure session recording is a log of the HTTP requests and responses made to Azure during the session: each request's method and URL, and its response body. Key Vault request and response bodies are redacted in the log, since they carry secret values.
 </Note>
 
-## Next Steps
+## Next steps
 
 <CardGroup cols={2}>
   <Card title="GCP Service Account Accounts" icon="google" href="/documentation/platform/pam/accounts/gcp-service-account">
