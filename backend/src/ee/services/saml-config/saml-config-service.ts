@@ -14,7 +14,7 @@ import {
   TSamlConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
-import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
+import { getEnforcedIdentityLimit, throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -570,6 +570,7 @@ export const samlConfigServiceFactory = ({
 
     const plan = await licenseService.getPlan(orgId);
     const shouldSyncGroups = !!samlConfig?.enableGroupSync && !!plan.groups;
+    const identityLimit = getEnforcedIdentityLimit(plan);
 
     let user: TUsers;
     if (userAlias) {
@@ -701,7 +702,13 @@ export const samlConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await throwOnPlanSeatLimitReached(licenseService, orgId, UserAliasType.SAML);
+          await throwOnPlanSeatLimitReached({
+            licenseService,
+            orgId,
+            identityLimit,
+            tx,
+            aliasType: UserAliasType.SAML
+          });
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 

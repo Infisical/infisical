@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
+import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -132,17 +133,17 @@ export const identityServiceFactory = ({
         });
     }
 
+    const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(orgId));
+
     const identity = await identityDAL.transaction(async (tx) => {
       // Acquire advisory lock to prevent race conditions when checking identity limits
       // This ensures that concurrent requests cannot bypass the identity limit check
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateIdentity(orgId)]);
 
-      // Check identity limit inside the transaction after acquiring the lock
-      const plan = await licenseService.getPlan(orgId);
-      const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
-      if (!isEnterpriseBypass && plan?.identityLimit) {
+      // Count seats inside the transaction, after the lock, so a concurrent create can't slip past
+      if (identityLimit) {
         const { identitiesUsed } = await licenseService.getOrgSeatUsage(orgId, tx);
-        if (identitiesUsed >= plan.identityLimit) {
+        if (identitiesUsed >= identityLimit) {
           throw new BadRequestError({
             message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
           });

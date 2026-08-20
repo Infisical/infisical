@@ -454,7 +454,7 @@ export const licenseServiceFactory = ({
     if (refreshCache) {
       await refreshPlan(rootOrgId);
     }
-    const plan = getPlan(rootOrgId, projectId);
+    const plan = await getPlan(rootOrgId, projectId);
     return plan;
   };
 

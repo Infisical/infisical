@@ -11,6 +11,7 @@ import {
 } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
+import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
@@ -863,7 +864,7 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "This endpoint is not supported for cloud instances" });
 
     const serverAdmin = await userDAL.findById(actor.id);
-    const plan = licenseService.onPremFeatures;
+    const identityLimit = getEnforcedIdentityLimit(licenseService.onPremFeatures);
 
     const isEmailInvalid = await isDisposableEmail(inviteAdminEmails);
     if (isEmailInvalid) {
@@ -897,10 +898,9 @@ export const superAdminServiceFactory = ({
         tx
       );
 
-      const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
-      if (!isEnterpriseBypass && plan?.identityLimit) {
+      if (identityLimit) {
         const { identitiesUsed } = await licenseService.getOrgSeatUsage(org.id, tx);
-        if (identitiesUsed >= plan.identityLimit) {
+        if (identitiesUsed >= identityLimit) {
           throw new BadRequestError({
             name: "InviteUser",
             message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."

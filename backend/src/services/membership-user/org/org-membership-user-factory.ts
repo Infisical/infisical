@@ -4,6 +4,7 @@ import { AccessScope, OrganizationActionScope, OrgMembershipStatus } from "@app/
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -117,11 +118,10 @@ export const newOrgMembershipUserFactory = ({
       }
     }
 
-    const plan = await licenseService.getPlan(dto.permission.orgId);
-    const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
-    if (!isEnterpriseBypass && plan?.identityLimit) {
+    const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(dto.permission.orgId));
+    if (identityLimit) {
       const { identitiesUsed } = await licenseService.getOrgSeatUsage(dto.permission.orgId);
-      if (identitiesUsed >= plan.identityLimit) {
+      if (identitiesUsed >= identityLimit) {
         throw new BadRequestError({
           name: "InviteUser",
           message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
