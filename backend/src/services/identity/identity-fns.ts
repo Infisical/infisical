@@ -25,6 +25,10 @@ export const getIdentityActiveLockoutAuthMethods = async (
   return Array.from(activeLockoutAuthMethods);
 };
 
+// The ingredients of a lockout key rather than the key itself, so callers that hold identity
+// rows never have to know the key format. `id` and `universalAuthClientId` are the first and
+// last segments of `lockout:identity:<id>:<authMethod>:<slug>`; `authMethods` is not part of
+// the format and instead selects which lookup strategy the identity gets below.
 export type TIdentityLockoutLookup = {
   id: string;
   authMethods: IdentityAuthMethod[];
@@ -50,6 +54,13 @@ const isLockedOut = (raw: string | null) => {
 // Universal auth keys its lockout by client id, which the caller already has, so it is the only
 // lockout-capable method resolvable by exact key. Every other lockout-capable method falls
 // through to the pattern scan below.
+//
+// That fallback is the expensive path, and it is worth removing rather than living with: every
+// scan walks the entire Redis keyspace, so a page of LDAP identities still costs one full sweep
+// per row and gets slower as the instance accumulates keys, hammering Redis and dragging out
+// page load. Making every method exactly resolvable — by persisting the slug each method keys
+// its lockout by, so the key can always be derived instead of discovered — would let the whole
+// page resolve in one batched read regardless of auth method, and retire the scan for good.
 const isExactlyResolvable = (el: TIdentityLockoutLookup, method: IdentityAuthMethod) =>
   method === IdentityAuthMethod.UNIVERSAL_AUTH && Boolean(el.universalAuthClientId);
 
@@ -60,6 +71,8 @@ export const getActiveLockoutAuthMethodsForIdentities = async (
   const result: Record<string, IdentityAuthMethod[]> = {};
   if (!identities.length) return result;
 
+  // Records that an identity is locked out on a method. Both lookup paths below can surface the
+  // same identity+method pair, so this deduplicates rather than letting callers push directly.
   const add = (identityId: string, method: IdentityAuthMethod) => {
     if (!result[identityId]) result[identityId] = [];
     if (!result[identityId].includes(method)) result[identityId].push(method);
