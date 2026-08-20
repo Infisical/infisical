@@ -1,5 +1,5 @@
 ---
-title: "Azure DevOps Sync"
+title: "Azure DevOps sync"
 description: "Learn how to configure a Azure DevOps Sync for Infisical."
 ---
 
@@ -40,7 +40,7 @@ description: "Learn how to configure a Azure DevOps Sync for Infisical."
             - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
                 - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
                 <Note>
-                    Azure Devops does not support importing secrets.
+                    Azure DevOps does not support importing secrets.
                 </Note>
             - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name.
             - **Auto-Sync Enabled**: If enabled, secrets will automatically be synced from the source location when changes occur. Disable to enforce manual syncing only.

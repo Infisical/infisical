@@ -5,6 +5,16 @@ import { cn } from "@app/components/v3/utils";
 
 import { Button } from "../Button";
 
+const OVERLAY_SELECTOR = [
+  '[role="dialog"]',
+  '[role="menu"]',
+  '[role="listbox"]',
+  '[data-slot="dialog-content"]',
+  '[data-slot="popover-content"]',
+  '[data-slot="dropdown-menu-content"]',
+  '[data-slot="select-content"]'
+].join(", ");
+
 type SelectedActionBarProps = Omit<React.ComponentProps<"div">, "children"> & {
   selectedCount: number;
   onClearSelection: () => void;
@@ -24,7 +34,30 @@ function SelectedActionBar({
   ...props
 }: SelectedActionBarProps) {
   const isVisible = selectedCount > 0;
+  const clearSelectionRef = React.useRef(onClearSelection);
   const lastVisibleContent = React.useRef({ children, selectedCount, selectionLabel });
+
+  clearSelectionRef.current = onClearSelection;
+
+  React.useEffect(() => {
+    if (!isVisible) return undefined;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+
+      const target = event.target instanceof Element ? event.target : null;
+      const isEditableTarget =
+        target?.closest("input, textarea, select, [contenteditable='true']") ?? false;
+      const isOverlayTarget = target?.closest(OVERLAY_SELECTOR) ?? false;
+
+      if (isEditableTarget || isOverlayTarget) return;
+
+      clearSelectionRef.current();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isVisible]);
 
   if (isVisible) {
     lastVisibleContent.current = { children, selectedCount, selectionLabel };

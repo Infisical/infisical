@@ -1,6 +1,6 @@
 ---
 title: "Kubernetes with cert-manager (ACME)"
-sidebarTitle: "Issue TLS Certificates in Kubernetes (ACME)"
+sidebarTitle: "Issue TLS certificates in Kubernetes (ACME)"
 description: "Automatically provision and manage TLS certificates in Kubernetes using cert-manager's ACME issuer and Infisical."
 ---
 
@@ -12,7 +12,7 @@ Issue TLS certificates to your Kubernetes workloads using [cert-manager](https:/
   This guide assumes you have an Application with [ACME enrollment](/documentation/platform/pki/applications/enrollment-methods/acme) configured.
 </Info>
 
-## How It Works
+## How it works
 
 1. Install cert-manager in your Kubernetes cluster
 2. Create an `Issuer` that connects to Infisical's ACME server
@@ -340,11 +340,11 @@ You should now see `ca.crt`, `tls.crt`, and `tls.key` in the secret data.
 </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Nginx with Certbot" icon="n" href="/documentation/platform/pki/guides/applications/nginx-certbot">
-    Set up ACME for Nginx web servers.
+  <Card title="NGINX with Certbot" icon="n" href="/documentation/platform/pki/guides/applications/nginx-certbot">
+    Set up ACME for NGINX web servers.
   </Card>
   <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     Push certificates to AWS, Azure, and more.

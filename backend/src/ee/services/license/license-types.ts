@@ -37,6 +37,11 @@ export type TPlanBillingInfo = {
   quantity: number;
 };
 
+export type TOrgSeatUsage = {
+  membersUsed: number;
+  identitiesUsed: number;
+};
+
 export type TFeatureSet = {
   _id: null;
   slug: string | null;
@@ -48,9 +53,7 @@ export type TFeatureSet = {
   workspacesUsed: number;
   dynamicSecret: false;
   memberLimit: null;
-  membersUsed: number;
   identityLimit: null;
-  identitiesUsed: number;
   enforceIdentityLimit?: boolean;
   subOrganization: false;
   environmentLimit: null;

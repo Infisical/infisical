@@ -30,7 +30,6 @@ const schema = z.object({
     .trim()
     .min(1, "At least one hostname or IP is required")
     .max(4096, "Hostnames or IPs must be at most 4096 characters"),
-  ttl: z.string().trim().min(1, "TTL is required").max(64, "TTL is too long"),
   keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
 });
 
@@ -57,7 +56,6 @@ export const KmipServerDeployModal = ({ isOpen, onOpenChange }: Props) => {
     defaultValues: {
       name: "",
       hostnamesOrIps: "",
-      ttl: "1y",
       keyAlgorithm: CertKeyAlgorithm.RSA_2048
     }
   });
@@ -67,7 +65,6 @@ export const KmipServerDeployModal = ({ isOpen, onOpenChange }: Props) => {
       const kmipServer = await createKmipServer({
         name: form.name,
         hostnamesOrIps: form.hostnamesOrIps,
-        ttl: form.ttl,
         keyAlgorithm: form.keyAlgorithm,
         authMethod: { method: "token" }
       });
@@ -125,21 +122,6 @@ export const KmipServerDeployModal = ({ isOpen, onOpenChange }: Props) => {
                 helperText="Comma-separated list of the hostnames or IPs that KMIP clients will use to reach this server. These become the server certificate's subject alternative names."
               >
                 <Input {...field} placeholder="kmip.example.com, 10.0.0.5" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="ttl"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Certificate TTL"
-                isRequired
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText="Validity period of the server certificate, e.g. 2 days, 1d, 2h, 1y."
-              >
-                <Input {...field} placeholder="1y" />
               </FormControl>
             )}
           />

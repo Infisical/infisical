@@ -69,7 +69,7 @@ export const ProductSettingsPage = () => {
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <div className="h-full">
-        <div className="mx-auto h-full w-full max-w-8xl bg-bunker-800 text-white">
+        <div className="mx-auto h-full w-full max-w-8xl text-white">
           <PageHeader
             scope={ProjectType.SecretManager}
             title="Product Settings"

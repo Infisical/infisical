@@ -11,16 +11,16 @@ This guide explains how to upgrade Infisical Linux package installations to newe
 The Infisical Linux package includes only the Infisical service component itself, as PostgreSQL and Redis databases are managed separately. 
 Upgrades for PostgreSQL and Redis are not covered in this guide as they depend on your specific database deployment method.
 
-## Upgrade Options
+## Upgrade options
 
 There are two primary methods to upgrade Infisical:
 
 1. **Standard Upgrade (with brief downtime)**: The simplest approach that briefly takes Infisical offline during the upgrade.
 2. **Minimal-Downtime Upgrade**: For multi-node deployments where high availability is required.
 
-## Before You Begin
+## Before you begin
 
-### Checking Your Current Version
+### Checking your current version
 
 Before upgrading, note your current Infisical version:
 
@@ -36,7 +36,7 @@ Look for `infisical` component. This will be the version of Infisical currently 
 - Back up your PostgreSQL database before proceeding with any upgrade
 - Review release notes for the version you're upgrading to
 
-### Creating a Database Backup
+### Creating a database backup
 
 We strongly recommend backing up your database before upgrading. 
 Your backup approach may look different depending on how you configured PostgreSQL and whether it's self-managed or using a managed service. 
@@ -47,7 +47,7 @@ Here is a sample of how you would perform a manual backup:
 pg_dump -U <username> -h <db-host> -d <db-name> > infisical_backup.sql
 ```
 
-### Database Migrations During Upgrade
+### Database migrations during upgrade
 
 By default, Infisical runs database migrations automatically on startup.  
 
@@ -55,7 +55,7 @@ By default, Infisical runs database migrations automatically on startup.
 - Other instances will wait for the lock to be released before continuing startup
 - This prevents race conditions and database conflicts
 
-## Standard Upgrade (with Downtime)
+## Standard upgrade (with downtime)
 
 This method is suitable for single-node deployments or situations where a brief downtime is acceptable.
 
@@ -121,11 +121,11 @@ To upgrade to a specific version:
   </Step>
 </Steps>
 
-## Minimal-Downtime Upgrade
+## Minimal-downtime upgrade
 
 For multi-node setups where you need to maintain availability during upgrades, follow this procedure. This approach requires at least two Infisical nodes behind a load balancer.
 
-### Understanding Traffic Draining
+### Understanding traffic draining
 
 "Draining" a server means gracefully removing it from the pool of active servers without disrupting existing connections. When you drain a server:
 
@@ -135,13 +135,13 @@ For multi-node setups where you need to maintain availability during upgrades, f
 
 This approach ensures users/machines do not experience sudden connection errors during the upgrade process.
 
-### Preparing for the Upgrade
+### Preparing for the upgrade
 
 1. **Designate a deploy node**: Choose any single node that will run migrations. This node will be upgraded first.
 
 2. **Configure your load balancer**: Ensure your load balancer can perform health checks against Infisical's `api/status` endpoint.
 
-### Upgrade Process
+### Upgrade process
 
 #### On the deploy node:
 
@@ -325,7 +325,7 @@ After all nodes are upgraded, verify that the application is functioning correct
 </Step>
 </Steps>
 
-## Rolling Back
+## Rolling back
 
 If you need to roll back to a previous version of Infisical, follow steps below.
 
@@ -349,7 +349,7 @@ sudo yum downgrade infisical-core-<previous-version>
 </Step>
 
 <Step title="Restore your database from backup">
-Restore your Postgres/Redis database from backup.
+Restore your PostgreSQL/Redis database from backup.
 </Step>
 
 <Step title="Start the service">

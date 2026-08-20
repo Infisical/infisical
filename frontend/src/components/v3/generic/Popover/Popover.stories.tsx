@@ -19,7 +19,7 @@ import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "./Popove
  *   render an existing `Button` / `IconButton` as the trigger.
  * - `PopoverContent` — the floating panel. Accepts `align` (`start` / `center` / `end`),
  *   `side` (`top` / `right` / `bottom` / `left`), `sideOffset` (gap in px), and
- *   `container` (custom portal target).
+ *   `container` (custom portal target). It preserves an 8px viewport gutter by default.
  * - `PopoverAnchor` — optional. Detaches positioning from the trigger so the panel
  *   can open relative to a different element.
  *
@@ -147,7 +147,7 @@ export const Sides: Story = {
     docs: {
       description: {
         story:
-          "`side` controls which edge of the trigger the panel opens from — `top`, `right`, `bottom` (default), or `left`. Increase `sideOffset` (default `4`) to add breathing room. Radix automatically flips to the opposite side if there isn't enough viewport space."
+          "`side` controls which edge of the trigger the panel opens from — `top`, `right`, `bottom` (default), or `left`. Increase `sideOffset` (default `4`) to add breathing room. Radix automatically flips to the opposite side if there isn't enough viewport space and preserves an 8px viewport gutter by default."
       }
     }
   },

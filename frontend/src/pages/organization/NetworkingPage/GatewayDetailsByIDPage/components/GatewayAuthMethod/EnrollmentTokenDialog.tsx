@@ -94,10 +94,10 @@ export const EnrollmentTokenContent = ({
 
   return (
     <div className="min-w-0 space-y-4">
-      <TabsContent value="cli" className="mt-0 min-w-0">
+      <TabsContent value="cli" className="min-w-0">
         <CodeBlock value={cliCommand} label={commandLabel} isCopyable={!isExpired} />
       </TabsContent>
-      <TabsContent value="systemd" className="mt-0 min-w-0 space-y-4">
+      <TabsContent value="systemd" className="min-w-0 space-y-4">
         <CodeBlock
           value={systemdInstallCommand}
           isCopyable={!isExpired}

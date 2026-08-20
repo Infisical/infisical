@@ -95,7 +95,8 @@ export enum OrgPermissionSubjects {
   EmailDomains = "email-domains",
   CertManager = "certificate-manager",
   HoneyTokens = "honey-tokens",
-  OauthClients = "oauth-clients"
+  OauthClients = "oauth-clients",
+  SecretsManagementInsights = "secrets-management-insights"
 }
 
 export enum OrgPermissionCertManagerActions {
@@ -113,6 +114,12 @@ export enum OrgPermissionEmailDomainActions {
 
 export enum OrgPermissionHoneyTokenActions {
   Setup = "setup"
+}
+
+export enum OrgPermissionSecretsManagementInsightsActions {
+  Read = "read",
+  GenerateReport = "generate-report",
+  DeleteReport = "delete-report"
 }
 
 export enum OrgPermissionProjectActions {
@@ -154,6 +161,7 @@ export enum OrgPermissionIdentityActions {
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
   RevokeAuth = "revoke-auth",
+  EditAuth = "edit-auth",
   CreateToken = "create-token",
   GetToken = "get-token",
   DeleteToken = "delete-token"
@@ -223,6 +231,10 @@ export type OrgPermissionSet =
   | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains]
   | [OrgPermissionCertManagerActions, OrgPermissionSubjects.CertManager]
   | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens]
-  | [OrgPermissionActions, OrgPermissionSubjects.OauthClients];
+  | [OrgPermissionActions, OrgPermissionSubjects.OauthClients]
+  | [
+      OrgPermissionSecretsManagementInsightsActions,
+      OrgPermissionSubjects.SecretsManagementInsights
+    ];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;

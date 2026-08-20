@@ -103,6 +103,7 @@ export type TWorkspaceUser = {
   id: string;
   user: {
     isOrgMembershipActive: boolean;
+    isOrgMembershipPending: boolean;
     email: string;
     username: string;
     firstName: string;
