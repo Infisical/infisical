@@ -130,7 +130,7 @@ The field accepts a whole script, so several steps can run in one go: put each o
 Your Gateway runs the command, never Infisical. A WinRM Connection already requires a gateway, so nothing extra is needed here.
 
 <Note>
-  The Gateway must be running Infisical CLI **v0.43.120 or later**. An earlier Gateway has no PowerShell run-command endpoint and rejects the request. Run `infisical --version` on the Gateway host to check, and see [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for how to upgrade.
+  The Gateway must be running Infisical CLI **v0.43.120 or later**. An earlier Gateway has no PowerShell run-command endpoint and rejects the request. A command longer than 2048 characters needs **v0.43.124 or later**, because earlier Gateways cap it at 2048 and reject the sync even though the form accepted the command. Run `infisical --version` on the Gateway host to check, and see [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for how to upgrade.
 </Note>
 
 <PostSyncCommandFlow />
@@ -160,6 +160,8 @@ Your Gateway runs the command, never Infisical. A WinRM Connection already requi
 ### Length Limit
 
 A command is limited to 8192 characters, counted after the variables are substituted. For anything longer, put the logic in a script on the server and call that script.
+
+Going past 2048 characters requires a Gateway on Infisical CLI v0.43.124 or later. See the Gateway version note above.
 
 ### Post-Sync Command FAQ
 
