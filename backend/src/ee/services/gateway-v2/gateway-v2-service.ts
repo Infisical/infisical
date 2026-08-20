@@ -987,7 +987,7 @@ export const gatewayV2ServiceFactory = ({
     await $checkGatewayHealth(gateway.id);
   };
 
-  const reportLoad = async ({
+  const reportMetrics = async ({
     orgPermission,
     activeChannels
   }: {
@@ -1351,7 +1351,7 @@ export const gatewayV2ServiceFactory = ({
   return {
     listGateways,
     registerGateway,
-    reportLoad,
+    reportMetrics,
     getPlatformConnectionDetailsByGatewayId,
     getPAMConnectionDetails,
     deleteGatewayById,

@@ -43,13 +43,13 @@ export const writeLimit: RateLimitOptions = {
 // rather than by IP, because the write limiter's IP key is shared: ~100 gateways behind one NAT
 // address would exhaust a 200/min quota on load reports alone, start getting 429s, and their
 // entries would go stale.
-export const gatewayLoadReportLimit: RateLimitOptions = {
+export const gatewayMetricsReportLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",
   max: 10,
   keyGenerator: (req) => {
     const actorId = (req as { permission?: { id?: string } }).permission?.id;
-    return actorId ? `gateway-load:${actorId}` : req.realIp;
+    return actorId ? `gateway-metrics:${actorId}` : req.realIp;
   }
 };
 

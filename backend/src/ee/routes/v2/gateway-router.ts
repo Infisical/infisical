@@ -3,7 +3,7 @@ import z from "zod";
 import { GatewaysV2Schema } from "@app/db/schemas";
 import { GATEWAYS } from "@app/lib/api-docs";
 import { zodBuffer } from "@app/lib/zod";
-import { gatewayLoadReportLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { gatewayMetricsReportLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -68,25 +68,25 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
   // gateway cannot look alive just by reporting load.
   server.route({
     method: "POST",
-    url: "/load",
+    url: "/metrics",
     config: {
-      rateLimit: gatewayLoadReportLimit
+      rateLimit: gatewayMetricsReportLimit
     },
     schema: {
-      operationId: "gatewayLoadReport",
+      operationId: "gatewayMetricsReport",
       body: z.object({
-        activeChannels: z.number().int().min(0).max(1_000_000).describe(GATEWAYS.LOAD_REPORT.activeChannels)
+        activeChannels: z.number().int().min(0).max(1_000_000).describe(GATEWAYS.METRICS_REPORT.activeChannels)
       }),
       response: {
         200: z.object({
-          gatewayId: z.string().uuid().describe(GATEWAYS.LOAD_REPORT.gatewayId),
-          activeChannels: z.number().int().describe(GATEWAYS.LOAD_REPORT.activeChannels)
+          gatewayId: z.string().uuid().describe(GATEWAYS.METRICS_REPORT.gatewayId),
+          activeChannels: z.number().int().describe(GATEWAYS.METRICS_REPORT.activeChannels)
         })
       }
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.gatewayV2.reportLoad({
+      return server.services.gatewayV2.reportMetrics({
         orgPermission: req.permission,
         activeChannels: req.body.activeChannels
       });
