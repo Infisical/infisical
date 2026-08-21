@@ -44,14 +44,31 @@ export enum WebhookEvents {
   SecretModified = "secrets.modified",
   SecretRotationFailed = "secrets.rotation-failed",
   HoneyTokenTriggered = "honey-token.triggered",
+  ChangeRequestModified = "secrets.change-request.modified",
   TestEvent = "test"
 }
 
 export const SUBSCRIBABLE_WEBHOOK_EVENTS = [
   WebhookEvents.SecretModified,
   WebhookEvents.SecretRotationFailed,
-  WebhookEvents.HoneyTokenTriggered
+  WebhookEvents.HoneyTokenTriggered,
+  WebhookEvents.ChangeRequestModified
 ] as const;
+
+export enum ChangeRequestWebhookAction {
+  Created = "created",
+  Reviewed = "reviewed",
+  Closed = "closed",
+  Reopened = "reopened",
+  Merged = "merged"
+}
+
+export type TWebhookActor = {
+  type: ActorType.USER | ActorType.IDENTITY;
+  id: string;
+  name: string;
+  email: string | null;
+};
 
 export type TSubscribableWebhookEvent = (typeof SUBSCRIBABLE_WEBHOOK_EVENTS)[number];
 
@@ -113,8 +130,34 @@ type TWebhookTestEventPayload = {
   };
 };
 
+type TWebhookChangeRequestModifiedEventPayload = {
+  type: WebhookEvents.ChangeRequestModified;
+  payload: {
+    projectId: string;
+    projectName?: string;
+    environment: string;
+    environmentName?: string;
+    secretPath?: string;
+    type?: string | null;
+    action: ChangeRequestWebhookAction;
+    request: {
+      id: string;
+      slug: string;
+      url: string;
+      status: string;
+      hasMerged: boolean;
+      isBypassed: boolean;
+      policy: { id: string; name: string; enforcementLevel: string };
+      requestedBy: TWebhookActor | null;
+      createdAt: string;
+      updatedAt: string;
+    };
+  };
+};
+
 export type TWebhookPayloads =
   | TWebhookSecretModifiedEventPayload
   | TWebhookSecretRotationFailedEventPayload
   | TWebhookHoneyTokenTriggeredEventPayload
+  | TWebhookChangeRequestModifiedEventPayload
   | TWebhookTestEventPayload;
