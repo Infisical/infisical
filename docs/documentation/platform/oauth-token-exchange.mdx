@@ -93,6 +93,8 @@ You need permission to manage both OAuth applications and SSO, because enabling 
     - **Identity provider enforces MFA**: Turn this on to declare that your identity provider already requires MFA. Without it, exchanges fail for any user who requires MFA, because there is no Infisical MFA challenge to run.
 
     There is no issuer to set here. Infisical always verifies against your organization's OIDC SSO provider, which cannot be overridden per application.
+
+    An application uses one flow or the other. Registering it for token exchange rules out the authorization code flow, and the reverse, so a service that needs both needs two registrations. This holds for the API too: sending `grantTypes` containing both the token-exchange grant and `authorization_code` is rejected.
   </Step>
   <Step title="Store the credentials">
     Infisical shows the **Client ID** and **Client Secret** on creation.

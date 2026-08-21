@@ -160,6 +160,12 @@ export const assertValidOauthClientGrantConfig = ({ grantTypes, resolved, suppli
   const isRedirectBased = grantTypes.includes(OauthGrantType.AuthorizationCode);
   const isTokenExchange = grantTypes.includes(OauthGrantType.TokenExchange);
 
+  if (isRedirectBased && isTokenExchange) {
+    throw new BadRequestError({
+      message: `The '${OauthGrantType.TokenExchange}' grant cannot be combined with the '${OauthGrantType.AuthorizationCode}' grant. An application uses one or the other. Register a second application if you need both flows.`
+    });
+  }
+
   if (grantTypes.includes(OauthGrantType.RefreshToken) && !grantTypes.includes(OauthGrantType.AuthorizationCode)) {
     throw new BadRequestError({
       message: `The '${OauthGrantType.RefreshToken}' grant requires the '${OauthGrantType.AuthorizationCode}' grant, because refresh tokens are only issued by the authorization code flow.`

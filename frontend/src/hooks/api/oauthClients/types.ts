@@ -1,4 +1,3 @@
-// Redirect URIs and PKCE apply only to AuthorizationCode, the audience only to TokenExchange.
 export enum OauthGrantType {
   AuthorizationCode = "authorization_code",
   RefreshToken = "refresh_token",

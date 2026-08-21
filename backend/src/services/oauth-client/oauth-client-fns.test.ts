@@ -272,14 +272,24 @@ describe("assertValidOauthClientGrantConfig", () => {
     expect(() => assertValidOauthClientGrantConfig(exchangeFlow)).not.toThrow();
   });
 
-  test("accepts an application registered for both grants", () => {
+  test("rejects an application registered for both flows", () => {
     expect(() =>
       assertValidOauthClientGrantConfig({
         grantTypes: [OauthGrantType.AuthorizationCode, OauthGrantType.RefreshToken, OauthGrantType.TokenExchange],
         resolved: { redirectUris: ["https://app.example.com/callback"], tokenExchangeAudience: "api://mcp" },
         supplied: { redirectUris: ["https://app.example.com/callback"], tokenExchangeAudience: "api://mcp" }
       })
-    ).not.toThrow();
+    ).toThrow(/cannot be combined with the 'authorization_code' grant/);
+  });
+
+  test("rejects the token exchange grant alongside authorization_code alone", () => {
+    expect(() =>
+      assertValidOauthClientGrantConfig({
+        grantTypes: [OauthGrantType.AuthorizationCode, OauthGrantType.TokenExchange],
+        resolved: { redirectUris: ["https://app.example.com/callback"], tokenExchangeAudience: "api://mcp" },
+        supplied: { tokenExchangeAudience: "api://mcp" }
+      })
+    ).toThrow(/cannot be combined with the 'authorization_code' grant/);
   });
 
   test("rejects an empty grant type list", () => {

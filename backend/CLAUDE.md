@@ -249,8 +249,10 @@ invalidating anything already issued. Sessions are tagged with
 `getOauthClientSessionUserAgent(clientId)`, the only handle we have on them. Rotation revokes only on
 exchange applications: there the secret alone mints tokens for any user, whereas in the redirect flow it
 has to be paired with an authorization code or refresh token and blanket revocation would just sign
-everyone out. The tag is per client, not per grant, so a client holding both grants loses its
-redirect-flow tokens too (the safe direction, and only reachable through the API).
+everyone out. The tag is per client, not per grant, which is unambiguous because a client cannot hold
+both flows: `assertValidOauthClientGrantConfig` rejects the token-exchange grant alongside
+`authorization_code`, in the API as well as the UI, so an application is either a redirect-flow client or
+an exchange client. A service needing both registers twice.
 
 **That sweep only reaps sessions that already exist, so the exchange rechecks the client after creating
 its own.** `exchangeSubjectToken` authenticates the client, then spends provider discovery, JWKS
