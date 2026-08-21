@@ -189,7 +189,7 @@ const ActionsMultiSelect = ({
         placeholder="Select actions..."
         isDisabled={isDisabled}
         className="w-full"
-        portalContainer={menuPortalContainerRef?.current}
+        portalContainer={menuPortalContainerRef}
         isError={Boolean(actionsError)}
       />
       {actionsError && (

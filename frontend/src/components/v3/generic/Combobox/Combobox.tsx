@@ -29,7 +29,7 @@ type ComboboxSharedProps<TOption> = {
   isLoading?: boolean;
   isError?: boolean;
   modal?: boolean;
-  portalContainer?: HTMLElement | null;
+  portalContainer?: HTMLElement | React.RefObject<HTMLElement | null> | null;
   contentClassName?: string;
 };
 
@@ -167,7 +167,7 @@ type ComboboxPopupProps = {
   children: React.ReactNode;
   className?: string;
   initialFocus?: React.RefObject<HTMLElement | null>;
-  portalContainer?: HTMLElement | null;
+  portalContainer?: HTMLElement | React.RefObject<HTMLElement | null> | null;
 };
 
 const ComboboxPopup = ({
@@ -179,7 +179,11 @@ const ComboboxPopup = ({
   portalContainer
 }: ComboboxPopupProps) => (
   <ComboboxPrimitive.Portal
-    container={portalContainer}
+    // Base UI treats an explicit null container as "not yet resolved" and never renders
+    // the popup, so a null (e.g. a ref read before attachment) must degrade to the
+    // document.body default. Prefer passing the RefObject itself: it is resolved lazily
+    // at open time.
+    container={portalContainer ?? undefined}
     data-slot="combobox-portal"
     className="pointer-events-auto"
   >
