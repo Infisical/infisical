@@ -317,7 +317,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         200: z.object({ token: z.string(), expiresAt: z.date() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.resourceAuthMethod.mintToken({
         resource: { type: "kmip", id: req.params.kmipServerId },

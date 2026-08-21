@@ -360,7 +360,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.resourceAuthMethod.mintToken({
         resource: { type: "gateway", id: req.params.gatewayId },
