@@ -72,6 +72,7 @@ Two things it deliberately cannot do:
 - **Its tokens carry an expiry (`exp`).** Infisical rejects a token without one, since it would be replayable indefinitely.
 - **Each user has signed in to Infisical through OIDC SSO at least once.** Infisical matches the token's subject to the account created on that sign-in, so treat one browser sign-in as an onboarding step.
 - **Your middleware has its own registration in your identity provider**, so its tokens carry an audience distinct from Infisical's.
+- **Its tokens are addressed to that registration alone**, or carry an `azp` claim naming it. See [Why the audience matters](#why-the-audience-matters).
 
 ## Registering your middleware
 
@@ -106,6 +107,8 @@ You need permission to manage both OAuth applications and SSO, because enabling 
 Your identity provider signs tokens for every application in your estate. Without an expected audience, any of them could be presented to Infisical and come back as a working Infisical token. Binding the application to one audience is what stops a token minted for an expenses app becoming a secrets-read credential.
 
 Set it to your middleware's own registration in your identity provider, never to Infisical's.
+
+Some providers can be configured to address one token to several audiences at once, which would let a token minted for another application list yours alongside its own. When a subject token carries more than one audience, Infisical requires an `azp` (authorized party) claim naming your configured audience, and rejects the token otherwise. A token addressed to a single audience needs no `azp`.
 
 ## Exchanging a token
 

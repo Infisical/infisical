@@ -292,6 +292,23 @@ export const verifySubjectToken = async ({ subjectToken, oidcConfig, expectedAud
     throw toSubjectTokenError(error, anchor, expectedAudience) ?? error;
   }
 
+  const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+  if (audiences.length > 1) {
+    const authorizedParty = typeof claims.azp === "string" ? claims.azp : undefined;
+
+    if (!authorizedParty) {
+      throw new UnauthorizedError({
+        message: `The subject token is addressed to several audiences (${audiences.join(", ")}) and carries no 'azp' claim, so there is no way to tell it was issued to this application rather than another one. Configure your identity provider to issue tokens addressed only to '${expectedAudience}', or to include an 'azp' claim.`
+      });
+    }
+
+    if (authorizedParty !== expectedAudience) {
+      throw new UnauthorizedError({
+        message: `The subject token was issued to '${authorizedParty}', not to this application's configured token exchange audience ('${expectedAudience}'). It is addressed to this application only as an additional audience, which is not enough to act on the user's behalf.`
+      });
+    }
+  }
+
   if (!claims.sub) {
     throw new UnauthorizedError({
       message: "The subject token has no 'sub' claim, so it does not identify a user."

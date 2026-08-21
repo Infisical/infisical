@@ -245,6 +245,7 @@ looks up.
 | Case | How | Expect |
 | --- | --- | --- |
 | Cross-application replay | subject token from `infisical-dev` | 401, audience does not match |
+| Shared extra audience | add an audience mapper putting `infisical-mcp` on `infisical-dev`'s tokens, then send one | 401, issued to `infisical-dev`, not this application |
 | Access token instead of ID token | send `access_token` | 401, audience does not match |
 | Tampered signature | change a character in the third JWT segment | 401, could not be verified |
 | `scope` supplied | add `-d scope=secrets:read` | 400, scope not supported |
