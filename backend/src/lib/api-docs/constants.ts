@@ -3957,6 +3957,8 @@ export const ENCRYPTION_KEY_ROTATION = {
       "A non-reversible label for the key this instance is currently running with. Use it to identify which archived key a database backup needs.",
     pendingRotation:
       "A generated key that has not been applied yet. Staging a rotation changes nothing until an instance starts with the new key.",
+    pendingFingerprint:
+      "Fingerprint of the generated key, so you can confirm the value you are about to deploy is the one you copied.",
     lastResolvedAt:
       "When an instance last started using the previous key. Recent means one is probably still running and would fail to restart if the key were removed. Null only means none has started since the rotation, not that none exists.",
     history:

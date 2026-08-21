@@ -7121,6 +7121,7 @@ interface DeleteEncryptionKeyRotationEvent {
   type: EventType.DELETE_ENCRYPTION_KEY_ROTATION;
   metadata: {
     rotationId: string;
+    fingerprint: string | null;
   };
 }
 

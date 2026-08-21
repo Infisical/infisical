@@ -655,14 +655,19 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             activeFingerprint: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.STATUS.activeFingerprint),
             encryptionStrategy: z.string().nullable(),
             pendingRotation: z
-              .object({ id: z.string().uuid(), createdAt: z.date() })
+              .object({
+                id: z.string().uuid(),
+                createdAt: z.date(),
+                fingerprint: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.STATUS.pendingFingerprint)
+              })
               .nullable()
               .describe(ENCRYPTION_KEY_ROTATION.STATUS.pendingRotation),
             retainedKey: z
               .object({
                 id: z.string().uuid(),
                 supersededAt: z.date(),
-                lastResolvedAt: z.date().nullable().describe(ENCRYPTION_KEY_ROTATION.STATUS.lastResolvedAt)
+                lastResolvedAt: z.date().nullable().describe(ENCRYPTION_KEY_ROTATION.STATUS.lastResolvedAt),
+                fingerprint: z.string().nullable()
               })
               .nullable(),
             history: z
@@ -774,13 +779,13 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req, res) => {
-      await server.services.encryptionKeyRotation.discardRotation(req.params.rotationId);
+      const { fingerprint } = await server.services.encryptionKeyRotation.discardRotation(req.params.rotationId);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         event: {
           type: EventType.DELETE_ENCRYPTION_KEY_ROTATION,
-          metadata: { rotationId: req.params.rotationId }
+          metadata: { rotationId: req.params.rotationId, fingerprint }
         }
       });
 

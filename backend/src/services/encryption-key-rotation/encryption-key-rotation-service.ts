@@ -1,3 +1,4 @@
+import { PgSqlLock } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -29,7 +30,14 @@ type TEncryptionKeyRotationServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "encryptRootKeyForKek" | "getCurrentKekFingerprint">;
   kmsRootConfigDAL: Pick<
     TKmsRootConfigDALFactory,
-    "findById" | "findAll" | "findPending" | "findRetained" | "create" | "deleteById" | "deleteAllPending"
+    | "findById"
+    | "findAll"
+    | "findPending"
+    | "findRetained"
+    | "create"
+    | "deleteById"
+    | "deleteAllPending"
+    | "transaction"
   >;
   kmsKekHistoryDAL: Pick<TKmsKekHistoryDALFactory, "findHistory" | "findCurrent" | "updateById">;
   envConfig: Pick<TEnvConfig, "KMS_ROOT_KEY_RETENTION_DAYS">;
@@ -65,12 +73,19 @@ export const encryptionKeyRotationServiceFactory = ({
     return {
       activeFingerprint: kmsService.getCurrentKekFingerprint(),
       encryptionStrategy: sentinel?.encryptionStrategy ?? null,
-      pendingRotation: pendingRows[0] ? { id: pendingRows[0].id, createdAt: pendingRows[0].createdAt } : null,
+      pendingRotation: pendingRows[0]
+        ? {
+            id: pendingRows[0].id,
+            createdAt: pendingRows[0].createdAt,
+            fingerprint: pendingRows[0].kekFingerprint ?? null
+          }
+        : null,
       retainedKey: retained
         ? {
             id: retained.id,
             supersededAt: retained.supersededAt as Date,
-            lastResolvedAt: retained.lastResolvedAt ?? null
+            lastResolvedAt: retained.lastResolvedAt ?? null,
+            fingerprint: retained.kekFingerprint ?? null
           }
         : null,
       history: history.map(({ kekFingerprint, activatedAt, supersededAt, retiredAt }) => ({
@@ -108,33 +123,61 @@ export const encryptionKeyRotationServiceFactory = ({
     const encryptedRootKey = kmsService.encryptRootKeyForKek(kekBuffer);
 
     // Replace, never accumulate: every pending row is a live working key to the root key.
-    if (existingPending.length) await kmsRootConfigDAL.deleteAllPending();
+    if (existingPending.length) {
+      await kmsRootConfigDAL.transaction(async (tx) => {
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
+        const stillPending = await kmsRootConfigDAL.findPending(tx);
+        if (stillPending.some((row) => row.activatedAt)) {
+          throw new BadRequestError({
+            message:
+              "The pending key was applied by a running instance while this request was in flight, so it cannot be replaced. There is no rollback once a rotation takes effect."
+          });
+        }
+        await kmsRootConfigDAL.deleteAllPending(tx);
+      });
+    }
 
+    const fingerprint = getKekFingerprint(kekBuffer);
     const pending = await kmsRootConfigDAL.create({
       encryptedRootKey,
       encryptionStrategy: RootKeyEncryptionStrategy.Software,
+      kekFingerprint: fingerprint,
       activatedAt: null
     });
 
-    const fingerprint = getKekFingerprint(kekBuffer);
     logger.info(`Encryption key rotation staged [rotationId=${pending.id}] [fingerprint=${fingerprint}]`);
 
     return { id: pending.id, fingerprint, key };
   };
 
   const discardRotation = async (rotationId: string) => {
-    const row = await kmsRootConfigDAL.findById(rotationId);
-    if (!row || row.id === KMS_ROOT_CONFIG_UUID) {
-      throw new NotFoundError({ message: `Pending encryption key rotation with ID '${rotationId}' not found` });
-    }
-    if (row.activatedAt) {
-      throw new BadRequestError({
-        message:
-          "That rotation has already been applied by a running instance and cannot be discarded. There is no rollback once a rotation takes effect."
-      });
-    }
-    await kmsRootConfigDAL.deleteById(rotationId);
-    logger.info(`Encryption key rotation discarded [rotationId=${rotationId}]`);
+    return kmsRootConfigDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
+
+      const row = await kmsRootConfigDAL.findById(rotationId, tx);
+      if (!row || row.id === KMS_ROOT_CONFIG_UUID) {
+        throw new NotFoundError({ message: `Pending encryption key rotation with ID '${rotationId}' not found` });
+      }
+      if (row.activatedAt) {
+        throw new BadRequestError({
+          message:
+            "That rotation has already been applied by a running instance and cannot be discarded. There is no rollback once a rotation takes effect."
+        });
+      }
+
+      const deleted = await kmsRootConfigDAL.deleteById(rotationId, tx);
+      if (!deleted) {
+        throw new BadRequestError({
+          message:
+            "The key was applied by a running instance while this request was in flight, so it could not be discarded. There is no rollback once a rotation takes effect."
+        });
+      }
+
+      logger.info(
+        `Encryption key rotation discarded [rotationId=${rotationId}] [fingerprint=${row.kekFingerprint ?? "unknown"}]`
+      );
+      return { fingerprint: row.kekFingerprint ?? null };
+    });
   };
 
   const completeRotation = async ({ rotationId, acknowledged }: TCompleteRotationDTO) => {
@@ -165,14 +208,15 @@ export const encryptionKeyRotationServiceFactory = ({
 
     await kmsRootConfigDAL.deleteById(rotationId);
 
-    const current = await kmsKekHistoryDAL.findCurrent();
     const history = await kmsKekHistoryDAL.findHistory();
-    const retiredEntry = history.find((entry) => entry.id !== current?.id && !entry.retiredAt);
+    const retiredEntry = row.kekFingerprint
+      ? history.find((entry) => entry.kekFingerprint === row.kekFingerprint && !entry.retiredAt)
+      : undefined;
     if (retiredEntry) await kmsKekHistoryDAL.updateById(retiredEntry.id, { retiredAt: new Date() });
 
     logger.info(`Encryption key rotation completed, previous key removed [retainedKeyId=${rotationId}]`);
 
-    return { retiredFingerprint: retiredEntry?.kekFingerprint ?? null };
+    return { retiredFingerprint: row.kekFingerprint ?? null };
   };
 
   const $runGarbageCollection = async () => {

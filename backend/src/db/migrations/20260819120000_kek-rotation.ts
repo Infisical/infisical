@@ -10,8 +10,9 @@ export async function up(knex: Knex): Promise<void> {
   const hasActivatedAt = await knex.schema.hasColumn(TableName.KmsServerRootConfig, "activatedAt");
   const hasSupersededAt = await knex.schema.hasColumn(TableName.KmsServerRootConfig, "supersededAt");
   const hasLastResolvedAt = await knex.schema.hasColumn(TableName.KmsServerRootConfig, "lastResolvedAt");
+  const hasKekFingerprint = await knex.schema.hasColumn(TableName.KmsServerRootConfig, "kekFingerprint");
 
-  if (!hasActivatedAt || !hasSupersededAt || !hasLastResolvedAt) {
+  if (!hasActivatedAt || !hasSupersededAt || !hasLastResolvedAt || !hasKekFingerprint) {
     await knex.schema.alterTable(TableName.KmsServerRootConfig, (t) => {
       // NULL means a pending rotation nobody has booted with yet.
       if (!hasActivatedAt) t.timestamp("activatedAt");
@@ -20,6 +21,7 @@ export async function up(knex: Knex): Promise<void> {
       // Stamped by each instance at boot on the row its key opened. Positive evidence that an instance
       // still holds that key; absence proves nothing, since an instance that never restarts never stamps.
       if (!hasLastResolvedAt) t.timestamp("lastResolvedAt");
+      if (!hasKekFingerprint) t.string("kekFingerprint", 64);
     });
   }
 
@@ -60,7 +62,7 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   // Only the sentinel is readable by pre-rotation code, so the other rows cannot survive.
-  const columns = ["activatedAt", "supersededAt", "lastResolvedAt"];
+  const columns = ["activatedAt", "supersededAt", "lastResolvedAt", "kekFingerprint"];
   const present: string[] = [];
   for (const column of columns) {
     // eslint-disable-next-line no-await-in-loop

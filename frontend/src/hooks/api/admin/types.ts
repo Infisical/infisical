@@ -249,8 +249,13 @@ export enum EncryptionRotationBlocker {
 export type TEncryptionStatus = {
   activeFingerprint: string | null;
   encryptionStrategy: string | null;
-  pendingRotation: { id: string; createdAt: string } | null;
-  retainedKey: { id: string; supersededAt: string; lastResolvedAt: string | null } | null;
+  pendingRotation: { id: string; createdAt: string; fingerprint: string | null } | null;
+  retainedKey: {
+    id: string;
+    supersededAt: string;
+    lastResolvedAt: string | null;
+    fingerprint: string | null;
+  } | null;
   history: {
     kekFingerprint: string;
     activatedAt: string;

@@ -13,6 +13,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Checkbox,
   CopyButton,
   Dialog,
   DialogBody,
@@ -21,6 +22,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Label,
   Table,
   TableBody,
   TableCell,
@@ -101,6 +103,15 @@ export const EncryptionKeyRotationSection = () => {
             </Badge>
           </div>
 
+          {status.pendingRotation?.fingerprint && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-foreground/70">Generated key awaiting deployment</span>
+              <Badge variant="info" className="font-mono">
+                {status.pendingRotation.fingerprint}
+              </Badge>
+            </div>
+          )}
+
           {status.blockers.map((blocker) => (
             <Alert
               key={blocker}
@@ -142,20 +153,18 @@ export const EncryptionKeyRotationSection = () => {
                     : "No instance has started on it since the rotation. Instances that have not restarted yet will not have reported."}
                 </p>
                 <div className="mt-3 flex flex-col gap-2">
-                  <label className="flex items-start gap-2 text-xs" htmlFor="ack-remove-old-key">
-                    <input
+                  <div className="flex items-start gap-2">
+                    <Checkbox
                       id="ack-remove-old-key"
-                      type="checkbox"
-                      checked={acknowledged}
-                      onChange={(e) => setAcknowledged(e.target.checked)}
-                      className="mt-0.5"
+                      isChecked={acknowledged}
+                      onCheckedChange={(value) => setAcknowledged(value === true)}
                     />
-                    <span>
+                    <Label htmlFor="ack-remove-old-key" className="text-xs font-normal">
                       I have stored the new key somewhere I can recover it, and I understand that
                       database backups taken before this rotation will need the old key, which is
                       about to be removed.
-                    </span>
-                  </label>
+                    </Label>
+                  </div>
                   <Button
                     className="self-start"
                     variant="danger"

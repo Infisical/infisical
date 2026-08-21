@@ -139,7 +139,7 @@ export const getMigrationEncryptionServices = async ({
     envConfig
   });
 
-  await kmsService.startService(hsmStatus);
+  await kmsService.startService(hsmStatus, { skipRotationState: true });
 
   return { kmsService, hsmService };
 };

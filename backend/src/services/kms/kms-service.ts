@@ -1527,6 +1527,7 @@ export const kmsServiceFactory = ({
         {
           encryptedRootKey: sentinel.encryptedRootKey,
           encryptionStrategy: sentinel.encryptionStrategy,
+          kekFingerprint: sentinel.kekFingerprint,
           activatedAt: sentinel.activatedAt ?? sentinel.createdAt,
           supersededAt: now
         },
@@ -1538,6 +1539,7 @@ export const kmsServiceFactory = ({
         {
           encryptedRootKey: pending.encryptedRootKey,
           encryptionStrategy: pending.encryptionStrategy,
+          kekFingerprint: pending.kekFingerprint ?? fingerprint,
           activatedAt: now,
           supersededAt: null
         },
@@ -1546,15 +1548,18 @@ export const kmsServiceFactory = ({
 
       await kmsRootConfigDAL.deleteAllPending(tx);
 
+      const promotedFingerprint = pending.kekFingerprint ?? fingerprint;
       const previous = await kmsKekHistoryDAL.findCurrent(tx);
       if (previous) await kmsKekHistoryDAL.updateById(previous.id, { supersededAt: now }, tx);
-      if (fingerprint) await kmsKekHistoryDAL.create({ kekFingerprint: fingerprint, activatedAt: now }, tx);
+      if (promotedFingerprint) {
+        await kmsKekHistoryDAL.create({ kekFingerprint: promotedFingerprint, activatedAt: now }, tx);
+      }
 
       return true;
     });
   };
 
-  const $bootstrapRootKey = async (hsmStatus: THsmStatus) => {
+  const $bootstrapRootKey = async (hsmStatus: THsmStatus, skipRotationState = false) => {
     const isHsmActive = hsmStatus.isHsmConfigured;
 
     logger.info(`KMS: Generating new ROOT Key with ${isHsmActive ? "HSM" : "software"} encryption`);
@@ -1580,17 +1585,17 @@ export const kmsServiceFactory = ({
           id: KMS_ROOT_CONFIG_UUID,
           encryptedRootKey,
           encryptionStrategy,
-          activatedAt: new Date()
+          ...(skipRotationState ? {} : { activatedAt: new Date() })
         },
         tx
       );
     });
   };
 
-  const $resolveRootKey = async (hsmStatus: THsmStatus) => {
+  const $resolveRootKey = async (hsmStatus: THsmStatus, skipRotationState = false) => {
     const rows = await kmsRootConfigDAL.findAll();
     if (!rows.length) {
-      const created = await $bootstrapRootKey(hsmStatus);
+      const created = await $bootstrapRootKey(hsmStatus, skipRotationState);
       return $decryptRootKey(created);
     }
 
@@ -1606,6 +1611,10 @@ export const kmsServiceFactory = ({
       );
 
       if (rootKey) {
+        // Everything below this point writes rotation-feature state, which the migration path must not
+        // touch: historical migrations boot this service long before the migration that adds it.
+        if (skipRotationState) return rootKey;
+
         if (!row.activatedAt && row.id !== KMS_ROOT_CONFIG_UUID) {
           const fingerprint = $currentKekFingerprint();
           // eslint-disable-next-line no-await-in-loop
@@ -1616,6 +1625,18 @@ export const kmsServiceFactory = ({
                 row.id
               }]`
             );
+          }
+        }
+
+        // Rows written before the label existed get it from the pod that can actually decrypt them,
+        // which is the only place the value is derivable.
+        if (!row.kekFingerprint) {
+          const fingerprint = $currentKekFingerprint();
+          if (fingerprint) {
+            // eslint-disable-next-line no-await-in-loop
+            await kmsRootConfigDAL
+              .updateById(row.id, { kekFingerprint: fingerprint })
+              .catch((err: unknown) => logger.warn({ err }, "KMS: Failed to label a root key row"));
           }
         }
 
@@ -1726,11 +1747,20 @@ export const kmsServiceFactory = ({
       });
   };
 
-  const startService = async (hsmStatus: THsmStatus) => {
-    const decryptedRootKey = await $resolveRootKey(hsmStatus);
+  /**
+   * `skipRotationState` is for callers that run *inside* a database migration. Historical migrations boot
+   * this service to re-encrypt data, and they run long before the migration that adds the rotation
+   * columns and tables, so touching any of it there fails on a fresh database. Such a caller only needs
+   * the root key in memory; the legacy-key snapshot is deliberately skipped too, and the legacy helpers
+   * fall back to reading the environment, which is correct for a migration.
+   */
+  const startService = async (hsmStatus: THsmStatus, { skipRotationState = false } = {}) => {
+    const decryptedRootKey = await $resolveRootKey(hsmStatus, skipRotationState);
 
     logger.info("KMS: Loading ROOT Key into Memory.");
     ROOT_ENCRYPTION_KEY = decryptedRootKey;
+
+    if (skipRotationState) return;
 
     await $ensureLegacyKeyMaterial();
     await $ensureKekHistory();
@@ -1787,6 +1817,18 @@ export const kmsServiceFactory = ({
 
     await kmsRootConfigDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
+
+      const [pendingNow, retainedNow] = await Promise.all([
+        kmsRootConfigDAL.findPending(tx),
+        kmsRootConfigDAL.findRetained(tx)
+      ]);
+      if (pendingNow.length || retainedNow.length) {
+        throw new BadRequestError({
+          message:
+            "An encryption key rotation is still in progress. Complete or discard it before changing the root key encryption strategy."
+        });
+      }
+
       await kmsRootConfigDAL.updateById(
         KMS_ROOT_CONFIG_UUID,
         {
