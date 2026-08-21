@@ -2,16 +2,16 @@ import { z } from "zod";
 
 import { AuthMethod, AuthModeRefreshJwtTokenPayload, MfaMethod } from "@app/services/auth/auth-type";
 
-// RFC 7591 client metadata. A client can hold several grants, and each grant makes a different subset
-// of the client's fields meaningful. See assertValidOauthClientGrantConfig.
+// RFC 7591 client metadata. A client can hold several grants, and each one makes a different subset of
+// the client's fields meaningful. See assertValidOauthClientGrantConfig.
 export enum OauthGrantType {
   AuthorizationCode = "authorization_code",
   RefreshToken = "refresh_token",
   TokenExchange = "urn:ietf:params:oauth:grant-type:token-exchange"
 }
 
-// Applied as the create default so an API caller written before this feature, which sends no
-// `grantTypes`, keeps registering redirect-flow applications.
+// The create default, so callers written before this feature (which send no `grantTypes`) keep
+// registering redirect-flow applications.
 export const DEFAULT_OAUTH_GRANT_TYPES: readonly OauthGrantType[] = [
   OauthGrantType.AuthorizationCode,
   OauthGrantType.RefreshToken
@@ -24,15 +24,13 @@ export enum OauthTokenType {
   AccessToken = "urn:ietf:params:oauth:token-type:access_token"
 }
 
-// Both are verified identically, as a signed JWT from the org's OIDC SSO issuer, so the difference is
-// only what the caller declares.
+// Both are verified the same way, as a signed JWT from the org's OIDC SSO issuer, so the only
+// difference is what the caller declares.
 export const ACCEPTED_SUBJECT_TOKEN_TYPES: readonly OauthTokenType[] = [OauthTokenType.Jwt, OauthTokenType.IdToken];
 
-// Marks a token as carrying the user's authorization unnarrowed, as opposed to the consented scopes an
-// authorization-code token carries.
-//
-// Deliberately a positive marker rather than an absent `scopes` claim: absence has to keep meaning zero
-// permissions, so that dropping the claim by mistake fails closed.
+// Marks a token as carrying the user's authorization unnarrowed, unlike the consented scopes an
+// authorization-code token carries. A positive marker on purpose: absence has to keep meaning zero
+// permissions so a dropped claim fails closed.
 export enum OauthDelegationMode {
   Full = "full"
 }

@@ -116,8 +116,8 @@ describe("OAuth client grant type registration", async () => {
     expect(res.payload).toContain("audience only applies");
   });
 
-  // Duplicates used to be silently accepted below the array bound and reported as "too many items" above
-  // it, so the same mistake failed differently depending on how many times it was repeated.
+  // Duplicates used to slip through below the array bound and come back as "too many items" above it,
+  // so the same mistake failed differently depending on how often it was repeated.
   test("reports duplicate grant types as duplicates, however many there are", async () => {
     const res = await createClient({
       name: "e2e-duplicate-grants",
@@ -134,9 +134,9 @@ describe("OAuth client grant type registration", async () => {
     expect(res.payload).toContain("duplicate");
   });
 
-  // Rotation on a token exchange application needs SSO edit permission on top of OauthClients edit, but
-  // it must stay a plain OauthClients operation for every other application. The seed actor holds both
-  // permissions, so this pins the non-exchange path rather than the denial.
+  // Rotation needs SSO edit on top of OauthClients edit for token exchange applications, but must stay a
+  // plain OauthClients operation for everything else. The seed actor holds both, so this pins the
+  // non-exchange path, not the denial.
   test("rotating a redirect-flow application's secret needs no SSO permission", async () => {
     const created = await createClient({
       name: "e2e-rotate-redirect-client",
@@ -157,7 +157,7 @@ describe("OAuth client grant type registration", async () => {
     await deleteClient(client.id);
   });
 
-  // The seed org has no OIDC config, and that config is the only trust anchor token exchange has.
+  // The seed org has no OIDC config, which is the only trust anchor token exchange has.
   test("the token exchange grant cannot be enabled without an active OIDC SSO configuration", async () => {
     const res = await createClient({
       name: "e2e-exchange-no-sso",
@@ -247,8 +247,8 @@ describe("POST /api/v1/oauth/token, token exchange grant", async () => {
     expect(res.payload).toContain("requested_token_type");
   });
 
-  // RFC 8693 permits both, but this grant has no scope concept and its audience is fixed per
-  // application, so silently dropping them is worse than a clear error.
+  // RFC 8693 allows both, but this grant has no scopes and its audience is fixed per application, so
+  // silently ignoring them is worse than a clear error.
   test("rejects a scope parameter rather than ignoring it", async () => {
     const res = await postToken(exchangeBody({ scope: "secrets:read" }));
 
@@ -264,8 +264,8 @@ describe("POST /api/v1/oauth/token, token exchange grant", async () => {
   });
 });
 
-// Mints a delegated token for the seed user on the same session as the working jwtAuthToken, so it
-// passes signature and session validation and differs only by its delegation marker.
+// Same session as the working jwtAuthToken, so it passes signature and session validation and differs
+// only by its delegation marker.
 const signDelegatedToken = (markers: { scopes?: string[]; delegation?: OauthDelegationMode }) =>
   jwt.sign(
     {
@@ -302,7 +302,7 @@ describe("Full delegation marker on a delegated OAuth token", async () => {
     expect(res.statusCode).toBe(200);
   });
 
-  // The invariant that makes the marker safe: dropping the claim by mistake cannot promote a token.
+  // The invariant that makes the marker safe: dropping the claim by mistake can't promote a token.
   test("a token carrying neither marker is denied", async () => {
     const token = signDelegatedToken({});
 
@@ -317,8 +317,8 @@ describe("Full delegation marker on a delegated OAuth token", async () => {
     expect(res.statusCode).toBe(403);
   });
 
-  // Account self-management routes authenticate on userId alone and build no permission, so they must
-  // stay unreachable whatever delegation marker the token carries.
+  // Account routes authenticate on userId alone and build no permission, so they have to stay
+  // unreachable whatever delegation marker the token carries.
   test("a fully-delegated token is still rejected on a JWT-only account route", async () => {
     const token = signDelegatedToken({ delegation: OauthDelegationMode.Full });
 
@@ -332,8 +332,8 @@ describe("Full delegation marker on a delegated OAuth token", async () => {
   });
 });
 
-// A refresh token is only usable if the application holds the refresh_token grant, so issuing one to an
-// application without it hands back a credential the token endpoint rejects on use.
+// A refresh token only works if the application holds the refresh_token grant, so issuing one without it
+// hands back a credential the token endpoint rejects on use.
 describe("Refresh token issuance follows the registered grants", async () => {
   const REDIRECT_URI = "https://app.example.com/callback";
 
@@ -367,10 +367,7 @@ describe("Refresh token issuance follows the registered grants", async () => {
   };
 
   test("issues a refresh token when the application holds the refresh_token grant", async () => {
-    const { clientDbId, token } = await runCodeFlow([
-      OauthGrantType.AuthorizationCode,
-      OauthGrantType.RefreshToken
-    ]);
+    const { clientDbId, token } = await runCodeFlow([OauthGrantType.AuthorizationCode, OauthGrantType.RefreshToken]);
 
     expect(token.statusCode).toBe(200);
     expect(JSON.parse(token.payload)).toHaveProperty("refresh_token");

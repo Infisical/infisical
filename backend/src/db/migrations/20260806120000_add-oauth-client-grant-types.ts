@@ -16,20 +16,20 @@ export async function up(knex: Knex): Promise<void> {
   if (hasGrantTypes && hasTokenExchangeAudience && hasTokenExchangeIdpSatisfiesMfa) return;
 
   await knex.schema.alterTable(TableName.OauthClient, (t) => {
-    // The default only exists to backfill existing rows. It is dropped below so an insert that omits
-    // the column fails instead of silently picking a grant set.
+    // The default is only here to backfill existing rows, and gets dropped below so an insert that
+    // omits the column fails instead of silently picking a grant set.
     if (!hasGrantTypes) {
       t.specificType("grantTypes", "text[]").notNullable().defaultTo(knex.raw(REDIRECT_FLOW_GRANT_TYPES));
     }
 
-    // Expected `aud` of subject tokens. This is the application's own registration in the org's IdP,
-    // not Infisical's, so it cannot be read from oidc_configs.
+    // Expected `aud` of subject tokens. It's the application's own registration in the org's IdP, not
+    // Infisical's, so it can't be read off oidc_configs.
     if (!hasTokenExchangeAudience) {
       t.text("tokenExchangeAudience");
     }
 
-    // Token exchange has no Infisical MFA challenge to run, so an admin declares that the IdP
-    // enforces it. Without the declaration, exchanges fail for any user who requires MFA.
+    // Token exchange has no Infisical MFA challenge to run, so an admin vouches that the IdP enforces
+    // it. Without that, exchanges fail for any user who requires MFA.
     if (!hasTokenExchangeIdpSatisfiesMfa) {
       t.boolean("tokenExchangeIdpSatisfiesMfa").notNullable().defaultTo(false);
     }

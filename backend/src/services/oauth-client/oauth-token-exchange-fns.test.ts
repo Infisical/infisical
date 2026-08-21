@@ -43,16 +43,15 @@ const ISSUER = "https://adfs.example.com/adfs";
 const AUDIENCE = "api://internal-mcp";
 const SUBJECT = "8f7d1c22-0000-4a7b-9b1e-aaaabbbbcccc";
 
-// A unique JWKS URI per test keeps the module-level JwksClient cache from carrying a client between
-// cases.
+// A unique JWKS URI per test keeps the module-level JwksClient cache from leaking between cases.
 let jwksUriCounter = 0;
 const nextJwksUri = () => {
   jwksUriCounter += 1;
   return `https://adfs.example.com/adfs/discovery/keys?case=${jwksUriCounter}`;
 };
 
-// Same reason, for the discovery document cache: a case that wants its own mocked document needs its own
-// URL, or it reads the previous case's cached one.
+// Same for the discovery cache: a case that mocks its own document needs its own URL, or it reads the
+// previous case's cached one.
 let discoveryCaseCounter = 0;
 const nextIssuerBase = () => {
   discoveryCaseCounter += 1;
@@ -108,7 +107,7 @@ const signSubjectToken = ({
     ...(keyId ? { keyid: keyId } : {})
   });
 
-// jsonwebtoken cannot sign EdDSA, so the EdDSA cases mint their tokens with jose.
+// jsonwebtoken can't sign EdDSA, so those cases mint their tokens with jose.
 const signEddsaSubjectToken = async ({
   audience = AUDIENCE,
   issuer = ISSUER
@@ -244,8 +243,7 @@ describe("resolveOidcTrustAnchor", () => {
     ).rejects.toThrow(/no discovery URL/);
   });
 
-  // Token exchange runs on every request the middleware makes, so the discovery document must not be a
-  // per-exchange round trip to the identity provider.
+  // Middlewares can exchange per request, so this must not be a round trip to the IdP every time.
   test("fetches the discovery document once across repeated resolutions", async () => {
     safeGet.mockResolvedValue({ data: { jwks_uri: nextJwksUri(), issuer: ISSUER } });
     const discoveryURL = nextDiscoveryUrl();
@@ -279,8 +277,7 @@ describe("resolveOidcTrustAnchor", () => {
     expect(safeGet).toHaveBeenCalledTimes(2);
   });
 
-  // The algorithm and the preferred issuer come from the org's own configuration, so only the fetch is
-  // cached: an admin editing either must not have to wait out the discovery TTL.
+  // Only the fetch is cached, so an admin editing the algorithm or issuer doesn't wait out the TTL.
   test("does not cache configuration read from the organization's own record", async () => {
     safeGet.mockResolvedValue({ data: { jwks_uri: nextJwksUri(), issuer: ISSUER } });
     const discoveryURL = nextDiscoveryUrl();
@@ -319,7 +316,7 @@ describe("verifySubjectToken", () => {
     await expect(verify(token)).resolves.toMatchObject({ subject: SUBJECT });
   });
 
-  // The control that stops any token the issuer signed, for any application, being replayed here.
+  // The audience is what stops any token the issuer signed being replayed here.
   test("rejects a token minted for a different application", async () => {
     const token = signSubjectToken({ audience: "api://expenses-app" });
 
@@ -373,8 +370,8 @@ describe("verifySubjectToken", () => {
     await expect(verify(token)).rejects.toThrow(/not signed with the algorithm/);
   });
 
-  // EdDSA is selectable in the OIDC SSO configuration and works for browser SSO login, so it has to work
-  // here too. jsonwebtoken cannot verify it at all, which is why verification runs through jose.
+  // EdDSA works for browser SSO login, so it has to work here too. jsonwebtoken can't verify it at all,
+  // which is why verification runs through jose.
   test("verifies an EdDSA-signed token for an EdDSA configuration", async () => {
     getSigningKey.mockResolvedValue({ getPublicKey: () => ED25519_PUBLIC_KEY_PEM });
     const token = await signEddsaSubjectToken();
@@ -393,8 +390,8 @@ describe("verifySubjectToken", () => {
     ).rejects.toThrow(/audience does not match/);
   });
 
-  // An RSA key cannot carry EdDSA. That is the provider's configuration disagreeing with itself, not a
-  // bad token, so it must not surface as an unhandled 500.
+  // An RSA key can't carry EdDSA. That's the provider's config disagreeing with itself, not a bad
+  // token, so it must not come out as a 500.
   test("reports a signing key that cannot carry the configured algorithm", async () => {
     const token = await signEddsaSubjectToken();
 
@@ -447,8 +444,7 @@ describe("verifySubjectToken", () => {
     await expect(verify(signSubjectToken())).rejects.toThrow(/Could not load signing keys/);
   });
 
-  // Same reasoning as the discovery document: token exchange runs on every request the middleware makes,
-  // so building the pinned agent must not be per-exchange work.
+  // Same as the discovery document: building the pinned agent must not be per-exchange work.
   test("builds the JWKS client once across repeated verifications", async () => {
     const oidcConfig = buildOidcConfig();
     const token = signSubjectToken();

@@ -61,9 +61,8 @@ const splitRedirectUris = (value: string) =>
     .map((uri) => uri.trim())
     .filter(Boolean);
 
-// The UI models one flow per application even though the API allows a client to hold several grants.
-// The two flows share no configuration and delegate differently, so an application needing both is a
-// direct API call.
+// The API lets a client hold several grants, but the UI sticks to one flow per application: the two
+// share no config and delegate differently, so an application needing both goes through the API.
 enum OauthClientFlow {
   AuthorizationCode = "authorization-code",
   TokenExchange = "token-exchange"
