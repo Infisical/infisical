@@ -55,6 +55,15 @@ export type PlaybackDecryptState = {
   sessionComplete: boolean;
 };
 
+const createInitialPlaybackState = (): Omit<PlaybackDecryptState, "sessionComplete"> => ({
+  loading: true,
+  events: [],
+  brokenChunks: [],
+  missingChunks: [],
+  totalChunks: 0,
+  totalDurationMs: 0
+});
+
 const fallbackUrlBuilderFor = (sessionId: string) => (chunkIndex: number) =>
   `/api/v1/pam/sessions/${sessionId}/chunks/${chunkIndex}/ciphertext`;
 
@@ -65,14 +74,9 @@ export const useDecryptedSessionLogs = (
 ): PlaybackDecryptState => {
   const playbackQuery = useGetPamSessionPlayback(sessionId, enabled, isActive);
   const playback = playbackQuery.data;
-  const [state, setState] = useState<Omit<PlaybackDecryptState, "sessionComplete">>({
-    loading: true,
-    events: [],
-    brokenChunks: [],
-    missingChunks: [],
-    totalChunks: 0,
-    totalDurationMs: 0
-  });
+  const [state, setState] = useState<Omit<PlaybackDecryptState, "sessionComplete">>(
+    createInitialPlaybackState
+  );
 
   const fallbackUrlBuilder = useMemo(() => fallbackUrlBuilderFor(sessionId), [sessionId]);
 
@@ -83,8 +87,9 @@ export const useDecryptedSessionLogs = (
   const accEventCountRef = useRef(0);
   const accBrokenRef = useRef<TBrokenChunkMarker[]>([]);
   const prevSessionIdRef = useRef(sessionId);
+  const sessionChanged = prevSessionIdRef.current !== sessionId;
 
-  if (prevSessionIdRef.current !== sessionId) {
+  if (sessionChanged) {
     sessionKeyRef.current = null;
     decryptedIndicesRef.current = new Set();
     accChunkEventsRef.current = new Map();
@@ -92,6 +97,10 @@ export const useDecryptedSessionLogs = (
     accBrokenRef.current = [];
     prevSessionIdRef.current = sessionId;
   }
+
+  useEffect(() => {
+    setState(createInitialPlaybackState());
+  }, [sessionId]);
 
   useEffect(() => {
     if (!enabled || !playback) return undefined;
@@ -305,7 +314,7 @@ export const useDecryptedSessionLogs = (
   }, [playback, enabled, sessionId, fallbackUrlBuilder, isActive]);
 
   return {
-    ...state,
+    ...(sessionChanged ? createInitialPlaybackState() : state),
     sessionComplete: playback?.sessionComplete ?? false
   };
 };
