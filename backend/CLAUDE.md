@@ -183,12 +183,24 @@ Auth extraction happens in `src/server/plugins/auth/`:
   (`v1/admin-router.ts`, `ee/v1/rate-limit-router.ts`, gated by `verifySuperAdmin`, which reads
   `user.superAdmin` rather than a CASL ability), and the OAuth client CRUD + consent routes
   (`v1/oauth-router.ts`) plus `ee/v1/assume-privilege-router.ts`, where a delegated token would be able
-  to widen its own grant. Three routes are held back individually rather than by file, and carry a
-  comment saying so: `GET /v1/organization`, `GET /v1/organization/accessible-with-sub-orgs`, and
-  `POST /v2/organization`. A new route follows the default; adding `AuthMode.OAUTH` to a handler that
-  never builds an org/project/resource permission is the one thing to check before copying it. The
-  quick proxy is `requireOrg: false` — with no org in context there is no ability to narrow, so no such
-  route lists `AuthMode.OAUTH`.
+  to widen its own grant. Four routes are held back individually rather than by file, and carry a
+  comment saying so: `GET /v1/organization`, `GET /v1/organization/accessible-with-sub-orgs`,
+  `POST /v2/organization`, and `GET /v1/organization/:organizationId`. A new route follows the default;
+  adding `AuthMode.OAUTH` to a handler that never builds an org/project/resource permission is the one
+  thing to check before copying it. The quick proxy is `requireOrg: false` — with no org in context there
+  is no ability to narrow, so no such route lists `AuthMode.OAUTH`.
+
+  **Building a permission is not the same as checking one, and only the check is scope-narrowed.** A
+  handler that calls `getOrgPermission`/`getProjectPermission` and discards the ability is using it as a
+  membership gate; the intersection with the granted scopes happens inside, but nothing consults the
+  result, so a scoped token passes exactly as a first-party session does. `findOrganizationById` was the
+  reason `GET /v1/organization/:organizationId` came back off the list. The membership-only reads that
+  keep `AuthMode.OAUTH` are the ones a secrets-reading client needs to operate and whose payload is
+  project metadata rather than org or security configuration — `getAProject` (`GET /v1/projects/:projectId`
+  and `/slug/:slug`, where a client resolves environment slugs before reading secrets) and
+  `getProjectKmsKeys`. Adding a CASL gate to those is not the fix: the operation has no subject, they are
+  already open to any member holding an identity token, and a gate would change first-party behaviour.
+  A route in this position gets weighed on what it returns, not waved through by the blanket rule.
 
 **Delegated OAuth tokens carry exactly one delegation marker, never both** (`oauth-client-types.ts`):
 - `scopes: [...]`: from the authorization code grant. `permission-service` intersects the user's CASL
