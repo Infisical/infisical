@@ -9,8 +9,8 @@ import { buildSsrfSafeAgent, safeRequest } from "@app/lib/validator/safe-request
 
 const SSO_TAB_HINT = "Check Settings > SSO & Provisioning.";
 
-// HS256 is excluded because it is symmetric: the verification key is the signing key, so anyone who
-// can read the JWKS could mint a token we would accept.
+// HS256 is left out because it's symmetric: the verification key is the signing key, so anyone who can
+// read the JWKS could mint a token we'd accept.
 const ASYMMETRIC_SIGNATURE_ALGORITHMS: readonly string[] = [
   OIDCJWTSignatureAlgorithm.RS256,
   OIDCJWTSignatureAlgorithm.RS512,
@@ -19,9 +19,8 @@ const ASYMMETRIC_SIGNATURE_ALGORITHMS: readonly string[] = [
 
 const WELL_KNOWN_OPENID_CONFIGURATION = "/.well-known/openid-configuration";
 
-// Mirrors what openid-client's Issuer.discover accepts, so a configuration that works for browser SSO
-// login resolves the same way here: a discovery URL may already point at the document, or be the
-// issuer base that the well-known path hangs off.
+// Mirrors what openid-client's Issuer.discover accepts, so a config that works for browser SSO login
+// resolves the same way here: the URL may already point at the document, or be the issuer base.
 const buildDiscoveryDocumentUrl = (discoveryUrl: string) => {
   const url = new URL(discoveryUrl);
   if (url.pathname.includes("/.well-known/")) return url.toString();
@@ -32,15 +31,9 @@ const buildDiscoveryDocumentUrl = (discoveryUrl: string) => {
 
 type TOidcDiscoveryMetadata = { jwks_uri?: string; issuer?: string };
 
-// Everything token exchange fetches from an identity provider is cached the same way, so the mechanics
-// live here once:
-//
-// - Entries hold the in-flight promise, so concurrent callers on a cold entry coalesce onto one fetch
-//   instead of stampeding the provider.
-// - A rejected entry is dropped rather than kept for its TTL, so a provider blip lasts as long as the
-//   blip. Caching the failure would turn a 5-second outage into 10 minutes of them.
-// - A full cache is cleared wholesale rather than evicted by age. A flush only costs a refetch, and the
-//   bound exists to cap memory against an org churning through provider URLs, not to be a working LRU.
+// Entries hold the in-flight promise so concurrent callers on a cold entry coalesce onto one fetch.
+// Rejections are dropped instead of cached, otherwise a 5-second provider blip becomes 10 minutes of
+// them. A full cache is cleared wholesale: the bound is there to cap memory, not to be a real LRU.
 const createTtlCache = <T>({ ttlMs, maxEntries }: { ttlMs: number; maxEntries: number }) => {
   const entries = new Map<string, { value: Promise<T>; expiresAt: number }>();
 
@@ -64,19 +57,17 @@ const createTtlCache = <T>({ ttlMs, maxEntries }: { ttlMs: number; maxEntries: n
   return { getOrCreate };
 };
 
-// Both caches are keyed on the URL rather than the org, so orgs on a shared provider share one entry,
-// and an admin correcting a URL moves to a different key instead of waiting out the TTL.
+// Keyed on the URL, not the org, so orgs on a shared provider share an entry and an admin fixing a
+// typo'd URL moves to a new key instead of waiting out the TTL.
 const MAX_CACHED_PROVIDER_URLS = 512;
 const DISCOVERY_METADATA_TTL_MS = 10 * 60 * 1000;
 const JWKS_CLIENT_TTL_MS = 10 * 60 * 1000;
 
-// Fetching the discovery document is a network round trip. Integrators are told to exchange once per
-// user and cache the token, but we cannot enforce that, and a middleware that exchanges per request
-// would otherwise make the identity provider a synchronous dependency of every Infisical call it serves.
+// Nothing stops a middleware from exchanging on every request, and without this cache that would make
+// the identity provider a synchronous dependency of every Infisical call it serves.
 //
-// Only the fetch is cached, never the resolved trust anchor. The algorithm and the preferred issuer come
-// from the org's own SSO configuration, so an admin changing either still takes effect on the next
-// request.
+// Only the fetch is cached, never the resolved trust anchor: the algorithm and preferred issuer come
+// from the org's own SSO config, so changing either takes effect on the next request.
 const discoveryMetadataCache = createTtlCache<TOidcDiscoveryMetadata>({
   ttlMs: DISCOVERY_METADATA_TTL_MS,
   maxEntries: MAX_CACHED_PROVIDER_URLS
@@ -87,11 +78,9 @@ const getDiscoveryMetadata = (documentUrl: string) =>
     safeRequest.get<TOidcDiscoveryMetadata>(documentUrl, { timeout: 10_000 }).then(({ data }) => data)
   );
 
-// jwks-rsa caches signing keys per instance, so reusing one per JWKS URI keeps a network fetch off the
-// hot path. Token exchange runs on every request the middleware makes.
-//
-// Entries expire so the agent's pinned IPs are rebuilt periodically. Without that, a legitimate DNS
-// change at the identity provider would not be picked up for the lifetime of the process.
+// jwks-rsa caches signing keys per instance, so one client per JWKS URI keeps a fetch off the hot path.
+// Entries still expire so the agent's pinned IPs get rebuilt: otherwise a legitimate DNS change at the
+// provider would never be picked up for the life of the process.
 const jwksClientCache = createTtlCache<JwksClient>({
   ttlMs: JWKS_CLIENT_TTL_MS,
   maxEntries: MAX_CACHED_PROVIDER_URLS
@@ -119,8 +108,8 @@ export type TOidcTrustAnchor = {
   algorithm: string;
 };
 
-// Uses the same configuration that governs browser SSO login, so the issuers that can vouch for a user
-// through token exchange are exactly those that can already log them in.
+// Reuses the config that governs browser SSO login, so the issuers that can vouch for a user here are
+// exactly the ones that can already log them in.
 export const resolveOidcTrustAnchor = async (oidcConfig: TOidcConfigs): Promise<TOidcTrustAnchor> => {
   const algorithm = oidcConfig.jwtSignatureAlgorithm || OIDCJWTSignatureAlgorithm.RS256;
 
@@ -176,10 +165,9 @@ export const resolveOidcTrustAnchor = async (oidcConfig: TOidcConfigs): Promise<
   return { issuer: oidcConfig.issuer, jwksUri: oidcConfig.jwksUri, algorithm };
 };
 
-// jose reports failures with terse developer-facing text ("unexpected \"aud\" claim value"). Translate to
-// something the caller can act on without leaking the raw message. Each branch keys off jose's error
-// class and its `claim` field rather than the message text, so a wording change upstream cannot silently
-// collapse a specific failure into the generic one.
+// jose's messages are terse and developer-facing ("unexpected \"aud\" claim value"), so translate them
+// into something the caller can act on. Branches key off the error class and `claim` field, never the
+// message text, so a wording change upstream can't silently collapse a case into the generic one.
 const toSubjectTokenError = (error: unknown, anchor: TOidcTrustAnchor, expectedAudience: string) => {
   if (error instanceof joseErrors.JWTExpired) {
     return new UnauthorizedError({ message: "The subject token has expired." });
@@ -233,8 +221,6 @@ type TVerifySubjectTokenDTO = {
   expectedAudience: string;
 };
 
-// Every check deciding whether we believe this token describes this user lives here: signature, issuer,
-// audience, expiry, not-before and algorithm.
 export const verifySubjectToken = async ({ subjectToken, oidcConfig, expectedAudience }: TVerifySubjectTokenDTO) => {
   const anchor = await resolveOidcTrustAnchor(oidcConfig);
 
@@ -294,8 +280,8 @@ export const verifySubjectToken = async ({ subjectToken, oidcConfig, expectedAud
       issuer: anchor.issuer,
       audience: expectedAudience,
       algorithms: [anchor.algorithm],
-      // 'exp' is optional in RFC 7519 and only checked when present, so without this a token that omits
-      // it is exchangeable forever.
+      // 'exp' is optional in RFC 7519 and only checked when present, so without this a token that
+      // omits it is exchangeable forever.
       requiredClaims: ["exp"]
     }));
   } catch (error) {

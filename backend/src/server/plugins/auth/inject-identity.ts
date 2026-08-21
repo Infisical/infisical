@@ -114,9 +114,9 @@ export type TAuthMode =
       token: TKmipServerAccessTokenJwtPayload;
     };
 
-// A first-party session and a delegated OAuth token share the same auth shape, so a handler that
-// only needs the acting user (name, email, session id) should accept both rather than narrowing on
-// AuthMode.JWT alone — otherwise an OAuth caller silently loses the audit trail or actor metadata.
+// A first-party session and a delegated OAuth token have the same auth shape, so a handler that only
+// needs the acting user (name, email, session id) should take both instead of narrowing on AuthMode.JWT.
+// Narrowing silently costs the OAuth caller its audit trail or actor metadata.
 export const isUserSessionAuth = (
   auth: TAuthMode
 ): auth is Extract<TAuthMode, { authMode: AuthMode.JWT | AuthMode.OAUTH }> =>

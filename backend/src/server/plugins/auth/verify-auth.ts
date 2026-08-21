@@ -17,19 +17,15 @@ export const verifyAuth =
     if (!Array.isArray(authStrategies)) throw new Error("Auth strategy must be array");
     if (!req.auth) throw new UnauthorizedError({ message: "Token missing" });
 
-    // Delegated OAuth access tokens are a distinct auth mode and must be opted into explicitly: a
-    // route only accepts them when it lists AuthMode.OAUTH. They are deliberately NOT accepted on
-    // the strength of AuthMode.JWT alone. OAuth scopes are enforced later, when a handler builds an
-    // org/project permission (the ability is intersected with the granted scopes). A route that
-    // authenticates on userId without building a permission never runs that scope narrowing, so
-    // letting a delegated token through on JWT alone would bypass scopes entirely. Listing
-    // AuthMode.OAUTH is therefore only safe when the handler performs a scope-narrowed permission
-    // check, and the route families that cannot are the ones still listing AuthMode.JWT alone:
-    // account self-management (/me, password, MFA, sessions, login, signup, notifications),
-    // instance super-admin routes (verifySuperAdmin reads user.superAdmin, not a CASL ability), and
-    // the OAuth client/consent routes themselves, where a delegated token could widen its own grant.
-    // A useful proxy: no route passing `requireOrg: false` accepts AuthMode.OAUTH, because without an
-    // org in context there is no ability to intersect the granted scopes against.
+    // Delegated OAuth access tokens are a separate auth mode a route has to opt into by listing
+    // AuthMode.OAUTH, deliberately not accepted on AuthMode.JWT alone. Scopes are only enforced when a
+    // handler builds an org/project permission, since that's where the ability gets intersected with
+    // them, so a route that authenticates on userId and builds no permission would skip the narrowing
+    // entirely. The families that can't do that check stay on AuthMode.JWT alone: account
+    // self-management (/me, password, MFA, sessions, login, signup, notifications), super-admin routes
+    // (verifySuperAdmin reads user.superAdmin, not a CASL ability), and the OAuth client/consent routes
+    // themselves, where a delegated token could widen its own grant. Rough proxy: nothing passing
+    // `requireOrg: false` accepts AuthMode.OAUTH, since with no org there's no ability to intersect.
     const isAccessAllowed = authStrategies.some((strategy) => strategy === req.auth.authMode);
     if (!isAccessAllowed) {
       throw new ForbiddenRequestError({ name: `Forbidden access to ${req.url}` });

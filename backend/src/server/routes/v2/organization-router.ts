@@ -427,9 +427,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    // Deliberately not open to AuthMode.OAUTH, unlike the rest of this router. Creating an org needs
-    // no org permission, so nothing here is scope-narrowed and a delegated token would be able to
-    // stand up an org the client was never granted anything in.
+    // Not open to AuthMode.OAUTH, unlike the rest of this router: creating an org needs no org
+    // permission, so nothing here is scope-narrowed and a delegated token could stand up an org the
+    // client was never granted anything in.
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY], { requireOrg: false }),
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
