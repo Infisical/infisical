@@ -1,14 +1,15 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { AccessScope } from "@app/db/schemas";
+import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { ApiDocsTags, IDENTITY_ADDITIONAL_PRIVILEGE_V2 } from "@app/lib/api-docs";
 import { NotFoundError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema, temporaryPermissionTypeSchema } from "@app/server/lib/schemas";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedIdentityPrivilegeSchema } from "@app/server/routes/sanitizedSchema/identitiy-additional-privilege";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -37,7 +38,25 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         permissions: ProjectPermissionV2Schema.array()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.permission)
           .refine(checkForInvalidPermissionCombination),
-        type: temporaryPermissionTypeSchema(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE)
+        type: z.discriminatedUnion("isTemporary", [
+          z.object({
+            isTemporary: z.literal(false)
+          }),
+          z.object({
+            isTemporary: z.literal(true),
+            temporaryMode: z
+              .nativeEnum(TemporaryPermissionMode)
+              .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.temporaryMode),
+            temporaryRange: z
+              .string()
+              .refine((val) => ms(val) > 0, "Temporary range must be a positive number")
+              .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.temporaryRange),
+            temporaryAccessStartTime: z
+              .string()
+              .datetime()
+              .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.CREATE.temporaryAccessStartTime)
+          })
+        ])
       }),
       response: {
         200: z.object({
@@ -99,7 +118,23 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           .optional()
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.privilegePermission)
           .refine(checkForInvalidPermissionCombination),
-        type: temporaryPermissionTypeSchema(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE)
+        type: z.discriminatedUnion("isTemporary", [
+          z.object({ isTemporary: z.literal(false).describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.isTemporary) }),
+          z.object({
+            isTemporary: z.literal(true).describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.isTemporary),
+            temporaryMode: z
+              .nativeEnum(TemporaryPermissionMode)
+              .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.temporaryMode),
+            temporaryRange: z
+              .string()
+              .refine((val) => typeof val === "undefined" || ms(val) > 0, "Temporary range must be a positive number")
+              .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.temporaryRange),
+            temporaryAccessStartTime: z
+              .string()
+              .datetime()
+              .describe(IDENTITY_ADDITIONAL_PRIVILEGE_V2.UPDATE.temporaryAccessStartTime)
+          })
+        ])
       }),
       response: {
         200: z.object({
