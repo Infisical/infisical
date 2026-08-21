@@ -663,7 +663,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       }
     },
 
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.projectMembership.leaveProject({
         actorId: req.permission.id,
