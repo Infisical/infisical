@@ -51,6 +51,10 @@ Not every option applies to every certificate. The renewal wizard greys out the 
 
 A self-signed certificate is signed by the private key that matches its own public key. A signing request carries only a public key, so there would be nothing to sign the renewal with. Reuse works because the existing key pair is available to sign with.
 
+<Note>
+  Certificates issued through Active Directory Certificate Services or Azure AD Certificate Services take their validity, key usages, extended key usages and basic constraints from the CA's own certificate template. The renewal wizard hides those fields for such certificates, because anything set here would be discarded by the CA. You can still change the subject and the alternative names.
+</Note>
+
 Reuse is available for certificates issued with an Infisical-managed key pair. A certificate you issued from your own signing request can reuse its public key too: the renewal is made from that original request, so the key stays on your side.
 
 ## What you can change
@@ -67,6 +71,10 @@ Reuse is available for certificates issued with an Infisical-managed key pair. A
 <Warning>
   Changing the common name can affect [certificate syncs](/documentation/platform/pki/applications/certificate-syncs/overview) that select certificates by name. Check any sync attached to the certificate before renaming it.
 </Warning>
+
+### Permissions
+
+Renewing a certificate as it stands needs only permission to issue from its certificate profile. Changing any of the properties above additionally needs **Edit** on certificates, so a role scoped to issuance alone can keep certificates current without being able to alter what they contain.
 
 ### Renewing from a signing request
 

@@ -1,6 +1,12 @@
+import {
+  certKeyAlgorithms,
+  SIGNATURE_ALGORITHMS_OPTIONS
+} from "@app/hooks/api/certificates/constants";
 import { CertificateRenewalKeySource } from "@app/hooks/api/certificates/enums";
 import { TCertificate, TRenewCertificateAttributes } from "@app/hooks/api/certificates/types";
 import {
+  CertExtendedKeyUsageType,
+  CertKeyUsageType,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
@@ -16,6 +22,27 @@ import {
 import type { TemplateConstraints } from "./useCertificatePolicy";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+const usageByCollapsedName = <T extends string>(values: T[], aliases: Record<string, T> = {}) =>
+  new Map<string, T>([
+    ...values.map((value) => [value.replace(/_/g, "").toLowerCase(), value] as [string, T]),
+    ...(Object.entries(aliases) as [string, T][])
+  ]);
+
+const KNOWN_SIGNATURE_ALGORITHMS = new Set<string>(
+  SIGNATURE_ALGORITHMS_OPTIONS.map((o) => o.value)
+);
+const KNOWN_KEY_ALGORITHMS = new Set<string>(certKeyAlgorithms.map((o) => o.value as string));
+
+const KEY_USAGE_BY_NAME = usageByCollapsedName(Object.values(CertKeyUsageType));
+const EXTENDED_KEY_USAGE_BY_NAME = usageByCollapsedName(Object.values(CertExtendedKeyUsageType), {
+  anyextendedkeyusage: CertExtendedKeyUsageType.ANY_PURPOSE
+});
+
+const toUsageFormKeys = (usages: string[] | undefined, known: Map<string, string>) =>
+  Object.fromEntries(
+    (usages ?? []).map((usage) => [known.get(usage.replace(/_/g, "").toLowerCase()) ?? usage, true])
+  );
 
 const deriveTtlFromCertificate = (cert: TCertificate): string => {
   const spanMs = new Date(cert.notAfter).getTime() - new Date(cert.notBefore).getTime();
@@ -91,12 +118,14 @@ export const buildRenewalFormDefaults = (
     isCA: Boolean(cert.basicConstraints?.isCA),
     pathLength: cert.basicConstraints?.pathLength ?? null
   },
-  signatureAlgorithm: cert.signatureAlgorithm ?? "",
-  keyAlgorithm: cert.keyAlgorithm ?? "",
-  keyUsages: Object.fromEntries((cert.keyUsages ?? []).map((usage) => [usage, true])),
-  extendedKeyUsages: Object.fromEntries(
-    (cert.extendedKeyUsages ?? []).map((usage) => [usage, true])
-  )
+  signatureAlgorithm: KNOWN_SIGNATURE_ALGORITHMS.has(cert.signatureAlgorithm ?? "")
+    ? (cert.signatureAlgorithm as string)
+    : "",
+  keyAlgorithm: KNOWN_KEY_ALGORITHMS.has(cert.keyAlgorithm ?? "")
+    ? (cert.keyAlgorithm as string)
+    : "",
+  keyUsages: toUsageFormKeys(cert.keyUsages, KEY_USAGE_BY_NAME),
+  extendedKeyUsages: toUsageFormKeys(cert.extendedKeyUsages, EXTENDED_KEY_USAGE_BY_NAME)
 });
 
 const buildBasicConstraints = (
@@ -113,10 +142,12 @@ const buildBasicConstraints = (
 
 export const buildRenewalRequestAttributes = ({
   formData,
-  constraints
+  constraints,
+  isExternalTemplateProfile = false
 }: {
   formData: RenewalFormData;
   constraints: TemplateConstraints;
+  isExternalTemplateProfile?: boolean;
 }): TRenewCertificateAttributes => {
   // The CSR carries its own basic constraints and the CSR step offers no control over them, so
   // sending the previous certificate's would silently override what the caller actually signed.
@@ -126,15 +157,20 @@ export const buildRenewalRequestAttributes = ({
 
   const basicConstraints = buildBasicConstraints(formData, constraints);
 
-  const attributes: TRenewCertificateAttributes = {
-    ttl: formData.ttl,
-    keyUsages: filterUsages(formData.keyUsages as Record<string, boolean>),
-    extendedKeyUsages: filterUsages(formData.extendedKeyUsages as Record<string, boolean>),
-    ...(formData.signatureAlgorithm && { signatureAlgorithm: formData.signatureAlgorithm }),
-    ...(formData.keySource !== CertificateRenewalKeySource.Reuse &&
-      formData.keyAlgorithm && { keyAlgorithm: formData.keyAlgorithm }),
-    ...(basicConstraints && { basicConstraints })
-  };
+  const attributes: TRenewCertificateAttributes = isExternalTemplateProfile
+    ? {
+        ...(formData.keySource !== CertificateRenewalKeySource.Reuse &&
+          formData.keyAlgorithm && { keyAlgorithm: formData.keyAlgorithm })
+      }
+    : {
+        ttl: formData.ttl,
+        keyUsages: filterUsages(formData.keyUsages as Record<string, boolean>),
+        extendedKeyUsages: filterUsages(formData.extendedKeyUsages as Record<string, boolean>),
+        ...(formData.signatureAlgorithm && { signatureAlgorithm: formData.signatureAlgorithm }),
+        ...(formData.keySource !== CertificateRenewalKeySource.Reuse &&
+          formData.keyAlgorithm && { keyAlgorithm: formData.keyAlgorithm }),
+        ...(basicConstraints && { basicConstraints })
+      };
 
   if (constraints.shouldShowSubjectSection) {
     SUBJECT_ATTR_MAP.forEach(({ attrType, requestKey }) => {

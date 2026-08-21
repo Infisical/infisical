@@ -109,6 +109,7 @@ export type TCertificateIssuanceResponse = {
   serialNumber?: string;
   certificateId?: string;
   message?: string;
+  changedAttributes?: TRenewalAuditChange[];
 };
 
 export type TCertificateIssuedResponse = TCertificateIssuanceResponse & {
@@ -129,6 +130,12 @@ export enum CertificateRenewalKeySource {
   Reuse = "reuse",
   Csr = "csr"
 }
+
+export type TRenewalAuditChange = {
+  field: keyof TRenewalAttributes;
+  from: string;
+  to: string;
+};
 
 export type TRenewalAttributes = {
   commonName?: string | null;

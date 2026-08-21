@@ -22,8 +22,10 @@ import { useRenewCertificate } from "@app/hooks/api";
 import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
 import { IssuerType, useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles";
 import {
+  certKeyAlgorithms,
   EXTENDED_KEY_USAGES_OPTIONS,
-  KEY_USAGES_OPTIONS
+  KEY_USAGES_OPTIONS,
+  SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
 import {
   CertificateIssuerKind,
@@ -44,6 +46,7 @@ import {
   buildRenewalRequestAttributes,
   unionUsageOptions
 } from "./certificateRenewalUtils";
+import { isExternalTemplateCa, rowErrorsOf } from "./certificateUtils";
 import { CertificateWizardSheet, useWizardSteps, WizardStep } from "./CertificateWizardSheet";
 import { KeyUsageSection } from "./KeyUsageSection";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
@@ -94,7 +97,27 @@ const formSchema = z
         message: "A certificate signing request is required"
       });
     }
+    if (data.keySource !== CertificateRenewalKeySource.Csr) {
+      if (!data.signatureAlgorithm) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["signatureAlgorithm"],
+          message: "Signature algorithm is required"
+        });
+      }
+      if (data.keySource === CertificateRenewalKeySource.New && !data.keyAlgorithm) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["keyAlgorithm"],
+          message: "Key algorithm is required"
+        });
+      }
+    }
   });
+
+const externalTemplateFormSchema = formSchema.innerType().omit({ ttl: true }).extend({
+  ttl: z.string().trim().optional()
+});
 
 export type RenewalFormData = z.infer<typeof formSchema>;
 
@@ -132,6 +155,14 @@ const STEP_META: Record<RenewalStepKey, WizardStep> = {
   }
 };
 
+const EXTERNAL_TEMPLATE_OPTIONS_STEP: WizardStep = {
+  ...STEP_META.options,
+  shortDescription: "Key algorithm",
+  subtitle: "Choose the key algorithm for the renewed certificate.",
+  rightDescription:
+    "The issuing certificate authority takes validity, key usages, extended key usages and basic constraints from its own certificate template, so they cannot be set here."
+};
+
 const STEP_FIELDS: Record<RenewalStepKey, string[]> = {
   setup: ["keySource"],
   csr: ["csr", "ttl"],
@@ -148,13 +179,14 @@ const STEP_FIELDS: Record<RenewalStepKey, string[]> = {
 
 type Props = {
   popUp: UsePopUpState<["renewCertificate"]>;
+  applicationName?: string;
   handlePopUpToggle: (
     popUpName: keyof UsePopUpState<["renewCertificate"]>,
     state?: boolean
   ) => void;
 };
 
-export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
@@ -174,6 +206,12 @@ export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => 
     policyId: profile?.certificatePolicyId ?? "",
     applicationId: certificate?.applicationId ?? undefined
   });
+
+  const isExternalTemplateProfile = isExternalTemplateCa(
+    profile?.certificateAuthority?.externalType
+  );
+  const isExternalTemplateProfileRef = useRef(false);
+  isExternalTemplateProfileRef.current = isExternalTemplateProfile;
 
   const constraints = useMemo(
     () => (policyData ? deriveTemplateConstraints(policyData) : DEFAULT_TEMPLATE_CONSTRAINTS),
@@ -197,10 +235,16 @@ export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => 
     reset,
     watch,
     setValue,
+    trigger,
     formState,
     formState: { isSubmitting }
   } = useForm<RenewalFormData>({
-    resolver: zodResolver(formSchema),
+    resolver: (values, context, options) =>
+      zodResolver(isExternalTemplateProfileRef.current ? externalTemplateFormSchema : formSchema)(
+        values,
+        context,
+        options
+      ),
     defaultValues: {
       keySource: CertificateRenewalKeySource.New,
       ttl: "",
@@ -248,6 +292,22 @@ export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => 
         watchedExtendedKeyUsages
       ),
     [filteredExtendedKeyUsages, watchedExtendedKeyUsages]
+  );
+
+  const watchedKeyAlgorithm = watch("keyAlgorithm");
+  const watchedSignatureAlgorithm = watch("signatureAlgorithm");
+  const selectableKeyAlgorithms = useMemo(
+    () => unionUsageOptions(availableKeyAlgorithms, certKeyAlgorithms, watchedKeyAlgorithm ?? ""),
+    [availableKeyAlgorithms, watchedKeyAlgorithm]
+  );
+  const selectableSignatureAlgorithms = useMemo(
+    () =>
+      unionUsageOptions(
+        availableSignatureAlgorithms,
+        SIGNATURE_ALGORITHMS_OPTIONS,
+        watchedSignatureAlgorithm ?? ""
+      ),
+    [availableSignatureAlgorithms, watchedSignatureAlgorithm]
   );
 
   const selectableSubjectAttributeTypes = useMemo(
@@ -300,10 +360,19 @@ export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => 
   const { step, setStep, currentStepKey, goBack, goNext, onFormInvalid } = useWizardSteps({
     stepKeys,
     stepFields: STEP_FIELDS,
-    invalidMessage: "Please fix the highlighted fields before renewing."
+    invalidMessage: "Please fix the highlighted fields before renewing.",
+    validateStep: (fields) => trigger(fields as (keyof RenewalFormData)[])
   });
 
-  const steps = useMemo(() => stepKeys.map((key) => STEP_META[key]), [stepKeys]);
+  const steps = useMemo(
+    () =>
+      stepKeys.map((key) =>
+        key === "options" && isExternalTemplateProfile
+          ? EXTERNAL_TEMPLATE_OPTIONS_STEP
+          : STEP_META[key]
+      ),
+    [stepKeys, isExternalTemplateProfile]
+  );
 
   const seededCertificateIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -332,7 +401,11 @@ export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => 
       certificateId,
       renewalKeySource: formData.keySource,
       ...(formData.keySource === CertificateRenewalKeySource.Csr && { csr: formData.csr }),
-      attributes: buildRenewalRequestAttributes({ formData, constraints })
+      attributes: buildRenewalRequestAttributes({
+        formData,
+        constraints,
+        isExternalTemplateProfile
+      })
     });
 
     createNotification({
@@ -351,7 +424,8 @@ export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => 
           orgId: currentOrg.id,
           projectId: currentProject.id,
           certificateId: result.certificateId
-        }
+        },
+        ...(applicationName && { search: { fromApplication: applicationName } })
       });
     }
   };
@@ -493,6 +567,9 @@ export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => 
                 (formState.errors as { subjectAttributes?: { message?: string } }).subjectAttributes
                   ?.message
               }
+              rowErrors={rowErrorsOf(
+                (formState.errors as { subjectAttributes?: unknown }).subjectAttributes
+              )}
             />
           )}
           {constraints.shouldShowSanSection && (
@@ -503,6 +580,9 @@ export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => 
                 (formState.errors as { subjectAltNames?: { message?: string } }).subjectAltNames
                   ?.message
               }
+              rowErrors={rowErrorsOf(
+                (formState.errors as { subjectAltNames?: unknown }).subjectAltNames
+              )}
             />
           )}
         </div>
@@ -510,62 +590,75 @@ export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => 
 
       {currentStepKey === "options" && (
         <div className="space-y-4">
-          <Controller
-            control={control}
-            name="ttl"
-            render={({ field, fieldState: { error } }) => (
-              <Field className="mb-4">
-                <FieldLabel>
-                  Validity (TTL) <span className="text-danger">*</span>
-                </FieldLabel>
-                <Input {...field} placeholder="30d, 1y, 8760h" isError={Boolean(error)} />
-                <FieldDescription>
-                  The renewed certificate is valid for this long, starting now.
-                </FieldDescription>
-                <FieldError errors={[error]} />
-              </Field>
-            )}
-          />
+          {!isExternalTemplateProfile && (
+            <Controller
+              control={control}
+              name="ttl"
+              render={({ field, fieldState: { error } }) => (
+                <Field className="mb-4">
+                  <FieldLabel>
+                    Validity (TTL) <span className="text-danger">*</span>
+                  </FieldLabel>
+                  <Input {...field} placeholder="30d, 1y, 8760h" isError={Boolean(error)} />
+                  <FieldDescription>
+                    The renewed certificate is valid for this long, starting now.
+                  </FieldDescription>
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+          )}
 
           <AlgorithmSelectors
             control={control}
-            availableSignatureAlgorithms={availableSignatureAlgorithms}
-            availableKeyAlgorithms={availableKeyAlgorithms}
+            availableSignatureAlgorithms={selectableSignatureAlgorithms}
+            availableKeyAlgorithms={selectableKeyAlgorithms}
             keyAlgorithmDisabledReason={
               keySource === CertificateRenewalKeySource.Reuse
                 ? "The key algorithm is fixed while the existing key pair is reused."
                 : undefined
             }
+            hideSignatureAlgorithm={isExternalTemplateProfile}
+            signatureError={formState.errors.signatureAlgorithm?.message}
+            keyError={formState.errors.keyAlgorithm?.message}
+            keyAlgorithmRequired={keySource !== CertificateRenewalKeySource.Reuse}
+            keyAlgorithmPlaceholder={
+              keySource === CertificateRenewalKeySource.Reuse
+                ? "Unchanged (existing key pair)"
+                : "Select key algorithm"
+            }
           />
 
-          <div className="mt-4 space-y-6">
-            <KeyUsageSection
-              control={control}
-              title="Key Usages"
-              namePrefix="keyUsages"
-              options={selectableKeyUsages}
-              requiredUsages={constraints.requiredKeyUsages}
-            />
-            <KeyUsageSection
-              control={control}
-              title="Extended Key Usages"
-              namePrefix="extendedKeyUsages"
-              options={selectableExtendedKeyUsages}
-              requiredUsages={constraints.requiredExtendedKeyUsages}
-            />
-            {constraints.templateAllowsCA && (
-              <BasicConstraintsField
+          {!isExternalTemplateProfile && (
+            <div className="mt-4 space-y-6">
+              <KeyUsageSection
                 control={control}
-                setValue={setValue}
-                isCA={watchedIsCA}
-                templateRequiresCA={constraints.templateRequiresCA}
-                maxPathLength={
-                  constraints.maxPathLength === -1 ? undefined : constraints.maxPathLength
-                }
-                idPrefix="renewal"
+                title="Key Usages"
+                namePrefix="keyUsages"
+                options={selectableKeyUsages}
+                requiredUsages={constraints.requiredKeyUsages}
               />
-            )}
-          </div>
+              <KeyUsageSection
+                control={control}
+                title="Extended Key Usages"
+                namePrefix="extendedKeyUsages"
+                options={selectableExtendedKeyUsages}
+                requiredUsages={constraints.requiredExtendedKeyUsages}
+              />
+              {constraints.templateAllowsCA && (
+                <BasicConstraintsField
+                  control={control}
+                  setValue={setValue}
+                  isCA={watchedIsCA}
+                  templateRequiresCA={constraints.templateRequiresCA}
+                  maxPathLength={
+                    constraints.maxPathLength === -1 ? undefined : constraints.maxPathLength
+                  }
+                  idPrefix="renewal"
+                />
+              )}
+            </div>
+          )}
         </div>
       )}
     </CertificateWizardSheet>

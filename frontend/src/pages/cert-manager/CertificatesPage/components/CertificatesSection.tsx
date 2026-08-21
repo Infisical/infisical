@@ -201,7 +201,11 @@ export const CertificatesSection = ({
           onFormatSelected={handleCertificateExport}
         />
         <CertificateManageRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-        <CertificateRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateRenewalModal
+          popUp={popUp}
+          applicationName={applicationName}
+          handlePopUpToggle={handlePopUpToggle}
+        />
         <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <CertificateManagePkiSyncsModal
           popUp={popUp.managePkiSyncs}

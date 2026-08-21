@@ -5,7 +5,6 @@ import { z } from "zod";
 import { CertificatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
-import { NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { isUuidV4 } from "@app/lib/validator";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -1170,17 +1169,6 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const originalCertificate = await server.services.certificate.getCert({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        id: req.params.id
-      });
-      if (!originalCertificate) {
-        throw new NotFoundError({ message: "Original certificate not found" });
-      }
-
       const data = await server.services.certificateV3.renewCertificate({
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -1202,7 +1190,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             originalCertificateId: req.params.id,
             newCertificateId: data.certificateId || "",
             profileName: data.profileName,
-            commonName: data.commonName || ""
+            commonName: data.commonName || "",
+            renewalKeySource: req.body?.renewalKeySource ?? CertificateRenewalKeySource.New,
+            changedAttributes: data.changedAttributes ?? []
           }
         }
       });

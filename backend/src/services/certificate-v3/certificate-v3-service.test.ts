@@ -2171,14 +2171,9 @@ describe("CertificateV3Service", () => {
         })
       ).rejects.toThrow("Certificate renewal failed. Errors: Subject alternative name not allowed");
 
-      // Should store policy validation error
-      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith(
-        "cert-123",
-        {
-          renewalError: "Policy validation failed: Subject alternative name not allowed"
-        },
-        expect.anything()
-      );
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
+        renewalError: "Certificate renewal failed. Errors: Subject alternative name not allowed"
+      });
     });
 
     it("should reject renewal if certificate has no profile and no CA", async () => {

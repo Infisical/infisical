@@ -72,7 +72,8 @@ const Page = () => {
   };
   const { data: certificateData, isLoading } = useGetCertificateById(certificateId);
   const certificate = certificateData?.certificate;
-  const isInventoryView = !fromApplication;
+  const parentApplication = certificate?.applicationName ?? fromApplication;
+  const isInventoryView = !parentApplication;
 
   const projectId = currentProject?.id || "";
 
@@ -267,13 +268,13 @@ const Page = () => {
   } else {
     pageBody = (
       <div className="mx-auto mb-6 w-full max-w-8xl">
-        {fromApplication && (
+        {parentApplication && (
           <Link
             to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
             params={{
               orgId: currentOrg.id,
               projectId,
-              applicationName: fromApplication
+              applicationName: parentApplication
             }}
             search={{ selectedTab: "certificates" }}
             className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
@@ -282,7 +283,7 @@ const Page = () => {
             Go back to Application
           </Link>
         )}
-        {!fromApplication && fromHsmConnector && (
+        {!parentApplication && fromHsmConnector && (
           <Link
             to="/organizations/$orgId/projects/cert-manager/$projectId/hsm-connectors/$connectorId"
             params={{
@@ -296,7 +297,7 @@ const Page = () => {
             HSM Connector
           </Link>
         )}
-        {!fromApplication && !fromHsmConnector && (
+        {!parentApplication && !fromHsmConnector && (
           <Link
             to="/organizations/$orgId/projects/cert-manager/$projectId/inventory"
             params={{
@@ -471,7 +472,11 @@ const Page = () => {
       />
       <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateManageRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CertificateRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CertificateRenewalModal
+        popUp={popUp}
+        applicationName={parentApplication}
+        handlePopUpToggle={handlePopUpToggle}
+      />
       <CertificateManagePkiSyncsModal
         popUp={popUp.managePkiSyncs}
         handlePopUpToggle={handlePopUpToggle}

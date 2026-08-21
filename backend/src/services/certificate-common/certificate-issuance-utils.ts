@@ -35,7 +35,14 @@ import {
   convertKeyUsageArrayToLegacy
 } from "./certificate-utils";
 
-export const parseTtlToDays = (ttl: string): number => Math.ceil(ms(ttl) / (24 * 60 * 60 * 1000));
+export const parseTtlToDays = (ttl: string): number => {
+  const durationMs = ms(ttl);
+  if (!durationMs || durationMs <= 0) {
+    throw new BadRequestError({ message: `Invalid TTL '${ttl}'. Use a duration such as '30d', '12h', or '1y'.` });
+  }
+
+  return Math.ceil(durationMs / (24 * 60 * 60 * 1000));
+};
 
 /**
  * Calculates the renewal threshold in days, ensuring it doesn't exceed the certificate TTL

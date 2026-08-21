@@ -1,6 +1,7 @@
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
+import { TCertificates } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { derivePublicKeyFromSecret, getPqcCrypto, isPqcCryptoKey } from "@app/lib/crypto/pqc";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc/pqc-utils";
@@ -23,7 +24,8 @@ import {
 } from "../certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
-import { CertificateRenewalKeySource, TRenewalAttributes } from "./certificate-v3-types";
+import { parseExtendedKeyUsages, parseKeyUsages } from "./certificate-v3-fns";
+import { CertificateRenewalKeySource, TRenewalAttributes, TRenewalAuditChange } from "./certificate-v3-types";
 
 export enum CertificateRenewalMode {
   SelfSigned = "self-signed",
@@ -32,24 +34,148 @@ export enum CertificateRenewalMode {
   ExternalCa = "external-ca"
 }
 
-const CSR_RENEWAL_EDITABLE_ATTRIBUTES = new Set<keyof TRenewalAttributes>(["ttl", "basicConstraints"]);
+export const certificateSpanToTtl = (notBefore: Date, notAfter: Date): string => {
+  const diffMs = notAfter.getTime() - notBefore.getTime();
 
-const RENEWAL_ATTRIBUTE_LABELS: Record<keyof TRenewalAttributes, string> = {
-  commonName: "common name",
-  organization: "organization",
-  organizationalUnit: "organizational unit",
-  country: "country",
-  state: "state",
-  locality: "locality",
-  domainComponents: "domain components",
-  altNames: "subject alternative names",
-  keyUsages: "key usages",
-  extendedKeyUsages: "extended key usages",
-  signatureAlgorithm: "signature algorithm",
-  keyAlgorithm: "key algorithm",
-  ttl: "TTL",
-  basicConstraints: "basic constraints"
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (days > 0) return `${days}d`;
+
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (hours > 0) return `${hours}h`;
+
+  const minutes = Math.floor(diffMs / (1000 * 60));
+  if (minutes > 0) return `${minutes}m`;
+
+  return `${Math.floor(diffMs / 1000)}s`;
 };
+
+type TRenewalAuditSubject = Pick<
+  TCertificates,
+  | "commonName"
+  | "altNames"
+  | "keyUsages"
+  | "extendedKeyUsages"
+  | "signatureAlgorithm"
+  | "keyAlgorithm"
+  | "subjectOrganization"
+  | "subjectOrganizationalUnit"
+  | "subjectCountry"
+  | "subjectState"
+  | "subjectLocality"
+  | "subjectDomainComponents"
+  | "isCA"
+  | "pathLength"
+  | "notBefore"
+  | "notAfter"
+>;
+
+const formatBasicConstraints = (isCA: boolean | null | undefined, pathLength: number | null | undefined) =>
+  `isCA=${Boolean(isCA)}${pathLength === null || pathLength === undefined ? "" : ` pathLength=${pathLength}`}`;
+
+type TRenewalAttributeDescriptor<K extends keyof TRenewalAttributes> = {
+  label: string;
+  csrEditable?: true;
+  apply: (value: TRenewalAttributes[K]) => Partial<TCertificateRequest>;
+  current: (original: TRenewalAuditSubject) => string;
+  issued: (request: TCertificateRequest) => string;
+};
+
+const text = (value: string | null | undefined) => value ?? "";
+const list = (values: readonly string[] | null | undefined) => (values ?? []).join(",");
+
+const RENEWAL_ATTRIBUTES: { [K in keyof TRenewalAttributes]-?: TRenewalAttributeDescriptor<K> } = {
+  commonName: {
+    label: "common name",
+    apply: (value) => ({ commonName: value ?? undefined }),
+    current: (original) => text(original.commonName),
+    issued: (request) => text(request.commonName)
+  },
+  organization: {
+    label: "organization",
+    apply: (value) => ({ organization: value ?? undefined }),
+    current: (original) => text(original.subjectOrganization),
+    issued: (request) => text(request.organization)
+  },
+  organizationalUnit: {
+    label: "organizational unit",
+    apply: (value) => ({ organizationalUnit: value ?? undefined }),
+    current: (original) => text(original.subjectOrganizationalUnit),
+    issued: (request) => text(request.organizationalUnit)
+  },
+  country: {
+    label: "country",
+    apply: (value) => ({ country: value ?? undefined }),
+    current: (original) => text(original.subjectCountry),
+    issued: (request) => text(request.country)
+  },
+  state: {
+    label: "state",
+    apply: (value) => ({ state: value ?? undefined }),
+    current: (original) => text(original.subjectState),
+    issued: (request) => text(request.state)
+  },
+  locality: {
+    label: "locality",
+    apply: (value) => ({ locality: value ?? undefined }),
+    current: (original) => text(original.subjectLocality),
+    issued: (request) => text(request.locality)
+  },
+  domainComponents: {
+    label: "domain components",
+    apply: (value) => ({ domainComponents: value ?? undefined }),
+    current: (original) => text(original.subjectDomainComponents),
+    issued: (request) => list(request.domainComponents)
+  },
+  altNames: {
+    label: "subject alternative names",
+    apply: (value) => ({ subjectAlternativeNames: value }),
+    current: (original) => text(original.altNames),
+    issued: (request) => (request.subjectAlternativeNames ?? []).map((san) => san.value).join(",")
+  },
+  keyUsages: {
+    label: "key usages",
+    apply: (value) => ({ keyUsages: value }),
+    current: (original) => list(parseKeyUsages(original.keyUsages)),
+    issued: (request) => list(request.keyUsages)
+  },
+  extendedKeyUsages: {
+    label: "extended key usages",
+    apply: (value) => ({ extendedKeyUsages: value }),
+    current: (original) => list(parseExtendedKeyUsages(original.extendedKeyUsages)),
+    issued: (request) => list(request.extendedKeyUsages)
+  },
+  signatureAlgorithm: {
+    label: "signature algorithm",
+    apply: (value) => ({ signatureAlgorithm: value }),
+    current: (original) => text(original.signatureAlgorithm),
+    issued: (request) => text(request.signatureAlgorithm)
+  },
+  keyAlgorithm: {
+    label: "key algorithm",
+    apply: (value) => ({ keyAlgorithm: value }),
+    current: (original) => text(original.keyAlgorithm),
+    issued: (request) => text(request.keyAlgorithm)
+  },
+  ttl: {
+    label: "TTL",
+    csrEditable: true,
+    apply: (value) => ({ validity: { ttl: value as string } }),
+    current: (original) => certificateSpanToTtl(original.notBefore, original.notAfter),
+    issued: (request) => text(request.validity?.ttl)
+  },
+  basicConstraints: {
+    label: "basic constraints",
+    csrEditable: true,
+    apply: (value) => ({ basicConstraints: value }),
+    current: (original) => formatBasicConstraints(original.isCA, original.pathLength),
+    issued: (request) => formatBasicConstraints(request.basicConstraints?.isCA, request.basicConstraints?.pathLength)
+  }
+};
+
+const RENEWAL_ATTRIBUTE_KEYS = Object.keys(RENEWAL_ATTRIBUTES) as (keyof TRenewalAttributes)[];
+
+const suppliedAttributeKeys = (attributes: TRenewalAttributes) =>
+  RENEWAL_ATTRIBUTE_KEYS.filter((key) => attributes[key] !== undefined);
 
 export const resolveRenewalKeySource = ({
   renewalKeySource,
@@ -75,12 +201,25 @@ export const resolveRenewalKeySource = ({
   return keySource;
 };
 
+export const isCertificateContentEdit = ({
+  keySource,
+  attributes
+}: {
+  keySource: CertificateRenewalKeySource;
+  attributes?: TRenewalAttributes;
+}): boolean => {
+  if (keySource === CertificateRenewalKeySource.Csr) return true;
+  if (!attributes) return false;
+
+  return suppliedAttributeKeys(attributes).length > 0;
+};
+
 export const assertCsrRenewalAttributes = (attributes?: TRenewalAttributes) => {
   if (!attributes) return;
 
-  const rejected = (Object.keys(attributes) as (keyof TRenewalAttributes)[])
-    .filter((key) => attributes[key] !== undefined && !CSR_RENEWAL_EDITABLE_ATTRIBUTES.has(key))
-    .map((key) => RENEWAL_ATTRIBUTE_LABELS[key] ?? key);
+  const rejected = suppliedAttributeKeys(attributes)
+    .filter((key) => !RENEWAL_ATTRIBUTES[key].csrEditable)
+    .map((key) => RENEWAL_ATTRIBUTES[key].label);
 
   if (rejected.length > 0) {
     throw new BadRequestError({
@@ -105,27 +244,13 @@ export const buildRenewalCertificateRequest = ({
 }): TCertificateRequest => {
   if (!attributes) return original;
 
-  return {
-    ...original,
-    ...(attributes.commonName !== undefined && { commonName: attributes.commonName ?? undefined }),
-    ...(attributes.organization !== undefined && { organization: attributes.organization ?? undefined }),
-    ...(attributes.organizationalUnit !== undefined && {
-      organizationalUnit: attributes.organizationalUnit ?? undefined
+  return suppliedAttributeKeys(attributes).reduce<TCertificateRequest>(
+    (request, key) => ({
+      ...request,
+      ...(RENEWAL_ATTRIBUTES[key] as TRenewalAttributeDescriptor<typeof key>).apply(attributes[key])
     }),
-    ...(attributes.country !== undefined && { country: attributes.country ?? undefined }),
-    ...(attributes.state !== undefined && { state: attributes.state ?? undefined }),
-    ...(attributes.locality !== undefined && { locality: attributes.locality ?? undefined }),
-    ...(attributes.domainComponents !== undefined && {
-      domainComponents: attributes.domainComponents ?? undefined
-    }),
-    ...(attributes.altNames !== undefined && { subjectAlternativeNames: attributes.altNames }),
-    ...(attributes.keyUsages !== undefined && { keyUsages: attributes.keyUsages }),
-    ...(attributes.extendedKeyUsages !== undefined && { extendedKeyUsages: attributes.extendedKeyUsages }),
-    ...(attributes.signatureAlgorithm !== undefined && { signatureAlgorithm: attributes.signatureAlgorithm }),
-    ...(attributes.keyAlgorithm !== undefined && { keyAlgorithm: attributes.keyAlgorithm }),
-    ...(attributes.ttl !== undefined && { validity: { ttl: attributes.ttl } }),
-    ...(attributes.basicConstraints !== undefined && { basicConstraints: attributes.basicConstraints })
-  };
+    original
+  );
 };
 
 export const buildCsrRenewalCertificateRequest = ({
@@ -156,20 +281,15 @@ export const buildCsrRenewalCertificateRequest = ({
   };
 };
 
-export const certificateSpanToTtl = (notBefore: Date, notAfter: Date): string => {
-  const diffMs = notAfter.getTime() - notBefore.getTime();
-
-  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (days > 0) return `${days}d`;
-
-  const hours = Math.floor(diffMs / (1000 * 60 * 60));
-  if (hours > 0) return `${hours}h`;
-
-  const minutes = Math.floor(diffMs / (1000 * 60));
-  if (minutes > 0) return `${minutes}m`;
-
-  return `${Math.floor(diffMs / 1000)}s`;
-};
+export const buildRenewalAuditChanges = (
+  original: TRenewalAuditSubject,
+  issuedRequest: TCertificateRequest
+): TRenewalAuditChange[] =>
+  RENEWAL_ATTRIBUTE_KEYS.map((field) => ({
+    field,
+    from: RENEWAL_ATTRIBUTES[field].current(original),
+    to: RENEWAL_ATTRIBUTES[field].issued(issuedRequest)
+  })).filter(({ from, to }) => from !== to);
 
 export const buildRenewalDistinguishedName = (certificateRequest: TCertificateRequest): string =>
   createDistinguishedName({

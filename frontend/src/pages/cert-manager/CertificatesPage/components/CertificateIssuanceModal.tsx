@@ -45,7 +45,12 @@ import {
 import { AlgorithmSelectors } from "./AlgorithmSelectors";
 import { BasicConstraintsField } from "./BasicConstraintsField";
 import { buildManagedRequest } from "./buildManagedRequest";
-import { detectSanTypeFromValue } from "./certificateUtils";
+import {
+  detectSanTypeFromValue,
+  EXTERNAL_CA_TEMPLATE_HINT,
+  isExternalTemplateCa,
+  rowErrorsOf
+} from "./certificateUtils";
 import { CertificateWizardSheet, useWizardSteps, WizardStep } from "./CertificateWizardSheet";
 import { KeyUsageSection } from "./KeyUsageSection";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
@@ -351,14 +356,11 @@ export const CertificateIssuanceModal = ({
   );
 
   const externalCaType = actualSelectedProfile?.certificateAuthority?.externalType;
-  const isAdcsProfile = externalCaType === CaType.ADCS || externalCaType === CaType.AZURE_AD_CS;
+  const isAdcsProfile = isExternalTemplateCa(externalCaType);
   isAdcsProfileRef.current = isAdcsProfile;
 
   const isAwsPcaProfile = externalCaType === CaType.AWS_PCA;
   isAwsPcaProfileRef.current = isAwsPcaProfile;
-
-  const externalCaHint =
-    "Validity, key usages, extended key usages and basic constraints are controlled by the external CA's certificate template.";
 
   const { data: policyData } = useGetCertificatePolicyById({
     policyId: actualSelectedProfile?.certificatePolicyId || "",
@@ -552,13 +554,6 @@ export const CertificateIssuanceModal = ({
     ]
   );
 
-  const rowErrorsOf = (fieldErrors: unknown): (string | undefined)[] | undefined =>
-    Array.isArray(fieldErrors)
-      ? (fieldErrors as ({ value?: { message?: string } } | undefined)[]).map(
-          (rowError) => rowError?.value?.message
-        )
-      : undefined;
-
   const selectedProfileReady = Boolean(profileId || actualSelectedProfileId);
 
   return (
@@ -671,7 +666,9 @@ export const CertificateIssuanceModal = ({
                         Configure API enrollment under this Application&apos;s Settings tab.
                       </FieldDescription>
                     )}
-                    {isAdcsProfile && <FieldDescription>{externalCaHint}</FieldDescription>}
+                    {isAdcsProfile && (
+                      <FieldDescription>{EXTERNAL_CA_TEMPLATE_HINT}</FieldDescription>
+                    )}
                     <FieldError errors={[error]} />
                   </FieldContent>
                 </Field>
@@ -684,7 +681,7 @@ export const CertificateIssuanceModal = ({
       {currentStepKey !== "profile" && (actualSelectedProfile || profileId) && (
         <div className="space-y-4">
           {currentStepKey === "options" && profileId && isAdcsProfile && (
-            <p className="mb-4 text-xs text-mineshaft-400">{externalCaHint}</p>
+            <p className="mb-4 text-xs text-mineshaft-400">{EXTERNAL_CA_TEMPLATE_HINT}</p>
           )}
 
           {currentStepKey === "csr" && (
@@ -746,6 +743,9 @@ export const CertificateIssuanceModal = ({
                 (formState.errors as { subjectAltNames?: { message?: string } }).subjectAltNames
                   ?.message
               }
+              rowErrors={rowErrorsOf(
+                (formState.errors as { subjectAltNames?: unknown }).subjectAltNames
+              )}
             />
           )}
 

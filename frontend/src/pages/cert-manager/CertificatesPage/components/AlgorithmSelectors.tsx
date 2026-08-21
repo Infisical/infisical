@@ -65,9 +65,13 @@ const AlgorithmSelect = ({
           disabled={Boolean(disabledReason)}
         >
           <SelectTrigger className="w-full" isError={Boolean(error)}>
-            <SelectValue
-              placeholder={options.length > 0 ? selectPlaceholder : "No algorithms available"}
-            />
+            {value ? (
+              <SelectValue />
+            ) : (
+              <span className="text-muted">
+                {options.length > 0 ? selectPlaceholder : "No algorithms available"}
+              </span>
+            )}
           </SelectTrigger>
           <SelectContent position="popper">{renderOptions(options)}</SelectContent>
         </Select>
@@ -91,6 +95,8 @@ type AlgorithmSelectorsProps = {
   nonePlaceholder?: string;
   hideSignatureAlgorithm?: boolean;
   keyAlgorithmDisabledReason?: string;
+  keyAlgorithmRequired?: boolean;
+  keyAlgorithmPlaceholder?: string;
 };
 
 export const AlgorithmSelectors = ({
@@ -105,7 +111,9 @@ export const AlgorithmSelectors = ({
   isRequired = true,
   nonePlaceholder,
   hideSignatureAlgorithm = false,
-  keyAlgorithmDisabledReason
+  keyAlgorithmDisabledReason,
+  keyAlgorithmRequired = isRequired,
+  keyAlgorithmPlaceholder = "Select key algorithm"
 }: AlgorithmSelectorsProps) => {
   const { subscription } = useSubscription();
 
@@ -150,9 +158,9 @@ export const AlgorithmSelectors = ({
         options={availableKeyAlgorithms}
         error={keyError}
         shouldUnregister={shouldUnregister}
-        isRequired={isRequired}
+        isRequired={keyAlgorithmRequired}
         nonePlaceholder={nonePlaceholder}
-        selectPlaceholder="Select key algorithm"
+        selectPlaceholder={keyAlgorithmPlaceholder}
         renderOptions={renderOptions}
         disabledReason={keyAlgorithmDisabledReason}
       />

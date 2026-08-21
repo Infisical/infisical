@@ -12,9 +12,7 @@ import {
 import { isUuidV4 } from "@app/lib/validator";
 import {
   mapExtendedKeyUsageToLegacy,
-  mapLegacyExtendedKeyUsageToStandard,
-  normalizeExtendedKeyUsagesForResponse,
-  normalizeKeyUsagesForResponse
+  mapLegacyExtendedKeyUsageToStandard
 } from "@app/services/certificate-common/certificate-constants";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
@@ -471,9 +469,7 @@ export const certificateDALFactory = (db: TDbClient) => {
       const certs = await query;
       return certs.map((cert) => ({
         ...cert,
-        hasPrivateKey: Boolean(cert.privateKeyRef),
-        keyUsages: normalizeKeyUsagesForResponse(cert.keyUsages),
-        extendedKeyUsages: normalizeExtendedKeyUsagesForResponse(cert.extendedKeyUsages)
+        hasPrivateKey: Boolean(cert.privateKeyRef)
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find active certificates for sync" });
@@ -729,9 +725,7 @@ export const certificateDALFactory = (db: TDbClient) => {
       const results = await query;
       return results.map((row) => ({
         ...row,
-        hasPrivateKey: row.privateKeyRef !== null,
-        keyUsages: normalizeKeyUsagesForResponse(row.keyUsages),
-        extendedKeyUsages: normalizeExtendedKeyUsagesForResponse(row.extendedKeyUsages)
+        hasPrivateKey: row.privateKeyRef !== null
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificates with private key info" });
@@ -802,9 +796,7 @@ export const certificateDALFactory = (db: TDbClient) => {
       return {
         ...rest,
         caType,
-        hasPrivateKey: Boolean(privateKeyRef),
-        keyUsages: normalizeKeyUsagesForResponse(rest.keyUsages),
-        extendedKeyUsages: normalizeExtendedKeyUsagesForResponse(rest.extendedKeyUsages)
+        hasPrivateKey: Boolean(privateKeyRef)
       } as TCertificateWithRequestDetails;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate with full details" });

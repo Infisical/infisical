@@ -2107,6 +2107,7 @@ export const certificateV3ServiceFactory = ({
     pkiAlertV2Queue,
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
+    licenseService,
     resolveApplicationIdForProfile: $resolveApplicationIdForProfile,
     reportCertificateIssued: $reportCertificateIssued
   });

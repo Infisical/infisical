@@ -6,14 +6,18 @@ import {
   CertExtendedKeyUsageType,
   CertKeyAlgorithm,
   CertKeyUsageType,
+  CertSignatureAlgorithm,
   CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import {
   assertCsrRenewalAttributes,
+  buildCsrRenewalCertificateRequest,
+  buildRenewalAuditChanges,
   buildRenewalCertificateRequest,
   certificateSpanToTtl,
   importKeyPairFromPem,
+  isCertificateContentEdit,
   resolveRenewalKeySource
 } from "./certificate-renewal-fns";
 import { CertificateRenewalKeySource } from "./certificate-v3-types";
@@ -198,5 +202,132 @@ describe("importKeyPairFromPem", () => {
     await expect(
       importKeyPairFromPem({ privateKeyPem: "not-a-key", keyAlgorithm: CertKeyAlgorithm.RSA_2048 })
     ).rejects.toThrow("Renew with a new key pair");
+  });
+});
+
+const CSR_PEM = `-----BEGIN CERTIFICATE REQUEST-----
+MIICyjCCAbICAQAwQzEdMBsGA1UEAwwUZnJvbS1jc3IuZXhhbXBsZS5jb20xFTAT
+BgNVBAoMDEV4YW1wbGUgQ29ycDELMAkGA1UEBhMCVVMwggEiMA0GCSqGSIb3DQEB
+AQUAA4IBDwAwggEKAoIBAQDK2rfCBjscc47ffKzImc4cs8ARSAoVdxxhUwRIPRKa
+oWazByeQVSCDPj8L7C1WvGaNpre29G7nIe9+T1gvR2x00PJ62TE7fKNcLvEl4+zV
+W2wZ4/P/SV5/t7yAlnd+oYvc8NQ7I5648/elzb9LXPzSY7MwHJjNKVZmqzUG/S6J
+6bPa20i/WB4A5kLtiNWN5UZRZMG4tWknqpPoGflM5UC/vHdcIXwOEaB8BOEGqhKs
+pfqclrq5eIXqN9fUmVTSLIDj5aIRS90fz9MLt9aIEZy+ixEC68KWkkmAtqoVqNZZ
+CM17KYqHlbSdNh2sxNCxlqtCN4fQOsvKW4LpckaxjJIdAgMBAAGgQjBABgkqhkiG
+9w0BCQ4xMzAxMC8GA1UdEQQoMCaCEWNzci1hLmV4YW1wbGUuY29tghFjc3ItYi5l
+eGFtcGxlLmNvbTANBgkqhkiG9w0BAQsFAAOCAQEAYImLw0nLLorTvLwwmc5pTwq/
+fLEbNmU/UGU5yirTE6ZvZ4m7Ux5yoLLlEGj8FkhSRbIa/yNlX8O/fE62Bv0spQ1j
+MdNVsXe6Nk5bDh3IbxUrDFw7LzGMkkE3mbskHWoQDKHY7RLgGkrPxDZuEb6sUOv0
+hIi0sn3rB6UncFoh09lzp2P7PMOuRT3WAZV2e3Sp0Iniiz8GUtGMdu98saC+or6Y
+nK6dxfdkgRRPX+0Z/Su41uX6QBh1tbHdHY7mL0ZuqlD6cUQ8L/vHNzRJVY7hxhI2
+r5EYNQvwLPvpPtwb6/5hKykcW6t2IDZNu8d5cg2hXI74eBjZCo8M+W+E/SDi8A==
+-----END CERTIFICATE REQUEST-----`;
+
+describe("buildRenewalAuditChanges", () => {
+  const cert = {
+    commonName: "web.example.com",
+    altNames: "web.example.com",
+    keyUsages: ["digitalSignature"],
+    extendedKeyUsages: ["serverAuth"],
+    signatureAlgorithm: "RSA-SHA256",
+    keyAlgorithm: "RSA_2048",
+    subjectOrganization: "Example Corp",
+    subjectOrganizationalUnit: null,
+    subjectCountry: "US",
+    subjectState: null,
+    subjectLocality: null,
+    subjectDomainComponents: null,
+    isCA: false,
+    pathLength: null,
+    notBefore: new Date("2026-01-01T00:00:00Z"),
+    notAfter: new Date("2026-01-31T00:00:00Z")
+  };
+
+  const unchangedRequest: TCertificateRequest = {
+    commonName: "web.example.com",
+    organization: "Example Corp",
+    country: "US",
+    subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "web.example.com" }],
+    keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE],
+    extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
+    signatureAlgorithm: CertSignatureAlgorithm.RSA_SHA256,
+    keyAlgorithm: CertKeyAlgorithm.RSA_2048,
+    validity: { ttl: "30d" }
+  };
+
+  it("records nothing when the renewal reproduces the certificate", () => {
+    expect(buildRenewalAuditChanges(cert, unchangedRequest)).toEqual([]);
+  });
+
+  it("does not report a change when stored legacy usage names resolve to the same usages", () => {
+    expect(
+      buildRenewalAuditChanges(cert, { ...unchangedRequest, keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE] })
+    ).toEqual([]);
+  });
+
+  it("records before and after for each changed attribute", () => {
+    expect(
+      buildRenewalAuditChanges(cert, {
+        ...unchangedRequest,
+        commonName: "api.example.com",
+        subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "api.example.com" }],
+        validity: { ttl: "90d" }
+      })
+    ).toEqual([
+      { field: "commonName", from: "web.example.com", to: "api.example.com" },
+      { field: "altNames", from: "web.example.com", to: "api.example.com" },
+      { field: "ttl", from: "30d", to: "90d" }
+    ]);
+  });
+
+  it("records a cleared field as an empty value", () => {
+    expect(buildRenewalAuditChanges(cert, { ...unchangedRequest, organization: undefined })).toEqual([
+      { field: "organization", from: "Example Corp", to: "" }
+    ]);
+  });
+
+  it("renders basic constraints and lists readably", () => {
+    expect(
+      buildRenewalAuditChanges(cert, {
+        ...unchangedRequest,
+        basicConstraints: { isCA: true, pathLength: 2 },
+        keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT]
+      })
+    ).toEqual([
+      { field: "keyUsages", from: "digital_signature", to: "digital_signature,key_encipherment" },
+      { field: "basicConstraints", from: "isCA=false", to: "isCA=true pathLength=2" }
+    ]);
+  });
+
+  it("records the subject a CSR renewal rewrites, which never appears in the request attributes", () => {
+    const fromCsr = buildCsrRenewalCertificateRequest({ csr: CSR_PEM, attributes: { ttl: "30d" } });
+
+    expect(buildRenewalAuditChanges(cert, fromCsr)).toEqual(
+      expect.arrayContaining([
+        { field: "commonName", from: "web.example.com", to: "from-csr.example.com" },
+        { field: "altNames", from: "web.example.com", to: "csr-a.example.com,csr-b.example.com" }
+      ])
+    );
+  });
+});
+
+describe("isCertificateContentEdit", () => {
+  it("is false for a renewal that supplies nothing", () => {
+    expect(isCertificateContentEdit({ keySource: CertificateRenewalKeySource.New })).toBe(false);
+    expect(isCertificateContentEdit({ keySource: CertificateRenewalKeySource.New, attributes: {} })).toBe(false);
+    expect(isCertificateContentEdit({ keySource: CertificateRenewalKeySource.Reuse, attributes: {} })).toBe(false);
+  });
+
+  it("is true when any attribute is supplied, including one that clears a field", () => {
+    expect(isCertificateContentEdit({ keySource: CertificateRenewalKeySource.New, attributes: { ttl: "90d" } })).toBe(
+      true
+    );
+    expect(
+      isCertificateContentEdit({ keySource: CertificateRenewalKeySource.New, attributes: { organization: null } })
+    ).toBe(true);
+  });
+
+  it("is true for a CSR renewal, which rewrites the subject from the CSR", () => {
+    expect(isCertificateContentEdit({ keySource: CertificateRenewalKeySource.Csr })).toBe(true);
   });
 });

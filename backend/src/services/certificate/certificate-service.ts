@@ -25,7 +25,6 @@ import { CaCapability, CaType } from "@app/services/certificate-authority/certif
 import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
-import { withNormalizedUsagesForResponse } from "@app/services/certificate-common/certificate-constants";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -417,7 +416,7 @@ export const certificateServiceFactory = ({
     usageMeteringService.emitForProject(cert.projectId, ActiveCerts.key);
 
     return {
-      deletedCert: withNormalizedUsagesForResponse(deletedCert)
+      deletedCert
     };
   };
 
@@ -1233,7 +1232,7 @@ export const certificateServiceFactory = ({
     }
 
     const [updatedCert] = await certificateDAL.update({ id: cert.id }, { applicationId });
-    return { certificate: withNormalizedUsagesForResponse(updatedCert), application };
+    return { certificate: updatedCert, application };
   };
 
   return {

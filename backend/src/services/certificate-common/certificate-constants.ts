@@ -250,20 +250,6 @@ export const mapLegacyExtendedKeyUsageToStandard = (usage: string): CertExtended
   return standard;
 };
 
-export const normalizeKeyUsagesForResponse = (usages: readonly string[] | null | undefined): string[] =>
-  (usages ?? []).map((usage) => KEY_USAGE_BY_ALIAS.get(usage) ?? usage);
-
-export const normalizeExtendedKeyUsagesForResponse = (usages: readonly string[] | null | undefined): string[] =>
-  (usages ?? []).map((usage) => EXTENDED_KEY_USAGE_BY_ALIAS.get(usage) ?? usage);
-
-export const withNormalizedUsagesForResponse = <T extends { keyUsages?: unknown; extendedKeyUsages?: unknown }>(
-  row: T
-): T => ({
-  ...row,
-  keyUsages: normalizeKeyUsagesForResponse(row.keyUsages as string[] | null | undefined),
-  extendedKeyUsages: normalizeExtendedKeyUsagesForResponse(row.extendedKeyUsages as string[] | null | undefined)
-});
-
 export enum CertKeyAlgorithm {
   RSA_2048 = "RSA_2048",
   RSA_3072 = "RSA_3072",

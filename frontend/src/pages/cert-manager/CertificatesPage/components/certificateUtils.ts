@@ -1,4 +1,5 @@
 import { isIPv4, isIPv6 } from "@app/helpers/ip";
+import { CaType } from "@app/hooks/api/ca";
 import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
@@ -54,6 +55,13 @@ export const formatSubjectAltNames = (subjectAltNames: SubjectAltName[]) => {
     }));
 };
 
+export const rowErrorsOf = (fieldErrors: unknown): (string | undefined)[] | undefined =>
+  Array.isArray(fieldErrors)
+    ? (fieldErrors as ({ value?: { message?: string } } | undefined)[]).map(
+        (rowError) => rowError?.value?.message
+      )
+    : undefined;
+
 export const filterUsages = <T extends Record<string, boolean>>(usages: T): string[] => {
   return Object.entries(usages)
     .filter(([, value]) => value)
@@ -84,3 +92,9 @@ export const SUBJECT_ATTR_MAP: {
   { attrType: CertSubjectAttributeType.STATE, requestKey: "state" },
   { attrType: CertSubjectAttributeType.LOCALITY, requestKey: "locality" }
 ];
+
+export const isExternalTemplateCa = (externalCaType?: CaType | string | null) =>
+  externalCaType === CaType.ADCS || externalCaType === CaType.AZURE_AD_CS;
+
+export const EXTERNAL_CA_TEMPLATE_HINT =
+  "Validity, key usages, extended key usages and basic constraints are controlled by the external CA's certificate template.";
