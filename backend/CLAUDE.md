@@ -183,8 +183,9 @@ Auth extraction happens in `src/server/plugins/auth/`:
     which reads `user.superAdmin` rather than a CASL ability
   - OAuth client CRUD + consent (`v1/oauth-router.ts`) and `ee/v1/assume-privilege-router.ts`, where a
     delegated token could widen its own grant
-  - four org routes held back individually and commented as such: `GET /v1/organization`,
-    `GET /v1/organization/accessible-with-sub-orgs`, `POST /v2/organization`, `GET /v1/organization/:organizationId`
+  - five org routes held back individually and commented as such: `GET /v1/organization`,
+    `GET /v1/organization/accessible-with-sub-orgs`, `POST /v2/organization`, `GET /v1/organization/:organizationId`,
+    `DELETE /v2/organization/:organizationId`
 
   Rough proxy: nothing passing `requireOrg: false` accepts `AuthMode.OAUTH`, since with no org there's no
   ability to narrow. Before adding `AuthMode.OAUTH` to a route, check the handler actually builds an
@@ -199,6 +200,13 @@ Auth extraction happens in `src/server/plugins/auth/`:
   before reading secrets) and `getProjectKmsKeys`. A CASL gate isn't the fix there, since the operation has
   no subject, any member with an identity token can already call it, and a gate would change first-party
   behaviour. Weigh a route in this position on what it returns.
+
+  **A route that mints session tokens can't accept a delegated one.** `DELETE /v2/organization/:organizationId`
+  deletes the org the caller's token points at, so it reissues the user's session through
+  `loginService.generateUserTokens` and returns it. `generateUserTokens` has no oauthClientId, scopes or
+  delegation parameter, so the reissued pair is a first-party session regardless of what came in: a
+  delegated caller would exit with credentials good for account management and org creation, the families
+  deliberately closed to OAuth. Weigh any route that issues credentials the same way.
 
 **Delegated tokens carry exactly one delegation marker, never both** (`oauth-client-types.ts`):
 - `scopes: [...]` from the authorization code grant. `permission-service` intersects the user's CASL rules

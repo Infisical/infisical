@@ -56,9 +56,10 @@ Structurally, this is your organization's OIDC sign-in with the token handed ove
 
 The issued token carries the user's **full effective permissions**, not a narrowed subset. There is no consent screen and no scope list: an organization admin approves the delegation once, when registering the application.
 
-Two things it deliberately cannot do:
+Three things it deliberately cannot do:
 
 - **Manage the user's account.** Changing MFA, revoking sessions, and other account self-management actions are never reachable with a delegated token.
+- **Create or delete an organization.** Both require the user's own sign-in, so a delegated token is rejected on those endpoints even when the user is an organization admin.
 - **Outlive its access token.** No refresh token is issued, so your middleware exchanges again against the still-valid identity provider token.
 
 <Warning>
