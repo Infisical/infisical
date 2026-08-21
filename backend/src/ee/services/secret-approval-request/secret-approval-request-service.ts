@@ -9,6 +9,7 @@ import {
   SecretKeyEncoding,
   SecretType,
   TableName,
+  TSecretApprovalRequests,
   TSecretApprovalRequestsSecretsInsert,
   TSecretApprovalRequestsSecretsV2Insert
 } from "@app/db/schemas";
@@ -168,6 +169,10 @@ type TSecretApprovalRequestServiceFactoryDep = {
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
+
+// findById reads from a replica, which can lag the write that triggered a webhook event. Callers
+// holding the primary-side row pass it so the payload's mutable fields cannot go stale.
+type TChangeRequestPrimaryRow = Pick<TSecretApprovalRequests, "status" | "hasMerged" | "updatedAt">;
 
 export const secretApprovalRequestServiceFactory = ({
   secretApprovalRequestDAL,
@@ -484,9 +489,7 @@ export const secretApprovalRequestServiceFactory = ({
     environment,
     environmentName,
     secretPath,
-    status,
-    hasMerged,
-    updatedAt,
+    primaryRow,
     isBypassed,
     tx
   }: {
@@ -496,11 +499,7 @@ export const secretApprovalRequestServiceFactory = ({
     environment: string;
     environmentName?: string;
     secretPath: string;
-    // findById reads from a replica, which can lag the write that triggered the event. Callers
-    // holding the primary-side row pass its volatile fields here so the payload cannot go stale.
-    status?: string;
-    hasMerged?: boolean;
-    updatedAt?: Date;
+    primaryRow?: TChangeRequestPrimaryRow;
     isBypassed?: boolean;
     tx?: Knex;
   }) => {
@@ -513,6 +512,9 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const cfg = getConfig();
+    // Taking every mutable field from one source keeps a caller-supplied null from being read as
+    // "not provided" and silently replaced by the replica's value.
+    const currentState = primaryRow ?? secretApprovalRequest;
     const { committerUser } = secretApprovalRequest;
     const requestedBy: TWebhookActor | null = secretApprovalRequest.committerUserId
       ? {
@@ -542,8 +544,8 @@ export const secretApprovalRequestServiceFactory = ({
             id: secretApprovalRequest.id,
             slug: secretApprovalRequest.slug,
             url: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${projectId}/approval?requestId=${secretApprovalRequest.id}`,
-            status: status ?? secretApprovalRequest.status,
-            hasMerged: hasMerged ?? secretApprovalRequest.hasMerged,
+            status: currentState.status,
+            hasMerged: currentState.hasMerged,
             isBypassed: isBypassed ?? Boolean(secretApprovalRequest.bypassReason),
             policy: {
               id: secretApprovalRequest.policy.id,
@@ -552,7 +554,7 @@ export const secretApprovalRequestServiceFactory = ({
             },
             requestedBy,
             createdAt: secretApprovalRequest.createdAt.toISOString(),
-            updatedAt: (updatedAt ?? secretApprovalRequest.updatedAt).toISOString()
+            updatedAt: currentState.updatedAt.toISOString()
           }
         }
       },
@@ -745,9 +747,7 @@ export const secretApprovalRequestServiceFactory = ({
           environment: statusFolder.environmentSlug,
           environmentName: statusFolder.environmentName,
           secretPath: statusFolder.path,
-          status: updatedRequest.status,
-          hasMerged: updatedRequest.hasMerged,
-          updatedAt: updatedRequest.updatedAt
+          primaryRow: updatedRequest
         });
       } else {
         logger.warn(
@@ -1384,9 +1384,7 @@ export const secretApprovalRequestServiceFactory = ({
           environment: folder.environmentSlug,
           environmentName: folder.environmentName,
           secretPath: folder.path,
-          status: mergeStatus.approval.status,
-          hasMerged: mergeStatus.approval.hasMerged,
-          updatedAt: mergeStatus.approval.updatedAt,
+          primaryRow: mergeStatus.approval,
           isBypassed: isMergedViaBypass
         });
       } else {
@@ -2433,6 +2431,12 @@ export const secretApprovalRequestServiceFactory = ({
         );
       }
     } catch (error) {
+      // A failed read on the caller's transaction has already aborted it. Swallowing here would
+      // let the caller commit, which Postgres turns into a silent rollback, so the caller would
+      // see success with nothing written. Elsewhere the webhook is genuinely best-effort because
+      // the user's action has already committed.
+      if (providedTx) throw error;
+
       logger.error(
         error,
         `Failed to queue change request webhook [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Created}]`

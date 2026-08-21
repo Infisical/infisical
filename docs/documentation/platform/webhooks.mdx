@@ -33,9 +33,11 @@ Supported events:
 - **Secret Rotation Failed** (`secrets.rotation-failed`): triggered when a secret rotation in the configured scope fails.
 - **Honey Token Triggered** (`honey-token.triggered`): triggered when a honey token is activated.
 - **Change Request Modified** (`secrets.change-request.modified`): triggered when a secret change request in the configured scope is created, reviewed, closed, reopened, or merged.
-- **Access Request Modified** (`secrets.access-request.modified`): triggered when an access request is created, edited, reviewed, or revoked. This event matches on environment and on overlapping secret paths, so a webhook receives a request whenever the requested path could include the path the webhook watches. An access request's path is a pattern rather than a single folder, which is why the matching rule differs from the other events.
+- **Access Request Modified** (`secrets.access-request.modified`): triggered when an access request is created, edited, reviewed, or revoked. This event matches the environment and the secret path, and the path test is deliberately conservative: Infisical delivers the event unless the requested path and the watched path provably cannot overlap. An access request's path is a pattern rather than a single folder, which is why the matching rule differs from the other events.
 
 ### Webhook Payload Format
+
+Every payload has a top-level `timestamp` field, in epoch milliseconds, set to when Infisical sent the webhook.
 
 ```json
 {
@@ -85,11 +87,12 @@ Supported events:
 		"eventName": "the AWS event that triggered the honey token",
 		"sourceIp": "IP address of the caller",
 		"awsRegion": "AWS region where the event occurred"
-	}
+	},
+	"timestamp": ""
 }
 ```
 
-The change request and access request payloads below carry no secret values, no diff of the proposed change, and no free text a user typed, such as a commit message, a bypass reason, or a review note. Each also has a top-level `timestamp` field, in epoch milliseconds, set to when Infisical sent the webhook.
+The change request and access request payloads below carry no secret values, no diff of the proposed change, and no free text a user typed, such as a commit message, a bypass reason, or a review note.
 
 ```json
 {
@@ -101,7 +104,7 @@ The change request and access request payloads below carry no secret values, no 
 	},
 	"request": {
 		"id": "2a7c9e10-4b3d-4f5a-8c6b-1d2e3f4a5b6c",
-		"slug": "quiet-falcon",
+		"slug": "k3Bq7ZxP1r",
 		"url": "https://app.infisical.com/organizations/<org-id>/projects/secret-management/<project-id>/approval?requestId=<request-id>",
 		"target": {
 			"environment": {
@@ -132,6 +135,8 @@ The change request and access request payloads below carry no secret values, no 
 ```
 
 `requestedBy` is `null` when the person who created the change request has since deleted their account.
+
+Reviewing a change request writes only the review, never the request row, so two `reviewed` deliveries for the same request carry an identical `request.updatedAt`. Order and deduplicate deliveries by the top-level `timestamp` rather than by `request.updatedAt`.
 
 ```json
 {

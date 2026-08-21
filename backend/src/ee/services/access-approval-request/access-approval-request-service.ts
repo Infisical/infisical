@@ -160,6 +160,12 @@ export const accessApprovalRequestServiceFactory = ({
       return;
     }
 
+    if (!environment) {
+      logger.warn(
+        `Access request webhook payload has no environment name, environment not found [projectId=${projectId}] [environmentSlug=${envSlug}] [requestId=${accessApprovalRequest.id}] [action=${action}]`
+      );
+    }
+
     const cfg = getConfig();
     // Taking every mutable field from one source keeps a caller-supplied null from being read as
     // "not provided" and silently replaced by the replica's value.

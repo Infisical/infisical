@@ -2,6 +2,7 @@ import picomatch from "picomatch";
 
 import { TWebhooks } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory, WebhookTriggeredEvent } from "@app/ee/services/audit-log/audit-log-types";
+import { RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { haveDisjointLiteralPrefixes } from "@app/lib/casl/glob-subset";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
@@ -17,6 +18,16 @@ import { TWebhookDALFactory } from "./webhook-dal";
 import { TWebhookPayloads, WebhookEvents, WebhookType } from "./webhook-types";
 
 const WEBHOOK_TRIGGER_TIMEOUT = 15 * 1000;
+
+const CHANGE_REQUEST_STATUS_LABEL: Record<string, string> = {
+  [RequestState.Open]: "Open",
+  [RequestState.Closed]: "Closed"
+};
+
+// The stored status is a database enum, not copy. Slack and Teams render it into a channel a
+// whole team reads, so it is mapped here; the general payload keeps the raw column value.
+const formatChangeRequestStatus = (request: { hasMerged: boolean; status: string }) =>
+  request.hasMerged ? "Merged" : (CHANGE_REQUEST_STATUS_LABEL[request.status] ?? request.status);
 
 export const decryptWebhookDetails = (webhook: TWebhooks, decryptor: (value: Buffer) => string) => {
   const { encryptedPassKey, encryptedUrl } = webhook;
@@ -407,7 +418,7 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
                 { title: "Environment", value: environmentName || environment, short: false },
                 { title: "Secret Path", value: secretPath, short: false },
                 { title: "Policy", value: request.policy.name, short: false },
-                { title: "Status", value: request.hasMerged ? "Merged" : request.status, short: false },
+                { title: "Status", value: formatChangeRequestStatus(request), short: false },
                 { title: "Requested By", value: request.requestedBy?.name || "Unknown", short: false },
                 { title: "Bypassed", value: request.isBypassed ? "Yes" : "No", short: false }
               ]
@@ -437,7 +448,7 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
                       { title: "Environment", value: environmentName || environment },
                       { title: "Secret Path", value: secretPath || "" },
                       { title: "Policy", value: request.policy.name },
-                      { title: "Status", value: request.hasMerged ? "Merged" : request.status },
+                      { title: "Status", value: formatChangeRequestStatus(request) },
                       { title: "Requested By", value: request.requestedBy?.name || "Unknown" },
                       { title: "Bypassed", value: request.isBypassed ? "Yes" : "No" }
                     ]

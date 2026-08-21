@@ -209,6 +209,35 @@ describe("getWebhookPayload: secrets.change-request.modified", () => {
 
     expect(result.attachments[0].content.body.map((b) => b.type)).toEqual(["TextBlock", "FactSet"]);
   });
+
+  test.each([
+    [WebhookType.SLACK, "Merged", { hasMerged: true, status: "close" }],
+    [WebhookType.SLACK, "Closed", { hasMerged: false, status: "close" }],
+    [WebhookType.SLACK, "Open", { hasMerged: false, status: "open" }],
+    [WebhookType.MICROSOFT_TEAMS, "Merged", { hasMerged: true, status: "close" }],
+    [WebhookType.MICROSOFT_TEAMS, "Closed", { hasMerged: false, status: "close" }],
+    [WebhookType.MICROSOFT_TEAMS, "Open", { hasMerged: false, status: "open" }]
+  ] as const)("%s payload renders status %s rather than the raw column value", (channel, label, state) => {
+    const result = getWebhookPayload({
+      type: WebhookEvents.ChangeRequestModified,
+      payload: {
+        ...changeRequestPayload,
+        type: channel,
+        request: { ...changeRequestPayload.request, ...state }
+      }
+    });
+
+    const facts =
+      channel === WebhookType.SLACK
+        ? (result as { attachments: { fields: { title: string; value: string }[] }[] }).attachments[0].fields
+        : (
+            result as {
+              attachments: { content: { body: { facts?: { title: string; value: string }[] }[] } }[];
+            }
+          ).attachments[0].content.body[1].facts!;
+
+    expect(facts.find((f) => f.title === "Status")?.value).toBe(label);
+  });
 });
 
 const accessRequestPayload = {
