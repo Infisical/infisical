@@ -167,7 +167,10 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
                     <TableCell>
                       <div className="flex items-center justify-end">
                         {permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Tags) ||
-                        permission.can(ProjectPermissionActions.Delete, ProjectPermissionSub.Tags) ? (
+                        permission.can(
+                          ProjectPermissionActions.Delete,
+                          ProjectPermissionSub.Tags
+                        ) ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <IconButton aria-label="Tag options" variant="ghost" size="xs">
@@ -175,13 +178,21 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
                               </IconButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent sideOffset={2} align="end">
-                              {permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Tags) && (
-                                <DropdownMenuItem onClick={() => handlePopUpOpen("editSecretTag", tag)}>
+                              {permission.can(
+                                ProjectPermissionActions.Edit,
+                                ProjectPermissionSub.Tags
+                              ) && (
+                                <DropdownMenuItem
+                                  onClick={() => handlePopUpOpen("editSecretTag", tag)}
+                                >
                                   <PencilIcon />
                                   Edit tag
                                 </DropdownMenuItem>
                               )}
-                              {permission.can(ProjectPermissionActions.Delete, ProjectPermissionSub.Tags) && (
+                              {permission.can(
+                                ProjectPermissionActions.Delete,
+                                ProjectPermissionSub.Tags
+                              ) && (
                                 <DropdownMenuItem
                                   variant="danger"
                                   onClick={() =>
