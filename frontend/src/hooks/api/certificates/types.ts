@@ -1,3 +1,5 @@
+import type { TPkcs12Entry } from "@app/helpers/pkcs12";
+
 import {
   CertExtendedKeyUsage,
   CertificateRequestStatus,
@@ -78,6 +80,16 @@ export type TDeleteCertDTO = {
 export type TRevokeCertDTO = {
   id: string;
   revocationReason: string;
+};
+
+export type TImportPkcs12EntriesDTO = {
+  entries: TPkcs12Entry[];
+  applicationId?: string;
+};
+
+export type TImportPkcs12EntriesResult = {
+  entry: TPkcs12Entry;
+  error?: string;
 };
 
 export type TImportCertificateDTO = {

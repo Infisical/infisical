@@ -46,6 +46,7 @@ import { expandInternalCa, getCaCertChain, rebuildCaCrl } from "../certificate-a
 import { validatePqcLicense } from "../certificate-common/certificate-utils";
 import {
   CertificateThumbprintAlgorithm,
+  extractCertificateAlgorithms,
   extractCertificateFields,
   generatePkcs12FromCertificate,
   getCertificateCredentials,
@@ -899,7 +900,8 @@ export const certificateServiceFactory = ({
     const cert = await certificateDAL.transaction(async (tx) => {
       try {
         // Extract certificate fields for storage
-        const parsedFields = extractCertificateFields(Buffer.from(certificatePem));
+        const certificateBuffer = Buffer.from(certificatePem);
+        const parsedFields = extractCertificateFields(certificateBuffer);
 
         const txCert = await certificateDAL.create(
           {
@@ -914,7 +916,10 @@ export const certificateServiceFactory = ({
             applicationId: applicationId ?? null,
             keyUsages,
             extendedKeyUsages,
-            ...parsedFields
+            ...parsedFields,
+            // Issuance records these from what it was asked to produce. An imported certificate has
+            // no such request, so they come from the certificate itself.
+            ...extractCertificateAlgorithms(certificateBuffer)
           },
           tx
         );
@@ -953,7 +958,7 @@ export const certificateServiceFactory = ({
         // @ts-expect-error We're expecting a database error
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         if (error?.error?.code === "23505") {
-          throw new BadRequestError({ message: "Certificate serial already exists in your project" });
+          throw new BadRequestError({ message: "A certificate with this serial number already exists" });
         }
         throw error;
       }
