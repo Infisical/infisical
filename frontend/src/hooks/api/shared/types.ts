@@ -19,6 +19,7 @@ export type TIdentity = {
   hasDeleteProtection: boolean;
   authMethods: IdentityAuthMethod[];
   activeLockoutAuthMethods: IdentityAuthMethod[];
+  lockoutStateUnavailable?: boolean;
   metadata?: Array<TMetadata & { id: string }>;
 };
 

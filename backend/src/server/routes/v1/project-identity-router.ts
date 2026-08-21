@@ -23,6 +23,7 @@ const sanitizedIdentitySchema = IdentitiesSchema.pick({
   hasDeleteProtection: true
 }).extend({
   activeLockoutAuthMethods: z.string().array().optional(),
+  lockoutStateUnavailable: z.boolean().optional(),
   authMethods: z.string().array().optional(),
   metadata: z
     .object({

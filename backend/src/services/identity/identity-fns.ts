@@ -2,7 +2,9 @@ import { IdentityAuthMethod } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { logger } from "@app/lib/logger";
 
-export const getIdentityActiveLockoutAuthMethods = async (
+// Only the scan fallback below reaches for this. Every caller that holds identity rows goes
+// through `getActiveLockoutAuthMethodsForIdentities`, which resolves a whole page at once.
+const getIdentityActiveLockoutAuthMethods = async (
   identityId: string,
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">
 ) => {
@@ -64,38 +66,30 @@ const isLockedOut = (raw: string | null) => {
 const isExactlyResolvable = (el: TIdentityLockoutLookup, method: IdentityAuthMethod) =>
   method === IdentityAuthMethod.UNIVERSAL_AUTH && Boolean(el.universalAuthClientId);
 
-// A multi-key read is a single round trip on a single-node Redis, but Redis Cluster rejects one
-// whose keys span hash slots — and these keys are spread by identity id, so any page holding more
-// than one universal auth identity trips it. Retrying as concurrent single-key reads keeps
-// clustered deployments accurate, since Cluster routes each read independently: it costs N
-// commands but still one round trip of latency, against the N full keyspace scans this path
-// replaced. Hash-tagging the keys would avoid the retry entirely, but it would change the key
-// format the login path writes and orphan every lockout already held in Redis, so a properly
-// cluster-aware batched read is left to the Go rewrite.
-const readLockoutStates = async (keyStore: TLockoutKeyStore, keys: string[]) => {
-  try {
-    return await keyStore.getItems(keys);
-  } catch (err) {
-    if (!(err instanceof Error) || !err.message.includes("CROSSSLOT")) throw err;
-    return Promise.all(keys.map((key) => keyStore.getItem(key)));
-  }
+// A lockout state that could not be read is not the same as "not locked out", and an empty method
+// array cannot say so. Callers surface `unreadableIdentityIds` separately so an admin looking at a
+// list during a Redis failure sees that the indicator is unavailable rather than a clean row.
+export type TIdentityLockoutStates = {
+  lockoutsByIdentityId: Record<string, IdentityAuthMethod[]>;
+  unreadableIdentityIds: Set<string>;
 };
 
 export const getActiveLockoutAuthMethodsForIdentities = async (
   identities: TIdentityLockoutLookup[],
   keyStore: TLockoutKeyStore
-): Promise<Record<string, IdentityAuthMethod[]>> => {
-  const result: Record<string, IdentityAuthMethod[]> = {};
-  if (!identities.length) return result;
+): Promise<TIdentityLockoutStates> => {
+  const lockoutsByIdentityId: Record<string, IdentityAuthMethod[]> = {};
+  const unreadableIdentityIds = new Set<string>();
+  if (!identities.length) return { lockoutsByIdentityId, unreadableIdentityIds };
 
   // Records that an identity is locked out on a method. Both lookup paths below can surface the
   // same identity+method pair, so this deduplicates rather than letting callers push directly.
   const add = (identityId: string, method: IdentityAuthMethod) => {
-    if (!result[identityId]) result[identityId] = [];
-    if (!result[identityId].includes(method)) result[identityId].push(method);
+    if (!lockoutsByIdentityId[identityId]) lockoutsByIdentityId[identityId] = [];
+    if (!lockoutsByIdentityId[identityId].includes(method)) lockoutsByIdentityId[identityId].push(method);
   };
 
-  // The whole page resolves in one MGET instead of a keyspace scan per row.
+  // The whole page resolves in one batched read instead of a keyspace scan per row.
   const exactLookups = identities
     .filter((el) => el.authMethods.some((method) => isExactlyResolvable(el, method)))
     .map((el) => ({
@@ -109,17 +103,18 @@ export const getActiveLockoutAuthMethodsForIdentities = async (
 
   if (exactLookups.length) {
     try {
-      const values = await readLockoutStates(
-        keyStore,
-        exactLookups.map((el) => el.key)
-      );
+      const values = await keyStore.getItems(exactLookups.map((el) => el.key));
       values.forEach((raw, idx) => {
         if (isLockedOut(raw)) add(exactLookups[idx].identityId, IdentityAuthMethod.UNIVERSAL_AUTH);
       });
     } catch (err) {
+      // One batched read covers every universal auth identity on the page, so a failure leaves all
+      // of them unknown at once. Reporting them keeps the page rendering while still telling the
+      // caller that these particular rows carry no verdict.
+      exactLookups.forEach((el) => unreadableIdentityIds.add(el.identityId));
       logger.error(
         err,
-        `Failed to read universal auth lockout state, omitting lockout indicators [identityCount=${exactLookups.length}]`
+        `Failed to read universal auth lockout state [identityIds=${exactLookups.map((el) => el.identityId).join(",")}]`
       );
     }
   }
@@ -147,12 +142,13 @@ export const getActiveLockoutAuthMethodsForIdentities = async (
           }
         });
       } catch (err) {
-        logger.error(err, `Failed to read lockout state, omitting lockout indicators [identityId=${el.id}]`);
+        unreadableIdentityIds.add(el.id);
+        logger.error(err, `Failed to read lockout state [identityId=${el.id}]`);
       }
     })
   );
 
-  return result;
+  return { lockoutsByIdentityId, unreadableIdentityIds };
 };
 
 export const buildAuthMethods = ({

@@ -515,7 +515,7 @@ export const membershipIdentityServiceFactory = ({
       }
     });
     const filtered = memberships.data.filter((el) => listFilter({ identityId: el.identity.id }));
-    const lockoutsByIdentityId = await getActiveLockoutAuthMethodsForIdentities(
+    const { lockoutsByIdentityId, unreadableIdentityIds } = await getActiveLockoutAuthMethodsForIdentities(
       filtered.map((el) => ({
         id: el.identity.id,
         authMethods: el.identity.authMethods,
@@ -527,7 +527,8 @@ export const membershipIdentityServiceFactory = ({
       ...el,
       identity: {
         ...el.identity,
-        activeLockoutAuthMethods: lockoutsByIdentityId[el.identity.id] ?? []
+        activeLockoutAuthMethods: lockoutsByIdentityId[el.identity.id] ?? [],
+        lockoutStateUnavailable: unreadableIdentityIds.has(el.identity.id)
       }
     }));
     return { ...memberships, data: withLockouts };

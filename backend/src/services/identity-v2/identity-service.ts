@@ -39,7 +39,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
 
 import { ActorType } from "../auth/auth-type";
-import { getIdentityActiveLockoutAuthMethods } from "../identity/identity-fns";
+import { getActiveLockoutAuthMethodsForIdentities, TIdentityLockoutLookup } from "../identity/identity-fns";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -72,7 +72,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "insertIdentityWideRevocationMarker" | "bumpIdentityRevocationVersion"
   >;
-  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
+  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem" | "getItems">;
   projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds" | "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   roleDAL: Pick<TRoleDALFactory, "find">;
@@ -422,9 +422,18 @@ export const identityV2ServiceFactory = ({
     const identity = await identityDAL.getIdentityById(dto.scopeData, dto.selector.identityId);
     if (!identity) throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
 
-    const activeLockoutAuthMethods = await getIdentityActiveLockoutAuthMethods(identity.id, keyStore);
+    const { lockoutsByIdentityId, unreadableIdentityIds } = await getActiveLockoutAuthMethodsForIdentities(
+      [identity],
+      keyStore
+    );
 
-    return { identity: { ...identity, activeLockoutAuthMethods } };
+    return {
+      identity: {
+        ...identity,
+        activeLockoutAuthMethods: lockoutsByIdentityId[identity.id] ?? [],
+        lockoutStateUnavailable: unreadableIdentityIds.has(identity.id)
+      }
+    };
   };
 
   const listIdentities = async (dto: TListIdentityV2DTO) => {
@@ -566,16 +575,20 @@ export const identityV2ServiceFactory = ({
       return { identityMemberships: [], totalCount: 0 };
     }
 
-    const enrichWithLockouts = async <T extends { identity: { id: string } }>(rows: T[]) =>
-      Promise.all(
-        rows.map(async (row) => ({
-          ...row,
-          identity: {
-            ...row.identity,
-            activeLockoutAuthMethods: await getIdentityActiveLockoutAuthMethods(row.identity.id, keyStore)
-          }
-        }))
+    const enrichWithLockouts = async <T extends { identity: TIdentityLockoutLookup }>(rows: T[]) => {
+      const { lockoutsByIdentityId, unreadableIdentityIds } = await getActiveLockoutAuthMethodsForIdentities(
+        rows.map((row) => row.identity),
+        keyStore
       );
+      return rows.map((row) => ({
+        ...row,
+        identity: {
+          ...row.identity,
+          activeLockoutAuthMethods: lockoutsByIdentityId[row.identity.id] ?? [],
+          lockoutStateUnavailable: unreadableIdentityIds.has(row.identity.id)
+        }
+      }));
+    };
 
     if (conditionalProjectIds.size === 0) {
       const { totalCount, docs } = await identityMembershipV2DAL.searchIdentitiesV2({

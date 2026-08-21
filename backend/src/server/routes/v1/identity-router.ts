@@ -290,7 +290,8 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
             }).optional(),
             identity: IdentitiesSchema.pick({ name: true, id: true, hasDeleteProtection: true, orgId: true }).extend({
               authMethods: z.array(z.string()),
-              activeLockoutAuthMethods: z.array(z.string())
+              activeLockoutAuthMethods: z.array(z.string()),
+              lockoutStateUnavailable: z.boolean().optional()
             })
           })
         })
@@ -436,7 +437,8 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
             }).optional(),
             identity: IdentitiesSchema.pick({ name: true, id: true, hasDeleteProtection: true, orgId: true }).extend({
               authMethods: z.array(z.string()),
-              activeLockoutAuthMethods: z.array(z.string())
+              activeLockoutAuthMethods: z.array(z.string()),
+              lockoutStateUnavailable: z.boolean().optional()
             })
           }).array(),
           totalCount: z.number()

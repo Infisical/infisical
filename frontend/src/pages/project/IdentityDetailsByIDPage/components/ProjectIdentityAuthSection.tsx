@@ -95,6 +95,7 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
               identityName={identity.name}
               authMethods={identity.authMethods}
               activeLockoutAuthMethods={identity.activeLockoutAuthMethods}
+              lockoutStateUnavailable={identity.lockoutStateUnavailable}
               onMutated={refetchIdentity}
             />
           ) : (

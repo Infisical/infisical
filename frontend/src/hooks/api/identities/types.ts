@@ -19,6 +19,7 @@ export type Identity = {
   hasDeleteProtection: boolean;
   authMethods: IdentityAuthMethod[];
   activeLockoutAuthMethods: IdentityAuthMethod[];
+  lockoutStateUnavailable?: boolean;
   createdAt: string;
   updatedAt: string;
   isInstanceAdmin?: boolean;
@@ -1024,5 +1025,6 @@ export type IdentityMembershipSearchResult = {
   identity: Pick<Identity, "id" | "name" | "hasDeleteProtection" | "orgId"> & {
     authMethods: IdentityAuthMethod[];
     activeLockoutAuthMethods: IdentityAuthMethod[];
+    lockoutStateUnavailable?: boolean;
   };
 };

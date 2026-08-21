@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LockIcon } from "lucide-react";
+import { LockIcon, TriangleAlertIcon } from "lucide-react";
 
 import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api";
@@ -11,6 +11,7 @@ type Props = {
   identityName: string;
   authMethods: IdentityAuthMethod[];
   activeLockoutAuthMethods: IdentityAuthMethod[];
+  lockoutStateUnavailable?: boolean;
   onMutated: () => void;
 };
 
@@ -19,6 +20,7 @@ export const IdentityAuthMethodsCell = ({
   identityName,
   authMethods,
   activeLockoutAuthMethods,
+  lockoutStateUnavailable,
   onMutated
 }: Props) => {
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<IdentityAuthMethod | null>(null);
@@ -32,8 +34,16 @@ export const IdentityAuthMethodsCell = ({
       <div className="flex flex-wrap items-center gap-1">
         {authMethods.map((authMethod) => {
           const isLockedOut = activeLockoutAuthMethods?.includes(authMethod);
+          // A lockout state we could not read is not the same as no lockout, so say it is unknown
+          // rather than rendering the method as clean.
+          const isUnknown = !isLockedOut && Boolean(lockoutStateUnavailable);
+          const variant = (() => {
+            if (isLockedOut) return "danger";
+            if (isUnknown) return "warning";
+            return "neutral";
+          })();
           const badge = (
-            <Badge asChild variant={isLockedOut ? "danger" : "neutral"} className="cursor-pointer">
+            <Badge asChild variant={variant} className="cursor-pointer">
               <button
                 type="button"
                 onClick={(e) => {
@@ -42,17 +52,23 @@ export const IdentityAuthMethodsCell = ({
                 }}
               >
                 {isLockedOut && <LockIcon />}
+                {isUnknown && <TriangleAlertIcon />}
                 {identityAuthToNameMap[authMethod]}
               </button>
             </Badge>
           );
-          return isLockedOut ? (
+          if (!isLockedOut && !isUnknown) {
+            return <span key={authMethod}>{badge}</span>;
+          }
+          return (
             <Tooltip key={authMethod}>
               <TooltipTrigger asChild>{badge}</TooltipTrigger>
-              <TooltipContent>Auth method has active lockouts</TooltipContent>
+              <TooltipContent>
+                {isLockedOut
+                  ? "Auth method has active lockouts"
+                  : "Lockout status is unavailable right now"}
+              </TooltipContent>
             </Tooltip>
-          ) : (
-            <span key={authMethod}>{badge}</span>
           );
         })}
       </div>

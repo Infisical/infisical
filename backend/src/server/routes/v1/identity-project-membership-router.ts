@@ -337,7 +337,8 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
                 projectId: true
               }).extend({
                 authMethods: z.array(z.string()),
-                activeLockoutAuthMethods: z.array(z.string())
+                activeLockoutAuthMethods: z.array(z.string()),
+                lockoutStateUnavailable: z.boolean().optional()
               })
             })
             .array(),

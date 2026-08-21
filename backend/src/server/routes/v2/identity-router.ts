@@ -54,7 +54,8 @@ const identityMembershipResponseSchema = z.object({
   roles: z.array(roleSchema),
   identity: IdentitiesSchema.pick({ name: true, id: true, hasDeleteProtection: true, orgId: true }).extend({
     authMethods: z.array(z.string()),
-    activeLockoutAuthMethods: z.array(z.string())
+    activeLockoutAuthMethods: z.array(z.string()),
+    lockoutStateUnavailable: z.boolean().optional()
   })
 });
 

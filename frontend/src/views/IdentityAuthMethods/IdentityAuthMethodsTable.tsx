@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { subject } from "@casl/ability";
 import { useParams } from "@tanstack/react-router";
-import { EllipsisIcon, EyeIcon, LockIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import {
+  EllipsisIcon,
+  EyeIcon,
+  LockIcon,
+  PencilIcon,
+  Trash2Icon,
+  TriangleAlertIcon
+} from "lucide-react";
 
 import { VariablePermissionCan } from "@app/components/permissions";
 import {
@@ -40,6 +47,7 @@ type Props = {
   identityName: string;
   authMethods: IdentityAuthMethod[];
   activeLockoutAuthMethods: IdentityAuthMethod[];
+  lockoutStateUnavailable?: boolean;
   onMutated: () => void;
 };
 
@@ -48,6 +56,7 @@ export const IdentityAuthMethodsTable = ({
   identityName,
   authMethods,
   activeLockoutAuthMethods,
+  lockoutStateUnavailable,
   onMutated
 }: Props) => {
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<IdentityAuthMethod | null>(null);
@@ -85,6 +94,9 @@ export const IdentityAuthMethodsTable = ({
         <TableBody>
           {authMethods.map((authMethod) => {
             const isLockedOut = activeLockoutAuthMethods?.includes(authMethod);
+            // A lockout state we could not read is not the same as no lockout, so say it is
+            // unknown rather than rendering the method as clean.
+            const isUnknown = !isLockedOut && Boolean(lockoutStateUnavailable);
             const authMethodIcon = identityAuthMethodOptions.find(
               ({ value }) => value === authMethod
             )?.icon;
@@ -107,6 +119,16 @@ export const IdentityAuthMethodsTable = ({
                           </Badge>
                         </TooltipTrigger>
                         <TooltipContent>Auth method has active lockouts</TooltipContent>
+                      </Tooltip>
+                    )}
+                    {isUnknown && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge isSquare variant="warning">
+                            <TriangleAlertIcon />
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>Lockout status is unavailable right now</TooltipContent>
                       </Tooltip>
                     )}
                   </div>

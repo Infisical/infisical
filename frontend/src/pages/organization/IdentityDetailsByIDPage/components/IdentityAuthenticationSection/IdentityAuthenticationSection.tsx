@@ -78,6 +78,7 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
             identityName={data.identity.name}
             authMethods={data.identity.authMethods}
             activeLockoutAuthMethods={data.identity.activeLockoutAuthMethods}
+            lockoutStateUnavailable={data.identity.lockoutStateUnavailable}
             onMutated={refetch}
           />
         ) : (

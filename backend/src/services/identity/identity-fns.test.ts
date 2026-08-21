@@ -26,7 +26,8 @@ describe("getActiveLockoutAuthMethodsForIdentities", () => {
   test("returns nothing and touches Redis zero times for an empty page", async () => {
     const keyStore = makeKeyStore();
     const result = await getActiveLockoutAuthMethodsForIdentities([], keyStore as never);
-    expect(result).toEqual({});
+    expect(result.lockoutsByIdentityId).toEqual({});
+    expect(result.unreadableIdentityIds.size).toBe(0);
     expect(keyStore.getItems).not.toHaveBeenCalled();
     expect(keyStore.getKeysByPattern).not.toHaveBeenCalled();
   });
@@ -37,7 +38,7 @@ describe("getActiveLockoutAuthMethodsForIdentities", () => {
       [{ id: "i1", authMethods: [IdentityAuthMethod.KUBERNETES_AUTH], universalAuthClientId: null }],
       keyStore as never
     );
-    expect(result).toEqual({});
+    expect(result.lockoutsByIdentityId).toEqual({});
     expect(keyStore.getItems).not.toHaveBeenCalled();
     expect(keyStore.getKeysByPattern).not.toHaveBeenCalled();
   });
@@ -49,7 +50,7 @@ describe("getActiveLockoutAuthMethodsForIdentities", () => {
       keyStore as never
     );
     expect(keyStore.getItems).toHaveBeenCalledWith(["lockout:identity:i1:universal-auth:client-1"]);
-    expect(result).toEqual({ i1: [IdentityAuthMethod.UNIVERSAL_AUTH] });
+    expect(result.lockoutsByIdentityId).toEqual({ i1: [IdentityAuthMethod.UNIVERSAL_AUTH] });
     expect(keyStore.getKeysByPattern).not.toHaveBeenCalled();
   });
 
@@ -59,10 +60,10 @@ describe("getActiveLockoutAuthMethodsForIdentities", () => {
       [{ id: "i1", authMethods: [IdentityAuthMethod.UNIVERSAL_AUTH], universalAuthClientId: "client-1" }],
       keyStore as never
     );
-    expect(result).toEqual({});
+    expect(result.lockoutsByIdentityId).toEqual({});
   });
 
-  test("resolves a full page of universal auth identities in a single MGET", async () => {
+  test("resolves a full page of universal auth identities in a single batched read", async () => {
     const identities = Array.from({ length: 20 }, (_, i) => ({
       id: `i${i}`,
       authMethods: [IdentityAuthMethod.UNIVERSAL_AUTH],
@@ -86,7 +87,7 @@ describe("getActiveLockoutAuthMethodsForIdentities", () => {
       keyStore as never
     );
     expect(keyStore.getKeysByPattern).toHaveBeenCalledWith("lockout:identity:i1:*");
-    expect(result).toEqual({ i1: [IdentityAuthMethod.LDAP_AUTH] });
+    expect(result.lockoutsByIdentityId).toEqual({ i1: [IdentityAuthMethod.LDAP_AUTH] });
   });
 
   test("falls back to a scan when a universal auth identity has no client id", async () => {
@@ -99,7 +100,7 @@ describe("getActiveLockoutAuthMethodsForIdentities", () => {
       keyStore as never
     );
     expect(keyStore.getItems).not.toHaveBeenCalled();
-    expect(result).toEqual({ i1: [IdentityAuthMethod.UNIVERSAL_AUTH] });
+    expect(result.lockoutsByIdentityId).toEqual({ i1: [IdentityAuthMethod.UNIVERSAL_AUTH] });
   });
 
   test("reports both methods when an identity is locked out on each", async () => {
@@ -118,10 +119,10 @@ describe("getActiveLockoutAuthMethodsForIdentities", () => {
       ],
       keyStore as never
     );
-    expect(result.i1).toEqual(
+    expect(result.lockoutsByIdentityId.i1).toEqual(
       expect.arrayContaining([IdentityAuthMethod.UNIVERSAL_AUTH, IdentityAuthMethod.LDAP_AUTH])
     );
-    expect(result.i1).toHaveLength(2);
+    expect(result.lockoutsByIdentityId.i1).toHaveLength(2);
   });
 
   test("treats a malformed stored value as not locked out", async () => {
@@ -130,31 +131,47 @@ describe("getActiveLockoutAuthMethodsForIdentities", () => {
       [{ id: "i1", authMethods: [IdentityAuthMethod.UNIVERSAL_AUTH], universalAuthClientId: "client-1" }],
       keyStore as never
     );
-    expect(result).toEqual({});
+    expect(result.lockoutsByIdentityId).toEqual({});
   });
 
-  test("fails open when Redis errors rather than failing the page", async () => {
+  test("reports the batch as unreadable rather than clean when the exact-key read errors", async () => {
     const keyStore = makeKeyStore({
       getItems: vi.fn().mockRejectedValue(new Error("redis unavailable"))
     });
     const result = await getActiveLockoutAuthMethodsForIdentities(
-      [{ id: "i1", authMethods: [IdentityAuthMethod.UNIVERSAL_AUTH], universalAuthClientId: "client-1" }],
+      [
+        { id: "i1", authMethods: [IdentityAuthMethod.UNIVERSAL_AUTH], universalAuthClientId: "client-1" },
+        { id: "i2", authMethods: [IdentityAuthMethod.UNIVERSAL_AUTH], universalAuthClientId: "client-2" }
+      ],
       keyStore as never
     );
-    expect(result).toEqual({});
+    expect(result.lockoutsByIdentityId).toEqual({});
+    // One batched read covers the page, so a failure leaves every identity in it unknown.
+    expect([...result.unreadableIdentityIds]).toEqual(["i1", "i2"]);
   });
 
-  test("retries as single-key reads when a clustered batch read is rejected cross-slot", async () => {
+  test("reports only the scanned identity as unreadable when its pattern lookup errors", async () => {
     const keyStore = makeKeyStore({
-      getItems: vi.fn().mockRejectedValue(new Error("CROSSSLOT Keys in request don't hash to the same slot")),
-      getItem: vi.fn().mockResolvedValue(lockedValue)
+      getItems: vi.fn().mockResolvedValue([null]),
+      getKeysByPattern: vi.fn().mockRejectedValue(new Error("redis unavailable"))
     });
+    const result = await getActiveLockoutAuthMethodsForIdentities(
+      [
+        { id: "i1", authMethods: [IdentityAuthMethod.UNIVERSAL_AUTH], universalAuthClientId: "client-1" },
+        { id: "i2", authMethods: [IdentityAuthMethod.LDAP_AUTH], universalAuthClientId: null }
+      ],
+      keyStore as never
+    );
+    expect([...result.unreadableIdentityIds]).toEqual(["i2"]);
+  });
+
+  test("reports nothing unreadable when every lookup succeeds", async () => {
+    const keyStore = makeKeyStore({ getItems: vi.fn().mockResolvedValue([lockedValue]) });
     const result = await getActiveLockoutAuthMethodsForIdentities(
       [{ id: "i1", authMethods: [IdentityAuthMethod.UNIVERSAL_AUTH], universalAuthClientId: "client-1" }],
       keyStore as never
     );
-    expect(keyStore.getItem).toHaveBeenCalledWith("lockout:identity:i1:universal-auth:client-1");
-    expect(result).toEqual({ i1: [IdentityAuthMethod.UNIVERSAL_AUTH] });
+    expect(result.unreadableIdentityIds.size).toBe(0);
   });
 
   test("does not resurrect a universal auth lockout whose client id has since changed", async () => {
@@ -173,7 +190,7 @@ describe("getActiveLockoutAuthMethodsForIdentities", () => {
       ],
       keyStore as never
     );
-    expect(result).toEqual({});
+    expect(result.lockoutsByIdentityId).toEqual({});
   });
 
   test("does not report a lockout for an auth method the identity no longer holds", async () => {
@@ -185,6 +202,6 @@ describe("getActiveLockoutAuthMethodsForIdentities", () => {
       [{ id: "i1", authMethods: [IdentityAuthMethod.LDAP_AUTH], universalAuthClientId: null }],
       keyStore as never
     );
-    expect(result).toEqual({});
+    expect(result.lockoutsByIdentityId).toEqual({});
   });
 });

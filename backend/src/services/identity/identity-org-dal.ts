@@ -279,6 +279,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("hasDeleteProtection").withSchema("paginatedIdentity"),
 
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
+          db.ref("clientId").as("uaClientId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
           db.ref("id").as("alicloudId").withSchema(TableName.IdentityAliCloudAuth),
           db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
@@ -326,6 +327,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           orgId,
           identityOrgId,
           uaId,
+          uaClientId,
           alicloudId,
           awsId,
           gcpId,
@@ -366,6 +368,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
             name: identityName,
             hasDeleteProtection,
             orgId: identityOrgId,
+            universalAuthClientId: uaClientId,
             authMethods: buildAuthMethods({
               uaId,
               alicloudId,
@@ -541,6 +544,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("orgId").withSchema(TableName.Identity).as("identityOrgId"),
 
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
+          db.ref("clientId").as("uaClientId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
           db.ref("id").as("alicloudId").withSchema(TableName.IdentityAliCloudAuth),
           db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
@@ -599,6 +603,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           total_count,
           id,
           uaId,
+          uaClientId,
           alicloudId,
           awsId,
           gcpId,
@@ -639,6 +644,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
             name: identityName,
             hasDeleteProtection,
             orgId: identityOrgId,
+            universalAuthClientId: uaClientId,
             authMethods: buildAuthMethods({
               uaId,
               alicloudId,

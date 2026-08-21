@@ -10,6 +10,7 @@ import {
   PlusIcon,
   SearchIcon,
   TrashIcon,
+  TriangleAlertIcon,
   XIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -374,7 +375,8 @@ export const IdentityTab = withProjectPermission(
                               projectId: identityProjectId,
                               orgId: identityOrgId,
                               authMethods,
-                              activeLockoutAuthMethods
+                              activeLockoutAuthMethods,
+                              lockoutStateUnavailable
                             },
                             roles
                           } = identityMember;
@@ -457,6 +459,19 @@ export const IdentityTab = withProjectPermission(
                                       </TooltipContent>
                                     </Tooltip>
                                   )}
+                                  {lockoutStateUnavailable && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Badge isSquare variant="warning">
+                                          <TriangleAlertIcon />
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        Lockout status is unavailable right now, so this identity
+                                        may be locked out
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                       <IconButton
@@ -487,7 +502,7 @@ export const IdentityTab = withProjectPermission(
                                                 }}
                                               >
                                                 {identityAuthToNameMap[method]}
-                                                {activeLockoutAuthMethods?.includes(method) && (
+                                                {activeLockoutAuthMethods?.includes(method) ? (
                                                   <Badge
                                                     isSquare
                                                     variant="danger"
@@ -495,6 +510,16 @@ export const IdentityTab = withProjectPermission(
                                                   >
                                                     <LockIcon className="size-3!" />
                                                   </Badge>
+                                                ) : (
+                                                  lockoutStateUnavailable && (
+                                                    <Badge
+                                                      isSquare
+                                                      variant="warning"
+                                                      className="ml-auto"
+                                                    >
+                                                      <TriangleAlertIcon className="size-3!" />
+                                                    </Badge>
+                                                  )
                                                 )}
                                               </DropdownMenuItem>
                                             ))}

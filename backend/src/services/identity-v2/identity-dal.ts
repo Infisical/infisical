@@ -60,6 +60,7 @@ export const identityV2DALFactory = (db: TDbClient) => {
         db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
         db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue"),
         db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
+        db.ref("clientId").as("uaClientId").withSchema(TableName.IdentityUniversalAuth),
         db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
         db.ref("id").as("alicloudId").withSchema(TableName.IdentityAliCloudAuth),
         db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
@@ -82,6 +83,7 @@ export const identityV2DALFactory = (db: TDbClient) => {
       parentMapper: (el) => {
         const {
           uaId,
+          uaClientId,
           awsId,
           gcpId,
           kubernetesId,
@@ -97,6 +99,7 @@ export const identityV2DALFactory = (db: TDbClient) => {
         } = el;
         return {
           ...IdentitiesSchema.parse(el),
+          universalAuthClientId: uaClientId,
           authMethods: buildAuthMethods({
             uaId,
             awsId,

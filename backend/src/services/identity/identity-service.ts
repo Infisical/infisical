@@ -27,7 +27,7 @@ import { TMembershipIdentityDALFactory } from "../membership-identity/membership
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityDALFactory } from "./identity-dal";
-import { getIdentityActiveLockoutAuthMethods } from "./identity-fns";
+import { getActiveLockoutAuthMethodsForIdentities } from "./identity-fns";
 import { TIdentityMetadataDALFactory } from "./identity-metadata-dal";
 import { TIdentityOrgDALFactory } from "./identity-org-dal";
 import {
@@ -50,7 +50,7 @@ type TIdentityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities">;
-  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
+  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem" | "getItems">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
@@ -341,11 +341,18 @@ export const identityServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
-    const activeLockoutAuthMethods = await getIdentityActiveLockoutAuthMethods(id, keyStore);
+    const { lockoutsByIdentityId, unreadableIdentityIds } = await getActiveLockoutAuthMethodsForIdentities(
+      [identity.identity],
+      keyStore
+    );
 
     return {
       ...identity,
-      identity: { ...identity.identity, activeLockoutAuthMethods }
+      identity: {
+        ...identity.identity,
+        activeLockoutAuthMethods: lockoutsByIdentityId[id] ?? [],
+        lockoutStateUnavailable: unreadableIdentityIds.has(id)
+      }
     };
   };
 
@@ -530,15 +537,18 @@ export const identityServiceFactory = ({
       searchFilter
     });
 
-    const docsWithLockouts = await Promise.all(
-      docs.map(async (doc) => ({
-        ...doc,
-        identity: {
-          ...doc.identity,
-          activeLockoutAuthMethods: await getIdentityActiveLockoutAuthMethods(doc.identity.id, keyStore)
-        }
-      }))
+    const { lockoutsByIdentityId, unreadableIdentityIds } = await getActiveLockoutAuthMethodsForIdentities(
+      docs.map((doc) => doc.identity),
+      keyStore
     );
+    const docsWithLockouts = docs.map((doc) => ({
+      ...doc,
+      identity: {
+        ...doc.identity,
+        activeLockoutAuthMethods: lockoutsByIdentityId[doc.identity.id] ?? [],
+        lockoutStateUnavailable: unreadableIdentityIds.has(doc.identity.id)
+      }
+    }));
 
     return { identityMemberships: docsWithLockouts, totalCount };
   };

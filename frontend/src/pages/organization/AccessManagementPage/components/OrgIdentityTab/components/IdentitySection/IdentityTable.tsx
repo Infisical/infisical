@@ -8,7 +8,8 @@ import {
   MoreHorizontalIcon,
   PlusIcon,
   SearchIcon,
-  TrashIcon
+  TrashIcon,
+  TriangleAlertIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -203,6 +204,7 @@ type IdentityActionsMenuProps = {
   isSubOrgIdentity: boolean;
   authMethods: IdentityAuthMethod[];
   activeLockoutAuthMethods?: IdentityAuthMethod[];
+  lockoutStateUnavailable?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onManageAuth: (authMethod: IdentityAuthMethod) => void;
@@ -224,6 +226,7 @@ const IdentityActionsMenu = (props: IdentityActionsMenuProps) => {
     isSubOrgIdentity,
     authMethods,
     activeLockoutAuthMethods,
+    lockoutStateUnavailable,
     onEdit,
     onDelete,
     onManageAuth,
@@ -281,10 +284,16 @@ const IdentityActionsMenu = (props: IdentityActionsMenuProps) => {
                   }}
                 >
                   {identityAuthToNameMap[method]}
-                  {activeLockoutAuthMethods?.includes(method) && (
+                  {activeLockoutAuthMethods?.includes(method) ? (
                     <Badge isSquare variant="danger" className="ml-auto">
                       <LockIcon className="size-3!" />
                     </Badge>
+                  ) : (
+                    lockoutStateUnavailable && (
+                      <Badge isSquare variant="warning" className="ml-auto">
+                        <TriangleAlertIcon className="size-3!" />
+                      </Badge>
+                    )
                   )}
                 </DropdownMenuItem>
               ))}
@@ -378,7 +387,7 @@ const IdentityRow = ({ membership, onDelete, onManageAuth, onAddAuthMethod }: Id
   const {
     scope,
     project,
-    identity: { id, name, orgId, authMethods, activeLockoutAuthMethods },
+    identity: { id, name, orgId, authMethods, activeLockoutAuthMethods, lockoutStateUnavailable },
     roles: membershipRoles,
     lastLoginAuthMethod,
     lastLoginTime
@@ -438,11 +447,24 @@ const IdentityRow = ({ membership, onDelete, onManageAuth, onAddAuthMethod }: Id
               </TooltipContent>
             </Tooltip>
           )}
+          {lockoutStateUnavailable && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge isSquare variant="warning">
+                  <TriangleAlertIcon />
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                Lockout status is unavailable right now, so this identity may be locked out
+              </TooltipContent>
+            </Tooltip>
+          )}
           <IdentityActionsMenu
             isProjectScoped={isProjectScoped}
             isSubOrgIdentity={isSubOrgIdentity}
             authMethods={authMethods ?? []}
             activeLockoutAuthMethods={activeLockoutAuthMethods}
+            lockoutStateUnavailable={lockoutStateUnavailable}
             onEdit={navigateToIdentity}
             onDelete={() => onDelete({ identityId: id, name })}
             onManageAuth={(authMethod) => onManageAuth({ identityId: id, authMethod })}
