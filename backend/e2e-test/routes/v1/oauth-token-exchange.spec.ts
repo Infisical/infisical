@@ -317,6 +317,20 @@ describe("Full delegation marker on a delegated OAuth token", async () => {
     expect(res.statusCode).toBe(403);
   });
 
+  // Org deletion reissues the caller's session through generateUserTokens, which has no oauthClientId
+  // or delegation parameter, so a delegated caller would exit holding a first-party session.
+  test("a fully-delegated token cannot delete the organization", async () => {
+    const token = signDelegatedToken({ delegation: OauthDelegationMode.Full });
+
+    const res = await testServer.inject({
+      method: "DELETE",
+      url: `/api/v2/organization/${seedData1.organization.id}`,
+      headers: { authorization: `Bearer ${token}` }
+    });
+
+    expect(res.statusCode).toBe(403);
+  });
+
   // Account routes authenticate on userId alone and build no permission, so they have to stay
   // unreachable whatever delegation marker the token carries.
   test("a fully-delegated token is still rejected on a JWT-only account route", async () => {

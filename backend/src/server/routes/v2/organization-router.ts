@@ -471,7 +471,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req, res) => {
       if (req.auth.actor !== ActorType.USER) return;
 
