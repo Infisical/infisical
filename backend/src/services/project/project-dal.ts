@@ -861,9 +861,17 @@ export const projectDALFactory = (db: TDbClient) => {
       )
       .limit(limit)
       .offset(offset);
-    if (sortBy === SearchProjectSortBy.NAME) {
-      void query.orderBy([{ column: `${TableName.Project}.name`, order: sortDir }]);
+    const sortColumn = {
+      [SearchProjectSortBy.NAME]: `${TableName.Project}.name`,
+      [SearchProjectSortBy.DESCRIPTION]: `${TableName.Project}.description`,
+      [SearchProjectSortBy.CREATED_AT]: `${TableName.Project}.createdAt`
+    }[sortBy];
+
+    void query.orderBy(sortColumn, sortDir, "last");
+    if (sortBy !== SearchProjectSortBy.NAME) {
+      void query.orderBy(`${TableName.Project}.name`, SortDirection.ASC);
     }
+    void query.orderBy(`${TableName.Project}.id`, SortDirection.ASC);
 
     if (dto.type) {
       void query.where(`${TableName.Project}.type`, dto.type);

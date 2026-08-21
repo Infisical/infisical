@@ -7,7 +7,7 @@ import { Input } from "../Input";
 import { TextArea } from "../TextArea";
 
 const inputGroupVariants = cva(
-  "group/input-group dark:bg-input/30 relative flex h-9 min-w-0 w-full items-center rounded-md border border-border shadow-xs has-[[data-slot=input-group-control][readonly]]:border-border/50 has-[[data-slot=input-group-control]:disabled]:pointer-events-none has-[[data-slot=input-group-control]:disabled]:border-border/50 has-[>textarea]:h-auto",
+  "group/input-group dark:bg-input/30 relative flex h-9 min-w-0 w-full items-center rounded-md border border-border shadow-xs has-[[data-slot=input-group-control][readonly]]:border-border/50 has-[[data-slot=input-group-control]:disabled]:border-border/50 has-[>textarea]:h-auto",
   {
     variants: {
       variant: {

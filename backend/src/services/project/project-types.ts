@@ -223,7 +223,9 @@ export type TDeleteProjectWorkflowIntegration = {
 } & TProjectPermission;
 
 export enum SearchProjectSortBy {
-  NAME = "name"
+  NAME = "name",
+  DESCRIPTION = "description",
+  CREATED_AT = "createdAt"
 }
 
 export type TSearchProjectsDTO = {

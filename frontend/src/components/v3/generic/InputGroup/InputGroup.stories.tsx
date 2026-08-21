@@ -254,7 +254,7 @@ export const Disabled: Story = {
     docs: {
       description: {
         story:
-          'Set `data-disabled="true"` on the group and `disabled` on the control to soften its border, text, and addons while blocking pointer interaction for the whole group.'
+          'Set `data-disabled="true"` on the group and `disabled` on the control to soften its border, text, and addons. The disabled control blocks pointer interaction while independently enabled addons can still explain why the field is unavailable.'
       }
     }
   },

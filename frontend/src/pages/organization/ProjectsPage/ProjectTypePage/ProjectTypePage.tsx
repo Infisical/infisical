@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { type ComponentProps, type ReactNode, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   CheckIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   ClockIcon,
   LayersIcon,
@@ -85,7 +86,12 @@ import {
 } from "@app/hooks/api";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
+import {
+  Project,
+  ProjectEnv,
+  ProjectType,
+  SearchProjectSortBy
+} from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import {
@@ -97,6 +103,116 @@ enum ProjectsViewMode {
   GRID = "grid",
   LIST = "list"
 }
+
+type TableSortDirection = NonNullable<ComponentProps<typeof TableHead>["sortDirection"]>;
+
+const getProjectSortDirection = (
+  column: SearchProjectSortBy,
+  orderBy: SearchProjectSortBy,
+  orderDirection: OrderByDirection
+): TableSortDirection => {
+  if (orderBy !== column) return "none";
+  return orderDirection === OrderByDirection.ASC ? "ascending" : "descending";
+};
+
+const compareProjects = (
+  projectA: Project,
+  projectB: Project,
+  column: SearchProjectSortBy,
+  direction: OrderByDirection
+) => {
+  if (column === SearchProjectSortBy.Description) {
+    const descriptionA = projectA.description?.trim();
+    const descriptionB = projectB.description?.trim();
+
+    if (!descriptionA && descriptionB) return 1;
+    if (descriptionA && !descriptionB) return -1;
+  }
+
+  let comparison = 0;
+  if (column === SearchProjectSortBy.CreatedAt) {
+    comparison = new Date(projectA.createdAt).getTime() - new Date(projectB.createdAt).getTime();
+  } else {
+    const valueA =
+      column === SearchProjectSortBy.Description ? projectA.description || "" : projectA.name;
+    const valueB =
+      column === SearchProjectSortBy.Description ? projectB.description || "" : projectB.name;
+    comparison = valueA.localeCompare(valueB, undefined, { sensitivity: "base" });
+  }
+
+  if (comparison !== 0) {
+    return direction === OrderByDirection.ASC ? comparison : -comparison;
+  }
+
+  const nameComparison = projectA.name.localeCompare(projectB.name, undefined, {
+    sensitivity: "base"
+  });
+  return nameComparison || projectA.id.localeCompare(projectB.id);
+};
+
+const ProjectTableHeaderRow = ({
+  orderBy,
+  orderDirection,
+  onSortChange,
+  hasStatusColumn = false
+}: {
+  orderBy: SearchProjectSortBy;
+  orderDirection: OrderByDirection;
+  onSortChange: (column: SearchProjectSortBy, direction: TableSortDirection) => void;
+  hasStatusColumn?: boolean;
+}) => {
+  const nameSortDirection = getProjectSortDirection(
+    SearchProjectSortBy.Name,
+    orderBy,
+    orderDirection
+  );
+  const descriptionSortDirection = getProjectSortDirection(
+    SearchProjectSortBy.Description,
+    orderBy,
+    orderDirection
+  );
+  const createdAtSortDirection = getProjectSortDirection(
+    SearchProjectSortBy.CreatedAt,
+    orderBy,
+    orderDirection
+  );
+
+  const getSortIconClassName = (direction: TableSortDirection) =>
+    twMerge(
+      "transition-transform",
+      direction === "descending" && "rotate-180",
+      direction === "none" && "opacity-30"
+    );
+
+  return (
+    <TableRow>
+      <TableHead aria-label="Icon" className="w-0" />
+      <TableHead
+        sortDirection={nameSortDirection}
+        onSortChange={(direction) => onSortChange(SearchProjectSortBy.Name, direction)}
+      >
+        Name
+        <ChevronDownIcon className={getSortIconClassName(nameSortDirection)} />
+      </TableHead>
+      <TableHead
+        sortDirection={descriptionSortDirection}
+        onSortChange={(direction) => onSortChange(SearchProjectSortBy.Description, direction)}
+      >
+        Description
+        <ChevronDownIcon className={getSortIconClassName(descriptionSortDirection)} />
+      </TableHead>
+      <TableHead
+        className="w-40"
+        sortDirection={createdAtSortDirection}
+        onSortChange={(direction) => onSortChange(SearchProjectSortBy.CreatedAt, direction)}
+      >
+        Created
+        <ChevronDownIcon className={getSortIconClassName(createdAtSortDirection)} />
+      </TableHead>
+      <TableHead className="w-0">{hasStatusColumn ? "Status" : null}</TableHead>
+    </TableRow>
+  );
+};
 
 export const ProjectTypePage = () => {
   const navigate = useNavigate();
@@ -277,12 +393,26 @@ const MyProjectsForType = ({
     [rawWorkspaces, projectType]
   );
 
-  const { setPage, perPage, setPerPage, page, offset, limit, orderDirection } = usePagination(
-    "name",
-    {
-      initPerPage: getUserTablePreference("myProjectsTable", PreferenceKey.PerPage, 24)
-    }
-  );
+  const {
+    setPage,
+    perPage,
+    setPerPage,
+    page,
+    offset,
+    limit,
+    orderBy,
+    orderDirection,
+    setOrderBy,
+    setOrderDirection
+  } = usePagination<SearchProjectSortBy>(SearchProjectSortBy.Name, {
+    initPerPage: getUserTablePreference("myProjectsTable", PreferenceKey.PerPage, 24)
+  });
+
+  const handleSort = (column: SearchProjectSortBy, direction: TableSortDirection) => {
+    setOrderBy(column);
+    setOrderDirection(direction === "descending" ? OrderByDirection.DESC : OrderByDirection.ASC);
+    setPage(1);
+  };
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -299,12 +429,8 @@ const MyProjectsForType = ({
     () =>
       workspaces
         .filter((ws) => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase()))
-        .sort((a, b) =>
-          orderDirection === OrderByDirection.ASC
-            ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-            : b.name.toLowerCase().localeCompare(a.name.toLowerCase())
-        ),
-    [searchFilter, orderDirection, workspaces]
+        .sort((a, b) => compareProjects(a, b, orderBy, orderDirection)),
+    [searchFilter, orderBy, orderDirection, workspaces]
   );
 
   useResetPageHelper({
@@ -443,7 +569,7 @@ const MyProjectsForType = ({
   if (isProjectViewLoading) {
     contentBody =
       projectsViewMode === ProjectsViewMode.GRID ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
           {Array.apply(0, Array(3)).map((_x, i) => (
             <Card key={`workspace-cards-loading-${i + 1}`} className="h-full bg-container">
               <CardHeader>
@@ -471,13 +597,11 @@ const MyProjectsForType = ({
       ) : (
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead aria-label="Icon" className="w-0" />
-              <TableHead>Name</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead className="w-40">Created</TableHead>
-              <TableHead className="w-0" />
-            </TableRow>
+            <ProjectTableHeaderRow
+              orderBy={orderBy}
+              orderDirection={orderDirection}
+              onSortChange={handleSort}
+            />
           </TableHeader>
           <TableBody>
             {Array.apply(0, Array(3)).map((_x, i) => (
@@ -505,19 +629,17 @@ const MyProjectsForType = ({
   } else if (hasProjects) {
     contentBody =
       projectsViewMode === ProjectsViewMode.GRID ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
           {workspacesWithFaveProp.map((workspace) => renderProjectGridItem(workspace))}
         </div>
       ) : (
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead aria-label="Icon" className="w-0" />
-              <TableHead>Name</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead className="w-40">Created</TableHead>
-              <TableHead className="w-0" />
-            </TableRow>
+            <ProjectTableHeaderRow
+              orderBy={orderBy}
+              orderDirection={orderDirection}
+              onSortChange={handleSort}
+            />
           </TableHeader>
           <TableBody>
             {workspacesWithFaveProp.map((workspace) => {
@@ -578,7 +700,7 @@ const MyProjectsForType = ({
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="@container flex flex-col gap-5">
       <Toolbar
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
@@ -623,12 +745,26 @@ const AllProjectsForType = ({
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter);
 
-  const { setPage, perPage, setPerPage, page, offset, limit, orderDirection } = usePagination(
-    "name",
-    {
-      initPerPage: getUserTablePreference("allProjectsTable", PreferenceKey.PerPage, 50)
-    }
-  );
+  const {
+    setPage,
+    perPage,
+    setPerPage,
+    page,
+    offset,
+    limit,
+    orderBy,
+    orderDirection,
+    setOrderBy,
+    setOrderDirection
+  } = usePagination<SearchProjectSortBy>(SearchProjectSortBy.Name, {
+    initPerPage: getUserTablePreference("allProjectsTable", PreferenceKey.PerPage, 50)
+  });
+
+  const handleSort = (column: SearchProjectSortBy, direction: TableSortDirection) => {
+    setOrderBy(column);
+    setOrderDirection(direction === "descending" ? OrderByDirection.DESC : OrderByDirection.ASC);
+    setPage(1);
+  };
 
   const orgAdminAccessProject = useOrgAdminAccessProject();
   const { permission } = useOrgPermission();
@@ -650,6 +786,7 @@ const AllProjectsForType = ({
     limit,
     offset,
     name: debouncedSearch || undefined,
+    orderBy,
     orderDirection,
     type: projectType
   });
@@ -688,13 +825,12 @@ const AllProjectsForType = ({
     contentBody = (
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead aria-label="Icon" className="w-0" />
-            <TableHead>Name</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead className="w-0">Created</TableHead>
-            <TableHead className="w-0">Status</TableHead>
-          </TableRow>
+          <ProjectTableHeaderRow
+            orderBy={orderBy}
+            orderDirection={orderDirection}
+            onSortChange={handleSort}
+            hasStatusColumn
+          />
         </TableHeader>
         <TableBody>
           {Array.apply(0, Array(3)).map((_x, i) => (
@@ -723,13 +859,12 @@ const AllProjectsForType = ({
     contentBody = (
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead aria-label="Icon" className="w-0" />
-            <TableHead>Name</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead className="w-40">Created</TableHead>
-            <TableHead className="w-0" />
-          </TableRow>
+          <ProjectTableHeaderRow
+            orderBy={orderBy}
+            orderDirection={orderDirection}
+            onSortChange={handleSort}
+            hasStatusColumn
+          />
         </TableHeader>
         <TableBody>
           {searchedProjects?.projects?.map((workspace) => {
@@ -949,7 +1084,7 @@ const Toolbar = ({
 }) => (
   <div className="flex w-full flex-wrap items-center justify-between gap-2">
     <div className="flex min-w-72 flex-1 items-center gap-2">
-      <InputGroup className="min-w-48 flex-1">
+      <InputGroup className="max-w-lg min-w-48 flex-1">
         <InputGroupAddon align="inline-start">
           <SearchIcon />
         </InputGroupAddon>
@@ -1019,7 +1154,7 @@ const Toolbar = ({
                 }}
               >
                 <PlusIcon />
-                Add New Project
+                Add New
               </Button>
             )}
           </OrgPermissionCan>
