@@ -14,6 +14,7 @@ import {
   assertGrantTargetEligible,
   assertManageFolderAccess,
   computeTemporaryFields,
+  getFolderAccessPermission,
   resolveFolder,
   targetActorField,
   targetLabel,
@@ -51,8 +52,9 @@ export const folderPermissionServiceFactory = ({
     const { projectId, environmentSlug, secretPath, target } = dto;
     assertFullAccessIsPermanent(dto.role, Boolean(dto.type?.isTemporary));
 
+    const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
-    await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
+    assertManageFolderAccess(callerPermission, folder);
     await assertGrantTargetEligible(dto.permission.orgId, projectId, target, folderPermissionDAL);
 
     const actorField = targetActorField(target);
@@ -94,8 +96,9 @@ export const folderPermissionServiceFactory = ({
 
   const updateFolderGrant = async (dto: TUpdateFolderGrantDTO) => {
     const { projectId, environmentSlug, secretPath, target } = dto;
+    const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
-    await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
+    assertManageFolderAccess(callerPermission, folder);
     await assertGrantTargetEligible(dto.permission.orgId, projectId, target, folderPermissionDAL);
 
     const actorField = targetActorField(target);
@@ -132,8 +135,9 @@ export const folderPermissionServiceFactory = ({
 
   const deleteFolderGrant = async (dto: TDeleteFolderGrantDTO) => {
     const { projectId, environmentSlug, secretPath, target } = dto;
+    const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
-    await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
+    assertManageFolderAccess(callerPermission, folder);
     // no membership check on revoke: removing access from an actor that already left the project
     // must keep working
 
@@ -159,8 +163,9 @@ export const folderPermissionServiceFactory = ({
 
   const listFolderAccessUsers = async (dto: TListFolderAccessActorsDTO) => {
     const { projectId, environmentSlug, secretPath, limit, offset, search } = dto;
+    const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
-    await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
+    assertManageFolderAccess(callerPermission, folder);
 
     const { users, totalCount } = await folderPermissionDAL.findUsersWithFolderAccess({
       projectId,
@@ -182,8 +187,9 @@ export const folderPermissionServiceFactory = ({
 
   const listFolderAccessIdentities = async (dto: TListFolderAccessActorsDTO) => {
     const { projectId, environmentSlug, secretPath, limit, offset, search } = dto;
+    const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
-    await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
+    assertManageFolderAccess(callerPermission, folder);
 
     const { identities, totalCount } = await folderPermissionDAL.findIdentitiesWithFolderAccess({
       projectId,

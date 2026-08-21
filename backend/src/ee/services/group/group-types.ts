@@ -1,7 +1,9 @@
 import { Knex } from "knex";
 
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { OrderByDirection, TGenericPermission } from "@app/lib/types";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -145,6 +147,8 @@ export type TRemoveUsersFromGroupByUserIds = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "filterProjectsByUserMembership" | "delete">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "delete">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
+  permissionService: Pick<TPermissionServiceFactory, "invalidateProjectFolderPermissionCache">;
   tx?: Knex;
   shouldFailOnMissingMembers?: boolean;
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;

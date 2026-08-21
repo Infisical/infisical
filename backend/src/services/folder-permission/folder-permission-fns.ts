@@ -65,10 +65,11 @@ export const resolveFolder = async (
   return { id: folder.id, path: folder.path, environmentSlug: folder.environment.slug };
 };
 
-export const assertManageFolderAccess = async (
+// fetched before the folder is resolved so a caller without project access gets a permission error
+// and cannot probe which environments and folder paths exist in another project
+export const getFolderAccessPermission = async (
   permission: OrgServiceActor,
   projectId: string,
-  folder: TResolvedFolder,
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">
 ) => {
   const { permission: callerPermission } = await permissionService.getProjectPermission({
@@ -79,6 +80,13 @@ export const assertManageFolderAccess = async (
     actorOrgId: permission.orgId,
     actionProjectType: ActionProjectType.SecretManager
   });
+  return callerPermission;
+};
+
+export const assertManageFolderAccess = (
+  callerPermission: Awaited<ReturnType<typeof getFolderAccessPermission>>,
+  folder: TResolvedFolder
+) => {
   ForbiddenError.from(callerPermission).throwUnlessCan(
     ProjectPermissionSecretFolderActions.ManageAccess,
     subject(ProjectPermissionSub.SecretFolders, {

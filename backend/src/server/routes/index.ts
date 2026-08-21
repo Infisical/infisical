@@ -1143,6 +1143,7 @@ export const registerRoutes = async (
     projectDAL,
     projectBotDAL,
     projectKeyDAL,
+    additionalPrivilegeDAL,
     permissionService,
     licenseService,
     oidcConfigDAL,
@@ -1328,6 +1329,7 @@ export const registerRoutes = async (
 
   const samlService = samlConfigServiceFactory({
     identityMetadataDAL,
+    additionalPrivilegeDAL,
     permissionService,
     orgDAL,
     userDAL,
@@ -1352,6 +1354,7 @@ export const registerRoutes = async (
   });
 
   const ldapService = ldapConfigServiceFactory({
+    additionalPrivilegeDAL,
     ldapConfigDAL,
     ldapGroupMapDAL,
     orgDAL,
@@ -2855,6 +2858,7 @@ export const registerRoutes = async (
   });
 
   const oidcService = oidcConfigServiceFactory({
+    additionalPrivilegeDAL,
     orgDAL,
     userDAL,
     userAliasDAL,

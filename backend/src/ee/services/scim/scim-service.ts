@@ -128,7 +128,7 @@ type TScimServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "invalidateProjectFolderPermissionCache">;
   smtpService: Pick<TSmtpService, "sendMail">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
@@ -1355,6 +1355,8 @@ export const scimServiceFactory = ({
           userGroupMembershipDAL,
           membershipGroupDAL,
           projectKeyDAL,
+          additionalPrivilegeDAL,
+          permissionService,
           alertChannelRecipientDAL,
           tx,
           shouldFailOnMissingMembers

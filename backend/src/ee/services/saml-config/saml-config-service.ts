@@ -20,6 +20,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordSsoConfigChangeMetric, SsoConfigAction, SsoProvider } from "@app/lib/telemetry/metrics";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
@@ -80,7 +81,8 @@ type TSamlConfigServiceFactoryDep = {
   >;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "invalidateProjectFolderPermissionCache">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -112,6 +114,7 @@ export const samlConfigServiceFactory = ({
   projectBotDAL,
   projectKeyDAL,
   alertChannelRecipientDAL,
+  additionalPrivilegeDAL,
   permissionService,
   licenseService,
   tokenService,
@@ -256,6 +259,8 @@ export const samlConfigServiceFactory = ({
                 userGroupMembershipDAL,
                 membershipGroupDAL,
                 projectKeyDAL,
+                additionalPrivilegeDAL,
+                permissionService,
                 usageMeteringService,
                 alertChannelRecipientDAL,
                 tx: transaction
