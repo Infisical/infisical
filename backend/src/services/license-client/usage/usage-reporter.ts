@@ -2,6 +2,7 @@ import { TEnvConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
 import { mintServiceToken } from "../license-client-backends";
+import { licenseErrorMessage, readLicenseRequestId } from "../license-client-errors";
 import { createSelfHostedTokenProvider } from "../license-token-provider";
 
 export type TUsageSnapshot = {
@@ -23,8 +24,13 @@ export class UsageReportError extends Error {
 
   readonly serverMessage: string;
 
-  constructor(status: number, serverMessage: string) {
-    super(`usage snapshot report failed with ${status}${serverMessage ? `: ${serverMessage}` : ""}`);
+  constructor(status: number, serverMessage: string, requestId?: string) {
+    super(
+      licenseErrorMessage(
+        requestId || "unknown",
+        `usage snapshot report failed with ${status}${serverMessage ? `: ${serverMessage}` : ""}`
+      )
+    );
     this.name = "UsageReportError";
     this.status = status;
     this.serverMessage = serverMessage;
@@ -55,7 +61,7 @@ export const usageReporterFactory = (serverUrl: string, getBearerToken: () => Pr
       } catch {
         // non-JSON body; leave the message empty
       }
-      throw new UsageReportError(res.status, serverMessage);
+      throw new UsageReportError(res.status, serverMessage, readLicenseRequestId(res));
     }
   }
 });
