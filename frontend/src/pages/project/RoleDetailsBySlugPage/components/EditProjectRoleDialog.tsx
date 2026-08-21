@@ -1,6 +1,6 @@
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import slugify from "@sindresorhus/slugify";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
@@ -23,8 +23,9 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProject, useSubscription } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
-import { useCreateProjectRole } from "@app/hooks/api";
-import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
+import { usePopUp } from "@app/hooks";
+import { useUpdateProjectRole } from "@app/hooks/api";
+import { TProjectRole } from "@app/hooks/api/roles/types";
 import { slugSchema } from "@app/lib/schemas";
 
 const schema = z
@@ -35,19 +36,20 @@ const schema = z
   })
   .required();
 
-export type FormData = z.infer<typeof schema>;
+type FormData = z.infer<typeof schema>;
 
 type Props = {
-  popUp: UsePopUpState<["role"]>;
-  handlePopUpToggle: (popUpName: keyof UsePopUpState<["role"]>, state?: boolean) => void;
+  isOpen: boolean;
+  role?: TProjectRole;
+  onOpenChange: (isOpen: boolean) => void;
 };
 
-export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { subscription } = useSubscription();
-  const { mutateAsync: createProjectRole } = useCreateProjectRole();
+  const { mutateAsync: updateProjectRole } = useUpdateProjectRole();
   const {
     popUp: upgradePlanPopUp,
     handlePopUpOpen: handleUpgradePlanPopUpOpen,
@@ -58,7 +60,6 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
     control,
     handleSubmit,
     reset,
-    setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -69,80 +70,87 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
   });
 
-  const onFormSubmit = async ({ name, description, slug }: FormData) => {
-    if (!currentProject?.id) return;
+  useEffect(() => {
+    if (!role) return;
+    reset({
+      name: role.name,
+      description: role.description || "",
+      slug: role.slug
+    });
+  }, [role, reset]);
+
+  const onSubmit = async ({ name, description, slug }: FormData) => {
+    if (!currentProject?.id || !role) return;
 
     if (subscription && !subscription.rbac) {
       handleUpgradePlanPopUpOpen("upgradePlan");
       return;
     }
 
-    const newRole = await createProjectRole({
+    await updateProjectRole({
+      id: role.id,
       projectId: currentProject.id,
+      // Legacy Certificate Manager custom roles use the generic project-role endpoint.
       name,
       description,
-      slug,
-      permissions: []
+      slug
     });
 
+    onOpenChange(false);
     navigate({
       to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug` as const,
       params: {
         orgId: currentOrg?.id || "",
-        roleSlug: newRole.slug,
+        roleSlug: slug,
         projectId: currentProject.id
       }
     });
-    handlePopUpToggle("role", false);
     createNotification({
-      text: `Project role "${name}" created`,
+      text: `Project role "${name}" updated`,
       type: "success"
     });
-    reset();
   };
 
   return (
     <>
       <Sheet
-        open={popUp.role.isOpen}
+        open={isOpen}
         onOpenChange={(open) => {
-          handlePopUpToggle("role", open);
-          if (!open) reset();
+          onOpenChange(open);
+          if (!open && role) {
+            reset({
+              name: role.name,
+              description: role.description || "",
+              slug: role.slug
+            });
+          }
         }}
       >
         <SheetContent>
           <form
-            onSubmit={handleSubmit(onFormSubmit)}
+            onSubmit={handleSubmit(onSubmit)}
             autoComplete="off"
             className="flex min-h-0 flex-1 flex-col"
           >
             <SheetHeader>
-              <SheetTitle>Create Role</SheetTitle>
-              <SheetDescription>
-                Create a custom project role. You can configure its permissions after creation.
-              </SheetDescription>
+              <SheetTitle>Edit Role</SheetTitle>
+              <SheetDescription>Update the role name, slug, and description.</SheetDescription>
             </SheetHeader>
             <div className="flex min-h-0 thin-scrollbar flex-1 flex-col overflow-y-auto p-4">
               <FieldGroup>
                 <Controller
                   control={control}
                   name="name"
-                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                  render={({ field, fieldState: { error } }) => (
                     <Field data-invalid={Boolean(error)}>
-                      <FieldLabel htmlFor="create-project-role-name">Name</FieldLabel>
+                      <FieldLabel htmlFor="edit-project-role-name">Name</FieldLabel>
                       <Input
                         {...field}
-                        id="create-project-role-name"
+                        id="edit-project-role-name"
                         placeholder="Billing Team"
                         autoComplete="off"
                         data-1p-ignore
                         isError={Boolean(error)}
-                        onChange={(e) => {
-                          onChange(e);
-                          setValue("slug", slugify(e.target.value, { lowercase: true }), {
-                            shouldValidate: true
-                          });
-                        }}
                       />
                       <FieldError>{error?.message}</FieldError>
                     </Field>
@@ -153,10 +161,10 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                   name="slug"
                   render={({ field, fieldState: { error } }) => (
                     <Field data-invalid={Boolean(error)}>
-                      <FieldLabel htmlFor="create-project-role-slug">Slug</FieldLabel>
+                      <FieldLabel htmlFor="edit-project-role-slug">Slug</FieldLabel>
                       <Input
                         {...field}
-                        id="create-project-role-slug"
+                        id="edit-project-role-slug"
                         placeholder="billing"
                         autoComplete="off"
                         data-1p-ignore
@@ -171,10 +179,10 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                   name="description"
                   render={({ field, fieldState: { error } }) => (
                     <Field data-invalid={Boolean(error)}>
-                      <FieldLabel htmlFor="create-project-role-description">Description</FieldLabel>
+                      <FieldLabel htmlFor="edit-project-role-description">Description</FieldLabel>
                       <Input
                         {...field}
-                        id="create-project-role-description"
+                        id="edit-project-role-description"
                         placeholder="Manage billing settings"
                         autoComplete="off"
                         data-1p-ignore
@@ -193,7 +201,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                 </Button>
               </SheetClose>
               <Button type="submit" variant="project" isPending={isSubmitting}>
-                Create Role
+                Save Changes
               </Button>
             </SheetFooter>
           </form>

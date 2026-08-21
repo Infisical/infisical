@@ -495,6 +495,11 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                           key={`project-permission-${permissionSubject}`}
                           isDisabled={isFormDisabled}
                           isOpen={openPolicies.includes(permissionSubject)}
+                          onPolicyAdded={() =>
+                            setOpenPolicies((prev) =>
+                              prev.includes(permissionSubject) ? prev : [...prev, permissionSubject]
+                            )
+                          }
                           menuPortalContainerRef={menuPortalContainerRef}
                           isConditional={isConditionalSubjects(permissionSubject)}
                         >

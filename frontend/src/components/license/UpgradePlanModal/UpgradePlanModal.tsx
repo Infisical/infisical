@@ -29,7 +29,7 @@ export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Ele
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      {/* z-[70] keeps this above legacy v2 modals (z-[60]) that open it, e.g. RoleModal */}
+      {/* Keep upgrade prompts above the dialog or sheet that triggered them. */}
       <DialogContent className="z-[70] sm:max-w-xl" overlayClassName="z-[70]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2.5">
