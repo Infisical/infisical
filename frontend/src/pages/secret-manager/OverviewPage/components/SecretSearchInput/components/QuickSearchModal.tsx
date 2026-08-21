@@ -67,7 +67,7 @@ export type QuickSearchModalProps = {
   tags?: WsTag[];
   isSingleEnv?: boolean;
   initialValue: string;
-  onClose: () => void;
+  onClose: (clearSearch?: boolean) => void;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 };

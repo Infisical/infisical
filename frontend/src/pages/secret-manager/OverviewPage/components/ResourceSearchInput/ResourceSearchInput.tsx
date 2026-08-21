@@ -163,9 +163,9 @@ export const ResourceSearchInput = ({
         isOpen={isOpen}
         onOpenChange={setIsOpen}
         initialValue={inputValue}
-        onClose={() => {
+        onClose={(clearSearch = true) => {
           setIsOpen(false);
-          handleClear();
+          if (clearSearch) handleClear();
         }}
         {...props}
       />

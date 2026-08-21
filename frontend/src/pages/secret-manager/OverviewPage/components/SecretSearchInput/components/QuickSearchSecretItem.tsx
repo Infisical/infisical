@@ -45,7 +45,7 @@ export const QuickSearchSecretItem = ({ secret, envSlug, onClose, tags, search }
         environments: [envSlug]
       })
     });
-    onClose();
+    onClose(false);
   };
 
   const handleCopy = async () => {

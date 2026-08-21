@@ -479,10 +479,15 @@ const OverviewPageContent = () => {
     userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
   );
 
-  const hasInitializedEnvironmentFromPreference = useRef(false);
+  const initializedEnvironmentProjectId = useRef<string | null>(null);
   useEffect(() => {
-    if (hasInitializedEnvironmentFromPreference.current || userAvailableEnvs.length === 0) return;
-    hasInitializedEnvironmentFromPreference.current = true;
+    if (
+      initializedEnvironmentProjectId.current === projectId ||
+      userAvailableEnvs.length === 0
+    ) {
+      return;
+    }
+    initializedEnvironmentProjectId.current = projectId;
 
     const requestedSlugs = normalizeOverviewEnvironments(
       routerSearch.environments,
@@ -512,10 +517,11 @@ const OverviewPageContent = () => {
           environments: userAvailableEnvs
             .filter((env) => initialPreference.includes(env.id))
             .map((env) => env.slug)
-        })
+        }),
+        replace: true
       });
     }
-  }, [navigate, routerSearch.environments, storedEnvIds, userAvailableEnvs]);
+  }, [navigate, projectId, routerSearch.environments, storedEnvIds, userAvailableEnvs]);
 
   const filteredEnvs = useMemo(
     () => userAvailableEnvs.filter((env) => routerSearch.environments.includes(env.slug)),
@@ -2211,7 +2217,8 @@ const OverviewPageContent = () => {
   const handleSearchChange = useCallback(
     (search: string) => {
       navigate({
-        search: (prev) => ({ ...prev, search: search || undefined })
+        search: (prev) => ({ ...prev, search: search || undefined }),
+        replace: true
       });
     },
     [navigate]

@@ -35,7 +35,7 @@ export const QuickSearchMetadataSecretItem = ({ secret, envSlug, onClose }: Prop
         tags: undefined
       })
     });
-    onClose();
+    onClose(false);
   };
 
   const visibleMetadata = secret.metadata.slice(0, MAX_VISIBLE_BADGES);

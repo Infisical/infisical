@@ -25,7 +25,7 @@ export const QuickSearchFolderItem = ({ folder, envSlug, onClose }: Props) => {
         environments: [envSlug]
       })
     });
-    onClose();
+    onClose(false);
   };
 
   return (

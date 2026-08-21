@@ -25,7 +25,7 @@ export const QuickSearchDynamicSecretItem = ({ dynamicSecret, envSlug, onClose }
         environments: [envSlug]
       })
     });
-    onClose();
+    onClose(false);
   };
 
   return (

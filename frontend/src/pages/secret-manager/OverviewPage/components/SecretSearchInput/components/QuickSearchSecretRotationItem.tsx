@@ -25,7 +25,7 @@ export const QuickSearchSecretRotationItem = ({ secretRotation, envSlug, onClose
         environments: [envSlug]
       })
     });
-    onClose();
+    onClose(false);
   };
 
   return (
