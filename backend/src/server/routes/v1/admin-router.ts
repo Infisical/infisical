@@ -725,7 +725,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           rotation: z.object({
             id: z.string().uuid(),
             fingerprint: z.string().describe(ENCRYPTION_KEY_ROTATION.CREATE.fingerprint),
-            key: z.string().describe(ENCRYPTION_KEY_ROTATION.CREATE.key)
+            key: z.string().describe(ENCRYPTION_KEY_ROTATION.CREATE.key),
+            supersedesRetainedKey: z
+              .object({ fingerprint: z.string().nullable(), lastResolvedAt: z.date().nullable() })
+              .optional()
+              .describe(ENCRYPTION_KEY_ROTATION.CREATE.supersedesRetainedKey)
           })
         })
       }

@@ -269,6 +269,7 @@ export type TCreatedEncryptionKeyRotation = {
   id: string;
   fingerprint: string;
   key: string;
+  supersedesRetainedKey?: { fingerprint: string | null; lastResolvedAt: string | null };
 };
 
 export type TCompleteEncryptionKeyRotationDTO = {

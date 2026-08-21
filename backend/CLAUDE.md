@@ -484,6 +484,12 @@ Consequences worth knowing:
   a rotated instance is the wrong key: decrypts fail the auth tag, encrypts silently write unreadable rows.
   ESLint blocks this under `src/db/migrations/`; the pre-existing call sites carry a file-level disable
   explaining why they are safe.
+- **Exactly one retained key survives a promotion, enforced at promotion, not by the GC.** A second
+  rotation before the first was completed would otherwise leave an older wrapper of the root key that
+  `getStatus` never reports (it returns only the newest), so an operator removing "the previous key" is
+  told the rotation is finished while a leaked older `ENCRYPTION_KEY` still opens the database. The cost is that an
+  instance two rotations behind cannot restart; staging a key warns about that and deliberately does not
+  block, since an operator responding to a leak has to be able to rotate again immediately.
 - **`updateEncryptionStrategy` refuses while a rotation is in flight.** A switch to HSM would not otherwise be
   enforced, since a pod with the old env key would still trial-decrypt a retained software copy and boot
   without touching the device.

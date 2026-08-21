@@ -3971,7 +3971,9 @@ export const ENCRYPTION_KEY_ROTATION = {
       "Replace an already-generated key that has not been applied yet. The replaced key stops working immediately.",
     fingerprint:
       "A non-reversible label for the new key. Record it alongside the key so a backup can be matched to it later.",
-    key: "The new value for ENCRYPTION_KEY. Shown only in this response and never recoverable. Store it before closing."
+    key: "The new value for ENCRYPTION_KEY. Shown only in this response and never recoverable. Store it before closing.",
+    supersedesRetainedKey:
+      "Present when the previous rotation's key has not been removed yet. Applying this key removes it immediately, so any instance still running it will fail to restart."
   },
   DISCARD: {
     description:

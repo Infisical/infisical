@@ -36,4 +36,9 @@ export type TCreatedRotation = {
   fingerprint: string;
   /** Returned exactly once. Never stored, never logged. */
   key: string;
+  /**
+   * Set when the previous rotation's key has not been removed yet. Applying this key removes it
+   * immediately, so an instance still running it will fail to restart.
+   */
+  supersedesRetainedKey?: { fingerprint: string | null; lastResolvedAt: Date | null };
 };

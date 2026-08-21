@@ -59,6 +59,12 @@ one, think about it, and discard it with no consequences.
     ![Remove encryption key panel in the Server Console](/images/self-hosting/guides/rotating-encryption-key/remove-key.png)
 
     <Note>
+      Rotating again before removing the previous key removes it for you, at the moment the new key is
+      first used. Infisical warns you about this when it generates the key. Only one previous key is ever
+      kept, so an instance two rotations behind will not be able to restart.
+    </Note>
+
+    <Note>
       Infisical can only see instances that have *started* on the previous key. If one did so recently, it
       asks you to confirm before removing the key, since you are the only one who can tell whether that
       instance has since moved onto the new key. It cannot see an instance that has been running since

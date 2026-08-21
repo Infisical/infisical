@@ -245,6 +245,26 @@ export const EncryptionKeyRotationSection = () => {
               </p>
             </div>
 
+            {generatedKey?.supersedesRetainedKey && (
+              <Alert variant="warning">
+                <AlertTriangleIcon />
+                <AlertTitle>This will remove your previous key</AlertTitle>
+                <AlertDescription>
+                  <p>
+                    The key from your last rotation has not been removed yet. Applying this new key
+                    removes it immediately, and any instance still running it will fail to restart.
+                  </p>
+                  {generatedKey.supersedesRetainedKey.lastResolvedAt && (
+                    <p className="mt-2">
+                      An instance started on it{" "}
+                      {new Date(generatedKey.supersedesRetainedKey.lastResolvedAt).toLocaleString()}
+                      .
+                    </p>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
             <Alert variant="info">
               <AlertDescription>
                 Nothing has changed yet. Deploy this value, and the rotation takes effect when the

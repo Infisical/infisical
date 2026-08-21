@@ -1522,6 +1522,8 @@ export const kmsServiceFactory = ({
 
       const now = new Date();
 
+      const olderRetained = await kmsRootConfigDAL.findRetained(tx);
+
       // The grace window, so pods that have not rolled over can still boot. Not a rollback path.
       await kmsRootConfigDAL.create(
         {
@@ -1553,6 +1555,23 @@ export const kmsServiceFactory = ({
       if (previous) await kmsKekHistoryDAL.updateById(previous.id, { supersededAt: now }, tx);
       if (promotedFingerprint) {
         await kmsKekHistoryDAL.create({ kekFingerprint: promotedFingerprint, activatedAt: now }, tx);
+      }
+
+      // Exactly one retained key survives a promotion.
+      const history = await kmsKekHistoryDAL.findHistory(tx);
+      for (const stale of olderRetained) {
+        // eslint-disable-next-line no-await-in-loop -- at most a couple of rows
+        await kmsRootConfigDAL.deleteById(stale.id, tx);
+        const entry = stale.kekFingerprint
+          ? history.find((e) => e.kekFingerprint === stale.kekFingerprint && !e.retiredAt)
+          : undefined;
+        // eslint-disable-next-line no-await-in-loop
+        if (entry) await kmsKekHistoryDAL.updateById(entry.id, { retiredAt: now }, tx);
+        logger.info(
+          `KMS: Removed a key superseded by an earlier rotation [rootConfigId=${stale.id}] [fingerprint=${
+            stale.kekFingerprint ?? "unknown"
+          }]`
+        );
       }
 
       return true;

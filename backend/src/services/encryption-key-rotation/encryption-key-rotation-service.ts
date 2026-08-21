@@ -126,8 +126,11 @@ export const encryptionKeyRotationServiceFactory = ({
     const encryptedRootKey = kmsService.encryptRootKeyForKek(kekBuffer);
     const fingerprint = getKekFingerprint(kekBuffer);
 
-    const pending = await kmsRootConfigDAL.transaction(async (tx) => {
+    const staged = await kmsRootConfigDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
+
+      // Read under the lock so the warning describes the key that will actually be removed on promotion.
+      const [retained] = await kmsRootConfigDAL.findRetained(tx);
 
       const stillPending = await kmsRootConfigDAL.findPending(tx);
       if (stillPending.length) {
@@ -147,7 +150,7 @@ export const encryptionKeyRotationServiceFactory = ({
         });
       }
 
-      return kmsRootConfigDAL.create(
+      const row = await kmsRootConfigDAL.create(
         {
           encryptedRootKey,
           encryptionStrategy: RootKeyEncryptionStrategy.Software,
@@ -156,11 +159,26 @@ export const encryptionKeyRotationServiceFactory = ({
         },
         tx
       );
+
+      return { row, retained };
     });
+    const pending = staged.row;
 
     logger.info(`Encryption key rotation staged [rotationId=${pending.id}] [fingerprint=${fingerprint}]`);
 
-    return { id: pending.id, fingerprint, key };
+    return {
+      id: pending.id,
+      fingerprint,
+      key,
+      ...(staged.retained
+        ? {
+            supersedesRetainedKey: {
+              fingerprint: staged.retained.kekFingerprint ?? null,
+              lastResolvedAt: staged.retained.lastResolvedAt ?? null
+            }
+          }
+        : {})
+    };
   };
 
   /**
@@ -273,18 +291,17 @@ export const encryptionKeyRotationServiceFactory = ({
 
     const retentionMs = envConfig.KMS_ROOT_KEY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
-    // Only the newest copy gets the retention window: it is the only key a lost new key can fall back
-    // to. Older ones go as soon as nothing has been seen using them, which caps the table at three rows.
+    // Promotion leaves exactly one retained key, so there is only ever one row to consider here.
     //
     // lastResolvedAt is the only liveness signal there is, and it can only prove presence. A straggler
     // that never restarts leaves no stamp, so the retention window is what covers it. That is the
     // deliberate limit of this design: the cost of getting it wrong is an instance that fails its next
     // restart with an error naming the key it needs, not lost data.
-    const eligible = retained.filter((row, index) => {
-      const resolvedRecently = row.lastResolvedAt && now - new Date(row.lastResolvedAt).getTime() < retentionMs;
-      if (resolvedRecently) return false;
-      return index > 0 || now - new Date(row.supersededAt as Date).getTime() >= retentionMs;
-    });
+    const eligible = retained.filter(
+      (row) =>
+        !(row.lastResolvedAt && now - new Date(row.lastResolvedAt).getTime() < retentionMs) &&
+        now - new Date(row.supersededAt as Date).getTime() >= retentionMs
+    );
 
     for (const row of eligible) {
       // eslint-disable-next-line no-await-in-loop -- at most a couple of rows
