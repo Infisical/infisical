@@ -886,6 +886,12 @@ export const buildSessionGatewayConnectionDetails = (
     };
   }
 
+  if (accountType === PamAccountType.WebServer) {
+    return {
+      url: (validated as { uri: string }).uri
+    };
+  }
+
   return validated;
 };
 

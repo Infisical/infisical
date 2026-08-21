@@ -255,6 +255,11 @@ export const pamSessionServiceFactory = ({
       delete credentials.clientSecret;
     }
 
+    if (account.accountType === PamAccountType.WebServer) {
+      credentials.username = credentials.user;
+      delete credentials.user;
+    }
+
     const sessionStarted = session.status === PamSessionStatus.Starting;
 
     let actorDistinctId: string | undefined;
