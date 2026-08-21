@@ -18,11 +18,14 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
   Button,
   Checkbox,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   IconButton,
   Table,
   TableBody,
@@ -475,19 +478,19 @@ export const SecretTableRow = ({
         </TableRow>
       )}
       {!isSingleEnvView && (
-        <Modal
-          isOpen={isEditSecretNameOpen}
-          onOpenChange={(isOpen) => setIsEditSecretNameOpen(isOpen)}
-        >
-          <ModalContent title="Edit Secret Name">
+        <Dialog open={isEditSecretNameOpen} onOpenChange={setIsEditSecretNameOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Secret Name</DialogTitle>
+            </DialogHeader>
             <SecretRenameForm
               secretKey={secretKey}
               environments={environments}
               secretPath={secretPath}
               getSecretByKey={getSecretByKey}
             />
-          </ModalContent>
-        </Modal>
+          </DialogContent>
+        </Dialog>
       )}
       {!isSingleEnvView && isFormExpanded && (
         <TableRow>

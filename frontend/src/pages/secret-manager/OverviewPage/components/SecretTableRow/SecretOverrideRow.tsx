@@ -12,7 +12,6 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +23,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
   IconButton,
+  InfisicalSecretInput,
   Tooltip,
   TooltipContent,
   TooltipTrigger

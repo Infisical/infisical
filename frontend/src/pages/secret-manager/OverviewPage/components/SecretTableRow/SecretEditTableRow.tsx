@@ -35,8 +35,6 @@ import {
   ResolvedSecretValuePopover,
   SecretReferenceTree
 } from "@app/components/secrets/SecretReferenceDetails";
-import { Input, Modal, ModalContent } from "@app/components/v2";
-import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +46,11 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
   Badge,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -62,7 +65,8 @@ import {
   FieldContent,
   FieldLabel,
   IconButton,
-  Input as V3Input,
+  InfisicalSecretInput,
+  Input,
   Popover,
   PopoverAnchor,
   PopoverContent,
@@ -925,17 +929,21 @@ export const SecretEditTableRow = ({
       render={({ field, fieldState: { error } }) => (
         <Input
           autoComplete="off"
-          isReadOnly={isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue}
-          autoCapitalization={currentProject?.autoCapitalization}
-          variant="plain"
+          readOnly={isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue}
           placeholder={error?.message || "Secret name"}
           isError={Boolean(error)}
           {...field}
           value={field.value ?? ""}
           className={twMerge(
-            "w-full px-0 text-foreground placeholder:text-red-500 focus:ring-transparent",
+            "h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 text-foreground shadow-none placeholder:text-danger focus-visible:border-transparent focus-visible:ring-0",
             isPendingDelete && "text-danger/75 line-through"
           )}
+          onChange={(event) => {
+            const value = currentProject?.autoCapitalization
+              ? event.currentTarget.value.toUpperCase()
+              : event.currentTarget.value;
+            field.onChange(value);
+          }}
           onBlur={(e) => {
             field.onBlur();
             if (!isBatchMode && field.onChange) field.onChange(e);
@@ -975,7 +983,7 @@ export const SecretEditTableRow = ({
                 Type <span className="font-bold">{secretName}</span> to confirm
               </FieldLabel>
               <FieldContent>
-                <V3Input
+                <Input
                   value={deleteConfirmation}
                   onChange={(e) => setDeleteConfirmation(e.target.value)}
                   placeholder={`Type ${secretName} here`}
@@ -1474,7 +1482,7 @@ export const SecretEditTableRow = ({
             </Tooltip>
             <DropdownMenuContent
               align="end"
-              className="min-w-[200px] [&_[data-variant=default]]:text-mineshaft-100 [&_[data-variant=default]:focus]:text-foreground [&_svg:not([class*='size-'])]:!size-3"
+              className="min-w-[200px] [&_[data-variant=default]]:text-foreground [&_svg:not([class*='size-'])]:!size-3"
               onCloseAutoFocus={(e) => {
                 e.preventDefault();
                 if (pendingAnnotation === "comment") setIsCommentOpen(true);
@@ -1855,21 +1863,22 @@ export const SecretEditTableRow = ({
           </DropdownMenu>
         </div>
       )}
-      <Modal isOpen={isSecretReferenceOpen} onOpenChange={setIsSecretReferenceOpen}>
-        <ModalContent
-          className="max-w-3xl"
-          title="Secret Reference Details"
-          subTitle="Visual breakdown of secrets referenced by this secret."
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
+      <Dialog open={isSecretReferenceOpen} onOpenChange={setIsSecretReferenceOpen}>
+        <DialogContent className="max-w-3xl" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Secret Reference Details</DialogTitle>
+            <DialogDescription>
+              Visual breakdown of secrets referenced by this secret.
+            </DialogDescription>
+          </DialogHeader>
           <SecretReferenceTree
             secretPath={secretPath}
             environment={environment}
             secretKey={secretName}
             onClose={() => setIsSecretReferenceOpen(false)}
           />
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
       <Sheet open={isVersionHistoryOpen} onOpenChange={setIsVersionHistoryOpen}>
         <SheetContent onOpenAutoFocus={(e) => e.preventDefault()} className="gap-y-0" side="right">
           <SheetHeader>
@@ -1962,7 +1971,7 @@ export const SecretEditTableRow = ({
                 Type <span className="font-bold">confirm</span> to proceed
               </FieldLabel>
               <FieldContent>
-                <V3Input
+                <Input
                   value={editConfirmation}
                   onChange={(e) => setEditConfirmation(e.target.value)}
                   placeholder="Type confirm here"
