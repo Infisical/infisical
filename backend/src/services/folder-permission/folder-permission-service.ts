@@ -1,5 +1,6 @@
 import slugify from "@sindresorhus/slugify";
 
+import { SecretFolderRole } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -9,6 +10,7 @@ import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/addition
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TFolderPermissionDALFactory } from "./folder-permission-dal";
 import {
+  assertFullAccessIsPermanent,
   assertGrantTargetEligible,
   assertManageFolderAccess,
   computeTemporaryFields,
@@ -47,6 +49,8 @@ export const folderPermissionServiceFactory = ({
 }: TFolderPermissionServiceFactoryDep) => {
   const createFolderGrant = async (dto: TCreateFolderGrantDTO) => {
     const { projectId, environmentSlug, secretPath, target } = dto;
+    assertFullAccessIsPermanent(dto.role, Boolean(dto.type?.isTemporary));
+
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
     await assertGrantTargetEligible(dto.permission.orgId, projectId, target, folderPermissionDAL);
@@ -105,6 +109,11 @@ export const folderPermissionServiceFactory = ({
           message: `No folder access found for ${targetLabel(target).toLowerCase()} with ID '${target.actorId}' on the folder at path '${folder.path}' in environment with slug '${folder.environmentSlug}'. Create one first.`
         });
       }
+
+      assertFullAccessIsPermanent(
+        (dto.role ?? existing.role) as SecretFolderRole,
+        dto.type === undefined ? existing.isTemporary : dto.type.isTemporary
+      );
 
       const doc = await additionalPrivilegeDAL.updateById(
         existing.id,

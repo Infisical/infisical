@@ -1,9 +1,9 @@
-import { TemporaryPermissionMode } from "@app/db/schemas";
+import { SecretFolderRole, TemporaryPermissionMode } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { computeTemporaryFields, resolveFolder } from "./folder-permission-fns";
+import { assertFullAccessIsPermanent, computeTemporaryFields, resolveFolder } from "./folder-permission-fns";
 
 describe("computeTemporaryFields", () => {
   test.each([undefined, { isTemporary: false as const }])("returns permanent fields for %o", (input) => {
@@ -31,6 +31,24 @@ describe("computeTemporaryFields", () => {
     expect(result.temporaryAccessStartTime).toEqual(new Date(startTime));
     expect(result.temporaryAccessEndTime!.getTime() - result.temporaryAccessStartTime!.getTime()).toBe(ms("4h"));
   });
+});
+
+describe("assertFullAccessIsPermanent", () => {
+  test("rejects a temporary full-access grant", () => {
+    expect(() => assertFullAccessIsPermanent(SecretFolderRole.FullAccess, true)).toThrow(BadRequestError);
+    expect(() => assertFullAccessIsPermanent(SecretFolderRole.FullAccess, true)).toThrow(/cannot be temporary/);
+  });
+
+  test("allows a permanent full-access grant", () => {
+    expect(() => assertFullAccessIsPermanent(SecretFolderRole.FullAccess, false)).not.toThrow();
+  });
+
+  test.each([SecretFolderRole.List, SecretFolderRole.Read, SecretFolderRole.Edit, SecretFolderRole.Manage])(
+    "allows a temporary %s grant",
+    (role) => {
+      expect(() => assertFullAccessIsPermanent(role, true)).not.toThrow();
+    }
+  );
 });
 
 describe("resolveFolder", () => {

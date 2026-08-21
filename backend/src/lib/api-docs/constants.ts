@@ -1799,8 +1799,10 @@ export const FOLDER_ACCESS = {
     secretPath: "The path of the folder to grant access on.",
     userId: "The ID of the user to grant folder access to.",
     identityId: "The ID of the machine identity to grant folder access to.",
-    permission: "The folder role to grant. One of: list, read, edit, manage, full-access.",
-    isTemporary: "Whether the folder access is temporary. Omit the type object for permanent access.",
+    permission:
+      "The folder role to grant. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.",
+    isTemporary:
+      "Whether the folder access is temporary. Omit the type object for permanent access. The full-access role must be permanent.",
     temporaryMode: "Type of temporary access given. Types: relative.",
     temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
     temporaryAccessStartTime: "ISO time the temporary access starts."
@@ -1811,9 +1813,10 @@ export const FOLDER_ACCESS = {
     secretPath: "The path of the folder the access is on.",
     userId: "The ID of the user whose folder access to update.",
     identityId: "The ID of the machine identity whose folder access to update.",
-    permission: "The folder role to change the access to. One of: list, read, edit, manage, full-access.",
+    permission:
+      "The folder role to change the access to. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.",
     isTemporary:
-      "Whether the folder access is temporary. Pass isTemporary false to make it permanent; omit the type object to leave the current temporal state unchanged.",
+      "Whether the folder access is temporary. Pass isTemporary false to make it permanent; omit the type object to leave the current temporal state unchanged. The full-access role must be permanent, so making an access temporary also requires lowering its role.",
     temporaryMode: "Type of temporary access given. Types: relative.",
     temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
     temporaryAccessStartTime: "ISO time the temporary access starts."

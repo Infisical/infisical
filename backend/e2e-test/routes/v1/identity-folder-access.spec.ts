@@ -230,6 +230,82 @@ describe("Identity folder access CRUD", () => {
     expect(malformedPathRes.statusCode).toBe(400);
   });
 
+  test("keeps the full-access role permanent on create and on every update path", async () => {
+    const temporaryType = {
+      isTemporary: true,
+      temporaryMode: TemporaryPermissionMode.Relative,
+      temporaryRange: "1h",
+      temporaryAccessStartTime: new Date().toISOString()
+    };
+
+    const createRes = await testServer.inject({
+      method: "POST",
+      url: folderAccessUrl(),
+      headers: authHeaders(),
+      body: { ...folderTarget, permission: SecretFolderRole.FullAccess, type: temporaryType }
+    });
+    expect(createRes.statusCode).toBe(400);
+    expect(createRes.json().message).toContain("cannot be temporary");
+
+    const permanentRes = await testServer.inject({
+      method: "POST",
+      url: folderAccessUrl(),
+      headers: authHeaders(),
+      body: { ...folderTarget, permission: SecretFolderRole.FullAccess }
+    });
+    expect(permanentRes.statusCode).toBe(200);
+    expect(permanentRes.json().folderAccess.isTemporary).toBe(false);
+
+    try {
+      const addExpiryRes = await testServer.inject({
+        method: "PATCH",
+        url: folderAccessUrl(),
+        headers: authHeaders(),
+        body: { ...folderTarget, type: temporaryType }
+      });
+      expect(addExpiryRes.statusCode).toBe(400);
+      expect(addExpiryRes.json().message).toContain("cannot be temporary");
+
+      const loweredRes = await testServer.inject({
+        method: "PATCH",
+        url: folderAccessUrl(),
+        headers: authHeaders(),
+        body: { ...folderTarget, permission: SecretFolderRole.Manage, type: temporaryType }
+      });
+      expect(loweredRes.statusCode).toBe(200);
+      expect(loweredRes.json().folderAccess).toEqual(
+        expect.objectContaining({ permission: SecretFolderRole.Manage, isTemporary: true })
+      );
+
+      const promoteRes = await testServer.inject({
+        method: "PATCH",
+        url: folderAccessUrl(),
+        headers: authHeaders(),
+        body: { ...folderTarget, permission: SecretFolderRole.FullAccess }
+      });
+      expect(promoteRes.statusCode).toBe(400);
+      expect(promoteRes.json().message).toContain("cannot be temporary");
+
+      const promotePermanentRes = await testServer.inject({
+        method: "PATCH",
+        url: folderAccessUrl(),
+        headers: authHeaders(),
+        body: { ...folderTarget, permission: SecretFolderRole.FullAccess, type: { isTemporary: false } }
+      });
+      expect(promotePermanentRes.statusCode).toBe(200);
+      expect(promotePermanentRes.json().folderAccess).toEqual(
+        expect.objectContaining({ permission: SecretFolderRole.FullAccess, isTemporary: false })
+      );
+    } finally {
+      await testServer.inject({
+        method: "DELETE",
+        url: folderAccessUrl(),
+        headers: authHeaders(),
+        body: { ...folderTarget }
+      });
+    }
+  });
+
   describe("roster", () => {
     const listIdentities = async (
       query = ""

@@ -1970,7 +1970,10 @@ export const secretFolderServiceFactory = ({
           operation: "move",
           relocations: plan.map((entry) => ({
             folderId: entry.sourceFolderId,
-            managePaths: [{ environment: sourceEnvironment, secretPath: entry.sourceAbsPath }]
+            managePaths: [
+              { environment: sourceEnvironment, secretPath: entry.sourceAbsPath },
+              { environment: destinationEnvironment, secretPath: entry.destinationAbsPath }
+            ]
           }))
         },
         tx

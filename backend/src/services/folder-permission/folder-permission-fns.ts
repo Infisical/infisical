@@ -36,6 +36,17 @@ export const computeTemporaryFields = (type: TFolderGrantTypeInput | undefined) 
   };
 };
 
+// full-access is the only tier that confers ManageAccess, so a temporary holder could mint permanent
+// grants that outlive their own expiration. Bounding that tier by time therefore bounds nothing.
+export const assertFullAccessIsPermanent = (role: SecretFolderRole, isTemporary: boolean) => {
+  if (role === SecretFolderRole.FullAccess && isTemporary) {
+    throw new BadRequestError({
+      message:
+        "Folder access with the 'full-access' role cannot be temporary. A full-access holder can grant folder access to others, and those grants would outlive the expiration. Grant 'full-access' permanently, or use the 'manage' role for temporary access."
+    });
+  }
+};
+
 export const resolveFolder = async (
   projectId: string,
   environmentSlug: string,
