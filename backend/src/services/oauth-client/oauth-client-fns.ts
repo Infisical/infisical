@@ -71,14 +71,38 @@ export const isAllowedRedirectUri = (uri: string) => {
 // so the format must stay in sync between session creation and revocation.
 export const getOauthClientSessionUserAgent = (clientId: string) => `Infisical OAuth - ${clientId}`;
 
+type TOauthClientAuthority = Pick<
+  TOauthClients,
+  "clientSecretHash" | "grantTypes" | "tokenExchangeAudience" | "tokenExchangeIdpSatisfiesMfa"
+>;
+
 // Whether the client an exchange authenticated against has since lost the authority it was granted:
 // deleted, secret rotated, or the grant withdrawn. Comparing the stored hashes is enough, because a
 // rotation writes a fresh bcrypt hash with a new salt, so no second compareHash is needed.
+//
+// Token exchange also compares the two fields that carry its federation trust. The audience is the
+// only thing standing between the caller and any token the issuer signs, and the IdP-MFA declaration
+// is what lets an exchange skip an MFA requirement, so an admin narrowing either one has withdrawn
+// authority just as much as one rotating the secret. The exchange reads them off a replica, so
+// without this they would survive the change for the length of the replication lag.
 export const hasClientAuthorityChanged = (
-  authenticated: Pick<TOauthClients, "clientSecretHash" | "grantTypes">,
-  current: Pick<TOauthClients, "clientSecretHash" | "grantTypes"> | undefined,
+  authenticated: TOauthClientAuthority,
+  current: TOauthClientAuthority | undefined,
   grantType: OauthGrantType
-) => !current || current.clientSecretHash !== authenticated.clientSecretHash || !current.grantTypes.includes(grantType);
+) => {
+  if (!current) return true;
+  if (current.clientSecretHash !== authenticated.clientSecretHash) return true;
+  if (!current.grantTypes.includes(grantType)) return true;
+
+  if (grantType === OauthGrantType.TokenExchange) {
+    return (
+      current.tokenExchangeAudience !== authenticated.tokenExchangeAudience ||
+      Boolean(current.tokenExchangeIdpSatisfiesMfa) !== Boolean(authenticated.tokenExchangeIdpSatisfiesMfa)
+    );
+  }
+
+  return false;
+};
 
 export const isRegisteredRedirectUri = (registeredUris: string[], redirectUri: string) =>
   registeredUris.some((uri) => {

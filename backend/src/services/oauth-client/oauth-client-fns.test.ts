@@ -126,7 +126,9 @@ describe("isRegisteredRedirectUri", () => {
 describe("hasClientAuthorityChanged", () => {
   const authenticated = {
     clientSecretHash: "$2b$10$oldhasholdhasholdhashol",
-    grantTypes: [OauthGrantType.TokenExchange]
+    grantTypes: [OauthGrantType.TokenExchange],
+    tokenExchangeAudience: "https://coder.example.com",
+    tokenExchangeIdpSatisfiesMfa: true
   };
 
   test("reports no change when the client is untouched", () => {
@@ -163,6 +165,37 @@ describe("hasClientAuthorityChanged", () => {
         authenticated,
         { ...authenticated, grantTypes: [OauthGrantType.TokenExchange, OauthGrantType.AuthorizationCode] },
         OauthGrantType.TokenExchange
+      )
+    ).toBe(false);
+  });
+
+  test("reports a change when the token exchange audience was narrowed", () => {
+    expect(
+      hasClientAuthorityChanged(
+        authenticated,
+        { ...authenticated, tokenExchangeAudience: "https://other.example.com" },
+        OauthGrantType.TokenExchange
+      )
+    ).toBe(true);
+  });
+
+  test("reports a change when the IdP MFA declaration was withdrawn", () => {
+    expect(
+      hasClientAuthorityChanged(
+        authenticated,
+        { ...authenticated, tokenExchangeIdpSatisfiesMfa: false },
+        OauthGrantType.TokenExchange
+      )
+    ).toBe(true);
+  });
+
+  test("ignores the token exchange fields for other grants", () => {
+    const redirectClient = { ...authenticated, grantTypes: [OauthGrantType.AuthorizationCode] };
+    expect(
+      hasClientAuthorityChanged(
+        redirectClient,
+        { ...redirectClient, tokenExchangeAudience: null, tokenExchangeIdpSatisfiesMfa: false },
+        OauthGrantType.AuthorizationCode
       )
     ).toBe(false);
   });
