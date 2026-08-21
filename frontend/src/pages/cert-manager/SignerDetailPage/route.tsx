@@ -1,18 +1,15 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
-import { z } from 'zod'
+import { createFileRoute } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
-import { SignerDetailPage } from './SignerDetailPage'
+import { SignerDetailPage } from "./SignerDetailPage";
 
 const SignerDetailSearchSchema = z.object({
-  selectedTab: z
-    .enum(['activity', 'approvals', 'members'])
-    .catch('activity')
-    .optional(),
-})
+  selectedTab: z.enum(["activity", "approvals", "members"]).catch("activity").optional()
+});
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing/$signerId/',
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing/$signerId/"
 )({
   component: SignerDetailPage,
   validateSearch: zodValidator(SignerDetailSearchSchema),
@@ -21,12 +18,12 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: 'Code Signing',
+          label: "Code Signing"
         },
         {
-          label: 'Signer Details',
-        },
-      ],
-    }
-  },
-})
+          label: "Signer Details"
+        }
+      ]
+    };
+  }
+});

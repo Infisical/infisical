@@ -1,3 +1,7 @@
+import { randomUUID } from "node:crypto";
+
+import jwt from "jsonwebtoken";
+
 import {
   AccessScope,
   OrgMembershipRole,
@@ -8,10 +12,28 @@ import {
   TemporaryPermissionMode
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { KeyStorePrefixes } from "@app/keystore/keystore";
+import { groupDALFactory } from "@app/ee/services/group/group-dal";
+import { removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
+import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
+import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
+import { keyStoreFactory, KeyStorePrefixes } from "@app/keystore/keystore";
+import { getConfig, initEnvConfig } from "@app/lib/config/env";
+import { initLogger, logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { AuthMethod } from "@app/services/auth/auth-type";
+import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { identityDALFactory } from "@app/services/identity/identity-dal";
+import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
+import { projectDALFactory } from "@app/services/project/project-dal";
+import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { roleDALFactory } from "@app/services/role/role-dal";
+import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
+import { userDALFactory } from "@app/services/user/user-dal";
 
 const projectId = seedData1.project.id;
 const orgId = seedData1.organization.id;
@@ -762,6 +784,225 @@ describe("User folder access CRUD", () => {
           expect(res.json().message).toContain("project admin role");
         });
       });
+    });
+  });
+
+  describe("callers without project access", () => {
+    const outsiderSessionId = randomUUID();
+    let outsiderUserId: string;
+    let outsiderJwt: string;
+
+    const outsiderHeaders = () => ({ authorization: `Bearer ${outsiderJwt}` });
+
+    beforeAll(async () => {
+      initLogger();
+      await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+
+      const username = `folder-access-outsider-${alphaNumericNanoId(8)}@example.com`;
+      const [user] = await testDb(TableName.Users)
+        .insert({ username, email: username, isGhost: false, isAccepted: true, authMethods: [AuthMethod.EMAIL] })
+        .returning("*");
+      outsiderUserId = user.id;
+
+      const [orgMembership] = await testDb(TableName.Membership)
+        .insert({
+          scope: AccessScope.Organization,
+          scopeOrgId: orgId,
+          actorUserId: outsiderUserId,
+          status: OrgMembershipStatus.Accepted,
+          isActive: true
+        })
+        .returning("*");
+      await testDb(TableName.MembershipRole).insert({
+        membershipId: orgMembership.id,
+        role: OrgMembershipRole.Member
+      });
+
+      await testDb(TableName.AuthTokenSession).insert({
+        id: outsiderSessionId,
+        userId: outsiderUserId,
+        ip: "127.0.0.1",
+        userAgent: "e2e-folder-access",
+        accessVersion: 1,
+        refreshVersion: 1,
+        lastUsed: new Date()
+      } as never);
+
+      outsiderJwt = jwt.sign(
+        {
+          authTokenType: AuthTokenType.ACCESS_TOKEN,
+          userId: outsiderUserId,
+          tokenVersionId: outsiderSessionId,
+          authMethod: AuthMethod.EMAIL,
+          organizationId: orgId,
+          accessVersion: 1
+        },
+        getConfig().AUTH_SECRET,
+        { expiresIn: 3600 }
+      );
+    });
+
+    afterAll(async () => {
+      await testDb(TableName.AuthTokenSession).where({ id: outsiderSessionId }).del();
+      await deleteProjectUser(outsiderUserId);
+    });
+
+    // the permission error must come before folder resolution, so an existing and a nonexistent
+    // path are indistinguishable to a caller without project access
+    test("does not reveal whether a folder path exists", async () => {
+      const existingPathRes = await testServer.inject({
+        method: "GET",
+        url: folderAccessUsersUrl(),
+        headers: outsiderHeaders()
+      });
+      expect(existingPathRes.statusCode).toBe(403);
+
+      const missingPathRes = await testServer.inject({
+        method: "GET",
+        url: folderAccessUsersUrl("", { ...folderTarget, secretPath: "/no-such-folder" }),
+        headers: outsiderHeaders()
+      });
+      expect(missingPathRes.statusCode).toBe(403);
+
+      const missingEnvRes = await testServer.inject({
+        method: "GET",
+        url: folderAccessUsersUrl("", { ...folderTarget, environmentSlug: "no-such-env" }),
+        headers: outsiderHeaders()
+      });
+      expect(missingEnvRes.statusCode).toBe(403);
+
+      const createRes = await testServer.inject({
+        method: "POST",
+        url: folderAccessUrl(),
+        headers: outsiderHeaders(),
+        body: { ...folderTarget, secretPath: "/no-such-folder", permission: SecretFolderRole.Read }
+      });
+      expect(createRes.statusCode).toBe(403);
+    });
+  });
+
+  describe("group removal reaps folder grants", () => {
+    let reapUserId: string;
+    let firstGroup: { id: string; name: string; slug: string; orgId: string };
+    let secondGroup: { id: string; name: string; slug: string; orgId: string };
+    let removalDeps: Omit<
+      Parameters<typeof removeUsersFromGroupByUserIds>[0],
+      "group" | "userIds" | "tx" | "shouldFailOnMissingMembers" | "usageMeteringService"
+    >;
+
+    const createProjectGroup = async () => {
+      const slug = `folder-reap-grp-${alphaNumericNanoId(8)}`.toLowerCase();
+      const [group] = await testDb(TableName.Groups).insert({ orgId, name: slug, slug }).returning("*");
+
+      for (const scope of [AccessScope.Organization, AccessScope.Project] as const) {
+        // eslint-disable-next-line no-await-in-loop
+        const [membership] = await testDb(TableName.Membership)
+          .insert({
+            scope,
+            scopeOrgId: orgId,
+            scopeProjectId: scope === AccessScope.Project ? projectId : null,
+            actorGroupId: group.id
+          })
+          .returning("*");
+        // eslint-disable-next-line no-await-in-loop
+        await testDb(TableName.MembershipRole).insert({
+          membershipId: membership.id,
+          role: scope === AccessScope.Project ? ProjectMembershipRole.Member : OrgMembershipRole.Member
+        });
+      }
+
+      return { id: group.id, name: group.name, slug: group.slug, orgId };
+    };
+
+    beforeAll(async () => {
+      initLogger();
+      await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+      const keyStore = keyStoreFactory(getConfig(), keyValueStoreDALFactory(testDb));
+
+      // the `services` decoration is encapsulated inside the routes plugin, so build the
+      // permission service directly against the same DB/Redis the test server runs on
+      const permissionService = permissionServiceFactory({
+        permissionDAL: permissionDALFactory(testDb),
+        serviceTokenDAL: serviceTokenDALFactory(testDb),
+        projectDAL: projectDALFactory(testDb),
+        userDAL: userDALFactory(testDb),
+        identityDAL: identityDALFactory(testDb),
+        keyStore,
+        roleDAL: roleDALFactory(testDb),
+        additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
+        groupDAL: groupDALFactory(testDb),
+        secretFolderDAL: secretFolderDALFactory(testDb)
+      });
+
+      removalDeps = {
+        userDAL: userDALFactory(testDb),
+        userGroupMembershipDAL: userGroupMembershipDALFactory(testDb),
+        membershipGroupDAL: membershipGroupDALFactory(testDb),
+        projectKeyDAL: projectKeyDALFactory(testDb),
+        additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
+        permissionService,
+        alertChannelRecipientDAL: alertChannelRecipientDALFactory(testDb)
+      };
+
+      const username = `folder-reap-${alphaNumericNanoId(8)}@example.com`;
+      const [user] = await testDb(TableName.Users)
+        .insert({ username, email: username, isGhost: false, isAccepted: true, authMethods: [AuthMethod.EMAIL] })
+        .returning("*");
+      reapUserId = user.id;
+
+      const [orgMembership] = await testDb(TableName.Membership)
+        .insert({
+          scope: AccessScope.Organization,
+          scopeOrgId: orgId,
+          actorUserId: reapUserId,
+          status: OrgMembershipStatus.Accepted,
+          isActive: true
+        })
+        .returning("*");
+      await testDb(TableName.MembershipRole).insert({
+        membershipId: orgMembership.id,
+        role: OrgMembershipRole.Member
+      });
+
+      firstGroup = await createProjectGroup();
+      secondGroup = await createProjectGroup();
+      await testDb(TableName.UserGroupMembership).insert([
+        { userId: reapUserId, groupId: firstGroup.id },
+        { userId: reapUserId, groupId: secondGroup.id }
+      ]);
+    });
+
+    afterAll(async () => {
+      const groupIds = [firstGroup.id, secondGroup.id];
+      await testDb(TableName.AdditionalPrivilege).where({ actorUserId: reapUserId }).del();
+      await testDb(TableName.UserGroupMembership).whereIn("groupId", groupIds).del();
+      await testDb(TableName.Membership).whereIn("actorGroupId", groupIds).del();
+      await testDb(TableName.Groups).whereIn("id", groupIds).del();
+      await deleteProjectUser(reapUserId);
+    });
+
+    test("deletes the grant only when the last group-derived project access is removed", async () => {
+      const createRes = await testServer.inject({
+        method: "POST",
+        url: folderAccessUrl(reapUserId),
+        headers: authHeaders(),
+        body: { ...folderTarget, permission: SecretFolderRole.Read }
+      });
+      expect(createRes.statusCode).toBe(200);
+      const grantId = createRes.json().folderAccess.id;
+
+      const versionAfterGrant = await getFolderPermissionVersion();
+
+      await removeUsersFromGroupByUserIds({ ...removalDeps, group: firstGroup, userIds: [reapUserId] });
+
+      // still reaches the project through the second group, so the grant survives untouched
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: grantId })).toHaveLength(1);
+      expect(await getFolderPermissionVersion()).toBe(versionAfterGrant);
+
+      await removeUsersFromGroupByUserIds({ ...removalDeps, group: secondGroup, userIds: [reapUserId] });
+
+      expect(await testDb(TableName.AdditionalPrivilege).where({ id: grantId })).toEqual([]);
+      expect(await getFolderPermissionVersion()).toBeGreaterThan(versionAfterGrant);
     });
   });
 });
