@@ -69,7 +69,7 @@ export const EnvironmentSection = () => {
     | undefined;
 
   const onEnvDeleteSubmit = async () => {
-    if (!currentProject?.id || !deleteEnvData?.id) return;
+    if (!currentProject?.id || !deleteEnvData?.id || deleteWsEnvironment.isPending) return;
 
     await deleteWsEnvironment.mutateAsync({
       projectId: currentProject.id,
@@ -85,13 +85,13 @@ export const EnvironmentSection = () => {
   };
 
   const onSwitchToHardDelete = () => {
-    if (!deleteEnvData) return;
+    if (!deleteEnvData || deleteWsEnvironment.isPending) return;
     handlePopUpClose("deleteEnv");
     handlePopUpOpen("hardDeleteEnv", deleteEnvData);
   };
 
   const onEnvHardDeleteSubmit = async () => {
-    if (!currentProject?.id || !hardDeleteEnvData?.id) return;
+    if (!currentProject?.id || !hardDeleteEnvData?.id || deleteWsEnvironment.isPending) return;
 
     await deleteWsEnvironment.mutateAsync({
       projectId: currentProject.id,
@@ -126,13 +126,14 @@ export const EnvironmentSection = () => {
                 variant="project"
                 size="sm"
                 onClick={() => {
+                  if (deleteWsEnvironment.isPending) return;
                   if (isMoreEnvironmentsAllowed) {
                     handlePopUpOpen("createEnv");
                   } else {
                     handlePopUpOpen("upgradePlan");
                   }
                 }}
-                isDisabled={!isAllowed}
+                isDisabled={!isAllowed || deleteWsEnvironment.isPending}
               >
                 <PlusIcon className="size-4" />
                 Create Environment
@@ -143,7 +144,10 @@ export const EnvironmentSection = () => {
       </CardHeader>
       <CardContent>
         {permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments) ? (
-          <EnvironmentTable handlePopUpOpen={handlePopUpOpen} />
+          <EnvironmentTable
+            handlePopUpOpen={handlePopUpOpen}
+            isDeletePending={deleteWsEnvironment.isPending}
+          />
         ) : (
           <PermissionDeniedBanner />
         )}
@@ -159,7 +163,10 @@ export const EnvironmentSection = () => {
       />
       <AlertDialog
         open={popUp.deleteEnv.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen && deleteWsEnvironment.isPending) return;
+          handlePopUpToggle("deleteEnv", isOpen);
+        }}
       >
         <AlertDialogContent className="sm:max-w-xl!">
           <AlertDialogHeader>
@@ -196,12 +203,23 @@ export const EnvironmentSection = () => {
             </div>
           </div>
           <AlertDialogFooter className="sm:justify-between">
-            <Button variant="danger" size="sm" onClick={onSwitchToHardDelete}>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={onSwitchToHardDelete}
+              isDisabled={deleteWsEnvironment.isPending}
+            >
               Delete Permanently
             </Button>
             <div className="flex gap-2">
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction variant="project" onClick={onEnvDeleteSubmit}>
+              <AlertDialogCancel isDisabled={deleteWsEnvironment.isPending}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                variant="project"
+                onClick={onEnvDeleteSubmit}
+                isPending={deleteWsEnvironment.isPending}
+              >
                 Confirm
               </AlertDialogAction>
             </div>
@@ -211,6 +229,7 @@ export const EnvironmentSection = () => {
       <AlertDialog
         open={popUp.hardDeleteEnv.isOpen}
         onOpenChange={(isOpen) => {
+          if (!isOpen && deleteWsEnvironment.isPending) return;
           handlePopUpToggle("hardDeleteEnv", isOpen);
           if (!isOpen) setHardDeleteConfirmation("");
         }}
@@ -246,14 +265,16 @@ export const EnvironmentSection = () => {
               value={hardDeleteConfirmation}
               onChange={(e) => setHardDeleteConfirmation(e.target.value)}
               placeholder={hardDeleteEnvData?.slug ?? ""}
+              disabled={deleteWsEnvironment.isPending}
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel isDisabled={deleteWsEnvironment.isPending}>Cancel</AlertDialogCancel>
             <Button
               variant="danger"
               size="sm"
               onClick={onEnvHardDeleteSubmit}
+              isPending={deleteWsEnvironment.isPending}
               isDisabled={
                 !hardDeleteEnvData?.slug || hardDeleteConfirmation !== hardDeleteEnvData.slug
               }
