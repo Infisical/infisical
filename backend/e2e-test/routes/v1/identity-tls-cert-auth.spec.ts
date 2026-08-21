@@ -343,9 +343,8 @@ describe("Identity TLS certificate auth v1", async () => {
     });
   });
 
-  // Certificate material the proxy forwards but nothing can parse. Each of these reached OpenSSL or
-  // decodeURIComponent unguarded and surfaced as a 500, which tells the caller nothing and keeps the
-  // attempt out of the audit log.
+  // Certificate material the proxy forwards but nothing can parse. Each must reach the caller as a
+  // 400 or 401 it can act on, never a 500, which would also keep the attempt out of the audit log.
   describe("malformed certificate material", async () => {
     test("rejects a client certificate header that is not URL-encoded", async () => {
       const ca = await makeRoot("Malformed Header CA");

@@ -742,8 +742,8 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
   });
 
   // OpenSSL reports `ca === false` for a key usage without keyCertSign, so the path builder rejects
-  // such an issuer and always has. Single-hop does not consult that flag on the configured CA, so
-  // asserting name constraints alongside it must not become grounds for rejection either.
+  // such an issuer. Single-hop does not consult that flag on the configured CA, so asserting name
+  // constraints alongside it must not become grounds for rejection either.
   test("accepts a name-constrained CA whose key usage omits keyCertSign", async () => {
     const ca = await makeCa("No KeyCertSign CA", {
       extensions: [new x509.KeyUsagesExtension(NON_SIGNING_KEY_USAGE, true), permittedDnsConstraint(["example.com"])]
@@ -815,9 +815,8 @@ describe("verifyDirectlyIssuedClientCertificate", () => {
   });
 });
 
-// The engine no longer re-verifies signatures, which is what used to need an Ed25519 shim: pkijs's
-// own algorithm table covers only RSA and ECDSA, so an Ed25519 chain came back unbuildable rather
-// than as a constraint decision.
+// pkijs's algorithm table covers only RSA and ECDSA, so an Ed25519 chain reaching its engine has to
+// come back as a constraint decision rather than an unbuildable path.
 describe("name constraints on an Ed25519 chain", () => {
   const alg = { name: "Ed25519" };
 
@@ -1134,8 +1133,8 @@ describe("verifyClientCertificateChain", () => {
 
   test("does not re-explore shared dead-end issuer paths", async () => {
     // Every maze certificate carries and is signed by one shared key, so any certificate at a level
-    // verifies against any certificate at the level above it. That is what creates the
-    // combinatorial path explosion the walk cache exists to bound.
+    // verifies against any at the level above it. That is what creates the combinatorial path
+    // explosion the search caps and the signature cache exist to bound.
     const mazeKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const anchorKeys = await crypto.webcrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
@@ -1733,10 +1732,9 @@ describe("verifyClientCertificateChain", () => {
     expect(result).toEqual({ ok: true });
   });
 
-  // The presented chain is documented as order-independent, and with cross-signing the order
-  // decides which path the search reaches first. Every ordering has to reach the same verdict, not
-  // just the one where the valid path happens to come first. Both constraint kinds get their own
-  // sweep because they are enforced by different code: `pathLenConstraint` synchronously here,
+  // The presented chain is order-independent, but with cross-signing the order decides which path
+  // the search reaches first, so every ordering has to reach the same verdict. Each constraint kind
+  // gets its own sweep since they run through different code: `pathLenConstraint` synchronously,
   // name constraints through the async pkijs engine.
   const expectOrderIndependentAccept = async (leaf: TIssued, presented: x509.X509Certificate[]) => {
     const orderings = permutationsOf(presented);
@@ -1911,9 +1909,9 @@ describe("verifyClientCertificateChain", () => {
   });
 
   // Nothing here validates certificate policies, so a chain carrying policy extensions has to be
-  // decided by its name constraints alone. pkijs's engine runs its policy processing first and
-  // returns on the first problem it finds, which denied valid logins and masked real namespace
-  // violations until those extensions were kept out of its view.
+  // decided by its name constraints alone. pkijs's engine runs policy processing first and returns on
+  // the first problem it finds, which would both deny valid logins and mask real namespace
+  // violations.
   describe("certificate policy extensions", () => {
     const policyMappings = () =>
       new x509.Extension(

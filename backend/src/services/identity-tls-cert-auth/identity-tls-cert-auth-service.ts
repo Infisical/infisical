@@ -90,12 +90,9 @@ const nameConstraintsProblemMessage = (problem: TNameConstraintsProblem) => {
   return `CA certificate restricts the URI name "${problem.constraint}", which is not a fully qualified domain name, so no certificate it issues could be used to log in. A URI name constraint restricts the host only, such as "example.org". To restrict individual workload identities, use allowed subject alternative names instead.`;
 };
 
-/**
- * The chain arrives percent-encoded, because that is what a TLS-terminating proxy emits (nginx's
- * `$ssl_client_escaped_cert`, and the equivalent in Envoy or HAProxy). A value that does not decode
- * did not come from a proxy that encodes correctly, so it is the request that is malformed rather
- * than the client's certificate that is untrusted.
- */
+// The chain arrives percent-encoded, since that is what a TLS-terminating proxy emits (nginx's
+// `$ssl_client_escaped_cert` and equivalents). A value that will not decode means a malformed
+// request, not an untrusted certificate, hence 400 rather than 401.
 const decodeClientCertificateHeader = (clientCertificate: string) => {
   try {
     return decodeURIComponent(clientCertificate);
@@ -108,14 +105,12 @@ const decodeClientCertificateHeader = (clientCertificate: string) => {
 };
 
 /**
- * Node's X509Certificate is OpenSSL-backed and rejects DER that carries the PEM markers but does not
- * parse. Reading the certificate is what establishes who the client is, so a certificate that cannot
- * be read has not established it and the login is denied, rather than failing the request as an
- * internal error. Denying also keeps the attempt in the audit log, which only records
- * `UnauthorizedError`, so a client probing the endpoint with junk stays visible.
+ * Denies rather than 500s on a certificate that carries the PEM markers but will not parse, since
+ * reading it is what would establish who the client is. Denying also keeps the attempt auditable:
+ * only `UnauthorizedError` is recorded, so a client probing with junk stays visible.
  *
- * The OpenSSL reason is logged rather than returned, since it describes the encoding rather than
- * anything the caller can act on.
+ * The OpenSSL reason is logged rather than returned; it describes the encoding, not anything the
+ * caller can act on.
  */
 const parsePresentedCertificate = (
   pem: string,
@@ -140,11 +135,9 @@ const parsePresentedCertificate = (
 };
 
 /**
- * Reject a CA certificate the moment it is configured, rather than at every login it would deny.
- *
- * Only conditions that can never authenticate a client are rejected here. A certificate that is not
- * yet valid is deliberately allowed through, since an operator may be pre-provisioning the next CA
- * in a rotation.
+ * Reject a CA certificate when it is configured, rather than at every login it would deny. Only
+ * conditions that can never authenticate anyone belong here: a not-yet-valid certificate is allowed
+ * through, since an operator may be pre-provisioning the next CA in a rotation.
  */
 const validateCaCertificateUsable = (caCertificate: string) => {
   let caCertificateX509: InstanceType<typeof crypto.nativeCrypto.X509Certificate>;

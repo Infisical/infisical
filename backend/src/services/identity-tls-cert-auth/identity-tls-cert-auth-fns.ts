@@ -52,30 +52,21 @@ const EXCLUDED_SUBTREE_VIOLATION_CODE = 42;
 
 const URI_GENERAL_NAME_TYPE = 6;
 
-// Caps on how much of a presented chain the path search will explore. See `explore` below.
+// Bound the path search, since the presented chain is attacker-controlled. Hitting either cap
+// denies the login rather than continuing to search.
 const MAX_CANDIDATE_PATHS = 8;
 const MAX_SEARCH_PATH_STEPS = 2000;
 
 const pkiCryptoEngine = new CryptoEngine({ name: "identity-tls-cert-auth", crypto: webcrypto as Crypto });
 
 /**
- * pkijs's validation engine builds the path itself before it will evaluate name constraints, and
- * that path building carries structural opinions of its own: it re-verifies every signature with
- * pkijs's software crypto, re-checks validity windows, and requires every issuer to assert `CA:TRUE`
- * and, when a key usage is present, `keyCertSign`.
+ * Runs pkijs's subtree matching over a path this code already built, and nothing else.
  *
- * None of that is wanted here, because all of it is already settled by `issuedBy`, `validityFailure`
- * and the `.ca` gate, against OpenSSL rather than a second implementation. Letting it run again turned
- * pkijs's opinions into authentication failures, because it holds the configured CA to them too: a
- * configured CA that omits basic constraints, or whose key usage omits `keyCertSign`, is deliberately
- * accepted in single-hop mode, yet both were denied as soon as their certificate also asserted name
- * constraints.
- *
- * Overriding `sort` hands the engine the path this code already established, so only the subtree
- * matching runs. It also removes a subtler mismatch: pkijs rebuilt the path from the certificates it
- * was given and evaluated the shortest one it found, which for a cross-signed chain could be a
- * different path than the candidate under consideration, skipping the constraints of a CA that was
- * on it.
+ * Left to itself the engine rebuilds the path and re-validates it against its own rules, which both
+ * duplicates what `issuedBy`, `validityFailure` and the `.ca` gate settled against OpenSSL, and
+ * rejects CAs deliberately accepted here (an anchor that omits basic constraints, or whose key usage
+ * omits `keyCertSign`). It would also pick the shortest path it could rebuild, which in a
+ * cross-signed PKI need not be the candidate under evaluation.
  *
  * @param orderedPath leaf first, then each issuer in turn, trust anchor last
  */
@@ -97,11 +88,8 @@ const isWithinValidityWindow = (cert: TNativeX509, at: Date): boolean =>
 
 const isSelfIssued = (cert: TNativeX509): boolean => cert.subject === cert.issuer;
 
-/**
- * The reason codes distinguish the presented leaf from a CA above it, because the two are the
- * client's problem in different ways: an expired leaf is reissued by the client, an expired CA is
- * the operator's to rotate, and a caller that cannot tell them apart cannot act on either.
- */
+// Leaf and issuer get distinct reason codes because they are different people's problem to fix: the
+// client reissues its leaf, the operator rotates the CA.
 const validityFailure = (cert: TNativeX509, at: Date, role: "leaf" | "issuer"): TVerificationFailure | null => {
   if (isWithinValidityWindow(cert, at)) return null;
 
@@ -113,20 +101,11 @@ const validityFailure = (cert: TNativeX509, at: Date, role: "leaf" | "issuer"): 
 };
 
 /**
- * Returns true when `issuer` issued `child`.
- *
- * The name check compares the OpenSSL-formatted DN strings returned by Node's X509Certificate
- * (`child.issuer === issuer.subject`). This is a fast pre-filter before the cryptographic `verify`,
- * and assumes both sides of the chain share the same PKI-level DN encoding conventions, i.e. the
- * same string types (PrintableString vs UTF8String) and attribute ordering for equivalent names.
- * That holds within a single PKI (SPIRE emits the leaf and the rotating intermediate from one CA
- * with consistent encoding), which is the supported case here.
- *
- * It can yield a false negative in a heterogeneous PKI where the issuer and subject encode the same
- * logical DN differently (e.g. one cert uses PrintableString and the other UTF8String for an
- * attribute, or they differ in attribute ordering). In that situation a cryptographically valid
- * issuer relationship is rejected and validation fails with `ca_verification_failed`. A full
- * RFC 5280 name comparison (per-RDN, encoding-insensitive) would be required to support that.
+ * The DN comparison is a string match on OpenSSL's formatting, not RFC 5280 name matching, so it
+ * assumes the whole path shares one PKI's DN encoding (string types, attribute ordering). That holds
+ * within a single PKI, the supported case. Across a heterogeneous one, two spellings of the same
+ * logical DN fail to match and a cryptographically valid chain is rejected as
+ * `ca_verification_failed`.
  */
 const issuedBy = (child: TNativeX509, issuer: TNativeX509): boolean => {
   if (child.issuer !== issuer.subject) return false;
@@ -138,16 +117,11 @@ const issuedBy = (child: TNativeX509, issuer: TNativeX509): boolean => {
 };
 
 /**
- * Decoding a certificate is the most expensive thing a login does that is not a signature check, and
- * a single certificate is read by several checks that have no reason to know about each other: the
- * extended key usage gate, the subject alternative names, the path length, and whether it asserts
- * name constraints at all. Caching on the certificate object rather than its bytes keeps the parse
- * to one per certificate per request without a lifetime to manage: the entry dies with the
- * `X509Certificate` the request built, and a certificate's bytes never change under it.
+ * Several independent checks read the same certificate, and decoding it is the most expensive thing
+ * a login does short of a signature check.
  *
- * Both parsers are kept because they are not interchangeable. @peculiar/x509 gives typed extension
- * accessors, and pkijs gives the `Certificate` its validation engine requires. Only the parse is
- * shared; a failure is not cached, so each caller keeps its own error handling.
+ * Both parsers are kept: @peculiar/x509 for typed extension accessors, pkijs for the `Certificate`
+ * its validation engine needs. Failures are not cached, so each caller keeps its own handling.
  */
 const parsedCertificates = new WeakMap<TNativeX509, x509.X509Certificate>();
 
@@ -168,20 +142,13 @@ const POLICY_EXTENSION_OIDS = new Set<string>([
 ]);
 
 /**
- * pkijs's validation engine runs RFC 5280's certificate policy processing before it will look at
- * name constraints, and returns on the first policy problem it finds. Nothing here validates
- * policies, so each of those outcomes is a login denied over something the caller never asked about:
- * a chain whose CAs assert `requireExplicitPolicy` over policy identifiers that do not chain fails
- * outright, and a `policyMappings` on an intermediate of a three-certificate chain reads a policy
- * list the certificate below it does not carry, which the engine catches and reports as a generic
- * failure. Both land before the subtree matching, so a chain that also violates a name constraint is
- * reported as `ca_verification_failed` instead of `name_constraint_violation`.
+ * Strips the policy extensions, because pkijs runs RFC 5280 policy processing ahead of name
+ * constraints and returns on the first problem it finds. Nothing here validates policies, so every
+ * such outcome would be a login denied over something the caller never asked about, before the
+ * subtree matching this parse exists for ever ran.
  *
- * Dropping the policy extensions leaves that pass with nothing to process and no way to fail, so
- * every chain reaches the stage this parse exists for. Only pkijs loses sight of them: these objects
- * feed the name constraints engine and the subject alternative name reads, and the @peculiar parse
- * that the extended key usage gate, the path length check and the identity's allow-list go through
- * still sees the certificate whole.
+ * Only pkijs loses sight of them; the @peculiar parse behind the other checks still sees the
+ * certificate whole.
  */
 const parsePkiCertificate = (raw: BufferSource): Certificate => {
   const parsed = Certificate.fromBER(raw);
@@ -213,13 +180,9 @@ const parseWithoutNameConstraints = (raw: BufferSource): Certificate => {
 const nameConstraintFreeCertificates = new WeakMap<TNativeX509, Certificate>();
 
 /**
- * The certificate as pkijs sees it with its own name constraints extension removed, so that a path
- * built from these carries no constraints at all and the only ones in play are the single
- * certificate's worth `enforceNameConstraints` supplies to each pass. See there for why every
- * constraint has to be handed over that way rather than left on the path.
- *
- * A certificate that asserts none needs no copy, so the shared parse is returned unchanged and the
- * ordinary chain that constrains nothing pays nothing here.
+ * A copy with the name constraints extension removed, so a path built from these carries none and
+ * each pass in `enforceNameConstraints` sees only the one CA's worth it supplies. A certificate that
+ * asserts no constraints needs no copy.
  */
 const toNameConstraintFreeCertificate = (cert: TNativeX509): Certificate => {
   const shared = toPkiCertificate(cert);
@@ -237,9 +200,8 @@ const basicConstraintsPathLength = (cert: TNativeX509): number | undefined =>
   parseCertificate(cert).getExtension(x509.BasicConstraintsExtension)?.pathLength;
 
 /**
- * RFC 5280 6.1.4 (l)/(m): a CA's `pathLenConstraint` caps how many non-self-issued CA certificates
- * may follow it on the path, not counting the end-entity certificate. A CA that omits the field is
- * unconstrained.
+ * RFC 5280 6.1.4 (l)/(m): `pathLenConstraint` caps how many non-self-issued CA certificates may
+ * follow a CA on the path, not counting the end-entity certificate. Omitting it means unconstrained.
  *
  * @param orderedPath leaf first, then each issuer in turn, trust anchor last
  */
@@ -261,15 +223,13 @@ type TNameConstraintsState =
   | { status: "present"; constraints: NameConstraints };
 
 /**
- * A certificate that carries name constraints this code cannot read has asserted a restriction that
- * cannot be honored, which is not the same as asserting none: reading it as "no constraints" would
- * let a CA that means to restrict its subordinates certify anything. The extension is critical per
- * RFC 5280 4.2.1.10, so an unreadable one has to deny rather than be skipped.
+ * "Unreadable" is deliberately distinct from "absent": the extension is critical (RFC 5280 4.2.1.10),
+ * so reading a constraint this code cannot honor as "no constraints" would let a CA that meant to
+ * restrict its subordinates certify anything.
  *
- * pkijs surfaces an unreadable extension two ways, both covered here: `parsedValue` is undefined
- * when the extension value is not valid DER at all, and is an otherwise-empty `NameConstraints`
- * when the value parses as ASN.1 but not against the schema. Neither carries a subtree list, and a
- * conforming extension always carries at least one.
+ * pkijs signals it two ways, hence the two checks: `parsedValue` is not a `NameConstraints` when the
+ * value is not valid DER, and is an empty one when it parses as ASN.1 but not against the schema. A
+ * conforming extension always carries at least one subtree.
  */
 const nameConstraintsOf = (cert: Certificate): TNameConstraintsState => {
   const extension = cert.extensions?.find((ext) => ext.extnID === NAME_CONSTRAINTS_EXTENSION_OID);
@@ -283,10 +243,9 @@ const nameConstraintsOf = (cert: Certificate): TNameConstraintsState => {
 };
 
 /**
- * Whether the certificate carries a name constraints extension, answered from the extension list
- * alone so a chain that asserts none never pays for the pkijs decode the evaluation needs. A
- * certificate that cannot be read here is reported as carrying one, so it reaches `nameConstraintsOf`
- * and is denied there rather than passing as unconstrained.
+ * A cheap pre-check so a chain asserting no constraints never pays for the pkijs decode. Answers
+ * true when the certificate cannot be read, so it reaches `nameConstraintsOf` and is denied there
+ * rather than passing as unconstrained.
  */
 const assertsNameConstraints = (cert: TNativeX509): boolean => {
   try {
@@ -300,18 +259,15 @@ const uriSubtreeValue = (subtree: GeneralSubtree): string | null =>
   subtree.base.type === URI_GENERAL_NAME_TYPE && typeof subtree.base.value === "string" ? subtree.base.value : null;
 
 /**
- * RFC 5280 4.2.1.10: a URI name constraint applies to the host part of the name and has to be a
- * fully qualified domain name, such as `example.org` or `.example.org`. A constraint written the way
- * the names themselves look, `spiffe://example.org`, is not a hostname, and neither is one carrying
- * a path. Go's crypto/x509 and pkijs both read it that way, so such a constraint matches nothing:
- * as a permitted subtree it denies every client, and as an excluded subtree it excludes none.
+ * RFC 5280 4.2.1.10: a URI name constraint restricts the host and must be a fully qualified domain
+ * name (`example.org`, `.example.org`). One written the way the names look, `spiffe://example.org`,
+ * or carrying a path, is not a hostname, and both Go and pkijs read it that way: it matches nothing,
+ * so as a permitted subtree it denies every client and as an excluded subtree it excludes none.
  *
- * Returning it rather than evaluating it keeps both halves honest. Letting the match run would deny
- * every client while naming the client's certificate as the problem, when the certificate cannot be
- * changed to satisfy it. Skipping it would let a CA that meant to restrict its subordinates certify
- * anything. Note that the host is not extracted and reused: for a constraint like
- * `spiffe://example.org/team-a`, treating it as `example.org` would permit `team-b` as well, which
- * is wider than what the CA asserted.
+ * Reported rather than evaluated, since evaluating it would blame the client for a certificate it
+ * cannot fix, and skipping it would let a CA that meant to restrict its subordinates certify
+ * anything. The host is deliberately not extracted: reading `spiffe://example.org/team-a` as
+ * `example.org` would permit `team-b` too, which is wider than the CA asserted.
  */
 const unsupportedUriSubtree = (constraints: NameConstraints): string | null => {
   const subtrees = [...(constraints.permittedSubtrees ?? []), ...(constraints.excludedSubtrees ?? [])];
@@ -324,9 +280,8 @@ export type TNameConstraintsProblem =
   | { kind: "unsupported_uri_subtree"; constraint: string };
 
 /**
- * Why a certificate's name constraints could never permit a client, so an operator hears about it
- * when they configure the CA rather than at every login it would deny. Null when the certificate
- * asserts no constraints, or asserts ones that can be evaluated.
+ * Why a certificate's name constraints could never permit any client, so an operator hears about it
+ * when configuring the CA rather than at every login it would deny.
  */
 export const findNameConstraintsProblem = (cert: TNativeX509): TNameConstraintsProblem | null => {
   let state: TNameConstraintsState;
@@ -344,11 +299,8 @@ export const findNameConstraintsProblem = (cert: TNativeX509): TNameConstraintsP
   return constraint === null ? null : { kind: "unsupported_uri_subtree", constraint };
 };
 
-/**
- * Every readable subject alternative name extension on the certificate, in the order pkijs reads
- * them. A conforming certificate carries at most one, but pkijs concatenates the names of all of
- * them, so a second one carries names the constraint evaluation sees and cannot be left out here.
- */
+// All SAN extensions, not just the first: a conforming certificate carries one, but pkijs
+// concatenates the names of every one it finds, so a second must not escape the constraint check.
 const subjectAltNamesOf = (cert: Certificate): AltName[] =>
   (cert.extensions ?? []).flatMap((ext) =>
     ext.extnID === SUBJECT_ALT_NAME_EXTENSION_OID && ext.parsedValue instanceof AltName ? [ext.parsedValue] : []
@@ -359,10 +311,8 @@ const permittedSubtreeTypes = (constraints: NameConstraints[]): Set<number> =>
     constraints.flatMap((constraint) => (constraint.permittedSubtrees ?? []).map((subtree) => subtree.base.type))
   );
 
-/**
- * How many rounds it takes to give every name a round of its own where it is the only name of its
- * type: the number of names carried by whichever constrained type is repeated the most.
- */
+// Rounds needed to give every name one where it is the only name of its type: however many names
+// the most-repeated constrained type carries.
 const roundsToCoverEveryName = (types: number[]): number => {
   const counts = new Map<number, number>();
   types.forEach((type) => counts.set(type, (counts.get(type) ?? 0) + 1));
@@ -372,19 +322,13 @@ const roundsToCoverEveryName = (types: number[]): number => {
 type TPerNameEvaluation = { certificate: Certificate; rounds: number; selectRound: (round: number) => void };
 
 /**
- * A private copy of a certificate that carries more than one name of a constrained type, whose name
- * list can be rewritten to hold a single name of each type so pkijs evaluates that one name rather
- * than the certificate's names as a set. Null when the certificate repeats no constrained type, so
- * pkijs's own pass already decided each of its names on its own.
+ * A private copy whose SAN list can be rewritten per round to hold one name of each type, so pkijs
+ * evaluates that name alone instead of the certificate's names as a set. Null when no constrained
+ * type repeats, since pkijs's own pass then already decided each name on its own.
  *
- * The copy is parsed once and rewritten per round rather than reparsed per round, and it is
- * deliberately not published to the parse caches: every other reader of the certificate, the
- * identity's allow-list included, still has to see all of its names. It is also only made once the
- * shared parse has shown a copy is needed, so the ordinary certificate naming one workload does not
- * pay for a second decode.
- *
- * Its own name constraints are dropped for the same reason the rest of the path drops them: this
- * copy is substituted into a path that must carry no constraints of its own.
+ * Deliberately not published to the parse caches: every other reader, the identity's allow-list
+ * included, has to keep seeing all of the names. Its own name constraints are dropped because it is
+ * substituted into a path that must carry none.
  */
 const perNameEvaluation = (
   cert: TNativeX509,
@@ -417,43 +361,29 @@ const perNameEvaluation = (
 };
 
 /**
- * RFC 5280 6.1.4 (g): a CA may restrict the namespace its subordinates can certify. Without this,
- * the holder of a constrained sub-CA under the configured anchor could mint a leaf for any name and
- * authenticate as any identity pinned to that anchor.
+ * RFC 5280 6.1.4 (g): a CA may restrict the namespace its subordinates can certify. Without it, the
+ * holder of a constrained sub-CA under the anchor could mint a leaf for any name and authenticate as
+ * any identity pinned to that anchor.
  *
- * Subtree matching (DNS/IP/email/URI/directory-name semantics, permitted and excluded) is delegated
- * to pkijs rather than reimplemented, and only that: see `NameConstraintsEngine` for why the engine
- * is not allowed to rebuild or re-validate the path.
+ * Subtree matching is delegated to pkijs. How constraints *combine* is not, because pkijs gets both
+ * halves wrong in the permissive direction:
  *
- * What is not delegated is how the constraints of different certificates combine. 6.1.4 (g) narrows
- * the permitted set at every hop, by intersection, so a name has to sit inside what *every* CA above
- * it permits. pkijs unions them instead: it collects the subtrees it meets into one list and lets a
- * name match any entry. So the widest CA on the path decided the outcome, and a CA could be escaped
- * by one below it asserting something broader. That is not a corner case, because a sub-CA writes
- * the certificates it issues: the holder of a CA restricted to `team-a.example.com` could issue
- * itself a sub-CA permitting `example.com` and mint a leaf for any name under it.
+ * 1. Across certificates, 6.1.4 (g) intersects the permitted set at every hop, so a name must sit
+ *    inside what every CA above it permits. pkijs unions them, letting the widest CA on the path
+ *    decide. A sub-CA writes what it issues, so a CA restricted to `team-a.example.com` could issue
+ *    itself one permitting `example.com` and escape. Since a name is inside an intersection exactly
+ *    when it is inside each member, this runs one pass per constraining CA over the path below it,
+ *    passing only that CA's subtrees as the initial inputs and stripping every certificate's own
+ *    extension so pkijs has nothing left to union. Those inputs are also the only way a constrained
+ *    anchor is honored, as pkijs never reads the constraints of its trust anchor.
  *
- * Since a name is inside an intersection exactly when it is inside each of its members, this runs
- * one pass per constraining CA and denies if any of them denies. Each pass covers the path from the
- * leaf up to that CA, and only that CA's constraints are in play: they are handed over as the RFC's
- * initial-permitted/excluded-subtrees inputs, and every certificate on the path is substituted for a
- * copy without its own name constraints extension so pkijs has nothing left to union them with. The
- * initial inputs are also what lets a constrained CA that is itself the anchor be honored, since
- * pkijs never reads the constraints of the certificate it treats as the trust anchor.
+ * 2. Within one certificate, pkijs ORs the names of a type, so one in-scope name would carry the
+ *    rest; 6.1.4 (g) requires every name of a constrained type to be permitted. A leaf pairing one
+ *    in-scope name with any other would otherwise authenticate the identity pinning the out-of-scope
+ *    one. Hence the per-name rounds; see `perNameEvaluation`. Excluded subtrees need no such pass,
+ *    since OR-ing is what the RFC asks for there.
  *
- * How the names of a single certificate combine is not delegated either. pkijs decides a permitted
- * subtree group by OR-ing every name of that type, so one name inside the permitted subtree carries
- * the rest, whereas 6.1.4 (g) requires every name of a constrained type to be within a permitted
- * subtree. Left alone, the holder of a constrained sub-CA could mint a leaf pairing one in-scope
- * name with any name it liked, and `isSubjectAltNameAllowed` would then authenticate the identity
- * that pins the out-of-scope one. So a certificate repeating a constrained type is also evaluated
- * one name at a time, by the same matcher: see `perNameEvaluation`. Excluded subtrees need no such
- * pass, because there OR-ing the names is what the RFC asks for: any name inside an excluded
- * subtree denies.
- *
- * Only runs when some certificate on the path actually asserts constraints, so a chain that has
- * none is validated exactly as before. A CA asserting constraints that cannot be read denies before
- * that point; see `nameConstraintsOf`.
+ * A CA whose constraints cannot be read denies earlier; see `nameConstraintsOf`.
  */
 const enforceNameConstraints = async (orderedPath: TNativeX509[]): Promise<TVerificationFailure | null> => {
   if (orderedPath.length < 2) return null;
@@ -549,19 +479,17 @@ const enforceNameConstraints = async (orderedPath: TNativeX509[]): Promise<TVeri
 };
 
 /**
- * RFC 5280 4.2.1.12: an Extended Key Usage extension is the exhaustive list of purposes its
- * certificate may be used for. Without this check a leaf issued for serverAuth or codeSigning
- * authenticates an identity, so anyone holding a server certificate under the configured CA can
- * impersonate the machine identity pinned to it.
+ * RFC 5280 4.2.1.12: an EKU is the exhaustive list of purposes a certificate may be used for.
+ * Without this check, anyone holding a serverAuth or codeSigning certificate under the configured CA
+ * could impersonate the identity pinned to it.
  *
- * A certificate that omits the extension is unconstrained and stays accepted, which is how OpenSSL
- * and Go read a missing EKU and what keeps existing leaves that carry no EKU working. Only a
- * certificate that explicitly enumerates purposes and leaves client authentication out is rejected.
+ * A missing extension means unconstrained and stays accepted, as OpenSSL and Go read it, which is
+ * what keeps existing EKU-less leaves working. Only an explicit list omitting client auth is
+ * rejected.
  *
- * Node's X509Certificate is OpenSSL-backed and accepts DER that @peculiar/x509 rejects, so a
- * certificate can parse at the edge and still fail here. Reading the extension is what establishes
- * that client authentication is permitted, so a certificate whose extensions cannot be read has not
- * established it and is denied rather than failing the request as an internal error.
+ * Node's X509Certificate accepts DER that @peculiar/x509 rejects, so a certificate can parse at the
+ * edge and fail here. Since reading the extension is what establishes client auth is permitted, an
+ * unreadable one denies rather than 500s.
  */
 export const permitsClientAuth = (cert: TNativeX509): boolean => {
   let usages: x509.ExtendedKeyUsageExtension["usages"] | undefined;
@@ -576,22 +504,13 @@ export const permitsClientAuth = (cert: TNativeX509): boolean => {
 };
 
 /**
- * Validate a client certificate the configured CA is expected to have issued directly.
+ * The default mode: no intermediates, so the configured CA either signed the presented leaf or it
+ * did not. It applies the same rules the path-building mode applies to a one-hop path, since those
+ * rules belong to the CA rather than to the path's length.
  *
- * This is the default mode, where no intermediates are involved: the configured CA either signed
- * the presented leaf or it did not. It still applies every rule the path-building mode applies to a
- * one-hop path, because the rules belong to the CA rather than to the length of the path. A CA that
- * has expired, or whose extended key usage does not cover client authentication, cannot authenticate
- * a client in either mode; a leaf outside the namespace its CA is permitted to certify is outside it
- * whether or not intermediates were presented; and a leaf outside its own validity window is no more
- * usable here than on a longer path.
- *
- * Unlike the path-building mode, the anchor is not required to assert `CA:TRUE`. It is configured by
- * an operator rather than presented by the client, and a self-signed certificate that omits basic
- * constraints entirely has always been accepted here.
- *
- * @param leaf the end-entity certificate presented by the client
- * @param ca   the configured CA certificate that must have issued it
+ * The one difference is that the anchor need not assert `CA:TRUE`: it is configured by an operator
+ * rather than presented by a client, so a self-signed certificate omitting basic constraints is
+ * accepted here.
  */
 export const verifyDirectlyIssuedClientCertificate = async ({
   leaf,
@@ -618,35 +537,22 @@ export const verifyDirectlyIssuedClientCertificate = async ({
 };
 
 /**
- * Validate the presented client certificate chain against a configured trust anchor.
+ * Builds paths from the leaf through the presented intermediates to the configured anchor, and
+ * accepts if any one is valid end to end: every hop a real issuer relationship, every issuer a CA
+ * permitted to sign that is in its validity window and whose EKU permits client auth, and the path
+ * satisfying the `pathLenConstraint` and name constraints its CAs assert.
  *
- * Unlike single-hop verification (leaf signed directly by the configured CA), this builds paths
- * from the leaf through the presented intermediates up to the configured trust anchor and accepts
- * the client if any one of them is valid end to end. A path is valid when every hop has a real
- * issuer relationship (subject/issuer match + signature), every issuer is a CA permitted to sign
- * certificates (including the trust anchor itself) that is within its validity window and whose
- * extended key usage permits client authentication, and the path as a whole satisfies the RFC 5280
- * delegation constraints its CAs assert: `pathLenConstraint` and name constraints.
+ * Every check participates in path *selection*, which is why they are not run once up front. A
+ * cross-signed PKI presents the same logical CA under several issuers, so one certificate can sit on
+ * both a path that violates a constraint and one that satisfies it; committing to the first
+ * cryptographically sound path would deny a client that has a good one. Per-certificate checks prune
+ * only their branch, and path-wide constraints run per complete path until one passes.
  *
- * Every one of those checks participates in path selection. A cross-signed PKI presents the same
- * logical CA under more than one issuer, so a single certificate can sit on both a path that
- * violates a constraint and a path that satisfies it; committing to the first path that is merely
- * cryptographically sound would deny a client that has a perfectly good path available. Checks that
- * belong to a single certificate (validity, extended key usage) prune the branch they fail on, and
- * the path-wide constraints are applied to each complete path in turn until one passes.
+ * The anchor is the only trusted input: a forged or unrelated intermediate cannot reach it. This
+ * mirrors how SPIFFE consumers validate X.509-SVID chains, and lets an operator pin a stable root
+ * while the issuing intermediate rotates under it.
  *
- * The trust anchor is the only trusted input. Presented intermediates are untrusted: a forged or
- * unrelated intermediate cannot create a path to the anchor, so it is rejected. This mirrors how
- * SPIFFE consumers (e.g. Envoy, Vault) validate X.509-SVID chains and lets an operator pin a
- * stable root while the issuing intermediate rotates underneath it.
- *
- * NOTE: each hop's issuer/subject match is a string comparison of the OpenSSL-formatted DN strings,
- * so this assumes every certificate on the path shares the same PKI-level DN encoding conventions
- * (string types and attribute ordering). See `issuedBy` above for the heterogeneous-PKI caveat.
- *
- * @param leaf            the end-entity certificate presented by the client (chain[0])
- * @param presentedChain  intermediates presented by the client (chain[1..n]); order-independent
- * @param trustAnchor     the configured CA certificate to anchor the path on
+ * @param presentedChain intermediates presented by the client; order-independent
  */
 export const verifyClientCertificateChain = async ({
   leaf,
@@ -693,13 +599,11 @@ export const verifyClientCertificateChain = async ({
   };
 
   /**
-   * The gate every issuer clears before it may extend a path. Both properties belong to the
-   * certificate alone rather than to the path it sits on, so failing one rules out this branch
-   * only: another issuer of the same certificate can still complete a path.
+   * Both properties belong to the certificate rather than the path, so failing one rules out this
+   * branch only; another issuer of the same certificate can still complete a path.
    *
-   * An EKU on a CA restricts what its subordinates may be used for, so a CA that enumerates
-   * purposes without client authentication cannot delegate it, the way OpenSSL and Go check a
-   * purpose against the whole chain rather than the leaf alone.
+   * A CA's EKU restricts what its subordinates may be used for, so one enumerating purposes without
+   * client auth cannot delegate it, the way OpenSSL and Go check a purpose against the whole chain.
    */
   const issuerFailure = (issuer: TNativeX509): TVerificationFailure | null =>
     validityFailure(issuer, now, "issuer") ??
@@ -724,8 +628,6 @@ export const verifyClientCertificateChain = async ({
   /**
    * Depth-first enumeration of the paths from the leaf to the trust anchor.
    *
-   * @param current the certificate whose issuers are being looked for
-   * @param path    the path built so far, leaf first and `current` last
    * @param visited ids of the certificates already on `path`, so a cross-signing loop terminates
    */
   const explore = (current: TNativeX509, path: TNativeX509[], visited: Set<string>): void => {
@@ -740,11 +642,9 @@ export const verifyClientCertificateChain = async ({
       return;
     }
 
-    // `.ca` is OpenSSL's `X509_check_ca`, which carries RFC 5280 6.1.4 (k) and (n) together: it is
-    // false unless basic constraints assert `CA:TRUE` and, when a key usage is present, it includes
-    // `keyCertSign`. So a sub-CA its parent issued for CRL signing or TLS termination alone cannot
-    // extend a path here, and neither can such a certificate configured as the anchor. Replacing this
-    // with a direct read of basic constraints would silently drop the key usage half.
+    // `.ca` is OpenSSL's `X509_check_ca`, covering RFC 5280 6.1.4 (k) and (n) together: false unless
+    // basic constraints assert `CA:TRUE` and any key usage present includes `keyCertSign`. Reading
+    // basic constraints directly instead would silently drop the key usage half.
     if (trustAnchor.ca && issuedByCached(current, trustAnchor)) {
       const anchorFailure = issuerFailure(trustAnchor);
       if (anchorFailure) search.prunedFailure ??= anchorFailure;
@@ -824,12 +724,8 @@ type CanonicalSanType = "dns" | "ip" | "email" | "uri";
 
 export type TCertificateSanItem = { type: string; value: string };
 
-/**
- * Reading the subject alternative names is what establishes that the certificate carries one the
- * identity allows, so a certificate whose extensions @peculiar/x509 cannot parse has not established
- * it and is treated as carrying none, which denies. See `permitsClientAuth` for why a certificate
- * Node accepted can still fail to parse here.
- */
+// An unparseable certificate is treated as carrying no SANs, which denies. See `permitsClientAuth`
+// for why one Node accepted can still fail to parse here.
 export const readSubjectAltNames = (cert: TNativeX509): ReadonlyArray<TCertificateSanItem> | undefined => {
   try {
     return parseCertificate(cert).getExtension(x509.SubjectAlternativeNameExtension)?.names.items;
