@@ -49,7 +49,7 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   projectId: string;
-  folderId: string;
+  environmentSlug: string;
   folderPath: string;
   environmentName: string;
 };
@@ -58,7 +58,7 @@ export const FolderAccessSheet = ({
   isOpen,
   onOpenChange,
   projectId,
-  folderId,
+  environmentSlug,
   folderPath,
   environmentName
 }: Props) => {
@@ -70,7 +70,8 @@ export const FolderAccessSheet = ({
 
   const listArgs = {
     projectId,
-    folderId,
+    environmentSlug,
+    secretPath: folderPath,
     limit: FETCH_LIMIT,
     search: debouncedSearch.trim() || undefined
   };
@@ -104,7 +105,7 @@ export const FolderAccessSheet = ({
   const notifySuccess = (text: string) => createNotification({ text, type: "success" });
 
   const setTier = (actor: TFolderAccessActor, permission: SecretFolderRole) => {
-    const target = { projectId, folderId };
+    const target = { projectId, environmentSlug, secretPath: folderPath };
     const tierLabel = FOLDER_ROLE_TIER_LABELS[permission];
     const onSuccess = () =>
       notifySuccess(
@@ -125,7 +126,7 @@ export const FolderAccessSheet = ({
   };
 
   const setAccessType = (actor: TFolderAccessActor, type: TFolderGrantType) => {
-    const target = { projectId, folderId };
+    const target = { projectId, environmentSlug, secretPath: folderPath };
     const onSuccess = () =>
       notifySuccess(
         type.isTemporary
@@ -139,7 +140,7 @@ export const FolderAccessSheet = ({
   };
 
   const removeAccess = (actor: TFolderAccessActor) => {
-    const target = { projectId, folderId };
+    const target = { projectId, environmentSlug, secretPath: folderPath };
     const onSuccess = () => {
       notifySuccess(`Removed ${actor.name}'s folder access`);
       setRemovalActor(null);
@@ -261,7 +262,7 @@ export const FolderAccessSheet = ({
         isOpen={isAddOpen}
         onOpenChange={setIsAddOpen}
         projectId={projectId}
-        folderId={folderId}
+        environmentSlug={environmentSlug}
         folderPath={folderPath}
         environmentName={environmentName}
       />

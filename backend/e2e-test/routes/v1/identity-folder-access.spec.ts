@@ -19,13 +19,16 @@ const adminIdentityId = seedData1.machineIdentity.id;
 let memberIdentityId: string;
 let memberIdentityName: string;
 
-const folderAccessUrl = (folderId: string, targetIdentityId?: string) =>
-  `/api/v2/identity-project-additional-privilege/projects/${projectId}/identities/${
-    targetIdentityId ?? memberIdentityId
-  }/folder-access/${folderId}`;
+const folderPath = "/identity-folder-access";
+const folderTarget = { environmentSlug: seedData1.environment.slug, secretPath: folderPath };
 
-const folderAccessIdentitiesUrl = (folderId: string, query = "") =>
-  `/api/v2/identity-project-additional-privilege/projects/${projectId}/folder-access/${folderId}/identities${query}`;
+const folderAccessUrl = (targetIdentityId?: string) =>
+  `/api/v1/projects/${projectId}/memberships/identities/${targetIdentityId ?? memberIdentityId}/secret-folder-access`;
+
+const folderAccessIdentitiesUrl = (query = "") =>
+  `/api/v1/projects/${projectId}/memberships/secret-folder-access/identities?environmentSlug=${
+    seedData1.environment.slug
+  }&secretPath=${encodeURIComponent(folderPath)}${query}`;
 
 const authHeaders = () => ({ authorization: `Bearer ${jwtAuthToken}` });
 
@@ -111,9 +114,10 @@ describe("Identity folder access CRUD", () => {
     const temporaryAccessStartTime = new Date().toISOString();
     const createRes = await testServer.inject({
       method: "POST",
-      url: folderAccessUrl(folder.id),
+      url: folderAccessUrl(),
       headers: authHeaders(),
       body: {
+        ...folderTarget,
         permission: SecretFolderRole.Manage,
         type: {
           isTemporary: true,
@@ -145,18 +149,18 @@ describe("Identity folder access CRUD", () => {
 
     const conflictRes = await testServer.inject({
       method: "POST",
-      url: folderAccessUrl(folder.id),
+      url: folderAccessUrl(),
       headers: authHeaders(),
-      body: { permission: SecretFolderRole.Read }
+      body: { ...folderTarget, permission: SecretFolderRole.Read }
     });
     expect(conflictRes.statusCode).toBe(400);
     expect(conflictRes.json().message).toContain("already has folder access");
 
     const patchRes = await testServer.inject({
       method: "PATCH",
-      url: folderAccessUrl(folder.id),
+      url: folderAccessUrl(),
       headers: authHeaders(),
-      body: { permission: SecretFolderRole.List, type: { isTemporary: false } }
+      body: { ...folderTarget, permission: SecretFolderRole.List, type: { isTemporary: false } }
     });
     expect(patchRes.statusCode).toBe(200);
     const patched = patchRes.json().folderAccess;
@@ -166,8 +170,9 @@ describe("Identity folder access CRUD", () => {
 
     const deleteRes = await testServer.inject({
       method: "DELETE",
-      url: folderAccessUrl(folder.id),
-      headers: authHeaders()
+      url: folderAccessUrl(),
+      headers: authHeaders(),
+      body: folderTarget
     });
     expect(deleteRes.statusCode).toBe(200);
     expect(deleteRes.json().folderAccess.id).toBe(created.id);
@@ -178,21 +183,51 @@ describe("Identity folder access CRUD", () => {
   test("rejects granting to or updating a project admin identity", async () => {
     const createRes = await testServer.inject({
       method: "POST",
-      url: folderAccessUrl(folder.id, adminIdentityId),
+      url: folderAccessUrl(adminIdentityId),
       headers: authHeaders(),
-      body: { permission: SecretFolderRole.Read }
+      body: { ...folderTarget, permission: SecretFolderRole.Read }
     });
     expect(createRes.statusCode).toBe(400);
     expect(createRes.json().message).toContain("project admin role");
 
     const patchRes = await testServer.inject({
       method: "PATCH",
-      url: folderAccessUrl(folder.id, adminIdentityId),
+      url: folderAccessUrl(adminIdentityId),
       headers: authHeaders(),
-      body: { permission: SecretFolderRole.Edit }
+      body: { ...folderTarget, permission: SecretFolderRole.Edit }
     });
     expect(patchRes.statusCode).toBe(400);
     expect(patchRes.json().message).toContain("project admin role");
+  });
+
+  test("rejects folder access at an unknown or malformed location", async () => {
+    const unknownPathRes = await testServer.inject({
+      method: "POST",
+      url: folderAccessUrl(),
+      headers: authHeaders(),
+      body: {
+        environmentSlug: seedData1.environment.slug,
+        secretPath: "/no-such-folder",
+        permission: SecretFolderRole.Read
+      }
+    });
+    expect(unknownPathRes.statusCode).toBe(404);
+
+    const unknownEnvRes = await testServer.inject({
+      method: "POST",
+      url: folderAccessUrl(),
+      headers: authHeaders(),
+      body: { environmentSlug: "no-such-env", secretPath: folderPath, permission: SecretFolderRole.Read }
+    });
+    expect(unknownEnvRes.statusCode).toBe(404);
+
+    const malformedPathRes = await testServer.inject({
+      method: "POST",
+      url: folderAccessUrl(),
+      headers: authHeaders(),
+      body: { environmentSlug: seedData1.environment.slug, secretPath: "/bad name!", permission: SecretFolderRole.Read }
+    });
+    expect(malformedPathRes.statusCode).toBe(400);
   });
 
   describe("roster", () => {
@@ -204,7 +239,7 @@ describe("Identity folder access CRUD", () => {
     }> => {
       const res = await testServer.inject({
         method: "GET",
-        url: folderAccessIdentitiesUrl(folder.id, query),
+        url: folderAccessIdentitiesUrl(query),
         headers: authHeaders()
       });
       expect(res.statusCode).toBe(200);
@@ -212,7 +247,7 @@ describe("Identity folder access CRUD", () => {
     };
 
     test("excludes project admin identities from the roster", async () => {
-      const { identities } = await listIdentities("?limit=100");
+      const { identities } = await listIdentities("&limit=100");
       expect(identities.map((identity) => identity.identityId)).not.toContain(adminIdentityId);
     });
 
@@ -226,9 +261,9 @@ describe("Identity folder access CRUD", () => {
 
       const createRes = await testServer.inject({
         method: "POST",
-        url: folderAccessUrl(folder.id),
+        url: folderAccessUrl(),
         headers: authHeaders(),
-        body: { permission: SecretFolderRole.Edit }
+        body: { ...folderTarget, permission: SecretFolderRole.Edit }
       });
       expect(createRes.statusCode).toBe(200);
 
@@ -247,8 +282,9 @@ describe("Identity folder access CRUD", () => {
 
       const deleteRes = await testServer.inject({
         method: "DELETE",
-        url: folderAccessUrl(folder.id),
-        headers: authHeaders()
+        url: folderAccessUrl(),
+        headers: authHeaders(),
+        body: folderTarget
       });
       expect(deleteRes.statusCode).toBe(200);
 
@@ -259,16 +295,16 @@ describe("Identity folder access CRUD", () => {
     });
 
     test("filters by search and keeps totalCount stable past the end", async () => {
-      const matching = await listIdentities(`?search=${encodeURIComponent(memberIdentityName)}`);
+      const matching = await listIdentities(`&search=${encodeURIComponent(memberIdentityName)}`);
       expect(matching.identities.map((identity) => identity.identityId)).toContain(memberIdentityId);
 
       const { totalCount } = await listIdentities();
 
-      const pastTheEnd = await listIdentities(`?limit=1&offset=${totalCount + 10}`);
+      const pastTheEnd = await listIdentities(`&limit=1&offset=${totalCount + 10}`);
       expect(pastTheEnd.identities).toEqual([]);
       expect(pastTheEnd.totalCount).toBe(totalCount);
 
-      const nonMatching = await listIdentities("?search=zzz-no-such-identity");
+      const nonMatching = await listIdentities("&search=zzz-no-such-identity");
       expect(nonMatching.identities).toEqual([]);
       expect(nonMatching.totalCount).toBe(0);
     });
@@ -327,7 +363,7 @@ describe("Identity folder access CRUD", () => {
       });
 
       test("lists an identity whose only project access is a group, once", async () => {
-        const { identities, totalCount } = await listIdentities("?limit=100");
+        const { identities, totalCount } = await listIdentities("&limit=100");
 
         const groupIdentity = identities.find((identity) => identity.identityId === groupIdentityId);
         expect(groupIdentity).toBeDefined();
@@ -340,23 +376,28 @@ describe("Identity folder access CRUD", () => {
       });
 
       test("grants folder access to a group-derived identity and shows it on the roster", async () => {
-        const grantUrl = folderAccessUrl(folder.id, groupIdentityId);
+        const grantUrl = folderAccessUrl(groupIdentityId);
 
         const createRes = await testServer.inject({
           method: "POST",
           url: grantUrl,
           headers: authHeaders(),
-          body: { permission: SecretFolderRole.Read }
+          body: { ...folderTarget, permission: SecretFolderRole.Read }
         });
         expect(createRes.statusCode).toBe(200);
 
-        const { identities } = await listIdentities("?limit=100");
+        const { identities } = await listIdentities("&limit=100");
         const granted = identities.find((identity) => identity.identityId === groupIdentityId);
         expect(granted!.folderRBACAccess).toEqual(
           expect.objectContaining({ folderId: folder.id, permission: SecretFolderRole.Read })
         );
 
-        const deleteRes = await testServer.inject({ method: "DELETE", url: grantUrl, headers: authHeaders() });
+        const deleteRes = await testServer.inject({
+          method: "DELETE",
+          url: grantUrl,
+          headers: authHeaders(),
+          body: folderTarget
+        });
         expect(deleteRes.statusCode).toBe(200);
       });
 
@@ -388,16 +429,16 @@ describe("Identity folder access CRUD", () => {
         });
 
         test("excludes an identity whose admin role comes from a group", async () => {
-          const { identities } = await listIdentities("?limit=100");
+          const { identities } = await listIdentities("&limit=100");
           expect(identities.map((identity) => identity.identityId)).not.toContain(groupAdminIdentityId);
         });
 
         test("rejects granting to an identity whose admin role comes from a group", async () => {
           const res = await testServer.inject({
             method: "POST",
-            url: folderAccessUrl(folder.id, groupAdminIdentityId),
+            url: folderAccessUrl(groupAdminIdentityId),
             headers: authHeaders(),
-            body: { permission: SecretFolderRole.Read }
+            body: { ...folderTarget, permission: SecretFolderRole.Read }
           });
           expect(res.statusCode).toBe(400);
           expect(res.json().message).toContain("project admin role");

@@ -52,6 +52,7 @@ export const FolderAccessRow = ({
 
   const { access } = actor;
   const expiresAt = expiryOf(access);
+  const isExpired = Boolean(expiresAt && expiresAt.getTime() <= Date.now());
   const firstName = actor.name.split(" ")[0];
   const isRangeValid = isValidTemporaryRange(range);
 
@@ -73,12 +74,14 @@ export const FolderAccessRow = ({
       {expiresAt && (
         <Tooltip>
           <TooltipTrigger>
-            <Badge variant="outline" className="shrink-0">
+            <Badge variant={isExpired ? "danger" : "outline"} className="shrink-0">
               <ClockIcon />
-              Expires {formatExpiryShort(expiresAt)}
+              {isExpired ? "Expired" : "Expires"} {formatExpiryShort(expiresAt)}
             </Badge>
           </TooltipTrigger>
-          <TooltipContent>Access expires {formatExpiryFull(expiresAt)}</TooltipContent>
+          <TooltipContent>
+            Access {isExpired ? "expired" : "expires"} {formatExpiryFull(expiresAt)}
+          </TooltipContent>
         </Tooltip>
       )}
 
@@ -128,7 +131,7 @@ export const FolderAccessRow = ({
                 }
                 temporaryLabel={
                   expiresAt
-                    ? `Edit temporary access · until ${formatExpiryShort(expiresAt)}`
+                    ? `Edit temporary access · ${isExpired ? "expired" : "until"} ${formatExpiryShort(expiresAt)}`
                     : "Add temporary access"
                 }
                 onSelectTier={onSetTier}

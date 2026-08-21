@@ -29,7 +29,7 @@ type TFolderPermissionServiceFactoryDep = {
     TAdditionalPrivilegeDALFactory,
     "findOne" | "create" | "updateById" | "deleteById" | "transaction"
   >;
-  secretFolderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
+  secretFolderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
   folderPermissionDAL: Pick<
     TFolderPermissionDALFactory,
@@ -46,8 +46,8 @@ export const folderPermissionServiceFactory = ({
   folderPermissionDAL
 }: TFolderPermissionServiceFactoryDep) => {
   const createFolderGrant = async (dto: TCreateFolderGrantDTO) => {
-    const { projectId, folderId, target } = dto;
-    const folder = await resolveFolder(projectId, folderId, secretFolderDAL);
+    const { projectId, environmentSlug, secretPath, target } = dto;
+    const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
     await assertGrantTargetEligible(dto.permission.orgId, projectId, target, folderPermissionDAL);
 
@@ -60,7 +60,7 @@ export const folderPermissionServiceFactory = ({
     try {
       const grant = await additionalPrivilegeDAL.transaction(async (tx) => {
         const existing = await additionalPrivilegeDAL.findOne(
-          { projectId, folderId, [actorField]: target.actorId },
+          { projectId, folderId: folder.id, [actorField]: target.actorId },
           tx
         );
         if (existing) throw alreadyExistsError();
@@ -69,7 +69,7 @@ export const folderPermissionServiceFactory = ({
           {
             name: slugify(alphaNumericNanoId(8)),
             projectId,
-            folderId,
+            folderId: folder.id,
             role: dto.role,
             [actorField]: target.actorId,
             ...computeTemporaryFields(dto.type)
@@ -80,7 +80,7 @@ export const folderPermissionServiceFactory = ({
         return doc;
       });
 
-      return { folderAccess: toFolderGrant(grant, projectId, folderId, folder) };
+      return { folderAccess: toFolderGrant(grant, projectId, folder) };
     } catch (error) {
       const dbError = error instanceof DatabaseError ? (error.error as { code?: string }) : null;
       if (dbError?.code === DatabaseErrorCode.UniqueViolation) throw alreadyExistsError();
@@ -89,17 +89,20 @@ export const folderPermissionServiceFactory = ({
   };
 
   const updateFolderGrant = async (dto: TUpdateFolderGrantDTO) => {
-    const { projectId, folderId, target } = dto;
-    const folder = await resolveFolder(projectId, folderId, secretFolderDAL);
+    const { projectId, environmentSlug, secretPath, target } = dto;
+    const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
     await assertGrantTargetEligible(dto.permission.orgId, projectId, target, folderPermissionDAL);
 
     const actorField = targetActorField(target);
     const grant = await additionalPrivilegeDAL.transaction(async (tx) => {
-      const existing = await additionalPrivilegeDAL.findOne({ projectId, folderId, [actorField]: target.actorId }, tx);
+      const existing = await additionalPrivilegeDAL.findOne(
+        { projectId, folderId: folder.id, [actorField]: target.actorId },
+        tx
+      );
       if (!existing) {
         throw new NotFoundError({
-          message: `No folder access found for ${targetLabel(target).toLowerCase()} with ID '${target.actorId}' on folder with ID '${folderId}'. Create one first.`
+          message: `No folder access found for ${targetLabel(target).toLowerCase()} with ID '${target.actorId}' on the folder at path '${folder.path}' in environment with slug '${folder.environmentSlug}'. Create one first.`
         });
       }
 
@@ -115,22 +118,25 @@ export const folderPermissionServiceFactory = ({
       return doc;
     });
 
-    return { folderAccess: toFolderGrant(grant, projectId, folderId, folder) };
+    return { folderAccess: toFolderGrant(grant, projectId, folder) };
   };
 
   const deleteFolderGrant = async (dto: TDeleteFolderGrantDTO) => {
-    const { projectId, folderId, target } = dto;
-    const folder = await resolveFolder(projectId, folderId, secretFolderDAL);
+    const { projectId, environmentSlug, secretPath, target } = dto;
+    const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
     // no membership check on revoke: removing access from an actor that already left the project
     // must keep working
 
     const actorField = targetActorField(target);
     const grant = await additionalPrivilegeDAL.transaction(async (tx) => {
-      const existing = await additionalPrivilegeDAL.findOne({ projectId, folderId, [actorField]: target.actorId }, tx);
+      const existing = await additionalPrivilegeDAL.findOne(
+        { projectId, folderId: folder.id, [actorField]: target.actorId },
+        tx
+      );
       if (!existing) {
         throw new NotFoundError({
-          message: `No folder access found for ${targetLabel(target).toLowerCase()} with ID '${target.actorId}' on folder with ID '${folderId}'`
+          message: `No folder access found for ${targetLabel(target).toLowerCase()} with ID '${target.actorId}' on the folder at path '${folder.path}' in environment with slug '${folder.environmentSlug}'`
         });
       }
 
@@ -139,18 +145,18 @@ export const folderPermissionServiceFactory = ({
       return doc;
     });
 
-    return { folderAccess: toFolderGrant(grant, projectId, folderId, folder) };
+    return { folderAccess: toFolderGrant(grant, projectId, folder) };
   };
 
   const listFolderAccessUsers = async (dto: TListFolderAccessActorsDTO) => {
-    const { projectId, folderId, limit, offset, search } = dto;
-    const folder = await resolveFolder(projectId, folderId, secretFolderDAL);
+    const { projectId, environmentSlug, secretPath, limit, offset, search } = dto;
+    const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
 
     const { users, totalCount } = await folderPermissionDAL.findUsersWithFolderAccess({
       projectId,
       orgId: dto.permission.orgId,
-      folderId,
+      folderId: folder.id,
       search,
       limit,
       offset
@@ -159,21 +165,21 @@ export const folderPermissionServiceFactory = ({
     return {
       users: users.map(({ folderAccess, ...user }) => ({
         ...user,
-        folderRBACAccess: folderAccess ? toFolderGrant(folderAccess, projectId, folderId, folder) : null
+        folderRBACAccess: folderAccess ? toFolderGrant(folderAccess, projectId, folder) : null
       })),
       totalCount
     };
   };
 
   const listFolderAccessIdentities = async (dto: TListFolderAccessActorsDTO) => {
-    const { projectId, folderId, limit, offset, search } = dto;
-    const folder = await resolveFolder(projectId, folderId, secretFolderDAL);
+    const { projectId, environmentSlug, secretPath, limit, offset, search } = dto;
+    const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
 
     const { identities, totalCount } = await folderPermissionDAL.findIdentitiesWithFolderAccess({
       projectId,
       orgId: dto.permission.orgId,
-      folderId,
+      folderId: folder.id,
       search,
       limit,
       offset
@@ -182,7 +188,7 @@ export const folderPermissionServiceFactory = ({
     return {
       identities: identities.map(({ folderAccess, ...identity }) => ({
         ...identity,
-        folderRBACAccess: folderAccess ? toFolderGrant(folderAccess, projectId, folderId, folder) : null
+        folderRBACAccess: folderAccess ? toFolderGrant(folderAccess, projectId, folder) : null
       })),
       totalCount
     };

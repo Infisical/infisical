@@ -18,6 +18,7 @@ export type TFolderGrantTypeInput =
     };
 
 export type TResolvedFolder = {
+  id: string;
   path: string;
   environmentSlug: string;
 };
@@ -25,7 +26,8 @@ export type TResolvedFolder = {
 export type TCreateFolderGrantDTO = {
   permission: OrgServiceActor;
   projectId: string;
-  folderId: string;
+  environmentSlug: string;
+  secretPath: string;
   target: TFolderGrantActor;
   role: SecretFolderRole;
   // undefined means a permanent grant
@@ -35,7 +37,8 @@ export type TCreateFolderGrantDTO = {
 export type TUpdateFolderGrantDTO = {
   permission: OrgServiceActor;
   projectId: string;
-  folderId: string;
+  environmentSlug: string;
+  secretPath: string;
   target: TFolderGrantActor;
   role?: SecretFolderRole;
   // undefined leaves the temporal state unchanged; { isTemporary: false } makes the grant
@@ -46,14 +49,16 @@ export type TUpdateFolderGrantDTO = {
 export type TDeleteFolderGrantDTO = {
   permission: OrgServiceActor;
   projectId: string;
-  folderId: string;
+  environmentSlug: string;
+  secretPath: string;
   target: TFolderGrantActor;
 };
 
 export type TListFolderAccessActorsDTO = {
   permission: OrgServiceActor;
   projectId: string;
-  folderId: string;
+  environmentSlug: string;
+  secretPath: string;
   limit: number;
   offset: number;
   search?: string;

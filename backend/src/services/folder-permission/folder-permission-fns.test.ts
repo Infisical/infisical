@@ -1,7 +1,9 @@
 import { TemporaryPermissionMode } from "@app/db/schemas";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 
-import { computeTemporaryFields } from "./folder-permission-fns";
+import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { computeTemporaryFields, resolveFolder } from "./folder-permission-fns";
 
 describe("computeTemporaryFields", () => {
   test.each([undefined, { isTemporary: false as const }])("returns permanent fields for %o", (input) => {
@@ -28,5 +30,37 @@ describe("computeTemporaryFields", () => {
     expect(result.temporaryRange).toBe("4h");
     expect(result.temporaryAccessStartTime).toEqual(new Date(startTime));
     expect(result.temporaryAccessEndTime!.getTime() - result.temporaryAccessStartTime!.getTime()).toBe(ms("4h"));
+  });
+});
+
+describe("resolveFolder", () => {
+  const stubSecretFolderDAL = (result: unknown) =>
+    ({
+      findBySecretPath: async () => result
+    }) as unknown as Pick<TSecretFolderDALFactory, "findBySecretPath">;
+
+  test("throws NotFoundError naming the environment and path when the folder does not exist", async () => {
+    await expect(resolveFolder("project-1", "dev", "/missing", stubSecretFolderDAL(undefined))).rejects.toThrow(
+      NotFoundError
+    );
+    await expect(resolveFolder("project-1", "dev", "/missing", stubSecretFolderDAL(undefined))).rejects.toThrow(
+      /'\/missing'.*'dev'/
+    );
+  });
+
+  test("throws BadRequestError for a reserved folder", async () => {
+    const folder = { id: "folder-1", path: "/reserved", isReserved: true, environment: { slug: "dev" } };
+    await expect(resolveFolder("project-1", "dev", "/reserved", stubSecretFolderDAL(folder))).rejects.toThrow(
+      BadRequestError
+    );
+  });
+
+  test("returns the folder id and canonical path and environment slug", async () => {
+    const folder = { id: "folder-1", path: "/app", isReserved: false, environment: { slug: "dev" } };
+    await expect(resolveFolder("project-1", "dev", "/app/", stubSecretFolderDAL(folder))).resolves.toEqual({
+      id: "folder-1",
+      path: "/app",
+      environmentSlug: "dev"
+    });
   });
 });

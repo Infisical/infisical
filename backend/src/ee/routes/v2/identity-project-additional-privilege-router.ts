@@ -1,34 +1,17 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { AccessScope, SecretFolderRole } from "@app/db/schemas";
+import { AccessScope } from "@app/db/schemas";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
-import { ApiDocsTags, FOLDER_ACCESS, IDENTITY_ADDITIONAL_PRIVILEGE_V2 } from "@app/lib/api-docs";
+import { ApiDocsTags, IDENTITY_ADDITIONAL_PRIVILEGE_V2 } from "@app/lib/api-docs";
 import { NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema, temporaryPermissionTypeSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import {
-  SanitizedFolderAccessIdentitySchema,
-  SanitizedFolderAccessSchema
-} from "@app/server/routes/sanitizedSchema/folder-access";
 import { SanitizedIdentityPrivilegeSchema } from "@app/server/routes/sanitizedSchema/identitiy-additional-privilege";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
-
-const identityFolderAccessParamsSchema = z.object({
-  projectId: z.string().trim().min(1).max(64).describe(FOLDER_ACCESS.CREATE.projectId),
-  identityId: z.string().uuid().describe(FOLDER_ACCESS.CREATE.identityId),
-  folderId: z.string().uuid().describe(FOLDER_ACCESS.CREATE.folderId)
-});
-
-const folderAccessCreateTypeSchema = temporaryPermissionTypeSchema(FOLDER_ACCESS.CREATE);
-const folderAccessUpdateTypeSchema = temporaryPermissionTypeSchema(FOLDER_ACCESS.UPDATE);
-
-const identityFolderAccessResponseSchema = SanitizedFolderAccessSchema.extend({
-  identityId: z.string().uuid()
-});
 
 export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -392,174 +375,5 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         }))
       };
     }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/projects/:projectId/identities/:identityId/folder-access/:folderId",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      hide: false,
-      operationId: "createIdentityFolderAccess",
-      tags: [ApiDocsTags.FolderAccess],
-      description: "Grant a machine identity access to a folder.",
-      security: [
-        {
-          bearerAuth: []
-        }
-      ],
-      params: identityFolderAccessParamsSchema,
-      body: z.object({
-        permission: z.nativeEnum(SecretFolderRole).describe(FOLDER_ACCESS.CREATE.permission),
-        type: folderAccessCreateTypeSchema.optional()
-      }),
-      response: {
-        200: z.object({
-          folderAccess: identityFolderAccessResponseSchema
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const { folderAccess } = await server.services.folderPermission.createFolderGrant({
-        permission: req.permission,
-        projectId: req.params.projectId,
-        folderId: req.params.folderId,
-        target: { actorId: req.params.identityId, actorType: ActorType.IDENTITY },
-        role: req.body.permission,
-        type: req.body.type
-      });
-
-      return { folderAccess: { ...folderAccess, identityId: req.params.identityId } };
-    }
-  });
-
-  server.route({
-    method: "PATCH",
-    url: "/projects/:projectId/identities/:identityId/folder-access/:folderId",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      hide: false,
-      operationId: "updateIdentityFolderAccess",
-      tags: [ApiDocsTags.FolderAccess],
-      description: "Update a machine identity's access to a folder.",
-      security: [
-        {
-          bearerAuth: []
-        }
-      ],
-      params: identityFolderAccessParamsSchema,
-      body: z
-        .object({
-          permission: z.nativeEnum(SecretFolderRole).optional().describe(FOLDER_ACCESS.UPDATE.permission),
-          type: folderAccessUpdateTypeSchema.optional()
-        })
-        .refine(
-          (body) => body.permission !== undefined || body.type !== undefined,
-          "Provide at least one of 'permission' or 'type' to update"
-        ),
-      response: {
-        200: z.object({
-          folderAccess: identityFolderAccessResponseSchema
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const { folderAccess } = await server.services.folderPermission.updateFolderGrant({
-        permission: req.permission,
-        projectId: req.params.projectId,
-        folderId: req.params.folderId,
-        target: { actorId: req.params.identityId, actorType: ActorType.IDENTITY },
-        role: req.body.permission,
-        type: req.body.type
-      });
-
-      return { folderAccess: { ...folderAccess, identityId: req.params.identityId } };
-    }
-  });
-
-  server.route({
-    method: "DELETE",
-    url: "/projects/:projectId/identities/:identityId/folder-access/:folderId",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      hide: false,
-      operationId: "deleteIdentityFolderAccess",
-      tags: [ApiDocsTags.FolderAccess],
-      description: "Revoke a machine identity's access to a folder.",
-      security: [
-        {
-          bearerAuth: []
-        }
-      ],
-      params: identityFolderAccessParamsSchema,
-      response: {
-        200: z.object({
-          folderAccess: identityFolderAccessResponseSchema
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const { folderAccess } = await server.services.folderPermission.deleteFolderGrant({
-        permission: req.permission,
-        projectId: req.params.projectId,
-        folderId: req.params.folderId,
-        target: { actorId: req.params.identityId, actorType: ActorType.IDENTITY }
-      });
-
-      return { folderAccess: { ...folderAccess, identityId: req.params.identityId } };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/projects/:projectId/folder-access/:folderId/identities",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      hide: false,
-      operationId: "listFolderAccessIdentities",
-      tags: [ApiDocsTags.FolderAccess],
-      description: "List every machine identity in a project with the access it has on a folder.",
-      security: [
-        {
-          bearerAuth: []
-        }
-      ],
-      params: z.object({
-        projectId: z.string().trim().min(1).max(64).describe(FOLDER_ACCESS.LIST_IDENTITIES.projectId),
-        folderId: z.string().uuid().describe(FOLDER_ACCESS.LIST_IDENTITIES.folderId)
-      }),
-      querystring: z.object({
-        offset: z.coerce.number().int().min(0).default(0).describe(FOLDER_ACCESS.LIST_IDENTITIES.offset),
-        limit: z.coerce.number().int().min(1).max(100).default(50).describe(FOLDER_ACCESS.LIST_IDENTITIES.limit),
-        search: z.string().trim().max(64).optional().describe(FOLDER_ACCESS.LIST_IDENTITIES.search)
-      }),
-      response: {
-        200: z.object({
-          identities: SanitizedFolderAccessIdentitySchema.array(),
-          totalCount: z.number()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) =>
-      server.services.folderPermission.listFolderAccessIdentities({
-        permission: req.permission,
-        projectId: req.params.projectId,
-        folderId: req.params.folderId,
-        limit: req.query.limit,
-        offset: req.query.offset,
-        search: req.query.search
-      })
   });
 };

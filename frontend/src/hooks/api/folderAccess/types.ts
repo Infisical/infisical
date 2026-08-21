@@ -49,7 +49,8 @@ export type TFolderAccessIdentity = {
 
 export type TListFolderAccessActorsDTO = {
   projectId: string;
-  folderId: string;
+  environmentSlug: string;
+  secretPath: string;
   offset?: number;
   limit?: number;
   search?: string;
@@ -57,7 +58,8 @@ export type TListFolderAccessActorsDTO = {
 
 type TFolderAccessTargetDTO = {
   projectId: string;
-  folderId: string;
+  environmentSlug: string;
+  secretPath: string;
 };
 
 export type TCreateUserFolderAccessDTO = TFolderAccessTargetDTO & {

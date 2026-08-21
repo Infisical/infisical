@@ -43,7 +43,7 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   projectId: string;
-  folderId: string;
+  environmentSlug: string;
   folderPath: string;
   environmentName: string;
 };
@@ -52,7 +52,7 @@ export const AddFolderAccessSheet = ({
   isOpen,
   onOpenChange,
   projectId,
-  folderId,
+  environmentSlug,
   folderPath,
   environmentName
 }: Props) => {
@@ -65,7 +65,8 @@ export const AddFolderAccessSheet = ({
 
   const listArgs = {
     projectId,
-    folderId,
+    environmentSlug,
+    secretPath: folderPath,
     limit: CANDIDATE_LIMIT,
     search: debouncedSearch.trim() || undefined
   };
@@ -119,14 +120,16 @@ export const AddFolderAccessSheet = ({
         actor.type === "user"
           ? createUserAccess.mutateAsync({
               projectId,
-              folderId,
+              environmentSlug,
+              secretPath: folderPath,
               userId: actor.id,
               permission: tier,
               type
             })
           : createIdentityAccess.mutateAsync({
               projectId,
-              folderId,
+              environmentSlug,
+              secretPath: folderPath,
               identityId: actor.id,
               permission: tier,
               type

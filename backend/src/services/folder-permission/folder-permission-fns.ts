@@ -38,19 +38,20 @@ export const computeTemporaryFields = (type: TFolderGrantTypeInput | undefined) 
 
 export const resolveFolder = async (
   projectId: string,
-  folderId: string,
-  secretFolderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">
-) => {
-  const [folder] = await secretFolderDAL.findSecretPathByFolderIds(projectId, [folderId]);
+  environmentSlug: string,
+  secretPath: string,
+  secretFolderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">
+): Promise<TResolvedFolder> => {
+  const folder = await secretFolderDAL.findBySecretPath(projectId, environmentSlug, secretPath);
   if (!folder) {
     throw new NotFoundError({
-      message: `Folder with ID '${folderId}' not found in project with ID '${projectId}'`
+      message: `Folder at path '${secretPath}' not found in environment with slug '${environmentSlug}' in project with ID '${projectId}'`
     });
   }
   if (folder.isReserved) {
     throw new BadRequestError({ message: "Folder access cannot be granted on a reserved system folder." });
   }
-  return folder;
+  return { id: folder.id, path: folder.path, environmentSlug: folder.environment.slug };
 };
 
 export const assertManageFolderAccess = async (
@@ -154,12 +155,11 @@ export const toFolderGrant = (
     | "updatedAt"
   >,
   projectId: string,
-  folderId: string,
   folder: TResolvedFolder
 ): TFolderGrant => ({
   id: row.id,
   projectId,
-  folderId,
+  folderId: folder.id,
   permission: row.role as SecretFolderRole,
   environment: folder.environmentSlug,
   secretPath: folder.path,

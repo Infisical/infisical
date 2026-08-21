@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { roleQueryKeys } from "@app/hooks/api/roles/queries";
 
-import { IDENTITY_FOLDER_ACCESS_API, USER_FOLDER_ACCESS_API } from "./queries";
 import {
   TCreateIdentityFolderAccessDTO,
   TCreateUserFolderAccessDTO,
@@ -14,20 +13,28 @@ import {
   TUpdateUserFolderAccessDTO
 } from "./types";
 
-type TFolderAccessScope = { projectId: string; folderId: string };
+type TFolderAccessScope = { projectId: string; environmentSlug: string; secretPath: string };
 
 // a grant changes what the actor may read, so the roster and anything rendering the project's
 // secrets both go stale. the roster is invalidated across every page/search variant.
 const invalidateFolderAccess = (
   queryClient: ReturnType<typeof useQueryClient>,
-  { projectId, folderId }: TFolderAccessScope
+  { projectId, environmentSlug, secretPath }: TFolderAccessScope
 ) => {
   queryClient.invalidateQueries({
     predicate: (query) => {
       const label = query.queryKey[1];
       if (label !== "folder-access-users" && label !== "folder-access-identities") return false;
-      const params = query.queryKey[0] as { projectId?: string; folderId?: string };
-      return params?.projectId === projectId && params?.folderId === folderId;
+      const params = query.queryKey[0] as {
+        projectId?: string;
+        environmentSlug?: string;
+        secretPath?: string;
+      };
+      return (
+        params?.projectId === projectId &&
+        params?.environmentSlug === environmentSlug &&
+        params?.secretPath === secretPath
+      );
     }
   });
 
@@ -49,101 +56,156 @@ const invalidateFolderAccess = (
   });
 };
 
-const userFolderAccessUrl = ({ projectId, userId, folderId }: TDeleteUserFolderAccessDTO) =>
-  `${USER_FOLDER_ACCESS_API}/projects/${projectId}/users/${userId}/folder-access/${folderId}`;
+const userFolderAccessUrl = ({ projectId, userId }: { projectId: string; userId: string }) =>
+  `/api/v1/projects/${projectId}/users/${userId}/secret-folder-access`;
 
 const identityFolderAccessUrl = ({
   projectId,
-  identityId,
-  folderId
-}: TDeleteIdentityFolderAccessDTO) =>
-  `${IDENTITY_FOLDER_ACCESS_API}/projects/${projectId}/identities/${identityId}/folder-access/${folderId}`;
+  identityId
+}: {
+  projectId: string;
+  identityId: string;
+}) => `/api/v1/projects/${projectId}/memberships/identities/${identityId}/secret-folder-access`;
 
 export const useCreateUserFolderAccess = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ permission, type, ...target }: TCreateUserFolderAccessDTO) => {
+    mutationFn: async ({
+      projectId,
+      userId,
+      environmentSlug,
+      secretPath,
+      permission,
+      type
+    }: TCreateUserFolderAccessDTO) => {
       const { data } = await apiRequest.post<{ folderAccess: TFolderAccess & { userId: string } }>(
-        userFolderAccessUrl(target),
-        { permission, ...(type ? { type } : {}) }
+        userFolderAccessUrl({ projectId, userId }),
+        { environmentSlug, secretPath, permission, ...(type ? { type } : {}) }
       );
       return data.folderAccess;
     },
-    onSuccess: (_, { projectId, folderId }) =>
-      invalidateFolderAccess(queryClient, { projectId, folderId })
+    onSuccess: (_, { projectId, environmentSlug, secretPath }) =>
+      invalidateFolderAccess(queryClient, { projectId, environmentSlug, secretPath })
   });
 };
 
 export const useUpdateUserFolderAccess = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ permission, type, ...target }: TUpdateUserFolderAccessDTO) => {
+    mutationFn: async ({
+      projectId,
+      userId,
+      environmentSlug,
+      secretPath,
+      permission,
+      type
+    }: TUpdateUserFolderAccessDTO) => {
       const { data } = await apiRequest.patch<{ folderAccess: TFolderAccess & { userId: string } }>(
-        userFolderAccessUrl(target),
-        { ...(permission ? { permission } : {}), ...(type ? { type } : {}) }
+        userFolderAccessUrl({ projectId, userId }),
+        {
+          environmentSlug,
+          secretPath,
+          ...(permission ? { permission } : {}),
+          ...(type ? { type } : {})
+        }
       );
       return data.folderAccess;
     },
-    onSuccess: (_, { projectId, folderId }) =>
-      invalidateFolderAccess(queryClient, { projectId, folderId })
+    onSuccess: (_, { projectId, environmentSlug, secretPath }) =>
+      invalidateFolderAccess(queryClient, { projectId, environmentSlug, secretPath })
   });
 };
 
 export const useDeleteUserFolderAccess = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (target: TDeleteUserFolderAccessDTO) => {
+    mutationFn: async ({
+      projectId,
+      userId,
+      environmentSlug,
+      secretPath
+    }: TDeleteUserFolderAccessDTO) => {
       const { data } = await apiRequest.delete<{
         folderAccess: TFolderAccess & { userId: string };
-      }>(userFolderAccessUrl(target));
+      }>(userFolderAccessUrl({ projectId, userId }), {
+        data: { environmentSlug, secretPath }
+      });
       return data.folderAccess;
     },
-    onSuccess: (_, { projectId, folderId }) =>
-      invalidateFolderAccess(queryClient, { projectId, folderId })
+    onSuccess: (_, { projectId, environmentSlug, secretPath }) =>
+      invalidateFolderAccess(queryClient, { projectId, environmentSlug, secretPath })
   });
 };
 
 export const useCreateIdentityFolderAccess = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ permission, type, ...target }: TCreateIdentityFolderAccessDTO) => {
+    mutationFn: async ({
+      projectId,
+      identityId,
+      environmentSlug,
+      secretPath,
+      permission,
+      type
+    }: TCreateIdentityFolderAccessDTO) => {
       const { data } = await apiRequest.post<{
         folderAccess: TFolderAccess & { identityId: string };
-      }>(identityFolderAccessUrl(target), { permission, ...(type ? { type } : {}) });
+      }>(identityFolderAccessUrl({ projectId, identityId }), {
+        environmentSlug,
+        secretPath,
+        permission,
+        ...(type ? { type } : {})
+      });
       return data.folderAccess;
     },
-    onSuccess: (_, { projectId, folderId }) =>
-      invalidateFolderAccess(queryClient, { projectId, folderId })
+    onSuccess: (_, { projectId, environmentSlug, secretPath }) =>
+      invalidateFolderAccess(queryClient, { projectId, environmentSlug, secretPath })
   });
 };
 
 export const useUpdateIdentityFolderAccess = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ permission, type, ...target }: TUpdateIdentityFolderAccessDTO) => {
+    mutationFn: async ({
+      projectId,
+      identityId,
+      environmentSlug,
+      secretPath,
+      permission,
+      type
+    }: TUpdateIdentityFolderAccessDTO) => {
       const { data } = await apiRequest.patch<{
         folderAccess: TFolderAccess & { identityId: string };
-      }>(identityFolderAccessUrl(target), {
+      }>(identityFolderAccessUrl({ projectId, identityId }), {
+        environmentSlug,
+        secretPath,
         ...(permission ? { permission } : {}),
         ...(type ? { type } : {})
       });
       return data.folderAccess;
     },
-    onSuccess: (_, { projectId, folderId }) =>
-      invalidateFolderAccess(queryClient, { projectId, folderId })
+    onSuccess: (_, { projectId, environmentSlug, secretPath }) =>
+      invalidateFolderAccess(queryClient, { projectId, environmentSlug, secretPath })
   });
 };
 
 export const useDeleteIdentityFolderAccess = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (target: TDeleteIdentityFolderAccessDTO) => {
+    mutationFn: async ({
+      projectId,
+      identityId,
+      environmentSlug,
+      secretPath
+    }: TDeleteIdentityFolderAccessDTO) => {
       const { data } = await apiRequest.delete<{
         folderAccess: TFolderAccess & { identityId: string };
-      }>(identityFolderAccessUrl(target));
+      }>(identityFolderAccessUrl({ projectId, identityId }), {
+        data: { environmentSlug, secretPath }
+      });
       return data.folderAccess;
     },
-    onSuccess: (_, { projectId, folderId }) =>
-      invalidateFolderAccess(queryClient, { projectId, folderId })
+    onSuccess: (_, { projectId, environmentSlug, secretPath }) =>
+      invalidateFolderAccess(queryClient, { projectId, environmentSlug, secretPath })
   });
 };

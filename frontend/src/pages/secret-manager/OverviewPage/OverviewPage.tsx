@@ -172,10 +172,7 @@ import {
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequests
 } from "@app/hooks/api/secretApprovalRequest";
-import {
-  useListProjectEnvironmentsFolders,
-  useUpdateFolderBatch
-} from "@app/hooks/api/secretFolders/queries";
+import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { PendingAction, TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
 import {
@@ -807,7 +804,6 @@ const OverviewPageContent = () => {
     useFolderOverview(folders);
 
   const [folderAccessTarget, setFolderAccessTarget] = useState<{
-    folderId: string;
     folderPath: string;
   } | null>(null);
   const [isCurrentFolderAccessOpen, setIsCurrentFolderAccessOpen] = useState(false);
@@ -834,21 +830,11 @@ const OverviewPageContent = () => {
   const canManageCurrentFolderAccess =
     isSingleEnvView && canManageFolderAccessAt(singleEnvSlug, secretPath);
 
-  // the overview folder list only holds children of secretPath, so the folder you are *inside*
-  // has to be resolved from the tree, which also covers the root at path "/"
-  const { data: environmentsFolders } = useListProjectEnvironmentsFolders(projectId, {
-    enabled: isCurrentFolderAccessOpen
-  });
-  const currentFolderId = environmentsFolders?.[singleEnvSlug]?.folders.find(
-    (folder) => folder.path === secretPath
-  )?.id;
-
   const handleFolderAccessOpen = useCallback(
     (folderName: string) => {
       const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
       if (!folder) return;
       setFolderAccessTarget({
-        folderId: folder.id,
         folderPath: childFolderPath(folderName)
       });
     },
@@ -4073,17 +4059,17 @@ const OverviewPageContent = () => {
             if (!isOpen) setFolderAccessTarget(null);
           }}
           projectId={projectId}
-          folderId={folderAccessTarget.folderId}
+          environmentSlug={singleEnvSlug}
           folderPath={folderAccessTarget.folderPath}
           environmentName={singleEnvName}
         />
       )}
-      {isCurrentFolderAccessOpen && currentFolderId && (
+      {isCurrentFolderAccessOpen && (
         <FolderAccessSheet
           isOpen
           onOpenChange={setIsCurrentFolderAccessOpen}
           projectId={projectId}
-          folderId={currentFolderId}
+          environmentSlug={singleEnvSlug}
           folderPath={secretPath}
           environmentName={singleEnvName}
         />
