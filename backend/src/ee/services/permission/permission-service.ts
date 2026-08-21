@@ -290,6 +290,12 @@ const membershipsHaveActiveRole = (
   role: string
 ): boolean => memberships.some((m) => m.roles.some((r) => role === (r.customRoleSlug || r.role) && isActiveRole(r)));
 
+// built-in Admin only, deliberately not matching a custom role slugged "admin": this gates folder-scoped
+// grant evaluation, and a custom role cannot confer the project-admin bypass.
+const hasActiveProjectAdminRole = (
+  memberships: Array<{ roles: Array<{ role: string; isTemporary?: boolean; temporaryAccessEndTime?: Date | null }> }>
+): boolean => memberships.some((m) => m.roles.some((r) => r.role === ProjectMembershipRole.Admin && isActiveRole(r)));
+
 type TPermissionServiceFactoryDep = {
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -701,15 +707,11 @@ export const permissionServiceFactory = ({
         });
       }
 
-      const hasActiveAdminRole = permissionData.some((m) =>
-        m.roles.some((r) => r.role === ProjectMembershipRole.Admin && isActiveRole(r))
-      );
-
       // Folder-scoped privileges live in their own cache because they need to be outlive the project permission cache.
       // Admins cannot receive folder grants, but a grant can predate a promotion to admin; skip
       // evaluation so such a stale grant never restricts an admin.
       let folderScopedPrivileges: TProjectFolderScopedPrivilege[] = [];
-      if (projectDetails.type === ProjectType.SecretManager && !hasActiveAdminRole) {
+      if (projectDetails.type === ProjectType.SecretManager && !hasActiveProjectAdminRole(permissionData)) {
         const folderCached = await $getFolderScopedPrivileges(projectId, narrowedActor, actorId);
         folderScopedPrivileges = folderCached.privileges
           .filter(isActiveRole)
@@ -1189,6 +1191,39 @@ export const permissionServiceFactory = ({
     return groupPermissions.some((groupPermission) => groupPermission.permission.can(...checkPermissions));
   };
 
+  const $folderGrantAuditSources = async (
+    projectId: string,
+    actorType: ActorType.USER | ActorType.IDENTITY,
+    actorId: string,
+    privilegeById: Record<string, { name?: string | null; temporaryAccessStartTime?: Date | null }>
+  ) => {
+    const sources: Awaited<ReturnType<TPermissionServiceFactory["getMembershipPermissionAudit"]>>["sources"] = [];
+
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    if (project?.type !== ProjectType.SecretManager) return sources;
+
+    const { privileges } = await fetchFolderScopedPrivileges(projectId, actorType, actorId, {
+      additionalPrivilegeDAL,
+      secretFolderDAL
+    });
+
+    privileges.filter(isActiveRole).forEach((priv) => {
+      sources.push({
+        id: priv.id,
+        type: "additional_privilege",
+        name: privilegeById[priv.id]?.name || "Folder Access",
+        isTemporary: Boolean(priv.isTemporary),
+        temporaryAccessStartTime: privilegeById[priv.id]?.temporaryAccessStartTime?.toISOString(),
+        temporaryAccessEndTime: priv.temporaryAccessEndTime?.toISOString(),
+        permissions: packRules(filterOverriddenFolderScopedDenyRules(buildFolderScopedPrivilegeRules([priv])))
+      });
+    });
+
+    return sources;
+  };
+
   const getMembershipPermissionAudit: TPermissionServiceFactory["getMembershipPermissionAudit"] = async ({
     actor,
     actorId,
@@ -1291,41 +1326,8 @@ export const permissionServiceFactory = ({
       });
     });
 
-    const hasActiveAdminRole = targetMemberships.some((m) =>
-      m.roles.some((r) => r.role === ProjectMembershipRole.Admin && isActiveRole(r))
-    );
-    const project = includeFolderPermissions
-      ? await requestMemoize(requestMemoKeys.projectFindById(projectId), () => projectDAL.findById(projectId))
-      : undefined;
-    if (includeFolderPermissions && project?.type === ProjectType.SecretManager && !hasActiveAdminRole) {
-      const { privileges } = await fetchFolderScopedPrivileges(projectId, ActorType.USER, targetUserId, {
-        additionalPrivilegeDAL,
-        secretFolderDAL
-      });
-      privileges.filter(isActiveRole).forEach((priv) => {
-        const builtRules = filterOverriddenFolderScopedDenyRules(
-          buildFolderScopedPrivilegeRules([
-            {
-              id: priv.id,
-              folderId: priv.folderId,
-              role: priv.role,
-              environmentSlug: priv.environmentSlug,
-              secretPath: priv.secretPath
-            }
-          ])
-        );
-        const packedPermissions = packRules(builtRules);
-
-        sources.push({
-          id: priv.id,
-          type: "additional_privilege",
-          name: privilegeById[priv.id]?.name || "Folder Access",
-          isTemporary: Boolean(priv.isTemporary),
-          temporaryAccessStartTime: privilegeById[priv.id]?.temporaryAccessStartTime?.toISOString(),
-          temporaryAccessEndTime: priv.temporaryAccessEndTime?.toISOString(),
-          permissions: packedPermissions
-        });
-      });
+    if (includeFolderPermissions && !hasActiveProjectAdminRole(targetMemberships)) {
+      sources.push(...(await $folderGrantAuditSources(projectId, ActorType.USER, targetUserId, privilegeById)));
     }
 
     return { sources };
@@ -1436,41 +1438,8 @@ export const permissionServiceFactory = ({
       });
     });
 
-    const hasActiveAdminRole = targetMemberships.some((m) =>
-      m.roles.some((r) => r.role === ProjectMembershipRole.Admin && isActiveRole(r))
-    );
-    const project = includeFolderPermissions
-      ? await requestMemoize(requestMemoKeys.projectFindById(projectId), () => projectDAL.findById(projectId))
-      : undefined;
-    if (includeFolderPermissions && project?.type === ProjectType.SecretManager && !hasActiveAdminRole) {
-      const { privileges } = await fetchFolderScopedPrivileges(projectId, ActorType.IDENTITY, targetIdentityId, {
-        additionalPrivilegeDAL,
-        secretFolderDAL
-      });
-      privileges.filter(isActiveRole).forEach((priv) => {
-        const builtRules = filterOverriddenFolderScopedDenyRules(
-          buildFolderScopedPrivilegeRules([
-            {
-              id: priv.id,
-              folderId: priv.folderId,
-              role: priv.role,
-              environmentSlug: priv.environmentSlug,
-              secretPath: priv.secretPath
-            }
-          ])
-        );
-        const packedPermissions = packRules(builtRules);
-
-        sources.push({
-          id: priv.id,
-          type: "additional_privilege",
-          name: privilegeById[priv.id]?.name || "Folder Access",
-          isTemporary: Boolean(priv.isTemporary),
-          temporaryAccessStartTime: privilegeById[priv.id]?.temporaryAccessStartTime?.toISOString(),
-          temporaryAccessEndTime: priv.temporaryAccessEndTime?.toISOString(),
-          permissions: packedPermissions
-        });
-      });
+    if (includeFolderPermissions && !hasActiveProjectAdminRole(targetMemberships)) {
+      sources.push(...(await $folderGrantAuditSources(projectId, ActorType.IDENTITY, targetIdentityId, privilegeById)));
     }
 
     return { sources };

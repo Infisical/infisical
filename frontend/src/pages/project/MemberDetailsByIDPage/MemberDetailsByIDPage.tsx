@@ -239,7 +239,7 @@ export const Page = () => {
                   })
                 }
               />
-              {!isCertManager && currentProject?.isLegacyAdditionalPrivilegesEnabled && (
+              {!isCertManager && currentProject.isLegacyAdditionalPrivilegesEnabled && (
                 <MemberProjectAdditionalPrivilegeSection membershipDetails={membershipDetails} />
               )}
             </div>

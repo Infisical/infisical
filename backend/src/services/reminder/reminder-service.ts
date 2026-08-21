@@ -78,7 +78,6 @@ export const reminderServiceFactory = ({
     }
   };
 
-  // TODO: check this.
   const $getSecretForPermissionCheck = async (secretId: string) => {
     const secret = await secretV2BridgeDAL.findOneWithTags({ [`${TableName.SecretV2}.id` as "id"]: secretId });
     if (!secret) {

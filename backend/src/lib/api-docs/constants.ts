@@ -1777,6 +1777,9 @@ export const FOLDER_ACCESS = {
     offset: "The offset to start from. If you enter 10, it will start from the 10th machine identity.",
     limit: "The number of machine identities to return.",
     search: "The text string that machine identity names will be filtered by."
+  },
+  PERMISSION_AUDIT: {
+    includeFolderPermissions: "Whether to include folder-scoped access grants in the returned permission sources."
   }
 };
 

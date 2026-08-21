@@ -48,8 +48,8 @@ export const buildFolderIdMap = (folders: TSecretFolders[]): Record<string, TSec
   return map;
 };
 
-export const buildChildrenMap = (folders: TSecretFolders[]): Record<string, TSecretFolders[]> => {
-  const map: Record<string, TSecretFolders[]> = {};
+export const buildChildrenMap = <T extends TSecretFolders>(folders: T[]): Record<string, T[]> => {
+  const map: Record<string, T[]> = {};
   for (const folder of folders) {
     const key = folder.parentId || "null";
     if (!map[key]) {

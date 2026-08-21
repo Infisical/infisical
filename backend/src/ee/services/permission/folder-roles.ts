@@ -109,8 +109,10 @@ const applyFolderManageRules = (can: TProjectCan) => {
 const applyFolderFullAccessRules = (can: TProjectCan) => {
   applyFolderManageRules(can);
 
-  can([ProjectPermissionSecretFolderActions.ManageAccess], ProjectPermissionSub.SecretFolders);
-  can([ProjectPermissionActions.Delete], ProjectPermissionSub.SecretFolders);
+  can(
+    [ProjectPermissionSecretFolderActions.ManageAccess, ProjectPermissionActions.Delete],
+    ProjectPermissionSub.SecretFolders
+  );
 };
 
 const buildFolderRoleRules = (applyRules: (can: TProjectCan) => void) => {

@@ -8,7 +8,7 @@ import {
   TemporaryPermissionMode
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ApiDocsTags, PROJECT_USERS } from "@app/lib/api-docs";
+import { ApiDocsTags, FOLDER_ACCESS, PROJECT_USERS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -198,9 +198,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         membershipId: z.string().min(1).trim()
       }),
       querystring: z.object({
-        includeFolderPermissions: booleanSchema.describe(
-          "Whether to include folder-scoped access grants in the returned permission sources."
-        )
+        includeFolderPermissions: booleanSchema.describe(FOLDER_ACCESS.PERMISSION_AUDIT.includeFolderPermissions)
       }),
       response: {
         200: z.object({

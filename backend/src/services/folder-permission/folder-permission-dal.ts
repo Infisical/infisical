@@ -151,6 +151,20 @@ const $projectAdminActorIds = (
   return direct.union([viaGroup]);
 };
 
+const $excludeProjectAdmins =
+  (
+    conn: Knex,
+    {
+      projectId,
+      orgId,
+      actorType
+    }: { projectId: string; orgId: string; actorType: ActorType.USER | ActorType.IDENTITY }
+  ) =>
+  (qb: Knex.QueryBuilder) => {
+    const actorTable = actorType === ActorType.IDENTITY ? TableName.Identity : TableName.Users;
+    void qb.whereNotIn(`${actorTable}.id`, $projectAdminActorIds(conn, { projectId, orgId, actorType }));
+  };
+
 export const folderPermissionDALFactory = (db: TDbClient) => {
   // Bound to the user/identity id, not Membership.actor*Id, which is NULL on a group membership row.
   // permission-dal.ts documents the same bug: the column-to-column form silently dropped privileges
@@ -177,9 +191,7 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
     db.ref("firstName").withSchema(TableName.Users).as("firstName"),
     db.ref("lastName").withSchema(TableName.Users).as("lastName"),
     db(TableName.Membership)
-      .where(`${TableName.Membership}.scope`, AccessScope.Project)
-      .where(`${TableName.Membership}.scopeProjectId`, projectId)
-      .where(`${TableName.Membership}.scopeOrgId`, orgId)
+      .modify($projectScoped(projectId, orgId))
       .where(`${TableName.Membership}.actorUserId`, db.ref(`${TableName.Users}.id`))
       .select(`${TableName.Membership}.id`)
       .limit(1)
@@ -231,12 +243,7 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
     conn: Knex,
     { projectId, orgId, folderId, search }: Omit<TFindFolderAccessActorsDAL, "limit" | "offset">
   ) => {
-    const $excludeAdmins = (qb: Knex.QueryBuilder) => {
-      void qb.whereNotIn(
-        `${TableName.Users}.id`,
-        $projectAdminActorIds(conn, { projectId, orgId, actorType: ActorType.USER })
-      );
-    };
+    const $excludeAdmins = $excludeProjectAdmins(conn, { projectId, orgId, actorType: ActorType.USER });
 
     const direct = conn(TableName.Membership)
       .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
@@ -270,12 +277,7 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
     conn: Knex,
     { projectId, orgId, folderId, search }: Omit<TFindFolderAccessActorsDAL, "limit" | "offset">
   ) => {
-    const $excludeAdmins = (qb: Knex.QueryBuilder) => {
-      void qb.whereNotIn(
-        `${TableName.Identity}.id`,
-        $projectAdminActorIds(conn, { projectId, orgId, actorType: ActorType.IDENTITY })
-      );
-    };
+    const $excludeAdmins = $excludeProjectAdmins(conn, { projectId, orgId, actorType: ActorType.IDENTITY });
 
     const direct = conn(TableName.Membership)
       .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
@@ -403,9 +405,9 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
   ) => {
     try {
       const conn = tx || db.replicaNode();
-      const row = (await conn
+      const row = await conn
         .from($projectAdminActorIds(conn, { projectId, orgId, actorType, actorId }).as("project_admin_actors"))
-        .first("actorId")) as unknown as { actorId: string } | undefined;
+        .first<{ actorId: string } | undefined>();
       return Boolean(row);
     } catch (error) {
       throw new DatabaseError({ error, name: "FolderPermissionIsProjectAdmin" });

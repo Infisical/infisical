@@ -268,15 +268,11 @@ export const FolderAccessSheet = ({
 
       <RemoveFolderAccessDialog
         actor={removalActor}
-        isOpen={Boolean(removalActor)}
         onOpenChange={(open) => {
           if (!open) setRemovalActor(null);
         }}
-        onConfirm={() => {
-          if (removalActor) removeAccess(removalActor);
-        }}
+        onConfirm={removeAccess}
         isPending={deleteUserAccess.isPending || deleteIdentityAccess.isPending}
-        projectId={projectId}
         folderPath={folderPath}
         environmentName={environmentName}
       />

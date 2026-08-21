@@ -4,7 +4,7 @@ import { Knex } from "knex";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
-import { ActionProjectType, TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
+import { ActionProjectType, TProjectEnvironments, TSecretFoldersInsert } from "@app/db/schemas";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { validateSecretMovePermissions } from "@app/ee/services/permission/permission-fns";
@@ -29,6 +29,7 @@ import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import {
   assertFolderMoveAllowed,
+  buildChildrenMap,
   buildFolderPath,
   canActorReadBlock,
   checkFolderMoveBlock,
@@ -611,13 +612,33 @@ export const secretFolderServiceFactory = ({
     };
   };
 
-  // validates a folder deletion: the actor must hold manage-access on any folder in the deleted
-  // s ubtree that carries a folder RBAC grant, and secrets underthe subtree must not be protected
-  // by a secret change policy
+  const $findFolderByIdOrName = async (
+    { envId, parentId, idOrName }: { envId: string; parentId: string; idOrName: string },
+    tx?: Knex
+  ) => {
+    const folderByName = await folderDAL
+      .findOne({ envId, name: idOrName, parentId, isReserved: false }, tx)
+      .catch(() => null);
+    if (folderByName || !uuidValidate(idOrName)) return folderByName;
+
+    return folderDAL.findOne({ envId, id: idOrName, parentId, isReserved: false }, tx).catch(() => null);
+  };
+
+  // the whole environment tree is loaded because folder RBAC grants and change policies both apply by
+  // absolute path, so every descendant of the deleted folder has to be resolved to one
+  const $getEnvFolderTree = async (projectId: string, env: TProjectEnvironments, tx?: Knex) => {
+    const rootFolder = await folderDAL.findBySecretPath(projectId, env.slug, "/", tx);
+    if (!rootFolder) throw new NotFoundError({ message: `Root folder not found` });
+
+    const folderPaths = await folderDAL.findByEnvsDeep({ parentIds: [rootFolder.id] }, tx);
+    return { folderPaths, childrenMap: buildChildrenMap(folderPaths) };
+  };
+
   const $validateFolderPermission = async ({
     projectId,
     env,
     folderId,
+    folderTree,
     actor,
     permission,
     tx
@@ -625,46 +646,24 @@ export const secretFolderServiceFactory = ({
     projectId: string;
     env: TProjectEnvironments;
     folderId: string;
+    folderTree: Awaited<ReturnType<typeof $getEnvFolderTree>>;
     actor: ActorType;
     permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
     tx?: Knex;
   }) => {
-    // get environment root folder (as it's needed to get all folders under it)
-    const rootFolder = await folderDAL.findBySecretPath(projectId, env.slug, "/", tx);
-    if (!rootFolder) throw new NotFoundError({ message: `Root folder not found` });
-    // get all folders under environment root folder
-    const folderPaths = await folderDAL.findByEnvsDeep({ parentIds: [rootFolder.id] }, tx);
+    const { folderPaths, childrenMap } = folderTree;
 
-    // create a map of folders by parent id
-    const normalizeKey = (key: string | null | undefined): string => key ?? "root";
-    const folderMap = new Map<string, (TSecretFolders & { path: string; depth: number; environment: string })[]>();
-    for (const folder of folderPaths) {
-      if (!folderMap.has(normalizeKey(folder.parentId))) {
-        folderMap.set(normalizeKey(folder.parentId), []);
-      }
-      folderMap.get(normalizeKey(folder.parentId))?.push(folder);
-    }
-
-    // Find the target folder in the folderPaths to get its full details
     const targetFolderWithPath = folderPaths.find((f) => f.id === folderId);
     if (!targetFolderWithPath) {
       throw new NotFoundError({ message: `Target folder path not found` });
     }
 
-    // Recursively collect all folders under the target folder (descendants only)
-    const collectDescendants = (
-      id: string
-    ): (TSecretFolders & { path: string; depth: number; environment: string })[] => {
-      const children = folderMap.get(normalizeKey(id)) || [];
+    const collectDescendants = (id: string): typeof folderPaths => {
+      const children = childrenMap[id] || [];
       return [...children, ...children.flatMap((child) => collectDescendants(child.id))];
     };
 
-    const targetFolderDescendants = collectDescendants(folderId);
-
-    // Include the target folder itself plus all its descendants
-    const foldersToCheck = [targetFolderWithPath, ...targetFolderDescendants];
-
-    const folderPolicyPaths = foldersToCheck.map((folder) => ({
+    const folderPolicyPaths = [targetFolderWithPath, ...collectDescendants(folderId)].map((folder) => ({
       path: folder.path,
       id: folder.id
     }));
@@ -674,21 +673,21 @@ export const secretFolderServiceFactory = ({
       { tx }
     );
     const grantedFolderIds = new Set(folderGrants.map((grant) => grant.folderId));
-    for (const folderPolicyPath of folderPolicyPaths) {
-      if (grantedFolderIds.has(folderPolicyPath.id)) {
-        const canManageAccess = permission.can(
+    const unmanageableGrant = folderPolicyPaths.find(
+      (folderPolicyPath) =>
+        grantedFolderIds.has(folderPolicyPath.id) &&
+        permission.cannot(
           ProjectPermissionSecretFolderActions.ManageAccess,
           subject(ProjectPermissionSub.SecretFolders, {
             environment: env.slug,
             secretPath: folderPolicyPath.path
           })
-        );
-        if (!canManageAccess) {
-          throw new ForbiddenRequestError({
-            message: `Cannot delete this folder: the folder at path '${folderPolicyPath.path}' has access permissions assigned to users or identities. You need permission to manage folder access on '${folderPolicyPath.path}' to delete it.`
-          });
-        }
-      }
+        )
+    );
+    if (unmanageableGrant) {
+      throw new ForbiddenRequestError({
+        message: `Cannot delete this folder: the folder at path '${unmanageableGrant.path}' has access permissions assigned to users or identities. You need permission to manage folder access on '${unmanageableGrant.path}' to delete it.`
+      });
     }
 
     if (actor === ActorType.IDENTITY) {
@@ -700,18 +699,17 @@ export const secretFolderServiceFactory = ({
       folderIds: folderPolicyPaths.map((p) => p.id),
       tx
     });
+    const folderIdsWithSecrets = new Set(secrets.map((s) => s.folderId));
+    const pathsWithSecrets = folderPolicyPaths.filter((p) => folderIdsWithSecrets.has(p.id));
 
-    for await (const folderPolicyPath of folderPolicyPaths) {
-      // eslint-disable-next-line no-continue
-      if (!secrets.some((s) => s.folderId === folderPolicyPath.id)) continue;
+    const policyByPath = await secretApprovalPolicyService.getSecretApprovalPolicyByPaths(
+      projectId,
+      env.slug,
+      pathsWithSecrets.map((p) => p.path)
+    );
 
-      const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
-        projectId,
-        env.slug,
-        folderPolicyPath.path
-      );
-
-      // if there is a policy and there are secrets under the given folder, throw error
+    for (const folderPolicyPath of pathsWithSecrets) {
+      const policy = policyByPath.get(folderPolicyPath.path);
       if (policy) {
         throw new BadRequestError({
           message: `You cannot delete the selected folder because it contains one or more secrets that are protected by the change policy "${policy.name}" at folder path "${folderPolicyPath.path}". Please remove the secrets at folder path "${folderPolicyPath.path}" and try again.`,
@@ -756,31 +754,7 @@ export const secretFolderServiceFactory = ({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
         });
 
-      let folderToDelete = await folderDAL
-        .findOne(
-          {
-            envId: env.id,
-            name: idOrName,
-            parentId: parentFolder.id,
-            isReserved: false
-          },
-          tx
-        )
-        .catch(() => null);
-
-      if (!folderToDelete && uuidValidate(idOrName)) {
-        folderToDelete = await folderDAL
-          .findOne(
-            {
-              envId: env.id,
-              id: idOrName,
-              parentId: parentFolder.id,
-              isReserved: false
-            },
-            tx
-          )
-          .catch(() => null);
-      }
+      const folderToDelete = await $findFolderByIdOrName({ envId: env.id, parentId: parentFolder.id, idOrName }, tx);
 
       if (!folderToDelete) {
         throw new NotFoundError({ message: `Folder with ID '${idOrName}' not found` });
@@ -790,6 +764,7 @@ export const secretFolderServiceFactory = ({
         projectId,
         env,
         folderId: folderToDelete.id,
+        folderTree: await $getEnvFolderTree(projectId, env, tx),
         actor,
         permission,
         tx
@@ -1423,6 +1398,7 @@ export const secretFolderServiceFactory = ({
             message: `Environment with slug '${environment}' not found`
           });
         }
+        const folderTree = await $getEnvFolderTree(projectId, env, tx);
 
         for (const folderSpec of envFolders) {
           const { path: secretPath, idOrName } = folderSpec;
@@ -1434,31 +1410,10 @@ export const secretFolderServiceFactory = ({
             });
           }
 
-          let folderToDelete = await folderDAL
-            .findOne(
-              {
-                envId: env.id,
-                name: idOrName,
-                parentId: parentFolder.id,
-                isReserved: false
-              },
-              tx
-            )
-            .catch(() => null);
-
-          if (!folderToDelete && uuidValidate(idOrName)) {
-            folderToDelete = await folderDAL
-              .findOne(
-                {
-                  envId: env.id,
-                  id: idOrName,
-                  parentId: parentFolder.id,
-                  isReserved: false
-                },
-                tx
-              )
-              .catch(() => null);
-          }
+          const folderToDelete = await $findFolderByIdOrName(
+            { envId: env.id, parentId: parentFolder.id, idOrName },
+            tx
+          );
 
           if (!folderToDelete) {
             throw new NotFoundError({
@@ -1470,6 +1425,7 @@ export const secretFolderServiceFactory = ({
             projectId,
             env,
             folderId: folderToDelete.id,
+            folderTree,
             actor,
             permission,
             tx

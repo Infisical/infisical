@@ -79,7 +79,7 @@ export const assertManageFolderAccess = async (
 // Access can be inherited from a group, so this cannot be a membership lookup on
 // actorUserId/actorIdentityId: a group-derived actor has no such row and would be rejected despite
 // holding real access to the project.
-export const assertTargetMembership = async (
+const assertTargetMembership = async (
   orgId: string,
   projectId: string,
   target: TFolderGrantActor,
@@ -109,7 +109,7 @@ export const targetLabel = (target: TFolderGrantActor) =>
 
 // Folder grants replace base permissions at the granted path, so for a project admin they could
 // only remove privileges, which is not allowed.
-export const assertTargetNotProjectAdmin = async (
+const assertTargetNotProjectAdmin = async (
   orgId: string,
   projectId: string,
   target: TFolderGrantActor,
@@ -126,6 +126,18 @@ export const assertTargetNotProjectAdmin = async (
       message: `${targetLabel(target)} with ID '${target.actorId}' has the project admin role. Project admins already have full access to every folder, so folder access cannot be granted to them.`
     });
   }
+};
+
+// both halves of target eligibility are asserted together so a new grant write cannot pick up one
+// check and miss the other
+export const assertGrantTargetEligible = async (
+  orgId: string,
+  projectId: string,
+  target: TFolderGrantActor,
+  folderPermissionDAL: Pick<TFolderPermissionDALFactory, "hasProjectAccess" | "isProjectAdmin">
+) => {
+  await assertTargetMembership(orgId, projectId, target, folderPermissionDAL);
+  await assertTargetNotProjectAdmin(orgId, projectId, target, folderPermissionDAL);
 };
 
 export const toFolderGrant = (

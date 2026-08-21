@@ -113,8 +113,6 @@ describe("folder-scoped privilege deny coverage", () => {
 });
 
 describe("folder-scoped privilege precedence", () => {
-  // admins never reach these rules: getProjectPermission skips folder grants for the built-in
-  // admin role, so precedence is exercised against the member base role
   test("a read grant overrides a member's base permissions at the granted path only", () => {
     const ability = abilityFor(memberRoles, [privilege({ role: SecretFolderRole.Read })]);
 

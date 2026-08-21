@@ -9,9 +9,8 @@ import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/addition
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TFolderPermissionDALFactory } from "./folder-permission-dal";
 import {
+  assertGrantTargetEligible,
   assertManageFolderAccess,
-  assertTargetMembership,
-  assertTargetNotProjectAdmin,
   computeTemporaryFields,
   resolveFolder,
   targetActorField,
@@ -50,8 +49,7 @@ export const folderPermissionServiceFactory = ({
     const { projectId, folderId, target } = dto;
     const folder = await resolveFolder(projectId, folderId, secretFolderDAL);
     await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
-    await assertTargetMembership(dto.permission.orgId, projectId, target, folderPermissionDAL);
-    await assertTargetNotProjectAdmin(dto.permission.orgId, projectId, target, folderPermissionDAL);
+    await assertGrantTargetEligible(dto.permission.orgId, projectId, target, folderPermissionDAL);
 
     const actorField = targetActorField(target);
     const alreadyExistsError = () =>
@@ -94,8 +92,7 @@ export const folderPermissionServiceFactory = ({
     const { projectId, folderId, target } = dto;
     const folder = await resolveFolder(projectId, folderId, secretFolderDAL);
     await assertManageFolderAccess(dto.permission, projectId, folder, permissionService);
-    await assertTargetMembership(dto.permission.orgId, projectId, target, folderPermissionDAL);
-    await assertTargetNotProjectAdmin(dto.permission.orgId, projectId, target, folderPermissionDAL);
+    await assertGrantTargetEligible(dto.permission.orgId, projectId, target, folderPermissionDAL);
 
     const actorField = targetActorField(target);
     const grant = await additionalPrivilegeDAL.transaction(async (tx) => {
