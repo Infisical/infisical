@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PermissionDeniedBanner, ProjectPermissionCan } from "@app/components/permissions";
 import {
   Accordion,
   AccordionContent,
@@ -44,12 +45,18 @@ import {
   EmptyTitle,
   IconButton,
   Input,
+  Skeleton,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
-import { useProject } from "@app/context";
+import {
+  ProjectPermissionProjectFolderGrantActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import {
   TProjectFolderGrant,
   useListProjectFolderGrants
@@ -188,10 +195,31 @@ export const CrossProjectSharingSection = () => {
   const [editData, setEditData] = useState<ShareSecretsEditData | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProjectGroup | null>(null);
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
+  const canEditGrants =
+    permission.can(
+      ProjectPermissionProjectFolderGrantActions.CreateGrant,
+      ProjectPermissionSub.ProjectFolderGrant
+    ) &&
+    permission.can(
+      ProjectPermissionProjectFolderGrantActions.RevokeGrant,
+      ProjectPermissionSub.ProjectFolderGrant
+    );
+  const canRevokeGrants = permission.can(
+    ProjectPermissionProjectFolderGrantActions.RevokeGrant,
+    ProjectPermissionSub.ProjectFolderGrant
+  );
 
-  const { data: grants = [] } = useListProjectFolderGrants(currentProject.id);
+  const canReadGrants = permission.can(
+    ProjectPermissionProjectFolderGrantActions.ReadGrant,
+    ProjectPermissionSub.ProjectFolderGrant
+  );
+  const { data: grants, isPending: isGrantsLoading } = useListProjectFolderGrants(
+    currentProject.id,
+    canReadGrants
+  );
 
-  const projectGroups = useMemo(() => groupGrantsByProject(grants), [grants]);
+  const projectGroups = useMemo(() => groupGrantsByProject(grants ?? []), [grants]);
 
   const handleEdit = (group: ProjectGroup) => {
     setEditData({
@@ -215,22 +243,30 @@ export const CrossProjectSharingSection = () => {
             Cross-Project Secret Sharing
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-reference#cross-project-secret-sharing" />
           </CardTitle>
-          <Button
-            variant="project"
-            size="sm"
-            onClick={() => {
-              setEditData(null);
-              setIsShareSheetOpen(true);
-            }}
+          <ProjectPermissionCan
+            I={ProjectPermissionProjectFolderGrantActions.CreateGrant}
+            a={ProjectPermissionSub.ProjectFolderGrant}
           >
-            <Plus className="size-3.5" />
-            Share Secrets
-          </Button>
+            {(isAllowed) => (
+              <Button
+                variant="project"
+                size="sm"
+                onClick={() => {
+                  setEditData(null);
+                  setIsShareSheetOpen(true);
+                }}
+                isDisabled={!isAllowed}
+              >
+                <Plus className="size-3.5" />
+                Share Secrets
+              </Button>
+            )}
+          </ProjectPermissionCan>
           <ShareSecretsSheet
             isOpen={isShareSheetOpen}
             onOpenChange={handleSheetOpenChange}
             editData={editData}
-            existingGrants={grants}
+            existingGrants={grants ?? []}
           />
         </div>
         <p className="max-w-2xl text-sm text-accent">
@@ -247,7 +283,15 @@ export const CrossProjectSharingSection = () => {
           <span className="text-sm text-mineshaft-400">Linked Projects</span>
           <Badge variant="neutral">{projectGroups.length}</Badge>
         </div>
-        {grants.length === 0 ? (
+        {!canReadGrants ? (
+          <PermissionDeniedBanner />
+        ) : isGrantsLoading ? (
+          <div className="space-y-3" aria-label="Loading shared projects">
+            {Array.from({ length: 2 }).map((_, index) => (
+              <Skeleton key={index} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : grants?.length === 0 ? (
           <Empty>
             <EmptyHeader>
               <EmptyTitle>No projects have access yet</EmptyTitle>
@@ -274,33 +318,43 @@ export const CrossProjectSharingSection = () => {
                       {projectGroup.totalSecrets === 1 ? "secret" : "secrets"} shared
                     </span>
                   </div>
-                  <div
-                    className="pr-2"
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
-                    role="presentation"
-                  >
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <IconButton aria-label="Actions" variant="ghost-muted" size="xs">
-                          <EllipsisVerticalIcon className="size-4" />
-                        </IconButton>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(projectGroup)}>
-                          <PencilIcon className="mr-2 size-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          variant="danger"
-                          onClick={() => setDeleteTarget(projectGroup)}
-                        >
-                          <TrashIcon className="mr-2 size-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                  {(canEditGrants || canRevokeGrants) && (
+                    <div
+                      className="pr-2"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      role="presentation"
+                    >
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton aria-label="Actions" variant="ghost-muted" size="xs">
+                            <EllipsisVerticalIcon className="size-4" />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {canEditGrants && (
+                            <DropdownMenuItem onClick={() => handleEdit(projectGroup)}>
+                              <PencilIcon className="mr-2 size-4" />
+                              Edit
+                            </DropdownMenuItem>
+                          )}
+                          <ProjectPermissionCan
+                            I={ProjectPermissionProjectFolderGrantActions.RevokeGrant}
+                            a={ProjectPermissionSub.ProjectFolderGrant}
+                            passThrough={false}
+                          >
+                            <DropdownMenuItem
+                              variant="danger"
+                              onClick={() => setDeleteTarget(projectGroup)}
+                            >
+                              <TrashIcon className="mr-2 size-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </ProjectPermissionCan>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
                 </AccordionTrigger>
                 <AccordionContent>
                   <div className="rounded-md border border-mineshaft-600">
