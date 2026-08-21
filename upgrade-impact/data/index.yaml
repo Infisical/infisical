@@ -142,6 +142,9 @@ versions:
   - version: v0.162.22
     releasedAt: 2026-08-20T15:37:54-07:00
     file: releases/v0.162.22.yaml
+  - version: v0.162.23
+    releasedAt: 2026-08-21T10:04:30-07:00
+    file: releases/v0.162.23.yaml
   - version: v0.162.24
     releasedAt: 2026-08-21T12:18:38-07:00
     file: releases/v0.162.24.yaml
