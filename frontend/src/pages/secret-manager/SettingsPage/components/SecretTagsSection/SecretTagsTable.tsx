@@ -186,7 +186,7 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
                                   onClick={() => handlePopUpOpen("editSecretTag", tag)}
                                 >
                                   <PencilIcon />
-                                  Edit tag
+                                  Edit Tag
                                 </DropdownMenuItem>
                               )}
                               {permission.can(
@@ -203,7 +203,7 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
                                   }
                                 >
                                   <TrashIcon />
-                                  Delete tag
+                                  Delete Tag
                                 </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>

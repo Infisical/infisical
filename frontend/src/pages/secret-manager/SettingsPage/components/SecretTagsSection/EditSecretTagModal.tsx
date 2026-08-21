@@ -26,7 +26,12 @@ import { slugSchema } from "@app/lib/schemas";
 
 const schema = z.object({
   slug: slugSchema({ min: 1, max: 64, field: "Tag Slug" }),
-  color: z.string().trim()
+  color: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || /^#[0-9A-Fa-f]{6}$/.test(value), {
+      message: "Tag Color must be empty or a six-digit hex color"
+    })
 });
 
 type FormData = z.infer<typeof schema>;

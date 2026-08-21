@@ -68,6 +68,26 @@ export const useUpdateWsTag = () => {
     },
     onSuccess: (_tagData, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: projectTags.getWsTags(projectId) });
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const [queryRoot, queryParams] = query.queryKey;
+
+          return (
+            queryRoot === "dashboard" &&
+            (queryParams as { projectId?: string } | undefined)?.projectId === projectId
+          );
+        }
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const [queryParams, queryRoot] = query.queryKey;
+
+          return (
+            queryRoot === "secrets" &&
+            (queryParams as { projectId?: string } | undefined)?.projectId === projectId
+          );
+        }
+      });
     }
   });
 };
