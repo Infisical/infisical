@@ -58,8 +58,8 @@ type ComboboxMultipleProps<TOption> = ComboboxSharedProps<TOption> &
 
 type ComboboxProps<TOption> = ComboboxSingleProps<TOption> | ComboboxMultipleProps<TOption>;
 
-const SINGLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height))";
-const MULTIPLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height))";
+const SINGLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height, 50dvh))";
+const MULTIPLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height, 50dvh))";
 
 const normalizeSearchText = (value: string) =>
   value
@@ -125,6 +125,7 @@ const ComboboxList = <TOption,>({
     <ComboboxPrimitive.List
       aria-label={ariaLabel}
       aria-busy={isLoading || undefined}
+      onWheel={(event) => event.stopPropagation()}
       className="thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none"
       style={{ maxHeight }}
     >
@@ -305,7 +306,12 @@ const SingleCombobox = <TOption,>({
           {...inputProps}
         />
         {!open && value != null && renderValue && (
-          <span className="pointer-events-none absolute inset-y-0 right-9 left-2.5 flex min-w-0 items-center truncate text-sm text-foreground">
+          <span
+            className={cn(
+              "pointer-events-none absolute inset-y-0 right-9 left-2.5 flex min-w-0 items-center truncate text-sm text-foreground",
+              isDisabled && "opacity-50"
+            )}
+          >
             {renderValue(value)}
           </span>
         )}

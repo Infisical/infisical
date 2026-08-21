@@ -60,13 +60,13 @@ Each arrangement stands on its own: `run` is complete by itself, and a deployed 
   </Note>
 
 ```bash
-$ infisical secrets agent-proxy run --projectId=<project-id> --env=<env-slug> --path=<secret-path> -- [agent start command]
+infisical secrets agent-proxy run --projectId=<project-id> --env=<env-slug> --path=<secret-path> -- [agent start command]
 
 # Example
-$ infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
+infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
 
 # Example (project, environment, and path from .infisical.json)
-$ infisical secrets agent-proxy run -- claude
+infisical secrets agent-proxy run -- claude
 ```
 
 ### Environment variables
@@ -238,10 +238,10 @@ These two are used together, on different hosts: `start` on the proxy host, `con
   Agents reach HTTPS services through standard `CONNECT` tunnels and plain-HTTP services through regular forward-proxy requests; credentials are brokered on both. Requests for `https://` URLs sent as plain forward-proxy requests (rather than `CONNECT`) are rejected so the proxy can never be used to downgrade TLS.
 
 ```bash
-$ infisical secrets agent-proxy start
+infisical secrets agent-proxy start
 
 # Example
-$ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
+infisical secrets agent-proxy start --port 17322 --unmatched-host=block
 ```
 
 ### Environment variables
@@ -361,13 +361,13 @@ $ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
   </Note>
 
 ```bash
-$ infisical secrets agent-proxy connect --proxy=<host>:<port> --projectId=<project-id> --env=<env-slug> -- [agent start command]
+infisical secrets agent-proxy connect --proxy=<host>:<port> --projectId=<project-id> --env=<env-slug> -- [agent start command]
 
 # With flags
-$ infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=prod --path=/ai-agents -- claude
+infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=prod --path=/ai-agents -- claude
 
 # With configuration from environment variables (see below) or .infisical.json
-$ infisical secrets agent-proxy connect -- claude
+infisical secrets agent-proxy connect -- claude
 ```
 
 ### Environment variables
