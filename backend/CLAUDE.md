@@ -231,13 +231,18 @@ Without that, deactivating a member doesn't revoke their access. Any future non-
 a user token needs the same check.
 
 **Withdrawing an exchange application's authority has to revoke the tokens it already issued.** Deleting
-the client, rotating its secret, and removing the token-exchange grant all call
-`revokeSessionsByUserAgent`; sessions are tagged with `getOauthClientSessionUserAgent(clientId)`, the only
-handle we have on them. Rotation revokes only on exchange applications: there the secret alone mints
-tokens for any user, whereas in the redirect flow it has to be paired with an authorization code or
-refresh token and blanket revocation would just sign everyone out. The tag is per client, not per grant,
-so a client holding both grants loses its redirect-flow tokens too (the safe direction, and only
-reachable through the API).
+the client and rotating its secret both call `revokeSessionsByUserAgent`, and so does any update that
+narrows the exchange's trust: removing the grant, changing `tokenExchangeAudience`, or switching
+`tokenExchangeIdpSatisfiesMfa` off (`hasWithdrawnTokenExchangeTrust`). These are the same fields
+`hasClientAuthorityChanged` guards, and for the same reason, so a new field belongs in both. An admin
+narrowing any of them is responding to a problem, so it has to reach the tokens already out there rather
+than wait for them to expire. Widening does not revoke: turning the MFA declaration on grants more without
+invalidating anything already issued. Sessions are tagged with
+`getOauthClientSessionUserAgent(clientId)`, the only handle we have on them. Rotation revokes only on
+exchange applications: there the secret alone mints tokens for any user, whereas in the redirect flow it
+has to be paired with an authorization code or refresh token and blanket revocation would just sign
+everyone out. The tag is per client, not per grant, so a client holding both grants loses its
+redirect-flow tokens too (the safe direction, and only reachable through the API).
 
 **That sweep only reaps sessions that already exist, so the exchange rechecks the client after creating
 its own.** `exchangeSubjectToken` authenticates the client, then spends provider discovery, JWKS
