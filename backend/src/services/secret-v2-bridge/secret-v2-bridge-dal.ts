@@ -6,6 +6,7 @@ import { ProjectType, SecretsV2Schema, SecretType, TableName, TSecretsV2, TSecre
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { applyJitter, utcDayStamp } from "@app/lib/dates";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import {
   buildFindFilter,
   ormify,
@@ -535,14 +536,15 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .whereIn("folderId", folderIds)
         .where((bd) => {
           if (filters?.search) {
-            void bd.whereILike(`${TableName.SecretV2}.key`, `%${filters?.search}%`);
+            const searchPattern = `%${sanitizeSqlLikeString(filters.search)}%`;
+            void bd.whereILike(`${TableName.SecretV2}.key`, searchPattern);
             if (filters?.includeTagsInSearch) {
-              void bd.orWhereILike(`${TableName.SecretTag}.slug`, `%${filters?.search}%`);
+              void bd.orWhereILike(`${TableName.SecretTag}.slug`, searchPattern);
             }
             if (filters?.includeMetadataInSearch) {
               void bd
-                .orWhereILike(`${TableName.ResourceMetadata}.key`, `%${filters?.search}%`)
-                .orWhereILike(`${TableName.ResourceMetadata}.value`, `%${filters?.search}%`);
+                .orWhereILike(`${TableName.ResourceMetadata}.key`, searchPattern)
+                .orWhereILike(`${TableName.ResourceMetadata}.value`, searchPattern);
             }
           }
         })
@@ -614,14 +616,15 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .whereIn(`${TableName.SecretV2}.folderId`, folderIds)
         .where((bd) => {
           if (filters?.search) {
-            void bd.whereILike(`${TableName.SecretV2}.key`, `%${filters?.search}%`);
+            const searchPattern = `%${sanitizeSqlLikeString(filters.search)}%`;
+            void bd.whereILike(`${TableName.SecretV2}.key`, searchPattern);
             if (filters?.includeTagsInSearch) {
-              void bd.orWhereILike(`${TableName.SecretTag}.slug`, `%${filters?.search}%`);
+              void bd.orWhereILike(`${TableName.SecretTag}.slug`, searchPattern);
             }
             if (filters?.includeMetadataInSearch) {
               void bd
-                .orWhereILike(`${TableName.ResourceMetadata}.key`, `%${filters?.search}%`)
-                .orWhereILike(`${TableName.ResourceMetadata}.value`, `%${filters?.search}%`);
+                .orWhereILike(`${TableName.ResourceMetadata}.key`, searchPattern)
+                .orWhereILike(`${TableName.ResourceMetadata}.value`, searchPattern);
             }
           }
 

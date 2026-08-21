@@ -37,38 +37,11 @@ import {
 } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import { isSecretPathMatch, resolveSecretDeepSearch } from "./dashboard-secret-search-fns";
+
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
 const DEEP_SEARCH_DEFAULT_PAGE_LIMIT = 25;
 const DEEP_SEARCH_MAX_PAGE_LIMIT = 100;
-
-const parseSecretPathSearch = (search?: string) => {
-  if (!search)
-    return {
-      searchName: "",
-      searchPath: ""
-    };
-
-  if (!search.includes("/"))
-    return {
-      searchName: search,
-      searchPath: ""
-    };
-
-  if (search === "/")
-    return {
-      searchName: "",
-      searchPath: "/"
-    };
-
-  const [searchName, ...searchPathSegments] = search.split("/").reverse();
-  let searchPath = removeTrailingSlash(searchPathSegments.reverse().join("/").toLowerCase());
-  if (!searchPath.startsWith("/")) searchPath = `/${searchPath}`;
-
-  return {
-    searchName,
-    searchPath
-  };
-};
 
 const SECRET_METADATA_SEARCH_MAX_FILTERS = 20;
 
@@ -1589,7 +1562,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         req.permission
       );
 
-      const { searchName, searchPath } = parseSecretPathSearch(search);
+      const { searchName, searchPath } = resolveSecretDeepSearch(
+        search,
+        allFolders.map((folder) => folder.path)
+      );
 
       const folderMappings = allFolders.map((folder) => ({
         folderId: folder.id,
@@ -1694,7 +1670,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      const matchedSecrets = searchPath ? secrets.filter((secret) => secret.secretPath.endsWith(searchPath)) : secrets;
+      const matchedSecrets = searchPath
+        ? secrets.filter((secret) => isSecretPathMatch(secret.secretPath, searchPath))
+        : secrets;
 
       // page secrets by rendered entry (env + path + key): a shared secret and its personal override
       // are two adjacent rows the client merges into one, so slicing raw rows would split the pair
@@ -1712,11 +1690,11 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const secretUnits = [...secretUnitsByEntry.values()];
 
       const matchedDynamicSecrets = searchPath
-        ? dynamicSecrets.filter((dynamicSecret) => dynamicSecret.path.endsWith(searchPath))
+        ? dynamicSecrets.filter((dynamicSecret) => isSecretPathMatch(dynamicSecret.path, searchPath))
         : dynamicSecrets;
 
       const matchedSecretRotations = searchPath
-        ? secretRotations.filter((rotation) => rotation.folder.path.endsWith(searchPath))
+        ? secretRotations.filter((rotation) => isSecretPathMatch(rotation.folder.path, searchPath))
         : secretRotations;
 
       const matchedFolders = allFolders.filter((folder) => {
@@ -1733,7 +1711,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           }
 
           // support ending partial path match
-          return folderPath.endsWith(searchPath) && folderName.toLowerCase().startsWith(searchName.toLowerCase());
+          return (
+            isSecretPathMatch(folderPath, searchPath) && folderName.toLowerCase().startsWith(searchName.toLowerCase())
+          );
         }
 
         // no search path, "fuzzy" match all folders
