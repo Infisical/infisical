@@ -10,7 +10,6 @@ import {
   SearchIcon,
   ServerIcon,
   TrashIcon,
-  TriangleAlertIcon,
   WrenchIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -19,9 +18,6 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
   Badge,
   Button,
   Card,
@@ -52,12 +48,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useProject,
-  useSubscription
-} from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { isCustomProjectRole } from "@app/helpers/roles";
 import {
@@ -70,7 +61,6 @@ import { useDeleteProjectRole, useGetProjectRoles } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole, TProjectRole } from "@app/hooks/api/roles/types";
-import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { DuplicateProjectRoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal";
 import { RoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/RoleModal";
 
@@ -97,7 +87,6 @@ export const ProjectRoleList = () => {
   );
 
   const { mutateAsync: deleteRole } = useDeleteProjectRole();
-  const { subscription } = useSubscription();
 
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TProjectRole;
@@ -182,49 +171,8 @@ export const ProjectRoleList = () => {
 
   const filteredRolesPage = filteredRoles.slice(offset, perPage * page);
 
-  const isProPlan =
-    Boolean(subscription) &&
-    subscription.rbac &&
-    [SubscriptionPlanTypes.Pro, SubscriptionPlanTypes.ProAnnual].includes(subscription.slug);
-
-  const customRoles = filteredRoles.filter((role) => isCustomProjectRole(role.slug));
-
   return (
     <>
-      {/* TODO(custom-roles): Remove this banner after 2026-06-01 when custom roles are removed from Pro plan */}
-      {isProPlan && customRoles?.length > 0 && (
-        <Alert variant="warning" className="mb-4">
-          <TriangleAlertIcon />
-          <AlertTitle>Custom roles are moving to Enterprise plans</AlertTitle>
-          <AlertDescription>
-            <div>
-              Custom roles are part of the Infisical Enterprise plan, but were temporarily available
-              to Pro users. Creation of new roles will be enforced starting June 1, 2026.
-              <br />
-              You can use{" "}
-              <a
-                href="https://infisical.com/docs/documentation/platform/access-controls/additional-privileges"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-2"
-              >
-                additional privileges
-              </a>{" "}
-              as an alternative, or{" "}
-              <a
-                href="https://infisical.com/scheduledemo"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-2"
-              >
-                contact sales
-              </a>{" "}
-              to upgrade and retain access to custom roles.
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
       <Card>
         <CardHeader>
           <CardTitle>
