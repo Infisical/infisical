@@ -34,7 +34,7 @@ import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/c
 import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { diff, groupBy } from "@app/lib/fn";
+import { diff, groupBy, takeDistinctKeyScanWindow } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -1131,12 +1131,17 @@ export const secretV2BridgeServiceFactory = ({
   ) => {
     const groupedFolderMappings = groupBy(folderMappings, (folderMapping) => folderMapping.folderId);
 
-    const secrets = await secretDAL.findByFolderIds({
+    const { limit } = filters;
+
+    // findByFolderIds windows on distinct keys, so scan one key past the limit to tell a full window from a truncated one
+    const scannedSecrets = await secretDAL.findByFolderIds({
       folderIds: folderMappings.map((folderMapping) => folderMapping.folderId),
       userId,
       tx: undefined,
-      filters
+      filters: limit ? { ...filters, limit: limit + 1 } : filters
     });
+
+    const { items: secrets, isLimitReached } = takeDistinctKeyScanWindow(scannedSecrets, limit, (secret) => secret.key);
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -1190,7 +1195,10 @@ export const secretV2BridgeServiceFactory = ({
         );
       });
 
-    return decryptedSecrets;
+    return {
+      secrets: decryptedSecrets,
+      isLimitReached
+    };
   };
 
   // get secrets for multiple envs
@@ -1240,7 +1248,7 @@ export const secretV2BridgeServiceFactory = ({
       environment: folder.environment.slug
     }));
 
-    const decryptedSecrets = await getSecretsByFolderMappings(
+    const { secrets } = await getSecretsByFolderMappings(
       {
         projectId,
         folderMappings,
@@ -1251,7 +1259,7 @@ export const secretV2BridgeServiceFactory = ({
       permission
     );
 
-    return decryptedSecrets;
+    return secrets;
   };
 
   const getSecrets = async (dto: TGetSecretsDTO) => {

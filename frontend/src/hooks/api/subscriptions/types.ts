@@ -12,9 +12,7 @@ export enum SubscriptionPlanTypes {
 
 export type SubscriptionPlan = {
   id: string;
-  membersUsed: number;
   memberLimit: number;
-  identitiesUsed: number;
   identityLimit: number;
   auditLogs: boolean;
   dynamicSecret: boolean;

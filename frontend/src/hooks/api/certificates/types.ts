@@ -1,5 +1,9 @@
+import type { TPkcs12Entry } from "@app/helpers/pkcs12";
+
 import {
   CertExtendedKeyUsage,
+  CertificateIssuerKind,
+  CertificateRenewalKeySource,
   CertificateRequestStatus,
   CertKeyUsage,
   CertSource,
@@ -55,7 +59,7 @@ export type TCertificate = {
   caName?: string | null;
   profileName?: string | null;
   enrollmentType?: string | null;
-  caType?: "internal" | "external" | null;
+  caType?: CertificateIssuerKind | null;
   applicationId?: string | null;
   applicationName?: string | null;
   source?: TCertificateSource;
@@ -80,6 +84,16 @@ export type TRevokeCertDTO = {
   revocationReason: string;
 };
 
+export type TImportPkcs12EntriesDTO = {
+  entries: TPkcs12Entry[];
+  applicationId?: string;
+};
+
+export type TImportPkcs12EntriesResult = {
+  entry: TPkcs12Entry;
+  error?: string;
+};
+
 export type TImportCertificateDTO = {
   certificatePem: string;
   privateKeyPem?: string;
@@ -97,8 +111,34 @@ export type TImportCertificateResponse = {
   serialNumber: string;
 };
 
+export type TRenewCertificateAttributes = {
+  commonName?: string | null;
+  organization?: string | null;
+  organizationalUnit?: string | null;
+  country?: string | null;
+  state?: string | null;
+  locality?: string | null;
+  domainComponents?: string[] | null;
+  keyUsages?: string[];
+  extendedKeyUsages?: string[];
+  altNames?: Array<{
+    type: string;
+    value: string;
+  }>;
+  signatureAlgorithm?: string;
+  keyAlgorithm?: string;
+  ttl?: string;
+  basicConstraints?: {
+    isCA: boolean;
+    pathLength?: number;
+  };
+};
+
 export type TRenewCertificateDTO = {
   certificateId: string;
+  renewalKeySource?: CertificateRenewalKeySource;
+  csr?: string;
+  attributes?: TRenewCertificateAttributes;
 };
 
 export type TRenewCertificateResponse = {

@@ -1,3 +1,13 @@
+import {
+  BotIcon,
+  EyeIcon,
+  KeyRoundIcon,
+  type LucideIcon,
+  PencilIcon,
+  ServerIcon,
+  Share2Icon,
+  UsersIcon
+} from "lucide-react";
 import picomatch from "picomatch";
 import { z } from "zod";
 
@@ -3343,6 +3353,7 @@ export type RoleTemplate = {
   id: string;
   name: string;
   description: string;
+  icon: LucideIcon;
   permissions: { subject: ProjectPermissionSub; actions: string[] }[];
 };
 
@@ -3352,6 +3363,7 @@ const projectManagerTemplate = (
   id: "project-manager",
   name: "Project Management Policies",
   description: "Grants access to manage project members and settings",
+  icon: UsersIcon,
   permissions: [
     {
       subject: ProjectPermissionSub.AuditLogs,
@@ -3394,6 +3406,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "kms-viewer",
       name: "KMS Viewing Policies",
       description: "Grants read access to KMS keys and KMIP clients",
+      icon: EyeIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.Cmek,
@@ -3409,6 +3422,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "key-editor",
       name: "KMS Key Editing Policies",
       description: "Grants read and edit access to KMS keys",
+      icon: KeyRoundIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.Cmek,
@@ -3420,6 +3434,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "kmip-editor",
       name: "KMIP Client Editing Policies",
       description: "Grants read and edit access to KMIP clients",
+      icon: ServerIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.Kmip,
@@ -3434,6 +3449,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "cert-viewer",
       name: "Certificate Viewing Policies",
       description: "Grants read access to certificates and related resources",
+      icon: EyeIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.PkiCollections,
@@ -3476,6 +3492,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "cert-editor",
       name: "Certificate Editing Policies",
       description: "Grants read and edit access to certificates and related resources",
+      icon: PencilIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.PkiCollections,
@@ -3518,6 +3535,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "scanning-viewer",
       name: "Secret Scanning Viewing Policies",
       description: "Grants read access to data sources and findings",
+      icon: EyeIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.SecretScanningDataSources,
@@ -3541,6 +3559,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "scanning-editor",
       name: "Secret Scanning Editing Policies",
       description: "Grants read and edit access to data sources and findings",
+      icon: PencilIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.SecretScanningDataSources,
@@ -3568,6 +3587,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "secret-viewer",
       name: "Secret Viewing Policies",
       description: "Grants read access to secrets and related resources",
+      icon: EyeIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.SecretRollback,
@@ -3626,6 +3646,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "secret-editor",
       name: "Secret Editing Policies",
       description: "Grants read and edit access to secrets and related resources",
+      icon: PencilIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.Environments,
@@ -3725,6 +3746,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "agent-proxy",
       name: "Agent Proxy Policies",
       description: "Reads secret values, mints dynamic secret leases, and reports service usage",
+      icon: Share2Icon,
       permissions: [
         {
           subject: ProjectPermissionSub.Secrets,
@@ -3747,6 +3769,7 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
       id: "agent",
       name: "Agent Policies",
       description: "Routes traffic through proxied services",
+      icon: BotIcon,
       permissions: [
         {
           subject: ProjectPermissionSub.ProxiedServices,

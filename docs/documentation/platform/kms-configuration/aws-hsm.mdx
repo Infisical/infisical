@@ -7,7 +7,7 @@ This guide provides instructions on securing Infisical project secrets using AWS
 Integration with AWS CloudHSM is achieved by configuring it as a custom key store for AWS KMS. 
 Follow the steps below to set up AWS KMS with AWS CloudHSM as the custom key store.
 
-## Prepare AWS CloudHSM Cluster
+## Prepare AWS CloudHSM cluster
 
 Before you get started, you'll need to configure a AWS CloudHSM cluster which meets the following criteria:
 
@@ -19,7 +19,7 @@ Before you get started, you'll need to configure a AWS CloudHSM cluster which me
 
 For more details on setting up your cluster, refer to the following [AWS documentation](https://docs.aws.amazon.com/kms/latest/developerguide/create-keystore.html#before-keystore).
 
-## Set Up AWS KMS Custom Key Store
+## Set up AWS KMS custom key store
 
 To set up an AWS KMS custom key store with AWS CloudHSM, you will need the following:
 
@@ -52,7 +52,7 @@ To set up an AWS KMS custom key store with AWS CloudHSM, you will need the follo
 
 For more details, refer to the following [AWS documentation](https://docs.aws.amazon.com/kms/latest/developerguide/create-keystore.html#create-keystore-console).
 
-## Create AWS KMS Key
+## Create AWS KMS key
 Next, you'll need to create a AWS KMS key where you will set the key store you created previously. 
 
 <Steps>
@@ -76,7 +76,7 @@ Next, you'll need to create a AWS KMS key where you will set the key store you c
   </Step>
 </Steps>
 
-## Connect Infisical to AWS KMS Key
+## Connect Infisical to AWS KMS key
 
 You should now have an AWS KMS that has a custom key store set to AWS CloudHSM. 
 To secure project resources, you will need to add this AWS KMS to your Infisical organization. To learn how, refer to the documentation [here](./aws-kms).

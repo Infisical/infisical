@@ -48,6 +48,7 @@ import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/E
 import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileLocalAccountRotationModal";
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
+import { CommitHistorySheet } from "@app/components/secrets/CommitHistorySheet";
 import {
   Button as ButtonV2,
   DeleteActionModal,
@@ -536,9 +537,8 @@ const OverviewPageContent = () => {
   }, [canApproveAny, pendingApprovalsCount, openApprovalRequests, visibleEnvs, secretPath]);
 
   const {
-    data: { count: singleEnvCommitCount, folderId: singleEnvFolderId } = {
-      count: 0,
-      folderId: ""
+    data: { count: singleEnvCommitCount } = {
+      count: 0
     },
     isPending: isSingleEnvCommitCountPending,
     isFetching: isSingleEnvCommitCountFetching
@@ -1017,6 +1017,9 @@ const OverviewPageContent = () => {
   ] as const);
 
   const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
+  const [commitHistoryEnv, setCommitHistoryEnv] = useState<{ slug: string; name: string } | null>(
+    null
+  );
 
   // Auto-open honey token drawer when linked via notification/email
   useEffect(() => {
@@ -1036,7 +1039,7 @@ const OverviewPageContent = () => {
     }
   }, [routerSearch.dynamicSecretId, dynamicSecrets?.map((ds) => ds.id).join(",")]);
 
-  const handleViewCommitHistory = async (envSlug: string, preloadedFolderId?: string) => {
+  const handleViewCommitHistory = (envSlug: string) => {
     if (!subscription?.pitRecovery) {
       handlePopUpOpen("upgradePlan", {
         text: "You can use point-in-time recovery if you upgrade your Infisical plan."
@@ -1046,25 +1049,8 @@ const OverviewPageContent = () => {
 
     if (!canReadCommits) return;
 
-    let targetFolderId = preloadedFolderId;
-    if (!targetFolderId) {
-      try {
-        const res = await apiRequest.get<{ count: number; folderId: string }>(
-          "/api/v1/pit/commits/count",
-          { params: { environment: envSlug, path: secretPath, projectId } }
-        );
-        targetFolderId = res.data.folderId;
-      } catch {
-        createNotification({ type: "error", text: "Failed to load commit history" });
-        return;
-      }
-    }
-
-    navigate({
-      to: "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId",
-      params: { orgId, projectId, folderId: targetFolderId, environment: envSlug },
-      search: (query: Record<string, string | string[]>) => ({ ...query, secretPath })
-    });
+    const env = userAvailableEnvs.find((el) => el.slug === envSlug);
+    setCommitHistoryEnv({ slug: envSlug, name: env?.name ?? envSlug });
   };
 
   const handleAddSecretImport = () => {
@@ -2995,7 +2981,7 @@ const OverviewPageContent = () => {
                         type="button"
                         onClick={() => {
                           if (singleVisibleEnv) {
-                            handleViewCommitHistory(singleVisibleEnv.slug, singleEnvFolderId);
+                            handleViewCommitHistory(singleVisibleEnv.slug);
                           }
                         }}
                       >
@@ -3239,10 +3225,7 @@ const OverviewPageContent = () => {
                                     type="button"
                                     onClick={() => {
                                       if (singleVisibleEnv) {
-                                        handleViewCommitHistory(
-                                          singleVisibleEnv.slug,
-                                          singleEnvFolderId
-                                        );
+                                        handleViewCommitHistory(singleVisibleEnv.slug);
                                       }
                                     }}
                                   >
@@ -3901,6 +3884,18 @@ const OverviewPageContent = () => {
         projectId={projectId}
         onOpenChange={(isOpen) => handlePopUpToggle("viewHoneyTokenCredentials", isOpen)}
       />
+      {commitHistoryEnv && (
+        <CommitHistorySheet
+          isOpen
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setCommitHistoryEnv(null);
+          }}
+          projectId={projectId}
+          environment={commitHistoryEnv.slug}
+          environmentName={commitHistoryEnv.name}
+          secretPath={secretPath}
+        />
+      )}
       <HoneyTokenDetailsDrawer
         projectId={projectId}
         honeyTokenId={detailsDrawerHoneyTokenId}

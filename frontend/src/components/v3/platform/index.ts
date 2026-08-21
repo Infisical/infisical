@@ -1,3 +1,4 @@
+export * from "./AccessRestricted";
 export * from "./DateRangeFilter";
 export * from "./DeleteConfirmDialog";
 export * from "./DocumentationLinkBadge";
@@ -8,7 +9,9 @@ export * from "./PageHeader";
 export * from "./PageLoader";
 export * from "./PasswordGenerator";
 export * from "./PermissionActionSelect";
+export * from "./ProjectPermissionSubjects/ProjectPermissionSubjects";
 export * from "./ScopeIcons";
 export * from "./SecretInput";
+export * from "./SecretManagerResources/SecretManagerResources";
 export * from "./SecretPathInput";
 export * from "./VerificationCode";

@@ -1,6 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import * as x509 from "@peculiar/x509";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -23,6 +22,7 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -45,13 +45,128 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityTlsCertAuthDALFactory } from "./identity-tls-cert-auth-dal";
 import {
+  findNameConstraintsProblem,
   isSubjectAltNameAllowed,
   parseAllowedSubjectAltNames,
   parseSubjectDetails,
+  permitsClientAuth,
+  readSubjectAltNames,
   serializeAllowedSubjectAltNames,
-  verifyClientCertificateChain
+  TNameConstraintsProblem,
+  TVerifyClientCertificateChainResult,
+  verifyClientCertificateChain,
+  verifyDirectlyIssuedClientCertificate
 } from "./identity-tls-cert-auth-fns";
 import { TIdentityTlsCertAuthServiceFactory } from "./identity-tls-cert-auth-types";
+
+const CHAIN_FAILURE_MESSAGES: Record<
+  Extract<TVerifyClientCertificateChainResult, { ok: false }>["reasonCode"],
+  string
+> = {
+  ca_verification_failed: "Access denied: Certificate chain could not be validated against the provided CA.",
+  certificate_expired: "Access denied: Certificate has expired.",
+  certificate_not_yet_valid: "Access denied: Certificate not yet valid.",
+  issuer_certificate_expired: "Access denied: A CA certificate that issued the client certificate has expired.",
+  issuer_certificate_not_yet_valid:
+    "Access denied: A CA certificate that issued the client certificate is not yet valid.",
+  issuer_client_auth_usage_not_allowed:
+    "Access denied: A CA in the certificate chain is not permitted to issue client authentication certificates.",
+  name_constraint_violation:
+    "Access denied: The client certificate's name is outside the namespace its issuing CA is permitted to certify.",
+  path_length_exceeded: "Access denied: The certificate chain has more intermediate CAs than a CA in it permits.",
+  unsupported_name_constraint:
+    "Access denied: A CA in the certificate chain restricts a URI name that is not a fully qualified domain name, so no client certificate can satisfy it."
+};
+
+const normalizeCaCertificate = (caCertificate: string) => caCertificate.replace(/\s+/g, "");
+
+const nameConstraintsProblemMessage = (problem: TNameConstraintsProblem) => {
+  if (problem.kind === "unparseable_certificate")
+    return "CA certificate could not be decoded. Provide a PEM-encoded X.509 certificate that conforms to RFC 5280.";
+
+  if (problem.kind === "unreadable_extension")
+    return "CA certificate's name constraints extension is malformed, so the namespace it restricts cannot be honored and no certificate it issues could be used to log in. Provide a CA certificate whose name constraints are well-formed.";
+
+  return `CA certificate restricts the URI name "${problem.constraint}", which is not a fully qualified domain name, so no certificate it issues could be used to log in. A URI name constraint restricts the host only, such as "example.org". To restrict individual workload identities, use allowed subject alternative names instead.`;
+};
+
+// The chain arrives percent-encoded, since that is what a TLS-terminating proxy emits (nginx's
+// `$ssl_client_escaped_cert` and equivalents). A value that will not decode means a malformed
+// request, not an untrusted certificate, hence 400 rather than 401.
+const decodeClientCertificateHeader = (clientCertificate: string) => {
+  try {
+    return decodeURIComponent(clientCertificate);
+  } catch {
+    throw new BadRequestError({
+      message:
+        "Malformed client certificate header: the value is not valid URL-encoded data. The TLS-terminating proxy must URL-encode the certificate chain it forwards."
+    });
+  }
+};
+
+/**
+ * Denies rather than 500s on a certificate that carries the PEM markers but will not parse, since
+ * reading it is what would establish who the client is. Denying also keeps the attempt auditable:
+ * only `UnauthorizedError` is recorded, so a client probing with junk stays visible.
+ *
+ * The OpenSSL reason is logged rather than returned; it describes the encoding, not anything the
+ * caller can act on.
+ */
+const parsePresentedCertificate = (
+  pem: string,
+  role: "leaf" | "chain",
+  detail: { identityId: string; orgId: string; identityName: string }
+) => {
+  try {
+    return new crypto.nativeCrypto.X509Certificate(pem);
+  } catch (err) {
+    logger.warn(
+      err,
+      `TLS certificate auth: a presented certificate could not be decoded [role=${role}] [identityId=${detail.identityId}]`
+    );
+    throw new UnauthorizedError({
+      message:
+        role === "leaf"
+          ? "Access denied: the client certificate could not be decoded."
+          : "Access denied: a CA certificate in the presented chain could not be decoded.",
+      detail: { reasonCode: "certificate_decode_failed", ...detail }
+    });
+  }
+};
+
+/**
+ * Reject a CA certificate when it is configured, rather than at every login it would deny. Only
+ * conditions that can never authenticate anyone belong here: a not-yet-valid certificate is allowed
+ * through, since an operator may be pre-provisioning the next CA in a rotation.
+ */
+const validateCaCertificateUsable = (caCertificate: string) => {
+  let caCertificateX509: InstanceType<typeof crypto.nativeCrypto.X509Certificate>;
+  try {
+    caCertificateX509 = new crypto.nativeCrypto.X509Certificate(caCertificate);
+  } catch {
+    throw new BadRequestError({
+      message: "CA certificate could not be read. Provide a PEM-encoded X.509 certificate."
+    });
+  }
+
+  const validTo = new Date(caCertificateX509.validTo);
+  if (validTo < new Date()) {
+    throw new BadRequestError({
+      message: `CA certificate expired on ${validTo.toISOString()}. Provide a CA certificate that is still valid.`
+    });
+  }
+
+  if (!permitsClientAuth(caCertificateX509)) {
+    throw new BadRequestError({
+      message:
+        "CA certificate's extended key usage does not include client authentication, so no certificate it issues could be used to log in. Provide a CA certificate that permits client authentication."
+    });
+  }
+
+  const nameConstraintsProblem = findNameConstraintsProblem(caCertificateX509);
+  if (nameConstraintsProblem)
+    throw new BadRequestError({ message: nameConstraintsProblemMessage(nameConstraintsProblem) });
+};
 
 type TIdentityTlsCertAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -124,13 +239,15 @@ export const identityTlsCertAuthServiceFactory = ({
         cipherTextBlob: identityTlsCertAuth.encryptedCaCertificate
       }).toString();
 
-      const presentedCertificates = extractX509CertFromChain(decodeURIComponent(clientCertificate));
+      const presentedCertificates = extractX509CertFromChain(decodeClientCertificateHeader(clientCertificate));
       const leafCertificate = presentedCertificates?.[0];
       if (!leafCertificate) {
         throw new BadRequestError({ message: "Missing client certificate" });
       }
 
-      const clientCertificateX509 = new crypto.nativeCrypto.X509Certificate(leafCertificate);
+      const failureDetail = { identityId: identity.id, orgId: identity.orgId, identityName: identity.name };
+
+      const clientCertificateX509 = parsePresentedCertificate(leafCertificate, "leaf", failureDetail);
       const caCertificateX509 = new crypto.nativeCrypto.X509Certificate(caCertificate);
 
       if (identityTlsCertAuth.verifyClientCertificateChain) {
@@ -141,19 +258,16 @@ export const identityTlsCertAuthServiceFactory = ({
         // long-lived root while the client presents the current intermediate alongside its leaf.
         const presentedChain = presentedCertificates
           .slice(1)
-          .map((pem) => new crypto.nativeCrypto.X509Certificate(pem));
+          .map((pem) => parsePresentedCertificate(pem, "chain", failureDetail));
 
-        const chainResult = verifyClientCertificateChain({
+        const chainResult = await verifyClientCertificateChain({
           leaf: clientCertificateX509,
           presentedChain,
           trustAnchor: caCertificateX509
         });
 
         if (!chainResult.ok) {
-          const message =
-            chainResult.reasonCode === "ca_verification_failed"
-              ? "Access denied: Certificate chain could not be validated against the provided CA."
-              : "Access denied: A certificate in the chain is outside its validity period.";
+          const message = CHAIN_FAILURE_MESSAGES[chainResult.reasonCode];
           throw new UnauthorizedError({
             message,
             detail: {
@@ -166,17 +280,25 @@ export const identityTlsCertAuthServiceFactory = ({
         }
       } else {
         // Single-hop mode (default): the configured CA must be the direct issuer of the leaf.
-        const isValidCertificate = clientCertificateX509.verify(caCertificateX509.publicKey);
-        if (!isValidCertificate)
+        const directResult = await verifyDirectlyIssuedClientCertificate({
+          leaf: clientCertificateX509,
+          ca: caCertificateX509
+        });
+
+        if (!directResult.ok) {
           throw new UnauthorizedError({
-            message: "Access denied: Certificate not issued by the provided CA.",
+            message:
+              directResult.reasonCode === "ca_verification_failed"
+                ? "Access denied: Certificate not issued by the provided CA."
+                : CHAIN_FAILURE_MESSAGES[directResult.reasonCode],
             detail: {
-              reasonCode: "ca_verification_failed",
+              reasonCode: directResult.reasonCode,
               identityId: identity.id,
               orgId: identity.orgId,
               identityName: identity.name
             }
           });
+        }
       }
 
       // Require an end-entity certificate issued by the configured CA, not the CA certificate
@@ -195,23 +317,11 @@ export const identityTlsCertAuthServiceFactory = ({
         });
       }
 
-      if (new Date(clientCertificateX509.validTo) < new Date()) {
+      if (!permitsClientAuth(clientCertificateX509)) {
         throw new UnauthorizedError({
-          message: "Access denied: Certificate has expired.",
+          message: "Access denied: the client certificate is not valid for client authentication.",
           detail: {
-            reasonCode: "certificate_expired",
-            identityId: identity.id,
-            orgId: identity.orgId,
-            identityName: identity.name
-          }
-        });
-      }
-
-      if (new Date(clientCertificateX509.validFrom) > new Date()) {
-        throw new UnauthorizedError({
-          message: "Access denied: Certificate not yet valid.",
-          detail: {
-            reasonCode: "certificate_not_yet_valid",
+            reasonCode: "client_auth_usage_not_allowed",
             identityId: identity.id,
             orgId: identity.orgId,
             identityName: identity.name
@@ -236,13 +346,9 @@ export const identityTlsCertAuthServiceFactory = ({
       }
 
       if (identityTlsCertAuth.allowedSubjectAltNames) {
-        const sanExtension = new x509.X509Certificate(clientCertificateX509.raw).getExtension(
-          x509.SubjectAlternativeNameExtension
-        );
-
         const isValidSubjectAltName = isSubjectAltNameAllowed(
           parseAllowedSubjectAltNames(identityTlsCertAuth.allowedSubjectAltNames),
-          sanExtension?.names.items
+          readSubjectAltNames(clientCertificateX509)
         );
         if (!isValidSubjectAltName) {
           throw new UnauthorizedError({
@@ -455,6 +561,8 @@ export const identityTlsCertAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
+    validateCaCertificateUsable(caCertificate);
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
@@ -573,10 +681,17 @@ export const identityTlsCertAuthServiceFactory = ({
         });
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
     });
+
+    const storedCaCertificate = decryptor({
+      cipherTextBlob: identityTlsCertAuth.encryptedCaCertificate
+    }).toString();
+    if (caCertificate && normalizeCaCertificate(caCertificate) !== normalizeCaCertificate(storedCaCertificate)) {
+      validateCaCertificateUsable(caCertificate);
+    }
 
     const updatedTlsCertAuth = await identityTlsCertAuthDAL.updateById(identityTlsCertAuth.id, {
       allowedCommonNames,

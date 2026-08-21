@@ -34,6 +34,7 @@ import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/
 import { ActorType } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
   TAWSAuthDetails,
@@ -593,6 +594,7 @@ export enum EventType {
   SETUP_KMIP = "setup-kmip",
   GET_KMIP = "get-kmip",
   REGISTER_KMIP_SERVER = "register-kmip-server",
+  KMIP_SERVER_CONNECT = "kmip-server-connect",
 
   KMIP_OPERATION_CREATE = "kmip-operation-create",
   KMIP_OPERATION_GET = "kmip-operation-get",
@@ -628,6 +630,7 @@ export enum EventType {
   PROJECT_ASSUME_PRIVILEGE_SESSION_END = "project-assume-privileges-session-end",
 
   GET_PROJECT_PIT_COMMITS = "get-project-pit-commits",
+  GET_PROJECT_PIT_COMMIT_AUTHORS = "get-project-pit-commit-authors",
   GET_PROJECT_PIT_COMMIT_CHANGES = "get-project-pit-commit-changes",
   GET_PROJECT_PIT_COMMIT_COUNT = "get-project-pit-commit-count",
   PIT_ROLLBACK_COMMIT = "pit-rollback-commit",
@@ -677,15 +680,22 @@ export enum EventType {
   VIEW_INSIGHTS_AUTH_METHODS = "view-insights-auth-methods",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR = "view-insights-secrets-management-calendar",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME = "view-insights-secrets-management-access-volume",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION = "view-insights-secrets-management-org-auth-method-distribution",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE = "view-insights-secrets-management-usage",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS = "view-insights-secrets-management-project-warnings",
 
   CREATE_AUDIT_REPORT = "create-audit-report",
   GET_AUDIT_REPORTS = "get-audit-reports",
   GET_AUDIT_REPORT = "get-audit-report",
   DELETE_AUDIT_REPORT = "delete-audit-report",
+
+  CREATE_ORG_AUDIT_REPORT = "create-org-audit-report",
+  GET_ORG_AUDIT_REPORTS = "get-org-audit-reports",
+  DELETE_ORG_AUDIT_REPORT = "delete-org-audit-report",
 
   VIEW_INSIGHTS_PAM_SUMMARY = "view-insights-pam-summary",
   VIEW_INSIGHTS_PAM_SESSION_ACTIVITY = "view-insights-pam-session-activity",
@@ -803,6 +813,7 @@ export enum EventType {
   GET_PKI_SIGNERS = "get-pki-signers",
   GET_PKI_SIGNER_PUBLIC_KEY = "get-pki-signer-public-key",
   GET_PKI_SIGNING_OPERATIONS = "get-pki-signing-operations",
+  GET_PKI_SIGNING_OPERATION = "get-pki-signing-operation",
   PKI_SIGNER_SIGN = "pki-signer-sign",
   ENABLE_PKI_SIGNER = "enable-pki-signer",
   DISABLE_PKI_SIGNER = "disable-pki-signer",
@@ -3966,6 +3977,8 @@ interface RenewCertificate {
     newCertificateId: string;
     profileName: string;
     commonName: string;
+    renewalKeySource: CertificateRenewalKeySource;
+    changedAttributes: TRenewalAuditChange[];
   };
 }
 
@@ -4714,7 +4727,17 @@ interface GetPkiSigningOperationsEvent {
   type: EventType.GET_PKI_SIGNING_OPERATIONS;
   metadata: {
     signerId: string;
+    signerName: string;
     count: number;
+  };
+}
+
+interface GetPkiSigningOperationEvent {
+  type: EventType.GET_PKI_SIGNING_OPERATION;
+  metadata: {
+    signerId: string;
+    signerName: string;
+    operationId: string;
   };
 }
 
@@ -5019,6 +5042,17 @@ interface RegisterKmipServerEvent {
   };
 }
 
+interface KmipServerConnectEvent {
+  type: EventType.KMIP_SERVER_CONNECT;
+  metadata: {
+    serverCertificateSerialNumber: string;
+    hostnamesOrIps: string;
+    commonName: string;
+    keyAlgorithm: CertKeyAlgorithm;
+    ttl: string;
+  };
+}
+
 interface GetSecretRotationsEvent {
   type: EventType.GET_SECRET_ROTATIONS;
   metadata: {
@@ -5179,6 +5213,18 @@ interface GetProjectPitCommitsEvent {
     limit: string;
     search?: string;
     sort: string;
+    filteredActorId?: string;
+    filteredActorName?: string;
+    filteredActorType?: string;
+  };
+}
+
+interface GetProjectPitCommitAuthorsEvent {
+  type: EventType.GET_PROJECT_PIT_COMMIT_AUTHORS;
+  metadata: {
+    environment: string;
+    path: string;
+    authorCount: string;
   };
 }
 
@@ -5483,6 +5529,13 @@ interface ViewSecretManagementInsightsAccessVolumeEvent {
   };
 }
 
+interface ViewSecretManagementInsightsOrgAuthMethodDistributionEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION;
+  metadata: {
+    totalFetches: number;
+  };
+}
+
 interface ViewSecretManagementInsightsAccessLocationsEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS;
   metadata: {
@@ -5520,6 +5573,25 @@ interface ViewSecretManagementInsightsCountsEvent {
   };
 }
 
+interface ViewSecretManagementInsightsUsageEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE;
+  metadata: {
+    activeLeases: number;
+    users: number;
+    identities: number;
+  };
+}
+
+interface ViewSecretManagementInsightsProjectWarningsEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS;
+  metadata: {
+    totalProjects: number;
+    projectsWithIssues: number;
+    offset: number;
+    limit: number;
+  };
+}
+
 interface CreateAuditReportEvent {
   type: EventType.CREATE_AUDIT_REPORT;
   metadata: {
@@ -5550,6 +5622,31 @@ interface DeleteAuditReportEvent {
   metadata: {
     auditReportId: string;
     projectId: string;
+  };
+}
+
+// Org-scoped report events carry no org id in metadata: the audit log row itself is org-scoped.
+interface CreateOrgAuditReportEvent {
+  type: EventType.CREATE_ORG_AUDIT_REPORT;
+  metadata: {
+    auditReportId: string;
+    reportTypes: string[];
+    recipientCount: number;
+  };
+}
+
+interface GetOrgAuditReportsEvent {
+  type: EventType.GET_ORG_AUDIT_REPORTS;
+  metadata: {
+    offset: number;
+    limit: number;
+  };
+}
+
+interface DeleteOrgAuditReportEvent {
+  type: EventType.DELETE_ORG_AUDIT_REPORT;
+  metadata: {
+    auditReportId: string;
   };
 }
 
@@ -6736,7 +6833,7 @@ interface GatewayEnrollEvent {
   };
 }
 
-type ResourceAuthMethodKind = "aws" | "token";
+type ResourceAuthMethodKind = "aws" | "kubernetes" | "token";
 type ResourceAuthMethodResourceType = "gateway" | "relay" | "kmip";
 
 interface ResourceAuthMethodLoginEvent {
@@ -6749,6 +6846,8 @@ interface ResourceAuthMethodLoginEvent {
     principalArn?: string;
     accountId?: string;
     enrollmentTokenId?: string;
+    kubernetesNamespace?: string;
+    kubernetesServiceAccountName?: string;
   };
 }
 
@@ -6762,6 +6861,8 @@ interface ResourceAuthMethodLoginFailedEvent {
     message: string;
     principalArn?: string;
     accountId?: string;
+    kubernetesNamespace?: string;
+    kubernetesServiceAccountName?: string;
   };
 }
 
@@ -6775,6 +6876,10 @@ interface ResourceAuthMethodUpdateEvent {
     stsEndpoint?: string;
     allowedPrincipalArns?: string;
     allowedAccountIds?: string;
+    kubernetesHost?: string;
+    allowedNamespaces?: string;
+    allowedNames?: string;
+    allowedAudience?: string;
   };
 }
 
@@ -7378,6 +7483,7 @@ export type Event =
   | GetPkiSignersEvent
   | GetPkiSignerPublicKeyEvent
   | GetPkiSigningOperationsEvent
+  | GetPkiSigningOperationEvent
   | PkiSignerSignEvent
   | EnablePkiSignerEvent
   | DisablePkiSignerEvent
@@ -7401,6 +7507,7 @@ export type Event =
   | SetupKmipEvent
   | GetKmipEvent
   | RegisterKmipServerEvent
+  | KmipServerConnectEvent
   | KmipOperationGetEvent
   | KmipOperationDestroyEvent
   | KmipOperationCreateEvent
@@ -7432,6 +7539,7 @@ export type Event =
   | MicrosoftTeamsWorkflowIntegrationListEvent
   | MicrosoftTeamsWorkflowIntegrationUpdateEvent
   | GetProjectPitCommitsEvent
+  | GetProjectPitCommitAuthorsEvent
   | GetProjectPitCommitChangesEvent
   | PitRollbackCommitEvent
   | GetProjectPitCommitCountEvent
@@ -7465,15 +7573,21 @@ export type Event =
   | DashboardGetSecretVersionValueEvent
   | ViewSecretManagementInsightsCalendarEvent
   | ViewSecretManagementInsightsAccessVolumeEvent
+  | ViewSecretManagementInsightsOrgAuthMethodDistributionEvent
   | ViewSecretManagementInsightsAccessLocationsEvent
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
   | ViewInsightsSecretsDuplicationEvent
   | ViewSecretManagementInsightsCountsEvent
+  | ViewSecretManagementInsightsUsageEvent
+  | ViewSecretManagementInsightsProjectWarningsEvent
   | CreateAuditReportEvent
   | GetAuditReportsEvent
   | GetAuditReportEvent
   | DeleteAuditReportEvent
+  | CreateOrgAuditReportEvent
+  | GetOrgAuditReportsEvent
+  | DeleteOrgAuditReportEvent
   | ViewAuditLogsEvent
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent

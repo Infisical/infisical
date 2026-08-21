@@ -65,8 +65,9 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          enrollmentMethod: "est",
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          enrollmentMethod: "est"
         }
       });
 
@@ -112,8 +113,9 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          enrollmentMethod: "est",
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          enrollmentMethod: "est"
         }
       });
 

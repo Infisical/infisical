@@ -38,6 +38,7 @@ import { ActorType } from "../auth/auth-type";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIntegrationDALFactory } from "../integration/integration-dal";
+import { buildNativeIntegrationsUrl } from "../integration/integration-deprecation-fns";
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
 import { syncIntegrationSecrets } from "../integration-auth/integration-sync-secret";
@@ -763,7 +764,7 @@ export const secretQueueFactory = ({
           environment: jobPayload.environmentName,
           count: jobPayload.count,
           projectName: project.name,
-          integrationUrl: `${appCfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/integrations?selectedTab=native-integrations`
+          integrationUrl: buildNativeIntegrationsUrl(appCfg.SITE_URL ?? "", project.orgId, project.id)
         }
       });
     }

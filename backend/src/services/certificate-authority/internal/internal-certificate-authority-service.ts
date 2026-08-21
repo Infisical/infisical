@@ -230,7 +230,11 @@ export const internalCertificateAuthorityServiceFactory = ({
     pathLength?: number | null;
     caCertObj: x509.X509Certificate;
   }): x509.BasicConstraintsExtension => {
-    const shouldIssueCaCertificate = basicConstraints !== undefined && basicConstraints !== null;
+    // Decide from the value, never from presence. An explicit { isCA: false } reaches here from stored
+    // certificate requests and CSR-derived constraints, and every upstream policy gate keys on
+    // isCA === true. Treating a present-but-false object as a CA request would stamp a critical
+    // CA:TRUE extension onto a request that asked for a leaf and that no gate had cause to reject.
+    const shouldIssueCaCertificate = basicConstraints?.isCA === true;
 
     if (!shouldIssueCaCertificate) {
       return new x509.BasicConstraintsExtension(false);
@@ -1829,7 +1833,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     locality,
     ou,
     domainComponents,
-    tx
+    tx,
+    onPersisted
   }: TIssueCertFromCaDTO): Promise<TIssueCertFromCaResponse> => {
     let ca: TCertificateAuthorityWithAssociatedCa | undefined;
     let certificateTemplate: TCertificateTemplates | undefined;
@@ -2219,6 +2224,10 @@ export const internalCertificateAuthorityServiceFactory = ({
           },
           transaction
         );
+      }
+
+      if (onPersisted) {
+        await onPersisted(cert, transaction);
       }
 
       return cert;

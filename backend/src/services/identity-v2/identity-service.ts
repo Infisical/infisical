@@ -8,6 +8,7 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
+import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionAdminConsoleAction,
@@ -37,6 +38,7 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
+import { validateIdentityUpdateForSuperAdminPrivileges } from "@app/services/super-admin/super-admin-fns";
 
 import { ActorType } from "../auth/auth-type";
 import { getIdentityActiveLockoutAuthMethods } from "../identity/identity-fns";
@@ -64,7 +66,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   identityDAL: TIdentityV2DALFactory;
   identityMembershipV2DAL: TIdentityMembershipV2DALFactory;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
@@ -117,13 +119,15 @@ export const identityV2ServiceFactory = ({
     await factory.onCreateIdentityGuard(dto);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
-    const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
-
-    if (!isEnterpriseBypass && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
-      // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
-      throw new BadRequestError({
-        message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
-      });
+    const identityLimit = getEnforcedIdentityLimit(plan);
+    if (identityLimit) {
+      const { identitiesUsed } = await licenseService.getOrgSeatUsage(dto.permission.orgId);
+      if (identitiesUsed >= identityLimit) {
+        // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
+        throw new BadRequestError({
+          message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
+        });
+      }
     }
 
     let resolvedRoleDocs: Omit<TMembershipRolesInsert, "membershipId">[] | null = null;
@@ -322,6 +326,7 @@ export const identityV2ServiceFactory = ({
     const factory = scopeFactory[scopeData.scope];
 
     await factory.onUpdateIdentityGuard(dto);
+
     const existingIdentity = await identityDAL.findOne({
       id: dto.selector.identityId,
       orgId: dto.permission.orgId,
@@ -329,6 +334,8 @@ export const identityV2ServiceFactory = ({
     });
     if (!existingIdentity)
       throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
+
+    await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
 
     const identity = await identityDAL.transaction(async (tx) => {
       const updatedIdentity =
@@ -383,6 +390,8 @@ export const identityV2ServiceFactory = ({
     });
     if (!existingIdentity)
       throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
+
+    await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
     if (existingIdentity.hasDeleteProtection) {
       throw new BadRequestError({ message: "Cannot delete identity while delete protection is enabled" });
     }

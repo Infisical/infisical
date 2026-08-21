@@ -1,6 +1,6 @@
 ---
 title: "Microsoft Intune with SCEP"
-sidebarTitle: "Enroll Devices with Microsoft Intune"
+sidebarTitle: "Enroll devices with Microsoft Intune"
 description: "Issue certificates to Intune-managed devices end to end using Infisical SCEP enrollment with Intune challenge validation."
 ---
 
@@ -12,7 +12,7 @@ Because Intune vouches for each individual request, you never distribute a share
   This guide is for administrators who manage both Microsoft Intune and Infisical Certificate Manager. If your devices are managed by a different MDM tool, see the [Jamf Pro guide](/documentation/platform/pki/guides/applications/jamf-pro-scep) or use a static or dynamic challenge as described in [SCEP Enrollment](/documentation/platform/pki/applications/enrollment-methods/scep).
 </Info>
 
-## How It Works
+## How it works
 
 Intune generates a unique, single-use challenge for each device and seals it inside the SCEP request. Infisical asks Intune to confirm the challenge, issues the certificate, and reports the outcome back to Intune so the certificate appears against the device record.
 
@@ -225,7 +225,7 @@ Every step happens inside a single request. Intune has no pending state, so anyt
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="SCEP Enrollment" icon="mobile" href="/documentation/platform/pki/applications/enrollment-methods/scep">

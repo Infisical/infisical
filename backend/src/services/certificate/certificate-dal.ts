@@ -10,6 +10,10 @@ import {
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
 import { isUuidV4 } from "@app/lib/validator";
+import {
+  mapExtendedKeyUsageToLegacy,
+  mapLegacyExtendedKeyUsageToStandard
+} from "@app/services/certificate-common/certificate-constants";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { keySizeToAlgorithms } from "./certificate-fns";
@@ -32,6 +36,14 @@ export const NON_PQC_KEY_ALGORITHMS: string[] = [
 ];
 
 export type TCertificateDALFactory = ReturnType<typeof certificateDALFactory>;
+
+const toLegacyExtendedKeyUsageForQuery = (usage: string): string => {
+  try {
+    return mapExtendedKeyUsageToLegacy(mapLegacyExtendedKeyUsageToStandard(usage));
+  } catch {
+    return usage;
+  }
+};
 
 export const certificateDALFactory = (db: TDbClient) => {
   const certificateOrm = ormify(db, TableName.Certificate);
@@ -183,7 +195,9 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
 
     if (filters.extendedKeyUsage) {
-      q = q.whereRaw(`"${TableName.Certificate}"."extendedKeyUsages" @> ARRAY[?]::text[]`, [filters.extendedKeyUsage]);
+      q = q.whereRaw(`"${TableName.Certificate}"."extendedKeyUsages" @> ARRAY[?]::text[]`, [
+        toLegacyExtendedKeyUsageForQuery(filters.extendedKeyUsage)
+      ]);
     }
 
     if (filters.keyAlgorithm) {
@@ -453,7 +467,10 @@ export const certificateDALFactory = (db: TDbClient) => {
       query = query.orderBy("createdAt", "desc");
 
       const certs = await query;
-      return certs.map((cert) => ({ ...cert, hasPrivateKey: Boolean(cert.privateKeyRef) }));
+      return certs.map((cert) => ({
+        ...cert,
+        hasPrivateKey: Boolean(cert.privateKeyRef)
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find active certificates for sync" });
     }
@@ -555,20 +572,26 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getRequestEnrollmentTypeByCertId = async (certId: string, tx?: Knex): Promise<string | null> => {
+  const getOriginatingRequestByCertId = async (
+    certId: string,
+    tx?: Knex
+  ): Promise<{ enrollmentType: string | null; csr: string | null }> => {
     try {
       // Primary, not replica: eligibility checks must not miss a recently-issued request row.
       const row = (await (tx || db)(TableName.CertificateRequests)
         .where(`${TableName.CertificateRequests}.certificateId`, certId)
         .orderBy(`${TableName.CertificateRequests}.createdAt`, "asc")
-        .select(`${TableName.CertificateRequests}.enrollmentType`)
-        .first()) as { enrollmentType?: string | null } | undefined;
+        .select(`${TableName.CertificateRequests}.enrollmentType`, `${TableName.CertificateRequests}.csr`)
+        .first()) as { enrollmentType?: string | null; csr?: string | null } | undefined;
 
-      return row?.enrollmentType ?? null;
+      return { enrollmentType: row?.enrollmentType ?? null, csr: row?.csr ?? null };
     } catch (error) {
-      throw new DatabaseError({ error, name: "Get request enrollment type by cert id" });
+      throw new DatabaseError({ error, name: "Get originating request by cert id" });
     }
   };
+
+  const getRequestEnrollmentTypeByCertId = async (certId: string, tx?: Knex): Promise<string | null> =>
+    (await getOriginatingRequestByCertId(certId, tx)).enrollmentType;
 
   type TCertificateWithInventoryFields = TCertificates & {
     hasPrivateKey: boolean;
@@ -714,6 +737,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     profileName?: string | null;
     applicationName?: string | null;
     caType?: "internal" | "external" | null;
+    hasPrivateKey: boolean;
   };
 
   type TCertificateLookupFilter = { id: string; serialNumber?: never } | { id?: never; serialNumber: string };
@@ -740,11 +764,13 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.InternalCertificateAuthority}.caId`
         )
         .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
+        .leftJoin(TableName.CertificateSecret, `${TableName.Certificate}.id`, `${TableName.CertificateSecret}.certId`)
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
         .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"))
-        .select(db.ref("id").withSchema(TableName.InternalCertificateAuthority).as("internalCaId"));
+        .select(db.ref("id").withSchema(TableName.InternalCertificateAuthority).as("internalCaId"))
+        .select(db.ref("certId").withSchema(TableName.CertificateSecret).as("privateKeyRef"));
 
       if (filter.id) {
         query = query.where(`${TableName.Certificate}.id`, filter.id);
@@ -753,21 +779,25 @@ export const certificateDALFactory = (db: TDbClient) => {
       }
 
       const result = (await query.first()) as
-        | (TCertificateWithRequestDetails & { internalCaId?: string | null })
+        | (TCertificateWithRequestDetails & { internalCaId?: string | null; privateKeyRef?: string | null })
         | undefined;
 
       if (!result) {
         return undefined;
       }
 
-      const { internalCaId, ...rest } = result;
+      const { internalCaId, privateKeyRef, ...rest } = result;
 
       let caType: "internal" | "external" | null = null;
       if (result.caId) {
         caType = internalCaId ? "internal" : "external";
       }
 
-      return { ...rest, caType } as TCertificateWithRequestDetails;
+      return {
+        ...rest,
+        caType,
+        hasPrivateKey: Boolean(privateKeyRef)
+      } as TCertificateWithRequestDetails;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate with full details" });
     }
@@ -1180,6 +1210,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findActiveCertificatesForSync,
     findCertificatesEligibleForRenewal,
     getRequestEnrollmentTypeByCertId,
+    getOriginatingRequestByCertId,
     findWithPrivateKeyInfo,
     findWithFullDetails,
     getDashboardStats,

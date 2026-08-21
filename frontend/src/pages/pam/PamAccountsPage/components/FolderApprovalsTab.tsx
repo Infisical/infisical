@@ -336,7 +336,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                 <TableRow>
                   <TableHead>Approver</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -367,7 +367,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                           {approver.type === PamApproverType.User ? "User" : "Group"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell variant="action">
                         <IconButton
                           variant="ghost"
                           size="xs"
@@ -452,7 +452,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                     <TableHead>Requester</TableHead>
                     <TableHead>Account</TableHead>
                     <TableHead>Status</TableHead>
-                    {canRevoke && <TableHead className="w-12" />}
+                    {canRevoke && <TableHead variant="action" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -480,7 +480,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                           <Badge variant={status.variant}>{status.label}</Badge>
                         </TableCell>
                         {canRevoke && (
-                          <TableCell onClick={(e) => e.stopPropagation()}>
+                          <TableCell variant="action" onClick={(e) => e.stopPropagation()}>
                             {isGrantActive(request) && (
                               <Tooltip>
                                 <TooltipTrigger asChild>

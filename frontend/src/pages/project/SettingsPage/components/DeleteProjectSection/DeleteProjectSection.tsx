@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { TriangleAlert } from "lucide-react";
 
@@ -20,9 +19,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Field,
-  FieldLabel,
-  Input,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -54,8 +50,6 @@ export const DeleteProjectSection = () => {
   const isDirectMember = Boolean(memberships?.some((membership) => !membership.actorGroupId));
   const [isDeleting, setIsDeleting] = useToggle();
   const [isLeaving, setIsLeaving] = useToggle();
-  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
-  const [leaveConfirmInput, setLeaveConfirmInput] = useState("");
   const deleteWorkspace = useDeleteWorkspace();
   const leaveProject = useLeaveProject();
 
@@ -152,10 +146,8 @@ export const DeleteProjectSection = () => {
 
       <AlertDialog
         open={popUp.deleteWorkspace.isOpen}
-        onOpenChange={(isOpen) => {
-          handlePopUpToggle("deleteWorkspace", isOpen);
-          setDeleteConfirmInput("");
-        }}
+        confirmationValue={CONFIRM_KEYWORD}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteWorkspace", isOpen)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -168,37 +160,17 @@ export const DeleteProjectSection = () => {
               reversible, so please be careful.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogConfirmationField>
-            <Field>
-              <FieldLabel htmlFor="delete-project-confirmation">
-                Type <span className="font-bold text-foreground">{CONFIRM_KEYWORD}</span> to perform
-                this action
-              </FieldLabel>
-              <Input
-                id="delete-project-confirmation"
-                value={deleteConfirmInput}
-                onChange={(event) => setDeleteConfirmInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (
-                    event.key === "Enter" &&
-                    deleteConfirmInput === CONFIRM_KEYWORD &&
-                    !isDeleting
-                  ) {
-                    event.preventDefault();
-                    handleDeleteWorkspaceSubmit();
-                  }
-                }}
-                autoComplete="off"
-                placeholder={`Type ${CONFIRM_KEYWORD} here`}
-              />
-            </Field>
-          </AlertDialogConfirmationField>
+          <AlertDialogConfirmationField
+            inputProps={{ placeholder: `Type ${CONFIRM_KEYWORD} here` }}
+            onConfirm={() => {
+              if (!isDeleting) handleDeleteWorkspaceSubmit();
+            }}
+          />
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
               isPending={isDeleting}
-              isDisabled={deleteConfirmInput !== CONFIRM_KEYWORD}
               onClick={(event) => {
                 event.preventDefault();
                 handleDeleteWorkspaceSubmit();
@@ -212,10 +184,8 @@ export const DeleteProjectSection = () => {
 
       <AlertDialog
         open={popUp.leaveWorkspace.isOpen}
-        onOpenChange={(isOpen) => {
-          handlePopUpToggle("leaveWorkspace", isOpen);
-          setLeaveConfirmInput("");
-        }}
+        confirmationValue={CONFIRM_KEYWORD}
+        onOpenChange={(isOpen) => handlePopUpToggle("leaveWorkspace", isOpen)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -228,37 +198,17 @@ export const DeleteProjectSection = () => {
               contents.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogConfirmationField>
-            <Field>
-              <FieldLabel htmlFor="leave-project-confirmation">
-                Type <span className="font-bold text-foreground">{CONFIRM_KEYWORD}</span> to leave
-                the project
-              </FieldLabel>
-              <Input
-                id="leave-project-confirmation"
-                value={leaveConfirmInput}
-                onChange={(event) => setLeaveConfirmInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (
-                    event.key === "Enter" &&
-                    leaveConfirmInput === CONFIRM_KEYWORD &&
-                    !isLeaving
-                  ) {
-                    event.preventDefault();
-                    handleLeaveWorkspaceSubmit();
-                  }
-                }}
-                autoComplete="off"
-                placeholder={`Type ${CONFIRM_KEYWORD} here`}
-              />
-            </Field>
-          </AlertDialogConfirmationField>
+          <AlertDialogConfirmationField
+            inputProps={{ placeholder: `Type ${CONFIRM_KEYWORD} here` }}
+            onConfirm={() => {
+              if (!isLeaving) handleLeaveWorkspaceSubmit();
+            }}
+          />
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isLeaving}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
               isPending={isLeaving}
-              isDisabled={leaveConfirmInput !== CONFIRM_KEYWORD}
               onClick={(event) => {
                 event.preventDefault();
                 handleLeaveWorkspaceSubmit();

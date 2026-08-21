@@ -36,6 +36,19 @@ type LazyMeter = {
   createHistogram: (name: string, options?: MetricOptions) => Histogram;
 };
 
+// Recording is fire-and-forget: a measurement is an observation of the work, never a step in it, so
+// nothing here may throw into a call site. The SDK can raise on a malformed instrument name or a
+// broken exporter, and getConfig() is empty until initEnvConfig() runs, which is reachable from
+// anything recording during boot. Swallowing is silent on purpose — the logger is itself initialised
+// from config, so reporting the failure here risks throwing a second time from the handler.
+const safely = (record: () => void) => {
+  try {
+    record();
+  } catch {
+    // metrics must never break the path they observe
+  }
+};
+
 // Returns instrument wrappers whose underlying instrument is created on first use (after init), so it
 // binds to the real MeterProvider. Call sites keep using .add()/.record() exactly as before.
 const lazyMeter = (meterName: string): LazyMeter => ({
@@ -43,8 +56,10 @@ const lazyMeter = (meterName: string): LazyMeter => ({
     let instrument: Counter | undefined;
     return {
       add: (value: number, attributes?: Attributes) => {
-        if (!instrument) instrument = resolveMeter(meterName).createCounter(name, options);
-        instrument.add(value, attributes);
+        safely(() => {
+          if (!instrument) instrument = resolveMeter(meterName).createCounter(name, options);
+          instrument.add(value, attributes);
+        });
       }
     } as Counter;
   },
@@ -52,17 +67,22 @@ const lazyMeter = (meterName: string): LazyMeter => ({
     let instrument: Histogram | undefined;
     return {
       record: (value: number, attributes?: Attributes) => {
-        if (!instrument) instrument = resolveMeter(meterName).createHistogram(name, options);
-        instrument.record(value, attributes);
+        safely(() => {
+          if (!instrument) instrument = resolveMeter(meterName).createHistogram(name, options);
+          instrument.record(value, attributes);
+        });
       }
     } as Histogram;
   }
 });
 
-const isTelemetryEnabled = () => getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED;
+// Exported so a call site can skip work it would only do to produce a measurement (an extra query,
+// a serialization, a size computation). Recording is already gated internally, so this is never
+// needed to make a record*Metric call safe.
+export const isTelemetryEnabled = () => Boolean(getConfig()?.OTEL_TELEMETRY_COLLECTION_ENABLED);
 
 export const shouldRecordHighCardinalityMetrics = () =>
-  isTelemetryEnabled() && !getConfig().OTEL_DROP_HIGH_CARDINALITY_METERS;
+  isTelemetryEnabled() && !getConfig()?.OTEL_DROP_HIGH_CARDINALITY_METERS;
 
 export const highCardinalityMeter = (meterName: string): LazyMeter => {
   const meter = lazyMeter(meterName);
@@ -667,6 +687,64 @@ export const recordAlertDispatchOutcomeMetric = (params: { resourceType: string;
     outcome: params.outcome
   });
 };
+
+export enum ProductAnalyticsDropReason {
+  Retention = "retention",
+  Unparseable = "unparseable"
+}
+
+export const productAnalyticsPublishedCounter = infisicalCoreMeter.createCounter(
+  "infisical.product_analytics.published.count",
+  {
+    description: "Buffered product analytics events drained from Redis and published to PostHog, by event type.",
+    unit: "{event}"
+  }
+);
+
+export const productAnalyticsDroppedCounter = infisicalCoreMeter.createCounter(
+  "infisical.product_analytics.dropped.count",
+  {
+    description:
+      "Buffered product analytics events dropped before reaching PostHog, by event type and reason. Occasional retention drops are tolerable; a sustained rate means the drain is not keeping up and the limits need tweaking.",
+    unit: "{event}"
+  }
+);
+
+export const productAnalyticsBacklogHistogram = infisicalCoreMeter.createHistogram(
+  "infisical.product_analytics.shard.backlog",
+  {
+    description:
+      "Entries left in a shard after its drain, by event type. Zero on a healthy run: a backlog that persists across runs is what precedes retention drops and, near the 100k MAXLEN, silent write-path eviction.",
+    unit: "{entry}"
+  }
+);
+
+export const recordProductAnalyticsPublishedMetric = (params: { eventType: string; count: number }) =>
+  safely(() => {
+    if (!isTelemetryEnabled() || params.count === 0) return;
+    productAnalyticsPublishedCounter.add(params.count, { "product_analytics.event_type": params.eventType });
+  });
+
+export const recordProductAnalyticsDroppedMetric = (params: {
+  eventType: string;
+  reason: ProductAnalyticsDropReason;
+  count: number;
+}) =>
+  safely(() => {
+    if (!isTelemetryEnabled() || params.count === 0) return;
+    productAnalyticsDroppedCounter.add(params.count, {
+      "product_analytics.event_type": params.eventType,
+      "product_analytics.drop_reason": params.reason
+    });
+  });
+
+export const recordProductAnalyticsBacklogMetric = (params: { eventType: string; backlog: number }) =>
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    productAnalyticsBacklogHistogram.record(params.backlog, {
+      "product_analytics.event_type": params.eventType
+    });
+  });
 
 // -- Boot-time observable gauges (InfisicalCore meter) ----------------------------------------------
 // Registered once at boot from main.ts with the primary Knex instance. Runs AFTER setupTelemetry() has

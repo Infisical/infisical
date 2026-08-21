@@ -12,7 +12,7 @@ import {
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
+import { getEnforcedIdentityLimit, throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -102,7 +102,7 @@ type TLdapConfigServiceFactoryDep = {
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -559,6 +559,7 @@ export const ldapConfigServiceFactory = ({
         });
     } else {
       let isNewUser = false;
+      const identityLimit = getEnforcedIdentityLimit(await licenseService.getPlan(orgId));
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -606,7 +607,13 @@ export const ldapConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await throwOnPlanSeatLimitReached(licenseService, orgId, UserAliasType.LDAP);
+          await throwOnPlanSeatLimitReached({
+            licenseService,
+            orgId,
+            identityLimit,
+            tx,
+            aliasType: UserAliasType.LDAP
+          });
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
           const membership = await orgDAL.createMembership(

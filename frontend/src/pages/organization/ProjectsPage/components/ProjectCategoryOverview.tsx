@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
@@ -441,19 +441,36 @@ export const ProjectCategoryOverview = () => {
             );
           }
 
+          const tileClassName = `group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`;
+
+          // Cert Manager and PAM resolve their destination asynchronously (instance picker,
+          // lazy project bootstrap, join-on-behalf), so they stay handler-driven.
+          if (type === ProjectType.CertificateManager || type === ProjectType.PAM) {
+            return (
+              <Card
+                key={type}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleTileClick(type)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleTileClick(type);
+                }}
+                className={tileClassName}
+              >
+                {tileBody}
+              </Card>
+            );
+          }
+
           return (
-            <Card
+            <Link
               key={type}
-              role="button"
-              tabIndex={0}
-              onClick={() => handleTileClick(type)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleTileClick(type);
-              }}
-              className={`group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`}
+              to="/organizations/$orgId/projects/$type"
+              params={{ orgId: currentOrg?.id || "", type: projectTypeToUrlSlug(type) }}
+              className="block"
             >
-              {tileBody}
-            </Card>
+              <Card className={tileClassName}>{tileBody}</Card>
+            </Link>
           );
         })}
       </div>
