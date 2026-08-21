@@ -2,12 +2,38 @@ version: v0.162.22
 releasedAt: 2026-08-20T15:37:54-07:00
 sourceTag: v0.162.22
 previousTag: v0.162.21
-impactLevel: low
+impactLevel: medium
 summary: Adds two startup-run database migrations for gateway Kubernetes auth
-  and org-scoped audit reports. No required config or deployment changes were
-  found.
+  and org-scoped audit reports. Permanently disables creating new native
+  integrations through the API.
 requiresDbMigration: true
-breakingChanges: []
+breakingChanges:
+  - title: Native integration creation disabled
+    description: The POST /integration endpoint now always returns a 400 error,
+      and createIntegration was removed from the integration service. Every
+      request to create a new native integration fails immediately after
+      upgrading, including calls from external automation. Existing
+      integrations keep reading, updating, deleting, and syncing normally.
+    action: Migrate any automation that creates native integrations to Secret
+      Syncs before upgrading. Existing integrations require no changes.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/server/routes/v1/integration-router.ts
+        path: backend/src/server/routes/v1/integration-router.ts
+        description: POST handler now unconditionally throws BadRequestError
+      - type: file
+        ref: backend/src/services/integration/integration-service.ts
+        path: backend/src/services/integration/integration-service.ts
+        description: createIntegration removed from the service
+      - type: file
+        ref: docs/integrations/secret-syncs/native-integrations-migration.mdx
+        path: docs/integrations/secret-syncs/native-integrations-migration.mdx
+        description: Migration guide for moving native integrations to Secret Syncs
+      - type: pr
+        ref: "#7501"
+        url: https://github.com/Infisical/infisical/pull/7501
+        description: Merges the change disabling native integration creation
 dbSchemaChanges:
   - title: Gateway Kubernetes auth tables
     description: Adds the resource_kubernetes_auths table and indexes for gateway
@@ -21,14 +47,18 @@ dbSchemaChanges:
         description: Creates resource_kubernetes_auths table and indexes
   - title: Audit reports org scope
     description: Adds nullable orgId to audit_reports, makes projectId nullable, and
-      enforces exactly one scope with a check constraint.
+      enforces exactly one scope with a check constraint that Postgres validates
+      against every existing row as part of the same migration.
     action: No manual action required; Infisical runs this migration during startup.
+      On a large audit_reports table, constraint validation locks the table until
+      the scan finishes. Rolling this migration back manually deletes every
+      org-scoped report (null projectId) before restoring the NOT NULL constraint.
     confidence: high
     evidence:
       - type: file
         ref: backend/src/db/migrations/20260807120000_add-org-scope-to-audit-reports.ts
         path: backend/src/db/migrations/20260807120000_add-org-scope-to-audit-reports.ts
-        description: Adds orgId and scope check constraint
+        description: Adds orgId/check constraint; down() deletes org-scoped rows
 configChanges: []
 deploymentNotes: []
 knownIssues: []
