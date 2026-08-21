@@ -1,5 +1,4 @@
 export * from "./AccessRestricted";
-export * from "./AccessRestrictedBanner";
 export * from "./DateRangeFilter";
 export * from "./DeleteConfirmDialog";
 export * from "./DocumentationLinkBadge";

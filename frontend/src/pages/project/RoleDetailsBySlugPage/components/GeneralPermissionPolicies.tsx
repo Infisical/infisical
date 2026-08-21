@@ -17,6 +17,7 @@ import {
   Badge,
   Button,
   IconButton,
+  type PermissionActionOption,
   PermissionActionSelect,
   Select,
   SelectContent,
@@ -166,11 +167,10 @@ const ActionsMultiSelect = ({
     [actionOptions, rule]
   );
 
-  const handleChange = (newValue: unknown) => {
-    const selectedArray = Array.isArray(newValue) ? newValue : [];
+  const handleChange = (selectedActionsValue: PermissionActionOption[]) => {
     visibleActions.forEach(({ value }) => {
       const valueStr = String(value);
-      const isSelected = selectedArray.some((s: { value: string }) => s.value === valueStr);
+      const isSelected = selectedActionsValue.some((selected) => selected.value === valueStr);
       setValue(`permissions.${subject}.${rootIndex}.${valueStr}` as any, isSelected, {
         shouldDirty: true,
         shouldTouch: true
@@ -184,17 +184,13 @@ const ActionsMultiSelect = ({
     <div className="flex w-full flex-col">
       <PermissionActionSelect
         value={selectedActions}
-        onChange={handleChange}
+        onValueChange={handleChange}
         options={actionOptions}
         placeholder="Select actions..."
         isDisabled={isDisabled}
-        isClearable={!isDisabled}
         className="w-full"
-        menuPosition="fixed"
-        {...(menuPortalContainerRef?.current
-          ? { menuPortalTarget: menuPortalContainerRef.current }
-          : {})}
-        isError={actionsError}
+        portalContainer={menuPortalContainerRef?.current}
+        isError={Boolean(actionsError)}
       />
       {actionsError && (
         <span className="mt-1 text-xs text-danger">{actionsError.message as string}</span>

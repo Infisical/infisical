@@ -2,18 +2,19 @@ import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { InfoIcon } from "lucide-react";
 
-import { AppConnectionOption } from "@app/components/app-connections";
 import { createNotification } from "@app/components/notifications";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Badge,
   Button,
+  Combobox,
   Field,
   FieldDescription,
   FieldLabel,
   FieldTitle,
-  FilterableSelect,
+  OrgIcon,
   Sheet,
   SheetClose,
   SheetContent,
@@ -21,9 +22,10 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  SubOrgIcon,
   TextArea
 } from "@app/components/v3";
-import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import {
   useGetVaultMounts,
@@ -53,7 +55,7 @@ const defaultVaultConnectionId = (appConnections: TAvailableAppConnection[]) =>
 const Content = ({ onClose, appConnections }: ContentProps) => {
   const rootForm = useFormContext<TFormSchema>();
   const hasAppConnections = appConnections.length > 0;
-  const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
+  const { isSubOrganization } = useOrganization();
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(
     defaultVaultConnectionId(appConnections)
   );
@@ -225,10 +227,7 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
 
   return (
     <>
-      <div
-        ref={setPortalContainer}
-        className="min-h-0 thin-scrollbar flex-1 space-y-4 overflow-y-auto p-4"
-      >
+      <div className="min-h-0 thin-scrollbar flex-1 space-y-4 overflow-y-auto p-4">
         <Alert variant="info">
           <InfoIcon />
           <AlertTitle>How Policy Translation Works</AlertTitle>
@@ -252,22 +251,31 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
         {hasAppConnections && (
           <Field>
             <FieldLabel htmlFor="vault-app-connection">App Connection</FieldLabel>
-            <FilterableSelect<TAvailableAppConnection>
-              inputId="vault-app-connection"
+            <Combobox
+              id="vault-app-connection"
               value={
                 appConnections.find((connection) => connection.id === selectedConnectionId) ?? null
               }
-              onChange={(value) => {
-                if (value && !Array.isArray(value)) {
-                  handleConnectionChange((value as TAvailableAppConnection).id);
-                }
-              }}
+              onValueChange={(connection) => handleConnectionChange(connection.id)}
               options={appConnections}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
               placeholder="Select app connection..."
-              components={{ Option: AppConnectionOption }}
-              menuPortalTarget={portalContainer}
+              searchPlaceholder="Search app connections..."
+              searchAriaLabel="Search app connections"
+              emptyMessage="No app connections found."
+              modal
+              renderOption={(option) => (
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                  <span className="truncate">{option.name}</span>
+                  {!option.projectId && (
+                    <Badge variant={isSubOrganization ? "sub-org" : "org"}>
+                      {isSubOrganization ? <SubOrgIcon /> : <OrgIcon />}
+                      {isSubOrganization ? "Sub-Organization" : "Organization"}
+                    </Badge>
+                  )}
+                </div>
+              )}
             />
             <FieldDescription>
               Project-scoped HashiCorp Vault app connections available to you.
@@ -277,15 +285,11 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
 
         <Field>
           <FieldLabel htmlFor="vault-namespace">Namespace</FieldLabel>
-          <FilterableSelect<{ id: string; name: string }>
-            inputId="vault-namespace"
+          <Combobox
+            id="vault-namespace"
             value={namespaces?.find((namespace) => namespace.name === selectedNamespace) ?? null}
-            onChange={(value) => {
-              if (value && !Array.isArray(value)) {
-                handleNamespaceChange((value as { id: string; name: string }).name);
-              }
-            }}
-            options={namespaces || []}
+            onValueChange={(namespace) => handleNamespaceChange(namespace.name)}
+            options={namespaces ?? []}
             getOptionValue={(option) => option.name}
             getOptionLabel={(option) => (option.name === "/" ? "root" : option.name)}
             isDisabled={isLoadingNamespaces || needsConnection}
@@ -293,7 +297,10 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
             placeholder={
               needsConnection ? "Select an app connection first..." : "Select namespace..."
             }
-            menuPortalTarget={portalContainer}
+            searchPlaceholder="Search namespaces..."
+            searchAriaLabel="Search Vault namespaces"
+            emptyMessage="No Vault namespaces found."
+            modal
           />
           <FieldDescription>
             Select the Vault namespace used to fetch policies and KV mount information for the
@@ -303,25 +310,24 @@ const Content = ({ onClose, appConnections }: ContentProps) => {
 
         <Field>
           <FieldLabel htmlFor="vault-policy">Select Vault Policy (Optional)</FieldLabel>
-          <FilterableSelect
-            inputId="vault-policy"
-            value={selectedPolicy ? policies?.find((p) => p.name === selectedPolicy) : null}
-            onChange={(value) => {
-              if (value && !Array.isArray(value)) {
-                const policy = value as { name: string; rules: string };
-                setSelectedPolicy(policy.name);
-              } else {
-                setSelectedPolicy(null);
-              }
-            }}
-            options={policies || []}
+          <Combobox
+            id="vault-policy"
+            value={
+              selectedPolicy ? (policies?.find((p) => p.name === selectedPolicy) ?? null) : null
+            }
+            onValueChange={(policy) => setSelectedPolicy(policy.name)}
+            onClear={() => setSelectedPolicy(null)}
+            options={policies ?? []}
             getOptionValue={(option) => option.name}
             getOptionLabel={(option) => option.name}
             isDisabled={isLoadingPolicies}
             isLoading={isLoadingPolicies}
             placeholder="Choose a policy to import..."
-            isClearable
-            menuPortalTarget={portalContainer}
+            searchPlaceholder="Search Vault policies..."
+            searchAriaLabel="Search Vault policies"
+            clearAriaLabel="Clear Vault policy"
+            emptyMessage="No Vault policies found."
+            modal
           />
           <FieldDescription>
             Select a policy to auto-populate the HCL editor below, or skip to paste your own policy.
