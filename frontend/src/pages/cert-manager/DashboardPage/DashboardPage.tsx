@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -60,9 +59,7 @@ export const DashboardPage = () => {
   }
   return (
     <div className="h-full bg-bunker-800">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Certificate Dashboard" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Certificate Dashboard" })}</title>
       <div className="mx-auto flex flex-col text-white">
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <PageHeader

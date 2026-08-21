@@ -1,7 +1,4 @@
-import crypto from "crypto";
-
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
@@ -10,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { randomHex } from "@app/components/utilities/cryptography/crypto";
 import { Button, Card, CardTitle, FormControl, TextArea } from "@app/components/v2";
 import { useOrganization, useProject } from "@app/context";
 import { localStorageService } from "@app/helpers/localStorage";
@@ -45,7 +43,7 @@ export const GcpSecretManagerAuthorizePage = () => {
 
     if (!integrationOption) return;
 
-    const state = crypto.randomBytes(16).toString("hex");
+    const state = randomHex(16);
     localStorage.setItem("latestCSRFToken", state);
     localStorageService.setIntegrationProjectId(currentProject.id);
 
@@ -87,9 +85,7 @@ export const GcpSecretManagerAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Authorize GCP Secret Manager Integration</title>
-      </Helmet>
+      <title>Authorize GCP Secret Manager Integration</title>
       <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="px-6 text-left text-xl"

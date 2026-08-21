@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type JSX, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Info, LayoutGrid } from "lucide-react";
 

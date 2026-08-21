@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon } from "lucide-react";
 
@@ -131,10 +130,10 @@ const Page = () => {
 
 export const HsmConnectorDetailsByIDPage = () => (
   <>
-    <Helmet>
+    <>
       <title>HSM Connectors</title>
       <link rel="icon" href="/infisical.ico" />
-    </Helmet>
+    </>
     <Page />
   </>
 );

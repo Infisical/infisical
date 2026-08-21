@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, FolderOpen, FolderPlus, Layers, Plus, Search } from "lucide-react";
 
@@ -216,9 +215,7 @@ export const PamAccountsPage = () => {
 
   return (
     <div className="mx-auto mb-6 w-full max-w-8xl">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Accounts" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Accounts" })}</title>
       <PageHeader
         title="Accounts"
         description="Access and manage privileged accounts."

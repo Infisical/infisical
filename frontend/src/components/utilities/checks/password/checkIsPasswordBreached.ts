@@ -45,7 +45,7 @@ export const checkPasswordBreachStatus = async (
   const HAVE_I_BEEN_PWNED_API_URL = "https://api.pwnedpasswords.com";
   const maxRetryAttempts = 3;
 
-  let encodedPwd: Uint8Array | undefined;
+  let encodedPwd: Uint8Array<ArrayBuffer> | undefined;
   let hashedPwdBuffer: ArrayBuffer | undefined;
 
   try {
@@ -54,7 +54,7 @@ export const checkPasswordBreachStatus = async (
     encodedPwd = textEncoder.encode(password);
 
     // Hash the password and convert it to a useful format for the HIBP API
-    hashedPwdBuffer = await hashPassword(encodedPwd!.buffer);
+    hashedPwdBuffer = await hashPassword(encodedPwd.buffer);
     const hashedPwd = bufferToHex(hashedPwdBuffer).toUpperCase();
     // ONLY send the first 5 hash chars (over HTTPS)
     const hashedPwdToSend = hashedPwd.slice(0, 5);

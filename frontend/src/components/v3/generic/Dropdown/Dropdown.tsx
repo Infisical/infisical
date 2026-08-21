@@ -18,7 +18,7 @@ const DropdownMenuTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>
 >(
-  ({ ...props }, ref): JSX.Element => (
+  ({ ...props }, ref): React.JSX.Element => (
     <DropdownMenuPrimitive.Trigger ref={ref} data-slot="dropdown-menu-trigger" {...props} />
   )
 );
@@ -59,7 +59,7 @@ type DropdownMenuProps = Omit<
 };
 
 const DropdownMenuItem = React.forwardRef<HTMLDivElement, DropdownMenuProps>(
-  ({ className, inset, variant = "default", isDisabled, ...props }, ref): JSX.Element => {
+  ({ className, inset, variant = "default", isDisabled, ...props }, ref): React.JSX.Element => {
     return (
       <DropdownMenuPrimitive.Item
         ref={ref}

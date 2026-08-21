@@ -206,7 +206,7 @@ const ImportSecretsContent = ({
         if (secretPath !== "/") {
           const pathSegment = secretPath.split("/").filter(Boolean);
           const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
-          const folderName = pathSegment.at(-1);
+          const folderName = pathSegment[pathSegment.length - 1];
           const canCreateFolder = permission.can(
             ProjectPermissionActions.Create,
             subject(ProjectPermissionSub.SecretFolders, {

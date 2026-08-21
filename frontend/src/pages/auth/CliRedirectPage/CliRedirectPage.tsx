@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -38,10 +37,10 @@ export const CliRedirectPage = () => {
 
   return (
     <AuthPageLayout variant="focused" contentClassName="max-w-xl">
-      <Helmet>
+      <>
         <title>Infisical CLI | Login Successful!</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <AuthPagePanel className="flex flex-col items-center space-y-4 text-gray-200">
         {cliToken ? (
           <>

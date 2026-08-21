@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -41,13 +40,13 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
   return (
     <>
       <AuthPageLayout variant="focused" showFooter={false} contentClassName="max-w-2xl">
-        <Helmet>
+        <>
           <title>{t("common.head-title", { title: t("login.title") })}</title>
           <link rel="icon" href="/infisical.ico" />
           <meta property="og:image" content="/images/message.png" />
           <meta property="og:title" content={t("login.og-title") ?? ""} />
           <meta name="og:description" content={t("login.og-description") ?? ""} />
-        </Helmet>
+        </>
         <AuthPagePanel>
           <form className="mx-auto flex w-full flex-col">
             <div className="mb-6">
@@ -69,7 +68,7 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
             </div>
             <div className="flex h-full max-h-60 thin-scrollbar w-full flex-col items-stretch gap-2 overflow-auto rounded-md">
               {duplicateAccounts?.data?.duplicateAccounts?.map((el) => {
-                const lastSession = el.devices?.at(-1);
+                const lastSession = el.devices?.[el.devices.length - 1];
                 return (
                   <div
                     key={el.id}

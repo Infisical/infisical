@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArrowLeftIcon } from "lucide-react";
@@ -16,10 +15,8 @@ export const PersonalSettingsPage = () => {
 
   return (
     <div className="mx-auto w-full max-w-5xl p-4 lg:p-8">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.personal.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>{t("common.head-title", { title: t("settings.personal.title") })}</title>
+      <link rel="icon" href="/infisical.ico" />
       <Link
         to="/"
         className="mb-6 inline-flex items-center gap-2 rounded-sm text-sm text-muted transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"

@@ -970,7 +970,7 @@ export const useAuthorizeIntegration = () => {
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({
-        queryKey: { queryKey: projectKeys.getProjectAuthorization(res.workspace) }
+        queryKey: projectKeys.getProjectAuthorization(res.workspace)
       });
     }
   });

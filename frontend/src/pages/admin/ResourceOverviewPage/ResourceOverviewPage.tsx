@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 
@@ -21,9 +20,7 @@ export const ResourceOverviewPage = () => {
 
   return (
     <div className="h-full bg-background text-foreground">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Resource Overview" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Resource Overview" })}</title>
       <div className="mx-auto flex flex-col justify-between">
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <PageHeader

@@ -1,0 +1,57 @@
+name: Check npm install policy
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - ".github/workflows/check-npm-install-policy.yml"
+      - ".npmrc"
+      - ".nvmrc"
+      - "package.json"
+      - "package-lock.json"
+      - "e2e/**"
+      - "sink/oidc-server/**"
+
+env:
+  NPM_VERSION: "11.19.0"
+
+jobs:
+  install:
+    name: Install ${{ matrix.label }} dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: root
+            directory: .
+          - label: e2e
+            directory: e2e
+          - label: OIDC sink
+            directory: sink/oidc-server
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node from .nvmrc
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Setup npm
+        run: |
+          npm install --global "npm@${NPM_VERSION}"
+          test "$(npm --version)" = "${NPM_VERSION}"
+        working-directory: ${{ runner.temp }}
+
+      - name: Verify project policy
+        run: |
+          test "$(npm config get min-release-age --location=project)" = "7"
+          test "$(npm config get strict-allow-scripts --location=project)" = "true"
+        working-directory: ${{ matrix.directory }}
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ${{ matrix.directory }}

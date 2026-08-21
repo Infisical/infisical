@@ -90,7 +90,7 @@ export const SecretTagForm = ({
 
   // In batch mode, debounce tag changes to parent form
   const watchedTags = watch("tags");
-  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (!isBatchMode) return () => {};

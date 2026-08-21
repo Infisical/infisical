@@ -3,6 +3,26 @@
   "version": "0.1.0",
   "private": true,
   "description": "Playwright e2e suite that runs against a deployed Infisical environment (gamma) between deploy and prod promotion.",
+  "packageManager": "npm@11.19.0",
+  "engines": {
+    "node": ">=22.22.2 <23",
+    "npm": ">=11.19.0 <12"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=22.22.2 <23",
+      "onFail": "error"
+    },
+    "packageManager": {
+      "name": "npm",
+      "version": ">=11.19.0 <12",
+      "onFail": "error"
+    }
+  },
+  "allowScripts": {
+    "fsevents@2.3.2": false
+  },
   "scripts": {
     "test": "playwright test",
     "test:headed": "playwright test --headed",

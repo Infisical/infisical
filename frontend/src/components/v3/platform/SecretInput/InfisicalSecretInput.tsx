@@ -103,7 +103,6 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     const handleRef = useCallback(
       (el: HTMLTextAreaElement) => {
-        // @ts-expect-error multiple refs
         inputRef.current = el;
         if (ref) {
           if (typeof ref === "function") {

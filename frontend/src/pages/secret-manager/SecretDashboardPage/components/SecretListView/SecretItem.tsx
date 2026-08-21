@@ -165,7 +165,7 @@ export const SecretItem = memo(
     const { isRotatedSecret, isHoneyTokenSecret } = secret;
     const isManagedSecret = isRotatedSecret || isHoneyTokenSecret;
 
-    const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
+    const autoSaveTimeoutRef = useRef<NodeJS.Timeout>(undefined);
     const isAutoSavingRef = useRef(false);
 
     const handleDeletePending = (pendingSecret: SecretV3RawSanitized) => {

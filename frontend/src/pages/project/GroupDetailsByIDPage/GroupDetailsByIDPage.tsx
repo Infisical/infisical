@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
@@ -216,10 +215,10 @@ export const GroupDetailsByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
+      <>
         <title>{t("common.head-title", { title: "Project Group" })}</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <ProjectPermissionCan
         I={ProjectPermissionActions.Read}
         a={ProjectPermissionSub.Groups}

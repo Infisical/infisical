@@ -1,5 +1,4 @@
-import { createElement } from "react";
-import { ReactNode } from "@tanstack/react-router";
+import { createElement, type ReactNode } from "react";
 import { LucideIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 

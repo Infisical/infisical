@@ -3,6 +3,23 @@
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
+  "packageManager": "npm@11.19.0",
+  "engines": {
+    "node": ">=22.22.2 <23",
+    "npm": ">=11.19.0 <12"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=22.22.2 <23",
+      "onFail": "error"
+    },
+    "packageManager": {
+      "name": "npm",
+      "version": ">=11.19.0 <12",
+      "onFail": "error"
+    }
+  },
   "scripts": {
     "start": "node main.js"
   },

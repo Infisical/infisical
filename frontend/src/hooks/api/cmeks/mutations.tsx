@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { encodeBase64 } from "@app/components/utilities/cryptography/crypto";
+import { encodeBase64, encodeUtf8 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 import { cmekKeys } from "@app/hooks/api/cmeks/queries";
 import {
@@ -92,7 +92,7 @@ export const useCmekEncrypt = () => {
       const { data } = await apiRequest.post<TCmekEncryptResponse>(
         `/api/v1/kms/keys/${keyId}/encrypt`,
         {
-          plaintext: isBase64Encoded ? plaintext : encodeBase64(Buffer.from(plaintext))
+          plaintext: isBase64Encoded ? plaintext : encodeBase64(encodeUtf8(plaintext))
         }
       );
 
@@ -110,7 +110,7 @@ export const useCmekSign = () => {
       isBase64Encoded
     }: TCmekSign & { isBase64Encoded: boolean }) => {
       const res = await apiRequest.post<TCmekSignResponse>(`/api/v1/kms/keys/${keyId}/sign`, {
-        data: isBase64Encoded ? data : encodeBase64(Buffer.from(data)),
+        data: isBase64Encoded ? data : encodeBase64(encodeUtf8(data)),
         signingAlgorithm
       });
 
@@ -129,7 +129,7 @@ export const useCmekVerify = () => {
       isBase64Encoded
     }: TCmekVerify & { isBase64Encoded: boolean }) => {
       const res = await apiRequest.post<TCmekVerifyResponse>(`/api/v1/kms/keys/${keyId}/verify`, {
-        data: isBase64Encoded ? data : encodeBase64(Buffer.from(data)),
+        data: isBase64Encoded ? data : encodeBase64(encodeUtf8(data)),
         signature,
         signingAlgorithm
       });
@@ -149,7 +149,7 @@ export const useCmekGenerateMac = () => {
       const res = await apiRequest.post<TCmekGenerateMacResponse>(
         `/api/v1/kms/keys/${keyId}/generate-mac`,
         {
-          data: isBase64Encoded ? data : encodeBase64(Buffer.from(data))
+          data: isBase64Encoded ? data : encodeBase64(encodeUtf8(data))
         }
       );
 
@@ -169,7 +169,7 @@ export const useCmekVerifyMac = () => {
       const res = await apiRequest.post<TCmekVerifyMacResponse>(
         `/api/v1/kms/keys/${keyId}/verify-mac`,
         {
-          data: isBase64Encoded ? data : encodeBase64(Buffer.from(data)),
+          data: isBase64Encoded ? data : encodeBase64(encodeUtf8(data)),
           mac
         }
       );

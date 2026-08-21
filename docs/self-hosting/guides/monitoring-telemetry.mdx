@@ -183,7 +183,7 @@ Replace `infisical-backend:9464` with the actual hostname and port where your In
 ```bash
 OTEL_TELEMETRY_COLLECTION_ENABLED=true
 OTEL_EXPORT_TYPE=otlp
-OTEL_EXPORT_OTLP_ENDPOINT=http://otel-collector:4318/v1/metrics
+OTEL_EXPORT_OTLP_ENDPOINT=http://otel-collector:4318
 OTEL_COLLECTOR_BASIC_AUTH_USERNAME=infisical
 OTEL_COLLECTOR_BASIC_AUTH_PASSWORD=infisical
 OTEL_OTLP_PUSH_INTERVAL=30000
@@ -1071,12 +1071,18 @@ Heap usage, GC pause, event loop lag, and other Node runtime metrics are auto-em
 
 These low-level HTTP metrics are automatically collected by OpenTelemetry's instrumentation layer, providing baseline performance data for all HTTP traffic.
 
+<Note>
+  Recent Infisical versions use OpenTelemetry's stable HTTP metric names. If an existing dashboard uses
+  `http_server_duration` or `http_client_duration`, rename those queries to
+  `http_server_request_duration` and `http_client_request_duration` after upgrading.
+</Note>
+
 <AccordionGroup>
-  <Accordion title="http_server_duration">
+  <Accordion title="http_server_request_duration">
     HTTP server request duration metrics (histogram buckets, count, sum)
   </Accordion>
   
-  <Accordion title="http_client_duration">
+  <Accordion title="http_client_request_duration">
     HTTP client request duration metrics (histogram buckets, count, sum)
   </Accordion>
 </AccordionGroup>

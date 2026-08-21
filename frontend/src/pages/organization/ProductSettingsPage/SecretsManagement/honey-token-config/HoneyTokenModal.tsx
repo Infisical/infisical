@@ -1,5 +1,3 @@
-import crypto from "crypto";
-
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,6 +6,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
+import { randomHex } from "@app/components/utilities/cryptography/crypto";
 import {
   Accordion,
   AccordionContent,
@@ -76,8 +75,8 @@ type Props = {
 
 export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
   const [isTokenVisible, setIsTokenVisible] = useToggle(false);
-  const [, isTokenCopied, setTokenCopied] = useTimedReset({ initialState: false });
-  const [, isCommandCopied, setCommandCopied] = useTimedReset({ initialState: false });
+  const [, isTokenCopied, setTokenCopied] = useTimedReset<boolean>({ initialState: false });
+  const [, isCommandCopied, setCommandCopied] = useTimedReset<boolean>({ initialState: false });
 
   const { data: appConnections = [], isPending: isLoadingConnections } = useListAppConnections();
   const { data: existingConfig } = useGetHoneyTokenConfig(HoneyTokenType.AWS, {
@@ -133,7 +132,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
     } else {
       reset({
         connectionId: "",
-        webhookSigningKey: crypto.randomBytes(WEBHOOK_SIGNING_KEY_BYTES).toString("hex"),
+        webhookSigningKey: randomHex(WEBHOOK_SIGNING_KEY_BYTES),
         stackName: DEFAULT_STACK_NAME,
         awsRegion: DEFAULT_AWS_REGION
       });

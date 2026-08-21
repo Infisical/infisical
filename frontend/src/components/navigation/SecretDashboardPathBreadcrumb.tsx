@@ -25,13 +25,17 @@ export const SecretDashboardPathBreadcrumb = ({
   disableCopy
 }: Props) => {
   const { currentOrg } = useOrganization();
-  const [, isCopying, setIsCopying] = useTimedReset({
+  const [, isCopying, setIsCopying] = useTimedReset<boolean>({
     initialState: false
   });
 
   const newSecretPath = `/${secretPathSegments.slice(0, selectedPathSegmentIndex + 1).join("/")}`;
   const isLastItem = secretPathSegments.length === selectedPathSegmentIndex + 1;
-  const folderName = secretPathSegments.at(selectedPathSegmentIndex);
+  const normalizedPathSegmentIndex =
+    selectedPathSegmentIndex < 0
+      ? secretPathSegments.length + selectedPathSegmentIndex
+      : selectedPathSegmentIndex;
+  const folderName = secretPathSegments[normalizedPathSegmentIndex];
 
   return (
     <div className="flex items-center space-x-3">
@@ -71,6 +75,7 @@ export const SecretDashboardPathBreadcrumb = ({
         </div>
       ) : (
         <Link
+          from="/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
           to="/organizations/$orgId/projects/secret-management/$projectId/overview"
           params={{
             orgId: currentOrg.id,

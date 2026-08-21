@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -31,11 +30,9 @@ export const BillingPage = () => {
 
   return (
     <div className="h-full bg-bunker-800">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("billing.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      <title>{t("common.head-title", { title: t("billing.title") })}</title>
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
       <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
         <div className="w-full max-w-8xl">
           <PageHeader

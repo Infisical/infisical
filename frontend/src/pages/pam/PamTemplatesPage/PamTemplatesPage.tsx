@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { ClipboardList, Layers, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
 
@@ -176,9 +175,7 @@ export const PamTemplatesPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: "Account Templates" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Account Templates" })}</title>
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.PAM}

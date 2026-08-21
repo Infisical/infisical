@@ -1,4 +1,4 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
 import { EncryptionPage } from "./EncryptionPage";
 
@@ -11,13 +11,11 @@ export const Route = createFileRoute(
       breadcrumbs: [
         {
           label: "Admin",
-          link: linkOptions({ to: "/admin" })
+          link: { to: "/admin" as const }
         },
         {
           label: "Encryption",
-          link: linkOptions({
-            to: "/admin/encryption"
-          })
+          link: { to: "/admin/encryption" as const }
         }
       ]
     };

@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -219,10 +218,10 @@ const Page = () => {
 export const CertAuthDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
+      <>
         <title>Certificate Authority</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <Page />
     </>
   );

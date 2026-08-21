@@ -18,6 +18,7 @@ import tracer from "dd-trace";
 import dotenv from "dotenv";
 
 import { getTelemetryConfig } from "../config/env";
+import { resolveOtlpMetricsEndpoint } from "./otlp-endpoint";
 import { HIGH_CARDINALITY_METER_NAMES, INFISICAL_CORE_METER_ATTRIBUTES } from "./telemetry-attributes";
 
 dotenv.config();
@@ -58,7 +59,7 @@ const initTelemetryInstrumentation = ({
     }
     case "otlp": {
       const otlpExporter = new OTLPMetricExporter({
-        url: `${otlpURL}/v1/metrics`,
+        url: resolveOtlpMetricsEndpoint(otlpURL),
         headers: {
           Authorization: `Basic ${btoa(`${otlpUser}:${otlpPassword}`)}`
         },

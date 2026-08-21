@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
@@ -133,9 +132,7 @@ export const PoliciesPage = () => {
 
   return (
     <div className="mx-auto flex h-full flex-col justify-between text-white">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Certificate Manager" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Certificate Manager" })}</title>
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.CertificateManager}

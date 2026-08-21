@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -100,10 +99,10 @@ export const NoOrgPage = () => {
 
   return (
     <>
-      <Helmet>
+      <>
         <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <div className="min-h-screen bg-bunker-800">
         {failed ? (
           <CreateOrgModal isOpen logoutOnClose />

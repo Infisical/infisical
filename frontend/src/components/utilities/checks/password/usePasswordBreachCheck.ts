@@ -28,8 +28,8 @@ export const usePasswordBreachCheck = ({
 }) => {
   const [status, setStatus] = useState<PasswordBreachCheckStatus>("idle");
   const latestRequestRef = useRef(0);
-  const lastResultRef = useRef<PasswordBreachResult>();
-  const activeRequestRef = useRef<PasswordBreachRequest>();
+  const lastResultRef = useRef<PasswordBreachResult>(undefined);
+  const activeRequestRef = useRef<PasswordBreachRequest>(undefined);
 
   const getBreachStatus = useCallback((value: string) => {
     if (activeRequestRef.current?.password === value) {

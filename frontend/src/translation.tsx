@@ -17,6 +17,7 @@ i18n
   .init({
     lng: "en",
     fallbackLng: "en",
+    showSupportNotice: false,
     // supportedLngs: ["en", "ko", "fr", "pt-BR", "pt-PT", "es"],
     debug: process.env.NODE_ENV === "development",
     detection: {

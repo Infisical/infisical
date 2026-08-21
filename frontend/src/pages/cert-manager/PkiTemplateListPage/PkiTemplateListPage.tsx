@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import {
   faCertificate,
@@ -93,9 +92,7 @@ export const PkiTemplateListPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: "PKI Templates" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "PKI Templates" })}</title>
       <div className="h-full bg-bunker-800">
         <div className="mx-auto flex flex-col justify-between text-white">
           <div className="mx-auto mb-6 w-full max-w-8xl">

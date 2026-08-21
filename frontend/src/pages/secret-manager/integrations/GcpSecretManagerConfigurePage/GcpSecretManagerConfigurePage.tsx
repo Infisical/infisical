@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -179,9 +178,7 @@ export const GcpSecretManagerConfigurePage = () => {
       className="flex h-full w-full flex-col items-center justify-center"
     >
       <Card className="max-w-lg rounded-md border border-mineshaft-600">
-        <Helmet>
-          <title>Set Up GCP Secret Manager Integration</title>
-        </Helmet>
+        <title>Set Up GCP Secret Manager Integration</title>
         <CardTitle
           className="mb-2 px-6 text-left text-xl"
           subTitle="Select which environment or folder in Infisical you want to sync to GCP Secret Manager."
@@ -448,9 +445,7 @@ export const GcpSecretManagerConfigurePage = () => {
     </form>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up GCP Secret Manager Integration</title>
-      </Helmet>
+      <title>Set Up GCP Secret Manager Integration</title>
       {isIntegrationAuthAppsLoading ? (
         <img
           src="/images/loading/loading.gif"

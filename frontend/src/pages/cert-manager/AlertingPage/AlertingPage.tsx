@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -26,9 +25,7 @@ export const AlertingPage = () => {
 
   return (
     <div className="mx-auto flex h-full flex-col justify-between text-white">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Alerting" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Alerting" })}</title>
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.CertificateManager}

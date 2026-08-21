@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
@@ -114,13 +113,13 @@ export const SignupSsoPage = () => {
         </Button>
       }
     >
-      <Helmet>
+      <>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
         <meta property="og:title" content={t("signup.og-title") as string} />
         <meta name="og:description" content={t("signup.og-description") as string} />
-      </Helmet>
+      </>
       <div className="mx-auto flex w-full flex-col items-center justify-center">
         <AuthPagePanel>
           <VerificationCodeHeader

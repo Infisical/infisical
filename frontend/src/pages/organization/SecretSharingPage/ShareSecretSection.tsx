@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
@@ -54,11 +53,9 @@ export const ShareSecretSection = () => {
 
   return (
     <div>
-      <Helmet>
-        <title>Secret Sharing</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      <title>Secret Sharing</title>
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
 
       <Tabs value={activeTab} onValueChange={updateSelectedTab}>
         <TabList>

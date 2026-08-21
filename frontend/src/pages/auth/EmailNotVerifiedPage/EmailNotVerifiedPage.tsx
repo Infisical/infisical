@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Link } from "@tanstack/react-router";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
@@ -8,10 +7,10 @@ import { Button, CardContent, CardDescription, CardHeader, CardTitle } from "@ap
 export const EmailNotVerifiedPage = () => {
   return (
     <AuthPageLayout variant="focused">
-      <Helmet>
+      <>
         <title>Email Not Verified</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <AuthPagePanel>
         <CardHeader className="mb-6 gap-2 text-center">
           <CardTitle>Your email was not verified</CardTitle>

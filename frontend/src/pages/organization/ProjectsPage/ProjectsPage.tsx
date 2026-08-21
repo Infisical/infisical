@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, Outlet, useMatches } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
@@ -46,10 +45,8 @@ export const ProjectsPage = () => {
 
   return (
     <div className="mx-auto flex max-w-8xl flex-col justify-start px-6">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
+      <link rel="icon" href="/infisical.ico" />
       <PageHeader
         scope={isSubOrganization ? "namespace" : "org"}
         title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Overview`}

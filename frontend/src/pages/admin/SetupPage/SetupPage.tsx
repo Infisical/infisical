@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Controller, type Resolver, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useRouter } from "@tanstack/react-router";
@@ -585,10 +584,10 @@ export const SetupPage = () => {
         </div>
       }
     >
-      <Helmet>
+      <>
         <title>Configure your instance | Infisical</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <AuthPagePanel>
         <form id={setupFormId} onSubmit={onSubmit}>
           <CardHeader className="mb-8 gap-2">

@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Link } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
@@ -13,10 +12,8 @@ export const AuditLogsPage = () => {
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
   return (
     <div className="mx-auto flex flex-col justify-between text-white">
-      <Helmet>
-        <title>{isCertManager ? "Audit Logs" : "Project Audit Logs"}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>{isCertManager ? "Audit Logs" : "Project Audit Logs"}</title>
+      <link rel="icon" href="/infisical.ico" />
       <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
         <div className="w-full max-w-8xl">
           <PageHeader

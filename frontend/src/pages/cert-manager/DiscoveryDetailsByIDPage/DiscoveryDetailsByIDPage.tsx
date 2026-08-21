@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
@@ -190,10 +189,10 @@ const Page = () => {
 export const DiscoveryDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
+      <>
         <title>Discovery Job Details</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <Page />
     </>
   );

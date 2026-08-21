@@ -1,4 +1,4 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -18,13 +18,11 @@ export const Route = createFileRoute(
       breadcrumbs: [
         {
           label: "Admin",
-          link: linkOptions({ to: "/admin" })
+          link: { to: "/admin" as const }
         },
         {
           label: "Resource Overview",
-          link: linkOptions({
-            to: "/admin/resources/overview"
-          })
+          link: { to: "/admin/resources/overview" as const }
         }
       ]
     };

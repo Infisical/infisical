@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -182,10 +181,10 @@ export const SignupOnboardingPage = () => {
       aside={asideContent}
       bottomContent={section === OnboardingSection.OrgName ? <AuthTermsNotice /> : undefined}
     >
-      <Helmet>
+      <>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       {renderView()}
     </AuthPageLayout>
   );

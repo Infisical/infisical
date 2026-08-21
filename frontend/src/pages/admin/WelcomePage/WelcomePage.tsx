@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Building2, KeyRound, ServerCog } from "lucide-react";
 
@@ -15,10 +14,10 @@ export const WelcomePage = ({ organizationId }: Props) => {
 
   return (
     <AuthPageLayout variant="focused" contentClassName="max-w-xl">
-      <Helmet>
+      <>
         <title>Instance ready | Infisical</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <AuthPagePanel>
         <CardHeader className="gap-0">
           <div className="relative mb-8 flex size-10 items-center justify-center bg-primary text-black">

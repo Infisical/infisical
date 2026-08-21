@@ -45,7 +45,6 @@ export const buildSecretBlindIndexFromName = async ({
   const secretBlindIndex = await argon2.hash(secretName, {
     type: argon2.argon2id,
     salt: Buffer.from(salt, "base64"),
-    saltLength: 16, // default 16 bytes
     memoryCost: 65536, // default pool of 64 MiB per thread.
     hashLength: 32,
     parallelism: 1,

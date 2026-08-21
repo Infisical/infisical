@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -52,9 +51,7 @@ export const OctopusDeployAuthorizePage = () => {
       onSubmit={handleSubmit(onSubmit)}
       className="flex h-full w-full items-center justify-center"
     >
-      <Helmet>
-        <title>Authorize Octopus Deploy Integration</title>
-      </Helmet>
+      <title>Authorize Octopus Deploy Integration</title>
       <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="px-6 text-left text-xl"

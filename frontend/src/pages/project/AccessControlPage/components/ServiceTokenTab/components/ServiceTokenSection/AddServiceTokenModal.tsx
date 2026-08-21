@@ -1,5 +1,3 @@
-import crypto from "crypto";
-
 import { useId, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -8,6 +6,7 @@ import { ClipboardCheckIcon, Copy, Info, PlusIcon, TrashIcon } from "lucide-reac
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { randomHex } from "@app/components/utilities/cryptography/crypto";
 import {
   Alert,
   AlertDescription,
@@ -69,7 +68,9 @@ const schema = z.object({
         .min(1, "Secret path cannot be empty")
         .default("/")
         .transform((val) =>
-          typeof val === "string" && val.at(-1) === "/" && val.length > 1 ? val.slice(0, -1) : val
+          typeof val === "string" && val[val.length - 1] === "/" && val.length > 1
+            ? val.slice(0, -1)
+            : val
         )
     })
     .array()
@@ -129,7 +130,7 @@ const ServiceTokenForm = () => {
   const onFormSubmit = async ({ name, scopes, expiresIn, permissions }: FormData) => {
     if (!currentProject?.id) return;
 
-    const randomBytes = crypto.randomBytes(16).toString("hex");
+    const randomBytes = randomHex(16);
 
     const { serviceToken } = await createServiceToken.mutateAsync({
       encryptedKey: "",

@@ -1,13 +1,12 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable no-nested-ternary */
-import crypto from "crypto";
-
 import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
 import { z } from "zod";
 
+import { randomHex } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   Field,
@@ -121,7 +120,7 @@ export const HerokuConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
           setIsRedirecting(true);
 
           // Generate CSRF token
-          const state = crypto.randomBytes(16).toString("hex");
+          const state = randomHex(16);
 
           // Store state and form data for callback
           localStorage.setItem("latestCSRFToken", state);

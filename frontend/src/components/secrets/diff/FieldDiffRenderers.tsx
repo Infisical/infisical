@@ -297,7 +297,7 @@ export const MultiLineTextDiffRenderer = ({
   newText: string;
   hasChanges: boolean;
   isOldVersion: boolean;
-  containerRef?: React.RefObject<HTMLDivElement>;
+  containerRef?: React.RefObject<HTMLDivElement | null>;
 }) => {
   if (!text) {
     return <span className="text-sm text-muted">&mdash;</span>;

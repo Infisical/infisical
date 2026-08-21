@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Link, useRouteContext } from "@tanstack/react-router";
 import { MailX } from "lucide-react";
 
@@ -16,10 +15,10 @@ export const SignupInvitePage = () => {
   if (error) {
     return (
       <AuthPageLayout variant="focused">
-        <Helmet>
+        <>
           <title>Invalid Invitation</title>
           <link rel="icon" href="/infisical.ico" />
-        </Helmet>
+        </>
         <AuthPagePanel className="text-center">
           <CardHeader className="mb-6 items-center gap-2 text-center">
             <div

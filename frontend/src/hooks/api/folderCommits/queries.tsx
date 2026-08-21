@@ -330,7 +330,7 @@ export const useGetFolderCommitHistory = ({
 
       commits.forEach((commit) => {
         const date = format(new Date(commit.createdAt), "MMM d, yyyy");
-        const group = groups.at(-1);
+        const group = groups[groups.length - 1];
         if (group?.date === date) {
           group.commits.push(commit);
         } else {

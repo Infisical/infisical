@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { BanIcon, ChevronLeftIcon } from "lucide-react";
 
@@ -162,10 +161,10 @@ const PageContent = () => {
 export const PkiSyncDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
+      <>
         <title>PKI Sync | Infisical</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <PageContent />
     </>
   );

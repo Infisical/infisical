@@ -1,12 +1,10 @@
-import crypto from "crypto";
-
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+import { randomHex } from "@app/components/utilities/cryptography/crypto";
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { localStorageService } from "@app/helpers/localStorage";
@@ -47,7 +45,7 @@ export const GitlabAuthorizePage = () => {
     const baseURL =
       (gitLabURL as string).trim() === "" ? "https://gitlab.com" : (gitLabURL as string).trim();
 
-    const csrfToken = crypto.randomBytes(16).toString("hex");
+    const csrfToken = randomHex(16);
     localStorage.setItem("latestCSRFToken", csrfToken);
     localStorageService.setIntegrationProjectId(currentProject.id);
 
@@ -62,9 +60,7 @@ export const GitlabAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Authorize GitLab Integration</title>
-      </Helmet>
+      <title>Authorize GitLab Integration</title>
       <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="px-6 text-left text-xl"

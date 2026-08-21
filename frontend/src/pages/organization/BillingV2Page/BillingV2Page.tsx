@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { createNotification } from "@app/components/notifications";
@@ -142,11 +141,11 @@ export const BillingV2Page = () => {
 
   return (
     <>
-      <Helmet>
+      <>
         <title>{t("common.head-title", { title: t("billing.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      </>
       <div className="mb-8 flex w-full justify-center bg-bunker-800 text-white">
         <div className="w-full max-w-8xl">
           <PageHeader scope="org" title={t("billing.title")} description={pageDescription} />

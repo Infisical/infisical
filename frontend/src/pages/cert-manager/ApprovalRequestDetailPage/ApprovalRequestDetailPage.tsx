@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { faBan, faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
@@ -435,10 +434,10 @@ const PageContent = () => {
 export const ApprovalRequestDetailPage = () => {
   return (
     <>
-      <Helmet>
+      <>
         <title>Approval Request | Infisical</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <PageContent />
     </>
   );

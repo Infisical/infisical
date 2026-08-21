@@ -84,6 +84,7 @@ export const CertificateRequestRow = ({ request, onViewCertificates, application
 
   const getStatusBadge = (req: TCertificateRequestListItem) => {
     const { status, approvalRequestId, errorMessage, pendingMessage } = req;
+    const statusLabel = String(status);
 
     switch (status) {
       case CertificateRequestStatus.ISSUED:
@@ -146,7 +147,11 @@ export const CertificateRequestRow = ({ request, onViewCertificates, application
         }
         return <Badge variant="project">Pending Approval</Badge>;
       default:
-        return <Badge variant="outline">{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
+        return (
+          <Badge variant="outline">
+            {statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}
+          </Badge>
+        );
     }
   };
 

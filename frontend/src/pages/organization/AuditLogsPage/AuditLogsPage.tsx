@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
@@ -43,11 +42,9 @@ export const AuditLogsPage = () => {
 
   return (
     <div className="h-full bg-bunker-800">
-      <Helmet>
-        <title>Infisical | Audit Logs</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      <title>Infisical | Audit Logs</title>
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
       <div className="flex w-full justify-center bg-bunker-800 pb-6 text-white">
         <div className="w-full max-w-8xl">
           <PageHeader

@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
@@ -267,10 +266,10 @@ export const IdentityDetailsByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
+      <>
         <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <OrgPermissionCan
         passThrough={false}
         I={OrgPermissionIdentityActions.Read}

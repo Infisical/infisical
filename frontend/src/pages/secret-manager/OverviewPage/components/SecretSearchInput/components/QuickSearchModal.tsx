@@ -171,7 +171,7 @@ const Content = ({
   initialValue = "",
   searchInputRef
 }: Omit<QuickSearchModalProps, "isOpen" | "onOpenChange" | "isSingleEnv"> & {
-  searchInputRef: RefObject<HTMLInputElement>;
+  searchInputRef: RefObject<HTMLInputElement | null>;
 }) => {
   const [search, setSearch] = useState(initialValue);
   const [debouncedSearch] = useDebounce(search);

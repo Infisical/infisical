@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import {
   faArrowUpRightFromSquare,
@@ -221,9 +220,7 @@ export const AwsSecretManagerConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && !isIntegrationAuthAwsKmsKeysLoading ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
-      <Helmet>
-        <title>Set Up AWS Secrets Manager Integration</title>
-      </Helmet>
+      <title>Set Up AWS Secrets Manager Integration</title>
       <form onSubmit={handleSubmit(handleButtonClick)}>
         <Card className="max-w-lg rounded-md border border-mineshaft-600">
           <CardTitle
@@ -580,9 +577,7 @@ export const AwsSecretManagerConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up AWS Secrets Manager Integration</title>
-      </Helmet>
+      <title>Set Up AWS Secrets Manager Integration</title>
       {isintegrationAuthLoading || isIntegrationAuthAwsKmsKeysLoading ? (
         <img
           src="/images/loading/loading.gif"

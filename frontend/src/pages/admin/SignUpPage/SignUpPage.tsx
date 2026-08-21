@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useRouter } from "@tanstack/react-router";
@@ -107,11 +106,11 @@ export const SignUpPage = () => {
 
   return (
     <OnboardingPageLayout currentStep={activeStep + 1} totalSteps={4}>
-      <Helmet>
+      <>
         <title>Set up your instance | Infisical</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      </>
       <AuthPagePanel>
         <CardHeader className="mb-6 gap-2">
           <CardTitle className="font-alliance text-2xl font-normal">

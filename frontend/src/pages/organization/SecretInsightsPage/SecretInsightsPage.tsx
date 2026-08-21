@@ -1,5 +1,4 @@
 import { useEffect, useMemo } from "react";
-import { Helmet } from "react-helmet";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { FileTextIcon, LockIcon } from "lucide-react";
@@ -160,10 +159,10 @@ export const SecretInsightsPage = withPermission(
 
     return (
       <>
-        <Helmet>
+        <>
           <title>Secret Insights | Infisical</title>
           <link rel="icon" href="/infisical.ico" />
-        </Helmet>
+        </>
         <div className="h-full">
           <div className="mx-auto h-full w-full max-w-8xl bg-bunker-800 text-white">
             <PageHeader

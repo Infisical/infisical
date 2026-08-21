@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useParams } from "@tanstack/react-router";
@@ -147,10 +146,10 @@ const PageContent = () => {
 export const SecretSyncDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
+      <>
         <title>Secret Sync | Infisical</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <ProjectPermissionCan
         renderGuardBanner
         passThrough={false}

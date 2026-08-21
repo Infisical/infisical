@@ -1,17 +1,22 @@
 ARG TOOLCHAIN_IMAGE=ghcr.io/infisical/backend-fips-toolchain:main
 FROM ${TOOLCHAIN_IMAGE}
 
+ARG NPM_VERSION=11.19.0
+
+# Keep the app build correct even when an older cached toolchain image is pulled.
+RUN npm install --global "npm@${NPM_VERSION}" \
+    && test "$(npm --version)" = "${NPM_VERSION}"
+
 # ? App setup
 
 WORKDIR /app
 
-COPY package.json package.json
-COPY package-lock.json package-lock.json
+COPY package.json package-lock.json .npmrc ./
 
 COPY dev-entrypoint.sh dev-entrypoint.sh
 RUN chmod +x dev-entrypoint.sh
 
-RUN npm install
+RUN npm_config_build_from_source=odbc npm install
 
 COPY . .
 

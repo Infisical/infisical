@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -209,9 +208,7 @@ export const GitlabConfigurePage = () => {
       })}
       className="flex h-full w-full flex-col items-center justify-center"
     >
-      <Helmet>
-        <title>Set Up GitLab Integration</title>
-      </Helmet>
+      <title>Set Up GitLab Integration</title>
       <Card className="max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="px-6 text-left text-xl"
@@ -545,9 +542,7 @@ export const GitlabConfigurePage = () => {
     </form>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up GitLab Integration</title>
-      </Helmet>
+      <title>Set Up GitLab Integration</title>
       {isIntegrationAuthAppsLoading || isintegrationAuthTeamsLoading ? (
         <img
           src="/images/loading/loading.gif"

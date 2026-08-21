@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, CopyIcon, EllipsisIcon, PencilIcon, TrashIcon } from "lucide-react";
@@ -239,10 +238,10 @@ export const RoleDetailsBySlugPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
+      <>
         <title>{t("common.head-title", { title: "Project Settings" })}</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <ProjectPermissionCan
         I={ProjectPermissionActions.Read}
         a={ProjectPermissionSub.Role}

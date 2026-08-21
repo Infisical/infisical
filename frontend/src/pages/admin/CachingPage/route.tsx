@@ -1,4 +1,4 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
 import { CachingPage } from "./CachingPage";
 
@@ -11,13 +11,11 @@ export const Route = createFileRoute(
       breadcrumbs: [
         {
           label: "Admin",
-          link: linkOptions({ to: "/admin" })
+          link: { to: "/admin" as const }
         },
         {
           label: "Caching",
-          link: linkOptions({
-            to: "/admin/caching"
-          })
+          link: { to: "/admin/caching" as const }
         }
       ]
     };
