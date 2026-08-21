@@ -139,11 +139,13 @@ Use `<Tabs>` when there are multiple ways to accomplish something:
 Use callouts to highlight important information:
 
 ```mdx
-<Note>Prerequisites or important context.</Note>
+<Note>Important context that applies to a specific part of the page.</Note>
 <Warning>Destructive actions or irreversible changes.</Warning>
 <Tip>Helpful suggestions or best practices.</Tip>
 <Info>Additional context that's good to know.</Info>
 ```
+
+Don't use callouts for page-level prerequisites. Put them under a `## Prerequisites` heading instead.
 
 ### Navigation
 
@@ -329,18 +331,16 @@ If new content doesn't fit the existing flow, consider whether it belongs on thi
 
 If a page assumes something is already set up — a Gateway deployed, permissions granted, a CLI installed — state it at the top. Readers shouldn't get stuck halfway through because they missed an unstated requirement.
 
-Use an `<Info>` callout for a short prerequisite list:
+Use a `## Prerequisites` section before the main content, even when the list is short:
 
 ```mdx
-<Info>
-Prerequisites:
+## Prerequisites
 
 - An Infisical account
 - A [Gateway](/documentation/platform/gateways/overview) that can reach your database
-</Info>
 ```
 
-Use a "Prerequisites" section before the main content when requirements need additional explanation. Reserve `<Note>` for prerequisite details that apply to a specific step rather than the whole page.
+Don't put page-level prerequisites in `<Info>` or other callouts. Reserve `<Note>` for requirement details that apply to a specific step rather than the whole page.
 
 ---
 
