@@ -18,28 +18,28 @@ const buttonVariants = cva(
     variants: {
       variant: {
         outline:
-          "text-foreground hover:bg-foreground/10 border-border hover:border-foreground/20 data-[state=open]:bg-foreground/10 data-[state=open]:border-foreground/20",
+          "text-foreground hover:bg-foreground/10 border-border hover:border-foreground/20 data-[state=open]:bg-foreground/10 data-[state=open]:border-foreground/20 [--button-variant-color:var(--color-foreground)]",
         ghost:
-          "text-foreground hover:bg-foreground/10 border-transparent data-[state=open]:bg-foreground/10",
+          "text-foreground hover:bg-foreground/10 border-transparent data-[state=open]:bg-foreground/10 [--button-variant-color:var(--color-foreground)]",
         neutral:
-          "border-neutral/25 bg-neutral/10 text-foreground hover:bg-neutral/15 hover:border-neutral/30 data-[state=open]:bg-neutral/15 data-[state=open]:border-neutral/30",
+          "border-neutral/25 bg-neutral/10 text-foreground hover:bg-neutral/15 hover:border-neutral/30 data-[state=open]:bg-neutral/15 data-[state=open]:border-neutral/30 [--button-variant-color:var(--color-neutral)]",
         project:
-          "border-project/25 bg-project/10 text-foreground hover:bg-project/15 hover:border-project/30 data-[state=open]:bg-project/15 data-[state=open]:border-project/30",
-        org: "border-org/25 bg-org/10 text-foreground hover:bg-org/15 hover:border-org/30 data-[state=open]:bg-org/15 data-[state=open]:border-org/30",
+          "border-project/25 bg-project/10 text-foreground hover:bg-project/15 hover:border-project/30 data-[state=open]:bg-project/15 data-[state=open]:border-project/30 [--button-variant-color:var(--color-project)]",
+        org: "border-org/25 bg-org/10 text-foreground hover:bg-org/15 hover:border-org/30 data-[state=open]:bg-org/15 data-[state=open]:border-org/30 [--button-variant-color:var(--color-org)]",
         "sub-org":
-          "border-sub-org/25 bg-sub-org/10 text-foreground hover:bg-sub-org/15 hover:border-sub-org/30 data-[state=open]:bg-sub-org/15 data-[state=open]:border-sub-org/30",
+          "border-sub-org/25 bg-sub-org/10 text-foreground hover:bg-sub-org/15 hover:border-sub-org/30 data-[state=open]:bg-sub-org/15 data-[state=open]:border-sub-org/30 [--button-variant-color:var(--color-sub-org)]",
         success:
-          "border-success/25 bg-success/10 text-foreground hover:bg-success/15 hover:border-success/30 data-[state=open]:bg-success/15 data-[state=open]:border-success/30",
-        info: "border-info/25 bg-info/10 text-foreground hover:bg-info/15 hover:border-info/30 data-[state=open]:bg-info/15 data-[state=open]:border-info/30",
+          "border-success/25 bg-success/10 text-foreground hover:bg-success/15 hover:border-success/30 data-[state=open]:bg-success/15 data-[state=open]:border-success/30 [--button-variant-color:var(--color-success)]",
+        info: "border-info/25 bg-info/10 text-foreground hover:bg-info/15 hover:border-info/30 data-[state=open]:bg-info/15 data-[state=open]:border-info/30 [--button-variant-color:var(--color-info)]",
         warning:
-          "border-warning/25 bg-warning/10 text-foreground hover:bg-warning/15 hover:border-warning/30 data-[state=open]:bg-warning/15 data-[state=open]:border-warning/30",
+          "border-warning/25 bg-warning/10 text-foreground hover:bg-warning/15 hover:border-warning/30 data-[state=open]:bg-warning/15 data-[state=open]:border-warning/30 [--button-variant-color:var(--color-warning)]",
         danger:
-          "border-danger/25 bg-danger/10 text-foreground hover:bg-danger/15 hover:border-danger/30 data-[state=open]:bg-danger/15 data-[state=open]:border-danger/30",
-        pam: "border-product-pam/30 bg-product-pam/25 text-foreground hover:bg-product-pam/30 hover:border-product-pam/35 data-[state=open]:bg-product-pam/30 data-[state=open]:border-product-pam/35",
+          "border-danger/25 bg-danger/10 text-foreground hover:bg-danger/15 hover:border-danger/30 data-[state=open]:bg-danger/15 data-[state=open]:border-danger/30 [--button-variant-color:var(--color-danger)]",
+        pam: "border-product-pam/30 bg-product-pam/25 text-foreground hover:bg-product-pam/30 hover:border-product-pam/35 data-[state=open]:bg-product-pam/30 data-[state=open]:border-product-pam/35 [--button-variant-color:var(--color-product-pam)]",
         // Tinted from --product-color, which the caller must set inline (e.g. a billing catalog
         // product's color) since the palette isn't knowable at build time.
         product:
-          "border-(--product-color)/30 bg-(--product-color)/25 text-foreground hover:bg-(--product-color)/30 hover:border-(--product-color)/35 data-[state=open]:bg-(--product-color)/30 data-[state=open]:border-(--product-color)/35"
+          "border-(--product-color)/30 bg-(--product-color)/25 text-foreground hover:bg-(--product-color)/30 hover:border-(--product-color)/35 data-[state=open]:bg-(--product-color)/30 data-[state=open]:border-(--product-color)/35 [--button-variant-color:var(--product-color)]"
       },
       size: {
         xs: "h-7 gap-2 rounded-sm px-2 text-xs [&>svg]:size-3",
