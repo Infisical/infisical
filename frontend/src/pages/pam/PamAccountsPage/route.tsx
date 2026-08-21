@@ -6,7 +6,7 @@ import { pamSheetSearchParams } from "@app/hooks/usePamSheetState";
 import { PamAccountsPage } from "./PamAccountsPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/accounts/"
 )({
   validateSearch: zodValidator(pamSheetSearchParams),
   search: {
