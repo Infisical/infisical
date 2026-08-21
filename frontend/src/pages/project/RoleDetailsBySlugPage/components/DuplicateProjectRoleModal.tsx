@@ -125,7 +125,11 @@ const Content = ({ role, onClose }: ContentProps) => {
 
   return (
     <>
-      <form onSubmit={handleSubmit(handleDuplicateRole)} className="flex min-h-0 flex-1 flex-col">
+      <form
+        onSubmit={handleSubmit(handleDuplicateRole)}
+        autoComplete="off"
+        className="flex min-h-0 flex-1 flex-col"
+      >
         <SheetHeader>
           <SheetTitle>Duplicate Role</SheetTitle>
           <SheetDescription>
@@ -144,6 +148,8 @@ const Content = ({ role, onClose }: ContentProps) => {
                     {...field}
                     id="duplicate-project-role-name"
                     placeholder="Billing Team"
+                    autoComplete="off"
+                    data-1p-ignore
                     isError={Boolean(error)}
                     onChange={(e) => {
                       onChange(e);
@@ -166,6 +172,8 @@ const Content = ({ role, onClose }: ContentProps) => {
                     {...field}
                     id="duplicate-project-role-slug"
                     placeholder="billing"
+                    autoComplete="off"
+                    data-1p-ignore
                     isError={Boolean(error)}
                   />
                   <FieldError>{error?.message}</FieldError>
@@ -182,6 +190,8 @@ const Content = ({ role, onClose }: ContentProps) => {
                     {...field}
                     id="duplicate-project-role-description"
                     placeholder="Manage billing settings"
+                    autoComplete="off"
+                    data-1p-ignore
                     isError={Boolean(error)}
                   />
                   <FieldError>{error?.message}</FieldError>

@@ -185,7 +185,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   }, [role, reset]);
 
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
-    useDiscardChangesGuard({ isDirty, onDiscard: handleDiscard, blockNavigation: true });
+    useDiscardChangesGuard({ isDirty, onDiscard: handleDiscard });
 
   const { mutateAsync: updateRole } = useUpdateProjectRole();
 

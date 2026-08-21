@@ -111,7 +111,11 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
         }}
       >
         <SheetContent>
-          <form onSubmit={handleSubmit(onFormSubmit)} className="flex min-h-0 flex-1 flex-col">
+          <form
+            onSubmit={handleSubmit(onFormSubmit)}
+            autoComplete="off"
+            className="flex min-h-0 flex-1 flex-col"
+          >
             <SheetHeader>
               <SheetTitle>Create Role</SheetTitle>
               <SheetDescription>
@@ -130,6 +134,8 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                         {...field}
                         id="create-project-role-name"
                         placeholder="Billing Team"
+                        autoComplete="off"
+                        data-1p-ignore
                         isError={Boolean(error)}
                         onChange={(e) => {
                           onChange(e);
@@ -152,6 +158,8 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                         {...field}
                         id="create-project-role-slug"
                         placeholder="billing"
+                        autoComplete="off"
+                        data-1p-ignore
                         isError={Boolean(error)}
                       />
                       <FieldError>{error?.message}</FieldError>
@@ -168,6 +176,8 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                         {...field}
                         id="create-project-role-description"
                         placeholder="Manage billing settings"
+                        autoComplete="off"
+                        data-1p-ignore
                         isError={Boolean(error)}
                       />
                       <FieldError>{error?.message}</FieldError>

@@ -127,7 +127,11 @@ export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => 
         }}
       >
         <SheetContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            autoComplete="off"
+            className="flex min-h-0 flex-1 flex-col"
+          >
             <SheetHeader>
               <SheetTitle>Edit Role</SheetTitle>
               <SheetDescription>Update the role name, slug, and description.</SheetDescription>
@@ -144,6 +148,8 @@ export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => 
                         {...field}
                         id="edit-project-role-name"
                         placeholder="Billing Team"
+                        autoComplete="off"
+                        data-1p-ignore
                         isError={Boolean(error)}
                       />
                       <FieldError>{error?.message}</FieldError>
@@ -160,6 +166,8 @@ export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => 
                         {...field}
                         id="edit-project-role-slug"
                         placeholder="billing"
+                        autoComplete="off"
+                        data-1p-ignore
                         isError={Boolean(error)}
                       />
                       <FieldError>{error?.message}</FieldError>
@@ -176,6 +184,8 @@ export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => 
                         {...field}
                         id="edit-project-role-description"
                         placeholder="Manage billing settings"
+                        autoComplete="off"
+                        data-1p-ignore
                         isError={Boolean(error)}
                       />
                       <FieldError>{error?.message}</FieldError>
