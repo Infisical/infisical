@@ -86,6 +86,7 @@ type TSignOptions = {
   notBefore?: string | number;
   subject?: string | null;
   keyId?: string | null;
+  authorizedParty?: string;
 };
 
 const signSubjectToken = ({
@@ -96,16 +97,21 @@ const signSubjectToken = ({
   expiresIn = "10m",
   notBefore,
   subject = SUBJECT,
-  keyId = "adfs-key-1"
+  keyId = "adfs-key-1",
+  authorizedParty
 }: TSignOptions = {}) =>
-  jwt.sign({ ...(subject ? { sub: subject } : {}) }, privateKeyPem, {
-    algorithm,
-    audience,
-    issuer,
-    ...(expiresIn !== null ? { expiresIn } : {}),
-    ...(notBefore !== undefined ? { notBefore } : {}),
-    ...(keyId ? { keyid: keyId } : {})
-  });
+  jwt.sign(
+    { ...(subject ? { sub: subject } : {}), ...(authorizedParty ? { azp: authorizedParty } : {}) },
+    privateKeyPem,
+    {
+      algorithm,
+      audience,
+      issuer,
+      ...(expiresIn !== null ? { expiresIn } : {}),
+      ...(notBefore !== undefined ? { notBefore } : {}),
+      ...(keyId ? { keyid: keyId } : {})
+    }
+  );
 
 // jsonwebtoken can't sign EdDSA, so those cases mint their tokens with jose.
 const signEddsaSubjectToken = async ({
@@ -310,8 +316,31 @@ describe("verifySubjectToken", () => {
     await expect(verify(signSubjectToken())).resolves.toEqual({ subject: SUBJECT, issuer: ISSUER });
   });
 
-  test("accepts a token whose audience list contains the expected audience", async () => {
+  test("accepts a multi-audience token whose authorized party is this application", async () => {
+    const token = signSubjectToken({ audience: ["api://other-app", AUDIENCE], authorizedParty: AUDIENCE });
+
+    await expect(verify(token)).resolves.toMatchObject({ subject: SUBJECT });
+  });
+
+  // Without this, an audience mapper that adds a shared entry to every client's tokens would make any
+  // of them exchangeable here.
+  test("rejects a multi-audience token issued to a different application", async () => {
+    const token = signSubjectToken({
+      audience: ["api://expenses-app", AUDIENCE],
+      authorizedParty: "api://expenses-app"
+    });
+
+    await expect(verify(token)).rejects.toThrow(/was issued to 'api:\/\/expenses-app'/);
+  });
+
+  test("rejects a multi-audience token with no authorized party", async () => {
     const token = signSubjectToken({ audience: ["api://other-app", AUDIENCE] });
+
+    await expect(verify(token)).rejects.toThrow(/addressed to several audiences/);
+  });
+
+  test("accepts a single-audience token that names a different authorized party", async () => {
+    const token = signSubjectToken({ audience: AUDIENCE, authorizedParty: "some-client-id" });
 
     await expect(verify(token)).resolves.toMatchObject({ subject: SUBJECT });
   });
