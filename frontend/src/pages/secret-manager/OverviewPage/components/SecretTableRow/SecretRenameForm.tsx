@@ -157,10 +157,10 @@ function SecretRenameForm({ environments, getSecretByKey, secretKey, secretPath 
                 <InputGroupInput
                   id="secret-name"
                   autoComplete="off"
+                  {...field}
                   readOnly={isReadOnly || secrets.filter(Boolean).length === 0}
                   disabled={isOverriden}
                   aria-invalid={Boolean(error)}
-                  {...field}
                   onChange={(event) => {
                     const value = currentProject?.autoCapitalization
                       ? event.currentTarget.value.toUpperCase()
