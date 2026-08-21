@@ -186,6 +186,12 @@ Auth extraction happens in `src/server/plugins/auth/`:
   - five org routes held back individually and commented as such: `GET /v1/organization`,
     `GET /v1/organization/accessible-with-sub-orgs`, `POST /v2/organization`, `GET /v1/organization/:organizationId`,
     `DELETE /v2/organization/:organizationId`
+  - **every route that mints a long-lived credential**, each commented as such: identity token-auth tokens
+    (`POST /v1/auth/token-auth/identities/:identityId/tokens`), universal-auth client secrets
+    (`POST /v1/auth/universal-auth/identities/:identityId/client-secrets`), service tokens
+    (`POST /v2/service-token`), KMIP client certificates (`POST /v1/kmip/clients/:id/certificates`), and the
+    gateway / relay / KMIP-server enrollment tokens (`POST .../token-auth/generate-enrollment-token`). See
+    below.
 
   Rough proxy: nothing passing `requireOrg: false` accepts `AuthMode.OAUTH`, since with no org there's no
   ability to narrow. Before adding `AuthMode.OAUTH` to a route, check the handler actually builds an
@@ -200,6 +206,16 @@ Auth extraction happens in `src/server/plugins/auth/`:
   before reading secrets) and `getProjectKmsKeys`. A CASL gate isn't the fix there, since the operation has
   no subject, any member with an identity token can already call it, and a gate would change first-party
   behaviour. Weigh a route in this position on what it returns.
+
+  **A route that mints a credential can't accept a delegated one either.** Everything the revocation story
+  rests on (deleting the application, rotating its secret, withdrawing its grant, deactivating the user)
+  reaches only the OAuth sessions tagged with `getOauthClientSessionUserAgent`. An identity access token, a
+  universal-auth client secret, a service token, a KMIP client certificate, or a redeemed enrollment token is
+  a separate row with its own lifetime, so a compromised client could mint one (token auth accepts a TTL of
+  years) and keep the access after every handle we have on it is pulled. The credential also outranks its
+  minter: it authenticates as a machine identity whose permissions no OAuth scope intersects. This is why
+  credential issuance is on the exception list above regardless of how well the route builds its permission,
+  and why a new issuance route starts first-party only.
 
   **A route that mints session tokens can't accept a delegated one.** `DELETE /v2/organization/:organizationId`
   deletes the org the caller's token points at, so it reissues the user's session through
