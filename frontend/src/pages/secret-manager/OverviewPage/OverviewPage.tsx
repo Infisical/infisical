@@ -249,7 +249,9 @@ import {
   SecretTableRow
 } from "./components";
 import {
+  hasOverviewScopeChanged,
   normalizeOverviewEnvironments,
+  resolveOverviewEnvironmentSlugs,
   serializeOverviewResourceFilter,
   serializeOverviewTags,
   updateOverviewSecretPath
@@ -430,8 +432,13 @@ const OverviewPageContent = () => {
   }, []);
 
   useEffect(() => {
-    const onRouteChangeStart = () => {
-      resetSelectedEntries();
+    const onRouteChangeStart = (event: {
+      fromLocation: { pathname: string; search: unknown };
+      toLocation: { pathname: string; search: unknown };
+    }) => {
+      if (hasOverviewScopeChanged(event.fromLocation, event.toLocation)) {
+        resetSelectedEntries();
+      }
     };
 
     const unsubscribeRouterEvent = router.subscribe("onLoad", onRouteChangeStart);
@@ -479,50 +486,37 @@ const OverviewPageContent = () => {
     userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
   );
 
-  const initializedEnvironmentProjectId = useRef<string | null>(null);
+  const selectedEnvironmentSlugs = useMemo(
+    () =>
+      resolveOverviewEnvironmentSlugs(routerSearch.environments, storedEnvIds, userAvailableEnvs),
+    [routerSearch.environments, storedEnvIds, userAvailableEnvs]
+  );
+
   useEffect(() => {
-    if (initializedEnvironmentProjectId.current === projectId || userAvailableEnvs.length === 0) {
-      return;
-    }
-    initializedEnvironmentProjectId.current = projectId;
+    if (userAvailableEnvs.length === 0) return;
 
     const requestedSlugs = normalizeOverviewEnvironments(
       routerSearch.environments,
       userAvailableEnvs.map((env) => env.slug)
     );
+    const isCanonical =
+      requestedSlugs.length === routerSearch.environments.length &&
+      requestedSlugs.join(",") === selectedEnvironmentSlugs.join(",");
 
-    if (routerSearch.environments.length > 0) {
-      if (requestedSlugs.length !== routerSearch.environments.length) {
-        navigate({
-          search: (prev) => ({
-            ...prev,
-            environments: requestedSlugs.length > 0 ? requestedSlugs : undefined
-          }),
-          replace: true
-        });
-      }
-      return;
-    }
+    if (isCanonical) return;
 
-    const initialPreference = storedEnvIds.filter((id) =>
-      userAvailableEnvs.some((env) => env.id === id)
-    );
-    if (initialPreference.length > 0) {
-      navigate({
-        search: (prev) => ({
-          ...prev,
-          environments: userAvailableEnvs
-            .filter((env) => initialPreference.includes(env.id))
-            .map((env) => env.slug)
-        }),
-        replace: true
-      });
-    }
-  }, [navigate, projectId, routerSearch.environments, storedEnvIds, userAvailableEnvs]);
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        environments: selectedEnvironmentSlugs.length > 0 ? selectedEnvironmentSlugs : undefined
+      }),
+      replace: true
+    });
+  }, [navigate, routerSearch.environments, selectedEnvironmentSlugs, userAvailableEnvs]);
 
   const filteredEnvs = useMemo(
-    () => userAvailableEnvs.filter((env) => routerSearch.environments.includes(env.slug)),
-    [routerSearch.environments, userAvailableEnvs]
+    () => userAvailableEnvs.filter((env) => selectedEnvironmentSlugs.includes(env.slug)),
+    [selectedEnvironmentSlugs, userAvailableEnvs]
   );
 
   const setFilteredEnvs = useCallback(
@@ -851,6 +845,7 @@ const OverviewPageContent = () => {
   useNavigationBlocker({
     shouldBlock:
       isBatchModeActive && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0),
+    shouldBlockNavigation: ({ current, next }) => hasOverviewScopeChanged(current, next),
     message:
       "You have unsaved changes. If you leave now, your work will be lost. Do you want to continue?",
     context: {

@@ -30,6 +30,38 @@ export const normalizeOverviewEnvironments = (
   return [...new Set(normalized)];
 };
 
+export const resolveOverviewEnvironmentSlugs = (
+  requestedSlugs: string[],
+  storedIds: string[],
+  availableEnvironments: { id: string; slug: string }[]
+) => {
+  const requestedEnvironments = normalizeOverviewEnvironments(
+    requestedSlugs,
+    availableEnvironments.map(({ slug }) => slug)
+  );
+
+  if (requestedEnvironments.length > 0) return requestedEnvironments;
+
+  return availableEnvironments.filter(({ id }) => storedIds.includes(id)).map(({ slug }) => slug);
+};
+
+type OverviewLocation = {
+  pathname: string;
+  search: unknown;
+};
+
+export const hasOverviewScopeChanged = (current: OverviewLocation, next: OverviewLocation) => {
+  if (current.pathname !== next.pathname) return true;
+
+  const currentSearch = current.search as OverviewSearchState;
+  const nextSearch = next.search as OverviewSearchState;
+
+  return (
+    currentSearch.secretPath !== nextSearch.secretPath ||
+    (currentSearch.environments ?? []).join(",") !== (nextSearch.environments ?? []).join(",")
+  );
+};
+
 export const updateOverviewSecretPath = <T extends OverviewSearchState>(
   search: T,
   secretPath: string
