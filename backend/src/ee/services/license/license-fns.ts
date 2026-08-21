@@ -55,7 +55,7 @@ export const getLicenseKeyConfig = (
 
 export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   _id: null,
-  slug: "enterprise",
+  slug: null,
   tier: -1,
   workspaceLimit: null,
   workspacesUsed: 0,
@@ -109,7 +109,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   enforceMfa: false,
   projectTemplates: false,
   kmip: false,
-  gateway: true,
+  gateway: false,
   gatewayPool: false,
   pamSlackNotifications: false,
   secretScanning: false,

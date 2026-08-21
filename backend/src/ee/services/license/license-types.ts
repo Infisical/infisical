@@ -101,7 +101,7 @@ export type TFeatureSet = {
   enforceMfa: false;
   projectTemplates: false;
   kmip: false;
-  gateway: true;
+  gateway: false;
   gatewayPool: false;
   pamSlackNotifications: boolean;
   secretScanning: false;
