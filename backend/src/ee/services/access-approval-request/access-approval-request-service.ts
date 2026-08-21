@@ -2,7 +2,12 @@ import { subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import msFn from "ms";
 
-import { ActionProjectType, ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas";
+import {
+  ActionProjectType,
+  ProjectMembershipRole,
+  TAccessApprovalRequests,
+  TemporaryPermissionMode
+} from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -88,6 +93,13 @@ type TSecretApprovalRequestServiceFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue">;
 };
 
+// findById reads from a replica, which can lag the write that triggered a webhook event. Callers
+// holding the primary-side row pass it so the payload's mutable fields cannot go stale.
+type TAccessRequestPrimaryRow = Pick<
+  TAccessApprovalRequests,
+  "status" | "isTemporary" | "temporaryRange" | "approvedAt" | "revokedAt" | "updatedAt"
+>;
+
 export const accessApprovalRequestServiceFactory = ({
   groupDAL,
   projectDAL,
@@ -111,25 +123,13 @@ export const accessApprovalRequestServiceFactory = ({
     action,
     accessApprovalRequest,
     projectId,
-    status,
-    isTemporary,
-    temporaryRange,
-    approvedAt,
-    revokedAt,
-    updatedAt,
+    primaryRow,
     isBypassed
   }: {
     action: AccessRequestWebhookAction;
     accessApprovalRequest: NonNullable<Awaited<ReturnType<TAccessApprovalRequestDALFactory["findById"]>>>;
     projectId: string;
-    // findById reads from a replica, which can lag the write that triggered the event. Callers
-    // holding the primary-side row pass its volatile fields here so the payload cannot go stale.
-    status?: string;
-    isTemporary?: boolean;
-    temporaryRange?: string | null;
-    approvedAt?: Date | null;
-    revokedAt?: Date | null;
-    updatedAt?: Date;
+    primaryRow?: TAccessRequestPrimaryRow;
     isBypassed?: boolean;
   }) => {
     let envSlug: string;
@@ -161,6 +161,9 @@ export const accessApprovalRequestServiceFactory = ({
     }
 
     const cfg = getConfig();
+    // Taking every mutable field from one source keeps a caller-supplied null from being read as
+    // "not provided" and silently replaced by the replica's value.
+    const currentState = primaryRow ?? accessApprovalRequest;
     const { requestedByUser } = accessApprovalRequest;
     const requestedBy: TWebhookActor | null = accessApprovalRequest.requestedByUserId
       ? {
@@ -189,8 +192,11 @@ export const accessApprovalRequestServiceFactory = ({
           request: {
             id: accessApprovalRequest.id,
             url: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${projectId}/approval?selectedTab=resource-requests&requestId=${accessApprovalRequest.id}`,
-            status: status ?? accessApprovalRequest.status,
-            isBypassed: isBypassed ?? Boolean(accessApprovalRequest.bypassReason),
+            status: currentState.status,
+            isBypassed:
+              isBypassed ??
+              (accessApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft &&
+                accessApprovalRequest.approvedByUser?.userId === accessApprovalRequest.requestedByUserId),
             policy: {
               id: accessApprovalRequest.policy.id,
               name: accessApprovalRequest.policy.name,
@@ -200,16 +206,16 @@ export const accessApprovalRequestServiceFactory = ({
               )
             },
             requestedAccess: {
-              isTemporary: isTemporary ?? accessApprovalRequest.isTemporary,
-              temporaryRange: (temporaryRange ?? accessApprovalRequest.temporaryRange) || null,
+              isTemporary: currentState.isTemporary,
+              temporaryRange: currentState.temporaryRange || null,
               permissions: requestedPermissions
             },
             requestedBy,
             expiresAt: accessApprovalRequest.expiresAt?.toISOString() ?? null,
-            approvedAt: (approvedAt ?? accessApprovalRequest.approvedAt)?.toISOString() ?? null,
-            revokedAt: (revokedAt ?? accessApprovalRequest.revokedAt)?.toISOString() ?? null,
+            approvedAt: currentState.approvedAt?.toISOString() ?? null,
+            revokedAt: currentState.revokedAt?.toISOString() ?? null,
             createdAt: accessApprovalRequest.createdAt.toISOString(),
-            updatedAt: (updatedAt ?? accessApprovalRequest.updatedAt).toISOString()
+            updatedAt: currentState.updatedAt.toISOString()
           }
         }
       },
@@ -445,12 +451,7 @@ export const accessApprovalRequestServiceFactory = ({
           action: AccessRequestWebhookAction.Created,
           accessApprovalRequest: created,
           projectId: project.id,
-          status: approval.status,
-          isTemporary: approval.isTemporary,
-          temporaryRange: approval.temporaryRange,
-          approvedAt: approval.approvedAt,
-          revokedAt: approval.revokedAt,
-          updatedAt: approval.updatedAt
+          primaryRow: approval
         });
       } else {
         logger.warn(
@@ -659,12 +660,7 @@ export const accessApprovalRequestServiceFactory = ({
           action: AccessRequestWebhookAction.Edited,
           accessApprovalRequest: edited,
           projectId: accessApprovalRequest.projectId,
-          status: approval.status,
-          isTemporary: approval.isTemporary,
-          temporaryRange: approval.temporaryRange,
-          approvedAt: approval.approvedAt,
-          revokedAt: approval.revokedAt,
-          updatedAt: approval.updatedAt
+          primaryRow: approval
         });
       } else {
         logger.warn(
@@ -901,7 +897,7 @@ export const accessApprovalRequestServiceFactory = ({
 
     // Captured from inside the transaction so the webhook payload can read the request's
     // post-write state from the primary rather than a possibly lagging replica.
-    let reviewedRequest: Awaited<ReturnType<typeof accessApprovalRequestDAL.updateById>> | undefined;
+    let reviewedRequest: TAccessRequestPrimaryRow | undefined;
 
     const reviewStatus = await accessApprovalRequestReviewerDAL.transaction(async (tx) => {
       let reviewForThisActorProcessing: {
@@ -958,6 +954,9 @@ export const accessApprovalRequestServiceFactory = ({
         (meetsStandardApprovalThreshold || isBreakGlassApprovalAttempt)
       ) {
         const currentRequestState = await accessApprovalRequestDAL.findById(accessApprovalRequest.id, tx);
+        // Read through tx, so it is primary-side. It stands in when a concurrent review already
+        // granted the privilege and the update below is therefore skipped.
+        reviewedRequest = currentRequestState;
         let privilegeIdToSet = currentRequestState?.privilegeId || null;
 
         if (!privilegeIdToSet) {
@@ -1075,14 +1074,9 @@ export const accessApprovalRequestServiceFactory = ({
           action: AccessRequestWebhookAction.Reviewed,
           accessApprovalRequest: reviewed,
           projectId: accessApprovalRequest.projectId,
-          status: reviewedRequest?.status,
-          isTemporary: reviewedRequest?.isTemporary,
-          temporaryRange: reviewedRequest?.temporaryRange,
-          approvedAt: reviewedRequest?.approvedAt,
-          revokedAt: reviewedRequest?.revokedAt,
-          updatedAt: reviewedRequest?.updatedAt,
-          // bypassReason is optional on the API and stores null, so the persisted reason cannot
-          // tell a reason-less break-glass approval apart from an ordinary one.
+          primaryRow: reviewedRequest,
+          // The helper derives this from approvedByUserId, which the re-read above may not carry
+          // yet on a lagging replica. The flag the review itself acted on is authoritative here.
           isBypassed: isBreakGlassApprovalAttempt
         });
       } else {
@@ -1177,12 +1171,7 @@ export const accessApprovalRequestServiceFactory = ({
           action: AccessRequestWebhookAction.Revoked,
           accessApprovalRequest: revoked,
           projectId: accessApprovalRequest.projectId,
-          status: updatedRequest.status,
-          isTemporary: updatedRequest.isTemporary,
-          temporaryRange: updatedRequest.temporaryRange,
-          approvedAt: updatedRequest.approvedAt,
-          revokedAt: updatedRequest.revokedAt,
-          updatedAt: updatedRequest.updatedAt
+          primaryRow: updatedRequest
         });
       } else {
         logger.warn(
