@@ -1,6 +1,6 @@
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { getWebhookPayload } from "./webhook-fns";
+import { getWebhookPayload, isWebhookPathSubscribed } from "./webhook-fns";
 import { AccessRequestWebhookAction, ChangeRequestWebhookAction, WebhookEvents, WebhookType } from "./webhook-types";
 
 const projectFields = {
@@ -371,5 +371,31 @@ describe("getWebhookPayload: secrets.access-request.modified", () => {
     }) as { attachments: { content: { body: { type: string }[] } }[] };
 
     expect(result.attachments[0].content.body.map((b) => b.type)).toEqual(["TextBlock", "FactSet"]);
+  });
+});
+
+describe("isWebhookPathSubscribed", () => {
+  describe("concrete event paths use pattern matching", () => {
+    test.each([
+      ["/api/billing", "/api/*", true],
+      ["/api/billing", "/**", true],
+      ["/api/billing", "/web/*", false],
+      ["/", "/", true]
+    ])("event %s against hook %s is %s", (eventPath, hookPath, expected) => {
+      expect(isWebhookPathSubscribed(WebhookEvents.ChangeRequestModified, eventPath, hookPath)).toBe(expected);
+    });
+  });
+
+  describe("access request paths are globs and use overlap", () => {
+    test.each([
+      ["/api/billing", "/api/*", true],
+      ["/api/*", "/api/billing", true],
+      ["/**", "/", true],
+      ["/api/*", "/**", true],
+      ["/api/*", "/web/*", false],
+      ["/prod-a/*", "/prod-b/*", false]
+    ])("request %s against hook %s is %s", (requestPath, hookPath, expected) => {
+      expect(isWebhookPathSubscribed(WebhookEvents.AccessRequestModified, requestPath, hookPath)).toBe(expected);
+    });
   });
 });

@@ -2,6 +2,7 @@ import picomatch from "picomatch";
 
 import { TWebhooks } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory, WebhookTriggeredEvent } from "@app/ee/services/audit-log/audit-log-types";
+import { haveDisjointLiteralPrefixes } from "@app/lib/casl/glob-subset";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -596,6 +597,14 @@ export type TFnTriggerWebhookDTO = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
+// An access request's path is a glob, not a folder, so hook and event are both patterns.
+// haveDisjointLiteralPrefixes only proves disjointness when it is certain, so negating it
+// delivers whenever overlap is possible rather than dropping the event silently.
+export const isWebhookPathSubscribed = (eventType: WebhookEvents, eventPath: string, hookPath: string) =>
+  eventType === WebhookEvents.AccessRequestModified
+    ? !haveDisjointLiteralPrefixes(eventPath, hookPath)
+    : picomatch.isMatch(eventPath, hookPath, { strictSlashes: false });
+
 // this is reusable function
 // used in secret queue to trigger webhook and update status when secrets changes
 export const fnTriggerWebhook = async ({
@@ -613,7 +622,7 @@ export const fnTriggerWebhook = async ({
   const toBeTriggeredHooks = webhooks.filter(({ secretPath: hookSecretPath, isDisabled, filteredEvents }) => {
     const isEventSubscribed = !filteredEvents || filteredEvents.length === 0 || filteredEvents.includes(event.type);
 
-    return !isDisabled && picomatch.isMatch(secretPath, hookSecretPath, { strictSlashes: false }) && isEventSubscribed;
+    return !isDisabled && isWebhookPathSubscribed(event.type, secretPath, hookSecretPath) && isEventSubscribed;
   });
   if (!toBeTriggeredHooks.length) return;
   logger.info({ environment, secretPath, projectId }, "Secret webhook job started");
