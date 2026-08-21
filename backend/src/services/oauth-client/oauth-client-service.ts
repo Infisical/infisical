@@ -363,16 +363,6 @@ export const oauthClientServiceFactory = ({
     const nextTokenExchangeAudience = isTokenExchangeEnabled ? tokenExchangeAudience : null;
     const nextTokenExchangeIdpSatisfiesMfa = isTokenExchangeEnabled ? tokenExchangeIdpSatisfiesMfa : false;
 
-    const updatedClient = await oauthClientDAL.updateById(client.id, {
-      name: dto.name,
-      description: dto.description,
-      grantTypes: dto.grantTypes ? grantTypes : undefined,
-      redirectUris: isRedirectBased ? dto.redirectUris : [],
-      requirePkce: isRedirectBased ? dto.requirePkce : false,
-      tokenExchangeAudience: nextTokenExchangeAudience,
-      tokenExchangeIdpSatisfiesMfa: nextTokenExchangeIdpSatisfiesMfa
-    });
-
     const isTrustWithdrawn = hasWithdrawnTokenExchangeTrust(
       {
         isEnabled: wasTokenExchangeEnabled,
@@ -386,9 +376,27 @@ export const oauthClientServiceFactory = ({
       }
     );
 
-    if (isTrustWithdrawn) {
-      await tokenService.revokeSessionsByUserAgent(getOauthClientSessionUserAgent(client.clientId));
-    }
+    const updatedClient = await oauthClientDAL.transaction(async (tx) => {
+      const updated = await oauthClientDAL.updateById(
+        client.id,
+        {
+          name: dto.name,
+          description: dto.description,
+          grantTypes: dto.grantTypes ? grantTypes : undefined,
+          redirectUris: isRedirectBased ? dto.redirectUris : [],
+          requirePkce: isRedirectBased ? dto.requirePkce : false,
+          tokenExchangeAudience: nextTokenExchangeAudience,
+          tokenExchangeIdpSatisfiesMfa: nextTokenExchangeIdpSatisfiesMfa
+        },
+        tx
+      );
+
+      if (isTrustWithdrawn) {
+        await tokenService.revokeSessionsByUserAgent(getOauthClientSessionUserAgent(client.clientId), tx);
+      }
+
+      return updated;
+    });
 
     return sanitizeOauthClient(updatedClient);
   };
@@ -398,12 +406,12 @@ export const oauthClientServiceFactory = ({
 
     const client = await getOrgClientOrThrow(clientDbId, actor.orgId);
 
-    const deletedClient = await oauthClientDAL.deleteById(client.id);
+    const deletedClient = await oauthClientDAL.transaction(async (tx) => {
+      const deleted = await oauthClientDAL.deleteById(client.id, tx);
+      await tokenService.revokeSessionsByUserAgent(getOauthClientSessionUserAgent(client.clientId), tx);
 
-    // Revoke all access/refresh tokens issued for this client. The OAuth token sessions are tagged
-    // with the client's userAgent, so deleting them makes fnValidateJwtIdentity reject every token
-    // the client issued on the next request, rather than letting them live until JWT expiry.
-    await tokenService.revokeSessionsByUserAgent(getOauthClientSessionUserAgent(client.clientId));
+      return deleted;
+    });
 
     return sanitizeOauthClient(deletedClient);
   };
@@ -423,14 +431,22 @@ export const oauthClientServiceFactory = ({
     const clientSecret = crypto.randomBytes(32).toString("hex");
     const clientSecretHash = await crypto.hashing().createHash(clientSecret, appCfg.SALT_ROUNDS);
 
-    const updatedClient = await oauthClientDAL.updateById(client.id, {
-      clientSecretHash,
-      clientSecretPrefix: clientSecret.slice(0, 4)
-    });
+    const updatedClient = await oauthClientDAL.transaction(async (tx) => {
+      const updated = await oauthClientDAL.updateById(
+        client.id,
+        {
+          clientSecretHash,
+          clientSecretPrefix: clientSecret.slice(0, 4)
+        },
+        tx
+      );
 
-    if (usesTokenExchange) {
-      await tokenService.revokeSessionsByUserAgent(getOauthClientSessionUserAgent(client.clientId));
-    }
+      if (usesTokenExchange) {
+        await tokenService.revokeSessionsByUserAgent(getOauthClientSessionUserAgent(client.clientId), tx);
+      }
+
+      return updated;
+    });
 
     return { client: sanitizeOauthClient(updatedClient), clientSecret };
   };
