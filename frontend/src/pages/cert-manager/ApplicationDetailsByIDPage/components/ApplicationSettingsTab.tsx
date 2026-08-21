@@ -1,4 +1,5 @@
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useCallback, useMemo, useState } from "react";
+import { components, MenuListProps } from "react-select";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
@@ -55,6 +56,11 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionCertificateProfileActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
   approvalPolicyQuery,
@@ -82,6 +88,7 @@ import {
   useGetPkiApplicationPermissions
 } from "@app/hooks/api/pkiApplications";
 import { PolicyModal } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PolicyModal";
+import { CreateProfileModal } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/CreateProfileModal";
 import { CreatePkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/CreatePkiAlertV2Modal";
 import { ViewPkiAlertV2Modal } from "@app/views/PkiAlertsV2Page/components/ViewPkiAlertV2Modal";
 import {
@@ -97,6 +104,8 @@ import {
 } from "./ConfigureEnrollmentModal";
 
 type Props = { application: TPkiApplication; profiles: TPkiApplicationProfile[] };
+
+type TProfileOption = { value: string; label: string };
 
 const methodBadges = (p: TPkiApplicationProfile) => {
   const methods: EnrollmentMethod[] = [];
@@ -399,7 +408,8 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
     appAbility?.can(PkiApplicationResourceActions.Delete, PkiApplicationResourceSub.PkiAlerts)
   );
   const [isAttachOpen, setIsAttachOpen] = useState(false);
-  const [profilesToAttach, setProfilesToAttach] = useState<{ value: string; label: string }[]>([]);
+  const [isCreateProfileOpen, setIsCreateProfileOpen] = useState(false);
+  const [profilesToAttach, setProfilesToAttach] = useState<TProfileOption[]>([]);
   const [profileToDetach, setProfileToDetach] = useState<TPkiApplicationProfile | null>(null);
   const [profileToConfigure, setProfileToConfigure] = useState<TPkiApplicationProfile | null>(null);
   const [enrollmentMethodToOpen, setEnrollmentMethodToOpen] = useState<EnrollmentMethod>();
@@ -408,6 +418,12 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
     setEnrollmentMethodToOpen(method);
     setProfileToConfigure(profile);
   };
+
+  const { permission } = useProjectPermission();
+  const canCreateProfile = permission.can(
+    ProjectPermissionCertificateProfileActions.Create,
+    ProjectPermissionSub.CertificateProfiles
+  );
 
   const { data: profileList } = useListCertificateProfiles({ limit: 100 });
   const attachMutation = useAttachPkiApplicationProfiles();
@@ -481,25 +497,35 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
     [profileList, attachedIds]
   );
   const totalProfileCount = profileList?.certificateProfiles?.length ?? 0;
+  const hasAttachableProfiles = availableProfiles.length > 0;
   let attachDisabledReason: ReactNode | null = null;
-  if (availableProfiles.length === 0) {
+  if (!hasAttachableProfiles && !canCreateProfile) {
     attachDisabledReason =
-      totalProfileCount === 0 ? (
-        <span>
-          No certificate profiles exist yet. Create one in{" "}
-          <Link
-            to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles"
-            params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-            className="text-primary underline hover:text-primary/80"
-          >
-            Certificate Profiles
-          </Link>{" "}
-          first.
-        </span>
-      ) : (
-        "All certificate profiles are already attached."
-      );
+      totalProfileCount === 0
+        ? "No certificate profiles exist yet, and you do not have permission to create one."
+        : "All certificate profiles are already attached.";
   }
+
+  // Pinned above the scrolling option list, so creating a profile is not a selectable option
+  // masquerading as one.
+  const ProfileMenuList = useCallback(
+    (menuProps: MenuListProps<TProfileOption, true>) => (
+      <>
+        {canCreateProfile ? (
+          <button
+            type="button"
+            onClick={() => setIsCreateProfileOpen(true)}
+            className="flex w-full cursor-pointer items-center gap-x-1.5 rounded-sm px-2 py-1.5 text-sm text-muted hover:bg-foreground/5"
+          >
+            <PlusIcon className="size-4 shrink-0" />
+            Add Certificate Profile
+          </button>
+        ) : null}
+        <components.MenuList {...menuProps} />
+      </>
+    ),
+    [canCreateProfile]
+  );
 
   const handleAttach = async () => {
     if (profilesToAttach.length === 0) return;
@@ -566,9 +592,14 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                   </TooltipContent>
                 </Tooltip>
               ) : (
-                <Button variant="outline" onClick={() => setIsAttachOpen(true)}>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    hasAttachableProfiles ? setIsAttachOpen(true) : setIsCreateProfileOpen(true)
+                  }
+                >
                   <PlusIcon />
-                  Attach Profile
+                  {hasAttachableProfiles ? "Attach Profile" : "Create Profile"}
                 </Button>
               )}
             </CardAction>
@@ -580,8 +611,9 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
               <EmptyHeader>
                 <EmptyTitle>No profiles attached</EmptyTitle>
                 <EmptyDescription>
-                  Attach a certificate profile, then configure how this application enrolls against
-                  it.
+                  {totalProfileCount === 0
+                    ? "Create a certificate profile, then configure how this application enrolls against it."
+                    : "Attach a certificate profile, then configure how this application enrolls against it."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -866,10 +898,9 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
             <FilterableSelect
               isMulti
               value={profilesToAttach}
-              onChange={(val) =>
-                setProfilesToAttach((val ?? []) as { value: string; label: string }[])
-              }
+              onChange={(val) => setProfilesToAttach((val ?? []) as TProfileOption[])}
               options={availableProfiles}
+              components={{ MenuList: ProfileMenuList }}
               placeholder="Select profiles..."
             />
           </div>
@@ -898,6 +929,28 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
           if (!open) setProfileToDetach(null);
         }}
         onDeleteApproved={handleDetach}
+      />
+
+      <CreateProfileModal
+        isOpen={isCreateProfileOpen}
+        onClose={() => setIsCreateProfileOpen(false)}
+        onComplete={(createdProfile) => {
+          setIsCreateProfileOpen(false);
+          // Created from inside the attach dialog: add it to the pending selection so it is
+          // attached alongside whatever else was picked. Created straight from the card, there is
+          // no selection to submit, so attach it now.
+          if (isAttachOpen) {
+            setProfilesToAttach((prev) => [
+              ...prev,
+              { value: createdProfile.id, label: createdProfile.slug }
+            ]);
+            return;
+          }
+          attachMutation.mutate({
+            applicationId: application.id,
+            profileIds: [createdProfile.id]
+          });
+        }}
       />
 
       <ConfigureEnrollmentModal
