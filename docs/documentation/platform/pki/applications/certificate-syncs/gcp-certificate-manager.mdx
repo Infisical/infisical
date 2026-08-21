@@ -183,17 +183,25 @@ For a **global** certificate, a certificate map entry maps a hostname to the cer
 - **Wire it yourself once.** Create the certificate map entry pointing at the certificate Infisical created. Because renewals update that same certificate in place, you never have to touch it again.
 - **Let Infisical maintain the entry.** Enable **Attach to a certificate map** and pick an existing map. Infisical creates one entry per sync, pointed at the sync's certificate, and repoints it if the certificate is replaced. This requires the Default scope.
 
+<Warning>
+  Every certificate in the entry must cover the hostname you bind it to through a **Subject Alternative Name**. GCP does not consult the Common Name, so a certificate whose Common Name is `app.example.com` but whose Subject Alternative Names do not include it is rejected with `does not cover map entry hostname`. A wildcard SAN of `*.example.com` covers `app.example.com`.
+
+  For the same reason, keep Subject Alternative Names stable across renewals when an entry matches on hostname. Leave the hostname empty to serve the certificate as the map's primary entry, which has no coverage requirement.
+</Warning>
+
 ## Certificate Renewal Behavior
 
 **Preserve certificate on renewal** is enabled by default. An existing GCP certificate is updated in place and keeps its resource name, so certificate map entries and target proxies keep working with no change in GCP. This also pins the resource name against later edits to the certificate name schema. This is the recommended setting.
 
 When disabled, a renewal or a name change creates a new GCP certificate and deletes the old one. If a certificate map entry references the old certificate, Infisical repoints its own entry before deleting. Anything else pointing at the old certificate has to be repointed manually, and GCP refuses to delete a certificate that is still referenced.
 
-<Warning>
-  Every certificate in the entry must cover the hostname you bind it to. GCP rejects a certificate map entry whose hostname is not in the certificate's Common Name or Subject Alternative Names, so binding `app.example.com` to a certificate issued for `web.example.com` fails at sync time. A wildcard certificate for `*.example.com` covers `app.example.com`.
+## Partial Failures
 
-  For the same reason, keep Subject Alternative Names stable across renewals when an entry matches on hostname.
-</Warning>
+A sync run never takes a working certificate out of the serving path to reflect a failure elsewhere in the run.
+
+- If one certificate fails to upload, or is skipped, the certificate map entry keeps the copy GCP is already serving for it. Only the certificates that did sync are updated.
+- If the certificate map entry itself cannot be updated, the run reports the failure and leaves both the entry and the existing certificates alone. Nothing is deleted until the entry is current again, so a transient error does not become an outage.
+- Changing the bound certificate map creates the entry in the new map before the entry in the old map is removed.
 
 ## Supported Key Algorithms
 

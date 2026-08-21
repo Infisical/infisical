@@ -130,6 +130,17 @@ describe("GCP Certificate Manager destinationConfig validation", () => {
     );
   });
 
+  test("rejects a connection ID that is not a UUID, rather than failing in the DAL", () => {
+    expect(
+      CreateGcpCertificateManagerPkiSyncSchema.safeParse({
+        name: "gcp-sync",
+        connectionId: "not-a-uuid",
+        destinationConfig: { gcpProjectId: "my-prod-project", location: "global" },
+        syncOptions: { certificateNameSchema: "infisical-{{certificateId}}" }
+      }).success
+    ).toBe(false);
+  });
+
   test("rejects certificate map names GCP would refuse", () => {
     expect(parseConfig({ certificateMapBinding: { certificateMap: "Prod_Map" } }).success).toBe(false);
   });
@@ -139,7 +150,7 @@ describe("GCP Certificate Manager create schema", () => {
   const createPayload = (overrides: Record<string, unknown>) =>
     CreateGcpCertificateManagerPkiSyncSchema.safeParse({
       name: "gcp-sync",
-      connectionId: "connection-id",
+      connectionId: "33333333-3333-3333-3333-333333333333",
       destinationConfig: { gcpProjectId: "my-prod-project", location: "global" },
       syncOptions: { certificateNameSchema: "infisical-{{certificateId}}" },
       ...overrides

@@ -169,7 +169,7 @@ export const CreateGcpCertificateManagerPkiSyncSchema = z
     destinationConfig: GcpCertificateManagerPkiSyncConfigSchema,
     syncOptions: GcpCertificateManagerPkiSyncOptionsSchema,
     subscriberId: z.string().nullish(),
-    connectionId: z.string(),
+    connectionId: z.string().uuid(),
     projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
     applicationId: z.string().uuid().optional(),
     certificateIds: z.array(z.string().uuid()).optional()
@@ -194,7 +194,7 @@ export const UpdateGcpCertificateManagerPkiSyncSchema = z.object({
   destinationConfig: GcpCertificateManagerPkiSyncConfigSchema.optional(),
   syncOptions: GcpCertificateManagerPkiSyncOptionsSchema.optional(),
   subscriberId: z.string().nullish(),
-  connectionId: z.string().optional()
+  connectionId: z.string().uuid().optional()
 });
 
 export const GcpCertificateManagerPkiSyncListItemSchema = z.object({
