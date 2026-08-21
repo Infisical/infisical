@@ -2,7 +2,8 @@ import { createMongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { AccessScope } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod } from "@app/db/schemas";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 
 import { membershipIdentityServiceFactory } from "./membership-identity-service";
 import {
@@ -40,8 +41,14 @@ const buildDto = (): TDeleteMembershipIdentityDTO => ({
 });
 
 const createService = ({
-  existingMembership = { id: MEMBERSHIP_ID, actorIdentityId: IDENTITY_ID }
-}: { existingMembership?: Record<string, unknown> | null } = {}) => {
+  existingMembership = { id: MEMBERSHIP_ID, actorIdentityId: IDENTITY_ID },
+  keyStore = { getKeysByPattern: vi.fn(), getItem: vi.fn(), getItems: vi.fn() },
+  findIdentities
+}: {
+  existingMembership?: Record<string, unknown> | null;
+  keyStore?: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem" | "getItems">;
+  findIdentities?: ReturnType<typeof vi.fn>;
+} = {}) => {
   const bumpIdentityRevocationVersion = vi.fn().mockResolvedValue(undefined);
   const insertOrgMembershipRevocationMarker = vi.fn().mockResolvedValue(undefined);
   const removeOrgMembershipRevocationMarkers = vi.fn().mockResolvedValue(undefined);
@@ -53,7 +60,8 @@ const createService = ({
     create: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID, actorIdentityId: IDENTITY_ID }),
     updateById: vi.fn().mockImplementation(async (id: string, data: Record<string, unknown>) => ({ id, ...data })),
     deleteById: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID }),
-    transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb({} as Knex))
+    transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb({} as Knex)),
+    findIdentities: findIdentities ?? vi.fn()
   };
 
   const service = membershipIdentityServiceFactory({
@@ -81,7 +89,7 @@ const createService = ({
     licenseService: { getPlan: vi.fn() } as never,
     applicationMembershipCleanupService: { cleanupActorApplicationMemberships: vi.fn() } as never,
     projectDAL: { findById: vi.fn() } as never,
-    keyStore: { getKeysByPattern: vi.fn(), getItem: vi.fn() } as never,
+    keyStore: keyStore as never,
     usageMeteringService: { emit: vi.fn(), emitForProject: vi.fn() } as never,
     alertService: { deleteAlertsForResource } as never,
     identityAccessTokenService: {
@@ -290,5 +298,43 @@ describe("updateMembership org revocation restore", () => {
     expect(removeOrgMembershipRevocationMarkers).toHaveBeenCalledTimes(1);
     expect(insertOrgMembershipRevocationMarker).not.toHaveBeenCalled();
     expect(bumpIdentityRevocationVersion).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("membershipIdentityService.listMemberships", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const buildRow = (idx: number) => ({
+    id: `membership-${idx}`,
+    identity: {
+      id: `identity-${idx}`,
+      name: `identity-${idx}`,
+      authMethods: [IdentityAuthMethod.UNIVERSAL_AUTH],
+      universalAuthClientId: `client-${idx}`
+    },
+    roles: []
+  });
+
+  test("resolves lockout state for the whole page in one Redis batch", async () => {
+    const rows = Array.from({ length: 20 }, (_, i) => buildRow(i));
+    const getItems = vi.fn().mockResolvedValue(new Array(20).fill(null) as (string | null)[]);
+    const getKeysByPattern = vi.fn().mockResolvedValue([]);
+    const findIdentities = vi.fn().mockResolvedValue({ data: rows, totalCount: 20 });
+
+    const { service } = createService({
+      keyStore: { getItems, getKeysByPattern, getItem: vi.fn() },
+      findIdentities
+    });
+
+    const result = await service.listMemberships({
+      permission: { type: "user", id: "actor-1", authMethod: null, orgId: "org-1" },
+      scopeData: { scope: AccessScope.Project, orgId: "org-1", projectId: "project-1" },
+      data: { offset: 0, limit: 20 }
+    } as never);
+
+    expect(getItems).toHaveBeenCalledTimes(1);
+    expect(getKeysByPattern).not.toHaveBeenCalled();
+    expect(result.data).toHaveLength(20);
+    expect(result.data[0].identity.activeLockoutAuthMethods).toEqual([]);
   });
 });

@@ -347,6 +347,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
           db.ref("createdAt").withSchema(TableName.MembershipRole).as("membershipRoleCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.MembershipRole).as("membershipRoleUpdatedAt"),
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
+          db.ref("clientId").as("uaClientId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
           db.ref("id").as("alicloudId").withSchema(TableName.IdentityAliCloudAuth),
           db.ref("id").as("awsId").withSchema(TableName.IdentityAwsAuth),
@@ -372,6 +373,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
             identityProjectId,
             identityOrgId,
             uaId,
+            uaClientId,
             gcpId,
             alicloudId,
             awsId,
@@ -394,6 +396,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
               hasDeleteProtection: identityHasDeleteProtection,
               orgId: identityOrgId,
               projectId: identityProjectId,
+              universalAuthClientId: uaClientId,
               authMethods: buildAuthMethods({
                 uaId,
                 gcpId,
