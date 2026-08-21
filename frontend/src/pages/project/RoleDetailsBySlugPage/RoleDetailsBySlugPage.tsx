@@ -70,7 +70,7 @@ const Page = () => {
 
     await deleteProjectRole({
       projectId,
-      projectType: currentProject.type,
+      // Legacy Certificate Manager custom roles use the generic project-role endpoint.
       id: data.id
     });
 

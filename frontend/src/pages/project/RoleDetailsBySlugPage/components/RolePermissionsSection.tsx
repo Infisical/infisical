@@ -200,7 +200,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     const updatedRole = await updateRole({
       id: role?.id as string,
       projectId,
-      projectType: currentProject.type,
+      // Legacy Certificate Manager custom roles use the generic project-role endpoint.
       ...el,
       permissions: formRolePermission2API(permissionsForm)
     });

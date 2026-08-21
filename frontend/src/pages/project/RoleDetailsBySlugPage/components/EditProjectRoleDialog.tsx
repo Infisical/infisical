@@ -90,7 +90,7 @@ export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => 
     await updateProjectRole({
       id: role.id,
       projectId: currentProject.id,
-      projectType: currentProject.type,
+      // Legacy Certificate Manager custom roles use the generic project-role endpoint.
       name,
       description,
       slug
