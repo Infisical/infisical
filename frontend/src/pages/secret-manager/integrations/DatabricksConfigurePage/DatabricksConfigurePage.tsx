@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import {
   faArrowUpRightFromSquare,
   faBookOpen,
@@ -99,9 +98,7 @@ export const DatabricksConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthScopes ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
-      <Helmet>
-        <title>Set Up Databricks Integration</title>
-      </Helmet>
+      <title>Set Up Databricks Integration</title>
       <Card className="max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="px-6 text-left text-xl"
@@ -215,9 +212,7 @@ export const DatabricksConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up Databricks Integration</title>
-      </Helmet>
+      <title>Set Up Databricks Integration</title>
       {isIntegrationAuthScopesLoading || isintegrationAuthLoading ? (
         <img
           src="/images/loading/loading.gif"

@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import {
   faArrowUpRightFromSquare,
@@ -111,9 +110,7 @@ export const HashicorpVaultConfigurePage = () => {
 
   return integrationAuth ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
-      <Helmet>
-        <title>Set Up Vault Integration</title>
-      </Helmet>
+      <title>Set Up Vault Integration</title>
       <Card className="max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="px-6 text-left text-xl"
@@ -248,9 +245,7 @@ export const HashicorpVaultConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up Vault Integration</title>
-      </Helmet>
+      <title>Set Up Vault Integration</title>
       {isintegrationAuthLoading ? (
         <img
           src="/images/loading/loading.gif"

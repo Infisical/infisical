@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import {
   faArrowUpRightFromSquare,
@@ -123,9 +122,7 @@ export const RenderConfigurePage = () => {
       onSubmit={handleSubmit(onFormSubmit)}
       className="flex h-full w-full flex-col items-center justify-center"
     >
-      <Helmet>
-        <title>Set Up Render Integration</title>
-      </Helmet>
+      <title>Set Up Render Integration</title>
       <Card className="max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="px-6 text-left text-xl"
@@ -273,9 +270,7 @@ export const RenderConfigurePage = () => {
     </form>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up Render Integration</title>
-      </Helmet>
+      <title>Set Up Render Integration</title>
       {isIntegrationAuthLoading || isIntegrationAuthAppsLoading ? (
         <img
           src="/images/loading/loading.gif"

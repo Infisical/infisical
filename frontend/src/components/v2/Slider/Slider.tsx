@@ -116,7 +116,7 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
       ...props
     },
     ref
-  ): JSX.Element => {
+  ): React.JSX.Element => {
     let initialValue = min;
     if (value !== undefined) {
       initialValue = Number(value);

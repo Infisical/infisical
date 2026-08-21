@@ -10,6 +10,13 @@ export type StepperProps = {
   className?: string;
 };
 
+type StepperInjectedProps = {
+  direction: "vertical" | "horizontal";
+  activeStep: number;
+  isCompleted: boolean;
+  isActive: boolean;
+};
+
 export const Stepper = ({ activeStep, children, direction, className }: StepperProps) => {
   return (
     <div
@@ -34,7 +41,7 @@ export const Stepper = ({ activeStep, children, direction, className }: StepperP
               >
                 {isCompleted ? <FontAwesomeIcon icon={faCheck} /> : index + 1}
               </div>
-              {cloneElement(child as ReactElement, {
+              {cloneElement(child as ReactElement<StepperInjectedProps>, {
                 direction,
                 activeStep,
                 isCompleted,
@@ -57,10 +64,6 @@ export const Stepper = ({ activeStep, children, direction, className }: StepperP
 export type StepProps = {
   title: string;
   description?: ReactNode;
-  // isActive?: boolean;
-  // isCompleted?: boolean;
-  // activeStep?: number;
-  // direction?: "vertical" | "horizontal";
 };
 
 export const Step = ({ title, description }: StepProps) => {

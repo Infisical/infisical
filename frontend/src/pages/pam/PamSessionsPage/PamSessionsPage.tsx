@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -199,9 +198,7 @@ export const PamSessionsPage = () => {
 
   return (
     <div className="mx-auto mb-6 w-full max-w-8xl">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Sessions" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Sessions" })}</title>
       <PageHeader
         scope={ProjectType.PAM}
         icon={Video}

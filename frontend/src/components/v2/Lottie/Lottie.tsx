@@ -1,4 +1,4 @@
-import { forwardRef, ReactNode, useRef } from "react";
+import { forwardRef, type JSX, ReactNode, useRef } from "react";
 import { DotLottie, DotLottieReact, Mode } from "@lottiefiles/dotlottie-react";
 
 export type LottieProps = {

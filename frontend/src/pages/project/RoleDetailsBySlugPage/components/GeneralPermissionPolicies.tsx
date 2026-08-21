@@ -1,4 +1,4 @@
-import { cloneElement, Fragment, RefObject, useEffect, useMemo } from "react";
+import { cloneElement, Fragment, type JSX, RefObject, useEffect, useMemo } from "react";
 import {
   Control,
   Controller,

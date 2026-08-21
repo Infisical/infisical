@@ -1,4 +1,4 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
 import { AuthenticationPage } from "./AuthenticationPage";
 
@@ -11,13 +11,11 @@ export const Route = createFileRoute(
       breadcrumbs: [
         {
           label: "Admin",
-          link: linkOptions({ to: "/admin" })
+          link: { to: "/admin" as const }
         },
         {
           label: "Authentication",
-          link: linkOptions({
-            to: "/admin/authentication"
-          })
+          link: { to: "/admin/authentication" as const }
         }
       ]
     };

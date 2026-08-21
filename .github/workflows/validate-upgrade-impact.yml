@@ -6,6 +6,10 @@ on:
       - "upgrade-impact/**"
       - ".github/workflows/validate-upgrade-impact.yml"
       - ".github/workflows/generate-upgrade-impact.yml"
+      - ".nvmrc"
+
+env:
+  NPM_VERSION: "11.19.0"
 
 jobs:
   validate:
@@ -20,9 +24,15 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 22
+          node-version-file: ".nvmrc"
           cache: npm
           cache-dependency-path: upgrade-impact/package-lock.json
+
+      - name: Setup npm
+        run: |
+          npm install --global "npm@${NPM_VERSION}"
+          test "$(npm --version)" = "${NPM_VERSION}"
+        working-directory: ${{ runner.temp }}
 
       - name: Install dependencies
         run: npm ci

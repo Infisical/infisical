@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
@@ -74,13 +73,13 @@ export const LoginLdapPage = () => {
 
   return (
     <AuthPageLayout variant="focused">
-      <Helmet>
+      <>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
         <meta property="og:title" content={t("login.og-title") ?? ""} />
         <meta name="og:description" content={t("login.og-description") ?? ""} />
-      </Helmet>
+      </>
       <form onSubmit={handleSubmission} className="mx-auto w-full max-w-sm">
         <AuthPagePanel>
           <CardHeader className="mb-4 gap-4">

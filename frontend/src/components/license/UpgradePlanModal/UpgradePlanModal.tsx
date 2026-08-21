@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { Link } from "@tanstack/react-router";
 import { SparklesIcon } from "lucide-react";
 

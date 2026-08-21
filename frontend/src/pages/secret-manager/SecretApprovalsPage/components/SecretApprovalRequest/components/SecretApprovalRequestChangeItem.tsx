@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { InfoIcon, TriangleAlertIcon } from "lucide-react";
 
 import { DiffViewItem, SecretVersionDiffView } from "@app/components/secrets/diff";

@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -160,9 +159,7 @@ export const PkiSubscriberDetailsByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: "PKI Subscriber" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "PKI Subscriber" })}</title>
       <ProjectPermissionCan
         I={ProjectPermissionPkiSubscriberActions.Read}
         a={ProjectPermissionSub.PkiSubscribers}

@@ -1,5 +1,14 @@
+ARG NPM_VERSION=11.19.0
+
+FROM node:22.23.2-trixie-slim AS base
+ARG NPM_VERSION
+
+# Node 22 images bundle npm 10, but npm 11 enforces the repository's install policy.
+RUN npm install --global "npm@${NPM_VERSION}" \
+    && test "$(npm --version)" = "${NPM_VERSION}"
+
 # Build stage
-FROM node:22.22.0-trixie-slim AS build
+FROM base AS build
 
 WORKDIR /app
 
@@ -17,8 +26,8 @@ RUN apt-get update && apt-get install -y \
     libc-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package*.json ./
-RUN npm ci
+COPY package.json package-lock.json .npmrc ./
+RUN npm_config_build_from_source=odbc npm ci
 
 COPY . .
 RUN npm run build
@@ -44,7 +53,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
     rm "$ORACLE_ZIP"
 
 # Production dependencies (runs in parallel with build)
-FROM node:22.22.0-trixie-slim AS prod-deps
+FROM base AS prod-deps
 
 WORKDIR /app
 
@@ -60,11 +69,11 @@ RUN apt-get update && apt-get install -y \
     libc-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package*.json ./
-RUN npm ci --omit=dev
+COPY package.json package-lock.json .npmrc ./
+RUN npm_config_build_from_source=odbc npm ci --omit=dev
 
 # Production stage
-FROM node:22.22.0-trixie-slim
+FROM base
 WORKDIR /app
 
 ENV npm_config_cache /home/node/.npm
@@ -73,6 +82,7 @@ ENV npm_config_cache /home/node/.npm
 RUN apt-get update && apt-get install -y \
     unixodbc \
     freetds-bin \
+    tdsodbc \
     libaio1t64 \
     smbclient \
     curl \
@@ -82,7 +92,10 @@ RUN apt-get update && apt-get install -y \
     && apt-get update && apt-get install -y infisical=0.43.79 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+RUN test -f /usr/share/tdsodbc/odbcinst.ini \
+    && odbcinst -i -d -f /usr/share/tdsodbc/odbcinst.ini \
+    && odbcinst -q -d -n FreeTDS \
+    && test -f "$(dpkg -L tdsodbc | grep '/libtdsodbc\.so$')"
 
 # Copy Oracle Instant Client from parallel stage
 COPY --from=oracle /opt/oracle /opt/oracle

@@ -6,6 +6,9 @@ on:
             - "v0.*.*-nightly-*"
             - "v0.*.*-nightly-*.*"
 
+env:
+    NPM_VERSION: "11.19.0"
+
 jobs:
     infisical-tests:
         name: Run tests before deployment
@@ -31,6 +34,15 @@ jobs:
               uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
               with:
                   fetch-depth: 0
+            - name: 🔧 Setup Node from .nvmrc
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version-file: ".nvmrc"
+            - name: Setup npm
+              run: |
+                  npm install --global "npm@${NPM_VERSION}"
+                  test "$(npm --version)" = "${NPM_VERSION}"
+              working-directory: ${{ runner.temp }}
             - name: 📦 Install dependencies to test all dependencies
               run: npm ci --only-production
               working-directory: backend
@@ -129,6 +141,15 @@ jobs:
               uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
               with:
                   fetch-depth: 0
+            - name: 🔧 Setup Node from .nvmrc
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version-file: ".nvmrc"
+            - name: Setup npm
+              run: |
+                  npm install --global "npm@${NPM_VERSION}"
+                  test "$(npm --version)" = "${NPM_VERSION}"
+              working-directory: ${{ runner.temp }}
             - name: 📦 Install dependencies to test all dependencies
               run: npm ci --only-production
               working-directory: backend

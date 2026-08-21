@@ -60,6 +60,8 @@ export default tseslint.config(
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
       "import/prefer-default-export": "off",
+      "no-constant-binary-expression": "error",
+      "no-empty-static-block": "error",
       "react-hooks/exhaustive-deps": "off",
       "@typescript-eslint/ban-ts-comment": "warn",
       "react/jsx-props-no-spreading": "off", // switched off for component building
@@ -134,9 +136,13 @@ export default tseslint.config(
     }
   },
   {
-    rules: Object.fromEntries(
-      Object.keys(stylisticPlugin.configs["all-flat"].rules ?? {}).map((key) => [key, "off"])
-    )
+    files: ["**/*.{ts,tsx}"],
+    rules: {
+      ...Object.fromEntries(
+        Object.keys(stylisticPlugin.configs["all-flat"].rules ?? {}).map((key) => [key, "off"])
+      ),
+      "@stylistic/func-call-spacing": ["error", "never"]
+    }
   },
   storybook.configs["flat/recommended"]
 );

@@ -1,4 +1,4 @@
-import { ComponentPropsWithRef, ElementType, ReactNode, Ref } from "react";
+import { ComponentPropsWithRef, ElementType, type JSX, ReactNode, Ref } from "react";
 import { twMerge } from "tailwind-merge";
 
 export type MenuProps = {

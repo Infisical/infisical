@@ -1,10 +1,9 @@
-import crypto from "crypto";
-
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { faMinus, faPlus, faShuffle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { randomHex } from "@app/components/utilities/cryptography/crypto";
 import { Button, Input } from "@app/components/v2";
 
 type Props = {
@@ -16,7 +15,7 @@ export const GenRandomNumber = ({ onGenerate }: Props) => {
   const [value, setValue] = useState(32);
 
   const onGenerateRandomHex = () => {
-    const rand = crypto.randomBytes(value).toString("hex");
+    const rand = randomHex(value);
     onGenerate(rand);
   };
 

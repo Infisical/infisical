@@ -17,9 +17,9 @@ Infisical is an open-source secret management platform. Monorepo layout:
 
 ```
 infisical/
-├── backend/               # Fastify 4 API server (see backend/CLAUDE.md)
+├── backend/               # Fastify 5 API server (see backend/CLAUDE.md)
 ├── backend-go/            # Go API server — partial rewrite (see backend-go/CLAUDE.md)
-├── frontend/              # React 18 SPA (see frontend/CLAUDE.md)
+├── frontend/              # React 19 SPA (see frontend/CLAUDE.md)
 ├── wasm/                  # Rust crates compiled to WASM for the frontend (see wasm/<crate>/CLAUDE.md)
 ├── e2e/                   # External Playwright suite — gates prod deploys against gamma (see e2e/CLAUDE.md)
 ├── docs/                  # Documentation site (Mintlify-based)
@@ -33,9 +33,9 @@ infisical/
 └── CLAUDE.md               # This file
 ```
 
-- **`backend/`** — Fastify 4 API server, TypeScript, PostgreSQL via Knex, BullMQ queues. See [`backend/CLAUDE.md`](backend/CLAUDE.md) for architecture, patterns, and commands.
+- **`backend/`** — Fastify 5 API server, TypeScript, PostgreSQL via Knex, BullMQ queues. See [`backend/CLAUDE.md`](backend/CLAUDE.md) for architecture, patterns, and commands.
 - **`backend-go/`** — Go API server (partial rewrite), chi + chita framework, raw pgx queries, same PostgreSQL database. See [`backend-go/CLAUDE.md`](backend-go/CLAUDE.md) for architecture, patterns, and commands.
-- **`frontend/`** — React 18 SPA, Vite 6, TanStack Router + React Query, Tailwind CSS v4. See [`frontend/CLAUDE.md`](frontend/CLAUDE.md) for architecture, patterns, and commands.
+- **`frontend/`** — React 19 SPA, Vite 8, TanStack Router + React Query, Tailwind CSS v4. See [`frontend/CLAUDE.md`](frontend/CLAUDE.md) for architecture, patterns, and commands.
 - **`wasm/`** — Rust crates that compile to WASM for the frontend. Generated bindings are committed under `frontend/src/lib/<crate>/` so the frontend builds without a Rust toolchain. Each crate has its own `CLAUDE.md` with the rebuild command (e.g. [`wasm/ironrdp-decoder/CLAUDE.md`](wasm/ironrdp-decoder/CLAUDE.md)) — run it after any change to that crate's `src/` or `Cargo.toml` so source and bindings stay in sync.
 - **`docs/`** — Product documentation site. Has its own Dockerfile for building. Reference docs for up-to-date feature descriptions and API usage.
 - **`e2e/`** — Playwright suite that runs against a deployed environment (gamma) between deploy and prod promotion. Distinct from `backend/e2e-test/` (in-process Vitest). Failure blocks every prod-deploy job. Covers SCIM + SAML flows (SP-initiated, IdP-initiated, deactivation, response rejection) against a mock IdP we control — see [`e2e/CLAUDE.md`](e2e/CLAUDE.md) for the harness and the one-time gamma bootstrap.
@@ -52,7 +52,13 @@ Infisical supports self-hosted deployment via Docker. Key considerations:
 
 ### Dependency Policy
 
-Both `backend/` and `frontend/` enforce a minimum release age of 7 days for npm packages (configured via `.npmrc` in each directory). This means `npm install` will only resolve package versions published at least 7 days ago, as a supply-chain security measure.
+The canonical JavaScript toolchain is Node 22.23.2 and npm 11.19.0; run `nvm use` and then `npm install --global npm@11.19.0` before dependency commands. Packages support Node `>=22.22.2 <23` and npm `>=11.19.0 <12`, with `devEngines` enforcing those ranges.
+
+All six npm project roots (`/`, `backend/`, `frontend/`, `e2e/`, `upgrade-impact/`, and `sink/oidc-server/`) enforce a minimum release age of 7 days and enable `strict-allow-scripts` through their own `.npmrc`. npm 11.10 or newer is required for the release-age policy; npm 10 silently ignores it. This means `npm install` will only resolve package versions published at least 7 days ago, as a supply-chain security measure.
+
+Every dependency lifecycle script must have an exact-version reviewed decision in the owning `package.json#allowScripts`; use `true` only when the artifact is required and `false` when the script is intentionally disabled. Dependency updates that change a script-bearing package version must update that policy intentionally. A root `.npmrc` does not apply to these nested independent installs.
+
+`@infisical/quic@1.0.8` declares an unpublished `@infisical/quic-linux-arm` optional package. The backend lock intentionally omits that impossible edge while retaining the published Linux x64 and ARM64 binaries. Retain and recheck this correction whenever regenerating the lock until the upstream manifest is fixed.
 
 ## Cross-Cutting Patterns
 

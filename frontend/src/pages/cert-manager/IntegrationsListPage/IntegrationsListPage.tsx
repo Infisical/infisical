@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
@@ -39,12 +38,12 @@ export const IntegrationsListPage = () => {
 
   return (
     <>
-      <Helmet>
+      <>
         <title>{t("common.head-title", { title: t("integrations.title") })}</title>
         <meta property="og:image" content="/images/message.png" />
         <meta property="og:title" content="Manage your certificates in seconds" />
         <meta name="og:description" content="Sync and manage PKI certificates across services" />
-      </Helmet>
+      </>
       <div className="relative mx-auto max-w-8xl pb-12 text-white">
         <div className="mb-8">
           <PageHeader

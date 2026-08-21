@@ -1,11 +1,9 @@
-import crypto from "crypto";
-
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 
+import { randomHex } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   Card,
@@ -35,9 +33,7 @@ export const GithubAuthorizePage = () => {
   const { currentOrg } = useOrganization();
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Select GitHub Integration Auth</title>
-      </Helmet>
+      <title>Select GitHub Integration Auth</title>
       <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="px-6 text-left text-xl"
@@ -101,7 +97,7 @@ export const GithubAuthorizePage = () => {
                     return;
                   }
 
-                  const state = crypto.randomBytes(16).toString("hex");
+                  const state = randomHex(16);
                   localStorage.setItem("latestCSRFToken", state);
                   localStorageService.setIntegrationProjectId(currentProject.id);
                   window.location.assign(

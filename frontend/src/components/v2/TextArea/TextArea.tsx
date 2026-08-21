@@ -1,4 +1,4 @@
-import { forwardRef, TextareaHTMLAttributes } from "react";
+import { forwardRef, type JSX, TextareaHTMLAttributes } from "react";
 import { cva, VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 

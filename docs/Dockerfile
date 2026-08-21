@@ -1,4 +1,13 @@
-FROM node:22-alpine AS builder
+ARG NPM_VERSION=11.19.0
+
+FROM node:22.23.2-alpine AS base
+ARG NPM_VERSION
+
+# Node 22 images bundle npm 10; keep tooling installs on the repository npm version.
+RUN npm install --global "npm@${NPM_VERSION}" \
+    && test "$(npm --version)" = "${NPM_VERSION}"
+
+FROM base AS builder
 
 WORKDIR /app
 
@@ -15,7 +24,7 @@ RUN apk add --no-cache wget jq && \
 # Run mint dev briefly to download the web client
 RUN timeout 30 mint dev || true
 
-FROM node:22-alpine
+FROM base
 
 WORKDIR /app
 

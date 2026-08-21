@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { Button } from "../Button";
 import { Modal, ModalContent } from "../Modal";
 

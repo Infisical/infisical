@@ -1,5 +1,4 @@
 import { FormEvent, useState } from "react";
-import { Helmet } from "react-helmet";
 import { Link } from "@tanstack/react-router";
 import { MailCheck } from "lucide-react";
 
@@ -45,7 +44,7 @@ export const AccountRecoveryEmailPage = () => {
 
   return (
     <AuthPageLayout variant="focused">
-      <Helmet>
+      <>
         <title>Account Recovery</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
@@ -54,7 +53,7 @@ export const AccountRecoveryEmailPage = () => {
           name="og:description"
           content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
         />
-      </Helmet>
+      </>
       <div className="flex flex-col items-center">
         {step === 1 && (
           <form onSubmit={onSubmit} className="w-full">

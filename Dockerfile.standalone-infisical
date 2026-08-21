@@ -2,17 +2,20 @@ ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 ARG CAPTCHA_SITE_KEY=captcha-site-key
+ARG NPM_VERSION=11.19.0
 
-FROM node:22.22.0-trixie-slim AS base
+FROM node:22.23.2-trixie-slim AS base
+ARG NPM_VERSION
 
-# Fixes NPM vulnerability: https://security.snyk.io/vuln/SNYK-JS-CROSSSPAWN-8303230
-RUN npm install -g npm@10.9.0
+# Node 22 images bundle npm 10, but npm 11 enforces the repository's install policy.
+RUN npm install --global "npm@${NPM_VERSION}" \
+    && test "$(npm --version)" = "${NPM_VERSION}"
 
 FROM base AS frontend-dependencies
 
 WORKDIR /app
 
-COPY frontend/package.json frontend/package-lock.json  ./
+COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
 
 # Install dependencies
 RUN npm ci --ignore-scripts
@@ -107,8 +110,8 @@ RUN apt-get update && apt-get install -y \
 RUN groupadd --system --gid 1001 nodejs
 RUN useradd --system --uid 1001 --gid nodejs non-root-user
 
-COPY backend/package*.json ./
-RUN npm ci
+COPY backend/package.json backend/package-lock.json backend/.npmrc ./
+RUN npm_config_build_from_source=odbc npm ci
 
 COPY /backend .
 COPY --chown=non-root-user:nodejs standalone-entrypoint.sh standalone-entrypoint.sh
@@ -146,8 +149,8 @@ RUN apt-get update && apt-get install -y \
     freetds-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY backend/package*.json ./
-RUN npm ci --omit=dev
+COPY backend/package.json backend/package-lock.json backend/.npmrc ./
+RUN npm_config_build_from_source=odbc npm ci --omit=dev
 
 # Production stage
 FROM base AS backend-runner
@@ -160,10 +163,14 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     unixodbc \
     freetds-bin \
+    tdsodbc \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure ODBC
-RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+RUN test -f /usr/share/tdsodbc/odbcinst.ini \
+    && odbcinst -i -d -f /usr/share/tdsodbc/odbcinst.ini \
+    && odbcinst -q -d -n FreeTDS \
+    && test -f "$(dpkg -L tdsodbc | grep '/libtdsodbc\.so$')"
 
 COPY --from=backend-build /app .
 RUN rm -rf ./node_modules ./bdd ./e2e-test
@@ -182,6 +189,7 @@ RUN apt-get update && apt-get install -y \
     git \
     unixodbc \
     freetds-bin \
+    tdsodbc \
     wget \
     perl \
     build-essential \
@@ -231,7 +239,10 @@ RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.6/o
 WORKDIR /
 
 # Configure ODBC in production
-RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+RUN test -f /usr/share/tdsodbc/odbcinst.ini \
+    && odbcinst -i -d -f /usr/share/tdsodbc/odbcinst.ini \
+    && odbcinst -q -d -n FreeTDS \
+    && test -f "$(dpkg -L tdsodbc | grep '/libtdsodbc\.so$')"
 
 # Setup user permissions
 RUN groupadd --system --gid 1001 nodejs \
@@ -276,7 +287,7 @@ LABEL org.opencontainers.image.documentation="https://infisical.com/docs"
 LABEL org.opencontainers.image.source="https://github.com/Infisical/infisical"
 LABEL org.opencontainers.image.vendor="Infisical"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.base.name="node:22.22.0-trixie-slim"
+LABEL org.opencontainers.image.base.name="node:22.23.2-trixie-slim"
 
 # OCI Image Labels - Dynamic metadata (set via build args)
 LABEL org.opencontainers.image.version="${INFISICAL_PLATFORM_VERSION}"

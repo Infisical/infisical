@@ -1,11 +1,10 @@
 /* eslint-disable no-underscore-dangle */
-import { forwardRef, InputHTMLAttributes } from "react";
+import { forwardRef, InputHTMLAttributes, type ReactNode } from "react";
 import { InitialConfigType, LexicalComposer } from "@lexical/react/LexicalComposer";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin";
-import { ReactNode } from "@tanstack/react-router";
 import { cva, VariantProps } from "cva";
 import { EditorState, LexicalEditor } from "lexical";
 import { twMerge } from "tailwind-merge";

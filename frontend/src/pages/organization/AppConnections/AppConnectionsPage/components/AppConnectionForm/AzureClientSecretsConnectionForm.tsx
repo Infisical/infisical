@@ -1,12 +1,11 @@
 /* eslint-disable no-case-declarations */
-import crypto from "crypto";
-
 import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
 import { z } from "zod";
 
+import { randomHex } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   Field,
@@ -197,7 +196,7 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit, proj
   const selectedMethod = watch("method");
 
   const onSubmitHandler = async (formData: FormData) => {
-    const state = crypto.randomBytes(16).toString("hex");
+    const state = randomHex(16);
     switch (formData.method) {
       case AzureClientSecretsConnectionMethod.OAuth:
         setIsRedirecting(true);

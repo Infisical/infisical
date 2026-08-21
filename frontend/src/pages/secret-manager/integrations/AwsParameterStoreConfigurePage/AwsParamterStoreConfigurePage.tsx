@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import {
   faArrowUpRightFromSquare,
   faBookOpen,
@@ -172,9 +171,7 @@ export const AWSParameterStoreConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && !isIntegrationAuthAwsKmsKeysLoading ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
-      <Helmet>
-        <title>Set Up AWS Parameter Integration</title>
-      </Helmet>
+      <title>Set Up AWS Parameter Integration</title>
       <Card className="max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="px-6 text-left text-xl"
@@ -364,9 +361,7 @@ export const AWSParameterStoreConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up AWS Parameter Store Integration</title>
-      </Helmet>
+      <title>Set Up AWS Parameter Store Integration</title>
       {isintegrationAuthLoading || isIntegrationAuthAwsKmsKeysLoading ? (
         <img
           src="/images/loading/loading.gif"

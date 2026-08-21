@@ -22,7 +22,7 @@ export const PAM_PLAYBACK_MAX_EVENTS_PER_CHUNK = 50_000;
 export const PAM_PLAYBACK_MAX_CHUNKS = 10_000;
 export const PAM_PLAYBACK_MAX_TOTAL_EVENTS = 500_000;
 
-const base64ToBytes = (b64: string): Uint8Array => {
+const base64ToBytes = (b64: string): Uint8Array<ArrayBuffer> => {
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i);
@@ -56,7 +56,7 @@ export const buildChunkAad = async ({
   sessionId,
   chunkIndex,
   storageBackend
-}: ChunkAadInput): Promise<Uint8Array> => {
+}: ChunkAadInput): Promise<Uint8Array<ArrayBuffer>> => {
   const enc = new TextEncoder();
   const material = enc.encode(
     `${projectId}|${sessionId}|${chunkIndex}|${storageBackend}|${PAM_RECORDING_AAD_VERSION}`
@@ -65,11 +65,11 @@ export const buildChunkAad = async ({
   return new Uint8Array(digest);
 };
 
-const importSessionKey = (rawKey: Uint8Array): Promise<CryptoKey> =>
+const importSessionKey = (rawKey: Uint8Array<ArrayBuffer>): Promise<CryptoKey> =>
   crypto.subtle.importKey("raw", rawKey, { name: "AES-GCM" }, false, ["decrypt"]);
 
 export type DecryptedChunkResult =
-  | { ok: true; chunkIndex: number; plaintext: Uint8Array; events: unknown[] }
+  | { ok: true; chunkIndex: number; plaintext: Uint8Array<ArrayBuffer>; events: unknown[] }
   | {
       ok: false;
       chunkIndex: number;
@@ -80,7 +80,7 @@ export type DecryptedChunkResult =
 const fetchCiphertext = async (
   chunk: TPamPlaybackChunk,
   fallbackUrlBuilder: (chunkIndex: number) => string
-): Promise<Uint8Array> => {
+): Promise<Uint8Array<ArrayBuffer>> => {
   if (chunk.presignedGetUrl) {
     const resp = await fetch(chunk.presignedGetUrl, { credentials: "omit" });
     if (!resp.ok) {
@@ -125,7 +125,7 @@ export const decryptOneChunk = async ({
     };
   }
 
-  let body: Uint8Array;
+  let body: Uint8Array<ArrayBuffer>;
   try {
     body = await fetchCiphertext(chunk, fallbackUrlBuilder);
   } catch (err) {
@@ -146,7 +146,7 @@ export const decryptOneChunk = async ({
     };
   }
 
-  let expectedSha: Uint8Array;
+  let expectedSha: Uint8Array<ArrayBuffer>;
   try {
     expectedSha = base64ToBytes(chunk.ciphertextSha256);
   } catch {
@@ -169,7 +169,7 @@ export const decryptOneChunk = async ({
     };
   }
 
-  let iv: Uint8Array;
+  let iv: Uint8Array<ArrayBuffer>;
   try {
     iv = base64ToBytes(chunk.iv);
   } catch {

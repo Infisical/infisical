@@ -117,7 +117,7 @@ export const RelayTab = withPermission(
     });
 
     const navigate = useNavigate({
-      from: ROUTE_PATHS.Organization.NetworkingPage.path
+      from: ROUTE_PATHS.Organization.NetworkingPage.fullPath
     });
 
     useEffect(() => {

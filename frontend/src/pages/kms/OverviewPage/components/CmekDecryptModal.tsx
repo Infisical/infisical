@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { decodeBase64 } from "@app/components/utilities/cryptography/crypto";
+import { decodeBase64, decodeUtf8 } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   FormControl,
@@ -58,16 +58,14 @@ const DecryptForm = ({ cmek }: FormProps) => {
       type: "success"
     });
 
-    setPlaintext(
-      shouldDecode ? Buffer.from(decodeBase64(data.plaintext)).toString("utf8") : data.plaintext
-    );
+    setPlaintext(shouldDecode ? decodeUtf8(decodeBase64(data.plaintext)) : data.plaintext);
   };
 
   useEffect(() => {
     const text = cmekDecrypt.data?.plaintext;
     if (!text) return;
 
-    setPlaintext(shouldDecode ? Buffer.from(decodeBase64(text)).toString("utf8") : text);
+    setPlaintext(shouldDecode ? decodeUtf8(decodeBase64(text)) : text);
   }, [shouldDecode]);
 
   const handleCopyToClipboard = () => {

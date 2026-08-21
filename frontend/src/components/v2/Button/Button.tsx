@@ -1,4 +1,4 @@
-import { ButtonHTMLAttributes, forwardRef, ReactNode } from "react";
+import { ButtonHTMLAttributes, forwardRef, type JSX, ReactNode } from "react";
 import { cva, VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 

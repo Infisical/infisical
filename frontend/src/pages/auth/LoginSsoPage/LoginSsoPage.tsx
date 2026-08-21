@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
@@ -75,13 +74,13 @@ export const LoginSsoPage = ({ type }: Props) => {
 
   return (
     <AuthPageLayout variant="focused">
-      <Helmet>
+      <>
         <title>{t("common.head-title", { title: `${type} Login` })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
         <meta property="og:title" content={t("login.og-title") ?? ""} />
         <meta name="og:description" content={t("login.og-description") ?? ""} />
-      </Helmet>
+      </>
       <div className="mx-auto flex w-full flex-col items-center justify-center">
         <AuthPagePanel>
           <CardHeader className="mb-6 gap-2">

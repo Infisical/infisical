@@ -1,5 +1,3 @@
-import crypto from "crypto";
-
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { randomHex } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   DialogClose,
@@ -106,7 +105,7 @@ export const MicrosoftTeamsIntegrationForm = ({ id, onClose, onBack }: Props) =>
 
       onClose();
     } else {
-      const csrfToken = crypto.randomBytes(32).toString("hex");
+      const csrfToken = randomHex(32);
       localStorage.setItem("latestCSRFToken", csrfToken);
 
       const state = {

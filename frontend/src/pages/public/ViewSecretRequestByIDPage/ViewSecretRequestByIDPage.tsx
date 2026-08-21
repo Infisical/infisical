@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import { addSeconds, formatISO } from "date-fns";
@@ -214,10 +213,10 @@ export const ViewSecretRequestByIDPage = () => {
   if (hasCustomBranding) {
     return (
       <>
-        <Helmet>
+        <>
           <title>Secret Request</title>
           <meta property="og:image" content="/images/message.png" />
-        </Helmet>
+        </>
         <div
           className="flex min-h-screen flex-col items-center justify-center overflow-auto px-4 py-10 scheme-dark"
           style={backgroundStyle}
@@ -252,10 +251,8 @@ export const ViewSecretRequestByIDPage = () => {
   return (
     <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-bunker-800 px-4 text-foreground scheme-dark">
       <AuthPageBackground />
-      <Helmet>
-        <title>Secret Request | Infisical</title>
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      <title>Secret Request | Infisical</title>
+      <meta property="og:image" content="/images/message.png" />
       <AuthPageHeader />
       <div className="relative z-10 my-auto flex flex-col items-center py-10">
         <Card className="w-full max-w-xl">

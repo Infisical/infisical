@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { KeyRound } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -64,10 +63,10 @@ export const ProductSettingsPage = () => {
 
   return (
     <>
-      <Helmet>
+      <>
         <title>Product Settings | Infisical</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <div className="h-full">
         <div className="mx-auto h-full w-full max-w-8xl text-white">
           <PageHeader

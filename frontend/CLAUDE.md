@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-This is the **frontend** package of the Infisical monorepo — a React 18 SPA built with Vite 6, TanStack Router, React Query, and Tailwind CSS v4.
+This is the **frontend** package of the Infisical monorepo — a React 19 SPA built with Vite 8, TanStack Router, React Query, and Tailwind CSS v4.
 
 ## Essential Commands
 
@@ -82,7 +82,7 @@ Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in
 
 ## Conventions
 
-- ESLint flat config (ESLint 9+) with airbnb-typescript + prettier. Double quotes enforced.
+- ESLint 8 flat config with airbnb-typescript + prettier. Double quotes enforced.
 - Import ordering via `simple-import-sort`: node builtins → react/external packages → `@app/` → internal → relative → styles.
 - Forms use `react-hook-form` with `@hookform/resolvers` (Zod schemas).
 - Search params validated with `zodValidator()` from `@tanstack/zod-adapter`.

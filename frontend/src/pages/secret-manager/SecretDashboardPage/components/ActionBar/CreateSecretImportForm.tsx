@@ -49,7 +49,9 @@ const typeSchema = z.object({
     .string()
     .trim()
     .transform((val) =>
-      typeof val === "string" && val.at(-1) === "/" && val.length > 1 ? val.slice(0, -1) : val
+      typeof val === "string" && val[val.length - 1] === "/" && val.length > 1
+        ? val.slice(0, -1)
+        : val
     ),
   isReplication: z.boolean().default(false)
 });

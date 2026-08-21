@@ -165,6 +165,16 @@ describe("OpenAPI spec routes", () => {
     expect(asset.statusCode).toBe(200);
   });
 
+  test("does not let non-canonical or encoded paths reach Swagger UI assets", async () => {
+    const duplicateSlash = await app.inject({ method: "GET", url: "/api/docs/static//swagger-ui.css" });
+    const encodedSeparator = await app.inject({ method: "GET", url: "/api/docs/static%2Fswagger-ui.css" });
+
+    expect(duplicateSlash.statusCode).toBe(403);
+    expect(duplicateSlash.body).not.toContain(".swagger-ui");
+    expect(encodedSeparator.statusCode).toBe(404);
+    expect(encodedSeparator.body).not.toContain(".swagger-ui");
+  });
+
   test("keeps the Vary entries other plugins already set", async () => {
     // app.ts passes an array whenever CORS_ALLOWED_ORIGINS is configured, which makes
     // @fastify/cors add Vary: Origin on its onRequest hook, before this plugin's preHandler.

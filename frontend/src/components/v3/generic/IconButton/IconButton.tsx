@@ -92,7 +92,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       ...props
     },
     ref
-  ): JSX.Element => {
+  ): React.JSX.Element => {
     const Comp = asChild ? Slot : "button";
 
     const content = asChild ? (

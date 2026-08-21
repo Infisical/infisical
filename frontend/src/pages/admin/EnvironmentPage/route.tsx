@@ -1,4 +1,4 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
 import { EnvironmentPage } from "./EnvironmentPage";
 
@@ -11,13 +11,11 @@ export const Route = createFileRoute(
       breadcrumbs: [
         {
           label: "Admin",
-          link: linkOptions({ to: "/admin" })
+          link: { to: "/admin" as const }
         },
         {
           label: "Environment",
-          link: linkOptions({
-            to: "/admin/environment"
-          })
+          link: { to: "/admin/environment" as const }
         }
       ]
     };

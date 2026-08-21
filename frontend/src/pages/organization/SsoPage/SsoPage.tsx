@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
@@ -33,11 +32,11 @@ export const SsoPage = () => {
 
   return (
     <>
-      <Helmet>
+      <>
         <title>Infisical | SSO & Provisioning</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      </>
       <div className="flex w-full justify-center bg-bunker-800 text-white">
         <div className="w-full max-w-8xl">
           <PageHeader

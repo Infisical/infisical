@@ -1,5 +1,4 @@
 import { SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
 import { DragDropProvider, DragEndEvent, DragOverlay } from "@dnd-kit/react";
@@ -1656,7 +1655,7 @@ const OverviewPageContent = () => {
       // /hello/world -> [hello","world"]
       const pathSegment = secretPath.split("/").filter(Boolean);
       const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
-      const folderName = pathSegment.at(-1);
+      const folderName = pathSegment[pathSegment.length - 1];
       const canCreateFolder = permission.can(
         ProjectPermissionActions.Create,
         subject(ProjectPermissionSub.SecretFolders, {
@@ -2578,11 +2577,9 @@ const OverviewPageContent = () => {
 
   return (
     <div className="">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("dashboard.title") })}</title>
-        <meta property="og:title" content={String(t("dashboard.og-title"))} />
-        <meta name="og:description" content={String(t("dashboard.og-description"))} />
-      </Helmet>
+      <title>{t("common.head-title", { title: t("dashboard.title") })}</title>
+      <meta property="og:title" content={String(t("dashboard.og-title"))} />
+      <meta name="og:description" content={String(t("dashboard.og-description"))} />
       <div className="relative mx-auto mb-18 max-w-8xl text-mineshaft-50 dark:scheme-dark">
         <div className="flex w-full items-baseline justify-between">
           <PageHeader

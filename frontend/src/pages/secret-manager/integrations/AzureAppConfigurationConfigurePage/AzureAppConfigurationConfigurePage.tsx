@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -150,9 +149,7 @@ export const AzureAppConfigurationConfigurePage = () => {
       onSubmit={handleSubmit(handleIntegrationSubmit)}
       className="flex h-full w-full flex-col items-center justify-center"
     >
-      <Helmet>
-        <title>Set Up Azure App Configuration Integration</title>
-      </Helmet>
+      <title>Set Up Azure App Configuration Integration</title>
       <Card className="max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="text-left text-xl"

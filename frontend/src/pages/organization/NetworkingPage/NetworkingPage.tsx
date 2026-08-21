@@ -1,5 +1,3 @@
-import { Helmet } from "react-helmet";
-
 import { PageHeader } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 
@@ -10,10 +8,10 @@ export const NetworkingPage = () => {
 
   return (
     <>
-      <Helmet>
+      <>
         <title>Infisical | Networking</title>
         <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      </>
       <div className="flex w-full justify-center bg-bunker-800 text-white">
         <div className="w-full max-w-8xl">
           <PageHeader

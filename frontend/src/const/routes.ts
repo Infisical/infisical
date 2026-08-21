@@ -1,9 +1,19 @@
 import { FileRouteTypes } from "@app/routeTree.gen";
 
-const setRoute = <TFull extends FileRouteTypes["fullPaths"], TId extends FileRouteTypes["id"]>(
-  path: TFull,
+const setRoute = <TTo extends FileRouteTypes["to"], TId extends FileRouteTypes["id"]>(
+  path: TTo,
   id: TId
 ) => ({ path, id }) as const;
+
+const setIndexRoute = <
+  TTo extends FileRouteTypes["to"],
+  TId extends FileRouteTypes["id"],
+  TFullPath extends FileRouteTypes["fullPaths"]
+>(
+  path: TTo,
+  id: TId,
+  fullPath: TFullPath
+) => ({ path, id, fullPath }) as const;
 
 export const ROUTE_PATHS = Object.freeze({
   Auth: {
@@ -85,9 +95,10 @@ export const ROUTE_PATHS = Object.freeze({
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback"
       )
     },
-    NetworkingPage: setRoute(
-      "/organizations/$orgId/networking/",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/"
+    NetworkingPage: setIndexRoute(
+      "/organizations/$orgId/networking",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking/",
+      "/organizations/$orgId/networking/"
     ),
     GatewayDetailsByIDPage: setRoute(
       "/organizations/$orgId/networking/gateways/$gatewayId",
@@ -345,7 +356,7 @@ export const ROUTE_PATHS = Object.freeze({
     ),
     SubscribersPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/subscribers",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers"
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/"
     ),
     CertificateAuthoritiesPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities",
@@ -381,7 +392,7 @@ export const ROUTE_PATHS = Object.freeze({
     ),
     CodeSigningPage: setRoute(
       "/organizations/$orgId/projects/cert-manager/$projectId/code-signing",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing"
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing/"
     )
   },
   SecretScanning: {

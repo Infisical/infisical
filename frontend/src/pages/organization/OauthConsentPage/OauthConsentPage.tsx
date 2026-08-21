@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { Link, useSearch } from "@tanstack/react-router";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
@@ -91,10 +90,8 @@ export const OauthConsentPage = () => {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-bunker-800">
-      <Helmet>
-        <title>Authorize Application</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>Authorize Application</title>
+      <link rel="icon" href="/infisical.ico" />
 
       <Card className="w-full max-w-md">
         <Link to="/" className="block">

@@ -71,7 +71,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const navigate = useNavigate({ from: "" });
+  const navigate = useNavigate();
   const { permission: orgPermission } = useOrgPermission();
   const { permission: projectPermission } = useProjectPermission();
   const requesterEmail = useSearch({
@@ -213,6 +213,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     handlePopUpToggle("addMember", false);
     if (requesterEmail) {
       navigate({
+        to: ".",
         search: (prev) => ({ ...prev, requesterEmail: "" })
       });
     }
@@ -254,6 +255,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
       onOpenChange={(isOpen) => {
         if (!isOpen && requesterEmail)
           navigate({
+            to: ".",
             search: (prev) => ({ ...prev, requesterEmail: "" })
           });
         handlePopUpToggle("addMember", isOpen);

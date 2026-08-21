@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { PageHeader } from "@app/components/v2";
@@ -10,9 +9,7 @@ export const PkiSubscribersPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: "PKI Subscribers" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "PKI Subscribers" })}</title>
       <div className="h-full bg-bunker-800">
         <div className="mx-auto flex flex-col justify-between text-white">
           <div className="mx-auto mb-6 w-full max-w-8xl">

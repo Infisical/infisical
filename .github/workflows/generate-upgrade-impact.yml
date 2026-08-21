@@ -18,6 +18,9 @@ permissions:
   contents: write
   pull-requests: write
 
+env:
+  NPM_VERSION: "11.19.0"
+
 jobs:
   generate:
     runs-on: ubuntu-latest
@@ -47,9 +50,16 @@ jobs:
         if: steps.release.outputs.stable == 'true'
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 22
+          node-version-file: ".nvmrc"
           cache: npm
           cache-dependency-path: upgrade-impact/package-lock.json
+
+      - name: Setup npm
+        if: steps.release.outputs.stable == 'true'
+        run: |
+          npm install --global "npm@${NPM_VERSION}"
+          test "$(npm --version)" = "${NPM_VERSION}"
+        working-directory: ${{ runner.temp }}
 
       - name: Install dependencies
         if: steps.release.outputs.stable == 'true'

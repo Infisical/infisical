@@ -10,7 +10,7 @@ export type TableContainerProps = {
 } & DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>;
 
 export const TableContainer = forwardRef<HTMLDivElement, TableContainerProps>(
-  ({ children, className, isRounded = true, ...props }, ref): JSX.Element => (
+  ({ children, className, isRounded = true, ...props }, ref): React.JSX.Element => (
     <div
       ref={ref}
       className={twMerge(
@@ -31,7 +31,7 @@ export type TableProps = {
   children: ReactNode;
 };
 
-export const Table = ({ children, className }: TableProps): JSX.Element => (
+export const Table = ({ children, className }: TableProps): React.JSX.Element => (
   <table
     className={twMerge("w-full bg-mineshaft-800 p-2 text-left text-sm text-gray-300", className)}
   >
@@ -46,7 +46,7 @@ export type THeadProps = {
   style?: React.CSSProperties;
 };
 
-export const THead = ({ children, className, style }: THeadProps): JSX.Element => (
+export const THead = ({ children, className, style }: THeadProps): React.JSX.Element => (
   <thead
     className={twMerge("bg-mineshaft-800 text-xs text-bunker-300 uppercase", className)}
     style={style}
@@ -60,7 +60,7 @@ export type TFootProps = {
   className?: string;
 };
 
-export const TFoot = ({ children, className }: TFootProps): JSX.Element => (
+export const TFoot = ({ children, className }: TFootProps): React.JSX.Element => (
   <tfoot className={twMerge("bg-mineshaft-800 text-xs text-bunker-300 uppercase", className)}>
     {children}
   </tfoot>
@@ -80,7 +80,7 @@ export const Tr = ({
   isHoverable,
   isSelectable,
   ...props
-}: TrProps): JSX.Element => (
+}: TrProps): React.JSX.Element => (
   <tr
     className={twMerge(
       "cursor-default border-b border-solid border-mineshaft-600 last:border-b-0",
@@ -101,7 +101,7 @@ export type ThProps = {
   style?: React.CSSProperties;
 };
 
-export const Th = ({ children, className, style }: ThProps): JSX.Element => (
+export const Th = ({ children, className, style }: ThProps): React.JSX.Element => (
   <th
     className={twMerge(
       "border-b-2 border-mineshaft-600 bg-mineshaft-800 px-5 pt-4 pb-3.5 font-medium",
@@ -119,7 +119,7 @@ export type TBodyProps = {
   className?: string;
 };
 
-export const TBody = ({ children, className }: TBodyProps): JSX.Element => (
+export const TBody = ({ children, className }: TBodyProps): React.JSX.Element => (
   <tbody className={twMerge(className)}>{children}</tbody>
 );
 
@@ -129,7 +129,7 @@ export type TdProps = {
   className?: string;
 } & TdHTMLAttributes<HTMLTableCellElement>;
 
-export const Td = ({ children, className, ...props }: TdProps): JSX.Element => (
+export const Td = ({ children, className, ...props }: TdProps): React.JSX.Element => (
   <td className={twMerge("px-5 py-3 text-left", className)} {...props}>
     {children}
   </td>
@@ -148,7 +148,7 @@ export const TableSkeleton = ({
   columns,
   innerKey,
   className
-}: TBodyLoader): JSX.Element => (
+}: TBodyLoader): React.JSX.Element => (
   <>
     {Array.apply(0, Array(rows)).map((_x, i) => (
       <Tr key={`${innerKey}-skeleton-rows-${i + 1}`}>

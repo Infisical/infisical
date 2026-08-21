@@ -71,7 +71,7 @@ export const SecretValueRenderer = ({
   isBothSingleLine: boolean;
   oldValue: string;
   newValue: string;
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
   onReveal?: () => Promise<void>;
   isLoading?: boolean;
 }) => {

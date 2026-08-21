@@ -1,5 +1,4 @@
 import { Fragment, ReactNode, useEffect } from "react";
-import { Helmet } from "react-helmet";
 import {
   FingerprintIcon,
   FolderIcon,
@@ -114,9 +113,7 @@ export const InsightsPage = withProjectPermission(
 
     return (
       <>
-        <Helmet>
-          <title>Insights</title>
-        </Helmet>
+        <title>Insights</title>
         <PageHeader
           className="mb-4 dashboard:mb-10"
           scope={ProjectType.SecretManager}

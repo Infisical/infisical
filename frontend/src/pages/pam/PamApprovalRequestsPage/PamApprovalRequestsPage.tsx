@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -209,9 +208,7 @@ export const PamApprovalRequestsPage = () => {
 
   return (
     <div className="mx-auto mb-6 w-full max-w-8xl">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Approval Requests" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Approval Requests" })}</title>
       <PageHeader
         scope={ProjectType.PAM}
         icon={ShieldCheck}

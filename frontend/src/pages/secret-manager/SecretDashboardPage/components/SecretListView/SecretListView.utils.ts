@@ -28,14 +28,18 @@ export const formSchema = z.object({
   key: z.string().trim().min(1, { message: "Secret key is required" }),
   value: z
     .string()
-    .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
+    .transform((val) => (val[val.length - 1] === "\n" ? `${val.trim()}\n` : val.trim()))
     .optional(),
   idOverride: z.string().trim().optional(),
   valueOverride: z
     .string()
     .optional()
     .transform((val) =>
-      typeof val === "string" ? (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()) : val
+      typeof val === "string"
+        ? val[val.length - 1] === "\n"
+          ? `${val.trim()}\n`
+          : val.trim()
+        : val
     ),
   overrideAction: z.string().trim().optional(),
   comment: z.string().trim().optional(),

@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { faBan, faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
@@ -101,10 +100,10 @@ const PageContent = () => {
 export const SecretScanningDataSourceByIdPage = () => {
   return (
     <>
-      <Helmet>
+      <>
         <title>Secret Scanning Data Source | Infisical</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <ProjectPermissionCan
         renderGuardBanner
         passThrough={false}

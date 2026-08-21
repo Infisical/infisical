@@ -3,6 +3,27 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "packageManager": "npm@11.19.0",
+  "engines": {
+    "node": ">=22.22.2 <23",
+    "npm": ">=11.19.0 <12"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=22.22.2 <23",
+      "onFail": "error"
+    },
+    "packageManager": {
+      "name": "npm",
+      "version": ">=11.19.0 <12",
+      "onFail": "error"
+    }
+  },
+  "allowScripts": {
+    "esbuild@0.27.7": false,
+    "fsevents@2.3.3": false
+  },
   "scripts": {
     "generate": "tsx scripts/generate.ts",
     "generate:dry-run": "tsx scripts/generate.ts --dry-run",

@@ -1,4 +1,4 @@
-import { CSSProperties, forwardRef, ReactNode } from "react";
+import { CSSProperties, forwardRef, type JSX, ReactNode } from "react";
 import { twMerge } from "tailwind-merge";
 
 export type CardTitleProps = {

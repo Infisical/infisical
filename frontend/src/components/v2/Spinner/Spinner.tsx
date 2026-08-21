@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { twMerge } from "tailwind-merge";
 
 type SizeOptions = "xs" | "sm" | "md" | "lg";

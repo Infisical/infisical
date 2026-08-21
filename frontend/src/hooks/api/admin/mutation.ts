@@ -72,7 +72,7 @@ export const useAdminDeleteUser = () => {
       queryClient.invalidateQueries({
         queryKey: [adminStandaloneKeys.getUsers]
       });
-      queryClient.invalidateQueries({ queryKey: adminStandaloneKeys.getOrganizations });
+      queryClient.invalidateQueries({ queryKey: [adminStandaloneKeys.getOrganizations] });
     }
   });
 };
@@ -91,7 +91,7 @@ export const useAdminBulkDeleteUsers = () => {
       queryClient.invalidateQueries({
         queryKey: [adminStandaloneKeys.getUsers]
       });
-      queryClient.invalidateQueries({ queryKey: adminStandaloneKeys.getOrganizations });
+      queryClient.invalidateQueries({ queryKey: [adminStandaloneKeys.getOrganizations] });
     }
   });
 };

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -192,9 +191,7 @@ export const QoveryConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment ? (
     <div className="flex h-full w-full flex-col items-center justify-center bg-linear-to-tr from-mineshaft-900 to-bunker-900">
-      <Helmet>
-        <title>Set Up Qovery Integration</title>
-      </Helmet>
+      <title>Set Up Qovery Integration</title>
       <Card className="max-w-lg rounded-md border border-mineshaft-600 p-0">
         <CardTitle
           className="px-6 text-left text-xl"
@@ -404,9 +401,7 @@ export const QoveryConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up Qovery Integration</title>
-      </Helmet>
+      <title>Set Up Qovery Integration</title>
       {isIntegrationAuthAppsLoading ? (
         <img
           src="/images/loading/loading.gif"

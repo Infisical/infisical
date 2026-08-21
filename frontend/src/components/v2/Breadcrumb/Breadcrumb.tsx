@@ -1,8 +1,7 @@
-import React from "react";
+import React, { type ElementType, type ReactNode } from "react";
 import { faCaretDown, faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, ReactNode } from "@tanstack/react-router";
-import { LinkComponentProps } from "node_modules/@tanstack/react-router/dist/esm/link";
+import { Link, type LinkComponentProps } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -16,7 +15,7 @@ import {
 const Breadcrumb = React.forwardRef<
   HTMLElement,
   React.ComponentPropsWithoutRef<"nav"> & {
-    separator?: React.ReactNode;
+    separator?: ReactNode;
   }
 >(({ ...props }, ref) => <nav ref={ref} aria-label="breadcrumb" {...props} />);
 Breadcrumb.displayName = "Breadcrumb";
@@ -110,13 +109,13 @@ export type TBreadcrumbFormat =
     }
   | {
       type: BreadcrumbTypes.Component;
-      component: ReactNode;
+      component: ElementType;
     }
   | {
       type: undefined;
       link?: LinkComponentProps;
       label: string;
-      icon?: ReactNode;
+      icon?: ElementType;
     };
 
 const BreadcrumbContainer = ({

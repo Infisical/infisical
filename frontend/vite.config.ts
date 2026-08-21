@@ -1,10 +1,6 @@
-import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
-import react from "@vitejs/plugin-react-swc";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, PluginOption } from "vite";
-import { nodePolyfills } from "vite-plugin-node-polyfills";
-import topLevelAwait from "vite-plugin-top-level-await";
-import wasm from "vite-plugin-wasm";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 const virtualRouteFileChangeReloadPlugin: PluginOption = {
   name: "watch-config-restart",
@@ -30,6 +26,9 @@ export default defineConfig(({ mode }) => {
   ).replaceAll(".", "-");
 
   return {
+    resolve: {
+      tsconfigPaths: true
+    },
     server: {
       allowedHosts,
       host: true,
@@ -44,24 +43,27 @@ export default defineConfig(({ mode }) => {
       // }
     },
     build: {
-      rollupOptions: {
+      // Keep the Vite 6 browser floor while the build tool changes independently.
+      target: ["es2020", "chrome87", "edge88", "firefox78", "safari14"],
+      rolldownOptions: {
         output: {
           entryFileNames: `assets/[name]-${version}-[hash].js`,
           chunkFileNames: `assets/[name]-${version}-[hash].js`,
           assetFileNames: `assets/[name]-${version}-[hash].[ext]`,
-          // recharts/d3 has circular dependencies so we ensure
-          // they remain in the same chunk so that the import resolution
-          // doesn't lead to uninitailized import sequences
-          manualChunks(id) {
-            if (
-              id.includes("node_modules/recharts") ||
-              id.includes("node_modules/d3-") ||
-              id.includes("node_modules/victory-vendor")
-            ) {
-              return "recharts";
-            }
-
-            return undefined;
+          // Recharts and D3 contain order-sensitive cycles and must execute in one chunk.
+          codeSplitting: {
+            groups: [
+              {
+                name: "recharts",
+                test: /node_modules[\\/](?:recharts|d3-|victory-vendor)/,
+                priority: 10
+              },
+              // Preserve Vite 6's grouped entry graph instead of preloading ~100 startup chunks.
+              {
+                name: "initial",
+                tags: ["$initial"]
+              }
+            ]
           }
         }
       }
@@ -69,7 +71,7 @@ export default defineConfig(({ mode }) => {
     experimental: {
       renderBuiltUrl(filename, { hostType }) {
         if (hostType === "js") {
-          const fallback = `function(f){ return "/" + f; }`;
+          const fallback = 'function(f){ return "/" + f; }';
           const fn = `(typeof window.__toCdnUrl === "function" ? window.__toCdnUrl : ${fallback})`;
           return { runtime: `${fn}(${JSON.stringify(filename)})` };
         }
@@ -77,15 +79,8 @@ export default defineConfig(({ mode }) => {
       }
     },
     plugins: [
-      tsconfigPaths(),
-      nodePolyfills({
-        globals: {
-          Buffer: true
-        }
-      }),
-      wasm(),
-      topLevelAwait(),
-      TanStackRouterVite({
+      tanstackRouter({
+        target: "react",
         virtualRouteConfig: "./src/routes.ts"
       }),
       react(),

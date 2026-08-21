@@ -7,8 +7,13 @@ on:
       - "backend/**"
       - "!backend/README.md"
       - "!backend/.*"
+      - "backend/.npmrc"
       - "backend/.eslintrc.js"
+      - ".nvmrc"
   workflow_call:
+
+env:
+  NPM_VERSION: "11.19.0"
 
 concurrency:
   group: run-backend-tests-${{ github.event.pull_request.number || github.ref }}
@@ -41,17 +46,22 @@ jobs:
         name: Install `docker compose` for local simulations
         with:
           version: "2.14.2"
-      - name: 🔧 Setup Node 22
+      - name: 🔧 Setup Node from .nvmrc
         id: setup-node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: "22"
+          node-version-file: ".nvmrc"
+      - name: Setup npm
+        run: |
+          npm install --global "npm@${NPM_VERSION}"
+          test "$(npm --version)" = "${NPM_VERSION}"
+        working-directory: ${{ runner.temp }}
       - name: 📦 Cache node_modules
         id: cache-node-modules
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: backend/node_modules
-          key: backend-node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('backend/package-lock.json') }}
+          key: backend-node-modules-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-npm${{ env.NPM_VERSION }}-${{ hashFiles('backend/package-lock.json') }}
       - name: Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci

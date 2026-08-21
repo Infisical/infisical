@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { type JSX, useRef, useState } from "react";
 import { Check } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";

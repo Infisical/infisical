@@ -39,7 +39,7 @@ type Props = {
 const Content = ({ onClose }: { onClose: () => void }) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
-  const navigate = useNavigate({ from: ROUTE_PATHS.Organization.NetworkingPage.path });
+  const navigate = useNavigate({ from: ROUTE_PATHS.Organization.NetworkingPage.fullPath });
   const { data: gateways } = useQuery(gatewaysQueryKeys.listWithTokens());
   const { mutateAsync: createGateway, isPending } = useCreateGateway();
 

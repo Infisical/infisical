@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
@@ -84,9 +83,7 @@ export const SettingsPage = () => {
 
   return (
     <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
-      <Helmet>
-        <title>{t("common.head-title", { title: pageTitle })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: pageTitle })}</title>
       <div className="w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.SecretManager}

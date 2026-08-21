@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import {
   faAngleDown,
@@ -290,9 +289,7 @@ export const GithubConfigurePage = () => {
 
   return integrationAuth && integrationAuthApps ? (
     <div className="flex h-full w-full flex-col items-center justify-center py-4">
-      <Helmet>
-        <title>Set Up GitHub Integration</title>
-      </Helmet>
+      <title>Set Up GitHub Integration</title>
       <Card className="max-w-lg rounded-md border border-mineshaft-600 p-0">
         <form onSubmit={handleSubmit(onFormSubmit)} className="px-6">
           <CardTitle
@@ -776,9 +773,7 @@ export const GithubConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up GitHub Integration</title>
-      </Helmet>
+      <title>Set Up GitHub Integration</title>
       {isIntegrationAuthAppsLoading ? (
         <img
           src="/images/loading/loading.gif"

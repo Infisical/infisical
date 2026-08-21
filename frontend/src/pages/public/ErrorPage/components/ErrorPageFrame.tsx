@@ -1,5 +1,4 @@
 import { ReactNode, useLayoutEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
 import { ActivityIcon, CheckIcon, CopyIcon, MonitorCheckIcon, ShieldCheckIcon } from "lucide-react";
 
 import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
@@ -97,11 +96,7 @@ export const ErrorPageFrame = ({
           : "min-h-full"
       }`}
     >
-      {helmetTitle && (
-        <Helmet>
-          <title>{helmetTitle}</title>
-        </Helmet>
-      )}
+      {helmetTitle && <title>{helmetTitle}</title>}
       {isFullScreen && <AuthPageBackground />}
       <Card className="relative z-10 grid w-full max-w-5xl gap-0 overflow-hidden p-0 lg:grid-cols-[1fr_26rem]">
         <div className="flex flex-col p-8">

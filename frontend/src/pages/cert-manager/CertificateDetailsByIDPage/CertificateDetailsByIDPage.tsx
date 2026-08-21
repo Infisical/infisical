@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { subject } from "@casl/ability";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
@@ -493,10 +492,10 @@ const Page = () => {
 export const CertificateDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
+      <>
         <title>Certificate Details</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <Page />
     </>
   );

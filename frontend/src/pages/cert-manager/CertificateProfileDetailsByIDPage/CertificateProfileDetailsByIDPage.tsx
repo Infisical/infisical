@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -173,10 +172,10 @@ const Page = () => {
 export const CertificateProfileDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
+      <>
         <title>Certificate Profile</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <Page />
     </>
   );

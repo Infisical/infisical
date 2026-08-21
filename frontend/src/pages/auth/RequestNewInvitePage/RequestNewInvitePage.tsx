@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Link, useSearch } from "@tanstack/react-router";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
@@ -16,10 +15,10 @@ export const RequestNewInvitePage = () => {
 
   return (
     <AuthPageLayout variant="focused">
-      <Helmet>
+      <>
         <title>{isAlreadyMember ? "Already a Member" : "Request a New Invite"}</title>
         <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      </>
       <AuthPagePanel>
         <CardHeader className="mb-6 gap-2 text-center">
           <CardTitle>
