@@ -306,7 +306,12 @@ const SingleCombobox = <TOption,>({
           {...inputProps}
         />
         {!open && value != null && renderValue && (
-          <span className="pointer-events-none absolute inset-y-0 right-9 left-2.5 flex min-w-0 items-center truncate text-sm text-foreground">
+          <span
+            className={cn(
+              "pointer-events-none absolute inset-y-0 right-9 left-2.5 flex min-w-0 items-center truncate text-sm text-foreground",
+              isDisabled && "opacity-50"
+            )}
+          >
             {renderValue(value)}
           </span>
         )}
