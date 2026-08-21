@@ -152,10 +152,18 @@ export const approvalPolicyServiceFactory = ({
   };
 
   // A request attributes its requester to exactly one column: a user or a machine identity.
+  // Actor ids are unique across orgs but an actor can hold tokens for several, and a requester
+  // match skips the permission check, so the token's org has to match too.
   const $isRequester = (
-    request: { requesterId?: string | null; machineIdentityId?: string | null },
+    request: { organizationId: string; requesterId?: string | null; machineIdentityId?: string | null },
     actor: OrgServiceActor
-  ) => (actor.type === ActorType.IDENTITY ? request.machineIdentityId === actor.id : request.requesterId === actor.id);
+  ) => {
+    if (request.organizationId !== actor.orgId) return false;
+
+    return actor.type === ActorType.IDENTITY
+      ? request.machineIdentityId === actor.id
+      : request.requesterId === actor.id;
+  };
 
   const $decorateRequest = async <
     R extends {
