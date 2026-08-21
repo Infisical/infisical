@@ -1,0 +1,191 @@
+---
+title: "Renewing Certificates"
+sidebarTitle: "Renewal"
+description: "Manually renew a certificate, and change its subject, names, validity, or key pair as part of the renewal."
+---
+
+Certificates expire, and the details they carry go out of date. A manual renewal issues a replacement for a certificate you already have, and lets you correct it at the same time: add a name the service now answers to, extend the validity, or decide whether the replacement keeps the current key pair.
+
+This is the counterpart to automatic renewal, which reissues a certificate exactly as it is on a schedule. Reach for a manual renewal when something about the certificate needs to change, or when you want the replacement now rather than at the next renewal window.
+
+<Note>
+  A certificate can be renewed when it was issued from a [certificate profile](/documentation/platform/pki/applications/enrollment-methods/api), is still active, and has not already been renewed. Certificates obtained through [ACME](/documentation/platform/pki/applications/enrollment-methods/acme), [EST](/documentation/platform/pki/applications/enrollment-methods/est), or [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) are renewed by the client that requested them, not from here.
+</Note>
+
+## How a renewal is built
+
+The renewed certificate starts as an exact copy of the one being renewed. Only what you explicitly change is different.
+
+| What you do | What happens |
+|-------------|--------------|
+| Leave a field alone | The current value carries over |
+| Change a field | The new value is used |
+| Clear a field | The attribute is dropped from the renewed certificate |
+| Edit a list, such as names or key usages | The list you submit replaces the current one |
+
+Defaults configured on the certificate profile are deliberately not applied. They describe what a **new** certificate should look like, so applying them during a renewal would rewrite fields you never touched. The profile's [certificate policy](/documentation/platform/pki/settings/policies) still validates the result, so a renewal cannot produce a certificate the policy would have rejected at issuance.
+
+## Choosing how the key pair is handled
+
+The first step of the renewal asks how to handle the key pair. This is the one decision that cannot be changed afterwards, because it determines the key the replacement certificate certifies.
+
+| Option | What happens |
+|--------|--------------|
+| **Reuse the existing key pair** | The renewed certificate carries the same public key. Anything pinned to that key, such as a key-pinned client or a device that cannot rotate its key, keeps working. |
+| **Generate a new key pair** | A fresh key pair is created for the renewed certificate. This is the default. |
+| **Use a CSR** | You supply a certificate signing request with its own key. |
+
+<Warning>
+  Reusing a key pair extends the lifetime of that key by another full validity period. If the key were ever exposed, a renewal that reuses it carries the exposure forward. Prefer a new key pair unless something in your environment depends on the current one.
+</Warning>
+
+### Availability by issuer
+
+Not every option applies to every certificate. The renewal wizard greys out the ones that do not, and explains why.
+
+| Issuer | Reuse the key pair | Use a CSR |
+|--------|--------------------|-----------|
+| **Private CA** | Yes | Yes |
+| **External CA** | No, these CAs only accept a freshly generated key | Yes |
+| **Self-signed** | Yes | No, see below |
+
+A self-signed certificate is signed by the private key that matches its own public key. A signing request carries only a public key, so there would be nothing to sign the renewal with. Reuse works because the existing key pair is available to sign with.
+
+<Note>
+  Certificates issued through Active Directory Certificate Services or Azure AD Certificate Services take their validity, key usages, extended key usages and basic constraints from the CA's own certificate template. The renewal wizard hides those fields for such certificates, because anything set here would be discarded by the CA. You can still change the subject and the alternative names.
+</Note>
+
+Reuse is available for certificates issued with an Infisical-managed key pair. A certificate you issued from your own signing request can reuse its public key too: the renewal is made from that original request, so the key stays on your side.
+
+## What you can change
+
+| Property | Notes |
+|----------|-------|
+| Subject attributes | Common name, organization, organizational unit, country, state, locality, domain components |
+| Subject alternative names | Add, remove, or change the type of any name |
+| Validity | A duration such as `90d`, `12h`, or `1y` |
+| Key and signature algorithm | Locked to the current key algorithm while reusing the key pair, because the key already exists |
+| Key usages and extended key usages | Constrained to what the certificate policy allows |
+| Basic constraints | Whether the certificate is a CA, and its path length |
+
+<Warning>
+  Changing the common name can affect [certificate syncs](/documentation/platform/pki/applications/certificate-syncs/overview) that select certificates by name. Check any sync attached to the certificate before renaming it.
+</Warning>
+
+### Permissions
+
+Renewing a certificate as it stands needs only permission to issue from its certificate profile. Changing any of the properties above additionally needs **Edit** on certificates, so a role scoped to issuance alone can keep certificates current without being able to alter what they contain.
+
+### Renewing from a signing request
+
+When you supply a CSR, that request is the source of truth. The subject, the key, and the extensions all come from the CSR, so there are no separate fields for them. Only the validity and the basic constraints are set alongside it.
+
+Sending a property the CSR already carries is rejected rather than quietly ignored, so a renewal never silently discards something you asked for.
+
+## Renewing a certificate
+
+<Tabs>
+  <Tab title="Web UI">
+    <Steps>
+      <Step title="Open the certificate">
+        Go to the **Certificates** tab of your Application and select the certificate you want to renew.
+      </Step>
+      <Step title="Start the renewal">
+        Open the **Options** menu and choose **Renew Now**.
+      </Step>
+      <Step title="Choose how the key pair is handled">
+        Pick one of the three options above. If you chose **Use a CSR**, paste it on the next step and you are done.
+      </Step>
+      <Step title="Adjust the subject and names">
+        The subject attributes and alternative names are prefilled from the current certificate. Change only what should differ.
+      </Step>
+      <Step title="Set validity and extensions">
+        Adjust the validity, algorithms, key usages, and basic constraints, then select **Renew certificate**.
+      </Step>
+    </Steps>
+
+    Infisical opens the renewed certificate when it is issued.
+
+  </Tab>
+  <Tab title="API">
+    Renew a certificate and change the properties you want in the same request. Everything you leave out is copied from the current certificate.
+
+    ```bash
+    curl -X POST "https://app.infisical.com/api/v1/cert-manager/certificates/<certificate-id>/renew" \
+      -H "Authorization: Bearer <your-access-token>" \
+      -H "Content-Type: application/json" \
+      -d '{
+            "renewalKeySource": "reuse",
+            "attributes": {
+              "commonName": "api.example.com",
+              "altNames": [
+                { "type": "dns_name", "value": "api.example.com" },
+                { "type": "dns_name", "value": "api-internal.example.com" }
+              ],
+              "ttl": "90d"
+            }
+          }'
+    ```
+
+    `renewalKeySource` accepts `new`, `reuse`, or `csr`. Supply `csr` alongside `renewalKeySource: "csr"`. To clear an attribute, send it as `null`.
+
+    A request with no body renews the certificate as it is with a new key pair, so existing automation keeps working unchanged.
+
+    See the [Renew Certificate endpoint](/api-reference/endpoints/certificates/renew) for the full request and response.
+
+  </Tab>
+</Tabs>
+
+## After a renewal
+
+The renewal produces a new certificate with its own serial number, linked to the one it replaced.
+
+- The previous certificate stays valid until its own expiry, so you can roll over on your own schedule. It cannot be renewed a second time.
+- Metadata carries over to the renewed certificate.
+- Certificate syncs attached to the certificate move to the renewed one and push it to their destinations.
+- Automatic renewal carries over. A certificate set to renew 4 days before expiry keeps that window, measured against the renewed certificate's own expiry rather than the previous one.
+
+<Note>
+  The window is re-derived for the renewed certificate's validity, so it can come back smaller. Renew
+  a 30 day certificate that renews 20 days early into a 5 day one and the window shrinks to fit,
+  because it has to stay shorter than the certificate it applies to.
+</Note>
+
+Deploy the renewed certificate before the previous one expires. Renewing does not revoke the certificate it replaces, so if the old one was compromised, [revoke it](/documentation/platform/pki/applications/certificates) explicitly.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Does renewing revoke the certificate it replaces?">
+    No. The previous certificate stays valid until its own expiry date, which gives you a window to deploy the replacement. If you need the previous certificate to stop being trusted immediately, revoke it, and it will appear in the issuing CA's [CRL](/documentation/platform/pki/ca/crl-distribution).
+  </Accordion>
+  <Accordion title="Why is the key algorithm locked when I reuse the key pair?">
+    The algorithm is a property of the key itself, so it cannot change while the key stays the same. To move from RSA to an elliptic curve key, or to a larger key size, renew with a new key pair.
+  </Accordion>
+  <Accordion title="What happens if the certificate policy changed since the certificate was issued?">
+    The renewal is validated against the policy as it is now, so a certificate that no longer satisfies the policy is rejected with a message naming the field at fault. Adjust the values during the renewal so they fit the current policy.
+  </Accordion>
+  <Accordion title="Can I renew a certificate that Infisical did not generate the key for?">
+    Yes. Choose a new key pair, or supply a CSR generated from the existing key. A certificate issued from a signing request can also reuse its public key, in which case the renewal is made from that original request.
+  </Accordion>
+  <Accordion title="Can I renew several certificates at once?">
+    Manual renewal handles one certificate at a time. To keep many certificates current without intervention, enable [automatic renewal](/documentation/platform/pki/applications/certificates) so Infisical reissues them before they expire.
+  </Accordion>
+</AccordionGroup>
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="Certificates" icon="certificate" href="/documentation/platform/pki/applications/certificates">
+    Inspect, export, and revoke certificates in your inventory.
+  </Card>
+  <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    Push renewed certificates to their destinations automatically.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified before certificates expire.
+  </Card>
+  <Card title="Certificate Policies" icon="shield-check" href="/documentation/platform/pki/settings/policies">
+    Constrain what a renewed certificate may contain.
+  </Card>
+</CardGroup>

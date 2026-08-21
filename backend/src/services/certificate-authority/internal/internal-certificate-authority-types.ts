@@ -241,6 +241,7 @@ type TIssueCertFromCaBaseDTO = {
   ou?: string;
   domainComponents?: string[];
   tx?: Knex;
+  onPersisted?: (cert: TCertificates, tx: Knex) => Promise<void>;
 };
 
 export type TIssueCertFromCaDTO =

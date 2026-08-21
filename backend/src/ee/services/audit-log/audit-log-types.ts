@@ -34,6 +34,7 @@ import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/
 import { ActorType } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
   TAWSAuthDetails,
@@ -3976,6 +3977,8 @@ interface RenewCertificate {
     newCertificateId: string;
     profileName: string;
     commonName: string;
+    renewalKeySource: CertificateRenewalKeySource;
+    changedAttributes: TRenewalAuditChange[];
   };
 }
 

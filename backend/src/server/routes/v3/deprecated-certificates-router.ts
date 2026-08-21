@@ -19,7 +19,10 @@ import { mapEnumsForValidation } from "@app/services/certificate-common/certific
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
-import { TCertificateIssuedResponse } from "@app/services/certificate-v3/certificate-v3-types";
+import {
+  CertificateRenewalKeySource,
+  TCertificateIssuedResponse
+} from "@app/services/certificate-v3/certificate-v3-types";
 
 import { booleanSchema } from "../sanitizedSchemas";
 
@@ -501,6 +504,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         event: {
           type: EventType.RENEW_CERTIFICATE,
           metadata: {
+            renewalKeySource: CertificateRenewalKeySource.New,
+            changedAttributes: certificateData.changedAttributes ?? [],
             originalCertificateId: req.params.certificateId,
             newCertificateId: certificateData.certificateId,
             profileName: certificateData.profileName,
