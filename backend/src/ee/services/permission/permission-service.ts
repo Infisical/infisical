@@ -1195,7 +1195,8 @@ export const permissionServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     projectId,
-    targetUserId
+    targetUserId,
+    includeFolderPermissions
   }) => {
     const { permission } = await getProjectPermission({
       actor,
@@ -1293,10 +1294,10 @@ export const permissionServiceFactory = ({
     const hasActiveAdminRole = targetMemberships.some((m) =>
       m.roles.some((r) => r.role === ProjectMembershipRole.Admin && isActiveRole(r))
     );
-    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
-      projectDAL.findById(projectId)
-    );
-    if (project?.type === ProjectType.SecretManager && !hasActiveAdminRole) {
+    const project = includeFolderPermissions
+      ? await requestMemoize(requestMemoKeys.projectFindById(projectId), () => projectDAL.findById(projectId))
+      : undefined;
+    if (includeFolderPermissions && project?.type === ProjectType.SecretManager && !hasActiveAdminRole) {
       const { privileges } = await fetchFolderScopedPrivileges(projectId, ActorType.USER, targetUserId, {
         additionalPrivilegeDAL,
         secretFolderDAL
@@ -1336,7 +1337,8 @@ export const permissionServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     projectId,
-    targetIdentityId
+    targetIdentityId,
+    includeFolderPermissions
   }) => {
     const { permission } = await getProjectPermission({
       actor,
@@ -1437,10 +1439,10 @@ export const permissionServiceFactory = ({
     const hasActiveAdminRole = targetMemberships.some((m) =>
       m.roles.some((r) => r.role === ProjectMembershipRole.Admin && isActiveRole(r))
     );
-    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
-      projectDAL.findById(projectId)
-    );
-    if (project?.type === ProjectType.SecretManager && !hasActiveAdminRole) {
+    const project = includeFolderPermissions
+      ? await requestMemoize(requestMemoKeys.projectFindById(projectId), () => projectDAL.findById(projectId))
+      : undefined;
+    if (includeFolderPermissions && project?.type === ProjectType.SecretManager && !hasActiveAdminRole) {
       const { privileges } = await fetchFolderScopedPrivileges(projectId, ActorType.IDENTITY, targetIdentityId, {
         additionalPrivilegeDAL,
         secretFolderDAL

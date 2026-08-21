@@ -67,12 +67,13 @@ export const RemoveFolderAccessDialog = ({
   const membershipId = actor?.type === "user" ? actor.membershipId : null;
   const membershipAudit = useGetMembershipPermissionAudit(projectId, membershipId ?? "", {
     enabled: isOpen,
-    retry: false
+    retry: false,
+    includeFolderPermissions: false
   });
   const identityAudit = useGetIdentityPermissionAudit(
     projectId,
     actor?.type === "identity" ? actor.id : "",
-    { enabled: isOpen, retry: false }
+    { enabled: isOpen, retry: false, includeFolderPermissions: false }
   );
 
   const audit = actor?.type === "identity" ? identityAudit : membershipAudit;

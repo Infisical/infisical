@@ -53,6 +53,7 @@ export type TGetMembershipPermissionAuditArg = {
   actorOrgId: string;
   projectId: string;
   targetUserId: string;
+  includeFolderPermissions: boolean;
 };
 
 export type TGetIdentityPermissionAuditArg = {
@@ -62,6 +63,7 @@ export type TGetIdentityPermissionAuditArg = {
   actorOrgId: string;
   projectId: string;
   targetIdentityId: string;
+  includeFolderPermissions: boolean;
 };
 
 export type TPermissionAuditSource = {

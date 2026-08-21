@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError, subject } from "@casl/ability";
+import { ForbiddenError, MongoAbility, MongoQuery, subject } from "@casl/ability";
 import { Knex } from "knex";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
@@ -9,13 +9,18 @@ import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynami
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { validateSecretMovePermissions } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretFolderActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -71,7 +76,7 @@ import { TSecretFolderVersionDALFactory } from "./secret-folder-version-dal";
 
 type TSecretFolderServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
-  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "remapFolderIds">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "remapFolderIds" | "find">;
   folderDAL: TSecretFolderDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs" | "find">;
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestFolderVersions" | "create" | "insertMany" | "find">;
@@ -606,52 +611,29 @@ export const secretFolderServiceFactory = ({
     };
   };
 
-  const $checkFolderPolicy = async ({
+  // validates a folder deletion: the actor must hold manage-access on any folder in the deleted
+  // s ubtree that carries a folder RBAC grant, and secrets underthe subtree must not be protected
+  // by a secret change policy
+  const $validateFolderPermission = async ({
     projectId,
     env,
-    parentId,
-    idOrName,
-    actor
+    folderId,
+    actor,
+    permission,
+    tx
   }: {
     projectId: string;
     env: TProjectEnvironments;
-    parentId: string;
-    idOrName: string;
+    folderId: string;
     actor: ActorType;
+    permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
+    tx?: Knex;
   }) => {
-    if (actor === ActorType.IDENTITY) {
-      return;
-    }
-
-    let targetFolder = await folderDAL
-      .findOne({
-        envId: env.id,
-        name: idOrName,
-        parentId,
-        isReserved: false
-      })
-      .catch(() => null);
-
-    if (!targetFolder && uuidValidate(idOrName)) {
-      targetFolder = await folderDAL
-        .findOne({
-          envId: env.id,
-          id: idOrName,
-          parentId,
-          isReserved: false
-        })
-        .catch(() => null);
-    }
-
-    if (!targetFolder) {
-      throw new NotFoundError({ message: `Target folder not found` });
-    }
-
     // get environment root folder (as it's needed to get all folders under it)
-    const rootFolder = await folderDAL.findBySecretPath(projectId, env.slug, "/");
+    const rootFolder = await folderDAL.findBySecretPath(projectId, env.slug, "/", tx);
     if (!rootFolder) throw new NotFoundError({ message: `Root folder not found` });
     // get all folders under environment root folder
-    const folderPaths = await folderDAL.findByEnvsDeep({ parentIds: [rootFolder.id] });
+    const folderPaths = await folderDAL.findByEnvsDeep({ parentIds: [rootFolder.id] }, tx);
 
     // create a map of folders by parent id
     const normalizeKey = (key: string | null | undefined): string => key ?? "root";
@@ -664,7 +646,7 @@ export const secretFolderServiceFactory = ({
     }
 
     // Find the target folder in the folderPaths to get its full details
-    const targetFolderWithPath = folderPaths.find((f) => f.id === targetFolder!.id);
+    const targetFolderWithPath = folderPaths.find((f) => f.id === folderId);
     if (!targetFolderWithPath) {
       throw new NotFoundError({ message: `Target folder path not found` });
     }
@@ -677,7 +659,7 @@ export const secretFolderServiceFactory = ({
       return [...children, ...children.flatMap((child) => collectDescendants(child.id))];
     };
 
-    const targetFolderDescendants = collectDescendants(targetFolder.id);
+    const targetFolderDescendants = collectDescendants(folderId);
 
     // Include the target folder itself plus all its descendants
     const foldersToCheck = [targetFolderWithPath, ...targetFolderDescendants];
@@ -687,9 +669,36 @@ export const secretFolderServiceFactory = ({
       id: folder.id
     }));
 
+    const folderGrants = await additionalPrivilegeDAL.find(
+      { projectId, $in: { folderId: folderPolicyPaths.map((p) => p.id) } },
+      { tx }
+    );
+    const grantedFolderIds = new Set(folderGrants.map((grant) => grant.folderId));
+    for (const folderPolicyPath of folderPolicyPaths) {
+      if (grantedFolderIds.has(folderPolicyPath.id)) {
+        const canManageAccess = permission.can(
+          ProjectPermissionSecretFolderActions.ManageAccess,
+          subject(ProjectPermissionSub.SecretFolders, {
+            environment: env.slug,
+            secretPath: folderPolicyPath.path
+          })
+        );
+        if (!canManageAccess) {
+          throw new ForbiddenRequestError({
+            message: `Cannot delete this folder: the folder at path '${folderPolicyPath.path}' has access permissions assigned to users or identities. You need permission to manage folder access on '${folderPolicyPath.path}' to delete it.`
+          });
+        }
+      }
+    }
+
+    if (actor === ActorType.IDENTITY) {
+      return;
+    }
+
     // get secrets under the given folders
     const secrets = await secretV2BridgeDAL.findByFolderIds({
-      folderIds: folderPolicyPaths.map((p) => p.id)
+      folderIds: folderPolicyPaths.map((p) => p.id),
+      tx
     });
 
     for await (const folderPolicyPath of folderPolicyPaths) {
@@ -747,31 +756,44 @@ export const secretFolderServiceFactory = ({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
         });
 
-      await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor });
-
       let folderToDelete = await folderDAL
-        .findOne({
-          envId: env.id,
-          name: idOrName,
-          parentId: parentFolder.id,
-          isReserved: false
-        })
+        .findOne(
+          {
+            envId: env.id,
+            name: idOrName,
+            parentId: parentFolder.id,
+            isReserved: false
+          },
+          tx
+        )
         .catch(() => null);
 
       if (!folderToDelete && uuidValidate(idOrName)) {
         folderToDelete = await folderDAL
-          .findOne({
-            envId: env.id,
-            id: idOrName,
-            parentId: parentFolder.id,
-            isReserved: false
-          })
+          .findOne(
+            {
+              envId: env.id,
+              id: idOrName,
+              parentId: parentFolder.id,
+              isReserved: false
+            },
+            tx
+          )
           .catch(() => null);
       }
 
       if (!folderToDelete) {
         throw new NotFoundError({ message: `Folder with ID '${idOrName}' not found` });
       }
+
+      await $validateFolderPermission({
+        projectId,
+        env,
+        folderId: folderToDelete.id,
+        actor,
+        permission,
+        tx
+      });
 
       // Check if folder contains resources (secrets, dynamic secrets, subfolders)
       if (!forceDelete) {
@@ -1412,25 +1434,29 @@ export const secretFolderServiceFactory = ({
             });
           }
 
-          await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor });
-
           let folderToDelete = await folderDAL
-            .findOne({
-              envId: env.id,
-              name: idOrName,
-              parentId: parentFolder.id,
-              isReserved: false
-            })
+            .findOne(
+              {
+                envId: env.id,
+                name: idOrName,
+                parentId: parentFolder.id,
+                isReserved: false
+              },
+              tx
+            )
             .catch(() => null);
 
           if (!folderToDelete && uuidValidate(idOrName)) {
             folderToDelete = await folderDAL
-              .findOne({
-                envId: env.id,
-                id: idOrName,
-                parentId: parentFolder.id,
-                isReserved: false
-              })
+              .findOne(
+                {
+                  envId: env.id,
+                  id: idOrName,
+                  parentId: parentFolder.id,
+                  isReserved: false
+                },
+                tx
+              )
               .catch(() => null);
           }
 
@@ -1439,6 +1465,15 @@ export const secretFolderServiceFactory = ({
               message: `Folder with ID/name '${idOrName}' not found`
             });
           }
+
+          await $validateFolderPermission({
+            projectId,
+            env,
+            folderId: folderToDelete.id,
+            actor,
+            permission,
+            tx
+          });
 
           const [doc] = await folderDAL.delete(
             {

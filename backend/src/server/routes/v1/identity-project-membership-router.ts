@@ -15,6 +15,8 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+import { booleanSchema } from "../sanitizedSchemas";
+
 export const registerIdentityProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -453,6 +455,11 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         projectId: z.string().min(1).trim(),
         identityId: z.string().min(1).trim()
       }),
+      querystring: z.object({
+        includeFolderPermissions: booleanSchema.describe(
+          "Whether to include folder-scoped access grants in the returned permission sources."
+        )
+      }),
       response: {
         200: z.object({
           sources: z
@@ -479,7 +486,8 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.params.projectId,
-        targetIdentityId: req.params.identityId
+        targetIdentityId: req.params.identityId,
+        includeFolderPermissions: req.query.includeFolderPermissions
       });
 
       await server.services.auditLog.createAuditLog({

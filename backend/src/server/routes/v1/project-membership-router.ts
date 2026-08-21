@@ -16,7 +16,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { SanitizedUserSchema } from "../sanitizedSchemas";
+import { booleanSchema, SanitizedUserSchema } from "../sanitizedSchemas";
 
 const projectUserMembershipRoleSchema = z.object({
   id: z.string(),
@@ -197,6 +197,11 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         projectId: z.string().min(1).trim(),
         membershipId: z.string().min(1).trim()
       }),
+      querystring: z.object({
+        includeFolderPermissions: booleanSchema.describe(
+          "Whether to include folder-scoped access grants in the returned permission sources."
+        )
+      }),
       response: {
         200: z.object({
           sources: z
@@ -230,7 +235,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         projectId: req.params.projectId,
-        targetUserId: userId
+        targetUserId: userId,
+        includeFolderPermissions: req.query.includeFolderPermissions
       });
 
       await server.services.auditLog.createAuditLog({

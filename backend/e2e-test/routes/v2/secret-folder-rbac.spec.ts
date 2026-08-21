@@ -1,8 +1,12 @@
+import { randomUUID } from "node:crypto";
+
 import { subject } from "@casl/ability";
+import jwt from "jsonwebtoken";
 
 import {
   AccessScope,
   ActionProjectType,
+  IdentityAuthMethod,
   OrgMembershipRole,
   OrgMembershipStatus,
   ProjectMembershipRole,
@@ -21,7 +25,7 @@ import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { initLogger, logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { roleDALFactory } from "@app/services/role/role-dal";
@@ -384,5 +388,233 @@ describe("Folder deletion reaps folder-scoped privileges", () => {
     await deleteFolder({ path: "/", id: parent.id, forceDelete: true });
 
     expect(await testDb(TableName.AdditionalPrivilege).where({ folderId: child.id })).toEqual([]);
+  });
+});
+
+describe("Folder deletion requires manage-access on RBAC-granted folders", () => {
+  let memberJwtToken: string;
+  const memberSessionId = randomUUID();
+
+  const clearMemberPermissionCaches = () =>
+    testRedis.del(permissionDataKey, permissionMarkerKey, folderDataKey, folderMarkerKey);
+
+  const deleteFolderAs = async (token: string, dto: { path: string; id: string; forceDelete?: boolean }) =>
+    testServer.inject({
+      method: "DELETE",
+      url: `/api/v2/folders/${dto.id}`,
+      headers: { authorization: `Bearer ${token}` },
+      body: {
+        projectId,
+        environment: seedData1.environment.slug,
+        path: dto.path,
+        forceDelete: dto.forceDelete ?? false
+      }
+    });
+
+  beforeAll(async () => {
+    await testDb(TableName.AuthTokenSession).insert({
+      id: memberSessionId,
+      userId: memberUserId,
+      ip: "127.0.0.1",
+      userAgent: "e2e-folder-rbac",
+      accessVersion: 1,
+      refreshVersion: 1,
+      lastUsed: new Date()
+    } as never);
+
+    memberJwtToken = jwt.sign(
+      {
+        authTokenType: AuthTokenType.ACCESS_TOKEN,
+        userId: memberUserId,
+        tokenVersionId: memberSessionId,
+        authMethod: AuthMethod.EMAIL,
+        organizationId: orgId,
+        accessVersion: 1
+      },
+      getConfig().AUTH_SECRET,
+      { expiresIn: 3600 }
+    );
+  });
+
+  afterAll(async () => {
+    await testDb(TableName.AuthTokenSession).where({ id: memberSessionId }).del();
+    await clearMemberPermissionCaches();
+  });
+
+  test("blocks a member without manage-access from deleting a folder that has a grant", async () => {
+    const folder = await createFolder({ path: "/", name: "rbac-guard-direct" });
+
+    await testDb(TableName.AdditionalPrivilege).insert({
+      name: "e2e-rbac-guard-direct",
+      actorUserId: memberUserId,
+      projectId,
+      folderId: folder.id,
+      role: SecretFolderRole.Read,
+      permissions: null,
+      isTemporary: false
+    });
+    await clearMemberPermissionCaches();
+
+    const res = await deleteFolderAs(memberJwtToken, { path: "/", id: folder.id });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().message).toContain("manage folder access");
+    expect(await testDb(TableName.AdditionalPrivilege).where({ folderId: folder.id })).toHaveLength(1);
+
+    await deleteFolder({ path: "/", id: folder.id });
+    await clearMemberPermissionCaches();
+  });
+
+  test("blocks deleting a parent when a descendant folder has a grant", async () => {
+    const parent = await createFolder({ path: "/", name: "rbac-guard-parent" });
+    const child = await createFolder({ path: "/rbac-guard-parent", name: "rbac-guard-child" });
+
+    await testDb(TableName.AdditionalPrivilege).insert({
+      name: "e2e-rbac-guard-child",
+      actorUserId: memberUserId,
+      projectId,
+      folderId: child.id,
+      role: SecretFolderRole.Read,
+      permissions: null,
+      isTemporary: false
+    });
+    await clearMemberPermissionCaches();
+
+    const res = await deleteFolderAs(memberJwtToken, { path: "/", id: parent.id, forceDelete: true });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().message).toContain("/rbac-guard-parent/rbac-guard-child");
+
+    await deleteFolder({ path: "/", id: parent.id, forceDelete: true });
+    await clearMemberPermissionCaches();
+  });
+
+  test("allows a member to delete a folder with no grants", async () => {
+    const folder = await createFolder({ path: "/", name: "rbac-guard-free" });
+    await clearMemberPermissionCaches();
+
+    const res = await deleteFolderAs(memberJwtToken, { path: "/", id: folder.id });
+    expect(res.statusCode).toBe(200);
+  });
+
+  test("allows deletion when the member holds the full-access tier on the granted folder", async () => {
+    const folder = await createFolder({ path: "/", name: "rbac-guard-full" });
+
+    await testDb(TableName.AdditionalPrivilege).insert({
+      name: "e2e-rbac-guard-full",
+      actorUserId: memberUserId,
+      projectId,
+      folderId: folder.id,
+      role: SecretFolderRole.FullAccess,
+      permissions: null,
+      isTemporary: false
+    });
+    await clearMemberPermissionCaches();
+
+    const res = await deleteFolderAs(memberJwtToken, { path: "/", id: folder.id });
+    expect(res.statusCode).toBe(200);
+    expect(await testDb(TableName.AdditionalPrivilege).where({ folderId: folder.id })).toEqual([]);
+    await clearMemberPermissionCaches();
+  });
+
+  test("blocks an identity without manage-access from deleting a folder that has a grant", async () => {
+    const identityName = `rbac-guard-identity-${alphaNumericNanoId(8)}`.toLowerCase();
+    const [identity] = await testDb(TableName.Identity).insert({ name: identityName, orgId }).returning("*");
+    const [orgMembership] = await testDb(TableName.Membership)
+      .insert({ scope: AccessScope.Organization, scopeOrgId: orgId, actorIdentityId: identity.id })
+      .returning("*");
+    await testDb(TableName.MembershipRole).insert({ membershipId: orgMembership.id, role: OrgMembershipRole.Member });
+    const [projectMembership] = await testDb(TableName.Membership)
+      .insert({
+        scope: AccessScope.Project,
+        scopeOrgId: orgId,
+        scopeProjectId: projectId,
+        actorIdentityId: identity.id
+      })
+      .returning("*");
+    await testDb(TableName.MembershipRole).insert({
+      membershipId: projectMembership.id,
+      role: ProjectMembershipRole.Member
+    });
+
+    const identityTokenId = randomUUID();
+    await testDb(TableName.IdentityAccessToken).insert({
+      id: identityTokenId,
+      identityId: identity.id,
+      accessTokenTTL: 3600,
+      accessTokenMaxTTL: 7200,
+      accessTokenNumUses: 0,
+      accessTokenNumUsesLimit: 0,
+      isAccessTokenRevoked: false,
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      accessTokenPeriod: 0
+    } as never);
+
+    const identityJwt = jwt.sign(
+      {
+        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
+        identityId: identity.id,
+        identityAccessTokenId: identityTokenId,
+        clientSecretId: ""
+      },
+      getConfig().AUTH_SECRET,
+      { expiresIn: 3600 }
+    );
+
+    const folder = await createFolder({ path: "/", name: "rbac-guard-identity" });
+    await testDb(TableName.AdditionalPrivilege).insert({
+      name: "e2e-rbac-guard-identity",
+      actorIdentityId: identity.id,
+      projectId,
+      folderId: folder.id,
+      role: SecretFolderRole.Read,
+      permissions: null,
+      isTemporary: false
+    });
+
+    try {
+      const res = await deleteFolderAs(identityJwt, { path: "/", id: folder.id });
+      expect(res.statusCode).toBe(403);
+      expect(res.json().message).toContain("manage folder access");
+    } finally {
+      await deleteFolder({ path: "/", id: folder.id });
+      await testDb(TableName.IdentityAccessToken).where({ id: identityTokenId }).del();
+      await testDb(TableName.Membership).where({ actorIdentityId: identity.id }).del();
+      await testDb(TableName.Identity).where({ id: identity.id }).del();
+    }
+  });
+});
+
+describe("Permission audit endpoint folder grants", () => {
+  test("includeFolderPermissions=false excludes folder grants from audit sources", async () => {
+    const folder = await createFolder({ path: "/", name: "rbac-audit" });
+    await testDb(TableName.AdditionalPrivilege).insert({
+      name: "e2e-folder-rbac-audit",
+      actorUserId: memberUserId,
+      projectId,
+      folderId: folder.id,
+      role: SecretFolderRole.Read,
+      permissions: null,
+      isTemporary: false
+    });
+
+    const getAuditSources = async (query: string) => {
+      const res = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/projects/${projectId}/memberships/${memberMembershipId}/permissions/audit${query}`,
+        headers: { authorization: `Bearer ${jwtAuthToken}` }
+      });
+      expect(res.statusCode).toBe(200);
+      return res.json().sources as { name: string }[];
+    };
+
+    try {
+      const defaultSources = await getAuditSources("");
+      expect(defaultSources.some((s) => s.name === "e2e-folder-rbac-audit")).toBe(true);
+
+      const gatedSources = await getAuditSources("?includeFolderPermissions=false");
+      expect(gatedSources.some((s) => s.name === "e2e-folder-rbac-audit")).toBe(false);
+      expect(gatedSources.length).toBeGreaterThan(0);
+    } finally {
+      await deleteFolder({ path: "/", id: folder.id, forceDelete: true });
+    }
   });
 });
