@@ -1,5 +1,4 @@
-import type { Cluster } from "ioredis";
-import { Redis } from "ioredis";
+import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
 
 import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
@@ -345,10 +344,18 @@ export const keyStoreFactory = (
 
   const getItemPrimary = async (key: string, prefix?: string) => primaryRedis.get(prefix ? `${prefix}:${key}` : key);
 
-  const getItems = async (keys: string[], prefix?: string) =>
-    pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).mget(
-      keys.map((key) => (prefix ? `${prefix}:${key}` : key))
-    );
+  const getItems = async (keys: string[], prefix?: string) => {
+    const redis = pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas);
+    const prefixedKeys = keys.map((key) => (prefix ? `${prefix}:${key}` : key));
+
+    // Cluster rejects an MGET whose keys span hash slots, and callers key by tenant or resource id
+    // rather than hash tag, so most batches here do span slots. Reading each key separately lets
+    // Cluster route them independently: N commands, but still pipelined over the per-node
+    // connections rather than N round trips, and the caller gets one batch API on both topologies.
+    if (redis instanceof Cluster) return Promise.all(prefixedKeys.map((key) => redis.get(key)));
+
+    return redis.mget(prefixedKeys);
+  };
 
   const setItemWithExpiry = async (
     key: string,
