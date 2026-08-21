@@ -219,6 +219,15 @@ export const CrossProjectSharingSection = () => {
     canReadGrants
   );
 
+  const handleEdit = (group: ProjectGroup) => {
+    setEditData({
+      targetProjectId: group.targetProjectId,
+      targetProjectName: group.targetProjectName,
+      grants: group.grants
+    });
+    setIsShareSheetOpen(true);
+  };
+
   const projectGroups = useMemo(() => groupGrantsByProject(grants ?? []), [grants]);
 
   let grantsContent: JSX.Element;
@@ -252,8 +261,8 @@ export const CrossProjectSharingSection = () => {
                   {projectGroup.targetProjectName}
                 </Badge>
                 <span className="text-xs text-muted">
-                  {projectGroup.totalSecrets} {projectGroup.totalSecrets === 1 ? "secret" : "secrets"}{" "}
-                  shared
+                  {projectGroup.totalSecrets}{" "}
+                  {projectGroup.totalSecrets === 1 ? "secret" : "secrets"} shared
                 </span>
               </div>
               {(canEditGrants || canRevokeGrants) && (
@@ -324,7 +333,10 @@ export const CrossProjectSharingSection = () => {
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          Shared {formatDistanceToNowStrict(new Date(grant.createdAt), { addSuffix: true })}{" "}
+                          Shared{" "}
+                          {formatDistanceToNowStrict(new Date(grant.createdAt), {
+                            addSuffix: true
+                          })}{" "}
                           ({format(new Date(grant.createdAt), "MMM d, yyyy 'at' h:mm a")})
                         </TooltipContent>
                       </Tooltip>
@@ -340,15 +352,6 @@ export const CrossProjectSharingSection = () => {
       </Accordion>
     );
   }
-
-  const handleEdit = (group: ProjectGroup) => {
-    setEditData({
-      targetProjectId: group.targetProjectId,
-      targetProjectName: group.targetProjectName,
-      grants: group.grants
-    });
-    setIsShareSheetOpen(true);
-  };
 
   const handleSheetOpenChange = (open: boolean) => {
     setIsShareSheetOpen(open);
