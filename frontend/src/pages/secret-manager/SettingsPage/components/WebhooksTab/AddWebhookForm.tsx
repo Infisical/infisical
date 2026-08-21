@@ -31,6 +31,7 @@ import {
   SheetTitle
 } from "@app/components/v3";
 import {
+  DEFAULT_ENABLED_EVENTS,
   WEBHOOK_EVENT_METADATA,
   WEBHOOK_EVENTS,
   WebhookEvent,
@@ -48,10 +49,6 @@ const EVENT_OPTIONS: TWebhookEventOption[] = WEBHOOK_EVENTS.map((event) => ({
   label: WEBHOOK_EVENT_METADATA[event].label,
   description: WEBHOOK_EVENT_METADATA[event].description
 }));
-
-const DEFAULT_ENABLED_EVENTS = Object.fromEntries(
-  WEBHOOK_EVENTS.map((event) => [event, true])
-) as Record<WebhookEvent, boolean>;
 
 const OptionWithDescription = (props: OptionProps<TWebhookEventOption>) => {
   const { data, children, isSelected } = props;

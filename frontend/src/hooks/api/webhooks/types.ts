@@ -19,6 +19,10 @@ export type TWebhookEventMetadata = {
 
 export const WEBHOOK_EVENTS = Object.values(WebhookEvent) as WebhookEvent[];
 
+export const DEFAULT_ENABLED_EVENTS = Object.fromEntries(
+  WEBHOOK_EVENTS.map((event) => [event, true])
+) as Record<WebhookEvent, boolean>;
+
 export const WEBHOOK_EVENT_METADATA: Record<WebhookEvent, TWebhookEventMetadata> = {
   [WebhookEvent.SecretRotationFailed]: {
     label: "Secret Rotation Failed",
