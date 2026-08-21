@@ -160,11 +160,23 @@ describe("getWebhookPayload: secrets.change-request.modified", () => {
     expect(result.request.requestedBy).toBeNull();
   });
 
-  test("general payload carries no free text fields", () => {
-    const result = getWebhookPayload({
+  test("general payload strips free text fields present on the input", () => {
+    const eventWithFreeText = {
       type: WebhookEvents.ChangeRequestModified,
-      payload: { ...changeRequestPayload, type: WebhookType.GENERAL }
-    });
+      payload: {
+        ...changeRequestPayload,
+        type: WebhookType.GENERAL,
+        commitMessage: "fixed the bug",
+        bypassReason: "on-call approved",
+        request: {
+          ...changeRequestPayload.request,
+          commitMessage: "fixed the bug",
+          bypassReason: "on-call approved"
+        }
+      }
+    } as unknown as Parameters<typeof getWebhookPayload>[0];
+
+    const result = getWebhookPayload(eventWithFreeText);
 
     const serialized = JSON.stringify(result);
     expect(serialized).not.toContain("commitMessage");
