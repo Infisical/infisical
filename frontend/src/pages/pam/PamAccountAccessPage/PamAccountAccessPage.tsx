@@ -12,6 +12,7 @@ import { RdpLauncher } from "./RdpLauncher";
 import { SessionAccessGate } from "./ReasonGate";
 import { useWebAccessSession } from "./useWebAccessSession";
 import { WebAccessStatusCard } from "./WebAccessStatusCard";
+import { WebServerAccessContent } from "./WebServerAccessContent";
 
 const TerminalContent = ({
   account,
@@ -130,6 +131,11 @@ const PageContent = () => {
   return (
     <SessionAccessGate account={account}>
       {({ reason, mfaSessionId }) => {
+        if (account.accountType === PamAccountType.WebServer) {
+          return (
+            <WebServerAccessContent account={account} reason={reason} mfaSessionId={mfaSessionId} />
+          );
+        }
         if (
           account.accountType === PamAccountType.Postgres ||
           account.accountType === PamAccountType.MySQL
