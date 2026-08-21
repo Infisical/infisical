@@ -1,13 +1,13 @@
 ---
-title: "Hashicorp Vault connection"
-description: "Learn how to configure a Hashicorp Vault Connection for Infisical."
+title: "HashiCorp Vault connection"
+description: "Learn how to configure a HashiCorp Vault Connection for Infisical."
 ---
 
 <Note>
     Infisical is compatible with Vault Self-hosted, HCP Vault Dedicated, and HCP Vault Enterprise deployments. Please note that HCP Generic Secrets are currently not supported.
 </Note>
 
-Infisical supports two methods for connecting to Hashicorp Vault.
+Infisical supports two methods for connecting to HashiCorp Vault.
 
 <Tabs>
     <Tab title="App Role (Recommended)">
@@ -98,7 +98,7 @@ Infisical supports two methods for connecting to Hashicorp Vault.
         </Steps>
     </Tab>
     <Tab title="Access Token">
-        ## Get a Hashicorp Vault access token
+        ## Get a HashiCorp Vault access token
 
         Open your profile dropdown and click **Copy token**. This token will be used in later steps.
 
@@ -136,7 +136,7 @@ Infisical supports two methods for connecting to Hashicorp Vault.
                 ![App Connections Tab](/images/app-connections/general/add-connection.png)
             </Step>
             <Step title="Add Connection">
-                Click the **+ Add Connection** button and select the **Hashicorp Vault Connection** option.
+                Click the **+ Add Connection** button and select the **HashiCorp Vault Connection** option.
 
                 ![Select Vault Connection](/images/app-connections/hashicorp-vault/vault-infisical-connect-page.png)
             </Step>
@@ -150,7 +150,7 @@ Infisical supports two methods for connecting to Hashicorp Vault.
                         - **Name**: The name of the connection being created. Must be slug-friendly.
                         - **Description**: An optional description to provide details about this connection.
                         - **Gateway (optional):** The gateway connected to your private network. All requests made to your Vault instance will be made through the configured gateway.
-                        - **Instance URL**: The URL of your Hashicorp Vault instance.
+                        - **Instance URL**: The URL of your HashiCorp Vault instance.
                         - **Namespace (optional)**: The namespace within your vault. Self-hosted and enterprise clusters may not use namespaces.
                         - **Role ID**: The Role ID generated in the steps above.
                         - **Secret ID**: The Secret ID generated in the steps above.
@@ -159,7 +159,7 @@ Infisical supports two methods for connecting to Hashicorp Vault.
                         - **Name**: The name of the connection being created. Must be slug-friendly.
                         - **Description**: An optional description to provide details about this connection.
                         - **Gateway (optional):** The gateway connected to your private network. All requests made to your Vault instance will be made through the configured gateway.
-                        - **Instance URL**: The URL of your Hashicorp Vault instance.
+                        - **Instance URL**: The URL of your HashiCorp Vault instance.
                         - **Namespace (optional)**: The namespace within your vault. Self-hosted and enterprise clusters may not use namespaces.
                         - **Access Token**: The Access Token generated in the steps above.
                     </Tab>
@@ -172,7 +172,7 @@ Infisical supports two methods for connecting to Hashicorp Vault.
         </Steps>
     </Tab>
     <Tab title="API">
-        To create a Vault Connection, make an API request to the [Create Hashicorp Vault
+        To create a Vault Connection, make an API request to the [Create HashiCorp Vault
         Connection](/api-reference/endpoints/app-connections/hashicorp-vault/create) API endpoint.
 
         ### Sample request

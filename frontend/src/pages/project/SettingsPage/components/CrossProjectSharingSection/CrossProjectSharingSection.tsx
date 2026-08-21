@@ -294,7 +294,7 @@ export const CrossProjectSharingSection = () => {
                 </div>
               )}
             </AccordionTrigger>
-            <AccordionContent>
+            <AccordionContent className="p-6">
               <div className="rounded-md border border-mineshaft-600">
                 <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2 text-xs text-muted">
                   <span>Shared location in this project</span>

@@ -448,7 +448,7 @@ export const CmekTable = () => {
                   <TableHead>Status</TableHead>
                   <TableHead>Version</TableHead>
                   <TableHead className="w-5" />
-                  <TableHead className="w-12" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -598,7 +598,7 @@ export const CmekTable = () => {
                             </Tooltip>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell variant="action">
                           <div className="flex justify-end">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>

@@ -12,7 +12,7 @@ Azure CLI accounts are available through the **CLI and API only**. There is no i
 
 ## How it works
 
-Each account points at a single Microsoft Entra ID (Azure AD) service principal, identified by its tenant ID and client ID, with a client secret stored encrypted. When a user starts a session:
+Each account points at a single Microsoft Entra ID service principal, identified by its tenant ID and client ID, with a client secret stored encrypted. When a user starts a session:
 
 1. Infisical obtains short-lived access tokens for the service principal (via the OAuth 2.0 client-credentials grant), one per supported Azure plane: Resource Manager, Microsoft Graph, Key Vault, and Storage.
 2. The user's `az` traffic is routed through a local proxy to the Infisical **Gateway**, which reaches Azure on their behalf.

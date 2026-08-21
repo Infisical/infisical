@@ -231,7 +231,7 @@ export const InsightsCard = ({
                 <TableHead>Issues</TableHead>
                 <TableHead className="text-right">Stale Secrets</TableHead>
                 <TableHead className="text-right">Total Secrets</TableHead>
-                <TableHead className="w-8" />
+                <TableHead variant="action" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -259,7 +259,7 @@ export const InsightsCard = ({
                   <TableCell className="text-right">
                     {project.totalSecrets.toLocaleString()}
                   </TableCell>
-                  <TableCell>
+                  <TableCell variant="action">
                     <ChevronRightIcon className="size-3.5 text-muted" />
                   </TableCell>
                 </TableRow>
