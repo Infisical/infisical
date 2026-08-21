@@ -645,24 +645,27 @@ export const SecretReferenceWizard = ({
 
   return (
     <Tabs value={state.tab} onValueChange={handleTabChange} className="gap-0">
-      <TabsList className="h-auto w-full rounded-none rounded-t-md border-0 border-b border-border bg-transparent p-0">
+      <TabsList
+        aria-label="Secret reference source"
+        className="h-auto w-full rounded-none rounded-t-md border-0 border-b border-border bg-transparent p-0"
+      >
         <TabsTrigger
           value="this-project"
-          className="flex-1 rounded-none rounded-tl-md border-0 py-2 text-xs"
+          className="flex-1 rounded-none rounded-tl-md py-2 text-xs"
         >
           This project
         </TabsTrigger>
         <TabsTrigger
           value="another-project"
-          className="flex-1 rounded-none rounded-tr-md border-0 py-2 text-xs"
+          className="flex-1 rounded-none rounded-tr-md py-2 text-xs"
         >
           Another project
         </TabsTrigger>
       </TabsList>
-      <TabsContent value="this-project" className="mt-0">
+      <TabsContent value="this-project">
         {state.tab === "this-project" && <div ref={contentRef}>{renderStepContent()}</div>}
       </TabsContent>
-      <TabsContent value="another-project" className="mt-0">
+      <TabsContent value="another-project">
         {state.tab === "another-project" && <div ref={contentRef}>{renderStepContent()}</div>}
       </TabsContent>
     </Tabs>

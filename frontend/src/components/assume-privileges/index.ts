@@ -1,1 +1,1 @@
-export * from "./AssumePrivilegesModal";
+export * from "./AssumePrivilegesDialog";

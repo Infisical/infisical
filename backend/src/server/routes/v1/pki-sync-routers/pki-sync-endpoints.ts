@@ -182,8 +182,10 @@ export const registerSyncPkiEndpoints = ({
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
+          orgId: req.permission.orgId,
+          projectId: pkiSync.projectId,
           destination,
-          orgId: req.permission.orgId
+          isAutoSyncEnabled: pkiSync.isAutoSyncEnabled
         }
       });
 
@@ -228,6 +230,18 @@ export const registerSyncPkiEndpoints = ({
             hasPostSyncCommand: Boolean(pkiSync.syncOptions?.postSyncCommand),
             hasPreflightCommand: Boolean(pkiSync.syncOptions?.preflightCommand)
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiSyncUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: pkiSync.projectId,
+          destination: pkiSync.destination,
+          isAutoSyncEnabled: pkiSync.isAutoSyncEnabled
         }
       });
 
@@ -278,8 +292,9 @@ export const registerSyncPkiEndpoints = ({
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          destination: pkiSync.destination,
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: pkiSync.projectId,
+          destination: pkiSync.destination
         }
       });
 

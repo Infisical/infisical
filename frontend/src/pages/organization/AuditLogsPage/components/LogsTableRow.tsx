@@ -83,7 +83,7 @@ export const LogsTableRow = ({ auditLog, rowNumber, timezone, onClick }: Props) 
           )}
         </div>
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell variant="action">
         <ChevronRight className="inline-block size-4 text-muted" />
       </TableCell>
     </TableRow>

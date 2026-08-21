@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Control, Controller, FieldPath, FieldValues } from "react-hook-form";
 
-import { FormControl, TextArea } from "@app/components/v2";
+import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
+import { Field, FieldError, TextArea } from "@app/components/v3";
 
 /**
  * Textarea-backed editor for a list of IPs/CIDRs. The raw text lives in local state so partially
@@ -18,7 +19,6 @@ const CloudflareIpListInput = ({
 
   return (
     <TextArea
-      reSize="none"
       rows={4}
       value={rawValue}
       onChange={(e) => {
@@ -31,7 +31,7 @@ const CloudflareIpListInput = ({
         );
       }}
       placeholder={"199.27.128.0/21\n2400:cb00::/32"}
-      className="border-mineshaft-600 bg-mineshaft-900 font-mono text-sm"
+      className="resize-none bg-container font-mono text-sm"
     />
   );
 };
@@ -52,15 +52,13 @@ export const CloudflareIpListField = <T extends FieldValues>({
     control={control}
     name={name}
     render={({ field: { value, onChange }, fieldState: { error } }) => (
-      <FormControl
-        isOptional
-        isError={Boolean(error)}
-        errorText={error?.message}
-        label={label}
-        tooltipText={tooltipText}
-      >
+      <Field data-invalid={Boolean(error)}>
+        <FieldLabelWithTooltip tooltip={tooltipText}>
+          {label} <span className="font-normal text-muted">(optional)</span>
+        </FieldLabelWithTooltip>
         <CloudflareIpListInput value={value} onChange={onChange} />
-      </FormControl>
+        <FieldError>{error?.message}</FieldError>
+      </Field>
     )}
   />
 );

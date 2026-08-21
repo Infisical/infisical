@@ -16,7 +16,7 @@ Deploy certificates to F5 BIG-IP appliances. Certificates can be automatically a
 - The BIG-IP must be reachable over HTTPS from Infisical (directly or via an [Infisical Gateway](/documentation/platform/gateways/overview))
 - User account with permissions to manage certificates in the target partition, and to update SSL profiles when profile binding is used
 
-## Create an F5 BIG-IP Sync
+## Create an F5 BIG-IP sync
 
 <Tabs>
     <Tab title="Infisical UI">
@@ -121,7 +121,7 @@ Deploy certificates to F5 BIG-IP appliances. Certificates can be automatically a
     </Tab>
 </Tabs>
 
-## Certificate Management
+## Certificate management
 
 The F5 BIG-IP Certificate Sync provides:
 
@@ -138,14 +138,14 @@ The F5 BIG-IP Certificate Sync provides:
   they're issued or renewed.
 </Note>
 
-## Certificate Renewal Behavior
+## Certificate renewal behavior
 
 When a certificate is renewed in Infisical, the behavior depends on the **Preserve Certificate on Renewal** option:
 
 - **Preserve enabled**: The renewed certificate keeps the same name on the BIG-IP. Any profile or virtual server already using that certificate keeps working without any change.
 - **Preserve disabled**: The renewed certificate is uploaded with a new name and the original stays on the BIG-IP. Both certificates coexist until the original is revoked or removed.
 
-## Manual Certificate Sync
+## Manual certificate sync
 
 You can manually trigger a sync to F5 BIG-IP. This is useful for:
 
@@ -185,7 +185,7 @@ To manually sync, use the [Sync Certificates](/api-reference/endpoints/pki/syncs
   replaces what was there.
 </Accordion>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="NetScaler" icon="server" href="/documentation/platform/pki/applications/certificate-syncs/netscaler">

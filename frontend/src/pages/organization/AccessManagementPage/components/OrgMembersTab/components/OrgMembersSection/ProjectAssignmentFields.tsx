@@ -1,15 +1,19 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { components, OptionProps, SingleValueProps } from "react-select";
-import { CheckIcon, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Combobox,
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -60,32 +64,7 @@ const PRODUCT_DEFINITIONS: ProductDefinition[] = [
   }
 ];
 
-// Render each product with its shared project icon (getProjectLucideIcon) so the select matches the
-// Projects pages and the org sidebar.
-const ProductOption = ({ isSelected, children, ...props }: OptionProps<ProductDefinition>) => {
-  const Icon = getProjectLucideIcon(props.data.type);
-  return (
-    <components.Option isSelected={isSelected} {...props}>
-      <div className="flex flex-row items-center gap-2">
-        <Icon className="size-4 shrink-0 text-muted" />
-        <p className="mr-auto truncate">{children}</p>
-        {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
-      </div>
-    </components.Option>
-  );
-};
-
-const ProductSingleValue = ({ children, ...props }: SingleValueProps<ProductDefinition>) => {
-  const Icon = getProjectLucideIcon(props.data.type);
-  return (
-    <components.SingleValue {...props}>
-      <div className="flex flex-row items-center gap-2">
-        <Icon className="size-4 shrink-0 text-muted" />
-        <span className="truncate">{children}</span>
-      </div>
-    </components.SingleValue>
-  );
-};
+const NONE_PRODUCT_VALUE = "none";
 
 export const projectAssignmentSchema = z.object({
   product: z
@@ -102,7 +81,7 @@ export const projectAssignmentSchema = z.object({
         .array()
         .optional()
     })
-    .optional(),
+    .nullish(),
   projects: z
     .array(
       z.object({
@@ -190,42 +169,64 @@ export const ProjectAssignmentFields = () => {
       <Controller
         control={control}
         name="product"
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <Field>
-            <FieldLabel htmlFor="assign-users-product" className="flex items-center gap-1.5">
-              Assign users to a product
-              <span className="text-xs font-normal text-muted">(optional)</span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Info className="size-3 text-muted" />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-md">
-                  Select which product to grant the users access to.
-                </TooltipContent>
-              </Tooltip>
-            </FieldLabel>
-            <FilterableSelect
-              inputId="assign-users-product"
-              isClearable
-              value={value ?? null}
-              isLoading={isProjectsLoading}
-              onChange={(option) => {
-                onChange(option);
-                setValue("projects", []);
-                setValue("projectRole", DEFAULT_PROJECT_ROLE);
-              }}
-              getOptionLabel={(product) => product.name}
-              getOptionValue={(product) => product.type}
-              options={availableProducts}
-              placeholder="Select a product..."
-              isError={Boolean(error?.message)}
-              components={{ Option: ProductOption, SingleValue: ProductSingleValue }}
-            />
-            <FieldError>{error?.message}</FieldError>
-          </Field>
-        )}
+        render={({ field: { value, onChange }, fieldState: { error } }) => {
+          const handleProductChange = (productType: string) => {
+            const product =
+              productType === NONE_PRODUCT_VALUE
+                ? undefined
+                : availableProducts.find((option) => option.type === productType);
+            onChange(product);
+            setValue("projects", []);
+            setValue("projectRole", DEFAULT_PROJECT_ROLE);
+          };
+
+          return (
+            <Field>
+              <FieldLabel htmlFor="assign-users-product" className="flex items-center gap-1.5">
+                Assign users to a product
+                <span className="text-xs font-normal text-muted">(optional)</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Info className="size-3 text-muted" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-md">
+                    Select which product to grant the users access to.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Select
+                value={value?.type ?? NONE_PRODUCT_VALUE}
+                onValueChange={handleProductChange}
+                disabled={isProjectsLoading}
+              >
+                <SelectTrigger
+                  id="assign-users-product"
+                  className="w-full"
+                  isError={Boolean(error?.message)}
+                >
+                  <SelectValue placeholder="Select a product..." />
+                </SelectTrigger>
+                <SelectContent position="popper" align="start">
+                  <SelectItem value={NONE_PRODUCT_VALUE}>None</SelectItem>
+                  {availableProducts.map((product) => {
+                    const Icon = getProjectLucideIcon(product.type);
+                    return (
+                      <SelectItem key={product.type} value={product.type}>
+                        <span className="flex items-center gap-2">
+                          <Icon />
+                          {product.name}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <FieldError>{error?.message}</FieldError>
+            </Field>
+          );
+        }}
       />
 
       {selectedProduct && !isSingletonProduct && (
@@ -238,17 +239,21 @@ export const ProjectAssignmentFields = () => {
                 Assign users to projects
                 <span className="text-xs font-normal text-muted">(optional)</span>
               </FieldLabel>
-              <FilterableSelect
-                inputId="assign-users-projects"
-                isMulti
+              <Combobox
+                id="assign-users-projects"
+                multiple
                 value={value}
-                onChange={onChange}
+                onValueChange={onChange}
                 isLoading={isProjectsLoading}
                 getOptionLabel={(project) => project.name}
                 getOptionValue={(project) => project.id}
                 options={productProjects}
                 placeholder="Select projects..."
+                searchPlaceholder="Search projects..."
+                searchAriaLabel="Search projects"
+                clearAriaLabel="Clear all projects"
                 isError={Boolean(error?.message)}
+                modal
               />
               <FieldError>{error?.message}</FieldError>
             </Field>

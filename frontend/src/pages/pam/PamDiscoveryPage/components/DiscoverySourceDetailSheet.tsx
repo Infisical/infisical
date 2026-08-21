@@ -709,7 +709,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
               </EmptyHeader>
             </Empty>
           ) : (
-            <Table className="w-full table-fixed">
+            <Table className="w-full">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-44">Started</TableHead>

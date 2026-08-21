@@ -9,6 +9,7 @@ import {
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
@@ -28,7 +29,7 @@ import {
   TUpdatePkiDiscoveryDTO
 } from "./pki-discovery-types";
 
-const MAX_DISCOVERIES_PER_PROJECT = 10;
+const MAX_CLOUD_DISCOVERIES = 10;
 const SCAN_RATE_LIMIT_HOURS = 24;
 
 type TPkiDiscoveryServiceFactoryDep = {
@@ -112,11 +113,14 @@ export const pkiDiscoveryServiceFactory = ({
       ProjectPermissionSub.PkiDiscovery
     );
 
-    const existingCount = await pkiDiscoveryConfigDAL.countByProjectId(projectId);
-    if (existingCount >= MAX_DISCOVERIES_PER_PROJECT) {
-      throw new BadRequestError({
-        message: `Maximum number of discovery configurations (${MAX_DISCOVERIES_PER_PROJECT}) reached for this project`
-      });
+    const appCfg = getConfig();
+    if (appCfg.isCloud) {
+      const existingCount = await pkiDiscoveryConfigDAL.countByProjectId(projectId);
+      if (existingCount >= MAX_CLOUD_DISCOVERIES) {
+        throw new BadRequestError({
+          message: `Maximum number of discovery configurations (${MAX_CLOUD_DISCOVERIES}) reached`
+        });
+      }
     }
 
     validateTargetConfigForType(discoveryType, targetConfig);

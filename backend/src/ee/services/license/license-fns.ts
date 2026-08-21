@@ -1,4 +1,5 @@
 import axios, { AxiosError } from "axios";
+import { Knex } from "knex";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
@@ -62,11 +63,9 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   maxInternalCas: null,
   maxPamAccounts: null,
   memberLimit: null,
-  membersUsed: 0,
   environmentLimit: null,
   environmentsUsed: 0,
   identityLimit: null,
-  identitiesUsed: 0,
   dynamicSecret: false,
   secretVersioning: true,
   pitRecovery: false,
@@ -202,18 +201,32 @@ export const setupLicenseRequestWithStore = (
   return { request: licenseReq, refreshLicense };
 };
 
-export const throwOnPlanSeatLimitReached = async (
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
-  orgId: string,
-  type?: UserAliasType
-) => {
-  const plan = await licenseService.getPlan(orgId);
+export const getEnforcedIdentityLimit = (plan: TFeatureSet): number | null => {
   const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
+  if (isEnterpriseBypass) return null;
+  return plan?.identityLimit ?? null;
+};
 
-  if (!isEnterpriseBypass && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+export const throwOnPlanSeatLimitReached = async ({
+  licenseService,
+  orgId,
+  identityLimit,
+  tx,
+  aliasType
+}: {
+  licenseService: Pick<TLicenseServiceFactory, "getOrgSeatUsage">;
+  orgId: string;
+  identityLimit: number | null;
+  tx: Knex;
+  aliasType?: UserAliasType;
+}) => {
+  if (!identityLimit) return;
+
+  const { identitiesUsed } = await licenseService.getOrgSeatUsage(orgId, tx);
+  if (identitiesUsed >= identityLimit) {
     // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
     throw new BadRequestError({
-      message: `Failed to create new member${type ? ` via ${type.toUpperCase()}` : ""} due to member limit reached. Upgrade plan to add more members.`
+      message: `Failed to create new member${aliasType ? ` via ${aliasType.toUpperCase()}` : ""} due to member limit reached. Upgrade plan to add more members.`
     });
   }
 };

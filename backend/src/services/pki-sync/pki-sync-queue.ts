@@ -496,6 +496,7 @@ export const pkiSyncQueueFactory = ({
           organizationId: pkiSync.connection.orgId,
           properties: {
             orgId: pkiSync.connection.orgId,
+            projectId: pkiSync.projectId,
             destination: pkiSync.destination,
             success: fullySynced
           }

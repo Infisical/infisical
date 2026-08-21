@@ -1,5 +1,5 @@
 ---
-title: "PagerDuty Alerts"
+title: "PagerDuty alerts"
 sidebarTitle: "PagerDuty"
 description: "Create PagerDuty incidents for certificate alerts."
 ---
@@ -10,7 +10,7 @@ Create PagerDuty incidents when certificate events occur using the [Events API v
   Alerts are configured per Application and apply to all certificates within that Application.
 </Info>
 
-## Create a PagerDuty Alert
+## Create a PagerDuty alert
 
 <Steps>
   <Step title="Create a PagerDuty Service">
@@ -48,11 +48,11 @@ Create PagerDuty incidents when certificate events occur using the [Events API v
   </Step>
 </Steps>
 
-## Severity Mapping
+## Severity mapping
 
 Infisical automatically maps alert types to PagerDuty severity levels.
 
-### Expiration Alerts
+### Expiration alerts
 
 | Time Until Expiry | PagerDuty Severity |
 |-------------------|-------------------|
@@ -61,7 +61,7 @@ Infisical automatically maps alert types to PagerDuty severity levels.
 | ≤ 30 days | `warning` |
 | > 30 days | `info` |
 
-### Other Alert Types
+### Other alert types
 
 | Alert Type | PagerDuty Severity |
 |------------|-------------------|
@@ -69,11 +69,11 @@ Infisical automatically maps alert types to PagerDuty severity levels.
 | Certificate Renewal | `info` |
 | Certificate Revocation | `warning` |
 
-## Incident Grouping
+## Incident grouping
 
 Alerts with the same alert ID are grouped into the same PagerDuty incident via `dedup_key`. Repeated triggers update the existing incident rather than creating duplicates.
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="Webhook Alerts" icon="webhook" href="/documentation/platform/pki/applications/alerting/webhook-alerts">

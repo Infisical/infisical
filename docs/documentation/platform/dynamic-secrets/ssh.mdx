@@ -1,15 +1,15 @@
 ---
-title: "SSH Certificates"
+title: "SSH certificates"
 description: "Learn how to dynamically generate short-lived SSH certificates."
 ---
 
 The Infisical SSH dynamic secret allows you to generate ephemeral SSH certificates on demand, signed by an auto-generated Certificate Authority (CA). Instead of distributing static SSH keys, each lease produces a short-lived private key and a signed certificate that expires automatically.
 
-## How It Works
+## How it works
 
 When you create an SSH dynamic secret, Infisical generates an internal CA key pair. Target hosts are configured to trust this CA. When a lease is requested, Infisical generates an ephemeral key pair, signs the public key with the CA, and returns the private key and signed certificate. The certificate expires when the lease TTL ends — no manual key rotation or revocation needed.
 
-## Set up Dynamic Secrets with SSH
+## Set up dynamic secrets with SSH
 
 <Steps>
   <Step title="Open Secret Overview Dashboard">
@@ -149,7 +149,7 @@ The `--principals` flag is required for SSH dynamic secrets and accepts a comma-
 
 For more details, see the [CLI dynamic secrets documentation](/cli/commands/dynamic-secrets).
 
-## Audit or Revoke Leases
+## Audit or revoke leases
 
 Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
 
@@ -163,13 +163,13 @@ This will allow you to see the expiration time of the lease or delete the lease 
 	SSH certificates are time-bound and expire automatically. Revoking a lease in Infisical removes the record, but the certificate remains valid until its TTL expires.
 </Note>
 
-## Edit Dynamic Secret
+## Edit dynamic secret
 
 To update the configuration of an existing SSH dynamic secret (principals, key algorithm, TTL, or to access the CA setup options), click on the dynamic secret item and select **Edit**.
 
 ![Edit Dynamic Secret](/images/platform/dynamic-secrets/ssh/edit-dynamic-secret.png)
 
-## Renew Leases
+## Renew leases
 
 <Note>
 	SSH certificate leases cannot be renewed because the certificate validity is baked in at signing time. To get a new certificate, create a new lease.

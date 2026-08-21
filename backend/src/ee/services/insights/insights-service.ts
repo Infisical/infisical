@@ -1,12 +1,17 @@
 import { ForbiddenError } from "@casl/ability";
 
 // import geoip from "geoip-lite";
-import { ActionProjectType, IdentityAuthMethod } from "@app/db/schemas";
+import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
+import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
+import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  OrgPermissionSecretsManagementInsightsActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionHoneyTokenActions,
@@ -16,11 +21,14 @@ import {
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TReminderDALFactory } from "@app/services/reminder/reminder-dal";
@@ -29,20 +37,39 @@ import { containsSecretReference } from "@app/services/secret-v2-bridge/secret-r
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TInsightsDALFactory } from "./insights-dal";
 import {
-  // TGetAccessLocationsDTO,
+  addAccessVolumeEntry,
+  buildAccessVolumeDayBuckets,
+  buildAccessVolumeWindow,
+  buildStaticSecretUsageWindow,
+  collapseAccessVolumeDays,
+  resolveUserDisplayNames,
+  STALE_SECRET_THRESHOLD_DAYS,
+  toUtcDateString,
+  VALUE_EVENT_TYPES
+} from "./insights-fns";
+import {
   TGetAccessVolumeDTO,
   TGetAuthMethodDistributionDTO,
   TGetInsightsCalendarDTO,
   TGetInsightsCountsDTO,
   TGetInsightsSummaryDTO,
-  TGetSecretsDuplicationDTO
+  TGetSecretsDuplicationDTO,
+  TGetSecretsProjectWarningsDTO,
+  TOrgAccessVolume,
+  TOrgAuthMethodDistribution,
+  TOrgInsightsDTO,
+  TSecretsProjectWarnings,
+  TSecretsUsageInsights,
+  TStaticSecretsUsage
 } from "./insights-types";
 
-type TInsightsServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+export type TInsightsServiceFactoryDep = {
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByIpAddress" | "countByAuthMethod">;
+  auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByAuthMethod">;
+  clickhouseAuditLogDAL?: Pick<TClickHouseAuditLogDALFactory, "countByDateForOrg" | "countByIdentityAuthMethodForOrg">;
   secretRotationV2DAL: Pick<
     TSecretRotationV2DALFactory,
     "findByProjectAndDateRange" | "findByProject" | "countByProject"
@@ -60,18 +87,30 @@ type TInsightsServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
+  orgDAL: Pick<TOrgDALFactory, "countSecretManagerProjectMembers">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countSecretManagerProjectIdentities">;
+  dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "countLeasesForOrg">;
+  insightsDAL: Pick<
+    TInsightsDALFactory,
+    "findProjectWarningsForOrg" | "findSecretCreationsByWeekForOrg" | "countSecretCreationsForOrg"
+  >;
 };
 
 export type TInsightsServiceFactory = ReturnType<typeof insightsServiceFactory>;
 
-const VALUE_EVENT_TYPES = [
-  EventType.GET_SECRETS,
-  EventType.GET_SECRET,
-  EventType.DASHBOARD_GET_SECRET_VALUE,
-  EventType.DASHBOARD_GET_SECRET_VERSION_VALUE,
-  EventType.GET_SECRET_ROTATION_GENERATED_CREDENTIALS,
-  EventType.CREATE_DYNAMIC_SECRET_LEASE
-];
+// Both halves of the product (the per-project dashboard and the org-wide aggregates) are gated on the
+// same entitlement, so the check and its message live in one place.
+const assertInsightsPlanEnabled = async (
+  licenseService: TInsightsServiceFactoryDep["licenseService"],
+  orgId: string
+) => {
+  const plan = await licenseService.getPlan(orgId);
+  if (!plan.secretAccessInsights) {
+    throw new BadRequestError({
+      message: "Failed to access insights due to plan restriction. Upgrade your plan to access insights."
+    });
+  }
+};
 
 const checkInsightsPermission = async (
   permissionService: TInsightsServiceFactoryDep["permissionService"],
@@ -79,12 +118,7 @@ const checkInsightsPermission = async (
   projectId: string,
   actor: OrgServiceActor
 ) => {
-  const plan = await licenseService.getPlan(actor.orgId);
-  if (!plan.secretAccessInsights) {
-    throw new BadRequestError({
-      message: "Failed to access insights due to plan restriction. Upgrade your plan to access insights."
-    });
-  }
+  await assertInsightsPlanEnabled(licenseService, actor.orgId);
 
   const { permission } = await permissionService.getProjectPermission({
     actor: actor.type,
@@ -100,10 +134,13 @@ const checkInsightsPermission = async (
   return { permission };
 };
 
+export const PROJECT_WARNINGS_CHUNK_SIZE = 1000;
+
 export const insightsServiceFactory = ({
   permissionService,
   licenseService,
   auditLogDAL,
+  clickhouseAuditLogDAL,
   secretRotationV2DAL,
   reminderDAL,
   folderDAL,
@@ -114,8 +151,31 @@ export const insightsServiceFactory = ({
   projectDAL,
   userDAL,
   kmsService,
-  keyStore
+  keyStore,
+  orgDAL,
+  identityOrgMembershipDAL,
+  dynamicSecretLeaseDAL,
+  insightsDAL
 }: TInsightsServiceFactoryDep) => {
+  // Gate for every org-wide aggregate: the org-level read permission plus the insights entitlement.
+  const assertOrgInsightsRead = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TOrgInsightsDTO) => {
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionSecretsManagementInsightsActions.Read,
+      OrgPermissionSubjects.SecretsManagementInsights
+    );
+
+    await assertInsightsPlanEnabled(licenseService, orgId);
+  };
+
   const fetchReminders = async (projectId: string, startDate: Date, endDate: Date) => {
     const rawReminders = await reminderDAL.findByProjectAndDateRange({ projectId, startDate, endDate });
     if (!rawReminders.length) return [];
@@ -189,11 +249,7 @@ export const insightsServiceFactory = ({
       key: cacheKey,
       ttlSeconds: KeyStoreTtls.InsightsCacheInSeconds,
       fetcher: async () => {
-        const now = new Date();
-        const todayStr = now.toISOString().slice(0, 10);
-        const endDate = new Date(`${todayStr}T23:59:59.999Z`);
-        const startDate = new Date(`${todayStr}T00:00:00.000Z`);
-        startDate.setUTCDate(startDate.getUTCDate() - 6);
+        const { dates, startDate, endDate } = buildAccessVolumeWindow();
 
         const rows = await auditLogDAL.countByDateAndActor({
           orgId: actorDto.orgId,
@@ -203,37 +259,18 @@ export const insightsServiceFactory = ({
           endDate: endDate.toISOString()
         });
 
-        // Resolve user display names from userIds in audit log metadata
-        const userIds = [
+        const userNameMap = await resolveUserDisplayNames(userDAL, [
           ...new Set(
             rows
               .filter((r) => r.actor === ActorType.USER)
               .map((r) => (r.actorMetadata as Record<string, string> | null)?.userId)
               .filter(Boolean) as string[]
           )
-        ];
-        const userNameMap = new Map<string, string>();
-        if (userIds.length > 0) {
-          const users = await userDAL.find({ $in: { id: userIds } });
-          users.forEach((u) => {
-            const displayName = [u.firstName, u.lastName].filter(Boolean).join(" ");
-            if (displayName) userNameMap.set(u.id, displayName);
-          });
-        }
+        ]);
 
-        // Pre-populate the last 7 days
-        const dayMap = new Map<string, Map<string, { name: string; type: string; count: number }>>();
-        for (let i = 6; i >= 0; i -= 1) {
-          const d = new Date(`${todayStr}T00:00:00.000Z`);
-          d.setUTCDate(d.getUTCDate() - i);
-          dayMap.set(d.toISOString().slice(0, 10), new Map());
-        }
+        const dayMap = buildAccessVolumeDayBuckets(dates);
 
         rows.forEach((row) => {
-          const dateKey = typeof row.date === "string" ? row.date : new Date(row.date).toISOString().slice(0, 10);
-          const actorMap = dayMap.get(dateKey);
-          if (!actorMap) return;
-
           const actorMeta = row.actorMetadata as Record<string, string> | null;
           let actorName: string;
           if (row.actor === ActorType.USER && actorMeta?.userId) {
@@ -243,105 +280,19 @@ export const insightsServiceFactory = ({
           } else {
             actorName = actorMeta?.name || actorMeta?.identityId || "Unknown";
           }
-          const actorKey = `${row.actor}:${actorName}`;
 
-          const existing = actorMap.get(actorKey);
-          if (existing) {
-            existing.count += row.count;
-          } else {
-            actorMap.set(actorKey, { name: actorName, type: row.actor, count: row.count });
-          }
+          addAccessVolumeEntry(dayMap, {
+            date: typeof row.date === "string" ? row.date : new Date(row.date).toISOString().slice(0, 10),
+            type: row.actor,
+            name: actorName,
+            count: row.count
+          });
         });
 
-        const days = Array.from(dayMap.entries()).map(([date, actorMap]) => {
-          const actors = Array.from(actorMap.values()).sort((a, b) => b.count - a.count);
-          const total = actors.reduce((sum, a) => sum + a.count, 0);
-          return { date, total, actors };
-        });
-
-        return { days };
+        return { days: collapseAccessVolumeDays(dayMap) };
       }
     });
   };
-
-  // const getAccessLocations = async (dto: TGetAccessLocationsDTO, actorDto: OrgServiceActor) => {
-  //   await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
-
-  //   const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `access-locations:${dto.days}`);
-  //   return withCache(cacheKey, async () => {
-  //     const endDate = new Date();
-  //     const startDate = new Date();
-  //     startDate.setUTCDate(startDate.getUTCDate() - dto.days);
-
-  //     const ipRows = await auditLogDAL.countByIpAddress({
-  //       orgId: actorDto.orgId,
-  //       projectId: dto.projectId,
-  //       eventTypes: VALUE_EVENT_TYPES,
-  //       startDate: startDate.toISOString(),
-  //       endDate: endDate.toISOString()
-  //     });
-
-  //     const locationMap = new Map<string, { lat: number; lng: number; city: string; country: string; count: number }>();
-
-  //     const isPrivateIp = (ip: string) =>
-  //       ip === "127.0.0.1" ||
-  //       ip === "::1" ||
-  //       ip === "::ffff:127.0.0.1" ||
-  //       ip.startsWith("10.") ||
-  //       ip.startsWith("172.16.") ||
-  //       ip.startsWith("172.17.") ||
-  //       ip.startsWith("172.18.") ||
-  //       ip.startsWith("172.19.") ||
-  //       ip.startsWith("172.20.") ||
-  //       ip.startsWith("172.21.") ||
-  //       ip.startsWith("172.22.") ||
-  //       ip.startsWith("172.23.") ||
-  //       ip.startsWith("172.24.") ||
-  //       ip.startsWith("172.25.") ||
-  //       ip.startsWith("172.26.") ||
-  //       ip.startsWith("172.27.") ||
-  //       ip.startsWith("172.28.") ||
-  //       ip.startsWith("172.29.") ||
-  //       ip.startsWith("172.30.") ||
-  //       ip.startsWith("172.31.") ||
-  //       ip.startsWith("192.168.");
-
-  //     ipRows.forEach(({ ipAddress: ip, count }) => {
-  //       if (isPrivateIp(ip)) {
-  //         const key = "Local Network:LOCAL";
-  //         const existing = locationMap.get(key);
-  //         if (existing) {
-  //           existing.count += count;
-  //         } else {
-  //           locationMap.set(key, { lat: 0, lng: 0, city: "Local Network", country: "LOCAL", count });
-  //         }
-  //         return;
-  //       }
-
-  //       const geo = geoip.lookup(ip);
-  //       if (!geo || !geo.ll) return;
-
-  //       const city = geo.city || geo.region || "";
-  //       const key = `${city}:${geo.country}`;
-  //       const existing = locationMap.get(key);
-  //       if (existing) {
-  //         existing.count += count;
-  //       } else {
-  //         locationMap.set(key, {
-  //           lat: geo.ll[0],
-  //           lng: geo.ll[1],
-  //           city,
-  //           country: geo.country,
-  //           count
-  //         });
-  //       }
-  //     });
-
-  //     return {
-  //       locations: Array.from(locationMap.values()).sort((a, b) => b.count - a.count)
-  //     };
-  //   });
-  // };
 
   const getAuthMethodDistribution = async (dto: TGetAuthMethodDistributionDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
@@ -443,7 +394,7 @@ export const insightsServiceFactory = ({
         const in7Days = new Date(now);
         in7Days.setDate(now.getDate() + 7);
         const lookback90Days = new Date(now);
-        lookback90Days.setDate(now.getDate() - 90);
+        lookback90Days.setDate(now.getDate() - STALE_SECRET_THRESHOLD_DAYS);
         const staleThreshold = lookback90Days;
 
         // Fetch upcoming rotations (by date range) and all failed rotations (no date filter) in parallel
@@ -628,13 +579,191 @@ export const insightsServiceFactory = ({
     };
   };
 
+  const getSecretsUsageInsights = async (dto: TOrgInsightsDTO): Promise<TSecretsUsageInsights> => {
+    await assertOrgInsightsRead(dto);
+
+    const [activeLeases, users, identities] = await Promise.all([
+      dynamicSecretLeaseDAL.countLeasesForOrg(dto.orgId),
+      orgDAL.countSecretManagerProjectMembers(dto.orgId),
+      identityOrgMembershipDAL.countSecretManagerProjectIdentities(dto.orgId)
+    ]);
+
+    return { activeLeases, users, identities };
+  };
+
+  const $getProjectWarningsChunk = async (orgId: string, chunkIndex: number) => {
+    const cacheKey = KeyStorePrefixes.InsightsCache(orgId, `project-warnings:chunk:${chunkIndex}`);
+
+    return withCache({
+      keyStore,
+      key: cacheKey,
+      ttlSeconds: KeyStoreTtls.InsightsOrgCacheInSeconds,
+      fetcher: async () => {
+        const staleBefore = new Date();
+        staleBefore.setDate(staleBefore.getDate() - STALE_SECRET_THRESHOLD_DAYS);
+
+        return insightsDAL.findProjectWarningsForOrg(orgId, {
+          offset: chunkIndex * PROJECT_WARNINGS_CHUNK_SIZE,
+          limit: PROJECT_WARNINGS_CHUNK_SIZE,
+          staleBefore
+        });
+      }
+    });
+  };
+
+  const getSecretsProjects = async (dto: TGetSecretsProjectWarningsDTO): Promise<TSecretsProjectWarnings> => {
+    await assertOrgInsightsRead(dto);
+
+    const chunkIndex = Math.floor(dto.offset / PROJECT_WARNINGS_CHUNK_SIZE);
+    const chunk = await $getProjectWarningsChunk(dto.orgId, chunkIndex);
+
+    const windowStart = dto.offset - chunkIndex * PROJECT_WARNINGS_CHUNK_SIZE;
+    let projects = chunk.projects.slice(windowStart, windowStart + dto.limit);
+
+    if (projects.length < dto.limit && chunk.projects.length === PROJECT_WARNINGS_CHUNK_SIZE) {
+      const nextChunk = await $getProjectWarningsChunk(dto.orgId, chunkIndex + 1);
+      projects = projects.concat(nextChunk.projects.slice(0, dto.limit - projects.length));
+    }
+
+    const totals = chunk.projects.length > 0 || chunkIndex === 0 ? chunk : await $getProjectWarningsChunk(dto.orgId, 0);
+
+    return {
+      projects,
+      totalProjects: totals.totalProjects,
+      projectsWithIssues: totals.projectsWithIssues,
+      offset: dto.offset,
+      limit: dto.limit
+    };
+  };
+
+  const getOrgAccessVolume = async (dto: TOrgInsightsDTO): Promise<TOrgAccessVolume> => {
+    await assertOrgInsightsRead(dto);
+
+    const appCfg = getConfig();
+    if (!appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED || !clickhouseAuditLogDAL) {
+      throw new BadRequestError({
+        message:
+          "Secret access volume requires audit logs to be stored in ClickHouse, which is not enabled on this instance"
+      });
+    }
+
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, "org-access-volume");
+    return withCache({
+      keyStore,
+      key: cacheKey,
+      ttlSeconds: KeyStoreTtls.InsightsOrgCacheInSeconds,
+      fetcher: async () => {
+        const { dates, startDate, endDate } = buildAccessVolumeWindow();
+
+        const rows = await clickhouseAuditLogDAL.countByDateForOrg({
+          orgId: dto.orgId,
+          eventTypes: VALUE_EVENT_TYPES,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        });
+
+        const countsByDate = new Map(rows.map((row) => [row.date, row.count]));
+
+        return {
+          days: dates.map((date) => ({ date, total: countsByDate.get(date) ?? 0 }))
+        };
+      }
+    });
+  };
+
+  const getOrgAuthMethodDistribution = async (dto: TOrgInsightsDTO): Promise<TOrgAuthMethodDistribution> => {
+    await assertOrgInsightsRead(dto);
+
+    const appCfg = getConfig();
+    if (!appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED || !clickhouseAuditLogDAL) {
+      throw new BadRequestError({
+        message:
+          "Identity authentication method usage requires audit logs to be stored in ClickHouse, which is not enabled on this instance"
+      });
+    }
+
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.orgId, "org-auth-method-distribution");
+    return withCache({
+      keyStore,
+      key: cacheKey,
+      ttlSeconds: KeyStoreTtls.InsightsOrgCacheInSeconds,
+      fetcher: async () => {
+        const { startDate, endDate } = buildAccessVolumeWindow();
+
+        const rows = await clickhouseAuditLogDAL.countByIdentityAuthMethodForOrg({
+          orgId: dto.orgId,
+          eventTypes: VALUE_EVENT_TYPES,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        });
+
+        const methods = rows
+          .map((row) => ({ authMethod: row.authMethod, count: row.count }))
+          .sort((a, b) => b.count - a.count);
+        const totalFetches = rows.reduce((sum, row) => sum + row.count, 0);
+
+        return { methods, totalFetches };
+      }
+    });
+  };
+
+  // How many static secrets the org created in each of the last 12 UTC calendar weeks.
+  //
+  // Deleting a secret is a hard delete with no tombstone, so a week can only be counted from the
+  // createdAt of secrets that still exist. Past weeks therefore understate what was created then
+  // and drift lower as those secrets are deleted.
+  const getStaticSecretsUsage = async (dto: TOrgInsightsDTO): Promise<TStaticSecretsUsage> => {
+    await assertOrgInsightsRead(dto);
+
+    const { windowStart, currentWeekStart, weekStarts } = buildStaticSecretUsageWindow();
+    const currentWeekStartStr = toUtcDateString(currentWeekStart);
+
+    // using two different cache keys because the current week is still in progress, so the count is not yet complete.
+    // The prior weeks can have a longer TTL
+    const [priorWeeks, createdThisWeek] = await Promise.all([
+      withCache({
+        keyStore,
+        key: KeyStorePrefixes.InsightsCache(dto.orgId, `static-secret-usage:history-weeks:${currentWeekStartStr}`),
+        ttlSeconds: KeyStoreTtls.InsightsWeeklyHistoryCacheInSeconds,
+        fetcher: () =>
+          insightsDAL.findSecretCreationsByWeekForOrg(dto.orgId, {
+            createdAtOrAfter: windowStart,
+            createdBefore: currentWeekStart
+          })
+      }),
+      withCache({
+        keyStore,
+        key: KeyStorePrefixes.InsightsCache(dto.orgId, `static-secret-usage:current-week:${currentWeekStartStr}`),
+        ttlSeconds: KeyStoreTtls.InsightsOrgCacheInSeconds,
+        fetcher: () => insightsDAL.countSecretCreationsForOrg(dto.orgId, { createdAtOrAfter: currentWeekStart })
+      })
+    ]);
+
+    const creationsByWeek = new Map(priorWeeks.map((row) => [row.weekStart, row.count]));
+    creationsByWeek.set(currentWeekStartStr, createdThisWeek);
+
+    // Weeks the org created nothing in are absent from the query, so they are filled with zero
+    // here rather than being skipped, keeping the series at one entry per week.
+    return {
+      weeks: weekStarts.map((weekStart) => ({
+        weekStart,
+        totalSecrets: creationsByWeek.get(weekStart) ?? 0,
+        isPartial: weekStart === currentWeekStartStr
+      }))
+    };
+  };
+
   return {
     getCalendar,
     getAccessVolume,
-    // getAccessLocations,
+    getOrgAccessVolume,
+    getOrgAuthMethodDistribution,
     getAuthMethodDistribution,
     getSummary,
     getSecretsDuplication,
-    getCounts
+    getCounts,
+    getSecretsUsageInsights,
+    getSecretsProjects,
+    getStaticSecretsUsage
   };
 };

@@ -31,7 +31,7 @@ export const NetworkingTabGroup = () => {
 
   return (
     <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
-      <TabsList variant={isSubOrganization ? "sub-org" : "org"}>
+      <TabsList variant={isSubOrganization ? "sub-org" : "org"} aria-label="Networking sections">
         {tabs.map(({ key, label }) => (
           <TabsTrigger value={key} key={`tab-${key}`}>
             {label}

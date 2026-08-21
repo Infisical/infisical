@@ -50,6 +50,10 @@ export const AccessManagementPage = () => {
       key: OrgAccessControlTabSections.Member,
       label: "Users",
       isHidden: permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Member),
+      requirement: {
+        action: OrgPermissionActions.Read,
+        subject: OrgPermissionSubjects.Member
+      },
       component: OrgMembersTab
     },
     {
@@ -59,18 +63,30 @@ export const AccessManagementPage = () => {
         OrgPermissionIdentityActions.Read,
         OrgPermissionSubjects.Identity
       ),
+      requirement: {
+        action: OrgPermissionIdentityActions.Read,
+        subject: OrgPermissionSubjects.Identity
+      },
       component: OrgIdentityTab
     },
     {
       key: OrgAccessControlTabSections.Groups,
       label: "Groups",
       isHidden: permission.cannot(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups),
+      requirement: {
+        action: OrgPermissionGroupActions.Read,
+        subject: OrgPermissionSubjects.Groups
+      },
       component: OrgGroupsTab
     },
     {
       key: OrgAccessControlTabSections.Roles,
       label: "Roles",
       isHidden: permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Role),
+      requirement: {
+        action: OrgPermissionActions.Read,
+        subject: OrgPermissionSubjects.Role
+      },
       component: OrgRoleTabSection
     }
   ];
@@ -83,7 +99,7 @@ export const AccessManagementPage = () => {
   const activeTab = selectedTabSection ? selectedTab : (visibleTabSections[0]?.key ?? selectedTab);
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between text-white">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
       </Helmet>
@@ -131,10 +147,13 @@ export const AccessManagementPage = () => {
           onOpenChange={setIsUpgradePrivilegeSystemModalOpen}
         />
         {visibleTabSections.length === 0 ? (
-          <OrgPermissionGuardBanner />
+          <OrgPermissionGuardBanner accessRestrictedMode="dialog" />
         ) : (
           <Tabs value={activeTab} onValueChange={updateSelectedTab}>
-            <TabsList variant={isSubOrganization ? "sub-org" : "org"}>
+            <TabsList
+              variant={isSubOrganization ? "sub-org" : "org"}
+              aria-label="Organization access control sections"
+            >
               {visibleTabSections.map(({ key, label }) => (
                 <TabsTrigger value={key} key={`org-access-tab-${key}`}>
                   {label}
@@ -142,7 +161,10 @@ export const AccessManagementPage = () => {
               ))}
             </TabsList>
             {isSelectedTabRestricted ? (
-              <OrgPermissionGuardBanner />
+              <OrgPermissionGuardBanner
+                accessRestrictedMode="dialog"
+                requirement={selectedTabSection?.requirement}
+              />
             ) : (
               visibleTabSections.map(({ key, component: Component }) => (
                 <TabsContent value={key} key={`org-access-tab-panel-${key}`}>

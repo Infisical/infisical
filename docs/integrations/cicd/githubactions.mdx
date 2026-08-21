@@ -63,7 +63,7 @@ A typical workflow for using Infisical with GitHub Actions consists of the follo
 3. Configure your GitHub Actions workflow to use the [Infisical Secrets Action](https://github.com/Infisical/secrets-action) with OIDC authentication.
 4. The workflow authenticates using GitHub's OIDC token, fetches secrets from Infisical, and exposes them as environment variables for the duration of the job.
 
-## How It Works
+## How it works
 
 GitHub Actions uses [OpenID Connect (OIDC)](/documentation/platform/identities/oidc-auth/github) to authenticate workflows without storing long-lived credentials.
 
@@ -141,7 +141,19 @@ In the following steps, we explore how to configure GitHub Actions to authentica
       - `repo:octocat/example-repo:ref:refs/heads/main` (specific branch)
       - `repo:octocat/example-repo:environment:production` (specific environment)
       - `repo:octocat/example-repo:*` (any context in the repository)
-      
+
+      <Note>
+        On GitHub.com, repositories created after July 15, 2026 use an immutable subject format where the owner and repository names are suffixed with their permanent numeric IDs using `@` as the delimiter:
+
+        ```
+        repo:<owner>@<owner-id>/<repo>@<repo-id>:<context>
+        ```
+
+        Renaming or transferring a repository after that date also switches it to this format, and existing repositories can opt in at the organization or repository level through GitHub's OIDC settings or REST API. GitHub Enterprise Server is unaffected.
+
+        For repositories using this format, the examples above apply with the `@<id>` suffixes inserted — for example, `repo:octocat@583231/example-repo@1296269:ref:refs/heads/main`. If the subject you configure doesn't include these IDs, authentication fails with a `403` error. To get the exact prefix your repository's tokens carry, run `gh api repos/<owner>/<repo>/actions/oidc/customization/sub` and copy the `sub_claim_prefix` value into your subject. A glob pattern such as `repo:octocat@*/example-repo@*:ref:refs/heads/main` can serve as a temporary workaround during migration, but it also matches recycled owner and repository names with different IDs, so hardcode the IDs whenever possible.
+      </Note>
+
       <Tip>
         If you're unsure about the exact subject format, you can use [github/actions-oidc-debugger](https://github.com/github/actions-oidc-debugger) to inspect the OIDC token claims from your workflow.
       </Tip>
@@ -169,11 +181,11 @@ In the following steps, we explore how to configure GitHub Actions to authentica
   </Step>
 </Steps>
 
-## Configure GitHub Actions Workflow
+## Configure GitHub Actions workflow
 
 Now let's configure your GitHub Actions workflow to fetch secrets from Infisical.
 
-### Basic Workflow Example
+### Basic workflow example
 
 Create or update a workflow file in `.github/workflows/` (e.g., `.github/workflows/infisical-demo.yml`):
 
@@ -212,7 +224,7 @@ jobs:
           docker push my-image:latest
 ```
 
-### Key Configuration Points
+### Key configuration points
 
 **Permissions Block**: The `id-token: write` permission is **required** for OIDC authentication. Without it, GitHub won't issue an OIDC token for the workflow run.
 
@@ -234,7 +246,7 @@ Authentication occurs at runtime using GitHub's OIDC token, eliminating the need
 </Note>
 
 
-### Using Secrets in Workflows
+### Using secrets in workflows
 
 After the Infisical Secrets Action completes, secrets are available as environment variables for subsequent steps in the job. Reference them using standard environment variable syntax:
 
@@ -251,7 +263,7 @@ After the Infisical Secrets Action completes, secrets are available as environme
 
 ## Troubleshooting
 
-### Authentication Failures
+### Authentication failures
 
 If authentication fails, check:
 
@@ -262,7 +274,7 @@ If authentication fails, check:
 5. **Project Slug**: Verify the `project-slug` matches your Infisical project slug exactly. You can find this in your project settings.
 6. **Environment Slug**: Confirm the `env-slug` matches the exact environment name in Infisical (e.g., `dev`, `staging`, `prod`). Environment slugs are case-sensitive and must match exactly.
 
-### Debugging OIDC Tokens
+### Debugging OIDC tokens
 
 To inspect OIDC token claims from your workflow, use GitHub's [actions-oidc-debugger](https://github.com/github/actions-oidc-debugger) tool. This tool helps you verify that the token claims match your machine identity configuration.
 
@@ -270,9 +282,9 @@ To inspect OIDC token claims from your workflow, use GitHub's [actions-oidc-debu
   For more detailed OIDC configuration options and troubleshooting, see [OIDC Auth for GitHub Actions](/documentation/platform/identities/oidc-auth/github).
 </Info>
 
-## Alternative Approaches
+## Alternative approaches
 
-### GitHub Secret Syncs
+### GitHub secret syncs
 
 If you prefer to **push secrets from Infisical to GitHub** (one-way sync), use [GitHub Secret Syncs](../secret-syncs/github). This approach syncs secrets to GitHub at the organization-level, repository-level, or repository environment-level, making them available as GitHub Secrets.
 
@@ -280,7 +292,7 @@ If you prefer to **push secrets from Infisical to GitHub** (one-way sync), use [
   Secret Syncs push secrets **to** GitHub, while this guide shows how to fetch secrets **from** Infisical at runtime. Choose the approach that best fits your security and operational requirements.
 </Note>
 
-## Related Documentation
+## Related documentation
 
 - [OIDC Auth for GitHub Actions](/documentation/platform/identities/oidc-auth/github) - Detailed OIDC configuration guide
 - [Machine Identities Overview](/documentation/platform/identities/machine-identities) - Understanding machine identities

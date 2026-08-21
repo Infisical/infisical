@@ -583,5 +583,9 @@ export const OrgSsoTab = withPermission(
       </>
     );
   },
-  { action: OrgPermissionSsoActions.Read, subject: OrgPermissionSubjects.Sso }
+  {
+    action: OrgPermissionSsoActions.Read,
+    subject: OrgPermissionSubjects.Sso,
+    accessRestrictedMode: "dialog"
+  }
 );

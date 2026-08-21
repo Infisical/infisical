@@ -6,9 +6,9 @@
 @font-face {
   font-family: "Alliance No. 2";
   src:
-    url("/fonts/AllianceNo2-Regular.woff2") format("woff2"),
-    url("/fonts/AllianceNo2-Regular.woff") format("woff"),
-    url("/fonts/AllianceNo2-Regular.otf") format("opentype");
+    url("./assets/fonts/AllianceNo2-Regular.woff2") format("woff2"),
+    url("./assets/fonts/AllianceNo2-Regular.woff") format("woff"),
+    url("./assets/fonts/AllianceNo2-Regular.otf") format("opentype");
   font-style: normal;
   font-weight: 400;
   font-display: swap;
@@ -79,6 +79,7 @@
   --max-width-8xl: 88rem; /* 1408px */
 
   /* Colors v2 */
+  --color-page: #0e1014;
   --color-background: #19191c;
   --color-foreground: #ebebeb;
   --color-success: #2ecc71;

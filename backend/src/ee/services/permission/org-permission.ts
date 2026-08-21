@@ -148,6 +148,12 @@ export enum OrgPermissionHoneyTokenActions {
   Setup = "setup"
 }
 
+export enum OrgPermissionSecretsManagementInsightsActions {
+  Read = "read",
+  GenerateReport = "generate-report",
+  DeleteReport = "delete-report"
+}
+
 export enum OrgPermissionProjectActions {
   Create = "create",
   RequestAccess = "request-access"
@@ -185,7 +191,8 @@ export enum OrgPermissionSubjects {
   EmailDomains = "email-domains",
   CertManager = "certificate-manager",
   HoneyTokens = "honey-tokens",
-  OauthClients = "oauth-clients"
+  OauthClients = "oauth-clients",
+  SecretsManagementInsights = "secrets-management-insights"
 }
 
 export type AppConnectionSubjectFields = {
@@ -230,7 +237,8 @@ export type OrgPermissionSet =
   | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains]
   | [OrgPermissionCertManagerActions, OrgPermissionSubjects.CertManager]
   | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens]
-  | [OrgPermissionActions, OrgPermissionSubjects.OauthClients];
+  | [OrgPermissionActions, OrgPermissionSubjects.OauthClients]
+  | [OrgPermissionSecretsManagementInsightsActions, OrgPermissionSubjects.SecretsManagementInsights];
 
 const AppConnectionConditionSchema = z
   .object({
@@ -417,6 +425,14 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(OrgPermissionSubjects.OauthClients).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z
+      .literal(OrgPermissionSubjects.SecretsManagementInsights)
+      .describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionSecretsManagementInsightsActions).describe(
+      "Describe what action an entity can take."
+    )
   })
 ]);
 
@@ -593,6 +609,10 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.OauthClients);
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.OauthClients);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.OauthClients);
+
+  can(OrgPermissionSecretsManagementInsightsActions.Read, OrgPermissionSubjects.SecretsManagementInsights);
+  can(OrgPermissionSecretsManagementInsightsActions.GenerateReport, OrgPermissionSubjects.SecretsManagementInsights);
+  can(OrgPermissionSecretsManagementInsightsActions.DeleteReport, OrgPermissionSubjects.SecretsManagementInsights);
 
   return rules;
 };

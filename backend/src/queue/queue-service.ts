@@ -118,7 +118,8 @@ export enum QueueName {
   ProjectEnvHardDelete = "project-env-hard-delete",
   SignerAutoRenewal = "signer-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
-  UsageEvent = "usage-event"
+  UsageEvent = "usage-event",
+  IntegrationDeprecationNotice = "integration-deprecation-notice"
 }
 
 export enum QueueJobs {
@@ -199,7 +200,8 @@ export enum QueueJobs {
   ProjectEnvHardDelete = "project-env-hard-delete-job",
   SignerDailyAutoRenewal = "signer-daily-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
-  UsageEvent = "usage-event-job"
+  UsageEvent = "usage-event-job",
+  SendIntegrationDeprecationNotice = "send-integration-deprecation-notice"
 }
 
 export enum JobState {
@@ -574,6 +576,11 @@ export type TQueueJobTypes = {
   [QueueName.UsageEvent]: {
     name: QueueJobs.UsageEvent;
     payload: { orgId: string; dimensionKey: string };
+  };
+  [QueueName.IntegrationDeprecationNotice]: {
+    name: QueueJobs.SendIntegrationDeprecationNotice;
+    // period is a YYYY-MM stamp computed once by the cron tick so every retry of the same fire is deduped alike
+    payload: { orgId: string; period: string };
   };
 };
 

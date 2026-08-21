@@ -15,7 +15,7 @@ This guide covers using such a CA from the **Code Signing** product. To set up t
 - A DigiCert Certificate Authority created with **Purpose** set to `Code Signing`. See [DigiCert (CertCentral Services API)](/documentation/platform/pki/ca/digicert-direct).
 - An [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) the signing key can be generated on.
 
-## Create a Signer
+## Create a signer
 
 Once a CA is configured for code signing, it appears in the **Code Signing → Create Signer** wizard's CA picker. The Signer is created in **Pending** state while DigiCert processes the order, and flips to **Active** once the certificate issues.
 
@@ -46,7 +46,7 @@ Reuse is scoped to the CA's configured organization and product, so only orders 
   Reissuing into an existing order replaces that order's certificate. DigiCert revokes the previous certificate within 72 hours, after which it can no longer be used to sign.
 </Warning>
 
-## Editing a Signer
+## Editing a signer
 
 Editing a signer's Common Name, validity, key source, key algorithm, or CA triggers a fresh issuance. The signer returns to **Pending** until the new certificate issues, and DigiCert revokes the previous certificate within 72 hours.
 
@@ -55,7 +55,7 @@ Editing a signer's Common Name, validity, key source, key algorithm, or CA trigg
 - **Reissue** (changing the key source, key algorithm, or pointing at an existing order) hits DigiCert's reissue endpoint, which keeps the same order and its validity and replaces the certificate.
 - **Auto-renewal** (when **Renew before** is set) places a new order linked to the prior one so DigiCert tracks certificate history. If DigiCert reports the prior order as not eligible for renewal, Infisical falls back to a fresh, unlinked order.
 
-## Deleting a Signer
+## Deleting a signer
 
 Deleting a DigiCert code-signing signer revokes its DigiCert order, so the certificate can no longer be used to sign anywhere. Depending on your CertCentral account's revocation policy, DigiCert may queue the revocation for administrator approval.
 
