@@ -30,6 +30,7 @@ import {
   computePkceChallenge,
   getOauthClientSessionUserAgent,
   hasClientAuthorityChanged,
+  hasWithdrawnTokenExchangeTrust,
   isRegisteredRedirectUri,
   PKCE_CODE_VERIFIER_REGEX
 } from "./oauth-client-fns";
@@ -359,17 +360,33 @@ export const oauthClientServiceFactory = ({
       ssoPermissionAction: "change the token exchange configuration of an OAuth application"
     });
 
+    const nextTokenExchangeAudience = isTokenExchangeEnabled ? tokenExchangeAudience : null;
+    const nextTokenExchangeIdpSatisfiesMfa = isTokenExchangeEnabled ? tokenExchangeIdpSatisfiesMfa : false;
+
     const updatedClient = await oauthClientDAL.updateById(client.id, {
       name: dto.name,
       description: dto.description,
       grantTypes: dto.grantTypes ? grantTypes : undefined,
       redirectUris: isRedirectBased ? dto.redirectUris : [],
       requirePkce: isRedirectBased ? dto.requirePkce : false,
-      tokenExchangeAudience: isTokenExchangeEnabled ? tokenExchangeAudience : null,
-      tokenExchangeIdpSatisfiesMfa: isTokenExchangeEnabled ? tokenExchangeIdpSatisfiesMfa : false
+      tokenExchangeAudience: nextTokenExchangeAudience,
+      tokenExchangeIdpSatisfiesMfa: nextTokenExchangeIdpSatisfiesMfa
     });
 
-    if (wasTokenExchangeEnabled && !isTokenExchangeEnabled) {
+    const isTrustWithdrawn = hasWithdrawnTokenExchangeTrust(
+      {
+        isEnabled: wasTokenExchangeEnabled,
+        audience: client.tokenExchangeAudience,
+        idpSatisfiesMfa: client.tokenExchangeIdpSatisfiesMfa
+      },
+      {
+        isEnabled: isTokenExchangeEnabled,
+        audience: nextTokenExchangeAudience,
+        idpSatisfiesMfa: nextTokenExchangeIdpSatisfiesMfa
+      }
+    );
+
+    if (isTrustWithdrawn) {
       await tokenService.revokeSessionsByUserAgent(getOauthClientSessionUserAgent(client.clientId));
     }
 

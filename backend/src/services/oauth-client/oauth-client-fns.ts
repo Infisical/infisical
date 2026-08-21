@@ -104,6 +104,30 @@ export const hasClientAuthorityChanged = (
   return false;
 };
 
+type TTokenExchangeTrust = {
+  isEnabled: boolean;
+  audience?: string | null;
+  idpSatisfiesMfa?: boolean | null;
+};
+
+// Whether an update takes back federation trust the client already holds, in which case the tokens
+// issued under the old configuration have to go with it. Guards the same fields as
+// hasClientAuthorityChanged, for the same reason: the audience is what binds the exchange to one set of
+// subject tokens, and the IdP-MFA declaration is what lets an exchange skip an MFA requirement. An admin
+// narrowing either is responding to a problem, so it has to reach the tokens already out there instead
+// of waiting for them to expire. Rotating the secret revokes on the same grounds.
+//
+// Any audience change counts, in either direction, because tokens issued under the old one were accepted
+// on a basis that no longer holds. The MFA declaration only counts when switched off: turning it on
+// widens what is exchangeable without invalidating anything already issued.
+export const hasWithdrawnTokenExchangeTrust = (previous: TTokenExchangeTrust, next: TTokenExchangeTrust) => {
+  if (!previous.isEnabled) return false;
+  if (!next.isEnabled) return true;
+  if ((next.audience ?? null) !== (previous.audience ?? null)) return true;
+
+  return Boolean(previous.idpSatisfiesMfa) && !next.idpSatisfiesMfa;
+};
+
 export const isRegisteredRedirectUri = (registeredUris: string[], redirectUri: string) =>
   registeredUris.some((uri) => {
     if (uri === redirectUri) return true;

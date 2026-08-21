@@ -4,6 +4,7 @@ import {
   assertValidOauthClientGrantConfig,
   computePkceChallenge,
   hasClientAuthorityChanged,
+  hasWithdrawnTokenExchangeTrust,
   isAllowedRedirectUri,
   isRegisteredRedirectUri,
   parseBasicAuthHeader
@@ -198,6 +199,55 @@ describe("hasClientAuthorityChanged", () => {
         OauthGrantType.AuthorizationCode
       )
     ).toBe(false);
+  });
+});
+
+describe("hasWithdrawnTokenExchangeTrust", () => {
+  const enabled = { isEnabled: true, audience: "api://mcp", idpSatisfiesMfa: true };
+
+  test("reports nothing withdrawn when the configuration is unchanged", () => {
+    expect(hasWithdrawnTokenExchangeTrust(enabled, { ...enabled })).toBe(false);
+  });
+
+  test("reports a withdrawal when the token exchange grant is removed", () => {
+    expect(hasWithdrawnTokenExchangeTrust(enabled, { isEnabled: false, audience: null, idpSatisfiesMfa: false })).toBe(
+      true
+    );
+  });
+
+  // Tokens already issued were accepted against the old audience, which no longer describes what this
+  // application is allowed to exchange.
+  test("reports a withdrawal when the audience is narrowed", () => {
+    expect(hasWithdrawnTokenExchangeTrust(enabled, { ...enabled, audience: "api://mcp-prod" })).toBe(true);
+  });
+
+  test("reports a withdrawal when the audience is cleared", () => {
+    expect(hasWithdrawnTokenExchangeTrust(enabled, { ...enabled, audience: null })).toBe(true);
+  });
+
+  // The declaration is what let an MFA-required user be exchanged at all, so their live tokens go with it.
+  test("reports a withdrawal when the identity provider MFA declaration is turned off", () => {
+    expect(hasWithdrawnTokenExchangeTrust(enabled, { ...enabled, idpSatisfiesMfa: false })).toBe(true);
+  });
+
+  // Widening: nothing already issued was granted on a basis that stopped holding.
+  test("reports nothing withdrawn when the identity provider MFA declaration is turned on", () => {
+    const previous = { ...enabled, idpSatisfiesMfa: false };
+
+    expect(hasWithdrawnTokenExchangeTrust(previous, { ...previous, idpSatisfiesMfa: true })).toBe(false);
+  });
+
+  test("reports nothing withdrawn when the application never held the grant", () => {
+    const previous = { isEnabled: false, audience: null, idpSatisfiesMfa: false };
+
+    expect(hasWithdrawnTokenExchangeTrust(previous, enabled)).toBe(false);
+  });
+
+  // A redirect-flow application carries no audience at all, and updating it must not sign its users out.
+  test("treats an absent audience and a null audience as the same value", () => {
+    const previous = { isEnabled: true, audience: null, idpSatisfiesMfa: false };
+
+    expect(hasWithdrawnTokenExchangeTrust(previous, { isEnabled: true, idpSatisfiesMfa: false })).toBe(false);
   });
 });
 
