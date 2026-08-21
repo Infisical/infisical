@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 import picomatch from "picomatch";
 
 import { ActionProjectType } from "@app/db/schemas";
@@ -620,14 +621,14 @@ export const secretApprovalPolicyServiceFactory = ({
     return sapPolicies;
   };
 
-  const findEnvPolicies = async (projectId: string, environment: string) => {
-    const env = await projectEnvDAL.findOne({ slug: environment, projectId });
+  const findEnvPolicies = async (projectId: string, environment: string, tx?: Knex) => {
+    const env = await projectEnvDAL.findOne({ slug: environment, projectId }, tx);
     if (!env) {
       throw new NotFoundError({
         message: `Environment with slug '${environment}' not found in project with ID ${projectId}`
       });
     }
-    return secretApprovalPolicyDAL.find({ deletedAt: null }, { envId: env.id });
+    return secretApprovalPolicyDAL.find({ deletedAt: null }, { envId: env.id }, tx);
   };
 
   const getSecretApprovalPolicy = async (projectId: string, environment: string, path: string) => {
@@ -638,9 +639,14 @@ export const secretApprovalPolicyServiceFactory = ({
 
   // batched variant of getSecretApprovalPolicy: fetches the env policies once, then matches every supplied path in
   // memory. returns a Map keyed by the original input path, containing only paths governed by a policy.
-  const getSecretApprovalPolicyByPaths = async (projectId: string, environment: string, secretPaths: string[]) => {
+  const getSecretApprovalPolicyByPaths = async (
+    projectId: string,
+    environment: string,
+    secretPaths: string[],
+    tx?: Knex
+  ) => {
     const policyByPath = new Map<string, Awaited<ReturnType<typeof secretApprovalPolicyDAL.find>>[number]>();
-    const policies = await findEnvPolicies(projectId, environment);
+    const policies = await findEnvPolicies(projectId, environment, tx);
     if (!policies.length) return policyByPath;
 
     for (const path of secretPaths) {

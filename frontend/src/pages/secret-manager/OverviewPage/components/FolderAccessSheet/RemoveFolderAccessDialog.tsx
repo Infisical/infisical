@@ -59,7 +59,7 @@ export const RemoveFolderAccessDialog = ({
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="sm:max-w-xl">
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Remove Folder Access</AlertDialogTitle>
           <AlertDialogDescription>

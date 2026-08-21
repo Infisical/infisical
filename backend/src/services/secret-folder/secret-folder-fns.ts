@@ -162,7 +162,7 @@ export const canActorReadBlock = (
 
 // absolute path of a subtree folder, re-rooted at `rootFolderPath`; the moved folder itself is "/". when the
 // root is "/", its prefix is dropped so child paths stay "/child" rather than "//child".
-const buildToAbsPath = (rootFolderPath: string) => (folderPath: string) => {
+export const buildToAbsPath = (rootFolderPath: string) => (folderPath: string) => {
   if (folderPath === "/") return rootFolderPath;
   const prefix = rootFolderPath === "/" ? "" : rootFolderPath;
   return `${prefix}${folderPath}`;
@@ -262,7 +262,8 @@ export const checkFolderMovePolicyBlock = async (
     environment: string;
     rootFolderPath: string;
   },
-  { secretApprovalPolicyService }: TCheckFolderMovePolicyBlockDeps
+  { secretApprovalPolicyService }: TCheckFolderMovePolicyBlockDeps,
+  tx?: Knex
 ): Promise<TFolderMoveBlock | null> => {
   const toAbsPath = buildToAbsPath(rootFolderPath);
 
@@ -271,7 +272,8 @@ export const checkFolderMovePolicyBlock = async (
   const policyByPath = await secretApprovalPolicyService.getSecretApprovalPolicyByPaths(
     projectId,
     environment,
-    subtreeAbsPaths
+    subtreeAbsPaths,
+    tx
   );
 
   // report the first blocked path in subtree order, matching the previous per-folder behavior.

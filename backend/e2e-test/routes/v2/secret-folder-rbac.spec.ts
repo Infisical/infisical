@@ -40,6 +40,8 @@ const orgId = seedData1.organization.id;
 // permission evaluation runs against a dedicated member user created in beforeAll
 let memberUserId: string;
 let memberMembershipId: string;
+let memberJwtToken: string;
+const memberSessionId = randomUUID();
 
 let permissionArg: {
   actor: ActorType;
@@ -132,13 +134,40 @@ beforeAll(async () => {
   );
   folderDataKey = KeyStorePrefixes.ProjectFolderPermissionData(projectId, ActorType.USER, memberUserId);
   folderMarkerKey = KeyStorePrefixes.ProjectFolderPermissionMarker(projectId, ActorType.USER, memberUserId);
+
+  await testDb(TableName.AuthTokenSession).insert({
+    id: memberSessionId,
+    userId: memberUserId,
+    ip: "127.0.0.1",
+    userAgent: "e2e-folder-rbac",
+    accessVersion: 1,
+    refreshVersion: 1,
+    lastUsed: new Date()
+  } as never);
+
+  memberJwtToken = jwt.sign(
+    {
+      authTokenType: AuthTokenType.ACCESS_TOKEN,
+      userId: memberUserId,
+      tokenVersionId: memberSessionId,
+      authMethod: AuthMethod.EMAIL,
+      organizationId: orgId,
+      accessVersion: 1
+    },
+    getConfig().AUTH_SECRET,
+    { expiresIn: 3600 }
+  );
 });
 
 afterAll(async () => {
   await testRedis.del(permissionDataKey, permissionMarkerKey, folderDataKey, folderMarkerKey);
+  await testDb(TableName.AuthTokenSession).where({ id: memberSessionId }).del();
   await testDb(TableName.Membership).where({ actorUserId: memberUserId }).del();
   await testDb(TableName.Users).where({ id: memberUserId }).del();
 });
+
+const clearMemberPermissionCaches = () =>
+  testRedis.del(permissionDataKey, permissionMarkerKey, folderDataKey, folderMarkerKey);
 
 const createFolder = async (dto: { path: string; name: string }) => {
   const res = await testServer.inject({
@@ -392,12 +421,6 @@ describe("Folder deletion reaps folder-scoped privileges", () => {
 });
 
 describe("Folder deletion requires manage-access on RBAC-granted folders", () => {
-  let memberJwtToken: string;
-  const memberSessionId = randomUUID();
-
-  const clearMemberPermissionCaches = () =>
-    testRedis.del(permissionDataKey, permissionMarkerKey, folderDataKey, folderMarkerKey);
-
   const deleteFolderAs = async (token: string, dto: { path: string; id: string; forceDelete?: boolean }) =>
     testServer.inject({
       method: "DELETE",
@@ -411,33 +434,7 @@ describe("Folder deletion requires manage-access on RBAC-granted folders", () =>
       }
     });
 
-  beforeAll(async () => {
-    await testDb(TableName.AuthTokenSession).insert({
-      id: memberSessionId,
-      userId: memberUserId,
-      ip: "127.0.0.1",
-      userAgent: "e2e-folder-rbac",
-      accessVersion: 1,
-      refreshVersion: 1,
-      lastUsed: new Date()
-    } as never);
-
-    memberJwtToken = jwt.sign(
-      {
-        authTokenType: AuthTokenType.ACCESS_TOKEN,
-        userId: memberUserId,
-        tokenVersionId: memberSessionId,
-        authMethod: AuthMethod.EMAIL,
-        organizationId: orgId,
-        accessVersion: 1
-      },
-      getConfig().AUTH_SECRET,
-      { expiresIn: 3600 }
-    );
-  });
-
   afterAll(async () => {
-    await testDb(TableName.AuthTokenSession).where({ id: memberSessionId }).del();
     await clearMemberPermissionCaches();
   });
 
@@ -515,6 +512,32 @@ describe("Folder deletion requires manage-access on RBAC-granted folders", () =>
     await clearMemberPermissionCaches();
   });
 
+  test("allows deletion when the only grant on the folder has expired", async () => {
+    const folder = await createFolder({ path: "/", name: "rbac-guard-expired" });
+
+    // nothing reaps expired rows, and permission evaluation drops them, so the guard must too
+    await testDb(TableName.AdditionalPrivilege).insert({
+      name: "e2e-rbac-guard-expired",
+      actorUserId: memberUserId,
+      projectId,
+      folderId: folder.id,
+      role: SecretFolderRole.Read,
+      permissions: null,
+      isTemporary: true,
+      temporaryAccessStartTime: new Date(Date.now() - 7_200_000),
+      temporaryAccessEndTime: new Date(Date.now() - 3_600_000)
+    });
+
+    try {
+      await clearMemberPermissionCaches();
+      const res = await deleteFolderAs(memberJwtToken, { path: "/", id: folder.id });
+      expect(res.statusCode).toBe(200);
+    } finally {
+      await testDb(TableName.AdditionalPrivilege).where({ name: "e2e-rbac-guard-expired" }).del();
+      await clearMemberPermissionCaches();
+    }
+  });
+
   test("blocks an identity without manage-access from deleting a folder that has a grant", async () => {
     const identityName = `rbac-guard-identity-${alphaNumericNanoId(8)}`.toLowerCase();
     const [identity] = await testDb(TableName.Identity).insert({ name: identityName, orgId }).returning("*");
@@ -579,6 +602,216 @@ describe("Folder deletion requires manage-access on RBAC-granted folders", () =>
       await testDb(TableName.IdentityAccessToken).where({ id: identityTokenId }).del();
       await testDb(TableName.Membership).where({ actorIdentityId: identity.id }).del();
       await testDb(TableName.Identity).where({ id: identity.id }).del();
+    }
+  });
+});
+
+describe("Folder move and rename require manage-access on RBAC-granted folders", () => {
+  const moveFolderAs = (token: string, dto: { folderId: string; destinationPath: string }) =>
+    testServer.inject({
+      method: "POST",
+      url: `/api/v2/folders/move`,
+      headers: { authorization: `Bearer ${token}` },
+      body: {
+        projectId,
+        folderId: dto.folderId,
+        destinationEnvironment: seedData1.environment.slug,
+        destinationPath: dto.destinationPath
+      }
+    });
+
+  const renameFolderAs = (token: string, dto: { id: string; path: string; name: string; description?: string }) =>
+    testServer.inject({
+      method: "PATCH",
+      url: `/api/v2/folders/${dto.id}`,
+      headers: { authorization: `Bearer ${token}` },
+      body: {
+        projectId,
+        environment: seedData1.environment.slug,
+        path: dto.path,
+        name: dto.name,
+        description: dto.description
+      }
+    });
+
+  const renameFolderBatchAs = (token: string, dto: { id: string; path: string; name: string }) =>
+    testServer.inject({
+      method: "PATCH",
+      url: `/api/v2/folders/batch`,
+      headers: { authorization: `Bearer ${token}` },
+      body: {
+        projectId,
+        folders: [{ id: dto.id, environment: seedData1.environment.slug, path: dto.path, name: dto.name }]
+      }
+    });
+
+  const grantFolderRole = (dto: { name: string; folderId: string; role: SecretFolderRole }) =>
+    testDb(TableName.AdditionalPrivilege).insert({
+      name: dto.name,
+      actorUserId: memberUserId,
+      projectId,
+      folderId: dto.folderId,
+      role: dto.role,
+      permissions: null,
+      isTemporary: false
+    });
+
+  afterAll(async () => {
+    await clearMemberPermissionCaches();
+  });
+
+  test("blocks a member without manage-access from moving a folder that has a grant", async () => {
+    const folder = await createFolder({ path: "/", name: "rbac-move-src" });
+    const destination = await createFolder({ path: "/", name: "rbac-move-dest" });
+
+    try {
+      await grantFolderRole({ name: "e2e-rbac-move", folderId: folder.id, role: SecretFolderRole.Read });
+      await clearMemberPermissionCaches();
+
+      const res = await moveFolderAs(memberJwtToken, { folderId: folder.id, destinationPath: "/rbac-move-dest" });
+      expect(res.statusCode).toBe(403);
+      expect(res.json().message).toContain("manage folder access");
+
+      const [privilege] = await testDb(TableName.AdditionalPrivilege).where({ name: "e2e-rbac-move" });
+      expect(privilege.folderId).toBe(folder.id);
+    } finally {
+      await deleteFolder({ path: "/", id: folder.id, forceDelete: true });
+      await deleteFolder({ path: "/", id: destination.id, forceDelete: true });
+      await clearMemberPermissionCaches();
+    }
+  });
+
+  test("blocks a member without manage-access from moving a parent whose descendant has a grant", async () => {
+    const parent = await createFolder({ path: "/", name: "rbac-move-parent" });
+    const child = await createFolder({ path: "/rbac-move-parent", name: "rbac-move-child" });
+    const destination = await createFolder({ path: "/", name: "rbac-move-parent-dest" });
+
+    try {
+      await grantFolderRole({ name: "e2e-rbac-move-child", folderId: child.id, role: SecretFolderRole.Read });
+      await clearMemberPermissionCaches();
+
+      const res = await moveFolderAs(memberJwtToken, {
+        folderId: parent.id,
+        destinationPath: "/rbac-move-parent-dest"
+      });
+      expect(res.statusCode).toBe(403);
+      expect(res.json().message).toContain("manage folder access");
+    } finally {
+      await deleteFolder({ path: "/", id: parent.id, forceDelete: true });
+      await deleteFolder({ path: "/", id: destination.id, forceDelete: true });
+      await clearMemberPermissionCaches();
+    }
+  });
+
+  test("allows a member to move a folder with no grants", async () => {
+    const folder = await createFolder({ path: "/", name: "rbac-move-free" });
+    const destination = await createFolder({ path: "/", name: "rbac-move-free-dest" });
+
+    try {
+      await clearMemberPermissionCaches();
+      const res = await moveFolderAs(memberJwtToken, {
+        folderId: folder.id,
+        destinationPath: "/rbac-move-free-dest"
+      });
+      expect(res.statusCode).toBe(200);
+    } finally {
+      await deleteFolder({ path: "/", id: destination.id, forceDelete: true });
+      await clearMemberPermissionCaches();
+    }
+  });
+
+  test("blocks a member without manage-access from renaming a folder that has a grant", async () => {
+    const folder = await createFolder({ path: "/", name: "rbac-rename-src" });
+
+    try {
+      await grantFolderRole({ name: "e2e-rbac-rename", folderId: folder.id, role: SecretFolderRole.Read });
+      await clearMemberPermissionCaches();
+
+      const res = await renameFolderAs(memberJwtToken, {
+        id: folder.id,
+        path: "/",
+        name: "rbac-rename-src-renamed"
+      });
+      expect(res.statusCode).toBe(403);
+      expect(res.json().message).toContain("manage folder access");
+    } finally {
+      await deleteFolder({ path: "/", id: folder.id, forceDelete: true });
+      await clearMemberPermissionCaches();
+    }
+  });
+
+  test("blocks the batch route from renaming a folder that has a grant", async () => {
+    const folder = await createFolder({ path: "/", name: "rbac-rename-batch" });
+
+    try {
+      await grantFolderRole({ name: "e2e-rbac-rename-batch", folderId: folder.id, role: SecretFolderRole.Read });
+      await clearMemberPermissionCaches();
+
+      const res = await renameFolderBatchAs(memberJwtToken, {
+        id: folder.id,
+        path: "/",
+        name: "rbac-rename-batch-renamed"
+      });
+      expect(res.statusCode).toBe(403);
+      expect(res.json().message).toContain("manage folder access");
+    } finally {
+      await deleteFolder({ path: "/", id: folder.id, forceDelete: true });
+      await clearMemberPermissionCaches();
+    }
+  });
+
+  test("allows a description-only update on a granted folder, since no path moves", async () => {
+    const folder = await createFolder({ path: "/", name: "rbac-rename-desc" });
+
+    try {
+      await grantFolderRole({ name: "e2e-rbac-rename-desc", folderId: folder.id, role: SecretFolderRole.Read });
+      await clearMemberPermissionCaches();
+
+      const res = await renameFolderAs(memberJwtToken, {
+        id: folder.id,
+        path: "/",
+        name: "rbac-rename-desc",
+        description: "updated by a member without manage-access"
+      });
+      expect(res.statusCode).toBe(200);
+    } finally {
+      await deleteFolder({ path: "/", id: folder.id, forceDelete: true });
+      await clearMemberPermissionCaches();
+    }
+  });
+
+  test("lets the full-access tier rename its own granted folder but not move it elsewhere", async () => {
+    const folder = await createFolder({ path: "/", name: "rbac-relocate-full" });
+    const destination = await createFolder({ path: "/", name: "rbac-relocate-full-dest" });
+
+    try {
+      await grantFolderRole({
+        name: "e2e-rbac-relocate-full",
+        folderId: folder.id,
+        role: SecretFolderRole.FullAccess
+      });
+      await clearMemberPermissionCaches();
+
+      // the tier confers manage-access at the folder's own path, which is the only scope a rename changes
+      const renamed = await renameFolderAs(memberJwtToken, {
+        id: folder.id,
+        path: "/",
+        name: "rbac-relocate-full-renamed"
+      });
+      expect(renamed.statusCode).toBe(200);
+
+      // a move needs manage-access at the destination too, which the tier does not confer
+      await clearMemberPermissionCaches();
+      const moved = await moveFolderAs(memberJwtToken, {
+        folderId: folder.id,
+        destinationPath: "/rbac-relocate-full-dest"
+      });
+      expect(moved.statusCode).toBe(403);
+      expect(moved.json().message).toContain("manage folder access");
+    } finally {
+      await deleteFolder({ path: "/", id: folder.id, forceDelete: true });
+      await deleteFolder({ path: "/", id: destination.id, forceDelete: true });
+      await clearMemberPermissionCaches();
     }
   });
 });
