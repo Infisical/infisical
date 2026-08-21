@@ -7,14 +7,14 @@ import { Input } from "../Input";
 import { TextArea } from "../TextArea";
 
 const inputGroupVariants = cva(
-  "group/input-group dark:bg-input/30 relative flex h-9 min-w-0 w-full items-center rounded-md border border-border shadow-xs has-[>textarea]:h-auto",
+  "group/input-group dark:bg-input/30 relative flex h-9 min-w-0 w-full items-center rounded-md border border-border shadow-xs has-[[data-slot=input-group-control][readonly]]:border-border/50 has-[[data-slot=input-group-control]:disabled]:pointer-events-none has-[[data-slot=input-group-control]:disabled]:border-border/50 has-[>textarea]:h-auto",
   {
     variants: {
       variant: {
         default:
           "outline-none transition-[color,box-shadow] has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-[3px] has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50 has-[[data-slot][aria-invalid=true]]:border-danger has-[[data-slot][aria-invalid=true]]:ring-danger/40",
         outlined:
-          "outline-1 outline-offset-4 outline-transparent transition-colors outline-solid hover:border-foreground/20 has-[:focus-visible]:border-accent has-[:focus-visible]:outline-accent/60 has-[[data-slot][aria-invalid=true]]:border-danger has-[[data-slot][aria-invalid=true]]:outline-danger/60 [&_[data-slot=icon-button]:focus-visible]:ring-0"
+          "outline-1 outline-offset-4 outline-transparent transition-colors outline-solid has-[[data-slot=input-group-control]:not([readonly]):not(:disabled)]:hover:border-foreground/20 has-[:focus-visible]:border-accent has-[:focus-visible]:outline-accent/60 has-[[data-slot][aria-invalid=true]]:border-danger has-[[data-slot][aria-invalid=true]]:outline-danger/60 [&_[data-slot=icon-button]:focus-visible]:ring-0"
       }
     },
     defaultVariants: {

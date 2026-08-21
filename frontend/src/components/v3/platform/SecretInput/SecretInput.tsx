@@ -124,8 +124,7 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   onClickSegment?: (segment: string, allSegments: string[]) => void;
 };
 
-const commonClassName =
-  "text-sm leading-[1.45rem] caret-white border-none outline-hidden w-full break-all";
+const commonClassName = "w-full border-none text-sm leading-5 break-all caret-white outline-hidden";
 
 export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
   (
@@ -183,31 +182,31 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     const shouldRevealValue = isVisible || (isSecretFocused && !valueAlwaysHidden);
     const shouldBindRealValue = isVisible || isSecretFocused;
+    const shouldShowMask =
+      !isErrorLoadingValue && (isLoadingValue || (Boolean(value) && !shouldRevealValue));
 
     return (
       <div
         data-slot="secret-input"
         data-variant={variant}
         className={cn(
-          "no-scrollbar w-full overflow-auto bg-transparent",
+          "no-scrollbar w-full overflow-auto bg-transparent text-foreground",
           variant === "default" &&
-            "min-h-9 rounded-md border border-border transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
+            "flex min-h-9 items-center rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
           containerClassName
         )}
         style={{ maxHeight: `${21 * 7}px` }}
       >
         <div
-          className={cn(
-            "relative overflow-hidden",
-            variant === "default" && "px-3 pt-[6px] pb-[4px]"
-          )}
+          className={cn("relative w-full overflow-hidden", variant === "default" && "px-2.5 py-1")}
         >
           <div
             aria-hidden
             className={cn(
               "pointer-events-none whitespace-break-spaces",
               commonClassName,
-              !value && "text-muted"
+              !value && "text-muted",
+              shouldShowMask && "tracking-normal"
             )}
           >
             {syntaxHighlight(
@@ -232,7 +231,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             ref={ref}
             className={cn(
               "no-scrollbar absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent focus:border-0",
-              variant === "default" && "px-3 py-1",
+              variant === "default" && "px-2.5 py-1",
               commonClassName
             )}
             onFocus={(evt) => {
