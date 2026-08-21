@@ -74,8 +74,8 @@ const sanitizeOauthClient = (client: TOauthClients) => {
   return rest;
 };
 
-// The generated schema types the column as `string[]`, since it is a plain text[] in Postgres. Every
-// value written to it goes through the router's `grantTypesSchema`, so the narrowing holds.
+// The column is a plain text[] in Postgres, so the generated schema types it as `string[]`. Every write
+// goes through the router's `grantTypesSchema`, so the narrowing holds.
 const getGrantTypes = (client: TOauthClients) => client.grantTypes as OauthGrantType[];
 
 const expiresInToSeconds = (expiresIn: string | number) =>
@@ -123,9 +123,9 @@ const signOauthToken = (
       // Marks this as a delegated OAuth token. extractAuth maps tokens carrying this claim to
       // AuthMode.OAUTH so they are rejected by the default first-party JWT middleware.
       oauthClientId: claims.oauthClientId,
-      // Exactly one delegation marker per token. `scopes` narrows the ability to what the user
-      // consented to, `delegation` carries it unnarrowed. Absence of both means zero permissions, so
-      // dropping either claim by mistake fails closed. See OauthDelegationMode.
+      // Exactly one delegation marker per token: `scopes` narrows the ability to what the user
+      // consented to, `delegation` carries it unnarrowed. Neither claim means zero permissions, so
+      // dropping one by mistake fails closed. See OauthDelegationMode.
       ...(claims.delegation ? { delegation: claims.delegation } : { scopes: claims.scopes })
     },
     appCfg.AUTH_SECRET,
@@ -157,13 +157,12 @@ export const oauthClientServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.OauthClients);
   };
 
-  // The token exchange grant converts externally-issued tokens into Infisical user tokens, so anything
-  // that establishes that trust or hands out a working credential for it is a change to the org's
-  // federation posture, not just an application edit. Those operations need the permission that already
-  // owns the SSO configuration on top of the usual OauthClients check.
+  // Token exchange turns externally-issued tokens into Infisical user tokens, so establishing that
+  // trust (or handing out a credential for it) changes the org's federation posture, not just an
+  // application. Those operations need SSO Edit on top of the usual OauthClients check.
   //
-  // `action` names the operation in the error, because the reason an OAuth application change needs SSO
-  // permission is not self-evident to the admin who hits it.
+  // `action` goes in the error because it's not obvious why an OAuth application change wants SSO
+  // permission.
   const checkSsoConfigPermission = async (actor: OrgServiceActor, action: string) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: actor.type,
@@ -190,15 +189,10 @@ export const oauthClientServiceFactory = ({
     return client;
   };
 
-  // An OAuth client always belongs to a root organization: every management method goes through
-  // checkOauthClientPermission, which is scoped to ParentOrganization, and an organization's rootOrgId
-  // is fixed when it is created. So the org that owns the client is also the one carrying everything
-  // these flows read off it — MFA enforcement, the OIDC SSO configuration and OIDC user aliases all
-  // live on the root organization, matching the login flow.
-  //
-  // Asserted rather than assumed. If sub-organizations are ever allowed to own clients, resolving the
-  // root organization has to become explicit here, or the exchange would silently verify subject tokens
-  // against a sub-organization's own OIDC configuration and look up aliases in the wrong org.
+  // Clients only ever live on a root org today, and that's where the things these flows read live too:
+  // MFA enforcement, the OIDC SSO config and OIDC user aliases, same as the login flow. Asserted rather
+  // than assumed, because if sub-orgs are ever allowed to own clients, an exchange would silently verify
+  // subject tokens against the sub-org's own OIDC config and look up aliases in the wrong org.
   const getClientOrg = async (orgId: string): Promise<TOrganizations> => {
     const org = await orgDAL.findById(orgId);
     if (!org) throw new NotFoundError({ message: "OAuth client organization not found" });
@@ -212,8 +206,8 @@ export const oauthClientServiceFactory = ({
     return org;
   };
 
-  // Token exchange has nothing to verify a subject token against until federation is live. Failing at
-  // configuration time puts the message in front of the admin setting the application up.
+  // Without a live OIDC config there's nothing to verify subject tokens against. Failing at config time
+  // puts the message in front of the admin setting the application up.
   const getActiveOidcConfigOrThrow = async (orgId: string) => {
     const org = await getClientOrg(orgId);
     const oidcConfig = await oidcConfigDAL.findOne({ orgId: org.id });
@@ -235,14 +229,11 @@ export const oauthClientServiceFactory = ({
     return { oidcConfig, org };
   };
 
-  // Registering and editing an application ask the same questions of a grant configuration: which grants
-  // the client ends up holding, whether the per-grant fields are coherent with them, and whether the
-  // actor may establish the federation trust that token exchange implies. An edit answers them against
-  // the stored client and a registration against nothing, so `client` is the only difference between the
-  // two callers.
+  // Register and update ask the same questions of a grant config, an update against the stored client
+  // and a register against nothing, so `client` is the only difference between the two callers.
   //
-  // The two token exchange gates run only when the request actually touches that configuration, so an
-  // admin holding OauthClients Edit alone can still rename an application that happens to use the grant.
+  // The token exchange gates only fire when the request actually touches that config, so an admin with
+  // just OauthClients Edit can still rename an application that happens to use the grant.
   const resolveGrantConfig = async ({
     dto,
     actor,
@@ -331,8 +322,7 @@ export const oauthClientServiceFactory = ({
     return { client: sanitizeOauthClient(client), clientSecret };
   };
 
-  // `grantType` narrows the list to one grant. The SSO page uses it to show which applications depend
-  // on the org's OIDC issuer.
+  // The SSO page passes `grantType` to show which applications depend on the org's OIDC issuer.
   const listOauthClients = async (actor: OrgServiceActor, grantType?: OauthGrantType) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Read);
 
@@ -576,10 +566,9 @@ export const oauthClientServiceFactory = ({
 
   const getTokenLifetimes = async (orgId: string) => resolveTokenLifetimes(await orgDAL.findById(orgId));
 
-  // RFC 8693 token exchange: the SSO login path with the token supplied directly instead of collected
-  // through a browser redirect, and an access token issued instead of a session cookie. With no redirect
-  // URI, no PKCE and no browser session to anchor trust on, the audience check below is what stops any
-  // token the issuer signs, for any application, being replayed here.
+  // RFC 8693 token exchange is the SSO login path with the token handed to us directly instead of
+  // collected through a browser redirect. With no redirect URI, no PKCE and no browser session to anchor
+  // trust on, the audience check is all that stops any token the issuer signed being replayed here.
   const exchangeSubjectToken = async (
     client: TOauthClients,
     dto: Extract<TOauthTokenExchangeDTO, { grantType: OauthGrantType.TokenExchange }>

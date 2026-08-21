@@ -12,8 +12,7 @@ export const oauthClientKeys = {
     ["oauth-authorize-info", clientId, redirectUri, scope ?? ""] as const
 };
 
-// `grantType` narrows the list to applications registered for one grant. The SSO page uses it to show
-// which applications depend on the org's OIDC issuer.
+// The SSO page passes `grantType` to show which applications depend on the org's OIDC issuer.
 export const useGetOauthClients = (orgId: string, grantType?: OauthGrantType) => {
   return useQuery({
     queryKey: oauthClientKeys.list(orgId, grantType),
