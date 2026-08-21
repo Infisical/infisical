@@ -782,6 +782,12 @@ export const orgServiceFactory = ({
     const decodedToken = crypto.jwt().verify(authToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
     if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
 
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
+    // if root org null = this is a root org then cancel the subscription.
+    if (!org.rootOrgId) {
+      await licenseService.cancelOrgSubscription(orgId);
+    }
+
     const response = await orgDAL.transaction(async (tx) => {
       const projects = await projectDAL.find({ orgId }, { tx });
 
@@ -819,11 +825,6 @@ export const orgServiceFactory = ({
         }
       };
     });
-
-    // if root org null = this is a root org then cancel the subscription.
-    if (!response.organization.rootOrgId) {
-      await licenseService.cancelOrgSubscription(orgId);
-    }
 
     return response;
   };

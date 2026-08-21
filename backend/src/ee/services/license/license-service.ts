@@ -295,9 +295,7 @@ export const licenseServiceFactory = ({
     }
   };
 
-  // Called after an org is deleted so it stops billing. Cloud-only: a self-hosted license covers the
-  // whole instance and has no per-org subscription to cancel. Never fatal, since the org row is already
-  // gone by this point and a License Server failure must not fail the deletion.
+  // Called after an org is deleted so it stops billing. Cloud-only
   const cancelOrgSubscription = async (orgId: string) => {
     if (!envConfig.isCloud) {
       return;
@@ -305,10 +303,15 @@ export const licenseServiceFactory = ({
 
     try {
       await licenseClient?.cancelSubscription(orgId);
-      await licenseClient?.invalidateEntitlements(orgId);
     } catch (error) {
-      logger.error(error, `cancelOrgSubscription: failed to cancel subscription [orgId=${orgId}]`);
+      if (error instanceof BadRequestError) {
+        logger.info(`cancelOrgSubscription: no subscription to cancel [orgId=${orgId}]`);
+      } else {
+        throw error;
+      }
     }
+
+    await licenseClient?.invalidateEntitlements(orgId);
   };
 
   const updateSubscriptionOrgMemberCount = async (orgId: string, tx?: Knex) => {
