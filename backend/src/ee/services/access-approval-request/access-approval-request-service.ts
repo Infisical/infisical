@@ -6,6 +6,7 @@ import { ActionProjectType, ProjectMembershipRole, TemporaryPermissionMode } fro
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -13,7 +14,9 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { EnforcementLevel } from "@app/lib/types";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
@@ -22,6 +25,12 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import {
+  AccessRequestWebhookAction,
+  TWebhookActor,
+  TWebhookRequestedPermission,
+  WebhookEvents
+} from "@app/services/webhook/webhook-types";
 
 import { TNotificationServiceFactory } from "../../../services/notification/notification-service";
 import { NotificationType } from "../../../services/notification/notification-types";
@@ -76,6 +85,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  queueService: Pick<TQueueServiceFactory, "queue">;
 };
 
 export const accessApprovalRequestServiceFactory = ({
@@ -94,8 +104,128 @@ export const accessApprovalRequestServiceFactory = ({
   microsoftTeamsService,
   projectMicrosoftTeamsConfigDAL,
   projectSlackConfigDAL,
-  notificationService
+  notificationService,
+  queueService
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
+  const $queueAccessRequestWebhook = async ({
+    action,
+    accessApprovalRequest,
+    projectId,
+    status,
+    isTemporary,
+    temporaryRange,
+    approvedAt,
+    revokedAt,
+    updatedAt,
+    isBypassed
+  }: {
+    action: AccessRequestWebhookAction;
+    accessApprovalRequest: NonNullable<Awaited<ReturnType<TAccessApprovalRequestDALFactory["findById"]>>>;
+    projectId: string;
+    // findById reads from a replica, which can lag the write that triggered the event. Callers
+    // holding the primary-side row pass its volatile fields here so the payload cannot go stale.
+    status?: string;
+    isTemporary?: boolean;
+    temporaryRange?: string | null;
+    approvedAt?: Date | null;
+    revokedAt?: Date | null;
+    updatedAt?: Date;
+    isBypassed?: boolean;
+  }) => {
+    let envSlug: string;
+    let secretPath: string;
+    let requestedPermissions: TWebhookRequestedPermission[];
+    try {
+      const verified = verifyRequestedPermissions({ permissions: accessApprovalRequest.permissions });
+      envSlug = verified.envSlug;
+      secretPath = verified.secretPath;
+      requestedPermissions = verified.requestedPermissions;
+    } catch (error) {
+      logger.warn(
+        error,
+        `Skipping access request webhook, requested permissions could not be parsed [requestId=${accessApprovalRequest.id}] [action=${action}]`
+      );
+      return;
+    }
+
+    const [project, environment] = await Promise.all([
+      projectDAL.findById(projectId),
+      projectEnvDAL.findOne({ projectId, slug: envSlug })
+    ]);
+
+    if (!project) {
+      logger.warn(
+        `Skipping access request webhook, project not found [projectId=${projectId}] [requestId=${accessApprovalRequest.id}] [action=${action}]`
+      );
+      return;
+    }
+
+    const cfg = getConfig();
+    const { requestedByUser } = accessApprovalRequest;
+    const requestedBy: TWebhookActor | null = accessApprovalRequest.requestedByUserId
+      ? {
+          type: ActorType.USER,
+          id: accessApprovalRequest.requestedByUserId,
+          name:
+            [requestedByUser?.firstName, requestedByUser?.lastName].filter(Boolean).join(" ") ||
+            requestedByUser?.username ||
+            "Unknown",
+          email: requestedByUser?.email ?? null
+        }
+      : null;
+
+    await queueService.queue(
+      QueueName.SecretWebhook,
+      QueueJobs.SecWebhook,
+      {
+        type: WebhookEvents.AccessRequestModified,
+        payload: {
+          projectId,
+          projectName: project.name,
+          environment: envSlug,
+          environmentName: environment?.name,
+          secretPath,
+          action,
+          request: {
+            id: accessApprovalRequest.id,
+            url: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${projectId}/approval?selectedTab=resource-requests&requestId=${accessApprovalRequest.id}`,
+            status: status ?? accessApprovalRequest.status,
+            isBypassed: isBypassed ?? Boolean(accessApprovalRequest.bypassReason),
+            policy: {
+              id: accessApprovalRequest.policy.id,
+              name: accessApprovalRequest.policy.name,
+              enforcementLevel: accessApprovalRequest.policy.enforcementLevel,
+              hasSequencedApprovers: accessApprovalRequest.policy.approvers.some(
+                (approver) => (approver.sequence ?? 1) > 1
+              )
+            },
+            requestedAccess: {
+              isTemporary: isTemporary ?? accessApprovalRequest.isTemporary,
+              temporaryRange: (temporaryRange ?? accessApprovalRequest.temporaryRange) || null,
+              permissions: requestedPermissions
+            },
+            requestedBy,
+            expiresAt: accessApprovalRequest.expiresAt?.toISOString() ?? null,
+            approvedAt: (approvedAt ?? accessApprovalRequest.approvedAt)?.toISOString() ?? null,
+            revokedAt: (revokedAt ?? accessApprovalRequest.revokedAt)?.toISOString() ?? null,
+            createdAt: accessApprovalRequest.createdAt.toISOString(),
+            updatedAt: (updatedAt ?? accessApprovalRequest.updatedAt).toISOString()
+          }
+        }
+      },
+      {
+        // The job id must differ per delivery. A stable id would let BullMQ deduplicate every
+        // state change after the first on the same request and drop it without a trace.
+        jobId: `access-request-webhook-${accessApprovalRequest.id}-${action}-${Date.now()}`,
+        removeOnFail: { count: 5 },
+        removeOnComplete: true,
+        delay: 1000,
+        attempts: 5,
+        backoff: { type: "exponential", delay: 3000 }
+      }
+    );
+  };
+
   const createAccessApprovalRequest: TAccessApprovalRequestServiceFactory["createAccessApprovalRequest"] = async ({
     isTemporary,
     temporaryRange,
@@ -308,6 +438,32 @@ export const accessApprovalRequestServiceFactory = ({
       return approvalRequest;
     });
 
+    try {
+      const created = await accessApprovalRequestDAL.findById(approval.id);
+      if (created) {
+        await $queueAccessRequestWebhook({
+          action: AccessRequestWebhookAction.Created,
+          accessApprovalRequest: created,
+          projectId: project.id,
+          status: approval.status,
+          isTemporary: approval.isTemporary,
+          temporaryRange: approval.temporaryRange,
+          approvedAt: approval.approvedAt,
+          revokedAt: approval.revokedAt,
+          updatedAt: approval.updatedAt
+        });
+      } else {
+        logger.warn(
+          `Skipping access request webhook, request not found [requestId=${approval.id}] [action=${AccessRequestWebhookAction.Created}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue access request webhook [requestId=${approval.id}] [action=${AccessRequestWebhookAction.Created}]`
+      );
+    }
+
     return { request: approval, projectId: project.id };
   };
 
@@ -495,6 +651,32 @@ export const accessApprovalRequestServiceFactory = ({
 
       return approvalRequest;
     });
+
+    try {
+      const edited = await accessApprovalRequestDAL.findById(requestId);
+      if (edited) {
+        await $queueAccessRequestWebhook({
+          action: AccessRequestWebhookAction.Edited,
+          accessApprovalRequest: edited,
+          projectId: accessApprovalRequest.projectId,
+          status: approval.status,
+          isTemporary: approval.isTemporary,
+          temporaryRange: approval.temporaryRange,
+          approvedAt: approval.approvedAt,
+          revokedAt: approval.revokedAt,
+          updatedAt: approval.updatedAt
+        });
+      } else {
+        logger.warn(
+          `Skipping access request webhook, request not found [requestId=${requestId}] [action=${AccessRequestWebhookAction.Edited}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue access request webhook [requestId=${requestId}] [action=${AccessRequestWebhookAction.Edited}]`
+      );
+    }
 
     return { request: approval, projectId: accessApprovalRequest.projectId };
   };
@@ -717,6 +899,10 @@ export const accessApprovalRequestServiceFactory = ({
       }
     }
 
+    // Captured from inside the transaction so the webhook payload can read the request's
+    // post-write state from the primary rather than a possibly lagging replica.
+    let reviewedRequest: Awaited<ReturnType<typeof accessApprovalRequestDAL.updateById>> | undefined;
+
     const reviewStatus = await accessApprovalRequestReviewerDAL.transaction(async (tx) => {
       let reviewForThisActorProcessing: {
         id: string;
@@ -755,7 +941,11 @@ export const accessApprovalRequestServiceFactory = ({
       }
 
       if (status === ApprovalStatus.REJECTED) {
-        await accessApprovalRequestDAL.updateById(accessApprovalRequest.id, { status: ApprovalStatus.REJECTED }, tx);
+        reviewedRequest = await accessApprovalRequestDAL.updateById(
+          accessApprovalRequest.id,
+          { status: ApprovalStatus.REJECTED },
+          tx
+        );
         return reviewForThisActorProcessing;
       }
 
@@ -808,7 +998,7 @@ export const accessApprovalRequestServiceFactory = ({
             );
             privilegeIdToSet = privilege.id;
           }
-          await accessApprovalRequestDAL.updateById(
+          reviewedRequest = await accessApprovalRequestDAL.updateById(
             accessApprovalRequest.id,
             {
               privilegeId: privilegeIdToSet,
@@ -877,6 +1067,35 @@ export const accessApprovalRequestServiceFactory = ({
       }
       return reviewForThisActorProcessing;
     });
+
+    try {
+      const reviewed = await accessApprovalRequestDAL.findById(accessApprovalRequest.id);
+      if (reviewed) {
+        await $queueAccessRequestWebhook({
+          action: AccessRequestWebhookAction.Reviewed,
+          accessApprovalRequest: reviewed,
+          projectId: accessApprovalRequest.projectId,
+          status: reviewedRequest?.status,
+          isTemporary: reviewedRequest?.isTemporary,
+          temporaryRange: reviewedRequest?.temporaryRange,
+          approvedAt: reviewedRequest?.approvedAt,
+          revokedAt: reviewedRequest?.revokedAt,
+          updatedAt: reviewedRequest?.updatedAt,
+          // bypassReason is optional on the API and stores null, so the persisted reason cannot
+          // tell a reason-less break-glass approval apart from an ordinary one.
+          isBypassed: isBreakGlassApprovalAttempt
+        });
+      } else {
+        logger.warn(
+          `Skipping access request webhook, request not found [requestId=${accessApprovalRequest.id}] [action=${AccessRequestWebhookAction.Reviewed}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue access request webhook [requestId=${accessApprovalRequest.id}] [action=${AccessRequestWebhookAction.Reviewed}]`
+      );
+    }
 
     return {
       ...reviewStatus,
@@ -950,6 +1169,32 @@ export const accessApprovalRequestServiceFactory = ({
 
       return result;
     });
+
+    try {
+      const revoked = await accessApprovalRequestDAL.findById(requestId);
+      if (revoked) {
+        await $queueAccessRequestWebhook({
+          action: AccessRequestWebhookAction.Revoked,
+          accessApprovalRequest: revoked,
+          projectId: accessApprovalRequest.projectId,
+          status: updatedRequest.status,
+          isTemporary: updatedRequest.isTemporary,
+          temporaryRange: updatedRequest.temporaryRange,
+          approvedAt: updatedRequest.approvedAt,
+          revokedAt: updatedRequest.revokedAt,
+          updatedAt: updatedRequest.updatedAt
+        });
+      } else {
+        logger.warn(
+          `Skipping access request webhook, request not found [requestId=${requestId}] [action=${AccessRequestWebhookAction.Revoked}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue access request webhook [requestId=${requestId}] [action=${AccessRequestWebhookAction.Revoked}]`
+      );
+    }
 
     return { request: updatedRequest, projectId: accessApprovalRequest.projectId };
   };

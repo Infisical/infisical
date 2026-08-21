@@ -2372,7 +2372,8 @@ export const registerRoutes = async (
     microsoftTeamsService,
     projectMicrosoftTeamsConfigDAL,
     notificationService,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    queueService
   });
 
   const secretReplicationService = secretReplicationServiceFactory({
