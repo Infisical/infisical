@@ -481,10 +481,7 @@ const OverviewPageContent = () => {
 
   const initializedEnvironmentProjectId = useRef<string | null>(null);
   useEffect(() => {
-    if (
-      initializedEnvironmentProjectId.current === projectId ||
-      userAvailableEnvs.length === 0
-    ) {
+    if (initializedEnvironmentProjectId.current === projectId || userAvailableEnvs.length === 0) {
       return;
     }
     initializedEnvironmentProjectId.current = projectId;

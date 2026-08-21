@@ -7,7 +7,7 @@ import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 type Props = {
   folder: TSecretFolder & { envId: string; path: string };
   envSlug: string;
-  onClose: () => void;
+  onClose: (clearSearch?: boolean) => void;
 };
 
 export const QuickSearchFolderItem = ({ folder, envSlug, onClose }: Props) => {

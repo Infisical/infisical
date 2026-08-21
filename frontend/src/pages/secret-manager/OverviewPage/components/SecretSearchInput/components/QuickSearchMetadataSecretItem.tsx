@@ -14,7 +14,7 @@ import { TMetadataMatchedSecret } from "@app/hooks/api/dashboard/types";
 type Props = {
   secret: TMetadataMatchedSecret;
   envSlug: string;
-  onClose: () => void;
+  onClose: (clearSearch?: boolean) => void;
 };
 
 const MAX_VISIBLE_BADGES = 3;

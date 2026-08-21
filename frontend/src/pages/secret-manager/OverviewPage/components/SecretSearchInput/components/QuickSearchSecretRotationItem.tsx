@@ -7,7 +7,7 @@ import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 type Props = {
   secretRotation: TSecretRotationV2;
   envSlug: string;
-  onClose: () => void;
+  onClose: (clearSearch?: boolean) => void;
 };
 
 export const QuickSearchSecretRotationItem = ({ secretRotation, envSlug, onClose }: Props) => {

@@ -7,7 +7,7 @@ import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 type Props = {
   dynamicSecret: TDynamicSecret & { environment: string; path: string };
   envSlug: string;
-  onClose: () => void;
+  onClose: (clearSearch?: boolean) => void;
 };
 
 export const QuickSearchDynamicSecretItem = ({ dynamicSecret, envSlug, onClose }: Props) => {

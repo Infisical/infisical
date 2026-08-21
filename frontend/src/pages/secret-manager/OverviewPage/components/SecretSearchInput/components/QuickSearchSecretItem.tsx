@@ -19,7 +19,7 @@ import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 type Props = {
   secret: SecretV3RawSanitized;
   envSlug: string;
-  onClose: () => void;
+  onClose: (clearSearch?: boolean) => void;
   tags: string[];
   search: string;
 };
