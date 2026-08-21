@@ -221,6 +221,126 @@ export const CrossProjectSharingSection = () => {
 
   const projectGroups = useMemo(() => groupGrantsByProject(grants ?? []), [grants]);
 
+  let grantsContent: JSX.Element;
+  if (!canReadGrants) {
+    grantsContent = <PermissionDeniedBanner />;
+  } else if (isGrantsLoading) {
+    grantsContent = (
+      <div className="space-y-3" aria-label="Loading shared projects">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+      </div>
+    );
+  } else if (grants?.length === 0) {
+    grantsContent = (
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>No projects have access yet</EmptyTitle>
+          <EmptyDescription>Share secrets to grant another project read access.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  } else {
+    grantsContent = (
+      <Accordion type="multiple" defaultValue={projectGroups.map((g) => g.targetProjectId)}>
+        {projectGroups.map((projectGroup) => (
+          <AccordionItem key={projectGroup.targetProjectId} value={projectGroup.targetProjectId}>
+            <AccordionTrigger>
+              <div className="flex flex-1 items-center gap-3">
+                <Badge variant="project" className="gap-1.5">
+                  <Box className="size-3" />
+                  {projectGroup.targetProjectName}
+                </Badge>
+                <span className="text-xs text-muted">
+                  {projectGroup.totalSecrets} {projectGroup.totalSecrets === 1 ? "secret" : "secrets"}{" "}
+                  shared
+                </span>
+              </div>
+              {(canEditGrants || canRevokeGrants) && (
+                <div
+                  className="pr-2"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  role="presentation"
+                >
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <IconButton aria-label="Actions" variant="ghost-muted" size="xs">
+                        <EllipsisVerticalIcon className="size-4" />
+                      </IconButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {canEditGrants && (
+                        <DropdownMenuItem onClick={() => handleEdit(projectGroup)}>
+                          <PencilIcon className="mr-2 size-4" />
+                          Edit
+                        </DropdownMenuItem>
+                      )}
+                      <ProjectPermissionCan
+                        I={ProjectPermissionProjectFolderGrantActions.RevokeGrant}
+                        a={ProjectPermissionSub.ProjectFolderGrant}
+                        passThrough={false}
+                      >
+                        <DropdownMenuItem
+                          variant="danger"
+                          onClick={() => setDeleteTarget(projectGroup)}
+                        >
+                          <TrashIcon className="mr-2 size-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </ProjectPermissionCan>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="rounded-md border border-mineshaft-600">
+                <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2 text-xs text-muted">
+                  <span>Shared location in this project</span>
+                  <span className="w-24 text-right">Secrets shared</span>
+                </div>
+                {projectGroup.grants
+                  .sort((a, b) => {
+                    const envOrder = a.environmentName.localeCompare(b.environmentName);
+                    if (envOrder !== 0) return envOrder;
+                    return a.secretPath.localeCompare(b.secretPath);
+                  })
+                  .map((grant) => (
+                    <div
+                      key={grant.id}
+                      className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2.5 last:border-b-0"
+                    >
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex w-fit items-center gap-2 text-sm">
+                            <Badge variant="neutral" className="gap-1.5">
+                              <Layers className="size-3" />
+                              {grant.environmentName}
+                            </Badge>
+                            <ChevronRight className="size-3.5 text-muted" />
+                            <FolderIcon className="size-3.5 text-muted" />
+                            <span>{grant.secretPath}</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Shared {formatDistanceToNowStrict(new Date(grant.createdAt), { addSuffix: true })}{" "}
+                          ({format(new Date(grant.createdAt), "MMM d, yyyy 'at' h:mm a")})
+                        </TooltipContent>
+                      </Tooltip>
+                      <span className="w-24 text-right text-sm tabular-nums">
+                        {grant.secretCount}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    );
+  }
+
   const handleEdit = (group: ProjectGroup) => {
     setEditData({
       targetProjectId: group.targetProjectId,
@@ -283,127 +403,7 @@ export const CrossProjectSharingSection = () => {
           <span className="text-sm text-mineshaft-400">Linked Projects</span>
           <Badge variant="neutral">{projectGroups.length}</Badge>
         </div>
-        {!canReadGrants ? (
-          <PermissionDeniedBanner />
-        ) : isGrantsLoading ? (
-          <div className="space-y-3" aria-label="Loading shared projects">
-            {Array.from({ length: 2 }).map((_, index) => (
-              <Skeleton key={index} className="h-12 w-full" />
-            ))}
-          </div>
-        ) : grants?.length === 0 ? (
-          <Empty>
-            <EmptyHeader>
-              <EmptyTitle>No projects have access yet</EmptyTitle>
-              <EmptyDescription>
-                Share secrets to grant another project read access.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : (
-          <Accordion type="multiple" defaultValue={projectGroups.map((g) => g.targetProjectId)}>
-            {projectGroups.map((projectGroup) => (
-              <AccordionItem
-                key={projectGroup.targetProjectId}
-                value={projectGroup.targetProjectId}
-              >
-                <AccordionTrigger>
-                  <div className="flex flex-1 items-center gap-3">
-                    <Badge variant="project" className="gap-1.5">
-                      <Box className="size-3" />
-                      {projectGroup.targetProjectName}
-                    </Badge>
-                    <span className="text-xs text-muted">
-                      {projectGroup.totalSecrets}{" "}
-                      {projectGroup.totalSecrets === 1 ? "secret" : "secrets"} shared
-                    </span>
-                  </div>
-                  {(canEditGrants || canRevokeGrants) && (
-                    <div
-                      className="pr-2"
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                      role="presentation"
-                    >
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton aria-label="Actions" variant="ghost-muted" size="xs">
-                            <EllipsisVerticalIcon className="size-4" />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {canEditGrants && (
-                            <DropdownMenuItem onClick={() => handleEdit(projectGroup)}>
-                              <PencilIcon className="mr-2 size-4" />
-                              Edit
-                            </DropdownMenuItem>
-                          )}
-                          <ProjectPermissionCan
-                            I={ProjectPermissionProjectFolderGrantActions.RevokeGrant}
-                            a={ProjectPermissionSub.ProjectFolderGrant}
-                            passThrough={false}
-                          >
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={() => setDeleteTarget(projectGroup)}
-                            >
-                              <TrashIcon className="mr-2 size-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </ProjectPermissionCan>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  )}
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="rounded-md border border-mineshaft-600">
-                    <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2 text-xs text-muted">
-                      <span>Shared location in this project</span>
-                      <span className="w-24 text-right">Secrets shared</span>
-                    </div>
-                    {projectGroup.grants
-                      .sort((a, b) => {
-                        const envOrder = a.environmentName.localeCompare(b.environmentName);
-                        if (envOrder !== 0) return envOrder;
-                        return a.secretPath.localeCompare(b.secretPath);
-                      })
-                      .map((grant) => (
-                        <div
-                          key={grant.id}
-                          className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2.5 last:border-b-0"
-                        >
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex w-fit items-center gap-2 text-sm">
-                                <Badge variant="neutral" className="gap-1.5">
-                                  <Layers className="size-3" />
-                                  {grant.environmentName}
-                                </Badge>
-                                <ChevronRight className="size-3.5 text-muted" />
-                                <FolderIcon className="size-3.5 text-muted" />
-                                <span>{grant.secretPath}</span>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              Shared{" "}
-                              {formatDistanceToNowStrict(new Date(grant.createdAt), {
-                                addSuffix: true
-                              })}{" "}
-                              ({format(new Date(grant.createdAt), "MMM d, yyyy 'at' h:mm a")})
-                            </TooltipContent>
-                          </Tooltip>
-                          <span className="w-24 text-right text-sm tabular-nums">
-                            {grant.secretCount}
-                          </span>
-                        </div>
-                      ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        )}
+        {grantsContent}
       </CardContent>
       <DeleteProjectGrantsDialog
         grants={deleteTarget?.grants ?? []}
