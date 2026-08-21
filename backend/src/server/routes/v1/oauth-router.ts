@@ -33,7 +33,7 @@ const grantTypesSchema = z
     message: "Grant types must not contain duplicate values"
   })
   .describe(
-    "The OAuth grant types this application may use. Redirect URIs apply only to authorization_code; the token exchange audience applies only to the token-exchange grant."
+    "The OAuth grant types this application may use. An application uses either the redirect flow (authorization_code, optionally with refresh_token) or the token-exchange grant. Redirect URIs apply only to authorization_code; the token exchange audience applies only to the token-exchange grant."
   );
 
 const tokenExchangeAudienceSchema = z

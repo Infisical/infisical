@@ -116,6 +116,20 @@ describe("OAuth client grant type registration", async () => {
     expect(res.payload).toContain("audience only applies");
   });
 
+  // An application is one flow or the other, so the UI's flow picker is the whole story and an edit made
+  // through it can never silently drop a grant the API had registered.
+  test("an application cannot hold both the redirect flow and token exchange", async () => {
+    const res = await createClient({
+      name: "e2e-both-flows",
+      grantTypes: [OauthGrantType.AuthorizationCode, OauthGrantType.RefreshToken, TOKEN_EXCHANGE_GRANT],
+      redirectUris: ["https://app.example.com/callback"],
+      tokenExchangeAudience: "api://e2e-mcp"
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.payload).toContain("cannot be combined");
+  });
+
   // Duplicates used to slip through below the array bound and come back as "too many items" above it,
   // so the same mistake failed differently depending on how often it was repeated.
   test("reports duplicate grant types as duplicates, however many there are", async () => {
