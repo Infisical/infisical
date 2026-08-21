@@ -19,6 +19,7 @@ import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, pick, unique } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
+import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -483,6 +484,10 @@ export const secretApprovalRequestServiceFactory = ({
     environment,
     environmentName,
     secretPath,
+    status,
+    hasMerged,
+    updatedAt,
+    isBypassed,
     tx
   }: {
     action: ChangeRequestWebhookAction;
@@ -491,10 +496,23 @@ export const secretApprovalRequestServiceFactory = ({
     environment: string;
     environmentName?: string;
     secretPath: string;
+    // findById reads from a replica, which can lag the write that triggered the event. Callers
+    // holding the primary-side row pass its volatile fields here so the payload cannot go stale.
+    status?: string;
+    hasMerged?: boolean;
+    updatedAt?: Date;
+    isBypassed?: boolean;
     tx?: Knex;
   }) => {
-    const cfg = getConfig();
     const project = await projectDAL.findById(projectId, tx);
+    if (!project) {
+      logger.warn(
+        `Skipping change request webhook, project not found [projectId=${projectId}] [requestId=${secretApprovalRequest.id}] [action=${action}]`
+      );
+      return;
+    }
+
+    const cfg = getConfig();
     const { committerUser } = secretApprovalRequest;
     const requestedBy: TWebhookActor | null = secretApprovalRequest.committerUserId
       ? {
@@ -524,9 +542,9 @@ export const secretApprovalRequestServiceFactory = ({
             id: secretApprovalRequest.id,
             slug: secretApprovalRequest.slug,
             url: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${projectId}/approval?requestId=${secretApprovalRequest.id}`,
-            status: secretApprovalRequest.status,
-            hasMerged: secretApprovalRequest.hasMerged,
-            isBypassed: Boolean(secretApprovalRequest.bypassReason),
+            status: status ?? secretApprovalRequest.status,
+            hasMerged: hasMerged ?? secretApprovalRequest.hasMerged,
+            isBypassed: isBypassed ?? Boolean(secretApprovalRequest.bypassReason),
             policy: {
               id: secretApprovalRequest.policy.id,
               name: secretApprovalRequest.policy.name,
@@ -534,7 +552,7 @@ export const secretApprovalRequestServiceFactory = ({
             },
             requestedBy,
             createdAt: secretApprovalRequest.createdAt.toISOString(),
-            updatedAt: secretApprovalRequest.updatedAt.toISOString()
+            updatedAt: (updatedAt ?? secretApprovalRequest.updatedAt).toISOString()
           }
         }
       },
@@ -627,19 +645,30 @@ export const secretApprovalRequestServiceFactory = ({
       return secretApprovalRequestReviewerDAL.updateById(review.id, { status, comment }, tx);
     });
 
-    const reviewedRequest = await secretApprovalRequestDAL.findById(secretApprovalRequest.id);
-    const [reviewedFolder] = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
-      secretApprovalRequest.folderId
-    ]);
-    if (reviewedRequest && reviewedFolder) {
-      await $queueChangeRequestWebhook({
-        action: ChangeRequestWebhookAction.Reviewed,
-        secretApprovalRequest: reviewedRequest,
-        projectId: secretApprovalRequest.projectId,
-        environment: reviewedFolder.environmentSlug,
-        environmentName: reviewedFolder.environmentName,
-        secretPath: reviewedFolder.path
-      });
+    try {
+      const reviewedRequest = await secretApprovalRequestDAL.findById(secretApprovalRequest.id);
+      const [reviewedFolder] = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
+        secretApprovalRequest.folderId
+      ]);
+      if (reviewedRequest && reviewedFolder) {
+        await $queueChangeRequestWebhook({
+          action: ChangeRequestWebhookAction.Reviewed,
+          secretApprovalRequest: reviewedRequest,
+          projectId: secretApprovalRequest.projectId,
+          environment: reviewedFolder.environmentSlug,
+          environmentName: reviewedFolder.environmentName,
+          secretPath: reviewedFolder.path
+        });
+      } else {
+        logger.warn(
+          `Skipping change request webhook, request or folder not found [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Reviewed}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue change request webhook [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Reviewed}]`
+      );
     }
 
     return { ...reviewStatus, projectId: secretApprovalRequest.projectId };
@@ -701,19 +730,35 @@ export const secretApprovalRequestServiceFactory = ({
       statusChangedByUserId: actorId
     });
 
-    const changedRequest = await secretApprovalRequestDAL.findById(secretApprovalRequest.id);
-    const [statusFolder] = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
-      secretApprovalRequest.folderId
-    ]);
-    if (changedRequest && statusFolder) {
-      await $queueChangeRequestWebhook({
-        action: status === RequestState.Open ? ChangeRequestWebhookAction.Reopened : ChangeRequestWebhookAction.Closed,
-        secretApprovalRequest: changedRequest,
-        projectId: secretApprovalRequest.projectId,
-        environment: statusFolder.environmentSlug,
-        environmentName: statusFolder.environmentName,
-        secretPath: statusFolder.path
-      });
+    const statusAction =
+      status === RequestState.Open ? ChangeRequestWebhookAction.Reopened : ChangeRequestWebhookAction.Closed;
+    try {
+      const changedRequest = await secretApprovalRequestDAL.findById(secretApprovalRequest.id);
+      const [statusFolder] = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
+        secretApprovalRequest.folderId
+      ]);
+      if (changedRequest && statusFolder) {
+        await $queueChangeRequestWebhook({
+          action: statusAction,
+          secretApprovalRequest: changedRequest,
+          projectId: secretApprovalRequest.projectId,
+          environment: statusFolder.environmentSlug,
+          environmentName: statusFolder.environmentName,
+          secretPath: statusFolder.path,
+          status: updatedRequest.status,
+          hasMerged: updatedRequest.hasMerged,
+          updatedAt: updatedRequest.updatedAt
+        });
+      } else {
+        logger.warn(
+          `Skipping change request webhook, request or folder not found [requestId=${secretApprovalRequest.id}] [action=${statusAction}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue change request webhook [requestId=${secretApprovalRequest.id}] [action=${statusAction}]`
+      );
     }
 
     return { ...secretApprovalRequest, ...updatedRequest };
@@ -1329,16 +1374,31 @@ export const secretApprovalRequestServiceFactory = ({
       events
     });
 
-    const mergedRequest = await secretApprovalRequestDAL.findById(secretApprovalRequest.id);
-    if (mergedRequest) {
-      await $queueChangeRequestWebhook({
-        action: ChangeRequestWebhookAction.Merged,
-        secretApprovalRequest: mergedRequest,
-        projectId,
-        environment: folder.environmentSlug,
-        environmentName: folder.environmentName,
-        secretPath: folder.path
-      });
+    try {
+      const mergedRequest = await secretApprovalRequestDAL.findById(secretApprovalRequest.id);
+      if (mergedRequest) {
+        await $queueChangeRequestWebhook({
+          action: ChangeRequestWebhookAction.Merged,
+          secretApprovalRequest: mergedRequest,
+          projectId,
+          environment: folder.environmentSlug,
+          environmentName: folder.environmentName,
+          secretPath: folder.path,
+          status: mergeStatus.approval.status,
+          hasMerged: mergeStatus.approval.hasMerged,
+          updatedAt: mergeStatus.approval.updatedAt,
+          isBypassed: isMergedViaBypass
+        });
+      } else {
+        logger.warn(
+          `Skipping change request webhook, request not found [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Merged}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue change request webhook [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Merged}]`
+      );
     }
 
     if (isSoftEnforcement && !hasMinApproval) {
@@ -1834,16 +1894,27 @@ export const secretApprovalRequestServiceFactory = ({
       notificationService
     });
 
-    const createdRequest = await secretApprovalRequestDAL.findById(secretApprovalRequest.id);
-    if (createdRequest) {
-      await $queueChangeRequestWebhook({
-        action: ChangeRequestWebhookAction.Created,
-        secretApprovalRequest: createdRequest,
-        projectId,
-        environment,
-        environmentName: env.name,
-        secretPath
-      });
+    try {
+      const createdRequest = await secretApprovalRequestDAL.findById(secretApprovalRequest.id);
+      if (createdRequest) {
+        await $queueChangeRequestWebhook({
+          action: ChangeRequestWebhookAction.Created,
+          secretApprovalRequest: createdRequest,
+          projectId,
+          environment,
+          environmentName: env.name,
+          secretPath
+        });
+      } else {
+        logger.warn(
+          `Skipping change request webhook, request not found [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Created}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue change request webhook [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Created}]`
+      );
     }
 
     void telemetryService
@@ -2342,19 +2413,30 @@ export const secretApprovalRequestServiceFactory = ({
       notificationService
     });
 
-    // A caller-supplied transaction has not committed yet, so the reads have to go through it
-    // to see the request at all, and to avoid checking out a second connection while it is open.
-    const createdRequest = await secretApprovalRequestDAL.findById(secretApprovalRequest.id, providedTx);
-    if (createdRequest) {
-      await $queueChangeRequestWebhook({
-        action: ChangeRequestWebhookAction.Created,
-        secretApprovalRequest: createdRequest,
-        projectId,
-        environment,
-        environmentName: env.name,
-        secretPath,
-        tx: providedTx
-      });
+    try {
+      // A caller-supplied transaction has not committed yet, so the reads have to go through it
+      // to see the request at all, and to avoid checking out a second connection while it is open.
+      const createdRequest = await secretApprovalRequestDAL.findById(secretApprovalRequest.id, providedTx);
+      if (createdRequest) {
+        await $queueChangeRequestWebhook({
+          action: ChangeRequestWebhookAction.Created,
+          secretApprovalRequest: createdRequest,
+          projectId,
+          environment,
+          environmentName: env.name,
+          secretPath,
+          tx: providedTx
+        });
+      } else {
+        logger.warn(
+          `Skipping change request webhook, request not found [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Created}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue change request webhook [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Created}]`
+      );
     }
 
     void telemetryService
