@@ -34,17 +34,23 @@ jobs:
               with:
                   version: "2.14.2"
             - name: 🔧 Setup Node from .nvmrc
+              id: setup-node
               uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
               with:
                   node-version-file: ".nvmrc"
-                  cache: "npm"
-                  cache-dependency-path: backend/package-lock.json
 
             - name: Setup npm
               run: |
                   npm install --global "npm@${NPM_VERSION}"
                   test "$(npm --version)" = "${NPM_VERSION}"
               working-directory: ${{ runner.temp }}
+
+            - name: Cache npm
+              uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+              with:
+                  path: ~/.npm
+                  key: npm-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-npm${{ env.NPM_VERSION }}-${{ hashFiles('backend/package-lock.json') }}
+                  restore-keys: npm-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-npm${{ env.NPM_VERSION }}-
 
             - name: Start PostgreSQL and Redis
               run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis

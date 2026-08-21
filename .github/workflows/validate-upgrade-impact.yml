@@ -22,17 +22,23 @@ jobs:
           fetch-tags: true
 
       - name: Setup Node
+        id: setup-node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: ".nvmrc"
-          cache: npm
-          cache-dependency-path: upgrade-impact/package-lock.json
 
       - name: Setup npm
         run: |
           npm install --global "npm@${NPM_VERSION}"
           test "$(npm --version)" = "${NPM_VERSION}"
         working-directory: ${{ runner.temp }}
+
+      - name: Cache npm
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-npm${{ env.NPM_VERSION }}-${{ hashFiles('upgrade-impact/package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-npm${{ env.NPM_VERSION }}-
 
       - name: Install dependencies
         run: npm ci
