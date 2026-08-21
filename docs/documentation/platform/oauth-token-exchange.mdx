@@ -109,7 +109,7 @@ Your identity provider signs tokens for every application in your estate. Withou
 
 Set it to your middleware's own registration in your identity provider, never to Infisical's.
 
-Some providers can be configured to address one token to several audiences at once, which would let a token minted for another application list yours alongside its own. When a subject token carries more than one audience, Infisical requires an `azp` (authorized party) claim naming your configured audience, and rejects the token otherwise. A token addressed to a single audience needs no `azp`.
+Some providers can be configured to address one token to several audiences at once, which would let a token minted for another application list yours alongside its own. When a subject token carries more than one audience, Infisical requires an `azp` (authorized party) claim naming your configured audience, and rejects the token otherwise. A token addressed to a single audience needs no `azp`, but if it carries one, that claim must name your configured audience as well.
 
 ## Exchanging a token
 

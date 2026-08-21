@@ -293,20 +293,18 @@ export const verifySubjectToken = async ({ subjectToken, oidcConfig, expectedAud
   }
 
   const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
-  if (audiences.length > 1) {
-    const authorizedParty = typeof claims.azp === "string" ? claims.azp : undefined;
+  const authorizedParty = typeof claims.azp === "string" ? claims.azp : undefined;
 
-    if (!authorizedParty) {
-      throw new UnauthorizedError({
-        message: `The subject token is addressed to several audiences (${audiences.join(", ")}) and carries no 'azp' claim, so there is no way to tell it was issued to this application rather than another one. Configure your identity provider to issue tokens addressed only to '${expectedAudience}', or to include an 'azp' claim.`
-      });
-    }
+  if (authorizedParty && authorizedParty !== expectedAudience) {
+    throw new UnauthorizedError({
+      message: `The subject token was issued to '${authorizedParty}', not to this application's configured token exchange audience ('${expectedAudience}'). Being addressed to this application as an audience is not enough to act on the user's behalf.`
+    });
+  }
 
-    if (authorizedParty !== expectedAudience) {
-      throw new UnauthorizedError({
-        message: `The subject token was issued to '${authorizedParty}', not to this application's configured token exchange audience ('${expectedAudience}'). It is addressed to this application only as an additional audience, which is not enough to act on the user's behalf.`
-      });
-    }
+  if (!authorizedParty && audiences.length > 1) {
+    throw new UnauthorizedError({
+      message: `The subject token is addressed to several audiences (${audiences.join(", ")}) and carries no 'azp' claim, so there is no way to tell it was issued to this application rather than another one. Configure your identity provider to issue tokens addressed only to '${expectedAudience}', or to include an 'azp' claim.`
+    });
   }
 
   if (!claims.sub) {
