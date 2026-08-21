@@ -31,8 +31,8 @@ import {
   PkiSync,
   PkiSyncExportFormat,
   TPkiSync,
+  useCanSetHealthCheckCommand,
   useCanSetPostSyncCommand,
-  useCanSetPreflightCommand,
   useCreatePkiSync,
   usePkiSyncOption
 } from "@app/hooks/api/pkiSyncs";
@@ -43,9 +43,9 @@ import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
 import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
+import { PkiSyncHealthCheckCommandFields } from "./PkiSyncHealthCheckCommandFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
 import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
-import { PkiSyncPreflightCommandFields } from "./PkiSyncPreflightCommandFields";
 import { PkiSyncReviewFields } from "./PkiSyncReviewFields";
 
 type Props = {
@@ -86,7 +86,7 @@ const STEP_META: Record<
     subtitle: "Optionally check the host before the sync, and act on it afterward.",
     rightLabel: "COMMANDS",
     rightDescription:
-      "The preflight check runs first and stops the sync if the host is not ready, so a bad host never receives a certificate. The post-sync command runs afterward, once the run's files are in place, so a service can reload and pick up the new certificate. It only runs when the sync delivers a file. Either command failing marks the sync failed."
+      "The health check runs first and stops the sync if the host is not ready, so a bad host never receives a certificate. The post-sync command runs afterward, once the run's files are in place, so a service can reload and pick up the new certificate. It only runs when the sync delivers a file. Either command failing marks the sync failed."
   },
   details: {
     short: "Name and description",
@@ -141,7 +141,7 @@ const getFormTabs = (
       name: "Commands",
       key: "hostCommands",
       fields: [
-        "syncOptions.preflightCommand",
+        "syncOptions.healthCheckCommand",
         "syncOptions.postSyncCommand"
       ] as FieldPath<TPkiSyncForm>[]
     });
@@ -180,10 +180,10 @@ export const CreatePkiSyncForm = ({
 
   const { syncOption } = usePkiSyncOption(destination);
   const canSetPostSyncCommand = useCanSetPostSyncCommand(applicationId);
-  const canSetPreflightCommand = useCanSetPreflightCommand(applicationId);
+  const canSetHealthCheckCommand = useCanSetHealthCheckCommand(applicationId);
   const FORM_TABS = getFormTabs(
     destination,
-    (Boolean(syncOption?.canRunPreflightCommand) && canSetPreflightCommand) ||
+    (Boolean(syncOption?.canRunHealthCheckCommand) && canSetHealthCheckCommand) ||
       (Boolean(syncOption?.canRunPostSyncCommand) && canSetPostSyncCommand)
   );
 
@@ -383,9 +383,10 @@ export const CreatePkiSyncForm = ({
             {currentKey === "mappings" && <PkiSyncFieldMappingsFields destination={destination} />}
             {currentKey === "hostCommands" && (
               <div className="flex flex-col gap-8">
-                <PkiSyncPreflightCommandFields
+                <PkiSyncHealthCheckCommandFields
                   destination={destination}
-                  canEditCommand={canSetPreflightCommand}
+                  applicationId={applicationId}
+                  canEditCommand={canSetHealthCheckCommand}
                 />
                 <PkiSyncPostSyncCommandFields
                   destination={destination}

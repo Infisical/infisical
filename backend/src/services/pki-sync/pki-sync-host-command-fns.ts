@@ -6,12 +6,12 @@ import { PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
 
 export enum HostCommandKind {
-  Preflight = "preflight check",
+  HealthCheck = "health check",
   PostSync = "post-sync command"
 }
 
 export const HOST_COMMAND_TIMEOUT_MS: Record<HostCommandKind, number> = {
-  [HostCommandKind.Preflight]: 10_000,
+  [HostCommandKind.HealthCheck]: 15_000,
   [HostCommandKind.PostSync]: 30_000
 };
 
@@ -55,6 +55,7 @@ const sentenceCase = (text: string): string => `${text.charAt(0).toUpperCase()}$
 export type THostCommandResult = {
   status: PkiSyncStatus.Succeeded | PkiSyncStatus.Failed;
   exitCode?: number;
+  timedOut?: boolean;
   durationMs: number;
   output?: string;
   failureDetail?: string;
@@ -88,6 +89,11 @@ const CERTIFICATE_DEPENDENT_HOST_COMMAND_VARIABLES: HostCommandVariable[] = [
   HostCommandVariable.CommonName
 ];
 
+export const findCertificateDependentHostCommandVariables = (command?: string): HostCommandVariable[] => {
+  const used = findHostCommandVariables(command);
+  return CERTIFICATE_DEPENDENT_HOST_COMMAND_VARIABLES.filter((variable) => used.has(variable));
+};
+
 export const commandNeedsCertificateData = (command?: string): boolean => {
   const used = findHostCommandVariables(command);
   return CERTIFICATE_DEPENDENT_HOST_COMMAND_VARIABLES.some((variable) => used.has(variable));
@@ -110,7 +116,7 @@ export const buildHostCommandContext = (args: {
 
   const singleCertificateVariables = findSingleCertificateHostCommandVariables(command);
   if (certificates.length > 1 && singleCertificateVariables.length > 0) {
-    const delivered = kind === HostCommandKind.Preflight ? "would deliver" : "delivered";
+    const delivered = kind === HostCommandKind.HealthCheck ? "would deliver" : "delivered";
     throw new PkiSyncError({
       message: `${sentenceCase(kind)} uses ${formatHostCommandVariables(
         singleCertificateVariables
@@ -192,14 +198,12 @@ const redactSecrets = (text: string, secrets: Array<string | undefined>): string
 
 const TRUNCATION_SUFFIX = "... (truncated)";
 
-// A cut between the halves of a surrogate pair leaves a lone surrogate, which is not valid UTF-8.
 const sliceWholeCharacters = (text: string, end: number): string => {
   const cut = text.slice(0, end);
   const last = cut.charCodeAt(cut.length - 1);
   return last >= 0xd800 && last <= 0xdbff ? cut.slice(0, -1) : cut;
 };
 
-// The suffix counts against maxLength, so the cap bounds what actually gets stored.
 const truncate = (text: string, maxLength: number): string =>
   text.length > maxLength
     ? `${sliceWholeCharacters(text, Math.max(0, maxLength - TRUNCATION_SUFFIX.length))}${TRUNCATION_SUFFIX}`
@@ -216,13 +220,23 @@ const captureOutput = (stdout: string, stderr: string): string | undefined => {
   return combined ? truncate(combined, MAX_CAPTURED_OUTPUT_CHARS) : undefined;
 };
 
+class HostCommandTimeoutError extends Error {}
+
+const COMMAND_TIMEOUT_ERROR_PATTERN = new RE2("command timed out|rpc timed out", "i");
+
+const isTimeoutFailure = (err: unknown, message: string): boolean =>
+  err instanceof HostCommandTimeoutError || COMMAND_TIMEOUT_ERROR_PATTERN.test(message);
+
 const withHostCommandDeadline = <T>(execute: () => Promise<T>, timeoutMs: number, graceMs: number): Promise<T> => {
   let timer: NodeJS.Timeout;
 
   return Promise.race([
     execute(),
     new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error(`command timed out after ${timeoutMs / 1000}s`)), timeoutMs + graceMs);
+      timer = setTimeout(
+        () => reject(new HostCommandTimeoutError(`command timed out after ${timeoutMs / 1000}s`)),
+        timeoutMs + graceMs
+      );
     })
   ]).finally(() => clearTimeout(timer));
 };
@@ -262,7 +276,12 @@ export const runHostCommand = async (args: {
     const durationMs = Date.now() - startedAt;
     const error = redact((err as Error)?.message ?? "Unknown error");
     logger.warn(`PKI sync ${kind} could not run [syncId=${syncId}] [durationMs=${durationMs}]: ${error}`);
-    return { status: PkiSyncStatus.Failed, durationMs, error };
+    return {
+      status: PkiSyncStatus.Failed,
+      durationMs,
+      error,
+      timedOut: isTimeoutFailure(err, error)
+    };
   }
 };
 
@@ -276,7 +295,9 @@ export const buildHostCommandFailureMessage = (
   const detail = result.failureDetail ?? firstNonEmptyLine(result.output);
 
   if (result.exitCode === undefined) {
-    return `${subject} could not run: the destination host could not be reached`;
+    return result.timedOut
+      ? `${subject} did not finish within its ${HOST_COMMAND_TIMEOUT_MS[kind] / 1000}s limit`
+      : `${subject} could not run: the destination host could not be reached`;
   }
 
   const prefix = `${subject} failed (exit ${result.exitCode})`;

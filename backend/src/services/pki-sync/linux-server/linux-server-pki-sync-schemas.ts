@@ -57,7 +57,7 @@ export const LinuxServerPkiSyncOptionsSchema = z.object({
     .max(32)
     .refine((v) => POSIX_NAME.test(v), { message: "Group must be a valid Linux group name" })
     .optional(),
-  preflightCommand: HostCommandSchema,
+  healthCheckCommand: HostCommandSchema,
   postSyncCommand: HostCommandSchema,
   certificateNameSchema: z
     .string()
@@ -130,4 +130,13 @@ export const LinuxServerPkiSyncListItemSchema = z.object({
   destination: z.literal(PkiSync.LinuxServer),
   canImportCertificates: z.literal(false),
   canRemoveCertificates: z.literal(true)
+});
+
+export const LinuxServerPkiSyncHealthCheckTestSchema = z.object({
+  connectionId: z.string().uuid(),
+  applicationId: z.string().uuid().optional(),
+  syncId: z.string().uuid().optional(),
+  name: z.string().trim().max(256).optional(),
+  destinationConfig: LinuxServerPkiSyncConfigSchema,
+  syncOptions: LinuxServerPkiSyncOptionsSchema.partial()
 });

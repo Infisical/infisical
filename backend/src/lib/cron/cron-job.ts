@@ -22,7 +22,7 @@ export const CronJobName = {
   DailyExpiringPkiItemAlert: "daily-expiring-pki-item-alert",
   DailyPkiAlertV2Processing: "daily-pki-alert-v2-processing",
   PkiSyncCleanup: "pki-sync-cleanup",
-  PkiSyncPreflightCheck: "pki-sync-preflight-check",
+  PkiSyncHealthCheck: "pki-sync-health-check",
   PkiSubscriberDailyAutoRenewal: "pki-subscriber-daily-auto-renewal",
   PkiDiscoveryScheduledScan: "pki-discovery-scheduled-scan",
   PamDiscoveryScheduledScan: "pam-discovery-scheduled-scan",

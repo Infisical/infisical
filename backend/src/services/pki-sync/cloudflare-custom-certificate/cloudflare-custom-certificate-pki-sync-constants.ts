@@ -45,7 +45,7 @@ export const CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION = {
   canImportCertificates: false,
   canRemoveCertificates: true,
   canRunPostSyncCommand: false,
-  canRunPreflightCommand: false,
+  canRunHealthCheckCommand: false,
   defaultCertificateNameSchema: "Infisical-{{certificateId}}",
   forbiddenCharacters: CLOUDFLARE_CUSTOM_CERTIFICATE_NAMING.FORBIDDEN_CHARACTERS,
   allowedCharacterPattern: CLOUDFLARE_CUSTOM_CERTIFICATE_NAMING.ALLOWED_CHARACTER_PATTERN,

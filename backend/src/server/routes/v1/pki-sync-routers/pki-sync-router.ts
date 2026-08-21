@@ -9,7 +9,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { SyncMetadataSchema } from "@app/services/certificate-sync/certificate-sync-schemas";
-import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
+import { PkiSync, PkiSyncStatus } from "@app/services/pki-sync/pki-sync-enums";
 
 export const PkiSyncSchema = z.object({
   id: z.string().uuid(),
@@ -30,6 +30,9 @@ export const PkiSyncSchema = z.object({
   lastSyncJobId: z.string().nullable().optional(),
   lastSyncMessage: z.string().nullable().optional(),
   lastSyncedAt: z.date().nullable().optional(),
+  lastHealthCheckRanAt: z.date().nullable().optional(),
+  lastHealthCheckStatus: z.nativeEnum(PkiSyncStatus).nullable().optional(),
+  lastHealthCheckMessage: z.string().nullable().optional(),
   // Import status fields
   importStatus: z.string().nullable().optional(),
   lastImportJobId: z.string().nullable().optional(),
@@ -75,7 +78,7 @@ const PkiSyncOptionsSchema = z.object({
   canImportCertificates: z.boolean(),
   canRemoveCertificates: z.boolean(),
   canRunPostSyncCommand: z.boolean().optional(),
-  canRunPreflightCommand: z.boolean().optional(),
+  canRunHealthCheckCommand: z.boolean().optional(),
   maxCertificates: z.number().optional(),
   defaultCertificateNameSchema: z.string().optional(),
   forbiddenCharacters: z.string().optional(),

@@ -6,6 +6,8 @@ import { Badge, Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { getPkiSyncFailureMessage } from "@app/helpers/pkiSyncs";
 import { TPkiSync } from "@app/hooks/api/pkiSyncs";
 
+import { SyncErrorDetail } from "./SyncErrorDetail";
+
 type Props = {
   pkiSync: TPkiSync;
 };
@@ -47,14 +49,7 @@ export const PkiSyncDetailsSection = ({ pkiSync }: Props) => {
           <DetailValue>{format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}</DetailValue>
         </Detail>
       )}
-      {failureMessage && (
-        <Detail>
-          <DetailLabel className="text-red">Last Sync Error</DetailLabel>
-          <DetailValue>
-            <p className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">{failureMessage}</p>
-          </DetailValue>
-        </Detail>
-      )}
+      {failureMessage && <SyncErrorDetail label="Last Sync Error" message={failureMessage} />}
     </>
   );
 };

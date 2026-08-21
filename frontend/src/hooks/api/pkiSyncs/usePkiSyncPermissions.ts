@@ -20,8 +20,8 @@ const useCanSetHostCommand = (
 export const useCanSetPostSyncCommand = (applicationId?: string | null) =>
   useCanSetHostCommand(PkiApplicationResourceActions.SetPostSyncCommand, applicationId);
 
-export const useCanSetPreflightCommand = (applicationId?: string | null) =>
-  useCanSetHostCommand(PkiApplicationResourceActions.SetPreflightCommand, applicationId);
+export const useCanSetHealthCheckCommand = (applicationId?: string | null) =>
+  useCanSetHostCommand(PkiApplicationResourceActions.SetHealthCheckCommand, applicationId);
 
 export const usePkiSyncPermissions = (pkiSync: TPkiSync) => {
   const { permission: projectPermission } = useProjectPermission();

@@ -50,7 +50,7 @@ import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types
 import {
   TQueuePkiSyncImportCertificatesByIdDTO,
   TQueuePkiSyncRemoveCertificatesByIdDTO,
-  TQueuePkiSyncRunPreflightCheckByIdDTO,
+  TQueuePkiSyncRunHealthCheckByIdDTO,
   TQueuePkiSyncSyncCertificatesByIdDTO
 } from "@app/services/pki-sync/pki-sync-types";
 import {
@@ -90,7 +90,7 @@ export enum QueueName {
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
   PkiSync = "pki-sync",
-  PkiSyncPreflightCheck = "pki-sync-preflight-check",
+  PkiSyncHealthCheck = "pki-sync-health-check",
   ProjectV3Migration = "project-v3-migration",
   AccessTokenStatusUpdate = "access-token-status-update",
   ImportSecretsFromExternalSource = "import-secrets-from-external-source",
@@ -155,7 +155,7 @@ export enum QueueJobs {
   PkiSyncSyncCertificates = "pki-sync-sync-certificates",
   PkiSyncImportCertificates = "pki-sync-import-certificates",
   PkiSyncRemoveCertificates = "pki-sync-remove-certificates",
-  PkiSyncRunPreflightCheck = "pki-sync-run-preflight-check",
+  PkiSyncRunHealthCheck = "pki-sync-run-health-check",
   SecretRotationV2QueueRotations = "secret-rotation-v2-queue-rotations",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
@@ -357,9 +357,9 @@ export type TQueueJobTypes = {
         name: QueueJobs.PkiSyncRemoveCertificates;
         payload: TQueuePkiSyncRemoveCertificatesByIdDTO;
       };
-  [QueueName.PkiSyncPreflightCheck]: {
-    name: QueueJobs.PkiSyncRunPreflightCheck;
-    payload: TQueuePkiSyncRunPreflightCheckByIdDTO;
+  [QueueName.PkiSyncHealthCheck]: {
+    name: QueueJobs.PkiSyncRunHealthCheck;
+    payload: TQueuePkiSyncRunHealthCheckByIdDTO;
   };
   [QueueName.ProjectV3Migration]: {
     name: QueueJobs.ProjectV3Migration;

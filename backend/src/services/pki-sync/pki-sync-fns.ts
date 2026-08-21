@@ -40,7 +40,7 @@ import {
 import { PkiSync } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
 import { THostCommandResult } from "./pki-sync-host-command-fns";
-import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "./pki-sync-types";
+import { TCertificateMap, THealthCheckTarget, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "./pki-sync-types";
 import { WINDOWS_SERVER_PKI_SYNC_LIST_OPTION } from "./windows-server/windows-server-pki-sync-constants";
 import { windowsServerPkiSyncFactory } from "./windows-server/windows-server-pki-sync-fns";
 
@@ -90,7 +90,7 @@ export const getPkiSyncProviderCapabilities = (destination: PkiSync) => {
     canImportCertificates: providerOption.canImportCertificates,
     canRemoveCertificates: providerOption.canRemoveCertificates,
     canRunPostSyncCommand: providerOption.canRunPostSyncCommand,
-    canRunPreflightCommand: providerOption.canRunPreflightCommand
+    canRunHealthCheckCommand: providerOption.canRunHealthCheckCommand
   };
 };
 
@@ -345,8 +345,8 @@ export const PkiSyncFns = {
     }
   },
 
-  runPreflightCheck: async (
-    pkiSync: TPkiSyncWithCredentials,
+  runHealthCheck: async (
+    pkiSync: THealthCheckTarget,
     certificateMap: TCertificateMap,
     dependencies: {
       certificateSyncDAL: TCertificateSyncDALFactory;
@@ -361,7 +361,7 @@ export const PkiSyncFns = {
           gatewayV2Service: dependencies.gatewayV2Service,
           gatewayPoolService: dependencies.gatewayPoolService
         });
-        return linuxServerPkiSync.runPreflightCheck(pkiSync, certificateMap);
+        return linuxServerPkiSync.runHealthCheck(pkiSync, certificateMap);
       }
       case PkiSync.WindowsServer: {
         if (!dependencies.gatewayV2Service) {
@@ -375,7 +375,7 @@ export const PkiSyncFns = {
           gatewayV2Service: dependencies.gatewayV2Service,
           gatewayPoolService: dependencies.gatewayPoolService
         });
-        return windowsServerPkiSync.runPreflightCheck(pkiSync, certificateMap);
+        return windowsServerPkiSync.runHealthCheck(pkiSync, certificateMap);
       }
       default:
         return undefined;

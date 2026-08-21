@@ -430,7 +430,7 @@ import { pkiSubscriberQueueServiceFactory } from "@app/services/pki-subscriber/p
 import { pkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
 import { pkiSyncCleanupQueueServiceFactory } from "@app/services/pki-sync/pki-sync-cleanup-queue";
 import { pkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
-import { pkiSyncPreflightQueueFactory } from "@app/services/pki-sync/pki-sync-preflight-queue";
+import { pkiSyncHealthCheckQueueFactory } from "@app/services/pki-sync/pki-sync-health-check-queue";
 import { pkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { pkiSyncServiceFactory } from "@app/services/pki-sync/pki-sync-service";
 import { pkiTemplatesDALFactory } from "@app/services/pki-templates/pki-templates-dal";
@@ -3205,7 +3205,7 @@ export const registerRoutes = async (
     pkiSyncQueue
   });
 
-  const pkiSyncPreflightQueue = pkiSyncPreflightQueueFactory({
+  const pkiSyncHealthCheckQueue = pkiSyncHealthCheckQueueFactory({
     cronJob,
     queueService,
     pkiSyncDAL,
@@ -3675,6 +3675,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     pkiSyncQueue,
+    pkiSyncHealthCheckQueue,
+    auditLogService,
     kmsService
   });
 
@@ -3906,7 +3908,7 @@ export const registerRoutes = async (
   alertQueue.init();
   auditLogStreamOutboxQueue.init();
   pkiSyncCleanup.init();
-  pkiSyncPreflightQueue.init();
+  pkiSyncHealthCheckQueue.init();
   pamDiscoveryService.init();
   pkiDiscoveryQueue.startPkiDiscoveryScanQueue();
   dailyReminderQueueService.startDailyRemindersJob();

@@ -18,7 +18,7 @@ import {
 
 type Props = {
   label: string;
-  command?: string;
+  command?: string | null;
   showCommandLabel: string;
   dialogDescription: string;
 };

@@ -18,6 +18,14 @@ import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-s
 import { PkiSyncError } from "../pki-sync-errors";
 import { exportCertificateForSync, PemCertificateExtension, PkiSyncExportFormat } from "../pki-sync-export-fns";
 import {
+  buildHealthCheckCommandFailureMessage,
+  buildHealthCheckCommandPlan,
+  buildHealthCheckFailureSyncResult,
+  didHealthCheckFail,
+  runHealthCheckCommand,
+  THealthCheckCommandResult
+} from "../pki-sync-health-check-command-fns";
+import {
   HOST_COMMAND_TIMEOUT_MS,
   HostCommandKind,
   renderHostCommandContext,
@@ -25,15 +33,7 @@ import {
   toPosixShellLiteral
 } from "../pki-sync-host-command-fns";
 import { buildPostSyncCommandPlan, runPostSyncCommand, TPostSyncCommandPlan } from "../pki-sync-post-sync-command-fns";
-import {
-  buildPreflightCommandFailureMessage,
-  buildPreflightCommandPlan,
-  buildPreflightFailureSyncResult,
-  didPreflightCheckFail,
-  runPreflightCommand,
-  TPreflightCommandResult
-} from "../pki-sync-preflight-command-fns";
-import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
+import { TCertificateMap, THealthCheckTarget, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
 import { TLinuxServerPkiSyncConfig } from "./linux-server-pki-sync-types";
 
 type TLinuxServerPkiSyncFactoryDeps = {
@@ -56,11 +56,11 @@ type TLinuxServerSyncOptions = {
   privateKeyFileMode?: string;
   owner?: string;
   group?: string;
-  preflightCommand?: string;
+  healthCheckCommand?: string;
   postSyncCommand?: string;
 };
 
-const buildSshConfig = (pkiSync: TPkiSyncWithCredentials): TSshConnectionConfig => {
+const buildSshConfig = (pkiSync: THealthCheckTarget): TSshConnectionConfig => {
   const { connection } = pkiSync;
   const credentials = connection.credentials as { privateKey?: string };
 
@@ -252,21 +252,21 @@ const executeLinuxServerHostCommand = (
     timeoutMs: HOST_COMMAND_TIMEOUT_MS[kind]
   });
 
-const runLinuxServerPreflightCommand = ({
+const runLinuxServerHealthCheckCommand = ({
   pkiSync,
   certificateMap,
   gatewayServices
 }: {
-  pkiSync: TPkiSyncWithCredentials;
+  pkiSync: THealthCheckTarget;
   certificateMap: TCertificateMap;
   gatewayServices: Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService">;
-}): Promise<TPreflightCommandResult> | undefined => {
+}): Promise<THealthCheckCommandResult> | undefined => {
   const options = (pkiSync.syncOptions ?? {}) as TLinuxServerSyncOptions;
   const config = pkiSync.destinationConfig as TLinuxServerPkiSyncConfig;
   const exportOptions = resolveLinuxExportOptions(options);
 
-  const plan = buildPreflightCommandPlan({
-    command: options.preflightCommand,
+  const plan = buildHealthCheckCommandPlan({
+    command: options.healthCheckCommand,
     destinationDirectory: config.destinationPath,
     certificateMap,
     exportOptions,
@@ -276,11 +276,11 @@ const runLinuxServerPreflightCommand = ({
   });
   if (!plan) return undefined;
 
-  return runPreflightCommand({
+  return runHealthCheckCommand({
     syncId: pkiSync.id,
     secretsToRedact: [plan.context.pkcs12Password],
     execute: () =>
-      executeLinuxServerHostCommand(HostCommandKind.Preflight, plan, buildSshConfig(pkiSync), gatewayServices)
+      executeLinuxServerHostCommand(HostCommandKind.HealthCheck, plan, buildSshConfig(pkiSync), gatewayServices)
   });
 };
 
@@ -331,16 +331,16 @@ export const linuxServerPkiSyncFactory = ({
 
     const sshConfig = buildSshConfig(pkiSync);
 
-    const preflightCheck = await runLinuxServerPreflightCommand({
+    const healthCheck = await runLinuxServerHealthCheckCommand({
       pkiSync,
       certificateMap,
       gatewayServices: { gatewayV2Service, gatewayPoolService }
     });
-    if (preflightCheck && didPreflightCheckFail(preflightCheck)) {
+    if (healthCheck && didHealthCheckFail(healthCheck)) {
       logger.info(
-        `Linux Server PKI sync [syncId=${pkiSync.id}]: preflight check failed, delivered nothing (${buildPreflightCommandFailureMessage(preflightCheck)})`
+        `Linux Server PKI sync [syncId=${pkiSync.id}]: health check failed, delivered nothing (${buildHealthCheckCommandFailureMessage(healthCheck)})`
       );
-      return buildPreflightFailureSyncResult(certificateMap, preflightCheck);
+      return buildHealthCheckFailureSyncResult(certificateMap, healthCheck);
     }
 
     await withSshConnection(sshConfig, { gatewayV2Service, gatewayPoolService }, async (client) => {
@@ -463,7 +463,7 @@ export const linuxServerPkiSyncFactory = ({
       removed: removed > 0 ? removed : undefined,
       failedRemovals: failedRemovals.length > 0 ? failedRemovals.length : undefined,
       skipped: skippedCertificates.length,
-      preflightCheck,
+      healthCheck,
       postSyncCommand,
       details: {
         failedUploads: failedUploads.length > 0 ? failedUploads : undefined,
@@ -520,12 +520,12 @@ export const linuxServerPkiSyncFactory = ({
     }
   };
 
-  const runPreflightCheck = (pkiSync: TPkiSyncWithCredentials, certificateMap: TCertificateMap) =>
-    runLinuxServerPreflightCommand({
+  const runHealthCheck = (pkiSync: THealthCheckTarget, certificateMap: TCertificateMap) =>
+    runLinuxServerHealthCheckCommand({
       pkiSync,
       certificateMap,
       gatewayServices: { gatewayV2Service, gatewayPoolService }
     });
 
-  return { syncCertificates, removeCertificates, runPreflightCheck };
+  return { syncCertificates, removeCertificates, runHealthCheck };
 };

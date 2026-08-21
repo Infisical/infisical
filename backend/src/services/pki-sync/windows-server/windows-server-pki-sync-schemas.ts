@@ -76,7 +76,7 @@ export const WindowsServerPkiSyncOptionsSchema = z.object({
     )
     .max(20)
     .optional(),
-  preflightCommand: HostCommandSchema,
+  healthCheckCommand: HostCommandSchema,
   postSyncCommand: HostCommandSchema,
   certificateNameSchema: z
     .string()
@@ -149,4 +149,13 @@ export const WindowsServerPkiSyncListItemSchema = z.object({
   destination: z.literal(PkiSync.WindowsServer),
   canImportCertificates: z.literal(false),
   canRemoveCertificates: z.literal(true)
+});
+
+export const WindowsServerPkiSyncHealthCheckTestSchema = z.object({
+  connectionId: z.string().uuid(),
+  applicationId: z.string().uuid().optional(),
+  syncId: z.string().uuid().optional(),
+  name: z.string().trim().max(256).optional(),
+  destinationConfig: WindowsServerPkiSyncConfigSchema,
+  syncOptions: WindowsServerPkiSyncOptionsSchema.partial()
 });

@@ -11,6 +11,14 @@ import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-s
 
 import { exportCertificateForSync, PemCertificateExtension, PkiSyncExportFormat } from "../pki-sync-export-fns";
 import {
+  buildHealthCheckCommandFailureMessage,
+  buildHealthCheckCommandPlan,
+  buildHealthCheckFailureSyncResult,
+  didHealthCheckFail,
+  runHealthCheckCommand,
+  THealthCheckCommandResult
+} from "../pki-sync-health-check-command-fns";
+import {
   HOST_COMMAND_TIMEOUT_MS,
   HostCommandKind,
   renderHostCommandContext,
@@ -19,15 +27,7 @@ import {
   toPowerShellLiteral
 } from "../pki-sync-host-command-fns";
 import { buildPostSyncCommandPlan, runPostSyncCommand, TPostSyncCommandPlan } from "../pki-sync-post-sync-command-fns";
-import {
-  buildPreflightCommandFailureMessage,
-  buildPreflightCommandPlan,
-  buildPreflightFailureSyncResult,
-  didPreflightCheckFail,
-  runPreflightCommand,
-  TPreflightCommandResult
-} from "../pki-sync-preflight-command-fns";
-import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
+import { TCertificateMap, THealthCheckTarget, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
 import { TWindowsServerPkiSyncConfig } from "./windows-server-pki-sync-types";
 
 type TWindowsServerPkiSyncFactoryDeps = {
@@ -47,7 +47,7 @@ type TWindowsServerSyncOptions = {
   includePrivateKey?: boolean;
   canRemoveCertificates?: boolean;
   fileAccessRules?: Array<{ identity: string; access: string }>;
-  preflightCommand?: string;
+  healthCheckCommand?: string;
   postSyncCommand?: string;
 };
 
@@ -61,7 +61,7 @@ const resolveWindowsExportOptions = (options: TWindowsServerSyncOptions) => ({
 const TRAILING_BACKSLASH = new RE2("\\\\+$");
 const joinWindowsPath = (dir: string, name: string): string => `${dir.replace(TRAILING_BACKSLASH, "")}\\${name}`;
 
-const buildWinRMTarget = (pkiSync: TPkiSyncWithCredentials) => {
+const buildWinRMTarget = (pkiSync: THealthCheckTarget) => {
   const { connection } = pkiSync;
   const credentials = connection.credentials as TWinRMConnection["credentials"];
 
@@ -157,23 +157,23 @@ const executeWindowsServerHostCommand = async (
   return { stdout: result.stdout, stderr: result.stderr, exitCode: result.exitCode };
 };
 
-const runWindowsServerPreflightCommand = ({
+const runWindowsServerHealthCheckCommand = ({
   pkiSync,
   certificateMap,
   target,
   gatewayDeps
 }: {
-  pkiSync: TPkiSyncWithCredentials;
+  pkiSync: THealthCheckTarget;
   certificateMap: TCertificateMap;
   target: ReturnType<typeof buildWinRMTarget>;
   gatewayDeps: Parameters<typeof executeWinRMGatewayOperation>[1];
-}): Promise<TPreflightCommandResult> | undefined => {
+}): Promise<THealthCheckCommandResult> | undefined => {
   const options = (pkiSync.syncOptions ?? {}) as TWindowsServerSyncOptions;
   const config = pkiSync.destinationConfig as TWindowsServerPkiSyncConfig;
   const exportOptions = resolveWindowsExportOptions(options);
 
-  const plan = buildPreflightCommandPlan({
-    command: options.preflightCommand,
+  const plan = buildHealthCheckCommandPlan({
+    command: options.healthCheckCommand,
     destinationDirectory: config.destinationPath,
     certificateMap,
     exportOptions,
@@ -183,10 +183,10 @@ const runWindowsServerPreflightCommand = ({
   });
   if (!plan) return undefined;
 
-  return runPreflightCommand({
+  return runHealthCheckCommand({
     syncId: pkiSync.id,
     secretsToRedact: [plan.context.pkcs12Password],
-    execute: () => executeWindowsServerHostCommand(HostCommandKind.Preflight, plan, target, gatewayDeps)
+    execute: () => executeWindowsServerHostCommand(HostCommandKind.HealthCheck, plan, target, gatewayDeps)
   });
 };
 
@@ -236,12 +236,12 @@ export const windowsServerPkiSyncFactory = ({
     let uploaded = 0;
     let removed = 0;
 
-    const preflightCheck = await runWindowsServerPreflightCommand({ pkiSync, certificateMap, target, gatewayDeps });
-    if (preflightCheck && didPreflightCheckFail(preflightCheck)) {
+    const healthCheck = await runWindowsServerHealthCheckCommand({ pkiSync, certificateMap, target, gatewayDeps });
+    if (healthCheck && didHealthCheckFail(healthCheck)) {
       logger.info(
-        `Windows Server PKI sync [syncId=${pkiSync.id}]: preflight check failed, delivered nothing (${buildPreflightCommandFailureMessage(preflightCheck)})`
+        `Windows Server PKI sync [syncId=${pkiSync.id}]: health check failed, delivered nothing (${buildHealthCheckCommandFailureMessage(healthCheck)})`
       );
-      return buildPreflightFailureSyncResult(certificateMap, preflightCheck);
+      return buildHealthCheckFailureSyncResult(certificateMap, healthCheck);
     }
 
     // Deliver each certificate over its own gateway operation so one certificate's failure is
@@ -354,7 +354,7 @@ export const windowsServerPkiSyncFactory = ({
       removed: removed > 0 ? removed : undefined,
       failedRemovals: failedRemovals.length > 0 ? failedRemovals.length : undefined,
       skipped: skippedCertificates.length,
-      preflightCheck,
+      healthCheck,
       postSyncCommand,
       details: {
         failedUploads: failedUploads.length > 0 ? failedUploads : undefined,
@@ -407,13 +407,13 @@ export const windowsServerPkiSyncFactory = ({
     }
   };
 
-  const runPreflightCheck = (pkiSync: TPkiSyncWithCredentials, certificateMap: TCertificateMap) =>
-    runWindowsServerPreflightCommand({
+  const runHealthCheck = (pkiSync: THealthCheckTarget, certificateMap: TCertificateMap) =>
+    runWindowsServerHealthCheckCommand({
       pkiSync,
       certificateMap,
       target: buildWinRMTarget(pkiSync),
       gatewayDeps
     });
 
-  return { syncCertificates, removeCertificates, runPreflightCheck };
+  return { syncCertificates, removeCertificates, runHealthCheck };
 };

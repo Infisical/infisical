@@ -16,7 +16,7 @@ export const CloudflareCustomCertificatePkiSyncConfigSchema = z.object({
 // API-facing schema - only exposes user-configurable options
 export const CloudflareCustomCertificatePkiSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
-  preflightCommand: HostCommandSchema,
+  healthCheckCommand: HostCommandSchema,
   postSyncCommand: HostCommandSchema,
   certificateNameSchema: z
     .string()

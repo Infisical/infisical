@@ -19,6 +19,7 @@ type Props = {
   noPermissionDescription: string;
   placeholder?: string;
   canEditCommand?: boolean;
+  action?: ReactNode;
 };
 
 export const HostCommandField = ({
@@ -30,7 +31,8 @@ export const HostCommandField = ({
   description,
   noPermissionDescription,
   placeholder,
-  canEditCommand = true
+  canEditCommand = true,
+  action
 }: Props) => {
   const { control, watch } = useFormContext<TPkiSyncForm>();
   const isPkcs12 = watch("syncOptions.exportFormat") === PkiSyncExportFormat.Pkcs12;
@@ -66,6 +68,7 @@ export const HostCommandField = ({
           <FieldDescription>
             {canEditCommand ? description : noPermissionDescription}
           </FieldDescription>
+          {action}
           <FieldError>{error?.message}</FieldError>
         </Field>
       )}

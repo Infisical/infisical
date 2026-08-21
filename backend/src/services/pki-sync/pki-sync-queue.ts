@@ -29,20 +29,31 @@ import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
 import { buildCertificateMap } from "./pki-sync-certificate-map-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
-import { PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT, PkiSyncStatus } from "./pki-sync-enums";
+import {
+  PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT,
+  PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S,
+  PKI_SYNC_CONNECTION_LOCK_RETRY,
+  PkiSyncStatus
+} from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
-import { enterprisePkiSyncCheck, parsePkiSyncErrorMessage, PkiSyncFns, truncateSyncMessage } from "./pki-sync-fns";
+import {
+  enterprisePkiSyncCheck,
+  getPkiSyncProviderCapabilities,
+  parsePkiSyncErrorMessage,
+  PkiSyncFns,
+  truncateSyncMessage
+} from "./pki-sync-fns";
+import {
+  buildHealthCheckCommandFailureMessage,
+  didHealthCheckFail,
+  getHealthCheckCommand,
+  THealthCheckCommandResult
+} from "./pki-sync-health-check-command-fns";
 import {
   buildPostSyncCommandFailureMessage,
   getPostSyncCommand,
   TPostSyncCommandResult
 } from "./pki-sync-post-sync-command-fns";
-import {
-  buildPreflightCommandFailureMessage,
-  didPreflightCheckFail,
-  getPreflightCommand,
-  TPreflightCommandResult
-} from "./pki-sync-preflight-command-fns";
 import {
   TCertificateMap,
   TPkiSyncImportCertificatesDTO,
@@ -63,7 +74,7 @@ type TPkiSyncQueueFactoryDep = {
     "createCipherPairWithDataKey" | "decryptWithKmsKey" | "generateKmsKey" | "encryptWithKmsKey"
   >;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "findById" | "find" | "updateById" | "deleteById" | "update">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   projectDAL: TProjectDALFactory;
@@ -84,6 +95,8 @@ type PkiSyncActionJob = Job<
 >;
 
 const JITTER_MS = 10 * 1000;
+const HOST_SERIALISATION_LOCK_TTL_MS = 5 * 60 * 1000;
+
 const REQUEUE_MS = 30 * 1000;
 const REQUEUE_LIMIT = 30;
 
@@ -128,44 +141,18 @@ export const pkiSyncQueueFactory = ({
     unit: "1"
   });
 
-  const $isConnectionConcurrencyLimitReached = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
+  const $tryAdmitConnectionConcurrency = async (connectionId: string) => {
+    const count = await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
+      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
+      PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT,
+      PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S
+    );
 
-    if (!concurrencyCount) return false;
-
-    const count = Number.parseInt(concurrencyCount, 10);
-
-    if (Number.isNaN(count)) return false;
-
-    return count >= PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT;
+    return count !== -1;
   };
 
-  const $incrementConnectionConcurrencyCount = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
-
-    const incrementedCount = Number.isNaN(currentCount) ? 1 : currentCount + 1;
-
-    await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
-      incrementedCount
-    );
-  };
-
-  const $decrementConnectionConcurrencyCount = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
-
-    const decrementedCount = Math.max(0, Number.isNaN(currentCount) ? 0 : currentCount - 1);
-
-    await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
-      decrementedCount
-    );
+  const $releaseConnectionConcurrency = async (connectionId: string) => {
+    await keyStore.decrementByOrDelete(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
   };
 
   const $certificatesForSync = (pkiSync: TPkiSyncRaw) =>
@@ -245,11 +232,11 @@ export const pkiSyncQueueFactory = ({
     let certSyncFailureCount = 0;
     let syncMessage: string | null = null;
     let postSyncCommandResult: TPostSyncCommandResult | undefined;
-    let preflightCheckResult: TPreflightCommandResult | undefined;
+    let healthCheckResult: THealthCheckCommandResult | undefined;
     let isFinalAttempt = job.attemptsStarted === job.opts.attempts;
 
     const configuredPostSyncCommand = getPostSyncCommand(pkiSync.syncOptions);
-    const configuredPreflightCommand = getPreflightCommand(pkiSync.syncOptions);
+    const configuredHealthCheckCommand = getHealthCheckCommand(pkiSync.syncOptions);
 
     try {
       const pkiSyncWithCredentials = await hydratePkiSyncCredentials({
@@ -403,11 +390,11 @@ export const pkiSyncQueueFactory = ({
       }
 
       postSyncCommandResult = syncResult.postSyncCommand;
-      preflightCheckResult = syncResult.preflightCheck;
+      healthCheckResult = syncResult.healthCheck;
 
       const reasons =
-        preflightCheckResult && didPreflightCheckFail(preflightCheckResult)
-          ? [buildPreflightCommandFailureMessage(preflightCheckResult)]
+        healthCheckResult && didHealthCheckFail(healthCheckResult)
+          ? [buildHealthCheckCommandFailureMessage(healthCheckResult)]
           : [
               certSyncFailureCount > 0
                 ? `${certSyncFailureCount} certificate(s) failed to sync to the destination`
@@ -451,10 +438,7 @@ export const pkiSyncQueueFactory = ({
       const ranAt = new Date();
       const postSyncCommandFailed = postSyncCommandResult?.status === PkiSyncStatus.Failed;
       const fullySynced =
-        isSynced &&
-        certSyncFailureCount === 0 &&
-        !postSyncCommandFailed &&
-        !didPreflightCheckFail(preflightCheckResult);
+        isSynced && certSyncFailureCount === 0 && !postSyncCommandFailed && !didHealthCheckFail(healthCheckResult);
       const syncStatus = fullySynced ? PkiSyncStatus.Succeeded : PkiSyncStatus.Failed;
 
       await auditLogService.createAuditLog({
@@ -472,8 +456,8 @@ export const pkiSyncQueueFactory = ({
             syncMessage,
             jobId: job.id!,
             jobRanAt: ranAt,
-            preflightCheck: configuredPreflightCommand
-              ? { command: configuredPreflightCommand, result: preflightCheckResult }
+            healthCheck: configuredHealthCheckCommand
+              ? { command: configuredHealthCheckCommand, result: healthCheckResult }
               : undefined,
             postSyncCommand: configuredPostSyncCommand
               ? { command: configuredPostSyncCommand, result: postSyncCommandResult }
@@ -487,7 +471,18 @@ export const pkiSyncQueueFactory = ({
           syncStatus,
           lastSyncJobId: job.id,
           lastSyncMessage: syncMessage,
-          lastSyncedAt: fullySynced ? ranAt : undefined
+          lastSyncedAt: fullySynced ? ranAt : undefined,
+          ...(healthCheckResult
+            ? {
+                lastHealthCheckRanAt: ranAt,
+                lastHealthCheckStatus: didHealthCheckFail(healthCheckResult)
+                  ? PkiSyncStatus.Failed
+                  : PkiSyncStatus.Succeeded,
+                lastHealthCheckMessage: didHealthCheckFail(healthCheckResult)
+                  ? truncateSyncMessage(buildHealthCheckCommandFailureMessage(healthCheckResult))
+                  : null
+              }
+            : {})
         });
 
         await telemetryService.sendPostHogEvents({
@@ -755,14 +750,33 @@ export const pkiSyncQueueFactory = ({
 
     const { connectionId } = pkiSync;
 
-    if (job.name === QueueJobs.PkiSyncSyncCertificates) {
-      const isConcurrentLimitReached = await $isConnectionConcurrencyLimitReached(connectionId);
+    const needsConnectionSlot = job.name === QueueJobs.PkiSyncSyncCertificates;
 
-      if (isConcurrentLimitReached) {
+    const needsHostSerialisation =
+      needsConnectionSlot && getPkiSyncProviderCapabilities(pkiSync.destination).canRunHealthCheckCommand;
+
+    let connectionLock: Awaited<ReturnType<typeof keyStore.acquireLock>> | null = null;
+    if (needsHostSerialisation) {
+      connectionLock = await keyStore
+        .acquireLock(
+          [KeyStorePrefixes.AppConnectionCommandLock(connectionId)],
+          HOST_SERIALISATION_LOCK_TTL_MS,
+          PKI_SYNC_CONNECTION_LOCK_RETRY
+        )
+        .catch(() => null);
+
+      if (!connectionLock) {
         await $handleAcquireLockFailure(job as PkiSyncActionJob);
 
         return;
       }
+    }
+
+    if (needsConnectionSlot && !(await $tryAdmitConnectionConcurrency(connectionId))) {
+      await connectionLock?.release();
+      await $handleAcquireLockFailure(job as PkiSyncActionJob);
+
+      return;
     }
 
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
@@ -774,6 +788,8 @@ export const pkiSyncQueueFactory = ({
         5 * 60 * 1000
       );
     } catch (e) {
+      if (needsConnectionSlot) await $releaseConnectionConcurrency(connectionId);
+      await connectionLock?.release();
       await $handleAcquireLockFailure(job as PkiSyncActionJob);
 
       return;
@@ -782,7 +798,6 @@ export const pkiSyncQueueFactory = ({
     try {
       switch (job.name) {
         case QueueJobs.PkiSyncSyncCertificates: {
-          await $incrementConnectionConcurrencyCount(connectionId);
           await $handleSyncCertificatesJob(job as TPkiSyncSyncCertificatesDTO, pkiSync);
           break;
         }
@@ -796,11 +811,9 @@ export const pkiSyncQueueFactory = ({
           throw new Error(`Unhandled PKI Sync Job ${String(job.name)}`);
       }
     } finally {
-      if (job.name === QueueJobs.PkiSyncSyncCertificates) {
-        await $decrementConnectionConcurrencyCount(connectionId);
-      }
+      if (needsConnectionSlot) await $releaseConnectionConcurrency(connectionId);
 
-      await lock.release();
+      await Promise.allSettled([lock.release(), connectionLock?.release()]);
     }
   });
 

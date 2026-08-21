@@ -158,7 +158,7 @@ export const POST_SYNC_COMMAND_VARIABLE_DESCRIPTIONS: Record<HostCommandVariable
   [HostCommandVariable.Pkcs12Password]: "The PKCS#12 export password"
 };
 
-export const PREFLIGHT_COMMAND_VARIABLE_DESCRIPTIONS: Record<HostCommandVariable, string> = {
+export const HEALTH_CHECK_COMMAND_VARIABLE_DESCRIPTIONS: Record<HostCommandVariable, string> = {
   [HostCommandVariable.CertificatePath]: "Full path of the certificate file this run will write",
   [HostCommandVariable.CertificateDirectory]: "The directory the sync is about to write to",
   [HostCommandVariable.CertificateFiles]: "Every path this run will write, one per line",

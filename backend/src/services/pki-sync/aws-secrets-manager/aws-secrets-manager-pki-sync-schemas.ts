@@ -27,7 +27,7 @@ const AwsSecretsManagerPkiSyncOptionsSchema = z.object({
   includeRootCa: z.boolean().default(false),
   preserveSecretOnRenewal: z.boolean().default(true),
   updateExistingCertificates: z.boolean().default(true),
-  preflightCommand: HostCommandSchema,
+  healthCheckCommand: HostCommandSchema,
   postSyncCommand: HostCommandSchema,
   certificateNameSchema: z
     .string()

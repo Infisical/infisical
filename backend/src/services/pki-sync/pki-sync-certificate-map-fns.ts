@@ -227,7 +227,6 @@ export const buildCertificateMap = async (
           { error, subscriberId, certificateId: certificate.id },
           "Failed to decrypt certificate for PKI sync"
         );
-        // Continue with other certificates
       }
     }
   } catch (error) {

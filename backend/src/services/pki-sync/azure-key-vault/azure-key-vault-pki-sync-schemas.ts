@@ -21,7 +21,7 @@ export const AzureKeyVaultPkiSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
   includeRootCa: z.boolean().default(false),
   enableVersioning: z.boolean().default(true),
-  preflightCommand: HostCommandSchema,
+  healthCheckCommand: HostCommandSchema,
   postSyncCommand: HostCommandSchema,
   certificateNameSchema: z
     .string()

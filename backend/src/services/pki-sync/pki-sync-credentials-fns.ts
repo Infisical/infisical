@@ -31,7 +31,7 @@ export const encryptPkiSyncCredentials = async ({
   return cipherTextBlob;
 };
 
-export const decryptPkiSyncCredentials = async ({
+const decryptPkiSyncCredentials = async ({
   orgId,
   projectId,
   encryptedCredentials,

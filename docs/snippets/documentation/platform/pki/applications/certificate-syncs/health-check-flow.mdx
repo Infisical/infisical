@@ -5,7 +5,7 @@ sequenceDiagram
     participant I as Infisical
     participant G as Gateway
     participant S as Target server
-    I->>G: Run the preflight check
+    I->>G: Run the health check
     G->>S: Execute as the connection's account
     S-->>G: Output and outcome
     G-->>I: Ready, or the reason it is not

@@ -24,7 +24,7 @@ export const KEMP_LOADMASTER_PKI_SYNC_LIST_OPTION = {
   canImportCertificates: false,
   canRemoveCertificates: true,
   canRunPostSyncCommand: false,
-  canRunPreflightCommand: false,
+  canRunHealthCheckCommand: false,
   defaultCertificateNameSchema: "Infisical-{{certificateId}}",
   forbiddenCharacters: KEMP_LOADMASTER_NAMING.FORBIDDEN_CHARACTERS,
   allowedCharacterPattern: KEMP_LOADMASTER_NAMING.ALLOWED_CHARACTER_PATTERN,

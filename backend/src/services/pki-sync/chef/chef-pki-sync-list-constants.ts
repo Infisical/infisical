@@ -8,5 +8,5 @@ export const CHEF_PKI_SYNC_LIST_OPTION = {
   canImportCertificates: false,
   canRemoveCertificates: true,
   canRunPostSyncCommand: false,
-  canRunPreflightCommand: false
+  canRunHealthCheckCommand: false
 } as const;

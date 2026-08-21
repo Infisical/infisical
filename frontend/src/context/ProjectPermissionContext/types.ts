@@ -78,7 +78,7 @@ export enum ProjectPermissionPkiSyncActions {
   ImportCertificates = "import-certificates",
   RemoveCertificates = "remove-certificates",
   SetPostSyncCommand = "set-post-sync-command",
-  SetPreflightCommand = "set-preflight-command"
+  SetHealthCheckCommand = "set-health-check-command"
 }
 
 export enum ProjectPermissionPkiDiscoveryActions {

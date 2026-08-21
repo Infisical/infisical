@@ -19,8 +19,8 @@ import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import {
   PkiSync,
   TPkiSync,
+  useCanSetHealthCheckCommand,
   useCanSetPostSyncCommand,
-  useCanSetPreflightCommand,
   usePkiSyncOption,
   useUpdatePkiSync
 } from "@app/hooks/api/pkiSyncs";
@@ -29,9 +29,9 @@ import { TUpdatePkiSyncForm, UpdatePkiSyncFormSchema } from "./schemas/pki-sync-
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
 import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
+import { PkiSyncHealthCheckCommandFields } from "./PkiSyncHealthCheckCommandFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
 import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
-import { PkiSyncPreflightCommandFields } from "./PkiSyncPreflightCommandFields";
 
 type Props = {
   onComplete: (pkiSync: TPkiSync) => void;
@@ -96,7 +96,7 @@ const getFormSteps = (destination: PkiSync, canRunHostCommands: boolean): FormSt
       subtitle: "Optionally check the host before the sync, and act on it afterward.",
       rightLabel: "COMMANDS",
       rightDescription:
-        "The preflight check runs first and stops the sync if the host is not ready, so a bad host never receives a certificate. The post-sync command runs afterward, once the run's files are in place, so a service can reload and pick up the new certificate. It only runs when the sync delivers a file. Either command failing marks the sync failed."
+        "The health check runs first and stops the sync if the host is not ready, so a bad host never receives a certificate. The post-sync command runs afterward, once the run's files are in place, so a service can reload and pick up the new certificate. It only runs when the sync delivers a file. Either command failing marks the sync failed."
     });
   }
 
@@ -119,10 +119,10 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
   const { name: destinationName } = PKI_SYNC_MAP[pkiSync.destination];
   const { syncOption } = usePkiSyncOption(pkiSync.destination);
   const canSetPostSyncCommand = useCanSetPostSyncCommand(pkiSync.applicationId);
-  const canSetPreflightCommand = useCanSetPreflightCommand(pkiSync.applicationId);
+  const canSetHealthCheckCommand = useCanSetHealthCheckCommand(pkiSync.applicationId);
   const steps = getFormSteps(
     pkiSync.destination,
-    Boolean(syncOption?.canRunPreflightCommand || syncOption?.canRunPostSyncCommand)
+    Boolean(syncOption?.canRunHealthCheckCommand || syncOption?.canRunPostSyncCommand)
   );
 
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
@@ -214,9 +214,11 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
       case "hostCommands":
         return (
           <div className="flex flex-col gap-8">
-            <PkiSyncPreflightCommandFields
+            <PkiSyncHealthCheckCommandFields
               destination={pkiSync.destination}
-              canEditCommand={canSetPreflightCommand}
+              applicationId={pkiSync.applicationId}
+              syncId={pkiSync.id}
+              canEditCommand={canSetHealthCheckCommand}
             />
             <PkiSyncPostSyncCommandFields
               destination={pkiSync.destination}

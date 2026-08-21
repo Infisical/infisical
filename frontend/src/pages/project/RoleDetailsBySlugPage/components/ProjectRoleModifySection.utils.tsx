@@ -159,7 +159,7 @@ const PkiSyncPolicyActionSchema = z.object({
   [ProjectPermissionPkiSyncActions.ImportCertificates]: z.boolean().optional(),
   [ProjectPermissionPkiSyncActions.RemoveCertificates]: z.boolean().optional(),
   [ProjectPermissionPkiSyncActions.SetPostSyncCommand]: z.boolean().optional(),
-  [ProjectPermissionPkiSyncActions.SetPreflightCommand]: z.boolean().optional()
+  [ProjectPermissionPkiSyncActions.SetHealthCheckCommand]: z.boolean().optional()
 });
 
 const CommitPolicyActionSchema = z.object({
@@ -1101,8 +1101,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canSetPostSyncCommand = action.includes(
             ProjectPermissionPkiSyncActions.SetPostSyncCommand
           );
-          const canSetPreflightCommand = action.includes(
-            ProjectPermissionPkiSyncActions.SetPreflightCommand
+          const canSetHealthCheckCommand = action.includes(
+            ProjectPermissionPkiSyncActions.SetHealthCheckCommand
           );
 
           if (!formVal[subject]) formVal[subject] = [{ conditions: [], inverted: false }];
@@ -1117,7 +1117,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             [ProjectPermissionPkiSyncActions.ImportCertificates]: canImportCertificates,
             [ProjectPermissionPkiSyncActions.RemoveCertificates]: canRemoveCertificates,
             [ProjectPermissionPkiSyncActions.SetPostSyncCommand]: canSetPostSyncCommand,
-            [ProjectPermissionPkiSyncActions.SetPreflightCommand]: canSetPreflightCommand,
+            [ProjectPermissionPkiSyncActions.SetHealthCheckCommand]: canSetHealthCheckCommand,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -2896,8 +2896,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         description: "Remove synced certificates from the destination"
       },
       {
-        label: "Set Preflight Check",
-        value: ProjectPermissionPkiSyncActions.SetPreflightCommand,
+        label: "Set Health Check",
+        value: ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
         description: "Set the command a sync runs on the destination host before delivering"
       },
       {

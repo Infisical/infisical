@@ -61,6 +61,24 @@ export type TPkiSync = {
   } | null;
 };
 
+export type THealthCheckTarget = {
+  id: string;
+  destination: PkiSync;
+  destinationConfig: Record<string, unknown>;
+  syncOptions: Record<string, unknown>;
+  connection: {
+    id: string;
+    name: string;
+    app: string;
+    credentials: Record<string, unknown>;
+    method?: string;
+    orgId: string;
+    gatewayId?: string;
+    gatewayPoolId?: string | null;
+  };
+  syncCredentials?: { exportPassword?: string };
+};
+
 export type TPkiSyncWithCredentials = TPkiSync & {
   connection: {
     id: string;
@@ -99,7 +117,7 @@ export type TPkiSyncSyncResult = {
   removed?: number;
   failedRemovals?: number;
   skipped: number;
-  preflightCheck?: THostCommandResult;
+  healthCheck?: THostCommandResult;
   postSyncCommand?: THostCommandResult;
   details?: {
     failedUploads?: Array<{ name: string; error: string }>;
@@ -248,7 +266,7 @@ export type TQueuePkiSyncImportCertificatesByIdDTO = {
   auditLogInfo?: AuditLogInfo;
 };
 
-export type TQueuePkiSyncRunPreflightCheckByIdDTO = {
+export type TQueuePkiSyncRunHealthCheckByIdDTO = {
   syncId: string;
 };
 

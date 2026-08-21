@@ -63,7 +63,7 @@ export const AWS_SECRETS_MANAGER_PKI_SYNC_LIST_OPTION = {
   canImportCertificates: false,
   canRemoveCertificates: true,
   canRunPostSyncCommand: false,
-  canRunPreflightCommand: false,
+  canRunHealthCheckCommand: false,
   defaultCertificateNameSchema: "infisical-{{certificateId}}",
   forbiddenCharacters: AWS_SECRETS_MANAGER_PKI_SYNC_CERTIFICATE_NAMING.FORBIDDEN_CHARACTERS,
   allowedCharacterPattern: AWS_SECRETS_MANAGER_PKI_SYNC_CERTIFICATE_NAMING.ALLOWED_CHARACTER_PATTERN,

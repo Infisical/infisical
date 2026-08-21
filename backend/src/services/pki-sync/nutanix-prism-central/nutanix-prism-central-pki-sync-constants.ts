@@ -8,6 +8,6 @@ export const NUTANIX_PRISM_CENTRAL_PKI_SYNC_LIST_OPTION = {
   canImportCertificates: false,
   canRemoveCertificates: false,
   canRunPostSyncCommand: false,
-  canRunPreflightCommand: false,
+  canRunHealthCheckCommand: false,
   maxCertificates: 1
 } as const;

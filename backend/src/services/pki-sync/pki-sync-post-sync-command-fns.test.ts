@@ -448,3 +448,16 @@ describe("applyPostSyncCommandUpdate", () => {
     expect(input.postSyncCommand).toBeNull();
   });
 });
+
+describe("buildPostSyncCommandFailureMessage timeout wording", () => {
+  test("names the 30s limit rather than blaming connectivity", () => {
+    expect(
+      buildPostSyncCommandFailureMessage({
+        status: PkiSyncStatus.Failed,
+        durationMs: 35_002,
+        error: "command timed out after 30s",
+        timedOut: true
+      })
+    ).toBe("Post-sync command did not finish within its 30s limit");
+  });
+});

@@ -23,7 +23,7 @@ export const WINDOWS_SERVER_PKI_SYNC_LIST_OPTION = {
   canImportCertificates: false,
   canRemoveCertificates: true,
   canRunPostSyncCommand: true,
-  canRunPreflightCommand: true,
+  canRunHealthCheckCommand: true,
   defaultCertificateNameSchema: "{{commonName}}",
   forbiddenCharacters: WINDOWS_SERVER_NAMING.FORBIDDEN_CHARACTERS,
   allowedCharacterPattern: WINDOWS_SERVER_NAMING.ALLOWED_CHARACTER_PATTERN,

@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, ResourceType, TCertificateSyncs } from "@app/db/schemas";
+import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionPkiSyncActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -13,6 +14,7 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
@@ -32,6 +34,16 @@ import {
   listPkiSyncOptions
 } from "./pki-sync-fns";
 import {
+  applyHealthCheckCommandUpdate,
+  assertHealthCheckCommandIsTestable,
+  getHealthCheckCommand,
+  HEALTH_CHECK_COMMAND_OPTION_KEY,
+  HEALTH_CHECK_OWNED_MESSAGE_SUBJECTS,
+  normalizeNewHealthCheckCommand,
+  toHealthCheckApiResult
+} from "./pki-sync-health-check-command-fns";
+import { TPkiSyncHealthCheckQueueFactory } from "./pki-sync-health-check-queue";
+import {
   findSingleCertificateHostCommandVariables,
   formatHostCommandVariables,
   HostCommandKind
@@ -43,12 +55,6 @@ import {
   normalizeNewPostSyncCommand,
   POST_SYNC_COMMAND_OPTION_KEY
 } from "./pki-sync-post-sync-command-fns";
-import {
-  applyPreflightCommandUpdate,
-  getPreflightCommand,
-  normalizeNewPreflightCommand,
-  PREFLIGHT_COMMAND_OPTION_KEY
-} from "./pki-sync-preflight-command-fns";
 import { TPkiSyncQueueFactory } from "./pki-sync-queue";
 import {
   TAddCertificatesToPkiSyncDTO,
@@ -81,7 +87,13 @@ const getDestinationAppType = (destination: PkiSync): AppConnection => {
 type TPkiSyncServiceFactoryDep = {
   pkiSyncDAL: Pick<
     TPkiSyncDALFactory,
-    "findById" | "findByProjectIdWithSubscribers" | "findByNameAndProjectId" | "create" | "updateById" | "deleteById"
+    | "clearReportedHealthCheckFailure"
+    | "findById"
+    | "findByProjectIdWithSubscribers"
+    | "findByNameAndProjectId"
+    | "create"
+    | "updateById"
+    | "deleteById"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds">;
   certificateSyncDAL: Pick<
@@ -102,6 +114,8 @@ type TPkiSyncServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  pkiSyncHealthCheckQueue: Pick<TPkiSyncHealthCheckQueueFactory, "runHealthCheckNow" | "testHealthCheckCommand">;
   pkiSyncQueue: Pick<
     TPkiSyncQueueFactory,
     "queuePkiSyncSyncCertificatesById" | "queuePkiSyncImportCertificatesById" | "queuePkiSyncRemoveCertificatesById"
@@ -119,7 +133,9 @@ export const pkiSyncServiceFactory = ({
   permissionService,
   licenseService,
   kmsService,
-  pkiSyncQueue
+  pkiSyncQueue,
+  pkiSyncHealthCheckQueue,
+  auditLogService
 }: TPkiSyncServiceFactoryDep) => {
   const $resourceFallback = async (
     action: ResourcePermissionPkiSyncActions,
@@ -150,9 +166,9 @@ export const pkiSyncServiceFactory = ({
 
     const configuredCommands = [
       {
-        kind: HostCommandKind.Preflight,
-        command: syncOptions?.[PREFLIGHT_COMMAND_OPTION_KEY],
-        isSupportedByDestination: capabilities.canRunPreflightCommand
+        kind: HostCommandKind.HealthCheck,
+        command: syncOptions?.[HEALTH_CHECK_COMMAND_OPTION_KEY],
+        isSupportedByDestination: capabilities.canRunHealthCheckCommand
       },
       {
         kind: HostCommandKind.PostSync,
@@ -227,9 +243,9 @@ export const pkiSyncServiceFactory = ({
   };
 
   const HOST_COMMAND_ACTIONS = {
-    [PREFLIGHT_COMMAND_OPTION_KEY]: {
-      project: ProjectPermissionPkiSyncActions.SetPreflightCommand,
-      resource: ResourcePermissionPkiSyncActions.SetPreflightCommand
+    [HEALTH_CHECK_COMMAND_OPTION_KEY]: {
+      project: ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
+      resource: ResourcePermissionPkiSyncActions.SetHealthCheckCommand
     },
     [POST_SYNC_COMMAND_OPTION_KEY]: {
       project: ProjectPermissionPkiSyncActions.SetPostSyncCommand,
@@ -351,7 +367,7 @@ export const pkiSyncServiceFactory = ({
     }
 
     [
-      { kind: HostCommandKind.Preflight, command: getPreflightCommand(syncOptions) },
+      { kind: HostCommandKind.HealthCheck, command: getHealthCheckCommand(syncOptions) },
       { kind: HostCommandKind.PostSync, command: getPostSyncCommand(syncOptions) }
     ].forEach(({ kind, command }) => {
       const singleCertificateVariables = findSingleCertificateHostCommandVariables(command);
@@ -417,7 +433,7 @@ export const pkiSyncServiceFactory = ({
     const connection = await appConnectionService.connectAppConnectionById(destinationApp, connectionId, actor);
 
     const providerCapabilities = getPkiSyncProviderCapabilities(destination);
-    const resolvedSyncOptions = normalizeNewPreflightCommand(
+    const resolvedSyncOptions = normalizeNewHealthCheckCommand(
       normalizeNewPostSyncCommand({
         ...providerCapabilities,
         ...syncOptions
@@ -579,9 +595,9 @@ export const pkiSyncServiceFactory = ({
         });
       }
 
-      resolvedSyncOptions = applyPreflightCommandUpdate(
+      resolvedSyncOptions = applyHealthCheckCommandUpdate(
         applyPostSyncCommandUpdate({ ...providerCapabilities, ...syncOptions }, storedSyncOptions?.postSyncCommand),
-        storedSyncOptions?.preflightCommand
+        storedSyncOptions?.healthCheckCommand
       );
     }
 
@@ -635,6 +651,11 @@ export const pkiSyncServiceFactory = ({
       ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId: pkiSync.projectId, credentials, kmsService })
       : undefined;
 
+    const isHealthCheckBeingCleared =
+      resolvedSyncOptions !== undefined &&
+      !getHealthCheckCommand(resolvedSyncOptions) &&
+      Boolean(getHealthCheckCommand(storedSyncOptions));
+
     const updatedPkiSync = await pkiSyncDAL.updateById(id, {
       name,
       description,
@@ -643,8 +664,15 @@ export const pkiSyncServiceFactory = ({
       syncOptions: resolvedSyncOptions,
       subscriberId,
       connectionId,
-      ...(encryptedCredentials ? { encryptedCredentials } : {})
+      ...(encryptedCredentials ? { encryptedCredentials } : {}),
+      ...(isHealthCheckBeingCleared
+        ? { lastHealthCheckRanAt: null, lastHealthCheckStatus: null, lastHealthCheckMessage: null }
+        : {})
     });
+
+    if (isHealthCheckBeingCleared) {
+      await pkiSyncDAL.clearReportedHealthCheckFailure(id, HEALTH_CHECK_OWNED_MESSAGE_SUBJECTS);
+    }
 
     return updatedPkiSync as TPkiSync;
   };
@@ -844,6 +872,118 @@ export const pkiSyncServiceFactory = ({
     await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: id });
 
     return { message: "PKI sync job added to queue successfully" };
+  };
+
+  const $resolveHealthCheckTestTarget = async (args: {
+    projectId: string;
+    applicationId?: string;
+    syncId?: string;
+    name?: string;
+  }) => {
+    if (args.syncId) {
+      const pkiSync = await pkiSyncDAL.findById(args.syncId);
+      if (!pkiSync || pkiSync.projectId !== args.projectId) {
+        throw new NotFoundError({ message: `PKI sync with id "${args.syncId}" not found` });
+      }
+
+      return { projectId: pkiSync.projectId, applicationId: pkiSync.applicationId, name: pkiSync.name };
+    }
+
+    if (args.applicationId) {
+      return { projectId: args.projectId, applicationId: args.applicationId, name: args.name ?? "" };
+    }
+
+    if (!args.name) {
+      throw new BadRequestError({
+        message:
+          "Provide the application, the sync's name, or the id of the sync being edited, so the command can be authorized."
+      });
+    }
+
+    return { projectId: args.projectId, name: args.name };
+  };
+
+  const testPkiSyncHealthCheckCommand = async (
+    args: {
+      destination: PkiSync;
+      connectionId: string;
+      applicationId?: string;
+      syncId?: string;
+      name?: string;
+      destinationConfig: Record<string, unknown>;
+      syncOptions: Record<string, unknown>;
+      projectId: string;
+    },
+    actor: OrgServiceActor,
+    auditLogInfo?: AuditLogInfo
+  ) => {
+    await $assertSyncAction(
+      ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
+      ResourcePermissionPkiSyncActions.SetHealthCheckCommand,
+      await $resolveHealthCheckTestTarget(args),
+      undefined,
+      actor
+    );
+
+    const command = assertHealthCheckCommandIsTestable(args.syncOptions);
+
+    const connection = await appConnectionService.connectAppConnectionById(
+      getDestinationAppType(args.destination),
+      args.connectionId,
+      actor
+    );
+
+    $assertHostCommandsAreSupported(args.destination, args.syncOptions, connection);
+
+    const result = await pkiSyncHealthCheckQueue.testHealthCheckCommand({
+      destination: args.destination,
+      connectionId: args.connectionId,
+      destinationConfig: args.destinationConfig,
+      syncOptions: args.syncOptions
+    });
+
+    await auditLogService.createAuditLog({
+      ...(auditLogInfo ?? { actor: { type: ActorType.PLATFORM, metadata: {} } }),
+      projectId: args.projectId,
+      event: {
+        type: EventType.PKI_SYNC_TEST_HEALTH_CHECK,
+        metadata: {
+          connectionId: args.connectionId,
+          connectionName: connection.name,
+          destination: args.destination,
+          command,
+          ranAt: new Date(),
+          result
+        }
+      }
+    });
+
+    return toHealthCheckApiResult(result);
+  };
+
+  const runPkiSyncHealthCheckById = async (
+    { id }: { id: string },
+    actor: OrgServiceActor,
+    auditLogInfo?: AuditLogInfo
+  ) => {
+    const pkiSync = await pkiSyncDAL.findById(id);
+    if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
+
+    await $assertSyncAction(
+      ProjectPermissionPkiSyncActions.SyncCertificates,
+      ResourcePermissionPkiSyncActions.SyncCertificates,
+      pkiSync,
+      undefined,
+      actor
+    );
+
+    if (!getHealthCheckCommand(pkiSync.syncOptions)) {
+      throw new BadRequestError({
+        message: `PKI sync '${pkiSync.name}' has no health check configured. Add one under the sync's Commands step first.`
+      });
+    }
+
+    return toHealthCheckApiResult(await pkiSyncHealthCheckQueue.runHealthCheckNow(id, auditLogInfo));
   };
 
   const triggerPkiSyncImportCertificatesById = async (
@@ -1172,6 +1312,8 @@ export const pkiSyncServiceFactory = ({
     deletePkiSync,
     listPkiSyncsByProjectId,
     findPkiSyncById,
+    runPkiSyncHealthCheckById,
+    testPkiSyncHealthCheckCommand,
     triggerPkiSyncSyncCertificatesById,
     triggerPkiSyncImportCertificatesById,
     triggerPkiSyncRemoveCertificatesById,
