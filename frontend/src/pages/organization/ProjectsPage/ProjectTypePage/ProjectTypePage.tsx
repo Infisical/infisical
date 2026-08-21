@@ -4,8 +4,6 @@ import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
-  ArrowDownAZIcon,
-  ArrowUpAZIcon,
   CheckIcon,
   ChevronLeftIcon,
   ClockIcon,
@@ -67,7 +65,6 @@ import {
   OrgPermissionProjectActions
 } from "@app/context/OrgPermissionContext/types";
 import {
-  getProjectDescription,
   getProjectHomePage,
   getProjectLucideIcon,
   getProjectTitle,
@@ -213,12 +210,7 @@ const ProjectTypeContent = ({
         <ChevronLeftIcon size={16} />
         Organization
       </Link>
-      <PageHeader
-        title={typeTitle}
-        description={getProjectDescription(projectType)}
-        scope={projectType}
-        icon={getProjectLucideIcon(projectType)}
-      />
+      <PageHeader title={typeTitle} scope={projectType} icon={getProjectLucideIcon(projectType)} />
       {projectListView === ProjectListView.MyProjects || !canRequestAccess ? (
         <MyProjectsForType
           projectType={projectType}
@@ -285,18 +277,12 @@ const MyProjectsForType = ({
     [rawWorkspaces, projectType]
   );
 
-  const {
-    setPage,
-    perPage,
-    setPerPage,
-    page,
-    offset,
-    limit,
-    toggleOrderDirection,
-    orderDirection
-  } = usePagination("name", {
-    initPerPage: getUserTablePreference("myProjectsTable", PreferenceKey.PerPage, 24)
-  });
+  const { setPage, perPage, setPerPage, page, offset, limit, orderDirection } = usePagination(
+    "name",
+    {
+      initPerPage: getUserTablePreference("myProjectsTable", PreferenceKey.PerPage, 24)
+    }
+  );
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -592,45 +578,34 @@ const MyProjectsForType = ({
   }
 
   return (
-    <Card
-      className={twMerge(
-        projectsViewMode === ProjectsViewMode.GRID ? "border-transparent bg-transparent p-0" : "",
-        "transition-all duration-100"
-      )}
-    >
-      <CardHeader>
-        <Toolbar
-          searchFilter={searchFilter}
-          onSearchChange={setSearchFilter}
-          orderDirection={orderDirection}
-          onToggleOrderDirection={toggleOrderDirection}
-          projectsViewMode={projectsViewMode}
-          onViewModeChange={(mode) => {
-            localStorage.setItem("projectsViewMode", mode);
-            setProjectsViewMode(mode);
-          }}
-          projectListView={projectListView}
-          onProjectListViewChange={onProjectListViewChange}
-          hideProjectListToggle={hideProjectListToggle}
-          onAddNewProject={onAddNewProject}
-          onUpgradePlan={onUpgradePlan}
-          isAddingProjectsAllowed={isAddingProjectsAllowed}
+    <div className="flex flex-col gap-5">
+      <Toolbar
+        searchFilter={searchFilter}
+        onSearchChange={setSearchFilter}
+        projectsViewMode={projectsViewMode}
+        onViewModeChange={(mode) => {
+          localStorage.setItem("projectsViewMode", mode);
+          setProjectsViewMode(mode);
+        }}
+        projectListView={projectListView}
+        onProjectListViewChange={onProjectListViewChange}
+        hideProjectListToggle={hideProjectListToggle}
+        onAddNewProject={onAddNewProject}
+        onUpgradePlan={onUpgradePlan}
+        isAddingProjectsAllowed={isAddingProjectsAllowed}
+      />
+      {contentBody}
+      {hasProjects && (
+        <Pagination
+          perPage={perPage}
+          perPageList={[12, 24, 48, 96]}
+          count={filteredWorkspaces.length}
+          page={page}
+          onChangePage={setPage}
+          onChangePerPage={handlePerPageChange}
         />
-      </CardHeader>
-      <CardContent>
-        {contentBody}
-        {hasProjects && (
-          <Pagination
-            perPage={perPage}
-            perPageList={[12, 24, 48, 96]}
-            count={filteredWorkspaces.length}
-            page={page}
-            onChangePage={setPage}
-            onChangePerPage={handlePerPageChange}
-          />
-        )}
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 };
 
@@ -648,18 +623,12 @@ const AllProjectsForType = ({
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter);
 
-  const {
-    setPage,
-    perPage,
-    setPerPage,
-    page,
-    offset,
-    limit,
-    toggleOrderDirection,
-    orderDirection
-  } = usePagination("name", {
-    initPerPage: getUserTablePreference("allProjectsTable", PreferenceKey.PerPage, 50)
-  });
+  const { setPage, perPage, setPerPage, page, offset, limit, orderDirection } = usePagination(
+    "name",
+    {
+      initPerPage: getUserTablePreference("allProjectsTable", PreferenceKey.PerPage, 50)
+    }
+  );
 
   const orgAdminAccessProject = useOrgAdminAccessProject();
   const { permission } = useOrgPermission();
@@ -919,51 +888,43 @@ const AllProjectsForType = ({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <Toolbar
-          searchFilter={searchFilter}
-          onSearchChange={setSearchFilter}
-          orderDirection={orderDirection}
-          onToggleOrderDirection={toggleOrderDirection}
-          projectsViewMode={ProjectsViewMode.LIST}
-          onViewModeChange={() => {}}
-          projectListView={projectListView}
-          onProjectListViewChange={onProjectListViewChange}
-          hideProjectListToggle={hideProjectListToggle}
-          onAddNewProject={onAddNewProject}
-          onUpgradePlan={onUpgradePlan}
-          isAddingProjectsAllowed={isAddingProjectsAllowed}
-          isGridDisabled
+    <div className="flex flex-col gap-5">
+      <Toolbar
+        searchFilter={searchFilter}
+        onSearchChange={setSearchFilter}
+        projectsViewMode={ProjectsViewMode.LIST}
+        onViewModeChange={() => {}}
+        projectListView={projectListView}
+        onProjectListViewChange={onProjectListViewChange}
+        hideProjectListToggle={hideProjectListToggle}
+        onAddNewProject={onAddNewProject}
+        onUpgradePlan={onUpgradePlan}
+        isAddingProjectsAllowed={isAddingProjectsAllowed}
+        isGridDisabled
+      />
+      {contentBody}
+      {hasProjects && (
+        <Pagination
+          perPage={perPage}
+          perPageList={[12, 24, 48, 96]}
+          count={searchedProjects?.totalCount || 0}
+          page={page}
+          onChangePage={setPage}
+          onChangePerPage={handlePerPageChange}
         />
-      </CardHeader>
-      <CardContent>
-        {contentBody}
-        {hasProjects && (
-          <Pagination
-            perPage={perPage}
-            perPageList={[12, 24, 48, 96]}
-            count={searchedProjects?.totalCount || 0}
-            page={page}
-            onChangePage={setPage}
-            onChangePerPage={handlePerPageChange}
-          />
-        )}
-      </CardContent>
+      )}
       <RequestProjectAccessModal
         isOpen={popUp.requestAccessConfirmation.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("requestAccessConfirmation", isOpen)}
         project={requestedWorkspaceDetails}
       />
-    </Card>
+    </div>
   );
 };
 
 const Toolbar = ({
   searchFilter,
   onSearchChange,
-  orderDirection,
-  onToggleOrderDirection,
   projectsViewMode,
   onViewModeChange,
   projectListView,
@@ -976,8 +937,6 @@ const Toolbar = ({
 }: {
   searchFilter: string;
   onSearchChange: (value: string) => void;
-  orderDirection: OrderByDirection;
-  onToggleOrderDirection: () => void;
   projectsViewMode: ProjectsViewMode;
   onViewModeChange: (mode: ProjectsViewMode) => void;
   projectListView: ProjectListView;
@@ -988,96 +947,85 @@ const Toolbar = ({
   isAddingProjectsAllowed: boolean;
   isGridDisabled?: boolean;
 }) => (
-  <div className="flex w-full flex-row flex-wrap items-center gap-2 md:flex-nowrap">
-    {!hideProjectListToggle && (
-      <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
-    )}
-    <InputGroup className="flex-1">
-      <InputGroupAddon align="inline-start">
-        <SearchIcon />
-      </InputGroupAddon>
-      <InputGroupInput
-        placeholder="Search by project name..."
-        value={searchFilter}
-        onChange={(e) => onSearchChange(e.target.value)}
-      />
-    </InputGroup>
-    <Tooltip>
-      <TooltipTrigger asChild>
+  <div className="flex w-full flex-wrap items-center justify-between gap-2">
+    <div className="flex min-w-72 flex-1 items-center gap-2">
+      <InputGroup className="min-w-48 flex-1">
+        <InputGroupAddon align="inline-start">
+          <SearchIcon />
+        </InputGroupAddon>
+        <InputGroupInput
+          placeholder="Search by project name..."
+          value={searchFilter}
+          onChange={(e) => onSearchChange(e.target.value)}
+        />
+      </InputGroup>
+      {!hideProjectListToggle && (
+        <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
+      )}
+    </div>
+    <div className="flex items-center gap-2">
+      <ButtonGroup>
+        {isGridDisabled ? (
+          <Tooltip>
+            <TooltipTrigger tabIndex={-1} asChild>
+              <span className="cursor-not-allowed">
+                <IconButton
+                  variant="outline"
+                  size="sm"
+                  aria-label="Grid view"
+                  className="rounded-r-none"
+                  isDisabled
+                >
+                  <LayoutGridIcon />
+                </IconButton>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Disabled across All Project view.</TooltipContent>
+          </Tooltip>
+        ) : (
+          <IconButton
+            variant={projectsViewMode === ProjectsViewMode.GRID ? "project" : "outline"}
+            size="sm"
+            aria-label="Grid view"
+            className={projectsViewMode === ProjectsViewMode.GRID ? "z-10" : ""}
+            onClick={() => onViewModeChange(ProjectsViewMode.GRID)}
+          >
+            <LayoutGridIcon />
+          </IconButton>
+        )}
         <IconButton
-          variant="outline"
+          variant={projectsViewMode === ProjectsViewMode.LIST ? "project" : "outline"}
           size="sm"
-          aria-label={`Sort ${
-            orderDirection === OrderByDirection.ASC ? "descending" : "ascending"
-          }`}
-          onClick={onToggleOrderDirection}
+          aria-label="List view"
+          onClick={() => onViewModeChange(ProjectsViewMode.LIST)}
         >
-          {orderDirection === OrderByDirection.ASC ? <ArrowDownAZIcon /> : <ArrowUpAZIcon />}
+          <ListIcon />
         </IconButton>
-      </TooltipTrigger>
-      <TooltipContent>Toggle Sort Direction</TooltipContent>
-    </Tooltip>
-    <ButtonGroup>
-      {isGridDisabled ? (
-        <Tooltip>
-          <TooltipTrigger tabIndex={-1} asChild>
-            <span className="cursor-not-allowed">
-              <IconButton
-                variant="outline"
+      </ButtonGroup>
+      <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
+        {(isOldProjectV1Allowed) => (
+          <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
+            {(isAllowed) => (
+              <Button
+                isDisabled={!isAllowed && !isOldProjectV1Allowed}
                 size="sm"
-                aria-label="Grid view"
-                className="rounded-r-none"
-                isDisabled
+                variant="project"
+                onClick={() => {
+                  if (isAddingProjectsAllowed) {
+                    onAddNewProject();
+                  } else {
+                    onUpgradePlan();
+                  }
+                }}
               >
-                <LayoutGridIcon />
-              </IconButton>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>Disabled across All Project view.</TooltipContent>
-        </Tooltip>
-      ) : (
-        <IconButton
-          variant={projectsViewMode === ProjectsViewMode.GRID ? "project" : "outline"}
-          size="sm"
-          aria-label="Grid view"
-          className={projectsViewMode === ProjectsViewMode.GRID ? "z-10" : ""}
-          onClick={() => onViewModeChange(ProjectsViewMode.GRID)}
-        >
-          <LayoutGridIcon />
-        </IconButton>
-      )}
-      <IconButton
-        variant={projectsViewMode === ProjectsViewMode.LIST ? "project" : "outline"}
-        size="sm"
-        aria-label="List view"
-        onClick={() => onViewModeChange(ProjectsViewMode.LIST)}
-      >
-        <ListIcon />
-      </IconButton>
-    </ButtonGroup>
-    <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-      {(isOldProjectV1Allowed) => (
-        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
-          {(isAllowed) => (
-            <Button
-              isDisabled={!isAllowed && !isOldProjectV1Allowed}
-              size="sm"
-              variant="project"
-              onClick={() => {
-                if (isAddingProjectsAllowed) {
-                  onAddNewProject();
-                } else {
-                  onUpgradePlan();
-                }
-              }}
-            >
-              <PlusIcon />
-              Add New Project
-            </Button>
-          )}
-        </OrgPermissionCan>
-      )}
-    </OrgPermissionCan>
+                <PlusIcon />
+                Add New Project
+              </Button>
+            )}
+          </OrgPermissionCan>
+        )}
+      </OrgPermissionCan>
+    </div>
   </div>
 );
 
