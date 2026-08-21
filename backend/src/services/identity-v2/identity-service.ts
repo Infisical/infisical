@@ -8,6 +8,7 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
+import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionAdminConsoleAction,
@@ -65,7 +66,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   identityDAL: TIdentityV2DALFactory;
   identityMembershipV2DAL: TIdentityMembershipV2DALFactory;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
@@ -118,13 +119,15 @@ export const identityV2ServiceFactory = ({
     await factory.onCreateIdentityGuard(dto);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
-    const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
-
-    if (!isEnterpriseBypass && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
-      // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
-      throw new BadRequestError({
-        message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
-      });
+    const identityLimit = getEnforcedIdentityLimit(plan);
+    if (identityLimit) {
+      const { identitiesUsed } = await licenseService.getOrgSeatUsage(dto.permission.orgId);
+      if (identitiesUsed >= identityLimit) {
+        // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
+        throw new BadRequestError({
+          message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
+        });
+      }
     }
 
     let resolvedRoleDocs: Omit<TMembershipRolesInsert, "membershipId">[] | null = null;

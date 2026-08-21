@@ -6,6 +6,7 @@ import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { MAX_SIGNING_COMMAND_LENGTH } from "@app/services/approval-policy/code-signing/code-signing-policy-schemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -28,11 +29,37 @@ export const registerSignerSigningRouter = async (server: FastifyZodProvider) =>
         isDigest: z.boolean().default(false),
         clientMetadata: z
           .object({
-            tool: z.string().max(128).optional(),
-            hostname: z.string().max(256).optional(),
-            reportedIp: z.string().max(64).optional()
+            tool: z
+              .string()
+              .max(128)
+              .optional()
+              .describe("The signing application. Compared against a 'signingApplication' scope on the approval."),
+            signingApplication: z
+              .string()
+              .max(128)
+              .optional()
+              .describe("Alias of 'tool', matching the name this parameter has in an approval's scope."),
+            hostname: z.string().max(256).optional().describe("The machine the sign call is made from."),
+            command: z
+              .string()
+              .max(MAX_SIGNING_COMMAND_LENGTH)
+              .optional()
+              .describe("The command line that issued the sign call."),
+            osUsername: z
+              .string()
+              .max(256)
+              .optional()
+              .describe("The operating system account running the signing tool."),
+            signingApplicationHash: z
+              .string()
+              .max(64)
+              .optional()
+              .describe("SHA-256 checksum of the signing application binary.")
           })
           .optional()
+          .describe(
+            "Context describing the signing situation. Values here are compared against any scope declared on the approval, and are recorded on the signing operation for audit."
+          )
       }),
       response: {
         200: z.object({
@@ -54,6 +81,7 @@ export const registerSignerSigningRouter = async (server: FastifyZodProvider) =>
       const result = await server.services.pkiSigner.sign({
         signerId: req.params.signerId,
         ...req.body,
+        ipAddress: req.realIp,
         actorName,
         actor: req.permission.type,
         actorId: req.permission.id,

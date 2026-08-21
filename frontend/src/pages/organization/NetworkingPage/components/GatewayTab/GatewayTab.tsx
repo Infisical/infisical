@@ -278,21 +278,21 @@ export const GatewayTab = withPermission(
                   </EmptyHeader>
                 </Empty>
               ) : (
-                <Table className="min-w-[57rem] table-fixed">
+                <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-80 min-w-80">
+                      <TableHead>
                         <TableHeadLabel>Name</TableHeadLabel>
                       </TableHead>
                       {showPoolsTab && (
-                        <TableHead className="w-[28%]">
+                        <TableHead>
                           <TableHeadLabel>Pools</TableHeadLabel>
                         </TableHead>
                       )}
-                      <TableHead className="w-36">
+                      <TableHead>
                         <TableHeadLabel>Connected</TableHeadLabel>
                       </TableHead>
-                      <TableHead className="w-40">
+                      <TableHead>
                         <TableHeadLabel
                           trailing={
                             <Tooltip>
@@ -308,7 +308,7 @@ export const GatewayTab = withPermission(
                           Health Check
                         </TableHeadLabel>
                       </TableHead>
-                      <TableHead className="w-12" />
+                      <TableHead variant="action" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -340,7 +340,7 @@ export const GatewayTab = withPermission(
                               : undefined
                           }
                         >
-                          <TableCell className="min-w-80">
+                          <TableCell>
                             <div className="flex min-w-0 items-center gap-2">
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -361,7 +361,7 @@ export const GatewayTab = withPermission(
                             </div>
                           </TableCell>
                           {showPoolsTab && (
-                            <TableCell className="min-w-0">
+                            <TableCell>
                               {(gatewayPoolMap.get(el.id) ?? []).length > 0 ? (
                                 <OverflowBadgeList
                                   items={gatewayPoolMap.get(el.id) ?? []}
@@ -392,7 +392,7 @@ export const GatewayTab = withPermission(
                               heartbeatTTL={"heartbeatTTL" in el ? el.heartbeatTTL : null}
                             />
                           </TableCell>
-                          <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
+                          <TableCell variant="action" onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <IconButton aria-label="Gateway options" variant="ghost" size="sm">

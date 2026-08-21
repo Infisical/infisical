@@ -28,6 +28,10 @@ reviewable-api:
 
 reviewable: reviewable-ui reviewable-api
 
+lint-docs:
+	@command -v vale >/dev/null || { echo "vale not found. Install it with: brew install vale"; exit 1; }
+	cd docs && vale --glob='*.mdx' .
+
 up-dev-oidc:
 	docker compose -f docker-compose.dev.yml --profile oidc up --build
 

@@ -111,6 +111,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GET_CERT_BODY]: "Get certificate body",
   [EventType.GET_CERT_PRIVATE_KEY]: "Get certificate private key",
   [EventType.GET_CERT_BUNDLE]: "Get certificate bundle",
+  [EventType.EXPORT_CERT_PKCS12]: "Export certificate as PKCS#12",
   [EventType.CREATE_PKI_ALERT]: "Create PKI alert",
   [EventType.GET_PKI_ALERT]: "Get PKI alert",
   [EventType.UPDATE_PKI_ALERT]: "Update PKI alert",

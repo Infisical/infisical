@@ -259,6 +259,8 @@ export type TSessionEvent = {
   eventType: "input" | "output" | "resize" | "error";
   channelType?: SessionChannelType;
   data: string;
+  // set by gateways that render the terminal before recording. absent on older recordings, whose data is raw terminal bytes
+  rendered?: boolean;
   elapsedTime: number;
 };
 

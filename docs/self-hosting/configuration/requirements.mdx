@@ -39,10 +39,10 @@ If you need additional capacity, simply increase the **number** of containers/in
 
 ## Database & caching layer
 
-### Postgres
+### PostgreSQL
 
-PostgreSQL is the only database supported by Infisical. Infisical has been extensively tested with Postgres version 16. We recommend using versions 14 and up for optimal compatibility.
-The compute required for Postgres is largely dependent on the number of secret operations (reads and writes) you expect. The more frequently you read and write secrets, the more compute you will need.
+PostgreSQL is the only database supported by Infisical. Infisical has been extensively tested with PostgreSQL version 16. We recommend using versions 14 and up for optimal compatibility.
+The compute required for PostgreSQL is largely dependent on the number of secret operations (reads and writes) you expect. The more frequently you read and write secrets, the more compute you will need.
 You'll notice that storage requirements are high and this is because audit logs are by default stored in the database.
 
 

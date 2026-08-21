@@ -54,6 +54,12 @@ For automated issuance, configure an [enrollment method](/documentation/platform
 - [EST](/documentation/platform/pki/applications/enrollment-methods/est) — RFC 7030 enrollment
 - [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) — Mobile device management (Jamf, Intune)
 
+## Importing Certificates
+
+Click **Import** on the Certificates tab to bring in a certificate you already hold, either as PEM files or as a `.p12` / `.pfx` keystore with its password.
+
+A keystore can hold several certificates. Infisical lists what is inside so you can pick which ones to import.
+
 ## Renewal
 
 | Type | How It Works |
@@ -67,7 +73,7 @@ Server-driven renewal requires [API enrollment](/documentation/platform/pki/appl
 
 | Format | Use Case |
 |--------|----------|
-| **PEM** | Nginx, Apache, Docker, load balancers — separate files for cert, chain, and key |
+| **PEM** | NGINX, Apache, Docker, load balancers — separate files for cert, chain, and key |
 | **PKCS12** | Java apps, Windows IIS, mobile apps — single encrypted file with password |
 
 ## Revocation

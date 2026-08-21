@@ -115,7 +115,7 @@ Set up automatic TLS certificates for your [Apache Tomcat](https://tomcat.apache
         sudo systemctl restart tomcat
         ```
 
-        You can verify SSL is working by accessing your Tomcat application at `https://example.infisical.com:8443`. For production deployments, consider configuring a reverse proxy (like [Apache HTTP Server](https://httpd.apache.org/) or [Nginx](https://nginx.org/)) to handle SSL termination on standard port 443.
+        You can verify SSL is working by accessing your Tomcat application at `https://example.infisical.com:8443`. For production deployments, consider configuring a reverse proxy (like [Apache HTTP Server](https://httpd.apache.org/) or [NGINX](https://nginx.org/)) to handle SSL termination on standard port 443.
 
         <Note>
             The certificate paths must be readable by the Tomcat user. You may need to adjust file permissions or copy the certificates to a location accessible by Tomcat. For security, ensure the private key file has restricted permissions (600) and is owned by the Tomcat user.
@@ -250,8 +250,8 @@ Set up automatic TLS certificates for your [Apache Tomcat](https://tomcat.apache
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Nginx with Certbot" icon="server" href="/documentation/platform/pki/guides/applications/nginx-certbot">
-    Set up ACME for Nginx web servers.
+  <Card title="NGINX with Certbot" icon="server" href="/documentation/platform/pki/guides/applications/nginx-certbot">
+    Set up ACME for NGINX web servers.
   </Card>
   <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     Push certificates to cloud destinations.
