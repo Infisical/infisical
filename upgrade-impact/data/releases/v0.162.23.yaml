@@ -2,13 +2,55 @@ version: v0.162.23
 releasedAt: 2026-08-21T10:04:30-07:00
 sourceTag: v0.162.23
 previousTag: v0.162.22
-impactLevel: none
-summary: No self-hosted upgrade actions or compatibility risks were found.
+impactLevel: medium
+summary: ACME and SCEP enrollment now fills certificate profile defaults before
+  policy validation. PKI sync post-sync commands over 2048 characters require a
+  Gateway on Infisical CLI v0.43.124 or later.
 requiresDbMigration: false
-breakingChanges: []
+breakingChanges:
+  - title: ACME and SCEP certificate profile defaults
+    description: ACME and SCEP enrollment fills certificate profile defaults
+      before policy validation. A CSR that omits a required key usage, which
+      certbot and lego always do, now passes instead of failing with Missing
+      required key usages. The CSR forwarded to external CAs is unchanged.
+    action: If you relied on those rejections to block enrollment, remove the
+      key usage defaults from the affected certificate profiles. Otherwise no
+      manual action is required.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/ee/services/pki-acme/pki-acme-service.ts
+        path: backend/src/ee/services/pki-acme/pki-acme-service.ts
+        description: Applies profile defaults before policy validation
+      - type: file
+        ref: backend/src/ee/services/pki-scep/pki-scep-service.ts
+        path: backend/src/ee/services/pki-scep/pki-scep-service.ts
+        description: Same ordering change for SCEP issuance
+      - type: pr
+        ref: "#7696"
+        url: https://github.com/Infisical/infisical/pull/7696
+        description: Fixes rejected certbot and lego orders
 dbSchemaChanges: []
 configChanges: []
-deploymentNotes: []
+deploymentNotes:
+  - title: Gateway version for PKI sync post-sync commands
+    description: PKI sync post-sync commands now accept 8192 characters, up from
+      2048. A Gateway on Infisical CLI older than v0.43.124 still caps commands
+      at 2048 characters and rejects the sync even though the form accepts the
+      command.
+    action: Upgrade the Gateway to Infisical CLI v0.43.124 or later before
+      saving a post-sync command longer than 2048 characters. Existing commands
+      keep working.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/services/pki-sync/pki-sync-post-sync-command-fns.ts
+        path: backend/src/services/pki-sync/pki-sync-post-sync-command-fns.ts
+        description: Raises the limit to 8192 characters
+      - type: file
+        ref: docs/documentation/platform/pki/applications/certificate-syncs/windows-server.mdx
+        path: docs/documentation/platform/pki/applications/certificate-syncs/windows-server.mdx
+        description: Documents the v0.43.124 Gateway requirement
 knownIssues: []
 generatedBy:
   generator: "@infisical/upgrade-impact"
