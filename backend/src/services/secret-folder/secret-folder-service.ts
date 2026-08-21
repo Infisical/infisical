@@ -3,7 +3,6 @@ import { ForbiddenError, MongoAbility, MongoQuery, subject } from "@casl/ability
 import { Knex } from "knex";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
-import { logger } from "@app/lib/logger";
 
 import { ActionProjectType, TProjectEnvironments, TSecretFoldersInsert } from "@app/db/schemas";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
@@ -195,8 +194,6 @@ export const secretFolderServiceFactory = ({
         )
     );
     if (blocked) {
-      logger.info(blocked, "adilson blocked!!!!");
-      logger.info(relocations, "adilson relocations!!!!");
       const requiredPaths = blocked.managePaths.map(({ secretPath }) => `'${secretPath}'`).join(" and ");
       throw new ForbiddenRequestError({
         message: `Cannot ${operation} this folder: the folder at path '${blocked.managePaths[0].secretPath}' has access permissions assigned to users or identities. You need permission to manage folder access on ${requiredPaths} to ${operation} it.`
