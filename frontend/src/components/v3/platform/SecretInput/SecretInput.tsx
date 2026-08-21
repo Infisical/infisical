@@ -107,8 +107,11 @@ const syntaxHighlight = (
   );
 };
 
+export type SecretInputVariant = "default" | "plain";
+
 type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   value?: string | null;
+  variant?: SecretInputVariant;
   isVisible?: boolean;
   valueAlwaysHidden?: boolean;
   isImport?: boolean;
@@ -128,6 +131,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
   (
     {
       value,
+      variant = "default",
       isVisible,
       isImport,
       valueAlwaysHidden,
@@ -182,14 +186,22 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     return (
       <div
+        data-slot="secret-input"
+        data-variant={variant}
         className={cn(
-          "no-scrollbar min-h-9 w-full overflow-auto rounded-md border border-border bg-transparent transition-[color,box-shadow]",
-          "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
+          "no-scrollbar w-full overflow-auto bg-transparent",
+          variant === "default" &&
+            "min-h-9 rounded-md border border-border transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
           containerClassName
         )}
         style={{ maxHeight: `${21 * 7}px` }}
       >
-        <div className="relative overflow-hidden px-3 pt-[6px] pb-[4px]">
+        <div
+          className={cn(
+            "relative overflow-hidden",
+            variant === "default" && "px-3 pt-[6px] pb-[4px]"
+          )}
+        >
           <div
             aria-hidden
             className={cn(
@@ -219,7 +231,8 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             aria-label="secret value"
             ref={ref}
             className={cn(
-              "no-scrollbar absolute inset-0 block h-full resize-none overflow-hidden bg-transparent px-3 py-1 text-transparent focus:border-0",
+              "no-scrollbar absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent focus:border-0",
+              variant === "default" && "px-3 py-1",
               commonClassName
             )}
             onFocus={(evt) => {

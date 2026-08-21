@@ -234,7 +234,7 @@ export const SecretTableRow = ({
               "bg-container transition-colors duration-75 group-hover:bg-container-hover",
             !isSingleEnvView && isFormExpanded && "border-b-0 bg-container-hover",
             isSingleEnvView && singleEnvShowOverride && "border-b-border/50",
-            isSingleEnvView && "relative pt-3 align-top",
+            isSingleEnvView && "relative",
             pendingActionBorderClass(singleEnvPendingAction)
           )}
         >

@@ -1043,6 +1043,7 @@ export const SecretEditTableRow = ({
             render={({ field }) => (
               <InfisicalSecretInput
                 {...field}
+                variant="plain"
                 isReadOnly={isReadOnly}
                 value={
                   secretValueHidden
@@ -2010,15 +2011,11 @@ export const SecretEditTableRow = ({
   if (isSingleEnvView) {
     return (
       <>
-        <TableCell
-          className={twMerge("border-r pt-1 align-top", isOverride && "border-b-border/50")}
-        >
+        <TableCell className={twMerge("border-r", isOverride && "border-b-border/50")}>
           {nameInput}
         </TableCell>
-        <TableCell
-          className={twMerge("relative w-full p-0 px-2", isOverride && "border-b-border/50")}
-        >
-          <div className="flex w-full flex-col gap-y-2 py-1.5">{valueContent}</div>
+        <TableCell className={twMerge("relative w-full", isOverride && "border-b-border/50")}>
+          <div className="flex w-full flex-col gap-y-2">{valueContent}</div>
         </TableCell>
       </>
     );

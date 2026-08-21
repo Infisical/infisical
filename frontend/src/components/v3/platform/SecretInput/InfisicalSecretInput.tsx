@@ -9,7 +9,7 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { useDebounce, useToggle } from "@app/hooks";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
-import { SecretInput } from "./SecretInput";
+import { SecretInput, SecretInputVariant } from "./SecretInput";
 import { SecretReferenceWizard } from "./SecretReferenceWizard";
 
 const getIndexOfUnclosedRefToTheLeft = (value: string, pos: number) => {
@@ -32,6 +32,7 @@ const getIndexOfUnclosedRefToTheRight = (value: string, pos: number) => {
 type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "value"> & {
   value?: string;
   onChange: (val: string) => void;
+  variant?: SecretInputVariant;
   isImport?: boolean;
   isVisible?: boolean;
   isReadOnly?: boolean;

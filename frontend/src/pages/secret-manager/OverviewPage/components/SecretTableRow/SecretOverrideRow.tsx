@@ -210,6 +210,7 @@ export const SecretOverrideRow = ({
           render={({ field }) => (
             <InfisicalSecretInput
               {...field}
+              variant="plain"
               isReadOnly={isFetchingOverrideValue}
               value={isFetchingOverrideValue ? HIDDEN_SECRET_VALUE : (field.value as string)}
               key="secret-input-override"

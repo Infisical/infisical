@@ -87,6 +87,7 @@ export const SecretImportSecretValueCell = ({
     <div className="relative flex items-center gap-2">
       <div className="flex-1">
         <SecretInput
+          variant="plain"
           value={getValue()}
           isVisible={isVisible}
           onFocus={() => setIsFieldFocused.on()}
