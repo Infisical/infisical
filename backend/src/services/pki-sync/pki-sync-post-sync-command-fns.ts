@@ -39,7 +39,7 @@ export const findSingleCertificatePostSyncCommandVariables = (command?: string):
   return SINGLE_CERTIFICATE_VARIABLES.filter((variable) => used.has(variable));
 };
 
-export const POST_SYNC_COMMAND_MAX_LENGTH = 2048;
+export const POST_SYNC_COMMAND_MAX_LENGTH = 8192;
 
 export const POST_SYNC_COMMAND_TIMEOUT_MS = 30_000;
 
@@ -173,8 +173,20 @@ export const renderPostSyncCommand = (
 const redactSecrets = (text: string, secrets: Array<string | undefined>): string =>
   secrets.reduce<string>((acc, secret) => (secret ? acc.split(secret).join(REDACTED_PLACEHOLDER) : acc), text);
 
+const TRUNCATION_SUFFIX = "... (truncated)";
+
+// A cut between the halves of a surrogate pair leaves a lone surrogate, which is not valid UTF-8.
+const sliceWholeCharacters = (text: string, end: number): string => {
+  const cut = text.slice(0, end);
+  const last = cut.charCodeAt(cut.length - 1);
+  return last >= 0xd800 && last <= 0xdbff ? cut.slice(0, -1) : cut;
+};
+
+// The suffix counts against maxLength, so the cap bounds what actually gets stored.
 const truncate = (text: string, maxLength: number): string =>
-  text.length > maxLength ? `${text.slice(0, maxLength)}... (truncated)` : text;
+  text.length > maxLength
+    ? `${sliceWholeCharacters(text, Math.max(0, maxLength - TRUNCATION_SUFFIX.length))}${TRUNCATION_SUFFIX}`
+    : text;
 
 const firstNonEmptyLine = (text?: string): string | undefined =>
   text
@@ -214,12 +226,13 @@ export const runPostSyncCommand = async (args: {
     logger.warn(
       `PKI sync post-sync command failed [syncId=${syncId}] [exitCode=${exitCode}] [durationMs=${durationMs}]`
     );
+    const detail = firstNonEmptyLine(redact(stderr));
     return {
       status: PkiSyncStatus.Failed,
       exitCode,
       durationMs,
       output,
-      failureDetail: firstNonEmptyLine(redact(stderr))?.slice(0, MAX_FAILURE_DETAIL_CHARS),
+      failureDetail: detail ? truncate(detail, MAX_FAILURE_DETAIL_CHARS) : undefined,
       error: `Command exited with code ${exitCode}`
     };
   } catch (err) {
