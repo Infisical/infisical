@@ -1,3 +1,4 @@
+import type { FastifyReply } from "fastify";
 import type WebSocket from "ws";
 import z from "zod";
 
@@ -43,6 +44,29 @@ const SanitizedSessionSchema = PamSessionsSchema.pick({
   folderId: z.string().nullable().optional(),
   gatewayName: z.string().nullable().optional(),
   gatewayIdentityId: z.string().nullable().optional()
+});
+
+const PAM_WEB_SERVER_SESSION_COOKIE = "pam-web-server-session";
+const WebAccessTicketPayloadSchema = z.object({
+  accountId: z.string().uuid(),
+  projectId: z.string().uuid(),
+  orgId: z.string().uuid(),
+  accountName: z.string(),
+  accountType: z.string(),
+  actorEmail: z.string(),
+  actorName: z.string(),
+  reason: z.string().nullable().optional(),
+  maxSessionDurationMs: z.number().optional(),
+  selectedHost: z.string().nullable().optional(),
+  auditLogInfo: z.object({
+    ipAddress: z.string().optional(),
+    userAgent: z.string().optional(),
+    userAgentType: z.nativeEnum(UserAgentType).optional(),
+    actor: z.object({
+      type: z.nativeEnum(ActorType),
+      metadata: z.record(z.unknown())
+    })
+  })
 });
 
 export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
@@ -290,6 +314,53 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
 };
 
 export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => {
+  const validateWebAccessTicket = async ({
+    ticket,
+    accountId,
+    expectedUserId
+  }: {
+    ticket: string;
+    accountId: string;
+    expectedUserId: string;
+  }) => {
+    const separatorIndex = ticket.indexOf(":");
+    if (separatorIndex === -1) {
+      throw new BadRequestError({ message: "The web access ticket is invalid or expired." });
+    }
+
+    const userId = ticket.slice(0, separatorIndex);
+    const tokenCode = ticket.slice(separatorIndex + 1);
+    if (userId !== expectedUserId) {
+      throw new BadRequestError({ message: "The web access ticket does not belong to this user." });
+    }
+
+    const tokenRecord = await server.services.authToken.validateTokenForUser({
+      type: TokenType.TOKEN_PAM_WS_TICKET,
+      userId,
+      code: tokenCode
+    });
+    if (!tokenRecord?.payload) {
+      throw new BadRequestError({ message: "The web access ticket is invalid or expired." });
+    }
+
+    const payload = WebAccessTicketPayloadSchema.parse(JSON.parse(tokenRecord.payload));
+    if (payload.accountId !== accountId) {
+      throw new BadRequestError({ message: "The web access ticket is not valid for this account." });
+    }
+
+    return { userId, payload };
+  };
+
+  const sendProxyResponse = (
+    reply: FastifyReply,
+    response: Awaited<ReturnType<typeof server.services.pamWebAccess.proxyWebServerBrowserRequest>>
+  ) => {
+    Object.entries(response.headers).forEach(([key, value]) => {
+      void reply.header(key, value);
+    });
+    return reply.code(response.statusCode).send(response.body);
+  };
+
   server.route({
     method: "POST",
     url: "/access",
@@ -420,6 +491,138 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
 
   server.route({
     method: "POST",
+    url: "/:accountId/browser-access-session",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "pamWebServerBrowserAccessSession",
+      description: "Exchange a PAM web access ticket for a Web Server browser session",
+      tags: [ApiDocsTags.PamSessions],
+      params: z.object({
+        accountId: z.string().uuid().describe("The ID of the Web Server account")
+      }),
+      body: z.object({
+        ticket: z.string().min(1).max(10000).describe("One-time PAM web access ticket")
+      }),
+      response: {
+        200: z.object({ url: z.string(), expiresAt: z.date() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req, reply) => {
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new BadRequestError({ message: "Web Server browser access requires JWT authentication." });
+      }
+
+      const { userId, payload } = await validateWebAccessTicket({
+        ticket: req.body.ticket,
+        accountId: req.params.accountId,
+        expectedUserId: req.permission.id
+      });
+      if (payload.accountType !== PamAccountType.WebServer) {
+        throw new BadRequestError({ message: "The web access ticket is not for a Web Server account." });
+      }
+
+      const session = await server.services.pamWebAccess.startWebServerBrowserSession({
+        accountId: payload.accountId,
+        projectId: payload.projectId,
+        orgId: payload.orgId,
+        accountName: payload.accountName,
+        actorEmail: payload.actorEmail,
+        actorName: payload.actorName,
+        auditLogInfo: payload.auditLogInfo as Parameters<
+          typeof server.services.pamWebAccess.startWebServerBrowserSession
+        >[0]["auditLogInfo"],
+        userId,
+        actorIp: req.realIp ?? "",
+        actorUserAgent: req.headers["user-agent"] ?? "",
+        reason: payload.reason,
+        maxSessionDurationMs: payload.maxSessionDurationMs
+      });
+
+      const proxyBasePath = `/api/v1/pam/accounts/${payload.accountId}/browser-access/${session.id}`;
+      void reply.setCookie(PAM_WEB_SERVER_SESSION_COOKIE, session.cookieSecret, {
+        httpOnly: true,
+        sameSite: "strict",
+        secure: req.protocol === "https",
+        path: proxyBasePath,
+        maxAge: Math.max(1, Math.floor((session.expiresAt.getTime() - Date.now()) / 1000))
+      });
+
+      return { url: `${proxyBasePath}${session.initialPath}`, expiresAt: session.expiresAt };
+    }
+  });
+
+  server.route({
+    method: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"],
+    url: "/:accountId/browser-access/:browserSessionId",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "pamWebServerBrowserProxyRoot",
+      description: "Proxy the root path of an active Web Server browser session",
+      tags: [ApiDocsTags.PamSessions],
+      params: z.object({
+        accountId: z.string().uuid(),
+        browserSessionId: z.string().uuid()
+      })
+    },
+    handler: async (req, reply) => {
+      const cookieSecret = req.cookies[PAM_WEB_SERVER_SESSION_COOKIE];
+      if (!cookieSecret) {
+        throw new NotFoundError({ message: "This Web Server browser session has expired or is unavailable." });
+      }
+      const requestUrl = new URL(req.raw.url ?? "", "http://localhost");
+      const proxyBasePath = `/api/v1/pam/accounts/${req.params.accountId}/browser-access/${req.params.browserSessionId}`;
+      const response = await server.services.pamWebAccess.proxyWebServerBrowserRequest({
+        accountId: req.params.accountId,
+        browserSessionId: req.params.browserSessionId,
+        cookieSecret,
+        method: req.method,
+        upstreamPath: `/${requestUrl.search}`,
+        requestHeaders: req.headers,
+        body: req.body,
+        proxyBasePath
+      });
+      return sendProxyResponse(reply, response);
+    }
+  });
+
+  server.route({
+    method: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"],
+    url: "/:accountId/browser-access/:browserSessionId/*",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "pamWebServerBrowserProxyPath",
+      description: "Proxy a path through an active Web Server browser session",
+      tags: [ApiDocsTags.PamSessions],
+      params: z.object({
+        accountId: z.string().uuid(),
+        browserSessionId: z.string().uuid(),
+        "*": z.string()
+      })
+    },
+    handler: async (req, reply) => {
+      const cookieSecret = req.cookies[PAM_WEB_SERVER_SESSION_COOKIE];
+      if (!cookieSecret) {
+        throw new NotFoundError({ message: "This Web Server browser session has expired or is unavailable." });
+      }
+      const requestUrl = new URL(req.raw.url ?? "", "http://localhost");
+      const proxyBasePath = `/api/v1/pam/accounts/${req.params.accountId}/browser-access/${req.params.browserSessionId}`;
+      const response = await server.services.pamWebAccess.proxyWebServerBrowserRequest({
+        accountId: req.params.accountId,
+        browserSessionId: req.params.browserSessionId,
+        cookieSecret,
+        method: req.method,
+        upstreamPath: `/${req.params["*"]}${requestUrl.search}`,
+        requestHeaders: req.headers,
+        body: req.body,
+        proxyBasePath
+      });
+      return sendProxyResponse(reply, response);
+    }
+  });
+
+  server.route({
+    method: "POST",
     url: "/:accountId/web-access-ticket",
     config: { rateLimit: writeLimit },
     schema: {
@@ -536,29 +739,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           return;
         }
 
-        const payload = z
-          .object({
-            accountId: z.string().uuid(),
-            projectId: z.string().uuid(),
-            orgId: z.string().uuid(),
-            accountName: z.string(),
-            accountType: z.string(),
-            actorEmail: z.string(),
-            actorName: z.string(),
-            reason: z.string().nullable().optional(),
-            maxSessionDurationMs: z.number().optional(),
-            selectedHost: z.string().nullable().optional(),
-            auditLogInfo: z.object({
-              ipAddress: z.string().optional(),
-              userAgent: z.string().optional(),
-              userAgentType: z.nativeEnum(UserAgentType).optional(),
-              actor: z.object({
-                type: z.nativeEnum(ActorType),
-                metadata: z.record(z.unknown())
-              })
-            })
-          })
-          .parse(JSON.parse(tokenRecord.payload));
+        const payload = WebAccessTicketPayloadSchema.parse(JSON.parse(tokenRecord.payload));
 
         if (payload.accountId !== req.params.accountId) {
           connection.off("message", preAuthHandler);

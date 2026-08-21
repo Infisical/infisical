@@ -396,7 +396,14 @@ export const ACCOUNT_TYPE_CONFIGS = {
     name: "Web Server",
     icon: "OpenAI.png",
     connectionDetails: z.object({
-      uri: z.string().url().trim().max(500)
+      uri: z
+        .string()
+        .url()
+        .trim()
+        .max(500)
+        .refine((value) => ["http:", "https:"].includes(new URL(value).protocol), {
+          message: "Web Server URI must use HTTP or HTTPS"
+        })
     }),
     credentials: z.object({
       user: z.string().trim().min(1).max(256),

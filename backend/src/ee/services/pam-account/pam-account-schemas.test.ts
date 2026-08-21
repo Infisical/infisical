@@ -17,7 +17,13 @@ import {
 // These assertions exercise the Zod-introspection path (buildPamAccountTypeMetadata reads schema internals to derive field descriptors)
 describe("buildPamAccountTypeMetadata", () => {
   const metadata = buildPamAccountTypeMetadata(
-    new Set([PamAccountType.Postgres, PamAccountType.MySQL, PamAccountType.SSH, PamAccountType.Redis])
+    new Set([
+      PamAccountType.Postgres,
+      PamAccountType.MySQL,
+      PamAccountType.SSH,
+      PamAccountType.Redis,
+      PamAccountType.WebServer
+    ])
   );
   const byType = new Map(metadata.map((m) => [m.type, m]));
 
@@ -25,6 +31,7 @@ describe("buildPamAccountTypeMetadata", () => {
     expect(byType.get(PamAccountType.Postgres)?.supportsWebAccess).toBe(true);
     expect(byType.get(PamAccountType.SSH)?.supportsWebAccess).toBe(true);
     expect(byType.get(PamAccountType.MySQL)?.supportsWebAccess).toBe(true);
+    expect(byType.get(PamAccountType.WebServer)?.supportsWebAccess).toBe(true);
     expect(byType.get(PamAccountType.Kubernetes)?.supportsWebAccess).toBe(false);
   });
 
@@ -248,6 +255,10 @@ describe("Web Server account validation", () => {
 
   test("rejects an invalid URI", () => {
     expect(() => validateConnectionDetails(PamAccountType.WebServer, { uri: "not-a-uri" })).toThrow();
+  });
+
+  test("rejects a non-HTTP URI", () => {
+    expect(() => validateConnectionDetails(PamAccountType.WebServer, { uri: "ftp://example.com" })).toThrow();
   });
 
   test("sanitizes the password from credentials", () => {

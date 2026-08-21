@@ -51,6 +51,9 @@ import {
   WS_IDLE_TIMEOUT_MS,
   WS_PING_INTERVAL_MS
 } from "./pam-web-access-types";
+import { proxyPamWebServerRequest } from "./web-server/pam-web-server-proxy";
+import { buildBasicAuthorization } from "./web-server/pam-web-server-proxy-fns";
+import { createPamWebServerSessionManager } from "./web-server/pam-web-server-session-manager";
 
 type TPamWebAccessServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
@@ -95,6 +98,21 @@ type THandleWebSocketConnectionDTO = {
   preAuthHandler: (raw: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => void;
 };
 
+type TStartWebServerBrowserSessionDTO = {
+  accountId: string;
+  projectId: string;
+  orgId: string;
+  accountName: string;
+  auditLogInfo: AuditLogInfo;
+  userId: string;
+  actorEmail: string;
+  actorName: string;
+  actorIp: string;
+  actorUserAgent: string;
+  reason: string | null | undefined;
+  maxSessionDurationMs?: number;
+};
+
 export const pamWebAccessServiceFactory = ({
   pamAccountDAL,
   pamAccessRequestService,
@@ -110,6 +128,8 @@ export const pamWebAccessServiceFactory = ({
   orgDAL,
   telemetryService
 }: TPamWebAccessServiceFactoryDep) => {
+  const webServerSessionManager = createPamWebServerSessionManager();
+
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
     return JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;
@@ -167,7 +187,7 @@ export const pamWebAccessServiceFactory = ({
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
-    if (!SESSION_HANDLERS[account.accountType as PamAccountType]) {
+    if (!SESSION_HANDLERS[account.accountType as PamAccountType] && account.accountType !== PamAccountType.WebServer) {
       throw new BadRequestError({ message: "Web access is not supported for this account type" });
     }
 
@@ -281,6 +301,242 @@ export const pamWebAccessServiceFactory = ({
     });
 
     return { ticket: `${actor.id}:${token}` };
+  };
+
+  const startWebServerBrowserSession = async ({
+    accountId,
+    projectId,
+    orgId,
+    accountName,
+    auditLogInfo,
+    userId,
+    actorEmail,
+    actorName,
+    actorIp,
+    actorUserAgent,
+    reason,
+    maxSessionDurationMs
+  }: TStartWebServerBrowserSessionDTO) => {
+    let relayServer: { port: number; cleanup: () => Promise<void> } | null = null;
+    let pamSession: { id: string } | null = null;
+
+    const cleanupResources = async () => {
+      if (relayServer) {
+        const relay = relayServer;
+        relayServer = null;
+        await relay.cleanup().catch((err) => logger.error(err, "Failed to close Web Server browser relay"));
+      }
+      if (pamSession) {
+        const sessionId = pamSession.id;
+        pamSession = null;
+        try {
+          const updated = await pamSessionDAL.endSessionById(sessionId);
+          if (updated) {
+            void reportPamSessionEnded({
+              session: updated,
+              orgId,
+              endReason: PamSessionEndReason.Completed,
+              telemetryService,
+              userDAL
+            });
+          }
+        } catch (err) {
+          logger.error(err, `Failed to end Web Server browser session [sessionId=${sessionId}]`);
+        }
+      }
+    };
+
+    try {
+      const account = await pamAccountDAL.findByIdWithDetails(accountId);
+      if (!account || account.projectId !== projectId) {
+        throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+      }
+      if (account.accountType !== PamAccountType.WebServer) {
+        throw new BadRequestError({ message: "Browser access is only supported for Web Server accounts." });
+      }
+
+      const { requiresApproval } = resolveAccessControls(account.templatePolicies);
+      let sessionDurationMs = maxSessionDurationMs || DEFAULT_WEB_SESSION_DURATION_MS;
+      if (requiresApproval) {
+        const grant = await pamAccessRequestService.checkGrant({
+          actorId: userId,
+          actor: ActorType.USER,
+          accountId,
+          accountFolderId: account.folderId,
+          projectId
+        });
+        if (!grant) {
+          throw new ForbiddenRequestError({
+            name: "PAM_APPROVAL_REQUIRED",
+            message: "Your approved access is no longer active."
+          });
+        }
+        if (grant.expiresAt) {
+          const grantRemainingMs = new Date(grant.expiresAt).getTime() - Date.now();
+          if (grantRemainingMs <= 0) {
+            throw new ForbiddenRequestError({
+              name: "PAM_GRANT_EXPIRED",
+              message: "Your approved access has expired."
+            });
+          }
+          sessionDurationMs = Math.min(sessionDurationMs, grantRemainingMs);
+        }
+      }
+
+      const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId: account.gatewayId ?? account.templateGatewayId,
+        gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId
+      });
+      if (!effectiveGatewayId) {
+        throw new BadRequestError({ message: "Gateway not configured for this account" });
+      }
+
+      await pamSessionDAL.endExpiredWebSessions(userId, projectId);
+      const activeCount = await pamSessionDAL.countActiveWebSessions(userId, projectId);
+      if (activeCount >= MAX_WEB_SESSIONS_PER_USER) {
+        throw new BadRequestError({ message: SessionEndReason.SessionLimitReached });
+      }
+
+      const connectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
+      const credentials = await decrypt(projectId, account.encryptedCredentials);
+      const upstreamUrl = new URL(connectionDetails.uri as string);
+      const gatewayTarget = await extractGatewayTarget(PamAccountType.WebServer, connectionDetails);
+      if (gatewayTarget.port === undefined) {
+        throw new BadRequestError({ message: "The Web Server URI must resolve to a network port." });
+      }
+
+      const credentialUser = credentials.user;
+      const credentialPassword = credentials.password;
+      if (typeof credentialUser !== "string" || typeof credentialPassword !== "string" || !credentialPassword) {
+        throw new BadRequestError({ message: "The Web Server account must have a user and password configured." });
+      }
+
+      const expiresAt = new Date(Date.now() + sessionDurationMs);
+      pamSession = await pamSessionDAL.create({
+        status: PamSessionStatus.Starting,
+        accessMethod: PamAccessMethod.Web,
+        expiresAt,
+        accountName,
+        accountType: account.accountType,
+        actorEmail,
+        actorIp,
+        actorName,
+        actorUserAgent,
+        projectId,
+        accountId: account.id,
+        userId,
+        gatewayId: effectiveGatewayId,
+        reason: reason?.trim() || null,
+        folderName: account.folderName,
+        selectedHost: gatewayTarget.host
+      });
+
+      const connection = await gatewayV2Service.getPAMConnectionDetails({
+        gatewayId: effectiveGatewayId,
+        sessionId: pamSession.id,
+        accountType: PamAccountType.WebServer,
+        host: gatewayTarget.host,
+        port: gatewayTarget.port,
+        duration: sessionDurationMs,
+        actorMetadata: {
+          id: userId,
+          type: ActorType.USER,
+          name: actorEmail
+        }
+      });
+      if (!connection) {
+        throw new BadRequestError({ message: "Failed to obtain Gateway connection details for the Web Server." });
+      }
+
+      relayServer = await setupRelayServer({
+        protocol: GatewayProxyProtocol.Pam,
+        relayHost: connection.relayHost,
+        relay: connection.relay,
+        gateway: connection.gateway,
+        longLived: true
+      });
+
+      await pamSessionDAL.activateSession(pamSession.id);
+      await auditLogService.createAuditLog({
+        ...auditLogInfo,
+        orgId,
+        projectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_ACCESS,
+          metadata: {
+            accountId,
+            resourceName: account.name,
+            accountName: account.name,
+            duration: expiresAt.toISOString(),
+            reason: reason ?? undefined
+          }
+        }
+      });
+
+      const sessionRelay = relayServer;
+      const sessionRecord = pamSession;
+      const browserSession = webServerSessionManager.createSession({
+        accountId,
+        userId,
+        pamSessionId: sessionRecord.id,
+        upstreamUrl,
+        relayPort: sessionRelay.port,
+        authorization: buildBasicAuthorization(credentialUser, credentialPassword),
+        expiresAt,
+        cleanup: cleanupResources
+      });
+
+      return {
+        id: browserSession.id,
+        cookieSecret: browserSession.cookieSecret,
+        initialPath: `${upstreamUrl.pathname}${upstreamUrl.search}${upstreamUrl.hash}`,
+        expiresAt
+      };
+    } catch (err) {
+      await cleanupResources();
+      if (err instanceof BadRequestError || err instanceof ForbiddenRequestError || err instanceof NotFoundError) {
+        throw err;
+      }
+      logger.error(err, "Failed to establish Web Server browser access session");
+      throw new BadRequestError({
+        message: "Failed to open the Web Server through the Gateway. Check the URI and Gateway connectivity."
+      });
+    }
+  };
+
+  const proxyWebServerBrowserRequest = async ({
+    accountId,
+    browserSessionId,
+    cookieSecret,
+    method,
+    upstreamPath,
+    requestHeaders,
+    body,
+    proxyBasePath
+  }: {
+    accountId: string;
+    browserSessionId: string;
+    cookieSecret: string;
+    method: string;
+    upstreamPath: string;
+    requestHeaders: Parameters<typeof proxyPamWebServerRequest>[0]["requestHeaders"];
+    body: unknown;
+    proxyBasePath: string;
+  }) => {
+    const session = webServerSessionManager.getSession(browserSessionId, accountId, cookieSecret);
+    if (!session) {
+      throw new NotFoundError({ message: "This Web Server browser session has expired or is no longer available." });
+    }
+
+    try {
+      return await proxyPamWebServerRequest({ session, method, upstreamPath, requestHeaders, body, proxyBasePath });
+    } catch (err) {
+      if (err instanceof BadRequestError) throw err;
+      logger.error(err, "Failed to proxy Web Server browser request");
+      throw new BadRequestError({
+        message: "The Web Server could not be reached through the Gateway."
+      });
+    }
   };
 
   const handleWebSocketConnection = async ({
@@ -654,6 +910,9 @@ export const pamWebAccessServiceFactory = ({
 
   return {
     issueWebSocketTicket,
-    handleWebSocketConnection
+    handleWebSocketConnection,
+    startWebServerBrowserSession,
+    proxyWebServerBrowserRequest,
+    closeWebServerBrowserSession: webServerSessionManager.closeSession
   };
 };
