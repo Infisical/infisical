@@ -27,6 +27,9 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "sso.provider",
   "sso.action",
   "db.pool.state",
+  // Closed enums on infisical.legacy_root_key.usage; per-project attribution is in logs, not here.
+  "legacy_key.operation",
+  "legacy_key.surface",
   "cache.result",
   "cache.if_none_match",
   "cache.etag_miss_reason",

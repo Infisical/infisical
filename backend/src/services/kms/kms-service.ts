@@ -15,24 +15,28 @@ import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { THsmStatus } from "@app/ee/services/hsm/hsm-types";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
-import { TEnvConfig } from "@app/lib/config/env";
+import { getOriginalConfig, TEnvConfig } from "@app/lib/config/env";
 import { generateSecretValueBlindIndexFromKmsKey } from "@app/lib/crypto/blind-index";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { HmacAlgorithm, hmacService } from "@app/lib/crypto/hmac";
+import { setLegacyKeyMaterial, TLegacyKeyMaterial, TLegacyKeySnapshot } from "@app/lib/crypto/legacy-key";
 import { detectPqcVariantFromDer } from "@app/lib/crypto/pqc/pqc-crypto";
 import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, KMS_TO_OPENSSL_NAME, signingService } from "@app/lib/crypto/sign";
 import { delay } from "@app/lib/delay";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
   getByteLengthForSymmetricEncryptionAlgorithm,
+  getKekFingerprint,
+  KMS_LEGACY_ENCRYPTION_KEY_UUID,
   KMS_ROOT_CONFIG_UUID,
   MAX_HMAC_IMPORT_KEY_BYTE_LENGTH,
   MIN_HMAC_IMPORT_KEY_BYTE_LENGTH,
+  resolveInstanceEncryptionKeyBuffer,
   verifyKeyTypeAndAlgorithm
 } from "@app/services/kms/kms-fns";
 
@@ -40,7 +44,9 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TInternalKmsDALFactory } from "./internal-kms-dal";
 import { TInternalKmsKeyVersionDALFactory } from "./internal-kms-key-version-dal";
+import { TKmsKekHistoryDALFactory } from "./kms-kek-history-dal";
 import { TKmsKeyDALFactory } from "./kms-key-dal";
+import { TKmsLegacyEncryptionKeyDALFactory } from "./kms-legacy-encryption-key-dal";
 import { TKmsRootConfigDALFactory } from "./kms-root-config-dal";
 import {
   KmsDataKey,
@@ -68,7 +74,20 @@ type TKmsServiceFactoryDep = {
   kmsDAL: TKmsKeyDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "updateById" | "transaction">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "updateById" | "transaction">;
-  kmsRootConfigDAL: Pick<TKmsRootConfigDALFactory, "findById" | "create" | "updateById" | "transaction">;
+  kmsRootConfigDAL: Pick<
+    TKmsRootConfigDALFactory,
+    | "findById"
+    | "create"
+    | "updateById"
+    | "transaction"
+    | "findAll"
+    | "findPending"
+    | "findRetained"
+    | "deleteAllPending"
+    | "deleteById"
+  >;
+  kmsLegacyEncryptionKeyDAL: Pick<TKmsLegacyEncryptionKeyDALFactory, "findById" | "create" | "transaction">;
+  kmsKekHistoryDAL: Pick<TKmsKekHistoryDALFactory, "create" | "updateById" | "findHistory" | "findCurrent">;
   internalKmsDAL: Pick<TInternalKmsDALFactory, "create" | "findByKmsKeyIdForUpdate" | "updateById">;
   internalKmsKeyVersionDAL: Pick<TInternalKmsKeyVersionDALFactory, "create" | "find">;
   hsmService: THsmServiceFactory;
@@ -118,6 +137,8 @@ export const kmsServiceFactory = ({
   envConfig,
   kmsDAL,
   kmsRootConfigDAL,
+  kmsLegacyEncryptionKeyDAL,
+  kmsKekHistoryDAL,
   internalKmsDAL,
   internalKmsKeyVersionDAL,
   orgDAL,
@@ -1200,20 +1221,7 @@ export const kmsServiceFactory = ({
     }
   };
 
-  const $getBasicEncryptionKey = () => {
-    const encryptionKey = envConfig.ENCRYPTION_KEY || envConfig.ROOT_ENCRYPTION_KEY;
-
-    const isBase64 = !envConfig.ENCRYPTION_KEY;
-    if (!encryptionKey)
-      throw new BadRequestError({
-        message:
-          "Root encryption key not found for KMS service. Did you set the ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY environment variables?"
-      });
-
-    const encryptionKeyBuffer = Buffer.from(encryptionKey, isBase64 ? "base64" : "utf8");
-
-    return encryptionKeyBuffer;
-  };
+  const $getBasicEncryptionKey = () => resolveInstanceEncryptionKeyBuffer(envConfig);
 
   const $decryptRootKey = async (kmsRootConfig: TKmsRootConfig) => {
     // case 1: root key is encrypted with HSM
@@ -1475,42 +1483,281 @@ export const kmsServiceFactory = ({
     return { id, name, orgId, isExternal };
   };
 
-  const startService = async (hsmStatus: THsmStatus) => {
-    const kmsRootConfig = await kmsRootConfigDAL.transaction(async (tx) => {
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
-      // check if KMS root key was already generated and saved in DB
-      const existingRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
-      if (existingRootConfig) return existingRootConfig;
-
-      const isHsmActive = hsmStatus.isHsmConfigured;
-
-      logger.info(`KMS: Generating new ROOT Key with ${isHsmActive ? "HSM" : "software"} encryption`);
-      const newRootKey = isHsmActive ? await hsmService.randomBytes(32) : crypto.randomBytes(32);
-
-      const encryptionStrategy = isHsmActive ? RootKeyEncryptionStrategy.HSM : RootKeyEncryptionStrategy.Software;
-
-      const encryptedRootKey = await $encryptRootKey(newRootKey, encryptionStrategy).catch((err) => {
-        logger.error({ hsmEnabled: isHsmActive, encryptionStrategy }, "KMS: Failed to encrypt ROOT Key");
-        throw err;
-      });
-
-      const newRootConfig = await kmsRootConfigDAL.create({
-        // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
-        id: KMS_ROOT_CONFIG_UUID,
-        encryptedRootKey,
-        encryptionStrategy
-      });
-      return newRootConfig;
-    });
-
-    const decryptedRootKey = await $decryptRootKey(kmsRootConfig);
-
-    logger.info("KMS: Loading ROOT Key into Memory.");
-
-    ROOT_ENCRYPTION_KEY = decryptedRootKey;
+  /** Null under HSM, where no env key is involved. */
+  const $currentKekFingerprint = () => {
+    try {
+      return getKekFingerprint($getBasicEncryptionKey());
+    } catch {
+      return null;
+    }
   };
 
+  /**
+   * The order matters twice: it keeps resolution deterministic when a key is rotated away from and
+   * later back to (two rows then open with the same key), and it makes the steady state a single
+   * decrypt, which under HSM is a device round trip.
+   */
+  const $orderRootConfigsForResolution = (rows: TKmsRootConfig[]) => {
+    const sentinel = rows.filter((row) => row.id === KMS_ROOT_CONFIG_UUID);
+    const others = rows.filter((row) => row.id !== KMS_ROOT_CONFIG_UUID);
+    return [...sentinel, ...others.filter((row) => !row.activatedAt), ...others.filter((row) => row.activatedAt)];
+  };
+
+  /**
+   * The moment a rotation takes effect. Driven by a booting pod rather than the rotate endpoint, so
+   * that generating a key is inert and an operator who never deploys it has changed nothing.
+   */
+  const $promoteRotation = async (pendingId: string, fingerprint: string | null) => {
+    return kmsRootConfigDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
+
+      const pending = await kmsRootConfigDAL.findById(pendingId, tx);
+      // Another pod promoted first, writing what we were about to write.
+      if (!pending || pending.activatedAt) return false;
+
+      const sentinel = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID, tx);
+      if (!sentinel) {
+        throw new InternalServerError({ message: "KMS root config is missing its active row" });
+      }
+
+      const now = new Date();
+
+      // The grace window, so pods that have not rolled over can still boot. Not a rollback path.
+      await kmsRootConfigDAL.create(
+        {
+          encryptedRootKey: sentinel.encryptedRootKey,
+          encryptionStrategy: sentinel.encryptionStrategy,
+          activatedAt: sentinel.activatedAt ?? sentinel.createdAt,
+          supersededAt: now
+        },
+        tx
+      );
+
+      await kmsRootConfigDAL.updateById(
+        KMS_ROOT_CONFIG_UUID,
+        {
+          encryptedRootKey: pending.encryptedRootKey,
+          encryptionStrategy: pending.encryptionStrategy,
+          activatedAt: now,
+          supersededAt: null
+        },
+        tx
+      );
+
+      await kmsRootConfigDAL.deleteAllPending(tx);
+
+      const previous = await kmsKekHistoryDAL.findCurrent(tx);
+      if (previous) await kmsKekHistoryDAL.updateById(previous.id, { supersededAt: now }, tx);
+      if (fingerprint) await kmsKekHistoryDAL.create({ kekFingerprint: fingerprint, activatedAt: now }, tx);
+
+      return true;
+    });
+  };
+
+  const $bootstrapRootKey = async (hsmStatus: THsmStatus) => {
+    const isHsmActive = hsmStatus.isHsmConfigured;
+
+    logger.info(`KMS: Generating new ROOT Key with ${isHsmActive ? "HSM" : "software"} encryption`);
+    const newRootKey = isHsmActive ? await hsmService.randomBytes(32) : crypto.randomBytes(32);
+    const encryptionStrategy = isHsmActive ? RootKeyEncryptionStrategy.HSM : RootKeyEncryptionStrategy.Software;
+
+    // Wrapped before the transaction opens: this can be an HSM round trip. If another pod wins the
+    // race below, this key is discarded unused.
+    const encryptedRootKey = await $encryptRootKey(newRootKey, encryptionStrategy).catch((err) => {
+      logger.error({ hsmEnabled: isHsmActive, encryptionStrategy }, "KMS: Failed to encrypt ROOT Key");
+      throw err;
+    });
+
+    return kmsRootConfigDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
+
+      const existing = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID, tx);
+      if (existing) return existing;
+
+      return kmsRootConfigDAL.create(
+        {
+          // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
+          id: KMS_ROOT_CONFIG_UUID,
+          encryptedRootKey,
+          encryptionStrategy,
+          activatedAt: new Date()
+        },
+        tx
+      );
+    });
+  };
+
+  const $resolveRootKey = async (hsmStatus: THsmStatus) => {
+    const rows = await kmsRootConfigDAL.findAll();
+    if (!rows.length) {
+      const created = await $bootstrapRootKey(hsmStatus);
+      return $decryptRootKey(created);
+    }
+
+    const errors: unknown[] = [];
+    for (const row of $orderRootConfigsForResolution(rows)) {
+      // eslint-disable-next-line no-await-in-loop -- at most three rows, and the first hit returns
+      const rootKey = await $decryptRootKey(row).then(
+        (key) => key,
+        (err: unknown) => {
+          errors.push(err);
+          return null;
+        }
+      );
+
+      if (rootKey) {
+        if (!row.activatedAt && row.id !== KMS_ROOT_CONFIG_UUID) {
+          const fingerprint = $currentKekFingerprint();
+          // eslint-disable-next-line no-await-in-loop
+          const promoted = await $promoteRotation(row.id, fingerprint);
+          if (promoted) {
+            logger.info(
+              `KMS: Promoted pending encryption key rotation [fingerprint=${fingerprint ?? "hsm"}] [rotationId=${
+                row.id
+              }]`
+            );
+          }
+        }
+
+        // Only a retained copy is worth stamping: it is positive evidence that a straggler still holds
+        // that key, which is what makes the rotation GC decline to remove it. Absence proves nothing,
+        // since an instance that never restarts never stamps. The sentinel is never deleted, so
+        // stamping it would be a write on every boot for nothing.
+        if (row.supersededAt) {
+          // eslint-disable-next-line no-await-in-loop
+          await kmsRootConfigDAL
+            .updateById(row.id, { lastResolvedAt: new Date() })
+            .catch((err: unknown) => logger.warn({ err }, "KMS: Failed to record use of a superseded root key"));
+          logger.warn(
+            `KMS: This instance started on a superseded encryption key [rootConfigId=${row.id}] [fingerprint=${
+              $currentKekFingerprint() ?? "hsm"
+            }]. Roll it onto the current key before the previous one is removed.`
+          );
+        }
+
+        return rootKey;
+      }
+    }
+
+    const fingerprint = $currentKekFingerprint();
+    const history = await kmsKekHistoryDAL.findHistory().catch(() => []);
+    const known = history.map((entry) => entry.kekFingerprint).join(", ");
+    logger.error({ err: errors[0] }, "KMS: No stored root key could be decrypted with the configured encryption key");
+    throw new InternalServerError({
+      message: `The configured encryption key (fingerprint ${fingerprint ?? "unknown"}) does not decrypt this database's root key. ${
+        known
+          ? `This database was last written with encryption key fingerprint(s): ${known}. Set the matching key and restart.`
+          : "Set the encryption key this database was created with and restart."
+      }`
+    });
+  };
+
+  const $parseLegacyKeySnapshot = (encryptedKeySnapshot: Buffer) =>
+    JSON.parse(decryptWithRootKey()(encryptedKeySnapshot).toString("utf8")) as TLegacyKeyMaterial;
+
+  /**
+   * Snapshots the legacy tier's env keys under the in-DB root key, which survives an env-key rotation.
+   * After this that tier no longer reads process.env, so rotating cannot strand its rows.
+   */
+  const $ensureLegacyKeyMaterial = async () => {
+    const existing = await kmsLegacyEncryptionKeyDAL.findById(KMS_LEGACY_ENCRYPTION_KEY_UUID);
+    if (existing) {
+      setLegacyKeyMaterial($parseLegacyKeySnapshot(existing.encryptedKeySnapshot));
+      return;
+    }
+
+    const current: TLegacyKeySnapshot = {
+      ENCRYPTION_KEY: envConfig.ENCRYPTION_KEY,
+      ROOT_ENCRYPTION_KEY: envConfig.ROOT_ENCRYPTION_KEY
+    };
+
+    // The FIPS relabel overwrites ROOT_ENCRYPTION_KEY unconditionally, so `current` can be missing the
+    // key existing rows were written under. Capturing it also means fixing that later needs no repair.
+    const originalCfg = getOriginalConfig() as TLegacyKeySnapshot | undefined;
+    const original: TLegacyKeySnapshot | undefined = originalCfg
+      ? { ENCRYPTION_KEY: originalCfg.ENCRYPTION_KEY, ROOT_ENCRYPTION_KEY: originalCfg.ROOT_ENCRYPTION_KEY }
+      : undefined;
+
+    const hasKey = (snapshot?: TLegacyKeySnapshot) =>
+      Boolean(snapshot && (snapshot.ENCRYPTION_KEY || snapshot.ROOT_ENCRYPTION_KEY));
+
+    // Pure HSM, no env key: leave the legacy tier throwing exactly as it does today.
+    if (!hasKey(current) && !hasKey(original)) return;
+
+    const material: TLegacyKeyMaterial = { current, original };
+    const encryptedKeySnapshot = encryptWithRootKey()(Buffer.from(JSON.stringify(material), "utf8"));
+
+    await kmsLegacyEncryptionKeyDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
+      const alreadySeeded = await kmsLegacyEncryptionKeyDAL.findById(KMS_LEGACY_ENCRYPTION_KEY_UUID, tx);
+      if (alreadySeeded) return;
+      await kmsLegacyEncryptionKeyDAL.create(
+        {
+          // @ts-expect-error id is fixed so a concurrent seed conflicts rather than duplicating
+          id: KMS_LEGACY_ENCRYPTION_KEY_UUID,
+          encryptedKeySnapshot
+        },
+        tx
+      );
+    });
+
+    // Re-read so every pod lands on the row that won the race, not its own candidate.
+    const seeded = await kmsLegacyEncryptionKeyDAL.findById(KMS_LEGACY_ENCRYPTION_KEY_UUID);
+    setLegacyKeyMaterial(seeded ? $parseLegacyKeySnapshot(seeded.encryptedKeySnapshot) : material);
+  };
+
+  /**
+   * Backfills the key an instance already runs with, so a pre-rotation dump still has a fingerprint an
+   * operator can match against an archived key.
+   */
+  const $ensureKekHistory = async () => {
+    const fingerprint = $currentKekFingerprint();
+    if (!fingerprint) return;
+
+    const current = await kmsKekHistoryDAL.findCurrent();
+    if (current) return;
+
+    const sentinel = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
+    await kmsKekHistoryDAL
+      .create({ kekFingerprint: fingerprint, activatedAt: sentinel?.activatedAt ?? sentinel?.createdAt ?? new Date() })
+      .catch((err: unknown) => {
+        // Never block boot on a bookkeeping row.
+        logger.warn({ err }, "KMS: Failed to record initial encryption key history entry");
+      });
+  };
+
+  const startService = async (hsmStatus: THsmStatus) => {
+    const decryptedRootKey = await $resolveRootKey(hsmStatus);
+
+    logger.info("KMS: Loading ROOT Key into Memory.");
+    ROOT_ENCRYPTION_KEY = decryptedRootKey;
+
+    await $ensureLegacyKeyMaterial();
+    await $ensureKekHistory();
+  };
+
+  /** How a rotation stages a key the instance is not running with yet. */
+  const encryptRootKeyForKek = (kekBuffer: Buffer) => {
+    if (!ROOT_ENCRYPTION_KEY.length) {
+      throw new InternalServerError({ message: "KMS root key is not loaded" });
+    }
+    const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+    return cipher.encrypt(ROOT_ENCRYPTION_KEY, kekBuffer);
+  };
+
+  const getCurrentKekFingerprint = () => $currentKekFingerprint();
+
   const updateEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
+    // A fleet-wide cutover. Unguarded, a switch to HSM would not take effect while a retained software
+    // copy exists: a pod with the old env key would resolve that copy and boot without the device.
+    const [pending, retained] = await Promise.all([kmsRootConfigDAL.findPending(), kmsRootConfigDAL.findRetained()]);
+    if (pending.length || retained.length) {
+      throw new BadRequestError({
+        message:
+          "An encryption key rotation is still in progress. Complete or discard it before changing the root key encryption strategy."
+      });
+    }
+
     const kmsRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
     if (!kmsRootConfig) {
       throw new NotFoundError({ message: "KMS root config not found" });
@@ -1529,6 +1776,7 @@ export const kmsServiceFactory = ({
       }
     }
 
+    // Both can be HSM round trips, so they stay outside the transaction.
     const decryptedRootKey = await $decryptRootKey(kmsRootConfig);
     const encryptedRootKey = await $encryptRootKey(decryptedRootKey, strategy);
 
@@ -1537,9 +1785,16 @@ export const kmsServiceFactory = ({
       throw new BadRequestError({ message: "Failed to re-encrypt ROOT Key with selected strategy" });
     }
 
-    await kmsRootConfigDAL.updateById(KMS_ROOT_CONFIG_UUID, {
-      encryptedRootKey,
-      encryptionStrategy: strategy
+    await kmsRootConfigDAL.transaction(async (tx) => {
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
+      await kmsRootConfigDAL.updateById(
+        KMS_ROOT_CONFIG_UUID,
+        {
+          encryptedRootKey,
+          encryptionStrategy: strategy
+        },
+        tx
+      );
     });
 
     ROOT_ENCRYPTION_KEY = decryptedRootKey;
@@ -1547,6 +1802,8 @@ export const kmsServiceFactory = ({
 
   return {
     startService,
+    encryptRootKeyForKek,
+    getCurrentKekFingerprint,
     generateKmsKey,
     rotateKmsKey,
     deleteInternalKms,

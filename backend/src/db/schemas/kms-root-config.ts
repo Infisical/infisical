@@ -14,7 +14,10 @@ export const KmsRootConfigSchema = z.object({
   encryptedRootKey: zodBuffer,
   encryptionStrategy: z.string().default("SOFTWARE").nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  activatedAt: z.date().nullable().optional(),
+  supersededAt: z.date().nullable().optional(),
+  lastResolvedAt: z.date().nullable().optional()
 });
 
 export type TKmsRootConfig = z.infer<typeof KmsRootConfigSchema>;

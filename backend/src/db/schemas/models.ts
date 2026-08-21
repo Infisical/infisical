@@ -178,6 +178,8 @@ export enum TableName {
   SecretVersionV2Tag = "secret_version_v2_tag_junction",
   // KMS Service
   KmsServerRootConfig = "kms_root_config",
+  KmsLegacyEncryptionKey = "kms_legacy_encryption_keys",
+  KmsKekHistory = "kms_kek_history",
   KmsKey = "kms_keys",
   ExternalKms = "external_kms",
   InternalKms = "internal_kms",

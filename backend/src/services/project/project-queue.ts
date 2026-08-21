@@ -30,6 +30,7 @@ import {
 } from "@app/lib/crypto";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
+import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 import { JobState } from "@app/queue/queue-service";
 
@@ -129,6 +130,8 @@ export const projectQueueFactory = ({
 
       await projectDAL.setProjectUpgradeStatus(data.projectId, ProjectUpgradeStatus.InProgress); // Set the status to in progress. This is important to prevent multiple upgrades at the same time.
 
+      recordLegacyRootKeyUsageMetric({ operation: "decrypt", surface: "user_private_key" });
+      logger.info(`Legacy root key used during project upgrade [projectId=${data.projectId}]`);
       const userPrivateKey = crypto.encryption().symmetric().decryptWithRootEncryptionKey({
         keyEncoding: data.encryptedPrivateKey.keyEncoding,
         ciphertext: data.encryptedPrivateKey.encryptedKey,
@@ -337,6 +340,7 @@ export const projectQueueFactory = ({
         await projectKeyDAL.insertMany(newProjectMembers, tx);
 
         // Encrypt the bot private key (which is the same as the ghost user)
+        recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "project_ghost_user" });
         const { iv, tag, ciphertext, encoding, algorithm } = crypto
           .encryption()
           .symmetric()
@@ -361,6 +365,7 @@ export const projectQueueFactory = ({
           tx
         );
 
+        recordLegacyRootKeyUsageMetric({ operation: "decrypt", surface: "project_bot" });
         const botPrivateKey = crypto
           .encryption()
           .symmetric()

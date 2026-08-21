@@ -1,0 +1,95 @@
+---
+title: "Rotating the Encryption Key"
+description: "Replace the ENCRYPTION_KEY protecting your Infisical instance without downtime"
+---
+
+[`ENCRYPTION_KEY`](/self-hosting/configuration/envars#param-encryption-key) protects every secret in your
+instance. Rotating it periodically limits how much a leaked key is worth, and some compliance programs
+require it on a fixed schedule.
+
+Rotating is a two-part process by design: Infisical generates a key, and **the rotation only takes effect
+when an instance first starts with the new value**. Generating a key changes nothing, so you can generate
+one, think about it, and discard it with no consequences.
+
+<Note>
+  Your secrets are never re-encrypted. Only a small internal wrapper changes, so a rotation is instant
+  regardless of how many secrets you store, and there is no read-only window.
+</Note>
+
+## Before you start
+
+- You need **server admin** access.
+- If your instance uses an [HSM](/self-hosting/guides/hsm-integration), there is no environment variable
+  to rotate. Rotate the key on the HSM instead.
+- Decide where you will keep the **old** key. See [After the rotation](#after-the-rotation).
+
+## Rotate
+
+<Steps>
+  <Step title="Generate a new key">
+    Go to **Admin > Encryption** and select **Generate new key** under **Root encryption key**.
+
+    ![Root encryption key panel in the Server Console](/images/self-hosting/guides/rotating-encryption-key/generate-key.png)
+  </Step>
+
+  <Step title="Store the key">
+    The key is shown once and is never recoverable. Copy it into your secret store before closing the
+    dialog, together with the **fingerprint** shown beside it.
+
+    If you think the key was exposed while copying it, select **Discard generated key**. It stops working
+    immediately and you can generate another.
+  </Step>
+
+  <Step title="Deploy">
+    Set `ENCRYPTION_KEY` to the new value and restart your instances as you normally would. A rolling
+    restart works and needs no downtime.
+
+    The first instance that starts with the new key applies the rotation. Instances that have not restarted
+    yet keep serving normally, and instances that restart on the old key still start.
+  </Step>
+
+  <Step title="Remove the old key">
+    Return to **Admin > Encryption**. The panel tells you when an instance last started on the previous
+    key. Once you are satisfied your rollout is complete, select **Remove previous key**.
+
+    Until you do, the old key still opens your database, so the rotation has not reduced your exposure yet.
+    If you do nothing, Infisical removes it automatically once it has been superseded for
+    `KMS_ROOT_KEY_RETENTION_DAYS` (7 by default).
+
+    ![Remove encryption key panel in the Server Console](/images/self-hosting/guides/rotating-encryption-key/remove-key.png)
+
+    <Note>
+      Infisical can only see instances that have *started* on the previous key, so it will refuse to remove
+      a key one started on recently. It cannot see an instance that has been running since before the
+      rotation and has not restarted. If such an instance restarts after the key is gone, it fails to start
+      with an error naming the key it needs; setting that key again brings it back.
+    </Note>
+  </Step>
+</Steps>
+
+## After the rotation
+
+<Warning>
+  Removing the previous key cannot be undone. Afterwards, losing the new key means losing access to every
+  secret in the instance, and any database backup taken before the rotation needs the old key to restore.
+</Warning>
+
+Pick one of these and make it explicit, rather than leaving it to chance:
+
+- **Archive the old key.** Keep it in your secret store for at least as long as your oldest restorable
+  backup, labelled with the fingerprint from the **Key history** table. That table is kept permanently, so
+  a restored backup can always be matched to the key it needs.
+- **Crypto-shred.** Remove the old key, take a fresh full backup immediately, and expire backups taken
+  before the rotation. A backup nobody can decrypt is also a backup that cannot leak.
+
+The **Key history** table lists every key the instance has used and when. If an instance ever fails to
+start with "the configured encryption key does not decrypt this database's root key", the error names the
+fingerprint it needs, which you can look up there.
+
+## Rolling back
+
+There is no rollback once a rotation has been applied.
+
+Before the first instance starts with the new key, nothing has changed, so reverting `ENCRYPTION_KEY` is
+enough. After that, the old key keeps working only until it is removed, and that window exists so instances
+can finish rolling over, not as a way to undo the rotation.
