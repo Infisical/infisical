@@ -241,7 +241,10 @@ its own.** `exchangeSubjectToken` authenticates the client, then spends provider
 verification and several DB reads before inserting a session — long enough for a revocation to land in
 between and delete nothing. So after the session exists it re-reads the client via
 `oauthClientDAL.findByIdOnPrimary` and rejects (re-running the sweep) if the secret hash changed, the
-grant is gone, or the row is. Two things make that sufficient and are load-bearing: each withdrawal path
+grant is gone, the row is, or either of the two fields carrying the exchange's federation trust has been
+narrowed — `tokenExchangeAudience` and `tokenExchangeIdpSatisfiesMfa`, which the exchange itself read off
+the replica. Anything a future field grants the exchange belongs in `hasClientAuthorityChanged` for the
+same reason. Two things make that sufficient and are load-bearing: each withdrawal path
 commits its write to the client *before* deleting the sessions, so a session that survived the delete
 belongs to a request whose client row is already stale; and the re-read is on the **primary**, because the
 replica that `authenticateClient` reads can still be serving the pre-revocation row. Only the exchange
