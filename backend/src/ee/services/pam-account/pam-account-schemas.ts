@@ -392,6 +392,28 @@ export const ACCOUNT_TYPE_CONFIGS = {
       caKeyAlgorithm: z.string()
     })
   },
+  [PamAccountType.WebServer]: {
+    name: "Web Server",
+    icon: "OpenAI.png",
+    connectionDetails: z.object({
+      uri: z.string().url().trim().max(500)
+    }),
+    credentials: z.object({
+      user: z.string().trim().min(1).max(256),
+      password: z
+        .string()
+        .trim()
+        .max(256)
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    sanitizedCredentials: z.object({ user: z.string() }),
+    ui: {
+      uri: { label: "Web Server URI" },
+      user: { label: "User" },
+      password: { widget: PamFieldWidget.Password, secret: true }
+    }
+  },
 
   [PamAccountType.Kubernetes]: {
     name: "Kubernetes",

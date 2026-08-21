@@ -8,7 +8,10 @@ import {
   isCredentialConfigured,
   PamAccountAccessibilityIssue,
   PamAccountTypeMetadataSchema,
-  PamFieldDescriptorSchema
+  PamFieldDescriptorSchema,
+  sanitizeCredentials,
+  validateConnectionDetails,
+  validateCredentials
 } from "./pam-account-schemas";
 
 // These assertions exercise the Zod-introspection path (buildPamAccountTypeMetadata reads schema internals to derive field descriptors)
@@ -75,6 +78,31 @@ describe("buildPamAccountTypeMetadata", () => {
       secret: false
     });
     expect(fieldByKey(postgres!.credentialFields, "password")).toMatchObject({
+      widget: "password",
+      secret: true,
+      required: false
+    });
+  });
+
+  test("derives Web Server connection and credential fields from the schema", () => {
+    const webServer = byType.get(PamAccountType.WebServer);
+    expect(webServer).toBeDefined();
+    expect(webServer?.name).toBe("Web Server");
+    expect(webServer?.icon).toBe("OpenAI.png");
+    expect(webServer?.connectionFields.map((field) => field.key)).toEqual(["uri"]);
+    expect(webServer?.credentialFields.map((field) => field.key)).toEqual(["user", "password"]);
+    expect(fieldByKey(webServer!.connectionFields, "uri")).toMatchObject({
+      label: "Web Server URI",
+      widget: "text",
+      required: true
+    });
+    expect(fieldByKey(webServer!.credentialFields, "user")).toMatchObject({
+      label: "User",
+      widget: "text",
+      required: true,
+      secret: false
+    });
+    expect(fieldByKey(webServer!.credentialFields, "password")).toMatchObject({
       widget: "password",
       secret: true,
       required: false
@@ -203,6 +231,28 @@ describe("buildPamAccountTypeMetadata", () => {
       widget: "textarea",
       secret: true,
       showWhen: { field: "authMethod", equals: "public-key" }
+    });
+  });
+});
+
+describe("Web Server account validation", () => {
+  test("accepts a URI and credentials", () => {
+    expect(validateConnectionDetails(PamAccountType.WebServer, { uri: "https://example.com/login" })).toEqual({
+      uri: "https://example.com/login"
+    });
+    expect(validateCredentials(PamAccountType.WebServer, { user: "admin", password: "secret" })).toEqual({
+      user: "admin",
+      password: "secret"
+    });
+  });
+
+  test("rejects an invalid URI", () => {
+    expect(() => validateConnectionDetails(PamAccountType.WebServer, { uri: "not-a-uri" })).toThrow();
+  });
+
+  test("sanitizes the password from credentials", () => {
+    expect(sanitizeCredentials(PamAccountType.WebServer, { user: "admin", password: "secret" })).toEqual({
+      user: "admin"
     });
   });
 });
