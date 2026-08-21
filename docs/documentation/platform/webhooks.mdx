@@ -29,9 +29,9 @@ By default, webhooks trigger on every supported event. You can narrow this down 
 
 Supported events:
 
-- **Secret Modified** (`secrets.modified`) — triggered when secrets in the configured scope are created, updated, or deleted.
-- **Secret Rotation Failed** (`secrets.rotation-failed`) — triggered when a secret rotation in the configured scope fails.
-- **Honey Token Triggered** (`honey-token.triggered`) — triggered when a honey token is activated.
+- **Secret Modified** (`secrets.modified`): triggered when secrets in the configured scope are created, updated, or deleted.
+- **Secret Rotation Failed** (`secrets.rotation-failed`): triggered when a secret rotation in the configured scope fails.
+- **Honey Token Triggered** (`honey-token.triggered`): triggered when a honey token is activated.
 - **Change Request Modified** (`secrets.change-request.modified`): triggered when a secret change request in the configured scope is created, reviewed, closed, reopened, or merged.
 - **Access Request Modified** (`secrets.access-request.modified`): triggered when an access request is created, edited, reviewed, or revoked. This event matches on environment and on overlapping secret paths, so a webhook receives a request whenever the requested path could include the path the webhook watches. An access request's path is a pattern rather than a single folder, which is why the matching rule differs from the other events.
 
@@ -182,5 +182,3 @@ The change request and access request payloads below carry no secret values, no 
 	"timestamp": 1787222520000
 }
 ```
-
-`requestedBy` is `null` when the person who created the access request has since deleted their account.
