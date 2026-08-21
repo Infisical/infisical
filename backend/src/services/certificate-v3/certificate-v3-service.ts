@@ -676,6 +676,28 @@ const processSelfSignedCertificate = async ({
   };
 };
 
+// Builds the certificate permission subject from a persisted certificate record so the private-key
+// read permission is evaluated against the same fields the certificate read paths use. Includes every
+// field the certificate permission conditions support, so attribute-scoped grants match consistently.
+const buildCertificateReadPrivateKeySubject = (
+  certRecord: {
+    commonName?: string | null;
+    altNames?: string | null;
+    serialNumber?: string | null;
+    friendlyName?: string | null;
+    status?: string | null;
+  },
+  metadata?: { key: string; value: string }[]
+) =>
+  subject(ProjectPermissionSub.Certificates, {
+    commonName: certRecord.commonName ?? undefined,
+    altNames: certRecord.altNames ? certRecord.altNames.split(",").map((san) => san.trim()) : undefined,
+    serialNumber: certRecord.serialNumber ?? undefined,
+    friendlyName: certRecord.friendlyName ?? undefined,
+    status: certRecord.status ?? undefined,
+    metadata
+  });
+
 export const certificateV3ServiceFactory = ({
   certificateDAL,
   certificateBodyDAL,
@@ -1296,7 +1318,7 @@ export const certificateV3ServiceFactory = ({
       } else {
         canReadPrivateKey = permission.can(
           ProjectPermissionCertificateActions.ReadPrivateKey,
-          ProjectPermissionSub.Certificates
+          buildCertificateReadPrivateKeySubject(certificateData, metadata)
         );
       }
 
@@ -1530,7 +1552,7 @@ export const certificateV3ServiceFactory = ({
     } else {
       canReadPrivateKey = permission.can(
         ProjectPermissionCertificateActions.ReadPrivateKey,
-        ProjectPermissionSub.Certificates
+        buildCertificateReadPrivateKeySubject(cert, metadata)
       );
     }
 
