@@ -1,7 +1,7 @@
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { getWebhookPayload } from "./webhook-fns";
-import { ChangeRequestWebhookAction, WebhookEvents, WebhookType } from "./webhook-types";
+import { AccessRequestWebhookAction, ChangeRequestWebhookAction, WebhookEvents, WebhookType } from "./webhook-types";
 
 const projectFields = {
   projectId: "proj-1",
@@ -205,6 +205,169 @@ describe("getWebhookPayload: secrets.change-request.modified", () => {
     const result = getWebhookPayload({
       type: WebhookEvents.ChangeRequestModified,
       payload: { ...changeRequestPayload, type: WebhookType.MICROSOFT_TEAMS }
+    }) as { attachments: { content: { body: { type: string }[] } }[] };
+
+    expect(result.attachments[0].content.body.map((b) => b.type)).toEqual(["TextBlock", "FactSet"]);
+  });
+});
+
+const accessRequestPayload = {
+  projectId: "proj-1",
+  projectName: "Secrets management",
+  environment: "prod",
+  environmentName: "Production",
+  secretPath: "/api/*",
+  action: AccessRequestWebhookAction.Reviewed,
+  request: {
+    id: "areq-1",
+    url: "https://app.infisical.com/organizations/org-1/projects/secret-management/proj-1/approval?selectedTab=resource-requests&requestId=areq-1",
+    status: "approved",
+    isBypassed: false,
+    policy: {
+      id: "pol-2",
+      name: "Production access",
+      enforcementLevel: "soft",
+      hasSequencedApprovers: true
+    },
+    requestedAccess: {
+      isTemporary: true,
+      temporaryRange: "1h",
+      permissions: [
+        { subject: "secrets", actions: ["read", "edit"] },
+        { subject: "secret-folders", actions: ["create"] }
+      ]
+    },
+    requestedBy: { type: ActorType.USER as const, id: "user-1", name: "Ada Lovelace", email: "ada@example.com" },
+    expiresAt: "2026-08-21T10:00:00.000Z",
+    approvedAt: "2026-08-20T10:42:00.000Z",
+    revokedAt: null,
+    createdAt: "2026-08-20T10:00:00.000Z",
+    updatedAt: "2026-08-20T10:42:00.000Z"
+  }
+};
+
+describe("getWebhookPayload: secrets.access-request.modified", () => {
+  test("general payload nests requested access under the request", () => {
+    const result = getWebhookPayload({
+      type: WebhookEvents.AccessRequestModified,
+      payload: { ...accessRequestPayload, type: WebhookType.GENERAL }
+    });
+
+    expect(result).toEqual({
+      event: "secrets.access-request.modified",
+      action: "reviewed",
+      project: { id: "proj-1", name: "Secrets management" },
+      request: {
+        id: "areq-1",
+        url: accessRequestPayload.request.url,
+        status: "approved",
+        isBypassed: false,
+        policy: {
+          id: "pol-2",
+          name: "Production access",
+          enforcementLevel: "soft",
+          hasSequencedApprovers: true
+        },
+        requestedAccess: {
+          target: {
+            environment: { name: "Production", slug: "prod" },
+            secretPath: "/api/*"
+          },
+          isTemporary: true,
+          temporaryRange: "1h",
+          permissions: [
+            { subject: "secrets", actions: ["read", "edit"] },
+            { subject: "secret-folders", actions: ["create"] }
+          ]
+        },
+        requestedBy: { type: "user", id: "user-1", name: "Ada Lovelace", email: "ada@example.com" },
+        expiresAt: "2026-08-21T10:00:00.000Z",
+        approvedAt: "2026-08-20T10:42:00.000Z",
+        revokedAt: null,
+        createdAt: "2026-08-20T10:00:00.000Z",
+        updatedAt: "2026-08-20T10:42:00.000Z"
+      }
+    });
+  });
+
+  test("permissions use code identifiers, never prose", () => {
+    const result = getWebhookPayload({
+      type: WebhookEvents.AccessRequestModified,
+      payload: { ...accessRequestPayload, type: WebhookType.GENERAL }
+    }) as { request: { requestedAccess: { permissions: { subject: string }[] } } };
+
+    expect(result.request.requestedAccess.permissions[1].subject).toBe("secret-folders");
+    expect(JSON.stringify(result)).not.toContain("Secret Folders");
+  });
+
+  test("general payload strips free text fields present on the input", () => {
+    const eventWithFreeText = {
+      type: WebhookEvents.AccessRequestModified,
+      payload: {
+        ...accessRequestPayload,
+        type: WebhookType.GENERAL,
+        note: "Need temporary access to unblock incident-482",
+        editNote: "Narrowed scope to read-only after review",
+        bypassReason: "On-call approved during the outage",
+        request: {
+          ...accessRequestPayload.request,
+          note: "Need temporary access to unblock incident-482",
+          editNote: "Narrowed scope to read-only after review",
+          bypassReason: "On-call approved during the outage"
+        }
+      }
+    } as unknown as Parameters<typeof getWebhookPayload>[0];
+
+    const result = getWebhookPayload(eventWithFreeText);
+
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain("Need temporary access to unblock incident-482");
+    expect(serialized).not.toContain("Narrowed scope to read-only after review");
+    expect(serialized).not.toContain("On-call approved during the outage");
+  });
+
+  test("general payload excludes the packed CASL rule tuples, only the identifier list ships", () => {
+    const eventWithPackedRules = {
+      type: WebhookEvents.AccessRequestModified,
+      payload: {
+        ...accessRequestPayload,
+        type: WebhookType.GENERAL,
+        request: {
+          ...accessRequestPayload.request,
+          permissions: [
+            { subject: ["secrets"], action: ["read", "edit"], conditions: { environment: "prod" }, inverted: false }
+          ]
+        }
+      }
+    } as unknown as Parameters<typeof getWebhookPayload>[0];
+
+    const result = getWebhookPayload(eventWithPackedRules) as {
+      request: { requestedAccess: { permissions: unknown[] } };
+    };
+
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain("conditions");
+    expect(serialized).not.toContain("inverted");
+    expect(result.request.requestedAccess.permissions).toEqual(
+      accessRequestPayload.request.requestedAccess.permissions
+    );
+  });
+
+  test("slack payload renders permissions as a joined string", () => {
+    const result = getWebhookPayload({
+      type: WebhookEvents.AccessRequestModified,
+      payload: { ...accessRequestPayload, type: WebhookType.SLACK }
+    }) as { text: string; attachments: { fields: { title: string; value?: string }[] }[] };
+
+    expect(result.text).toBe("An access request was reviewed.");
+    const permissionField = result.attachments[0].fields.find((f) => f.title === "Requested Access");
+    expect(permissionField?.value).toBe("secrets (read, edit), secret-folders (create)");
+  });
+
+  test("teams payload is an adaptive card with a fact set", () => {
+    const result = getWebhookPayload({
+      type: WebhookEvents.AccessRequestModified,
+      payload: { ...accessRequestPayload, type: WebhookType.MICROSOFT_TEAMS }
     }) as { attachments: { content: { body: { type: string }[] } }[] };
 
     expect(result.attachments[0].content.body.map((b) => b.type)).toEqual(["TextBlock", "FactSet"]);

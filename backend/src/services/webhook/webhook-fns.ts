@@ -472,6 +472,99 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
     }
   }
 
+  if (event.type === WebhookEvents.AccessRequestModified) {
+    const { projectId, projectName, environment, environmentName, secretPath, type, action, request } = event.payload;
+
+    const formattedPermissions = request.requestedAccess.permissions
+      .map(({ subject, actions }) => `${subject} (${actions.join(", ")})`)
+      .join(", ");
+
+    switch (type) {
+      case WebhookType.SLACK:
+        return {
+          text: `An access request was ${action}.`,
+          attachments: [
+            {
+              color: "#E7F256",
+              fields: [
+                { title: "Project", value: projectName, short: false },
+                { title: "Environment", value: environmentName || environment, short: false },
+                { title: "Secret Path", value: secretPath, short: false },
+                { title: "Policy", value: request.policy.name, short: false },
+                { title: "Status", value: request.status, short: false },
+                { title: "Requested By", value: request.requestedBy?.name || "Unknown", short: false },
+                { title: "Requested Access", value: formattedPermissions, short: false },
+                { title: "Bypassed", value: request.isBypassed ? "Yes" : "No", short: false }
+              ]
+            }
+          ]
+        };
+      case WebhookType.MICROSOFT_TEAMS:
+        return {
+          type: "message",
+          attachments: [
+            {
+              contentType: "application/vnd.microsoft.card.adaptive",
+              content: {
+                type: "AdaptiveCard",
+                version: "1.2",
+                body: [
+                  {
+                    type: "TextBlock",
+                    size: "Medium",
+                    weight: "Bolder",
+                    text: `An access request was ${action}.`
+                  },
+                  {
+                    type: "FactSet",
+                    facts: [
+                      { title: "Project", value: projectName || "" },
+                      { title: "Environment", value: environmentName || environment },
+                      { title: "Secret Path", value: secretPath || "" },
+                      { title: "Policy", value: request.policy.name },
+                      { title: "Status", value: request.status },
+                      { title: "Requested By", value: request.requestedBy?.name || "Unknown" },
+                      { title: "Requested Access", value: formattedPermissions },
+                      { title: "Bypassed", value: request.isBypassed ? "Yes" : "No" }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        };
+      case WebhookType.GENERAL:
+      default:
+        return {
+          event: event.type,
+          action,
+          project: { id: projectId, name: projectName },
+          request: {
+            id: request.id,
+            url: request.url,
+            status: request.status,
+            isBypassed: request.isBypassed,
+            policy: request.policy,
+            requestedAccess: {
+              target: {
+                environment: { name: environmentName, slug: environment },
+                secretPath
+              },
+              isTemporary: request.requestedAccess.isTemporary,
+              temporaryRange: request.requestedAccess.temporaryRange,
+              permissions: request.requestedAccess.permissions
+            },
+            requestedBy: request.requestedBy,
+            expiresAt: request.expiresAt,
+            approvedAt: request.approvedAt,
+            revokedAt: request.revokedAt,
+            createdAt: request.createdAt,
+            updatedAt: request.updatedAt
+          }
+        };
+    }
+  }
+
   if (event.type === WebhookEvents.TestEvent) {
     const { projectName, projectId, environment, environmentName, secretPath } = event.payload;
     return {

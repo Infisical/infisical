@@ -45,6 +45,7 @@ export enum WebhookEvents {
   SecretRotationFailed = "secrets.rotation-failed",
   HoneyTokenTriggered = "honey-token.triggered",
   ChangeRequestModified = "secrets.change-request.modified",
+  AccessRequestModified = "secrets.access-request.modified",
   TestEvent = "test"
 }
 
@@ -52,7 +53,8 @@ export const SUBSCRIBABLE_WEBHOOK_EVENTS = [
   WebhookEvents.SecretModified,
   WebhookEvents.SecretRotationFailed,
   WebhookEvents.HoneyTokenTriggered,
-  WebhookEvents.ChangeRequestModified
+  WebhookEvents.ChangeRequestModified,
+  WebhookEvents.AccessRequestModified
 ] as const;
 
 export enum ChangeRequestWebhookAction {
@@ -62,6 +64,18 @@ export enum ChangeRequestWebhookAction {
   Reopened = "reopened",
   Merged = "merged"
 }
+
+export enum AccessRequestWebhookAction {
+  Created = "created",
+  Edited = "edited",
+  Reviewed = "reviewed",
+  Revoked = "revoked"
+}
+
+export type TWebhookRequestedPermission = {
+  subject: string;
+  actions: string[];
+};
 
 export type TWebhookActor = {
   type: ActorType.USER | ActorType.IDENTITY;
@@ -155,9 +169,46 @@ type TWebhookChangeRequestModifiedEventPayload = {
   };
 };
 
+type TWebhookAccessRequestModifiedEventPayload = {
+  type: WebhookEvents.AccessRequestModified;
+  payload: {
+    projectId: string;
+    projectName?: string;
+    environment: string;
+    environmentName?: string;
+    secretPath?: string;
+    type?: string | null;
+    action: AccessRequestWebhookAction;
+    request: {
+      id: string;
+      url: string;
+      status: string;
+      isBypassed: boolean;
+      policy: {
+        id: string;
+        name: string;
+        enforcementLevel: string;
+        hasSequencedApprovers: boolean;
+      };
+      requestedAccess: {
+        isTemporary: boolean;
+        temporaryRange: string | null;
+        permissions: TWebhookRequestedPermission[];
+      };
+      requestedBy: TWebhookActor | null;
+      expiresAt: string | null;
+      approvedAt: string | null;
+      revokedAt: string | null;
+      createdAt: string;
+      updatedAt: string;
+    };
+  };
+};
+
 export type TWebhookPayloads =
   | TWebhookSecretModifiedEventPayload
   | TWebhookSecretRotationFailedEventPayload
   | TWebhookHoneyTokenTriggeredEventPayload
   | TWebhookChangeRequestModifiedEventPayload
+  | TWebhookAccessRequestModifiedEventPayload
   | TWebhookTestEventPayload;
