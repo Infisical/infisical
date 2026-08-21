@@ -145,7 +145,7 @@ export const ProjectTemplateEnvironmentsForm = ({
             <span className="my-4 text-sm text-danger">{errors.environments.message}</span>
           )}
           {environments.length > 0 ? (
-            <Table className="table-fixed">
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>

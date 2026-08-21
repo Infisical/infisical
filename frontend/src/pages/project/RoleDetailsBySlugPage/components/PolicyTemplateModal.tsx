@@ -24,6 +24,7 @@ import {
   CardHeader,
   CardTitle,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -221,6 +222,7 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
       );
     });
 
+    setShowConflictingSubjects(false);
     onClose();
   };
 
@@ -252,18 +254,22 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
   return (
     <>
       <Dialog open={showConflictingSubjects} onOpenChange={setShowConflictingSubjects}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Conflicting Policies</DialogTitle>
             <DialogDescription>
               The following resources already have policies assigned to them.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-            {conflictingSubjects.map((subject) => (
-              <div key={subject}>{PROJECT_PERMISSION_OBJECT[subject].title}</div>
-            ))}
-          </div>
+          <DialogBody>
+            <div className="flex flex-wrap gap-2 text-sm">
+              {conflictingSubjects.map((subject) => (
+                <div key={subject} className="min-w-0 grow basis-48 text-foreground">
+                  {PROJECT_PERMISSION_OBJECT[subject].title}
+                </div>
+              ))}
+            </div>
+          </DialogBody>
           <DialogFooter>
             <Button variant="outline" onClick={() => onSubmit(true)}>
               Skip Conflicting

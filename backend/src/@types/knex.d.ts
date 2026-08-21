@@ -500,6 +500,9 @@ import {
   TResourceAwsAuths,
   TResourceAwsAuthsInsert,
   TResourceAwsAuthsUpdate,
+  TResourceKubernetesAuths,
+  TResourceKubernetesAuthsInsert,
+  TResourceKubernetesAuthsUpdate,
   TResourceMetadata,
   TResourceMetadataInsert,
   TResourceMetadataUpdate,
@@ -1700,6 +1703,11 @@ declare module "knex/types/tables" {
       TResourceAwsAuths,
       TResourceAwsAuthsInsert,
       TResourceAwsAuthsUpdate
+    >;
+    [TableName.ResourceKubernetesAuth]: KnexOriginal.CompositeTableType<
+      TResourceKubernetesAuths,
+      TResourceKubernetesAuthsInsert,
+      TResourceKubernetesAuthsUpdate
     >;
     [TableName.GatewayPool]: KnexOriginal.CompositeTableType<TGatewayPools, TGatewayPoolsInsert, TGatewayPoolsUpdate>;
     [TableName.GatewayPoolMembership]: KnexOriginal.CompositeTableType<

@@ -4,7 +4,7 @@ sidebarTitle: "Set up HTTPS for Windows"
 description: "Issue TLS certificates for Windows Server using ACME enrollment with win-acme."
 ---
 
-Set up automatic TLS certificates for your [Windows Server](https://www.microsoft.com/en-us/windows-server) using Infisical and [win-acme](https://www.win-acme.com/). Win-acme offers excellent integration with IIS and Windows Certificate Store.
+Set up automatic TLS certificates for your [Windows Server](https://www.microsoft.com/en-us/windows-server) using Infisical and [win-acme](https://www.win-acme.com/). win-acme offers excellent integration with IIS and Windows Certificate Store.
 
 <Info>
   This guide assumes you have an Application with [ACME enrollment](/documentation/platform/pki/applications/enrollment-methods/acme) configured.
@@ -78,7 +78,7 @@ Set up automatic TLS certificates for your [Windows Server](https://www.microsof
         - `--pemfilespath`: Directory where certificates will be saved on your Windows Server.
         - `--verbose`: Enables detailed logging for troubleshooting and monitoring the certificate request process.
 
-        The win-acme command generates a private key on your server, creates a Certificate Signing Request (CSR) using that key, and sends the CSR to Infisical for certificate issuance. Win-acme stores the private key and resulting leaf certificate and full certificate chain in the specified directory path.
+        The win-acme command generates a private key on your server, creates a Certificate Signing Request (CSR) using that key, and sends the CSR to Infisical for certificate issuance. win-acme stores the private key and resulting leaf certificate and full certificate chain in the specified directory path.
 
         <Note>
             Replace the placeholder values with your actual configuration:
@@ -90,7 +90,7 @@ Set up automatic TLS certificates for your [Windows Server](https://www.microsof
     </Step>
 
     <Step title="Alternative Storage Options">
-        Win-acme supports various certificate storage options beyond PEM files. Here are common alternatives for different deployment scenarios:
+        win-acme supports various certificate storage options beyond PEM files. Here are common alternatives for different deployment scenarios:
 
         <Tabs>
             <Tab title="Windows Certificate Store">
@@ -118,7 +118,7 @@ Set up automatic TLS certificates for your [Windows Server](https://www.microsof
     </Step>
 
     <Step title="Configure Automatic Renewal">
-        Win-acme can automatically create a [Windows Scheduled Task](https://docs.microsoft.com/en-us/windows/win32/taskschd/about-the-task-scheduler) for certificate renewal. Because win-acme stores the ACME server URL and EAB credentials from your initial request, renewal will automatically use the same Infisical ACME configuration—no additional settings are required.
+        win-acme can automatically create a [Windows Scheduled Task](https://docs.microsoft.com/en-us/windows/win32/taskschd/about-the-task-scheduler) for certificate renewal. Because win-acme stores the ACME server URL and EAB credentials from your initial request, renewal will automatically use the same Infisical ACME configuration—no additional settings are required.
 
         **Option 1: Enable during initial certificate request**
 
@@ -154,7 +154,7 @@ Set up automatic TLS certificates for your [Windows Server](https://www.microsof
 
 
         <Note>
-            Win-acme stores renewal configurations automatically in its settings directory, so once a certificate is created, the renewal process will use the same parameters (ACME endpoint, EAB credentials, storage options) for future renewals. The renewal threshold can be adjusted in the win-acme configuration files if needed.
+            win-acme stores renewal configurations automatically in its settings directory, so once a certificate is created, the renewal process will use the same parameters (ACME endpoint, EAB credentials, storage options) for future renewals. The renewal threshold can be adjusted in the win-acme configuration files if needed.
         </Note>
     </Step>
 

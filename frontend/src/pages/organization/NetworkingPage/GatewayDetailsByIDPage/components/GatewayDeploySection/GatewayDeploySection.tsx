@@ -28,6 +28,7 @@ import { GatewayAuthMethodView, TGatewayEnrollmentToken } from "@app/hooks/api/g
 
 import { AwsStartCommandContent } from "../GatewayAuthMethod/AwsStartCommandDialog";
 import { EnrollmentTokenContent } from "../GatewayAuthMethod/EnrollmentTokenDialog";
+import { KubernetesStartCommandContent } from "../GatewayAuthMethod/KubernetesStartCommandDialog";
 
 type Props = {
   gatewayId: string;
@@ -36,7 +37,8 @@ type Props = {
 };
 
 export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Props) => {
-  const [deploymentMethod, setDeploymentMethod] = useState("cli");
+  const isKubernetes = authMethod.method === "kubernetes";
+  const [deploymentMethod, setDeploymentMethod] = useState("");
   const [mintedEnrollment, setMintedEnrollment] = useState<
     (TGatewayEnrollmentToken & { gatewayId: string }) | null
   >(null);
@@ -51,7 +53,13 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
 
   if (authMethod.method === "identity") return null;
 
-  const showDeploymentControls = authMethod.method === "aws" || Boolean(enrollment);
+  const showDeploymentControls = authMethod.method === "aws" || isKubernetes || Boolean(enrollment);
+
+  // Derived, so switching auth method can't leave a tab selected that the new method lacks.
+  const deploymentTabs = isKubernetes ? ["helm", "cli"] : ["cli", "systemd"];
+  const activeTab = deploymentTabs.includes(deploymentMethod)
+    ? deploymentMethod
+    : deploymentTabs[0];
 
   const handleGenerate = async () => {
     try {
@@ -63,19 +71,32 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
   };
 
   return (
-    <Tabs value={deploymentMethod} onValueChange={setDeploymentMethod} className="min-w-0">
+    <Tabs value={activeTab} onValueChange={setDeploymentMethod} className="min-w-0">
       <Card className="min-w-0" aria-labelledby="gateway-deployment-title">
         <CardHeader>
           <CardTitle>
             <h2 id="gateway-deployment-title">Deployment</h2>
             <DocumentationLinkBadge href="https://infisical.com/docs/cli/overview" />
           </CardTitle>
-          <CardDescription>Run this gateway on a target host.</CardDescription>
+          <CardDescription>
+            {isKubernetes
+              ? "Run this gateway in your Kubernetes cluster."
+              : "Run this gateway on a target host."}
+          </CardDescription>
           {canEditGateway && showDeploymentControls && (
             <CardAction>
               <TabsList variant="filled" aria-label="Deployment method">
-                <TabsTrigger value="cli">CLI</TabsTrigger>
-                <TabsTrigger value="systemd">System service</TabsTrigger>
+                {isKubernetes ? (
+                  <>
+                    <TabsTrigger value="helm">Helm</TabsTrigger>
+                    <TabsTrigger value="cli">Container command</TabsTrigger>
+                  </>
+                ) : (
+                  <>
+                    <TabsTrigger value="cli">CLI</TabsTrigger>
+                    <TabsTrigger value="systemd">System service</TabsTrigger>
+                  </>
+                )}
               </TabsList>
             </CardAction>
           )}
@@ -93,6 +114,10 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
             <>
               {authMethod.method === "aws" && (
                 <AwsStartCommandContent gatewayId={gatewayId} gatewayName={gatewayName} />
+              )}
+
+              {isKubernetes && (
+                <KubernetesStartCommandContent gatewayId={gatewayId} gatewayName={gatewayName} />
               )}
 
               {authMethod.method === "token" && !enrollment && (

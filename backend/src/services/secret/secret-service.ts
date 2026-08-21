@@ -3713,9 +3713,7 @@ export const secretServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const secrets = secretV2BridgeService.getSecretsByFolderMappings({ ...params, userId: actor.id }, permission);
-
-    return secrets;
+    return secretV2BridgeService.getSecretsByFolderMappings({ ...params, userId: actor.id }, permission);
   };
 
   const getChangeVersions = async (

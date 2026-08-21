@@ -812,6 +812,7 @@ export enum EventType {
   GET_PKI_SIGNERS = "get-pki-signers",
   GET_PKI_SIGNER_PUBLIC_KEY = "get-pki-signer-public-key",
   GET_PKI_SIGNING_OPERATIONS = "get-pki-signing-operations",
+  GET_PKI_SIGNING_OPERATION = "get-pki-signing-operation",
   PKI_SIGNER_SIGN = "pki-signer-sign",
   ENABLE_PKI_SIGNER = "enable-pki-signer",
   DISABLE_PKI_SIGNER = "disable-pki-signer",
@@ -4723,7 +4724,17 @@ interface GetPkiSigningOperationsEvent {
   type: EventType.GET_PKI_SIGNING_OPERATIONS;
   metadata: {
     signerId: string;
+    signerName: string;
     count: number;
+  };
+}
+
+interface GetPkiSigningOperationEvent {
+  type: EventType.GET_PKI_SIGNING_OPERATION;
+  metadata: {
+    signerId: string;
+    signerName: string;
+    operationId: string;
   };
 }
 
@@ -6819,7 +6830,7 @@ interface GatewayEnrollEvent {
   };
 }
 
-type ResourceAuthMethodKind = "aws" | "token";
+type ResourceAuthMethodKind = "aws" | "kubernetes" | "token";
 type ResourceAuthMethodResourceType = "gateway" | "relay" | "kmip";
 
 interface ResourceAuthMethodLoginEvent {
@@ -6832,6 +6843,8 @@ interface ResourceAuthMethodLoginEvent {
     principalArn?: string;
     accountId?: string;
     enrollmentTokenId?: string;
+    kubernetesNamespace?: string;
+    kubernetesServiceAccountName?: string;
   };
 }
 
@@ -6845,6 +6858,8 @@ interface ResourceAuthMethodLoginFailedEvent {
     message: string;
     principalArn?: string;
     accountId?: string;
+    kubernetesNamespace?: string;
+    kubernetesServiceAccountName?: string;
   };
 }
 
@@ -6858,6 +6873,10 @@ interface ResourceAuthMethodUpdateEvent {
     stsEndpoint?: string;
     allowedPrincipalArns?: string;
     allowedAccountIds?: string;
+    kubernetesHost?: string;
+    allowedNamespaces?: string;
+    allowedNames?: string;
+    allowedAudience?: string;
   };
 }
 
@@ -7461,6 +7480,7 @@ export type Event =
   | GetPkiSignersEvent
   | GetPkiSignerPublicKeyEvent
   | GetPkiSigningOperationsEvent
+  | GetPkiSigningOperationEvent
   | PkiSignerSignEvent
   | EnablePkiSignerEvent
   | DisablePkiSignerEvent

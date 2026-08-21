@@ -1,10 +1,10 @@
 ---
-title: "Nginx with Certbot"
-sidebarTitle: "Set up HTTPS for Nginx"
-description: "Issue TLS certificates for Nginx using ACME enrollment with Certbot."
+title: "NGINX with Certbot"
+sidebarTitle: "Set up HTTPS for NGINX"
+description: "Issue TLS certificates for NGINX using ACME enrollment with Certbot."
 ---
 
-Set up automatic TLS certificates for your [Nginx](https://nginx.org/) server using Infisical and [Certbot](https://certbot.eff.org/). Certbot requests and renews certificates automatically from Infisical's ACME server.
+Set up automatic TLS certificates for your [NGINX](https://nginx.org/) server using Infisical and [Certbot](https://certbot.eff.org/). Certbot requests and renews certificates automatically from Infisical's ACME server.
 
 <Info>
   This guide assumes you have an Application with [ACME enrollment](/documentation/platform/pki/applications/enrollment-methods/acme) configured.
@@ -12,9 +12,9 @@ Set up automatic TLS certificates for your [Nginx](https://nginx.org/) server us
 
 ## Prerequisites
 
-- An Nginx web server running on Linux with administrative access
+- An NGINX web server running on Linux with administrative access
 - An Application in Infisical with [ACME enrollment](/documentation/platform/pki/applications/enrollment-methods/acme) configured
-- Network connectivity from your Nginx server to Infisical
+- Network connectivity from your NGINX server to Infisical
 - Port 80 open for [HTTP-01](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) validation
 
 ## Guide
@@ -35,9 +35,9 @@ Set up automatic TLS certificates for your [Nginx](https://nginx.org/) server us
     </Step>
 
     <Step title="Install Certbot">
-        Install Certbot on the server where Nginx is running by following the official Certbot [installation guide](https://certbot.eff.org/instructions).
+        Install Certbot on the server where NGINX is running by following the official Certbot [installation guide](https://certbot.eff.org/instructions).
 
-        The installation guide provides up-to-date instructions for various Linux distributions and package managers, ensuring you get the most current version and proper Nginx plugin integration.
+        The installation guide provides up-to-date instructions for various Linux distributions and package managers, ensuring you get the most current version and proper NGINX plugin integration.
 
         After installation, you can verify that Certbot has been installed correctly by running:
 
@@ -63,8 +63,8 @@ Set up automatic TLS certificates for your [Nginx](https://nginx.org/) server us
 
         For guidance on each parameter:
 
-        - `certonly`: Instructs Certbot to request a certificate without modifying and reloading your Nginx configuration file(s); this mode is recommended if you prefer to manage your Nginx TLS configuration manually, use automation tools, or integrate certificates into an existing deployment workflow.
-        - `--nginx`: Specifies the Nginx plugin so Certbot can solve the [HTTP-01](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) challenge by creating temporary files served by Nginx.
+        - `certonly`: Instructs Certbot to request a certificate without modifying and reloading your NGINX configuration file(s); this mode is recommended if you prefer to manage your NGINX TLS configuration manually, use automation tools, or integrate certificates into an existing deployment workflow.
+        - `--nginx`: Specifies the NGINX plugin so Certbot can solve the [HTTP-01](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) challenge by creating temporary files served by NGINX.
         - `--server`: The Infisical ACME directory URL from Step 1. This instructs Certbot to communicate with Infisical's ACME server instead of Let's Encrypt.
         - `--eab-kid`: Your External Account Binding (EAB) Key Identifier from Step 1.
         - `--eab-hmac-key`: The EAB secret associated with the KID from Step 1.
@@ -75,7 +75,7 @@ Set up automatic TLS certificates for your [Nginx](https://nginx.org/) server us
 
         The Certbot command generates a private key on your server, creates a Certificate Signing Request (CSR) using that key, and sends the CSR to Infisical for certificate issuance. Certbot stores the private key and resulting leaf certificate and full certificate chain in `/etc/letsencrypt/live/{domain-name}/`.
 
-        If `--certonly` is used: Certbot does **not** modify your Nginx configuration, so you must manually update your Nginx server block to reference the new certificate files and reload the server to apply the changes.
+        If `--certonly` is used: Certbot does **not** modify your NGINX configuration, so you must manually update your NGINX server block to reference the new certificate files and reload the server to apply the changes.
 
         Here's how you can configure your server block:
 
@@ -92,20 +92,20 @@ Set up automatic TLS certificates for your [Nginx](https://nginx.org/) server us
 
         ```
 
-        After updating the server block, you should test and reload Nginx to apply the changes:
+        After updating the server block, you should test and reload NGINX to apply the changes:
 
         ```bash
         sudo nginx -t
         sudo systemctl reload nginx
         ```
 
-        If `--certonly` was **not** used: Certbot uses Nginx installer mode, which attempts to automatically configure HTTPS by updating your Nginx server block and reloading the server if needed.
+        If `--certonly` was **not** used: Certbot uses NGINX installer mode, which attempts to automatically configure HTTPS by updating your NGINX server block and reloading the server if needed.
 
-        At this point, your Nginx server should be successfully serving HTTPS using the certificate issued by Infisical.
+        At this point, your NGINX server should be successfully serving HTTPS using the certificate issued by Infisical.
     </Step>
 
     <Step title="Verify Certificate Installation">
-        After configuring Nginx SSL, verify that your certificate was issued correctly and Nginx is serving it properly.
+        After configuring NGINX SSL, verify that your certificate was issued correctly and NGINX is serving it properly.
 
         Check that the certificate files were created by Certbot:
 
@@ -145,13 +145,13 @@ Set up automatic TLS certificates for your [Nginx](https://nginx.org/) server us
         sudo certbot renew --force-renewal
         ```
 
-        Note that after a certificate is renewed, Nginx must be reloaded so it can begin using the new certificate. To do this, run the following command:
+        Note that after a certificate is renewed, NGINX must be reloaded so it can begin using the new certificate. To do this, run the following command:
 
         ```bash
         systemctl reload nginx
         ```
 
-        To automate the process of renewing a certificate and reloading Nginx, you can create a simple deploy hook that Certbot will run after every successful renewal.
+        To automate the process of renewing a certificate and reloading NGINX, you can create a simple deploy hook that Certbot will run after every successful renewal.
 
         Inside `/etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh`, add the following:
 

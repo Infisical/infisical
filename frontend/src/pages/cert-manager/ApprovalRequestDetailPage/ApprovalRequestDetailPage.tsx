@@ -4,10 +4,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, ConfirmActionModal, ContentLoader, EmptyState } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { ConfirmActionModal, ContentLoader, EmptyState } from "@app/components/v2";
+import { Badge, Button } from "@app/components/v3";
 import { useOrganization, useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
@@ -19,6 +20,11 @@ import {
   useCancelApprovalRequest
 } from "@app/hooks/api/approvalRequests";
 import { useGetPkiApplicationById } from "@app/hooks/api/pkiApplications";
+import {
+  CodeSigningScopeField,
+  codeSigningScopeFieldLabels,
+  MONOSPACED_SCOPE_FIELDS
+} from "@app/hooks/api/signers";
 
 import {
   ApprovalStepsSection,
@@ -66,21 +72,13 @@ const CodeSigningDetailsSection = ({
             <span className="text-xs text-mineshaft-400">Signer</span>
             <p className="text-sm text-mineshaft-100">{requestData.signerName}</p>
           </div>
-          {requestData.requestedWindowStart && requestData.requestedWindowEnd && (
-            <>
-              <div>
-                <span className="text-xs text-mineshaft-400">Valid From</span>
-                <p className="text-sm text-mineshaft-100">
-                  {format(new Date(requestData.requestedWindowStart), "yyyy-MM-dd, hh:mm aaa")}
-                </p>
-              </div>
-              <div>
-                <span className="text-xs text-mineshaft-400">Valid Until</span>
-                <p className="text-sm text-mineshaft-100">
-                  {format(new Date(requestData.requestedWindowEnd), "yyyy-MM-dd, hh:mm aaa")}
-                </p>
-              </div>
-            </>
+          {requestData.requestedWindowDuration && (
+            <div>
+              <span className="text-xs text-mineshaft-400">Access Duration</span>
+              <p className="text-sm text-mineshaft-100">
+                {requestData.requestedWindowDuration} from approval
+              </p>
+            </div>
           )}
           {requestData.requestedSignings && (
             <div>
@@ -89,6 +87,33 @@ const CodeSigningDetailsSection = ({
             </div>
           )}
         </div>
+        {requestData.scope && Object.values(requestData.scope).some(Boolean) && (
+          <div className="mt-4 border-t border-mineshaft-600 pt-4">
+            <h4 className="mb-1 text-sm font-medium text-mineshaft-100">Request Scope</h4>
+            <p className="mb-3 text-xs text-mineshaft-400">
+              Signing is only allowed when every parameter below matches exactly.
+            </p>
+            <div className="flex flex-col gap-4">
+              {Object.values(CodeSigningScopeField)
+                .filter((field) => requestData.scope?.[field])
+                .map((field) => (
+                  <div key={field}>
+                    <span className="text-xs text-mineshaft-400">
+                      {codeSigningScopeFieldLabels[field]}
+                    </span>
+                    <p
+                      className={twMerge(
+                        "text-sm break-all text-mineshaft-100",
+                        MONOSPACED_SCOPE_FIELDS.includes(field) && "font-mono text-xs"
+                      )}
+                    >
+                      {requestData.scope?.[field]}
+                    </p>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -378,9 +403,9 @@ const PageContent = () => {
               request.status === ApprovalRequestStatus.Pending && (
                 <Button
                   onClick={() => handlePopUpOpen("cancelRequest")}
-                  variant="outline_bg"
+                  variant="outline"
                   size="xs"
-                  isLoading={cancelApprovalRequest.isPending}
+                  isPending={cancelApprovalRequest.isPending}
                 >
                   Cancel Request
                 </Button>
