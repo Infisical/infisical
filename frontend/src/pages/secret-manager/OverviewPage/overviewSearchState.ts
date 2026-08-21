@@ -24,7 +24,9 @@ export const normalizeOverviewEnvironments = (
   availableSlugs: string[]
 ) => {
   const available = new Set(availableSlugs);
-  const normalized = availableSlugs.filter((slug) => requestedSlugs.includes(slug) && available.has(slug));
+  const normalized = availableSlugs.filter(
+    (slug) => requestedSlugs.includes(slug) && available.has(slug)
+  );
   return [...new Set(normalized)];
 };
 

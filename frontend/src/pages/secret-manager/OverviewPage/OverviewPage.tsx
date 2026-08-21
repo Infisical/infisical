@@ -231,12 +231,6 @@ import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection"
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
 import {
-  normalizeOverviewEnvironments,
-  serializeOverviewResourceFilter,
-  serializeOverviewTags,
-  updateOverviewSecretPath
-} from "./overviewSearchState";
-import {
   DownloadEnvButton,
   DynamicSecretTableRow,
   EmptyResourceDisplay,
@@ -254,6 +248,12 @@ import {
   SecretSyncStatusBadgeOverview,
   SecretTableRow
 } from "./components";
+import {
+  normalizeOverviewEnvironments,
+  serializeOverviewResourceFilter,
+  serializeOverviewTags,
+  updateOverviewSecretPath
+} from "./overviewSearchState";
 
 type TParsedEnv = { value: string; comments: string[]; secretPath?: string; secretKey: string }[];
 type TParsedFolderEnv = Record<
@@ -278,10 +278,6 @@ export enum RowType {
   HoneyToken = "honeyToken",
   ProxiedService = "proxiedService"
 }
-
-type Filter = {
-  [key in RowType]: boolean;
-};
 
 const DEFAULT_FILTER_STATE = {
   [RowType.Folder]: false,
