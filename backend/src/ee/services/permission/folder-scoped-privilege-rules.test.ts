@@ -6,7 +6,7 @@ import { conditionsMatcher } from "@app/lib/casl";
 import { NotFoundError } from "@app/lib/errors";
 
 import { FOLDER_SCOPED_DENY_RULES } from "./folder-roles";
-import { buildFolderScopedPrivilegeRules } from "./permission-fns";
+import { buildFolderScopedPrivilegeRules, filterOverriddenFolderScopedDenyRules } from "./permission-fns";
 import { buildProjectPermissionRules } from "./permission-service";
 import { TProjectFolderScopedPrivilege } from "./permission-service-types";
 import {
@@ -264,5 +264,42 @@ describe("folder-scoped privilege precedence", () => {
     expect(buildProjectPermissionRules(adminRoles, ProjectType.SecretManager, [])).toEqual(
       buildProjectPermissionRules(adminRoles, ProjectType.SecretManager)
     );
+  });
+});
+
+describe("filterOverriddenFolderScopedDenyRules", () => {
+  const denyActionsFor = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[], sub: string) =>
+    rules
+      .filter((rule) => rule.inverted && String(rule.subject) === sub)
+      .flatMap((rule) => [rule.action].flat().map(String));
+
+  test("drops only the deny actions the folder role re-allows", () => {
+    const rules = buildFolderScopedPrivilegeRules([privilege({ role: SecretFolderRole.Read })]);
+    const filtered = filterOverriddenFolderScopedDenyRules(rules);
+
+    expect(denyActionsFor(filtered, ProjectPermissionSub.Secrets).sort()).toEqual(
+      [
+        ProjectPermissionSecretActions.DescribeAndReadValue,
+        ProjectPermissionSecretActions.Create,
+        ProjectPermissionSecretActions.Edit,
+        ProjectPermissionSecretActions.Delete
+      ].sort()
+    );
+    expect(denyActionsFor(filtered, ProjectPermissionSub.SecretFolders).sort()).toEqual(
+      [
+        ProjectPermissionActions.Create,
+        ProjectPermissionActions.Edit,
+        ProjectPermissionActions.Delete,
+        ProjectPermissionSecretFolderActions.ManageAccess
+      ].sort()
+    );
+  });
+
+  test("keeps every allow rule unchanged and drops a fully re-allowed deny rule", () => {
+    const rules = buildFolderScopedPrivilegeRules([privilege({ role: SecretFolderRole.Read })]);
+    const filtered = filterOverriddenFolderScopedDenyRules(rules);
+
+    expect(filtered.filter((rule) => !rule.inverted)).toEqual(rules.filter((rule) => !rule.inverted));
+    expect(denyActionsFor(filtered, ProjectPermissionSub.SecretEventSubscriptions)).toEqual([]);
   });
 });

@@ -76,6 +76,7 @@ import {
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,
   fetchFolderScopedPrivileges,
+  filterOverriddenFolderScopedDenyRules,
   getFolderPermissionVersionFingerprint,
   handlebarsClient,
   isActiveRole,
@@ -1234,9 +1235,9 @@ export const permissionServiceFactory = ({
       projectId,
       actorUserId: targetUserId
     });
-    const privilegeNameById: Record<string, string> = {};
+    const privilegeById: Record<string, (typeof targetPrivileges)[number]> = {};
     targetPrivileges.forEach((p) => {
-      privilegeNameById[p.id] = p.name;
+      privilegeById[p.id] = p;
     });
 
     const sources: Awaited<ReturnType<TPermissionServiceFactory["getMembershipPermissionAudit"]>>["sources"] = [];
@@ -1280,7 +1281,7 @@ export const permissionServiceFactory = ({
         sources.push({
           id: priv.id,
           type: "additional_privilege",
-          name: privilegeNameById[priv.id] || "Additional Privilege",
+          name: privilegeById[priv.id]?.name || "Additional Privilege",
           isTemporary: Boolean(priv.isTemporary),
           temporaryAccessStartTime: priv.temporaryAccessStartTime?.toISOString(),
           temporaryAccessEndTime: priv.temporaryAccessEndTime?.toISOString(),
@@ -1288,6 +1289,43 @@ export const permissionServiceFactory = ({
         });
       });
     });
+
+    const hasActiveAdminRole = targetMemberships.some((m) =>
+      m.roles.some((r) => r.role === ProjectMembershipRole.Admin && isActiveRole(r))
+    );
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    if (project?.type === ProjectType.SecretManager && !hasActiveAdminRole) {
+      const { privileges } = await fetchFolderScopedPrivileges(projectId, ActorType.USER, targetUserId, {
+        additionalPrivilegeDAL,
+        secretFolderDAL
+      });
+      privileges.filter(isActiveRole).forEach((priv) => {
+        const builtRules = filterOverriddenFolderScopedDenyRules(
+          buildFolderScopedPrivilegeRules([
+            {
+              id: priv.id,
+              folderId: priv.folderId,
+              role: priv.role,
+              environmentSlug: priv.environmentSlug,
+              secretPath: priv.secretPath
+            }
+          ])
+        );
+        const packedPermissions = packRules(builtRules);
+
+        sources.push({
+          id: priv.id,
+          type: "additional_privilege",
+          name: privilegeById[priv.id]?.name || "Folder Access",
+          isTemporary: Boolean(priv.isTemporary),
+          temporaryAccessStartTime: privilegeById[priv.id]?.temporaryAccessStartTime?.toISOString(),
+          temporaryAccessEndTime: priv.temporaryAccessEndTime?.toISOString(),
+          permissions: packedPermissions
+        });
+      });
+    }
 
     return { sources };
   };
@@ -1341,9 +1379,9 @@ export const permissionServiceFactory = ({
       projectId,
       actorIdentityId: targetIdentityId
     });
-    const privilegeNameById: Record<string, string> = {};
+    const privilegeById: Record<string, (typeof targetPrivileges)[number]> = {};
     targetPrivileges.forEach((p) => {
-      privilegeNameById[p.id] = p.name;
+      privilegeById[p.id] = p;
     });
 
     const sources: Awaited<ReturnType<TPermissionServiceFactory["getIdentityPermissionAudit"]>>["sources"] = [];
@@ -1387,7 +1425,7 @@ export const permissionServiceFactory = ({
         sources.push({
           id: priv.id,
           type: "additional_privilege",
-          name: privilegeNameById[priv.id] || "Additional Privilege",
+          name: privilegeById[priv.id]?.name || "Additional Privilege",
           isTemporary: Boolean(priv.isTemporary),
           temporaryAccessStartTime: priv.temporaryAccessStartTime?.toISOString(),
           temporaryAccessEndTime: priv.temporaryAccessEndTime?.toISOString(),
@@ -1395,6 +1433,43 @@ export const permissionServiceFactory = ({
         });
       });
     });
+
+    const hasActiveAdminRole = targetMemberships.some((m) =>
+      m.roles.some((r) => r.role === ProjectMembershipRole.Admin && isActiveRole(r))
+    );
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    if (project?.type === ProjectType.SecretManager && !hasActiveAdminRole) {
+      const { privileges } = await fetchFolderScopedPrivileges(projectId, ActorType.IDENTITY, targetIdentityId, {
+        additionalPrivilegeDAL,
+        secretFolderDAL
+      });
+      privileges.filter(isActiveRole).forEach((priv) => {
+        const builtRules = filterOverriddenFolderScopedDenyRules(
+          buildFolderScopedPrivilegeRules([
+            {
+              id: priv.id,
+              folderId: priv.folderId,
+              role: priv.role,
+              environmentSlug: priv.environmentSlug,
+              secretPath: priv.secretPath
+            }
+          ])
+        );
+        const packedPermissions = packRules(builtRules);
+
+        sources.push({
+          id: priv.id,
+          type: "additional_privilege",
+          name: privilegeById[priv.id]?.name || "Folder Access",
+          isTemporary: Boolean(priv.isTemporary),
+          temporaryAccessStartTime: privilegeById[priv.id]?.temporaryAccessStartTime?.toISOString(),
+          temporaryAccessEndTime: priv.temporaryAccessEndTime?.toISOString(),
+          permissions: packedPermissions
+        });
+      });
+    }
 
     return { sources };
   };

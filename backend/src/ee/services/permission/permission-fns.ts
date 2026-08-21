@@ -519,6 +519,7 @@ export const buildFolderScopedPrivilegeRules = (
   privileges: TProjectFolderScopedPrivilege[]
 ): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => {
   const scopedGrants = privileges.map((privilege) => {
+    // make sure the role is valid
     if (!Object.values(SecretFolderRole).includes(privilege.role as SecretFolderRole)) {
       throw new NotFoundError({
         name: "FolderRoleInvalid",
@@ -540,6 +541,30 @@ export const buildFolderScopedPrivilegeRules = (
     ...scopedGrants.flatMap(({ conditions }) => withConditions(FOLDER_SCOPED_DENY_RULES, conditions)),
     ...scopedGrants.flatMap(({ role, conditions }) => withConditions(SECRET_FOLDER_ROLE_PERMISSIONS[role], conditions))
   ];
+};
+
+export const filterOverriddenFolderScopedDenyRules = (
+  rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[]
+): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => {
+  const toArray = <T>(value: T | T[]): T[] => (Array.isArray(value) ? value : [value]);
+
+  const allowedPairs = new Set<string>();
+  rules
+    .filter((rule) => !rule.inverted)
+    .forEach((rule) => {
+      toArray(rule.subject as string | string[]).forEach((sub) => {
+        toArray(rule.action).forEach((action) => allowedPairs.add(`${sub}:${action}`));
+      });
+    });
+
+  return rules.flatMap((rule) => {
+    if (!rule.inverted) return [rule];
+    return toArray(rule.subject as string | string[]).flatMap((sub) => {
+      const deniedActions = toArray(rule.action).filter((action) => !allowedPairs.has(`${sub}:${action}`));
+      if (!deniedActions.length) return [];
+      return [{ ...rule, subject: sub, action: deniedActions } as RawRuleOf<MongoAbility<ProjectPermissionSet>>];
+    });
+  });
 };
 
 export {
