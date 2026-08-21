@@ -339,8 +339,16 @@ describe("verifySubjectToken", () => {
     await expect(verify(token)).rejects.toThrow(/addressed to several audiences/);
   });
 
-  test("accepts a single-audience token that names a different authorized party", async () => {
+  // A token whose sole audience is our exchange audience can still have been minted for another client,
+  // so 'azp' has to be honoured here too.
+  test("rejects a single-audience token that names a different authorized party", async () => {
     const token = signSubjectToken({ audience: AUDIENCE, authorizedParty: "some-client-id" });
+
+    await expect(verify(token)).rejects.toThrow(/was issued to 'some-client-id'/);
+  });
+
+  test("accepts a single-audience token whose authorized party is this application", async () => {
+    const token = signSubjectToken({ audience: AUDIENCE, authorizedParty: AUDIENCE });
 
     await expect(verify(token)).resolves.toMatchObject({ subject: SUBJECT });
   });
