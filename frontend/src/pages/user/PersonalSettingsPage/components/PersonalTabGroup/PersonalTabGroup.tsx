@@ -53,16 +53,8 @@ export const PersonalTabGroup = ({ selectedTab, onTabChange }: Props) => {
           <AlertTitle>API keys are deprecated</AlertTitle>
           <AlertDescription>
             <p>
-              Use machine identities for programmatic access. API keys will be removed according to
-              the published{" "}
-              <a
-                href="https://infisical.com/blog/deprecating-api-keys"
-                target="_blank"
-                rel="noreferrer"
-              >
-                deprecation timeline <ExternalLinkIcon className="inline size-3" />
-              </a>
-              {". See the "}
+              Use machine identities for programmatic access. API keys will be removed in a future
+              release. See the{" "}
               <a
                 href="https://infisical.com/docs/documentation/platform/identities/overview"
                 target="_blank"
