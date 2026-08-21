@@ -369,7 +369,7 @@
     "scim2-parse-filter": "^0.2.10",
     "sjcl": "^1.0.9",
     "smee-client": "^2.0.0",
-    "snowflake-sdk": "2.4.3",
+    "snowflake-sdk": "2.3.6",
     "ssh2": "^1.17.0",
     "tedious": "^18.2.1",
     "tweetnacl": "^1.0.3",
