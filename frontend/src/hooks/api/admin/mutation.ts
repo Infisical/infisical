@@ -10,6 +10,7 @@ import {
   AdminEmailDomain,
   RootKeyEncryptionStrategy,
   TAdminCreateEmailDomainDTO,
+  TCompleteEncryptionKeyRotationDTO,
   TCreateAdminUserDTO,
   TCreatedEncryptionKeyRotation,
   TCreateOrganizationDTO,
@@ -223,8 +224,10 @@ export const useDiscardEncryptionKeyRotation = () => {
 export const useCompleteEncryptionKeyRotation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (rotationId: string) => {
-      await apiRequest.post(`/api/v1/admin/encryption/rotations/${rotationId}/complete`);
+    mutationFn: async ({ rotationId, acknowledged }: TCompleteEncryptionKeyRotationDTO) => {
+      await apiRequest.post(`/api/v1/admin/encryption/rotations/${rotationId}/complete`, {
+        acknowledged
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.getEncryptionStatus() });

@@ -3979,6 +3979,8 @@ export const ENCRYPTION_KEY_ROTATION = {
   COMPLETE: {
     description:
       "Remove the previous encryption key now that every instance is using the new one. This cannot be undone: after it, losing the new key means losing access to all stored secrets.",
-    rotationId: "ID of the previous key to remove."
+    rotationId: "ID of the previous key to remove.",
+    acknowledged:
+      "Remove the key even though an instance started on it recently. Any instance still using that key will fail its next restart until it is given the new one."
   }
 };

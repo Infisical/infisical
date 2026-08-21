@@ -812,9 +812,11 @@ export const recordLegacyRootKeyUsageMetric = (params: {
   operation: "encrypt" | "decrypt";
   surface: LegacyRootKeySurface;
 }) => {
-  if (!isTelemetryEnabled()) return;
-  legacyRootKeyUsageCounter.add(1, {
-    "legacy_key.operation": params.operation,
-    "legacy_key.surface": params.surface
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    legacyRootKeyUsageCounter.add(1, {
+      "legacy_key.operation": params.operation,
+      "legacy_key.surface": params.surface
+    });
   });
 };

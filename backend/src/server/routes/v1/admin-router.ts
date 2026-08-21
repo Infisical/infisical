@@ -801,7 +801,13 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       description: ENCRYPTION_KEY_ROTATION.COMPLETE.description,
       params: z.object({
         rotationId: z.string().uuid().describe(ENCRYPTION_KEY_ROTATION.COMPLETE.rotationId)
-      })
+      }),
+      // Defaults to absent, so a scripted caller that says nothing still gets the guard.
+      body: z
+        .object({
+          acknowledged: z.boolean().optional().describe(ENCRYPTION_KEY_ROTATION.COMPLETE.acknowledged)
+        })
+        .nullish()
     },
     onRequest: (req, res, done) => {
       verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
@@ -809,9 +815,10 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req, res) => {
-      const { retiredFingerprint } = await server.services.encryptionKeyRotation.completeRotation(
-        req.params.rotationId
-      );
+      const { retiredFingerprint } = await server.services.encryptionKeyRotation.completeRotation({
+        rotationId: req.params.rotationId,
+        acknowledged: req.body?.acknowledged
+      });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

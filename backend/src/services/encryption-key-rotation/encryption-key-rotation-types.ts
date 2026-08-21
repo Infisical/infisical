@@ -21,6 +21,11 @@ export type TCreateRotationDTO = {
   supersede?: boolean;
 };
 
+export type TCompleteRotationDTO = {
+  rotationId: string;
+  acknowledged?: boolean;
+};
+
 export type TCreatedRotation = {
   id: string;
   fingerprint: string;

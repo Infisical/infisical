@@ -76,7 +76,7 @@ export const EncryptionKeyRotationSection = () => {
 
   const handleComplete = async () => {
     if (!status.retainedKey) return;
-    await completeRotation(status.retainedKey.id);
+    await completeRotation({ rotationId: status.retainedKey.id, acknowledged });
     setAcknowledged(false);
     createNotification({ type: "success", text: "Previous encryption key removed." });
   };

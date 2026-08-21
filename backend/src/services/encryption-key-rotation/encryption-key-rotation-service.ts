@@ -12,6 +12,7 @@ import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { generateRootEncryptionKey, resolveKekBuffer } from "./encryption-key-rotation-fns";
 import {
   RotationBlocker,
+  TCompleteRotationDTO,
   TCreatedRotation,
   TCreateRotationDTO,
   TEncryptionStatus
@@ -19,9 +20,9 @@ import {
 
 const ABANDONED_ROTATION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-// How recent a superseded-key boot has to be for `complete` to treat it as a live straggler and refuse.
-// Shorter than the GC's window on purpose: the GC is unattended and conservative, whereas an operator
-// calling `complete` is asserting their rollout is done, so only fresh evidence should override them.
+// How recent a superseded-key boot has to be for `complete` to treat it as a live straggler and ask the
+// operator to confirm. Shorter than the GC's window on purpose: the GC is unattended and has nobody to
+// make that judgement, whereas an operator calling `complete` can look at their fleet.
 const STRAGGLER_EVIDENCE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 type TEncryptionKeyRotationServiceFactoryDep = {
@@ -136,21 +137,30 @@ export const encryptionKeyRotationServiceFactory = ({
     logger.info(`Encryption key rotation discarded [rotationId=${rotationId}]`);
   };
 
-  const completeRotation = async (rotationId: string) => {
+  const completeRotation = async ({ rotationId, acknowledged }: TCompleteRotationDTO) => {
     const row = await kmsRootConfigDAL.findById(rotationId);
     if (!row || row.id === KMS_ROOT_CONFIG_UUID || !row.supersededAt) {
       throw new NotFoundError({ message: `Retained encryption key with ID '${rotationId}' not found` });
     }
 
-    // Only fresh evidence overrides the operator. An instance that started on this key within the hour
-    // is very likely still running, and removing the key would break its next restart.
+    // An instance that started on this key within the hour is very likely still running, and removing the
+    // key would break its next restart. Nothing reports whether it has since rolled forward, so this asks
+    // the operator rather than refusing outright.
     const lastResolvedAt = row.lastResolvedAt ? new Date(row.lastResolvedAt).getTime() : null;
     if (lastResolvedAt && Date.now() - lastResolvedAt < STRAGGLER_EVIDENCE_WINDOW_MS) {
-      throw new BadRequestError({
-        message: `An instance started on the previous encryption key at ${new Date(
+      if (!acknowledged) {
+        throw new BadRequestError({
+          message: `An instance started on the previous encryption key at ${new Date(
+            lastResolvedAt
+          ).toISOString()} and may still be running. It would fail to restart if the key were removed now. Roll that instance onto the current key first, or acknowledge this to remove the key anyway.`
+        });
+      }
+
+      logger.warn(
+        `Removing an encryption key an instance started on at ${new Date(
           lastResolvedAt
-        ).toISOString()} and is likely still running. It would fail to restart if the key were removed now. Roll that instance onto the current key first.`
-      });
+        ).toISOString()}, acknowledged by the caller [retainedKeyId=${rotationId}]`
+      );
     }
 
     await kmsRootConfigDAL.deleteById(rotationId);

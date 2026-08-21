@@ -265,3 +265,8 @@ export type TCreatedEncryptionKeyRotation = {
   fingerprint: string;
   key: string;
 };
+
+export type TCompleteEncryptionKeyRotationDTO = {
+  rotationId: string;
+  acknowledged: boolean;
+};
