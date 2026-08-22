@@ -4203,13 +4203,16 @@ export const registerRoutes = async (
       const maxLagMs = histogram.max / 1e6;
       const p99LagMs = histogram.percentile(99) / 1e6;
 
-      logger.info(
+      // Kept at debug level: /api/status is the liveness/readiness probe target, so anything logged
+      // here is emitted on every probe interval. The histogram is never reset, so these values are
+      // cumulative over the process lifetime — windowed event loop delay is exported as
+      // nodejs.eventloop.delay.* by RuntimeNodeInstrumentation when telemetry is enabled.
+      logger.debug(
+        { eventLoopStats: histogram },
         `Event loop stats - Mean: ${meanLagMs.toFixed(2)}ms, Max: ${maxLagMs.toFixed(2)}ms, p99: ${p99LagMs.toFixed(
           2
         )}ms`
       );
-
-      logger.info(`Raw event loop stats: ${JSON.stringify(histogram, null, 2)}`);
 
       return {
         date: new Date(),
