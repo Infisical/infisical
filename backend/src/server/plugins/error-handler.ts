@@ -313,9 +313,9 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
           "The access token is signed with an invalid algorithm. Please provide a valid token and try again.";
       }
 
-      void res.status(HttpStatusCodes.Forbidden).send({
+      void res.status(HttpStatusCodes.Unauthorized).send({
         reqId: req.id,
-        statusCode: HttpStatusCodes.Forbidden,
+        statusCode: HttpStatusCodes.Unauthorized,
         error: "TokenError",
         message: errorMessage
       });
