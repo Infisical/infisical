@@ -181,11 +181,20 @@ Auth extraction happens in `src/server/plugins/auth/`:
   - account self-management (user, password, MFA, sessions, login, signup, notifications, announcements)
   - super-admin routes (`v1/admin-router.ts`, `ee/v1/rate-limit-router.ts`), gated by `verifySuperAdmin`,
     which reads `user.superAdmin` rather than a CASL ability
-  - OAuth client CRUD + consent (`v1/oauth-router.ts`) and `ee/v1/assume-privilege-router.ts`, where a
-    delegated token could widen its own grant
-  - five org routes held back individually and commented as such: `GET /v1/organization`,
-    `GET /v1/organization/accessible-with-sub-orgs`, `POST /v2/organizations`, `GET /v1/organization/:organizationId`,
-    `DELETE /v2/organizations/:organizationId`
+  - OAuth client CRUD + consent (`v1/oauth-router.ts`), `ee/v1/assume-privilege-router.ts`, and
+    `POST /v1/organization-admin/projects/:projectId/grant-admin-access`, where a delegated token could
+    widen its own grant. The last one is the durable half of privilege assumption: it checks a CASL
+    ability, so scopes do narrow it, but it writes the caller a permanent project-admin membership that
+    outlives the delegation, so revoking the application does not take the access back
+  - **creating or deleting an organization**, parent or sub, held back individually and commented as such:
+    `POST /v2/organizations`, `DELETE /v2/organizations/:organizationId`, `POST /v1/sub-orgs`,
+    `DELETE /v1/sub-orgs/:subOrgId`. Updating a sub-org and managing its memberships stay open — it is
+    creation and deletion that a delegation should not reach
+  - the org reads that return more than the token's org, held back individually and commented as such:
+    `GET /v1/organization`, `GET /v1/organization/accessible-with-sub-orgs`,
+    `GET /v1/organization/:organizationId`
+  - `POST /v2/organizations/privilege-system-upgrade`, which gates on `hasRole(Admin)` rather than a CASL
+    ability and one-way-switches the org's whole privilege model
   - **every route that mints a long-lived credential**, each commented as such: identity token-auth tokens
     (`POST /v1/auth/token-auth/identities/:identityId/tokens`), universal-auth client secrets
     (`POST /v1/auth/universal-auth/identities/:identityId/client-secrets`), service tokens
@@ -201,7 +210,10 @@ Auth extraction happens in `src/server/plugins/auth/`:
   calls `getOrgPermission`/`getProjectPermission` and throws the ability away is using it as a membership
   gate: the intersection with granted scopes happens inside, but nothing reads the result, so a scoped
   token passes like a first-party session. That's why `GET /v1/organization/:organizationId` came back off
-  the list. The membership-only reads that keep `AuthMode.OAUTH` return project metadata a secrets client
+  the list. Gating on `hasRole(...)` from the same return value has the same problem and is easier to miss,
+  since it reads like an authorization check: the role comes from the actor's memberships, not from the
+  narrowed ability, so no scope ever touches it. That's why `POST /v2/organizations/privilege-system-upgrade`
+  is first-party. The membership-only reads that keep `AuthMode.OAUTH` return project metadata a secrets client
   needs to operate rather than org or security config: `getAProject` (clients resolve environment slugs
   before reading secrets) and `getProjectKmsKeys`. A CASL gate isn't the fix there, since the operation has
   no subject, any member with an identity token can already call it, and a gate would change first-party

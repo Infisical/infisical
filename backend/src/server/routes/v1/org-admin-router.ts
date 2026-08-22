@@ -62,7 +62,7 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { membership } = await server.services.orgAdmin.grantProjectAdminAccess({
         actorOrgId: req.permission.orgId,
