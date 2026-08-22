@@ -184,8 +184,8 @@ Auth extraction happens in `src/server/plugins/auth/`:
   - OAuth client CRUD + consent (`v1/oauth-router.ts`) and `ee/v1/assume-privilege-router.ts`, where a
     delegated token could widen its own grant
   - five org routes held back individually and commented as such: `GET /v1/organization`,
-    `GET /v1/organization/accessible-with-sub-orgs`, `POST /v2/organization`, `GET /v1/organization/:organizationId`,
-    `DELETE /v2/organization/:organizationId`
+    `GET /v1/organization/accessible-with-sub-orgs`, `POST /v2/organizations`, `GET /v1/organization/:organizationId`,
+    `DELETE /v2/organizations/:organizationId`
   - **every route that mints a long-lived credential**, each commented as such: identity token-auth tokens
     (`POST /v1/auth/token-auth/identities/:identityId/tokens`), universal-auth client secrets
     (`POST /v1/auth/universal-auth/identities/:identityId/client-secrets`), service tokens
@@ -217,7 +217,7 @@ Auth extraction happens in `src/server/plugins/auth/`:
   credential issuance is on the exception list above regardless of how well the route builds its permission,
   and why a new issuance route starts first-party only.
 
-  **A route that mints session tokens can't accept a delegated one.** `DELETE /v2/organization/:organizationId`
+  **A route that mints session tokens can't accept a delegated one.** `DELETE /v2/organizations/:organizationId`
   deletes the org the caller's token points at, so it reissues the user's session through
   `loginService.generateUserTokens` and returns it. `generateUserTokens` has no oauthClientId, scopes or
   delegation parameter, so the reissued pair is a first-party session regardless of what came in: a
