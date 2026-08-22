@@ -106,6 +106,7 @@ export type TPkiSyncSyncResult = {
     skippedCertificates?: Array<{ name: string; reason: string }>;
     validationErrors?: Array<{ name: string; error: string }>;
   };
+  partialFailureMessage?: string;
 };
 
 export type TCreatePkiSyncDTO = {
@@ -136,7 +137,6 @@ export type TUpdatePkiSyncDTO = {
   syncOptions?: Record<string, unknown>;
   subscriberId?: string | null;
   connectionId?: string;
-  certificateIds?: string[];
   credentials?: { exportPassword?: string };
   auditLogInfo: AuditLogInfo;
   resourceInternalMetadata?: ResourceMetadataDTO;
@@ -153,6 +153,7 @@ export type TListPkiSyncsByProjectId = {
   projectId: string;
   certificateId?: string;
   applicationId?: string | null;
+  destination?: PkiSync;
 };
 
 export type TFindPkiSyncByIdDTO = {

@@ -1,5 +1,5 @@
 import { PkiSync } from "./pki-sync-enums";
-import { getPkiSyncProviderCapabilities, matchesCertificateNameSchema } from "./pki-sync-fns";
+import { getPkiSyncProviderCapabilities, matchesCertificateNameSchema, parsePkiSyncErrorMessage } from "./pki-sync-fns";
 
 // A dash-stripped UUID (what {{certificateId}}, {{profileId}}, {{applicationId}} resolve to).
 const HEX = "550e8400e29b41d4a716446655440000";
@@ -112,5 +112,30 @@ describe("getPkiSyncProviderCapabilities: canRunPostSyncCommand", () => {
     Object.values(PkiSync).forEach((destination) => {
       expect(typeof getPkiSyncProviderCapabilities(destination).canRunPostSyncCommand).toBe("boolean");
     });
+  });
+});
+
+describe("parsePkiSyncErrorMessage", () => {
+  // The three sync/import/remove message columns are varchar(255), so an over-long message makes
+  // the status write throw and leaves the sync stuck reporting "running".
+  test("caps the message at the width of the columns it is written to", () => {
+    const message = parsePkiSyncErrorMessage(new Error("x".repeat(500)));
+
+    expect(message).toHaveLength(255);
+    expect(message.endsWith("...")).toBe(true);
+  });
+
+  test("caps a thrown string too", () => {
+    expect(parsePkiSyncErrorMessage("y".repeat(500))).toHaveLength(255);
+  });
+
+  test("leaves a message that already fits untouched", () => {
+    expect(parsePkiSyncErrorMessage(new Error("Connection refused by the destination host"))).toBe(
+      "Connection refused by the destination host"
+    );
+  });
+
+  test("falls back to a readable message for a non-error throw", () => {
+    expect(parsePkiSyncErrorMessage({ weird: true })).toBe("An unknown error occurred during PKI sync operation");
   });
 });

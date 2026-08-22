@@ -26,6 +26,8 @@ import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncExportFormat } from "./pki-sync-export-fns";
 import {
+  assertPkiSyncDestinationConfigAllowsCertificateCount,
+  assertPkiSyncDestinationConfigUpdate,
   enterprisePkiSyncCheck,
   getPkiSyncMaxCertificates,
   getPkiSyncProviderCapabilities,
@@ -81,7 +83,6 @@ type TPkiSyncServiceFactoryDep = {
     | "findCertificateIdsByPkiSyncId"
     | "addCertificates"
     | "removeCertificates"
-    | "removeAllCertificatesFromSync"
     | "findWithDetails"
     | "updateSyncMetadata"
     | "clearSyncMetadataFlag"
@@ -361,6 +362,7 @@ export const pkiSyncServiceFactory = ({
       assertWithinCertificateLimit(destination, certificateIds.length);
       await validateCertificatesForSync(certificateIds, projectId, applicationId);
       assertSyncOptionsAllowCertificateCount(resolvedSyncOptions, certificateIds.length);
+      assertPkiSyncDestinationConfigAllowsCertificateCount(destination, destinationConfig, certificateIds.length);
     }
 
     const encryptedCredentials = credentials?.exportPassword
@@ -416,7 +418,6 @@ export const pkiSyncServiceFactory = ({
       syncOptions,
       subscriberId,
       connectionId,
-      certificateIds,
       credentials
     }: Omit<TUpdatePkiSyncDTO, "auditLogInfo" | "projectId">,
     actor: OrgServiceActor
@@ -476,6 +477,10 @@ export const pkiSyncServiceFactory = ({
       }
     }
 
+    if (destinationConfig) {
+      assertPkiSyncDestinationConfigUpdate(pkiSync.destination, pkiSync.destinationConfig ?? {}, destinationConfig);
+    }
+
     let effectiveConnection: { gatewayId?: string | null; gatewayPoolId?: string | null } | undefined;
     if (connectionId && connectionId !== pkiSync.connectionId) {
       const destinationApp = getDestinationAppType(pkiSync.destination);
@@ -505,6 +510,9 @@ export const pkiSyncServiceFactory = ({
     }
 
     const effectiveSyncOptions = (resolvedSyncOptions ?? pkiSync.syncOptions) as Record<string, unknown> | undefined;
+    const effectiveDestinationConfig = (destinationConfig ?? pkiSync.destinationConfig) as
+      | Record<string, unknown>
+      | undefined;
 
     await $assertMaySetPostSyncCommand(
       effectiveSyncOptions?.postSyncCommand,
@@ -527,23 +535,14 @@ export const pkiSyncServiceFactory = ({
       );
     }
 
-    if (certificateIds !== undefined) {
-      if (certificateIds.length > 0) {
-        assertWithinCertificateLimit(pkiSync.destination, certificateIds.length);
-        await validateCertificatesForSync(certificateIds, pkiSync.projectId, pkiSync.applicationId);
-        assertSyncOptionsAllowCertificateCount(effectiveSyncOptions, certificateIds.length);
-      }
-
-      await certificateSyncDAL.removeAllCertificatesFromSync(id);
-      if (certificateIds.length > 0) {
-        await certificateSyncDAL.addCertificates(
-          id,
-          certificateIds.map((certId) => ({ certificateId: certId }))
-        );
-      }
-    } else if (syncOptions) {
+    if (syncOptions || destinationConfig) {
       const existingCount = (await certificateSyncDAL.findByPkiSyncId(id)).length;
       assertSyncOptionsAllowCertificateCount(effectiveSyncOptions, existingCount);
+      assertPkiSyncDestinationConfigAllowsCertificateCount(
+        pkiSync.destination,
+        effectiveDestinationConfig,
+        existingCount
+      );
     }
 
     if (
@@ -558,7 +557,7 @@ export const pkiSyncServiceFactory = ({
       ? await encryptPkiSyncCredentials({ orgId: actor.orgId, projectId: pkiSync.projectId, credentials, kmsService })
       : undefined;
 
-    const updatedPkiSync = await pkiSyncDAL.updateById(id, {
+    const update = {
       name,
       description,
       isAutoSyncEnabled,
@@ -567,7 +566,11 @@ export const pkiSyncServiceFactory = ({
       subscriberId,
       connectionId,
       ...(encryptedCredentials ? { encryptedCredentials } : {})
-    });
+    };
+
+    if (Object.values(update).every((value) => value === undefined)) return pkiSync as TPkiSync;
+
+    const updatedPkiSync = await pkiSyncDAL.updateById(id, update);
 
     return updatedPkiSync as TPkiSync;
   };
@@ -623,7 +626,7 @@ export const pkiSyncServiceFactory = ({
   };
 
   const listPkiSyncsByProjectId = async (
-    { projectId, certificateId, applicationId }: TListPkiSyncsByProjectId,
+    { projectId, certificateId, applicationId, destination }: TListPkiSyncsByProjectId,
     actor: OrgServiceActor
   ): Promise<TPkiSync[]> => {
     let processedRules: ReturnType<typeof getProcessedPermissionRules> | undefined;
@@ -662,7 +665,10 @@ export const pkiSyncServiceFactory = ({
       projectId,
       processedRules,
       undefined,
-      applicationId !== undefined ? { applicationId } : undefined
+      {
+        ...(applicationId !== undefined ? { applicationId } : {}),
+        ...(destination ? { destination } : {})
+      }
     );
 
     if (certificateId) {
@@ -870,6 +876,11 @@ export const pkiSyncServiceFactory = ({
 
     assertSyncOptionsAllowCertificateCount(
       pkiSync.syncOptions as Record<string, unknown> | undefined,
+      prospectiveCount
+    );
+    assertPkiSyncDestinationConfigAllowsCertificateCount(
+      pkiSync.destination,
+      pkiSync.destinationConfig,
       prospectiveCount
     );
 

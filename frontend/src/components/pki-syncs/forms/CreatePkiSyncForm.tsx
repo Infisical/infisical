@@ -26,7 +26,11 @@ import {
   Switch
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import {
+  PKI_SYNC_MAP,
+  PRESERVE_ARN_DESTINATIONS,
+  PRESERVE_ITEM_ON_RENEWAL_DESTINATIONS
+} from "@app/helpers/pkiSyncs";
 import {
   PkiSync,
   PkiSyncExportFormat,
@@ -189,8 +193,11 @@ export const CreatePkiSyncForm = ({
       syncOptions: {
         canImportCertificates: false,
         canRemoveCertificates: false,
-        preserveArn: true,
         certificateNameSchema: syncOption?.defaultCertificateNameSchema,
+        ...(PRESERVE_ARN_DESTINATIONS.includes(destination) && { preserveArn: true }),
+        ...(PRESERVE_ITEM_ON_RENEWAL_DESTINATIONS.includes(destination) && {
+          preserveItemOnRenewal: true
+        }),
         ...((destination === PkiSync.LinuxServer || destination === PkiSync.WindowsServer) && {
           exportFormat:
             destination === PkiSync.WindowsServer

@@ -24,6 +24,13 @@ import { CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION } from "./cloudflare
 import { cloudflareCustomCertificatePkiSyncFactory } from "./cloudflare-custom-certificate/cloudflare-custom-certificate-pki-sync-fns";
 import { F5_BIG_IP_PKI_SYNC_LIST_OPTION } from "./f5-big-ip/f5-big-ip-pki-sync-constants";
 import { f5BigIpPkiSyncFactory } from "./f5-big-ip/f5-big-ip-pki-sync-fns";
+import { GCP_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION } from "./gcp-certificate-manager/gcp-certificate-manager-pki-sync-constants";
+import { gcpCertificateManagerPkiSyncFactory } from "./gcp-certificate-manager/gcp-certificate-manager-pki-sync-fns";
+import { TGcpCertificateManagerPkiSyncConfig } from "./gcp-certificate-manager/gcp-certificate-manager-pki-sync-types";
+import {
+  assertGcpCertificateManagerCertificateCount,
+  assertGcpCertificateManagerConfigUpdate
+} from "./gcp-certificate-manager/gcp-certificate-manager-pki-sync-update-fns";
 import { KEMP_LOADMASTER_PKI_SYNC_LIST_OPTION } from "./kemp-loadmaster/kemp-loadmaster-pki-sync-constants";
 import { kempLoadMasterPkiSyncFactory } from "./kemp-loadmaster/kemp-loadmaster-pki-sync-fns";
 import { LINUX_SERVER_PKI_SYNC_LIST_OPTION } from "./linux-server/linux-server-pki-sync-constants";
@@ -51,6 +58,7 @@ const PKI_SYNC_LIST_OPTIONS = {
   [PkiSync.AwsSecretsManager]: AWS_SECRETS_MANAGER_PKI_SYNC_LIST_OPTION,
   [PkiSync.AwsElasticLoadBalancer]: AWS_ELASTIC_LOAD_BALANCER_PKI_SYNC_LIST_OPTION,
   [PkiSync.Chef]: CHEF_PKI_SYNC_LIST_OPTION,
+  [PkiSync.GcpCertificateManager]: GCP_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION,
   [PkiSync.CloudflareCustomCertificate]: CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION,
   [PkiSync.NetScaler]: NETSCALER_PKI_SYNC_LIST_OPTION,
   [PkiSync.F5BigIp]: F5_BIG_IP_PKI_SYNC_LIST_OPTION,
@@ -100,6 +108,32 @@ export const getPkiSyncMaxCertificates = (destination: PkiSync): number | undefi
   return undefined;
 };
 
+export const assertPkiSyncDestinationConfigUpdate = (
+  destination: PkiSync,
+  previousConfig: Record<string, unknown>,
+  nextConfig: Record<string, unknown>
+) => {
+  if (destination === PkiSync.GcpCertificateManager) {
+    assertGcpCertificateManagerConfigUpdate(
+      previousConfig as TGcpCertificateManagerPkiSyncConfig,
+      nextConfig as TGcpCertificateManagerPkiSyncConfig
+    );
+  }
+};
+
+export const assertPkiSyncDestinationConfigAllowsCertificateCount = (
+  destination: PkiSync,
+  destinationConfig: Record<string, unknown> | undefined,
+  resultingCertificateCount: number
+) => {
+  if (destination === PkiSync.GcpCertificateManager) {
+    assertGcpCertificateManagerCertificateCount(
+      destinationConfig as TGcpCertificateManagerPkiSyncConfig | undefined,
+      resultingCertificateCount
+    );
+  }
+};
+
 export const matchesSchema = <T extends ZodSchema>(schema: T, data: unknown): data is z.infer<T> => {
   return schema.safeParse(data).success;
 };
@@ -111,11 +145,11 @@ export const truncateSyncMessage = (message: string): string =>
 
 export const parsePkiSyncErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
-    return error.message;
+    return truncateSyncMessage(error.message);
   }
 
   if (typeof error === "string") {
-    return error;
+    return truncateSyncMessage(error);
   }
 
   return "An unknown error occurred during PKI sync operation";
@@ -201,6 +235,11 @@ export const PkiSyncFns = {
       case PkiSync.NutanixPrismCentral: {
         throw new Error(
           "Nutanix Prism Central does not support importing certificates into Infisical (private keys cannot be extracted)"
+        );
+      }
+      case PkiSync.GcpCertificateManager: {
+        throw new Error(
+          "GCP Certificate Manager does not support importing certificates into Infisical (private keys cannot be extracted)"
         );
       }
       default:
@@ -337,6 +376,14 @@ export const PkiSyncFns = {
           gatewayPoolService: dependencies.gatewayPoolService
         });
         return nutanixPkiSync.syncCertificates(pkiSync, certificateMap);
+      }
+      case PkiSync.GcpCertificateManager: {
+        checkPkiSyncDestination(pkiSync, PkiSync.GcpCertificateManager as PkiSync);
+        const gcpCertificateManagerPkiSync = gcpCertificateManagerPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
+        return gcpCertificateManagerPkiSync.syncCertificates(pkiSync, certificateMap);
       }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
@@ -509,6 +556,18 @@ export const PkiSyncFns = {
           shouldRetry: false,
           message: "Nutanix Prism Central does not support removing certificates"
         });
+      }
+      case PkiSync.GcpCertificateManager: {
+        checkPkiSyncDestination(pkiSync, PkiSync.GcpCertificateManager as PkiSync);
+        const gcpCertificateManagerPkiSync = gcpCertificateManagerPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
+        await gcpCertificateManagerPkiSync.removeCertificates(pkiSync, certificateNames, {
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateMap: dependencies.certificateMap
+        });
+        break;
       }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);

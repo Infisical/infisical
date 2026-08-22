@@ -1009,7 +1009,8 @@
                           "documentation/platform/pki/applications/certificate-syncs/kemp-loadmaster",
                           "documentation/platform/pki/applications/certificate-syncs/linux-server",
                           "documentation/platform/pki/applications/certificate-syncs/windows-server",
-                          "documentation/platform/pki/applications/certificate-syncs/nutanix-prism-central"
+                          "documentation/platform/pki/applications/certificate-syncs/nutanix-prism-central",
+                          "documentation/platform/pki/applications/certificate-syncs/gcp-certificate-manager"
                         ]
                       }
                     ]
@@ -3925,6 +3926,18 @@
                           "api-reference/endpoints/pki/syncs/nutanix-prism-central/update",
                           "api-reference/endpoints/pki/syncs/nutanix-prism-central/delete",
                           "api-reference/endpoints/pki/syncs/nutanix-prism-central/sync-certificates"
+                        ]
+                      },
+                      {
+                        "group": "GCP Certificate Manager",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/gcp-certificate-manager/list",
+                          "api-reference/endpoints/pki/syncs/gcp-certificate-manager/get-by-id",
+                          "api-reference/endpoints/pki/syncs/gcp-certificate-manager/create",
+                          "api-reference/endpoints/pki/syncs/gcp-certificate-manager/update",
+                          "api-reference/endpoints/pki/syncs/gcp-certificate-manager/delete",
+                          "api-reference/endpoints/pki/syncs/gcp-certificate-manager/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/gcp-certificate-manager/remove-certificates"
                         ]
                       }
                     ]
