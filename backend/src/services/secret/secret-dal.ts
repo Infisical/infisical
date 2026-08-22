@@ -324,8 +324,10 @@ export const secretDALFactory = (db: TDbClient) => {
         .join(TableName.Secret, `${TableName.Secret}.id`, `${TableName.SecretReference}.secretId`)
         .join(TableName.SecretFolder, `${TableName.Secret}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .where("projectId", projectId)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .select(selectAllTableCols(TableName.SecretReference))
         .select("folderId");
       return docs;
@@ -340,8 +342,10 @@ export const secretDALFactory = (db: TDbClient) => {
       const docs = await (tx || db.replicaNode())(TableName.Secret)
         .join(TableName.SecretFolder, `${TableName.Secret}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .where("projectId", projectId)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         // not empty
         .whereNotNull("secretValueCiphertext")
         .select("secretValueTag", "secretValueCiphertext", "secretValueIV", `${TableName.Secret}.id` as "id");
