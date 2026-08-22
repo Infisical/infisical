@@ -120,12 +120,6 @@ export const encryptionKeyRotationServiceFactory = ({
       });
     }
 
-    const isFipsEnabled = crypto.isFipsModeEnabled();
-    const key = generateRootEncryptionKey(isFipsEnabled);
-    const kekBuffer = resolveKekBuffer(key, isFipsEnabled);
-    const encryptedRootKey = kmsService.encryptRootKeyForKek(kekBuffer);
-    const fingerprint = getKekFingerprint(kekBuffer);
-
     const staged = await kmsRootConfigDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
 
@@ -150,9 +144,14 @@ export const encryptionKeyRotationServiceFactory = ({
         });
       }
 
+      const isFipsEnabled = crypto.isFipsModeEnabled();
+      const key = generateRootEncryptionKey(isFipsEnabled);
+      const kekBuffer = resolveKekBuffer(key, isFipsEnabled);
+      const fingerprint = getKekFingerprint(kekBuffer);
+
       const row = await kmsRootConfigDAL.create(
         {
-          encryptedRootKey,
+          encryptedRootKey: kmsService.encryptRootKeyForKek(kekBuffer),
           encryptionStrategy: RootKeyEncryptionStrategy.Software,
           kekFingerprint: fingerprint,
           activatedAt: null
@@ -160,16 +159,16 @@ export const encryptionKeyRotationServiceFactory = ({
         tx
       );
 
-      return { row, retained };
+      return { row, retained, key, fingerprint };
     });
     const pending = staged.row;
 
-    logger.info(`Encryption key rotation staged [rotationId=${pending.id}] [fingerprint=${fingerprint}]`);
+    logger.info(`Encryption key rotation staged [rotationId=${pending.id}] [fingerprint=${staged.fingerprint}]`);
 
     return {
       id: pending.id,
-      fingerprint,
-      key,
+      fingerprint: staged.fingerprint,
+      key: staged.key,
       ...(staged.retained
         ? {
             supersedesRetainedKey: {

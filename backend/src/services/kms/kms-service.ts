@@ -1825,6 +1825,15 @@ export const kmsServiceFactory = ({
       }
     }
 
+    if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.Software) {
+      const currentFingerprint = $currentKekFingerprint();
+      if (kmsRootConfig.kekFingerprint && currentFingerprint && kmsRootConfig.kekFingerprint !== currentFingerprint) {
+        throw new BadRequestError({
+          message: `This instance is running with encryption key fingerprint '${currentFingerprint}', but the active root key was written with '${kmsRootConfig.kekFingerprint}'. Restart it with the current encryption key before changing the root key encryption strategy.`
+        });
+      }
+    }
+
     // Both can be HSM round trips, so they stay outside the transaction.
     const decryptedRootKey = await $decryptRootKey(kmsRootConfig);
     const encryptedRootKey = await $encryptRootKey(decryptedRootKey, strategy);
@@ -1837,14 +1846,22 @@ export const kmsServiceFactory = ({
     await kmsRootConfigDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
 
-      const [pendingNow, retainedNow] = await Promise.all([
+      const [pendingNow, retainedNow, sentinelNow] = await Promise.all([
         kmsRootConfigDAL.findPending(tx),
-        kmsRootConfigDAL.findRetained(tx)
+        kmsRootConfigDAL.findRetained(tx),
+        kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID, tx)
       ]);
       if (pendingNow.length || retainedNow.length) {
         throw new BadRequestError({
           message:
             "An encryption key rotation is still in progress. Complete or discard it before changing the root key encryption strategy."
+        });
+      }
+
+      if (!sentinelNow || !sentinelNow.encryptedRootKey.equals(kmsRootConfig.encryptedRootKey)) {
+        throw new BadRequestError({
+          message:
+            "The active root key changed while this request was in flight, so the encryption strategy was left unchanged. Retry the change."
         });
       }
 
