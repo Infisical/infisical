@@ -93,7 +93,6 @@ export type TOauthTokenExchangeDTO = {
   | {
       grantType: OauthGrantType.TokenExchange;
       subjectToken: string;
-      subjectTokenType: OauthTokenType;
       ip: string;
       userAgent?: string;
     }

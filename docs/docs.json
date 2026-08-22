@@ -4551,10 +4551,6 @@
       "destination": "/documentation/platform/oauth-applications/overview"
     },
     {
-      "source": "/documentation/platform/oauth-token-exchange",
-      "destination": "/documentation/platform/oauth-applications/token-exchange"
-    },
-    {
       "source": "/integrations/platforms/docker-intro",
       "destination": "/integrations/platforms/docker"
     },

@@ -498,7 +498,6 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
         return server.services.oauthClient.exchangeToken({
           grantType: OauthGrantType.TokenExchange,
           subjectToken: req.body.subject_token,
-          subjectTokenType: req.body.subject_token_type,
           clientId,
           clientSecret,
           ip: req.realIp,

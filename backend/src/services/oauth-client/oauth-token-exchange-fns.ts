@@ -102,7 +102,7 @@ const getJwksClient = (jwksUri: string) =>
     });
   });
 
-export type TOidcTrustAnchor = {
+type TOidcTrustAnchor = {
   issuer: string;
   jwksUri: string;
   algorithm: string;
