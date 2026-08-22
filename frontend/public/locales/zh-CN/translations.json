@@ -1,0 +1,344 @@
+{
+  "activity": {
+    "title": "审计日志",
+    "subtitle": "此 Infisical 项目的事件历史。",
+    "event": {
+      "readSecrets": "查看密钥",
+      "updateSecrets": "更新密钥",
+      "addSecrets": "添加密钥",
+      "deleteSecrets": "删除密钥"
+    },
+    "ip-address": "IP 地址"
+  },
+  "billing": {
+    "title": "使用与计费",
+    "description": "在此处查看和管理您的组织订阅",
+    "subscription": "订阅",
+    "starter": {
+      "name": "入门版",
+      "price-explanation": "最多 5 名团队成员",
+      "text": "免费管理最多 3 个项目，最多 5 名团队成员！",
+      "subtext": ""
+    },
+    "professional": {
+      "name": "专业版",
+      "price-explanation": "/成员/月",
+      "subtext": "包括无限项目和成员。",
+      "text": "随着您的成长，管理关键信息。"
+    },
+    "enterprise": {
+      "name": "企业版",
+      "text": "随着您的成长，管理关键信息。"
+    },
+    "current-usage": "当前使用情况",
+    "free": "免费",
+    "downgrade": "降级",
+    "upgrade": "升级",
+    "learn-more": "了解更多",
+    "custom-pricing": "自定义定价",
+    "schedule-demo": "预约演示"
+  },
+  "common": {
+    "head-title": "{{title}} | Infisical",
+    "error_project-already-exists": "已存在同名项目。",
+    "no-mobile": " 若要使用 Infisical，请通过具有更大尺寸的设备登录。",
+    "email": "电子邮件",
+    "password": "密码",
+    "first-name": "名",
+    "last-name": "姓",
+    "logout": "登出",
+    "validate-required": "请输入您的{{name}}",
+    "maintenance-alert": "我们正在经历一些技术问题。我们正在努力解决。请稍后再试。",
+    "click-to-copy": "点击复制",
+    "project-id": "项目 ID",
+    "save-changes": "保存更改",
+    "saved": "已保存",
+    "drop-zone": "将 .env、.json 或 .yml 文件拖放到此处。",
+    "drop-zone-keys": "将 .env、.json 或 .yml 文件拖放到此处以添加更多密钥。",
+    "role": "角色",
+    "role_admin": "管理员",
+    "display-name": "显示名称",
+    "environment": "环境",
+    "expired-in": "过期时间",
+    "language": "语言",
+    "search": "搜索...",
+    "note": "备注",
+    "view-more": "查看更多",
+    "end-of-history": "历史记录结束",
+    "select-event": "选择事件",
+    "event": "事件",
+    "user": "用户",
+    "source": "来源",
+    "time": "时间",
+    "timestamp": "时间戳"
+  },
+  "dashboard": {
+    "title": "密钥",
+    "og-title": "几秒钟内管理您的 .env 文件",
+    "og-description": "Infisical 是一个简单且端到端加密的平台，使团队能够同步和管理他们的 .env 文件。",
+    "search-keys": "搜索密钥...",
+    "add-key": "添加密钥",
+    "personal": "个人",
+    "personal-description": "个人密钥仅对您可见",
+    "shared": "共享",
+    "shared-description": "共享密钥对您的整个团队可见",
+    "make-shared": "设为共享",
+    "make-personal": "设为个人",
+    "add-secret": "添加新密钥",
+    "check-docs": {
+      "button": "查看文档",
+      "title": "干得不错！",
+      "line1": "恭喜您添加了更多密钥。",
+      "line2": "这是如何将它们连接到您的代码库的方法。"
+    },
+    "sidebar": {
+      "secret": "密钥",
+      "key": "键",
+      "value": "值",
+      "override": "用个人值覆盖",
+      "version-history": "版本历史",
+      "comments": "评论与备注",
+      "personal-explanation": "此密钥是个人的。它不会与您的任何队友共享。",
+      "generate-random-hex": "生成随机十六进制",
+      "digits": "位数",
+      "delete-key-dialog": {
+        "title": "删除密钥",
+        "confirm-delete-message": "您确定要删除此密钥吗？此操作不可撤销。"
+      }
+    }
+  },
+  "approval": {
+    "title": "管理员面板",
+    "og-title": "管理您的密钥变更管理",
+    "og-description": "Infisical 是一个简单且端到端加密的平台，使团队能够同步和管理他们的 .env 文件。"
+  },
+  "integrations": {
+    "title": "项目集成",
+    "description": "管理 Infisical 与第三方服务的集成。",
+    "no-integrations1": "您尚未设置任何集成。设置后，它们将出现在这里。",
+    "no-integrations2": "要开始，请点击下方的任意选项。只需 5 次点击即可完成设置。",
+    "available": "平台与云集成",
+    "available-text1": "点击您想要连接的集成。这将使您的环境变量自动流入选定的第三方服务。",
+    "available-text2": "注意：在与 Heroku 集成期间，出于安全原因，无法维持端到端加密。理论上，这允许 Infisical 解密您的环境变量。实际上，我们可以向您保证这种情况永远不会发生，并且它允许我们保护您的秘密免受网络上的恶意行为者侵害。核心 Infisical 服务将始终保持端到端加密。如有任何疑问，请联系 support@infisical.com。",
+    "cloud-integrations": "原生集成",
+    "framework-integrations": "框架集成",
+    "click-to-start": "点击集成以开始同步密钥。",
+    "click-to-setup": "点击框架以获取设置说明。",
+    "grant-access-to-secrets": "授予 Infisical 访问您的密钥权限",
+    "why-infisical-needs-access": "大多数云集成需要 Infisical 能够解密您的密钥以便转发。",
+    "grant-access-button": "授予访问权限"
+  },
+  "login": {
+    "title": "登录",
+    "og-title": "登录 Infisical",
+    "og-description": "Infisical 是一个简单且端到端加密的平台，使团队能够同步和管理他们的 .env 文件。",
+    "login": "登录",
+    "need-account": "需要 Infisical 账户吗？",
+    "create-account": "创建账户",
+    "forgot-password": "忘记密码？",
+    "error-login": "凭据错误。",
+    "continue-with-google": "继续使用 Google",
+    "continue-with-email": "继续使用电子邮件",
+    "other-option": "使用其他方式登录"
+  },
+  "mfa": {
+    "title": "注册",
+    "og-title": "用一行代码替换 .env 文件。3 分钟内注册 Infisical。",
+    "og-description": "Infisical 是一个简单且端到端加密的平台，使团队能够同步和管理 API 密钥和环境变量。支持 Node.js、Next.js、Gatsby、Nest.js...等。",
+    "signup": "注册",
+    "already-have-account": "已有账户？登录",
+    "forgot-password": "忘记密码？",
+    "verify": "验证",
+    "step1-start": "开始吧",
+    "step1-privacy": "创建账户即表示您同意我们的条款并阅读并接受隐私政策。",
+    "step1-submit": "开始",
+    "step2-message": "我们已发送验证码至",
+    "step2-code-error": "哎呀。您的验证码错误。剩余尝试次数：",
+    "step2-resend-alert": "未收到验证码？",
+    "step2-resend-submit": "重新发送",
+    "step2-resend-progress": "正在重新发送...",
+    "step2-spam-alert": "请检查您的垃圾邮件箱。",
+    "step3-message": "快完成了！",
+    "step4-message": "保存您的应急包",
+    "step4-description1": "如果您被锁定在账户之外，您的应急包是唯一可以用来登录的方式。",
+    "step4-description2": "我们建议您下载并妥善保管。",
+    "step4-description3": "它包含您的密钥，如果我们无法访问或恢复。",
+    "step4-download": "下载 PDF",
+    "step5-send-invites": "发送邀请",
+    "step5-invite-team": "邀请您的团队",
+    "step5-subtitle": "Infisical 旨在与您的队友一起使用。邀请他们试用。",
+    "step5-skip": "跳过"
+  },
+  "nav": {
+    "support": {
+      "slack": "加入 Slack 论坛",
+      "docs": "阅读文档",
+      "issue": "打开 GitHub 问题",
+      "email": "发送电子邮件"
+    },
+    "user": {
+      "signed-in-as": "已登录为",
+      "current-organization": "当前组织",
+      "usage-billing": "使用与计费",
+      "invite": "邀请成员",
+      "other-organizations": "其他组织"
+    },
+    "menu": {
+      "project": "项目",
+      "secrets": "密钥",
+      "members": "成员",
+      "integrations": "集成",
+      "project-settings": "项目设置"
+    }
+  },
+  "section": {
+    "api-key": {
+      "api-keys": "服务令牌",
+      "api-keys-description": "每个服务令牌都是特定于您、某个项目以及该项目中的某个环境的。",
+      "add-new": "添加新令牌",
+      "add-dialog": {
+        "title": "添加 API 密钥",
+        "description": "指定名称和过期时间。生成 API 密钥后，您只能看到一次，然后它就会消失。请确保将其保存在某处。",
+        "name": "API 密钥名称",
+        "add": "添加 API 密钥",
+        "copy-service-token": "复制您的 API 密钥",
+        "copy-service-token-description": "关闭此弹窗后，您将再也看不到您的 API 密钥。"
+      }
+    },
+    "incident": {
+      "incident-contacts": "事件联系人",
+      "incident-contacts-description": "这些联系人将在发生严重事件时收到通知。",
+      "no-incident-contacts": "未找到事件联系人。",
+      "add-contact": "添加联系人",
+      "add-dialog": {
+        "title": "添加事件联系人",
+        "description": "此联系人将在发生严重事件时收到通知。",
+        "add-incident": "添加事件联系人"
+      }
+    },
+    "members": {
+      "add-member": "添加成员",
+      "org-members": "组织成员",
+      "org-members-description": "管理您的组织成员。这些用户可以之后被分配到项目中。",
+      "search-members": "搜索成员...",
+      "add-dialog": {
+        "add-member-to-project": "将成员添加到您的项目中",
+        "already-all-invited": "您组织中的所有用户都已被邀请。",
+        "add-user-org-first": "先添加更多用户到组织中。",
+        "user-will-email": "用户将收到带有指示的电子邮件。",
+        "looking-add": "<0>如果您想将用户添加到您的组织中，</0><1>请点击这里</1>",
+        "add-user-to-org": "将用户添加到组织中"
+      }
+    },
+    "password": {
+      "password": "密码",
+      "change": "更改密码",
+      "current": "当前密码",
+      "current-wrong": "当前密码可能错误",
+      "new": "新密码",
+      "validate-base": "密码应包含：",
+      "validate-tooShort": "至少 14 个字符",
+      "validate-tooLong": "最多 100 个字符",
+      "validate-noLetterChar": "至少 1 个字母字符",
+      "validate-noNumOrSpecialChar": "至少 1 个数字或特殊字符",
+      "validate-repeatedChar": "最多 3 个连续重复字符",
+      "validate-escapeChar": "不允许转义字符。",
+      "validate-lowEntropy": "密码包含个人信息。",
+      "validate-breached": "密码曾在数据泄露中出现。"
+    },
+      "token": {
+        "service-tokens": "服务令牌",
+        "service-tokens-description": "每个服务令牌都是特定于您、某个项目以及该项目内的某个环境的。",
+        "add-new": "添加新令牌",
+        "add-dialog": {
+          "title": "为{{target}}添加服务令牌",
+          "description": "当生成令牌后，您将只能在它消失前看到一次。请确保将其保存在某个地方。",
+          "name": "服务令牌名称",
+          "add": "添加服务令牌",
+          "copy-service-token": "复制您的服务令牌",
+          "copy-service-token-description": "一旦关闭此弹出窗口，您将再也看不到您的服务令牌"
+        }
+      }
+  },
+  "settings": {
+    "webhooks": {
+      "title": "Webhooks",
+      "description": "管理Webhooks以设置各种集成的部署钩子。"
+    },
+    "members": {
+      "title": "项目成员",
+      "description": "此页面显示所选项目的成员，并允许您修改他们的权限。"
+    },
+    "org": {
+      "title": "组织设置",
+      "description": "管理组织的成员。这些用户之后可以被分配到项目中。"
+    },
+    "personal": {
+      "title": "个人设置",
+      "description": "在此查看和管理您的个人信息。",
+      "emergency": {
+        "name": "应急包",
+        "text1": "您的应急包包含登录Infisical账户所需的信息。",
+        "text2": "只有最新发布的应急包仍然有效。要获取新的应急包，请验证您的密码。",
+        "download": "下载应急包"
+      },
+      "change-language": "更改语言",
+      "api-keys": {
+        "title": "API密钥",
+        "description": "管理您的个人API密钥以访问Infisical API。",
+        "add-new": "添加新"
+      }
+    },
+    "project": {
+      "title": "项目设置",
+      "description": "这些设置仅适用于当前选定的项目。",
+      "danger-zone": "危险区域",
+      "delete-project": "删除项目",
+      "project-to-delete": "要删除的项目",
+      "danger-zone-note": "一旦删除该项目，您将无法撤销此操作。这将立即移除所有密钥。如果您仍想继续，请在下方输入项目名称。",
+      "delete-project-note": "注意：只有在您拥有多个项目的情况下才能删除项目",
+      "project-id-description": "为了将Infisical集成到您的代码库并自动注入环境变量，应使用以下项目ID。",
+      "project-id-description2": "有关更多指导，包括各种语言和框架的代码片段，请参阅",
+      "auto-generated": "这是您的项目的自动生成的唯一标识符。它不能更改。",
+      "docs": "Infisical文档",
+      "auto-capitalization": "自动大写",
+      "auto-capitalization-description": "根据标准，Infisical会自动将您的密钥大写。如果您希望禁用此功能，可以在此处进行设置。"
+    }
+  },
+  "signup": {
+    "title": "注册",
+    "og-title": "用一行代码替换.env文件。三分钟内注册Infisical。",
+    "og-description": "Infisical是一个简单且端到端加密的平台，使团队能够同步和管理API密钥和环境变量。支持Node.js、Next.js、Gatsby、Nest.js...等。",
+    "signup": "注册",
+    "already-have-account": "已有账户？登录",
+    "forgot-password": "忘记密码？",
+    "initial-title": "创建您的Infisical账户",
+    "continue-with-google": "使用Google继续",
+    "continue-with-email": "使用电子邮件继续",
+    "create-policy": "通过注册，您同意我们的服务条款和隐私政策。",
+    "verify": "验证",
+    "step1-start": "开始吧",
+    "step1-privacy": "通过创建账户，您同意我们的条款并阅读并确认了隐私政策。",
+    "step1-submit": "开始",
+    "step2-message": "我们已向发送了验证码",
+    "step2-code-error": "哎呀。您的验证码错误。请重试。",
+    "step2-resend-alert": "未收到验证码？",
+    "step2-resend-submit": "重新发送",
+    "step2-resend-progress": "正在重新发送...",
+    "step2-spam-alert": "请检查您的垃圾邮件箱。",
+    "step3-message": "快完成了！",
+    "step4-message": "保存您的应急包",
+    "step4-description1": "如果您被锁定在账户之外，应急包是您登录的唯一方式。",
+    "step4-description2": "我们建议您下载并将其保存在安全的地方。",
+    "step4-description3": "它包含您的密钥，如果我们无法访问或为您恢复。",
+    "step4-download": "下载PDF",
+    "step5-send-invites": "发送邀请",
+    "step5-invite-team": "邀请您的团队",
+    "step5-subtitle": "Infisical旨在与您的团队一起使用。邀请他们来尝试一下。",
+    "step5-skip": "跳过"
+  },
+  "admin": {
+    "signup-title": "管理员注册",
+    "dashboard": "管理员仪表板"
+  }
+}
