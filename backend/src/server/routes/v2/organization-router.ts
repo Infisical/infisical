@@ -8,6 +8,7 @@ import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -262,7 +263,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.auth.actor !== ActorType.USER) return;
+      if (req.auth.actor !== ActorType.USER) throw new BadRequestError({ message: "Auth type not supported for this operation" });
 
       const membership = await server.services.org.deleteOrgMembership({
         userId: req.permission.id,
@@ -271,6 +272,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         membershipId: req.params.membershipId,
         actorOrgId: req.permission.orgId
       });
+
+      if (!membership) throw new NotFoundError({ message: "Membership not found" });
 
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.OrgMembershipDeleted,
@@ -322,7 +325,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.auth.actor !== ActorType.USER) return;
+      if (req.auth.actor !== ActorType.USER) throw new BadRequestError({ message: "Auth type not supported for this operation" });
 
       const memberships = await server.services.org.bulkDeleteOrgMemberships({
         userId: req.permission.id,
