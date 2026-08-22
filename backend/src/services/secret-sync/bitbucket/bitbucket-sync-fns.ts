@@ -24,22 +24,46 @@ const buildVariablesUrl = (workspace: string, repository: string, environment?: 
   return `${baseUrl}/pipelines_config/variables/${uuid || ""}`;
 };
 
+const BITBUCKET_VARIABLES_PAGE_SIZE = 100;
+const BITBUCKET_VARIABLES_MAX_PAGES = 100;
+
 const listVariables = async ({
   workspaceSlug,
   repositorySlug,
   environmentId,
   authHeader
 }: TBitbucketListVariables): Promise<TBitbucketVariable[]> => {
-  const url = buildVariablesUrl(workspaceSlug, repositorySlug, environmentId);
+  const firstUrl = `${buildVariablesUrl(workspaceSlug, repositorySlug, environmentId)}?pagelen=${BITBUCKET_VARIABLES_PAGE_SIZE}`;
 
-  const { data } = await request.get<{ values: TBitbucketVariable[] }>(url, {
-    headers: {
-      Authorization: authHeader,
-      Accept: "application/json"
+  const variables: TBitbucketVariable[] = [];
+  const visited = new Set<string>();
+  let nextUrl: string | undefined = firstUrl;
+  let pageCount = 0;
+
+  while (nextUrl) {
+    if (visited.has(nextUrl)) {
+      throw new Error(`Bitbucket listVariables encountered a repeated pagination URL (possible loop): ${nextUrl}`);
     }
-  });
+    if (pageCount >= BITBUCKET_VARIABLES_MAX_PAGES) {
+      throw new Error(
+        `Bitbucket listVariables exceeded ${BITBUCKET_VARIABLES_MAX_PAGES} pages (possible runaway pagination)`
+      );
+    }
+    visited.add(nextUrl);
+    pageCount += 1;
 
-  return data.values;
+    const { data } = await request.get<{ values: TBitbucketVariable[]; next?: string }>(nextUrl, {
+      headers: {
+        Authorization: authHeader,
+        Accept: "application/json"
+      }
+    });
+
+    if (data.values?.length) variables.push(...data.values);
+    nextUrl = data.next;
+  }
+
+  return variables;
 };
 
 const upsertVariable = async ({
