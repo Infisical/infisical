@@ -55,11 +55,14 @@ import { QuickSearchEnvTable } from "./QuickSearchEnvTable";
 import { QuickSearchFolderItem } from "./QuickSearchFolderItem";
 import { QuickSearchMetadataSecretItem } from "./QuickSearchMetadataSecretItem";
 import { QuickSearchSecretItem } from "./QuickSearchSecretItem";
+import { QuickSearchSelection } from "./quickSearchTypes";
 import {
   MetadataMatchType,
   MetadataSearchCondition,
   SecretMetadataSearchBuilder
 } from "./SecretMetadataSearchBuilder";
+
+export type { QuickSearchSelection } from "./quickSearchTypes";
 
 export type QuickSearchModalProps = {
   environments: ProjectEnv[];
@@ -67,6 +70,7 @@ export type QuickSearchModalProps = {
   tags?: WsTag[];
   isSingleEnv?: boolean;
   initialValue: string;
+  onSelectResult: (selection: QuickSearchSelection) => void;
   onClose: (clearSearch?: boolean) => void;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -97,6 +101,7 @@ const Content = ({
   environments,
   projectId,
   onClose,
+  onSelectResult,
   tags,
   initialValue = ""
 }: Omit<QuickSearchModalProps, "isOpen" | "onOpenChange" | "isSingleEnv">) => {
@@ -364,6 +369,7 @@ const Content = ({
                   secret={secret}
                   envSlug={env.slug}
                   onClose={onClose}
+                  onSelectResult={onSelectResult}
                 />
               ))}
             </QuickSearchEnvTable>
@@ -394,6 +400,7 @@ const Content = ({
                     folder={folder}
                     envSlug={env.slug}
                     onClose={onClose}
+                    onSelectResult={onSelectResult}
                   />
                 ))}
                 {envDynamic.map((ds) => (
@@ -402,6 +409,7 @@ const Content = ({
                     dynamicSecret={ds}
                     envSlug={env.slug}
                     onClose={onClose}
+                    onSelectResult={onSelectResult}
                   />
                 ))}
                 {envRotations.map((rotation) => (
@@ -410,6 +418,7 @@ const Content = ({
                     secretRotation={rotation}
                     envSlug={env.slug}
                     onClose={onClose}
+                    onSelectResult={onSelectResult}
                   />
                 ))}
                 {envSecrets.map((secret) => (
@@ -420,6 +429,7 @@ const Content = ({
                     search={debouncedSearch}
                     tags={Object.keys(filterTags)}
                     onClose={onClose}
+                    onSelectResult={onSelectResult}
                   />
                 ))}
               </QuickSearchEnvTable>

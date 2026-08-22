@@ -250,10 +250,12 @@ import {
 } from "./components";
 import {
   hasOverviewScopeChanged,
+  hasSensitiveOverviewSearchState,
   normalizeOverviewEnvironments,
+  parseOverviewTags,
   resolveOverviewEnvironmentSlugs,
   serializeOverviewResourceFilter,
-  serializeOverviewTags,
+  stripSensitiveOverviewSearchState,
   updateOverviewSecretPath
 } from "./overviewSearchState";
 
@@ -337,7 +339,8 @@ const OverviewPageContent = () => {
     ) ?? false;
   const isProjectV3 = currentProject?.version === ProjectVersion.V3;
   const projectSlug = currentProject?.slug as string;
-  const searchFilter = routerSearch.search;
+  const [searchFilter, setSearchFilter] = useState(routerSearch.search);
+  const [tagFilter, setTagFilter] = useState(() => parseOverviewTags(routerSearch.tags));
   const secretPath = (routerSearch?.secretPath as string) || "/";
   const { subscription } = useSubscription();
   const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
@@ -375,20 +378,10 @@ const OverviewPageContent = () => {
         nextFilter[rowType] = true;
       });
 
-    if (routerSearch.tags) nextFilter[RowType.Secret] = true;
+    if (Object.keys(tagFilter).length > 0) nextFilter[RowType.Secret] = true;
 
     return nextFilter;
-  }, [routerSearch.filterBy, routerSearch.tags]);
-
-  const tagFilter = useMemo(
-    () =>
-      (routerSearch.tags ?? "").split(",").reduce<Record<string, boolean>>((acc, tag) => {
-        const tagSlug = tag.trim();
-        if (tagSlug) acc[tagSlug] = true;
-        return acc;
-      }, {}),
-    [routerSearch.tags]
-  );
+  }, [routerSearch.filterBy, tagFilter]);
 
   const [selectedEntries, setSelectedEntries] = useState<{
     // selectedEntries[name/key][envSlug][resource]
@@ -493,8 +486,11 @@ const OverviewPageContent = () => {
   );
 
   useEffect(() => {
-    if (userAvailableEnvs.length === 0) return;
+    if (routerSearch.search) setSearchFilter(routerSearch.search);
+    if (routerSearch.tags !== undefined) setTagFilter(parseOverviewTags(routerSearch.tags));
+  }, [routerSearch.search, routerSearch.tags]);
 
+  useEffect(() => {
     const requestedSlugs = normalizeOverviewEnvironments(
       routerSearch.environments,
       userAvailableEnvs.map((env) => env.slug)
@@ -502,17 +498,30 @@ const OverviewPageContent = () => {
     const isCanonical =
       requestedSlugs.length === routerSearch.environments.length &&
       requestedSlugs.join(",") === selectedEnvironmentSlugs.join(",");
+    const shouldNormalizeEnvironments = userAvailableEnvs.length > 0 && !isCanonical;
+    const shouldStripSensitiveState = hasSensitiveOverviewSearchState(routerSearch);
+    const normalizedEnvironments = selectedEnvironmentSlugs.length
+      ? selectedEnvironmentSlugs
+      : undefined;
 
-    if (isCanonical) return;
+    if (!shouldNormalizeEnvironments && !shouldStripSensitiveState) return;
 
     navigate({
-      search: (prev) => ({
-        ...prev,
-        environments: selectedEnvironmentSlugs.length > 0 ? selectedEnvironmentSlugs : undefined
-      }),
+      search: (prev) => {
+        const nextSearch = shouldStripSensitiveState
+          ? stripSensitiveOverviewSearchState(prev)
+          : prev;
+
+        return {
+          ...nextSearch,
+          environments: shouldNormalizeEnvironments
+            ? normalizedEnvironments
+            : nextSearch.environments
+        };
+      },
       replace: true
     });
-  }, [navigate, routerSearch.environments, selectedEnvironmentSlugs, userAvailableEnvs]);
+  }, [navigate, routerSearch, selectedEnvironmentSlugs, userAvailableEnvs]);
 
   const filteredEnvs = useMemo(
     () => userAvailableEnvs.filter((env) => selectedEnvironmentSlugs.includes(env.slug)),
@@ -2206,28 +2215,21 @@ const OverviewPageContent = () => {
     });
   };
 
-  const handleSearchChange = useCallback(
-    (search: string) => {
-      navigate({
-        search: (prev) => ({ ...prev, search: search || undefined }),
-        replace: true
-      });
-    },
-    [navigate]
-  );
+  const handleSearchChange = useCallback((search: string) => setSearchFilter(search), []);
 
   const handleClearTags = useCallback(() => {
-    navigate({ search: (prev) => ({ ...prev, tags: undefined }) });
-  }, [navigate]);
+    setTagFilter({});
+  }, []);
 
   const handleToggleRowType = useCallback(
     (rowType: RowType) => {
       const nextFilter = { ...filter, [rowType]: !filter[rowType] };
+      if (rowType === RowType.Secret && filter[rowType]) setTagFilter({});
+
       navigate({
         search: (prev) => ({
           ...prev,
-          filterBy: serializeOverviewResourceFilter(nextFilter, Object.values(RowType)),
-          tags: rowType === RowType.Secret && filter[rowType] ? undefined : prev.tags
+          filterBy: serializeOverviewResourceFilter(nextFilter, Object.values(RowType))
         })
       });
     },
@@ -2236,19 +2238,25 @@ const OverviewPageContent = () => {
 
   const handleToggleTag = useCallback(
     (tagSlug: string) => {
-      const nextTags = Object.keys(tagFilter).filter((tag) => tag !== tagSlug);
-      if (!tagFilter[tagSlug]) nextTags.push(tagSlug);
-
-      navigate({
-        search: (prev) => ({
-          ...prev,
-          tags: serializeOverviewTags(nextTags),
-          filterBy:
-            !tagFilter[tagSlug] && !filter[RowType.Secret]
-              ? [...Object.values(RowType).filter((type) => filter[type]), RowType.Secret].join(",")
-              : prev.filterBy
-        })
+      const isEnabling = !tagFilter[tagSlug];
+      setTagFilter((prev) => {
+        const next = { ...prev };
+        if (next[tagSlug]) delete next[tagSlug];
+        else next[tagSlug] = true;
+        return next;
       });
+
+      if (isEnabling && !filter[RowType.Secret]) {
+        navigate({
+          search: (prev) => ({
+            ...prev,
+            filterBy: [
+              ...Object.values(RowType).filter((type) => filter[type]),
+              RowType.Secret
+            ].join(",")
+          })
+        });
+      }
     },
     [filter, navigate, tagFilter]
   );
@@ -2677,6 +2685,17 @@ const OverviewPageContent = () => {
                   value={searchFilter}
                   tags={tags}
                   onChange={handleSearchChange}
+                  onSelectResult={({ search, tags: selectedTags }) => {
+                    setSearchFilter(search);
+                    if (selectedTags !== undefined) {
+                      setTagFilter(
+                        selectedTags.reduce<Record<string, boolean>>((acc, tag) => {
+                          acc[tag] = true;
+                          return acc;
+                        }, {})
+                      );
+                    }
+                  }}
                   environments={userAvailableEnvs}
                   projectId={currentProject?.id}
                 />

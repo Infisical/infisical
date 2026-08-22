@@ -3,16 +3,21 @@ import { describe, it } from "node:test";
 
 import {
   hasOverviewScopeChanged,
+  hasSensitiveOverviewSearchState,
   normalizeOverviewEnvironments,
+  parseOverviewTags,
   resolveOverviewEnvironmentSlugs,
   serializeOverviewResourceFilter,
-  serializeOverviewTags,
+  stripSensitiveOverviewSearchState,
   updateOverviewSecretPath
 } from "./overviewSearchState";
 
 describe("Secrets overview query state", () => {
-  it("serializes tags and resource filters canonically", () => {
-    assert.equal(serializeOverviewTags(["team-b", " team-a ", "team-b"]), "team-a,team-b");
+  it("parses one-shot tag links and serializes resource filters canonically", () => {
+    assert.deepEqual(parseOverviewTags("team-b, team-a ,team-b"), {
+      "team-a": true,
+      "team-b": true
+    });
     assert.equal(
       serializeOverviewResourceFilter({ folder: true, secret: false, dynamic: true }, [
         "folder",
@@ -21,8 +26,33 @@ describe("Secrets overview query state", () => {
       ]),
       "folder,dynamic"
     );
-    assert.equal(serializeOverviewTags([]), undefined);
+    assert.deepEqual(parseOverviewTags(), {});
     assert.equal(serializeOverviewResourceFilter({}, ["folder", "secret"]), undefined);
+  });
+
+  it("removes secret identifiers from durable URL state while preserving navigation state", () => {
+    const current = {
+      secretPath: "/apps",
+      environments: ["prod"],
+      search: "DATABASE_URL",
+      tags: "team-a",
+      filterBy: "secret",
+      unrelated: "preserved"
+    };
+
+    assert.equal(hasSensitiveOverviewSearchState(current), true);
+    assert.deepEqual(stripSensitiveOverviewSearchState(current), {
+      secretPath: "/apps",
+      environments: ["prod"],
+      search: undefined,
+      tags: undefined,
+      filterBy: "secret",
+      unrelated: "preserved"
+    });
+    assert.equal(
+      hasSensitiveOverviewSearchState({ secretPath: "/apps", environments: ["prod"] }),
+      false
+    );
   });
 
   it("normalizes direct environment links to accessible project slugs", () => {

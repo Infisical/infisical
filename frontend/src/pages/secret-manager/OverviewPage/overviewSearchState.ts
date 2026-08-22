@@ -6,10 +6,21 @@ export type OverviewSearchState = {
   filterBy?: string;
 };
 
-export const serializeOverviewTags = (tags: string[]) => {
-  const serialized = [...new Set(tags.map((tag) => tag.trim()).filter(Boolean))].sort().join(",");
-  return serialized || undefined;
-};
+export const parseOverviewTags = (tags?: string) =>
+  (tags ?? "").split(",").reduce<Record<string, boolean>>((acc, tag) => {
+    const tagSlug = tag.trim();
+    if (tagSlug) acc[tagSlug] = true;
+    return acc;
+  }, {});
+
+export const hasSensitiveOverviewSearchState = (search: OverviewSearchState) =>
+  Boolean(search.search) || search.tags !== undefined;
+
+export const stripSensitiveOverviewSearchState = <T extends OverviewSearchState>(search: T): T => ({
+  ...search,
+  search: undefined,
+  tags: undefined
+});
 
 export const serializeOverviewResourceFilter = (
   filter: Record<string, boolean>,
