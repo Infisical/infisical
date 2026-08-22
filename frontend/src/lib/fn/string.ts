@@ -10,6 +10,7 @@ export const formatReservedPaths = (secretPath: string) => {
 
 export const parsePathFromReplicatedPath = (secretPath: string) => {
   const i = secretPath.indexOf(ReservedFolders.SecretReplication);
+  if (i === -1) return secretPath;
   return secretPath.slice(0, i);
 };
 
