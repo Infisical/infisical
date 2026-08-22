@@ -7,7 +7,7 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
@@ -60,6 +60,9 @@ export const newOrgMembershipIdentityFactory = ({
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.data.identityId), () =>
       identityDAL.findById(dto.data.identityId)
     );
+    if (!identityDetails) {
+      throw new NotFoundError({ message: `Identity with ID '${dto.data.identityId}' not found` });
+    }
     if (identityDetails.orgId !== dto.permission.rootOrgId) {
       throw new BadRequestError({ message: "Only identities from parent organization can be invited" });
     }
@@ -147,6 +150,9 @@ export const newOrgMembershipIdentityFactory = ({
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.selector.identityId), () =>
       identityDAL.findById(dto.selector.identityId)
     );
+    if (!identityDetails) {
+      throw new NotFoundError({ message: `Identity with ID '${dto.selector.identityId}' not found` });
+    }
     if (identityDetails.projectId) {
       throw new BadRequestError({ message: "Failed to create organization membership for a project scoped identity" });
     }
@@ -169,6 +175,9 @@ export const newOrgMembershipIdentityFactory = ({
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.selector.identityId), () =>
       identityDAL.findById(dto.selector.identityId)
     );
+    if (!identityDetails) {
+      throw new NotFoundError({ message: `Identity with ID '${dto.selector.identityId}' not found` });
+    }
     if (identityDetails.orgId !== dto.permission.rootOrgId) {
       throw new BadRequestError({ message: "Only identities from parent organization can do this operation" });
     }
