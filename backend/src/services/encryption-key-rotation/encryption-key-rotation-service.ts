@@ -268,7 +268,7 @@ export const encryptionKeyRotationServiceFactory = ({
     });
   };
 
-  const $runGarbageCollection = async () => {
+  const runGarbageCollection = async () => {
     const [retained, pending] = await Promise.all([kmsRootConfigDAL.findRetained(), kmsRootConfigDAL.findPending()]);
 
     // Supersede caps pending at one, so this is for the admin who generated a key and walked away.
@@ -311,6 +311,8 @@ export const encryptionKeyRotationServiceFactory = ({
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
         const current = await kmsRootConfigDAL.findById(row.id, tx);
         if (!current || !current.supersededAt) return false;
+        if (current.lastResolvedAt && Date.now() - new Date(current.lastResolvedAt).getTime() < retentionMs)
+          return false;
         return $retireRetainedKey(tx, current);
       });
       if (removed)
@@ -334,9 +336,9 @@ export const encryptionKeyRotationServiceFactory = ({
       name: CronJobName.KmsRootKeyCleanup,
       pattern: "0 3 * * 0",
       runHashTtlS: 60 * 60,
-      handler: $runGarbageCollection
+      handler: runGarbageCollection
     });
   };
 
-  return { init, getStatus, createRotation, discardRotation, completeRotation };
+  return { init, getStatus, createRotation, discardRotation, completeRotation, runGarbageCollection };
 };
