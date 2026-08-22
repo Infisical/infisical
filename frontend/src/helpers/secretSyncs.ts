@@ -186,6 +186,12 @@ export const SECRET_SYNC_MAP: Record<
     category: "CI/CD",
     description: "Job and project secrets for Rundeck Key Storage."
   },
+  [SecretSync.Portainer]: {
+    name: "Portainer",
+    image: "Portainer.png",
+    category: "INFRASTRUCTURE",
+    description: "Stack environment variables for Portainer."
+  },
   [SecretSync.DigitalOceanAppPlatform]: {
     name: "Digital Ocean App Platform",
     image: "Digital Ocean.png",
@@ -342,6 +348,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.CloudflareWorkers]: AppConnection.Cloudflare,
   [SecretSync.Supabase]: AppConnection.Supabase,
   [SecretSync.Rundeck]: AppConnection.Rundeck,
+  [SecretSync.Portainer]: AppConnection.Portainer,
   [SecretSync.Zabbix]: AppConnection.Zabbix,
   [SecretSync.Railway]: AppConnection.Railway,
   [SecretSync.Checkly]: AppConnection.Checkly,

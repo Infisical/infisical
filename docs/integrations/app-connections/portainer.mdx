@@ -1,0 +1,109 @@
+---
+title: "Portainer Connection"
+description: "Learn how to configure a Portainer Connection for Infisical."
+---
+
+Infisical supports connecting to Portainer using an **API Token**.
+
+## Generate a Portainer API Token
+
+<Steps>
+    <Step title="Open your account settings">
+        Log in to your Portainer instance, click the user icon in the top-right corner and select
+        **My account**.
+    </Step>
+    <Step title="Add an access token">
+        Scroll to the **Access tokens** section and click **Add access token**.
+    </Step>
+    <Step title="Generate the token">
+        Enter a **Description** to identify the token (e.g., `infisical`) and click
+        **Add access token**.
+
+        <Note>
+            An access token inherits the permissions of the user that created it. Create it with a user
+            that can read environments and update the stacks you intend to sync to.
+        </Note>
+    </Step>
+    <Step title="Copy the API token">
+        Copy the generated token and store it securely — Portainer only displays it once.
+    </Step>
+</Steps>
+
+## Setup Portainer Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Add a Portainer Connection">
+                In your Infisical dashboard, navigate to the **Integrations** tab in the desired project,
+                select **App Connections**, and click **+ Add Connection**. Search for and select the
+                **Portainer** option.
+                ![Select Portainer Connection](/images/app-connections/portainer/step-1.png)
+            </Step>
+            <Step title="Fill out the Portainer Connection form">
+                Complete the connection form by entering:
+                - A descriptive **Name** for the connection (must be slug-friendly)
+                - An optional **Description** for future reference
+                - The **Method** (**API Token**)
+                - The **Portainer Instance URL** (e.g., `https://portainer.example.com`)
+                - The **Portainer API Token** you generated above
+
+                Click **Connect to Portainer**.
+                ![Portainer Connection Form](/images/app-connections/portainer/step-2.png)
+
+                <Note>
+                    The instance URL must be reachable from your Infisical instance.
+                </Note>
+            </Step>
+            <Step title="Connection Created">
+                Your **Portainer Connection** is established and ready to use with your Infisical project.
+                ![Portainer Connection Created](/images/app-connections/portainer/step-3.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a Portainer Connection, make an API request to the [Create Portainer
+        Connection](/api-reference/endpoints/app-connections/portainer/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/app-connections/portainer \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-portainer-connection",
+                    "method": "api-token",
+                    "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "credentials": {
+                        "instanceUrl": "https://portainer.example.com",
+                        "apiToken": "..."
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+            "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+            "name": "my-portainer-connection",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": null,
+            "version": 1,
+            "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+            "createdAt": "2025-04-23T19:46:34.831Z",
+            "updatedAt": "2025-04-23T19:46:34.831Z",
+            "isPlatformManagedCredentials": false,
+            "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+            "app": "portainer",
+            "method": "api-token",
+            "credentials": {
+              "instanceUrl": "https://portainer.example.com"
+            }
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

@@ -238,6 +238,11 @@ import {
 } from "./open-router";
 import { getOpenAIConnectionListItem, OpenAIConnectionMethod, validateOpenAIConnectionCredentials } from "./openai";
 import { getOvhConnectionListItem, OVHConnectionMethod, validateOvhConnectionCredentials } from "./ovh";
+import {
+  getPortainerConnectionListItem,
+  PortainerConnectionMethod,
+  validatePortainerConnectionCredentials
+} from "./portainer";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import { getQoveryConnectionListItem, QoveryConnectionMethod, validateQoveryConnectionCredentials } from "./qovery";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
@@ -419,6 +424,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getF5BigIpConnectionListItem(),
     getConvexConnectionListItem(),
     getRundeckConnectionListItem(),
+    getPortainerConnectionListItem(),
     getQoveryConnectionListItem(),
     getLiteLLMConnectionListItem(),
     getFireworksConnectionListItem(),
@@ -671,6 +677,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.F5BigIp]: validateF5BigIpConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Convex]: validateConvexConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Rundeck]: validateRundeckConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Portainer]: validatePortainerConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LiteLLM]: validateLiteLLMConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -729,6 +736,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case CircleCIConnectionMethod.ApiToken:
     case TravisCIConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
+    case PortainerConnectionMethod.ApiToken:
     case DatadogConnectionMethod.Token:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
@@ -942,6 +950,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.GoDaddy]: platformManagedCredentialsNotSupported,
   [AppConnection.Convex]: platformManagedCredentialsNotSupported,
   [AppConnection.Rundeck]: platformManagedCredentialsNotSupported,
+  [AppConnection.Portainer]: platformManagedCredentialsNotSupported,
   [AppConnection.Qovery]: platformManagedCredentialsNotSupported,
   [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported,
   [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,

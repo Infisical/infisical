@@ -186,6 +186,7 @@
                       "integrations/app-connections/openrouter",
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/ovh",
+                      "integrations/app-connections/portainer",
                       "integrations/app-connections/postgres",
                       "integrations/app-connections/qovery",
                       "integrations/app-connections/railway",
@@ -641,6 +642,7 @@
                           "integrations/secret-syncs/laravel-forge",
                           "integrations/secret-syncs/netlify",
                           "integrations/secret-syncs/northflank",
+                          "integrations/secret-syncs/portainer",
                           "integrations/secret-syncs/qovery",
                           "integrations/secret-syncs/railway",
                           "integrations/secret-syncs/render",
@@ -2191,6 +2193,18 @@
                     ]
                   },
                   {
+                    "group": "Portainer",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/portainer/list",
+                      "api-reference/endpoints/app-connections/portainer/available",
+                      "api-reference/endpoints/app-connections/portainer/get-by-id",
+                      "api-reference/endpoints/app-connections/portainer/get-by-name",
+                      "api-reference/endpoints/app-connections/portainer/create",
+                      "api-reference/endpoints/app-connections/portainer/update",
+                      "api-reference/endpoints/app-connections/portainer/delete"
+                    ]
+                  },
+                  {
                     "group": "PostgreSQL",
                     "pages": [
                       "api-reference/endpoints/app-connections/postgres/list",
@@ -3490,6 +3504,20 @@
                   {
                     "group": "OVH",
                     "pages": ["api-reference/endpoints/secret-syncs/ovh/create"]
+                  },
+                  {
+                    "group": "Portainer",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/portainer/list",
+                      "api-reference/endpoints/secret-syncs/portainer/get-by-id",
+                      "api-reference/endpoints/secret-syncs/portainer/get-by-name",
+                      "api-reference/endpoints/secret-syncs/portainer/create",
+                      "api-reference/endpoints/secret-syncs/portainer/update",
+                      "api-reference/endpoints/secret-syncs/portainer/delete",
+                      "api-reference/endpoints/secret-syncs/portainer/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/portainer/import-secrets",
+                      "api-reference/endpoints/secret-syncs/portainer/remove-secrets"
+                    ]
                   },
                   {
                     "group": "Qovery",
