@@ -971,7 +971,7 @@ export const accessApprovalRequestServiceFactory = ({
       projectId: project.id,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      actionProjectType: ActionProjectType.Any
     });
 
     const canReadAllApprovalRequests = permission.can(
