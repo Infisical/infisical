@@ -132,6 +132,12 @@ export const kmipOperationServiceFactory = ({
       throw new BadRequestError({ message: "Cannot destroy reserved keys" });
     }
 
+    if (key.hasDeleteProtection) {
+      throw new BadRequestError({
+        message: `Key with ID ${id} has delete protection enabled. Disable delete protection on the key before destroying it.`
+      });
+    }
+
     const completeKeyDetails = await kmsDAL.findByIdWithAssociatedKms(id);
     if (!completeKeyDetails) {
       throw new NotFoundError({ message: `Key with ID '${id}' not found` });
