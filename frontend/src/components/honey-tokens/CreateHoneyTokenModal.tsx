@@ -4,12 +4,12 @@ import { HoneyTokenForm } from "@app/components/honey-tokens/forms";
 import { HoneyTokenModalHeader } from "@app/components/honey-tokens/HoneyTokenModalHeader";
 import { HoneyTokenSelect } from "@app/components/honey-tokens/HoneyTokenSelect";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DocumentationLinkBadge
+  DocumentationLinkBadge,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle
 } from "@app/components/v3";
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
@@ -32,6 +32,9 @@ type ContentProps = {
   onCancel: () => void;
 } & SharedProps;
 
+const HONEY_TOKEN_TYPES = Object.values(HoneyTokenType);
+const DEFAULT_HONEY_TOKEN_TYPE = HONEY_TOKEN_TYPES.length === 1 ? HONEY_TOKEN_TYPES[0] : null;
+
 const Content = ({ setSelectedType, selectedType, onCancel, ...props }: ContentProps) => {
   if (selectedType) {
     return <HoneyTokenForm onCancel={onCancel} type={selectedType} {...props} />;
@@ -41,48 +44,78 @@ const Content = ({ setSelectedType, selectedType, onCancel, ...props }: ContentP
 };
 
 export const CreateHoneyTokenModal = ({ onOpenChange, isOpen, ...props }: Props) => {
-  const [selectedType, setSelectedType] = useState<HoneyTokenType | null>(null);
+  const [selectedType, setSelectedType] = useState<HoneyTokenType | null>(DEFAULT_HONEY_TOKEN_TYPE);
 
   const handleReset = () => {
-    setSelectedType(null);
+    setSelectedType(DEFAULT_HONEY_TOKEN_TYPE);
+  };
+
+  const closeSheet = () => {
+    handleReset();
+    onOpenChange(false);
+  };
+
+  const handleCancel = () => {
+    if (DEFAULT_HONEY_TOKEN_TYPE) {
+      closeSheet();
+      return;
+    }
+
+    handleReset();
+  };
+
+  const handleSheetOpenChange = (open: boolean) => {
+    if (!open) {
+      closeSheet();
+      return;
+    }
+
+    onOpenChange(true);
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          handleReset();
-        }
-        onOpenChange(open);
-      }}
-    >
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>
-            {selectedType ? (
+    <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
+      <SheetContent className="flex h-full max-h-full w-full flex-col gap-y-0 p-0 sm:w-3/4 sm:max-w-[1500px]">
+        <SheetHeader>
+          {selectedType ? (
+            <>
+              <SheetTitle className="sr-only">Configure honey token</SheetTitle>
               <HoneyTokenModalHeader type={selectedType} />
-            ) : (
+            </>
+          ) : (
+            <SheetTitle>
               <div className="flex items-center gap-x-2">
                 Add Honey Token
                 <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/honey-tokens/overview" />
               </div>
-            )}
-          </DialogTitle>
-          {!selectedType && (
-            <DialogDescription>Select a provider to create a honey token for.</DialogDescription>
+            </SheetTitle>
           )}
-        </DialogHeader>
-        <Content
-          onComplete={() => {
-            onOpenChange(false);
-          }}
-          onCancel={handleReset}
-          selectedType={selectedType}
-          setSelectedType={setSelectedType}
-          {...props}
-        />
-      </DialogContent>
-    </Dialog>
+          {!selectedType && (
+            <SheetDescription>Select a provider to create a honey token for.</SheetDescription>
+          )}
+        </SheetHeader>
+        {selectedType ? (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <Content
+              onComplete={closeSheet}
+              onCancel={handleCancel}
+              selectedType={selectedType}
+              setSelectedType={setSelectedType}
+              {...props}
+            />
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+            <Content
+              onComplete={closeSheet}
+              onCancel={handleCancel}
+              selectedType={selectedType}
+              setSelectedType={setSelectedType}
+              {...props}
+            />
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 };

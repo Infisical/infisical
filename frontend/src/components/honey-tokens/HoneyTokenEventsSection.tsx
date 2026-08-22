@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
-import { ActivityIcon, Check, ClipboardCopy } from "lucide-react";
+import { ActivityIcon, AlertCircleIcon, Check, ClipboardCopy } from "lucide-react";
 
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
+  Button,
   Empty,
   EmptyHeader,
   EmptyTitle,
@@ -60,7 +64,7 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(DEFAULT_PER_PAGE);
 
-  const { data, isPending } = useGetHoneyTokenEvents({
+  const { data, isError, isFetching, refetch } = useGetHoneyTokenEvents({
     honeyTokenId,
     projectId,
     offset: (page - 1) * perPage,
@@ -82,9 +86,27 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
         )}
       </div>
 
-      {isPending && <PageLoader />}
+      {isFetching && (
+        <div className="flex min-h-24 items-center justify-center" role="status">
+          <PageLoader />
+          <span className="sr-only">Loading honey token events</span>
+        </div>
+      )}
 
-      {!isPending && (!events || events.length === 0) && (
+      {!isFetching && isError && (
+        <Alert variant="danger">
+          <AlertCircleIcon />
+          <AlertTitle>Honey token events could not be loaded</AlertTitle>
+          <AlertDescription>
+            <p>Check your connection and try again.</p>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!isFetching && !isError && (!events || events.length === 0) && (
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>No events recorded yet</EmptyTitle>
@@ -92,7 +114,7 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
         </Empty>
       )}
 
-      {events && events.length > 0 && (
+      {!isFetching && !isError && events && events.length > 0 && (
         <Table>
           <TableHeader>
             <TableRow>
@@ -135,18 +157,20 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
         </Table>
       )}
 
-      <Pagination
-        count={totalCount}
-        page={page}
-        perPage={perPage}
-        onChangePage={setPage}
-        onChangePerPage={(newPerPage) => {
-          const totalPages = Math.ceil(totalCount / newPerPage);
-          if (page > totalPages) setPage(totalPages);
-          setPerPage(newPerPage);
-        }}
-        perPageList={[25, 50, 100]}
-      />
+      {!isFetching && !isError && totalCount > 0 && (
+        <Pagination
+          count={totalCount}
+          page={page}
+          perPage={perPage}
+          onChangePage={setPage}
+          onChangePerPage={(newPerPage) => {
+            const totalPages = Math.ceil(totalCount / newPerPage);
+            if (page > totalPages) setPage(totalPages);
+            setPerPage(newPerPage);
+          }}
+          perPageList={[25, 50, 100]}
+        />
+      )}
     </div>
   );
 };

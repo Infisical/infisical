@@ -82,7 +82,7 @@ const ModalBody = ({
     return renderCredentials(honeyToken, credentials);
   }
 
-  return <p className="text-sm text-red">No credentials found for this honey token.</p>;
+  return <p className="text-sm text-danger">No credentials found for this honey token.</p>;
 };
 
 export const ViewHoneyTokenCredentialsModal = ({
@@ -93,7 +93,7 @@ export const ViewHoneyTokenCredentialsModal = ({
 }: Props) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Honey Token Credentials</DialogTitle>
           {honeyToken && (

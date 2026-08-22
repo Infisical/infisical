@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
-import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v3";
+import { Button, Stepper, StepperList, StepperStep } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { HONEY_TOKEN_DEFAULT_SECRET_NAMES, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
@@ -108,7 +107,7 @@ export const HoneyTokenForm = ({
             : "Token was created, but stack is not deployed yet.",
           callToAction: (
             <Link
-              className="inline-flex h-7 items-center rounded border border-mineshaft-500 px-2 text-xs text-primary transition-colors hover:bg-mineshaft-700 hover:text-primary"
+              className="inline-flex h-7 items-center rounded border border-border px-2 text-xs text-foreground transition-colors hover:bg-container-hover"
               to={ROUTE_PATHS.Organization.SettingsPage.path}
               params={{ orgId: currentOrg.id }}
               search={{ selectedTab: "product-settings" }}
@@ -224,46 +223,42 @@ export const HoneyTokenForm = ({
     return isEnabled;
   };
 
+  const handleStepChange = (index: number) => {
+    isTabEnabled(index).then((isEnabled) => {
+      if (isEnabled) setSelectedTabIndex(index);
+    });
+  };
+
+  const currentStep = formTabs[selectedTabIndex];
+
   return (
     <form className="flex max-h-[75vh] flex-col">
       <div className="min-h-0 flex-1">
         <FormProvider {...formMethods}>
-          <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-            <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
+          <Stepper
+            activeStep={selectedTabIndex}
+            orientation="horizontal"
+            onStepChange={handleStepChange}
+            nonLinear
+          >
+            <StepperList aria-label="Honey token setup progress">
               {formTabs.map((tab, index) => (
-                <Tab
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    const isEnabled = await isTabEnabled(index);
-                    setSelectedTabIndex((prev) => (isEnabled ? index : prev));
-                  }}
-                  className={({ selected }) =>
-                    `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
-                      selected
-                        ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                        : "text-bunker-300"
-                    }`
-                  }
+                <StepperStep
                   key={tab.key}
-                >
-                  {index + 1}. {tab.name}
-                </Tab>
+                  index={index}
+                  title={tab.name}
+                  disabled={isSubmitting || isValidating}
+                />
               ))}
-            </Tab.List>
-            <Tab.Panels>
-              {!isUpdate && (
-                <Tab.Panel>
-                  <HoneyTokenConfigurationFields environments={environments} />
-                </Tab.Panel>
-              )}
-              <Tab.Panel>
-                <HoneyTokenMappingFields />
-              </Tab.Panel>
-              <Tab.Panel>
-                <HoneyTokenDetailsFields />
-              </Tab.Panel>
-            </Tab.Panels>
-          </Tab.Group>
+            </StepperList>
+          </Stepper>
+          <div className="mt-6">
+            {currentStep.key === "configuration" && (
+              <HoneyTokenConfigurationFields environments={environments} />
+            )}
+            {currentStep.key === "mapping" && <HoneyTokenMappingFields />}
+            {currentStep.key === "details" && <HoneyTokenDetailsFields />}
+          </div>
         </FormProvider>
       </div>
       <div className="flex w-full flex-shrink-0 flex-row-reverse justify-between gap-4 pt-4">

@@ -17,12 +17,12 @@ export const HoneyTokenModalHeader = ({ type, isEdit }: Props) => {
         src={`/images/integrations/${details.image}`}
         className="h-10 w-10"
       />
-      <div>
-        <div className="flex items-center gap-x-2 text-mineshaft-300">
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-x-2 text-foreground">
           {isEdit ? "Edit" : ""} {details.name} Honey Token
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/honey-tokens/overview" />
         </div>
-        <p className="text-sm leading-4 text-mineshaft-400">
+        <p className="text-sm leading-4 text-muted">
           Plant a decoy credential that alerts on access
         </p>
       </div>
