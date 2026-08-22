@@ -323,14 +323,12 @@ export const oauthClientServiceFactory = ({
     return { client: sanitizeOauthClient(client), clientSecret };
   };
 
-  // The SSO page passes `grantType` to show which applications depend on the org's OIDC issuer.
-  const listOauthClients = async (actor: OrgServiceActor, grantType?: OauthGrantType) => {
+  const listOauthClients = async (actor: OrgServiceActor) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Read);
 
     const clients = await oauthClientDAL.find({ orgId: actor.orgId });
-    const filtered = grantType ? clients.filter((client) => getGrantTypes(client).includes(grantType)) : clients;
 
-    return filtered.map(sanitizeOauthClient);
+    return clients.map(sanitizeOauthClient);
   };
 
   const getOauthClientById = async (clientDbId: string, actor: OrgServiceActor) => {

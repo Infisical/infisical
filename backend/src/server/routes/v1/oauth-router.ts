@@ -106,12 +106,6 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       operationId: "listOauthClients",
-      querystring: z.object({
-        grantType: z
-          .nativeEnum(OauthGrantType)
-          .optional()
-          .describe("Return only applications registered for this grant type.")
-      }),
       response: {
         200: z.object({
           clients: SanitizedOauthClientSchema.array()
@@ -120,7 +114,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const clients = await server.services.oauthClient.listOauthClients(req.permission, req.query.grantType);
+      const clients = await server.services.oauthClient.listOauthClients(req.permission);
       return { clients };
     }
   });

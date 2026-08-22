@@ -151,6 +151,8 @@ I
 (?i)liveness
 (?i)lookups
 (?i)loopback
+(?i)middleware
+(?i)middleware's
 (?i)misconfiguration
 (?i)misconfigurations
 (?i)misconfigured
@@ -181,6 +183,7 @@ I
 (?i)reachability
 (?i)redeployment
 (?i)redeployments
+(?i)replayable
 (?i)repo
 (?i)repos
 (?i)requester
