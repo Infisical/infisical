@@ -179,14 +179,20 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                         {env.name}
                       </TooltipContent>
                     </Tooltip>
-                    <Checkbox
-                      className="ml-auto"
-                      variant="project"
-                      aria-label={`Select ${env.name}`}
-                      isChecked={selectedEnvs.some((e) => e.id === env.id)}
-                      onCheckedChange={() => handleToggleEnv(env.id)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="ml-auto inline-flex">
+                          <Checkbox
+                            variant="project"
+                            aria-label={`Select ${env.name}`}
+                            isChecked={selectedEnvs.some((e) => e.id === env.id)}
+                            onCheckedChange={() => handleToggleEnv(env.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">Add/remove from view</TooltipContent>
+                    </Tooltip>
                   </CommandItem>
                 ))}
               </CommandGroup>

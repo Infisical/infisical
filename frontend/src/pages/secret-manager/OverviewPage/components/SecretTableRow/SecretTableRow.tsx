@@ -33,6 +33,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  type TableSortDirection,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -105,6 +106,13 @@ type Props = {
   isSelectionDisabled?: boolean;
 };
 
+type ExpandedTableSortColumn = "environment";
+
+type ExpandedTableSort = {
+  column: ExpandedTableSortColumn;
+  direction: Exclude<TableSortDirection, "none">;
+};
+
 export const SecretTableRow = ({
   secretKey,
   environments = [],
@@ -130,6 +138,7 @@ export const SecretTableRow = ({
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
   const [creatingOverrideEnvs, setCreatingOverrideEnvs] = useState<Set<string>>(new Set());
+  const [expandedTableSort, setExpandedTableSort] = useState<ExpandedTableSort | null>(null);
 
   const isSingleEnvView = environments.length === 1;
   const { projectId } = useProject();
@@ -220,6 +229,35 @@ export const SecretTableRow = ({
     }
     return secret?.value || importedSecret?.secret?.value || "";
   };
+
+  const getExpandedTableSortDirection = (column: ExpandedTableSortColumn): TableSortDirection =>
+    expandedTableSort?.column === column ? expandedTableSort.direction : "none";
+
+  const handleExpandedTableSortChange = (
+    column: ExpandedTableSortColumn,
+    direction: TableSortDirection
+  ) => {
+    setExpandedTableSort(direction === "none" ? null : { column, direction });
+  };
+
+  const getExpandedTableSortIconClassName = (column: ExpandedTableSortColumn) => {
+    const direction = getExpandedTableSortDirection(column);
+
+    return twMerge(
+      "transition-transform",
+      direction === "descending" && "rotate-180",
+      direction === "none" && "opacity-30"
+    );
+  };
+
+  const sortedEnvironments = [...environments];
+
+  if (expandedTableSort) {
+    sortedEnvironments.sort((a, b) => {
+      const comparison = a.name.localeCompare(b.name);
+      return expandedTableSort.direction === "ascending" ? comparison : -comparison;
+    });
+  }
 
   return (
     <>
@@ -493,20 +531,31 @@ export const SecretTableRow = ({
         </Dialog>
       )}
       {!isSingleEnvView && isFormExpanded && (
-        <TableRow>
-          <TableCell colSpan={totalCols} className={`${isFormExpanded && "bg-card p-0"}`}>
+        <TableRow className="border-0 hover:bg-transparent">
+          <TableCell colSpan={totalCols} className="border-0 p-0">
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 flex flex-col gap-y-4 border-t-2 border-b-1 border-l-1 border-border border-x-project/50 bg-card p-4"
+              className="sticky left-0 border-y border-l border-border border-l-project"
             >
-              <Table containerClassName="border-none rounded-none bg-transparent">
-                <TableHeader className="">
-                  <TableRow className="border-none">
-                    <TableHead isTruncatable className="w-px min-w-40 lg:min-w-64 xl:min-w-80">
+              <Table containerClassName="rounded-none border-0">
+                <TableHeader className="bg-container-hover">
+                  <TableRow>
+                    <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10" />
+                    <TableHead
+                      isTruncatable
+                      className="w-px min-w-40 lg:min-w-64 xl:min-w-80"
+                      sortDirection={getExpandedTableSortDirection("environment")}
+                      onSortChange={(direction) =>
+                        handleExpandedTableSortChange("environment", direction)
+                      }
+                    >
                       Environment
+                      <ChevronDownIcon
+                        className={getExpandedTableSortIconClassName("environment")}
+                      />
                     </TableHead>
                     <TableHead className="w-full">Value</TableHead>
-                    <div className="absolute top-0 right-0">
+                    <TableHead variant="action" className="w-px">
                       <Button variant="ghost" size="xs" onClick={() => setIsSecretVisible.toggle()}>
                         {isSecretVisible ? (
                           <>
@@ -521,11 +570,11 @@ export const SecretTableRow = ({
                         )}{" "}
                         Values
                       </Button>
-                    </div>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {environments.map(({ name, slug }) => {
+                  {sortedEnvironments.map(({ name, slug }) => {
                     const secret = getSecretByKey(slug, secretKey);
                     const isCreatable = !secret;
 
@@ -539,6 +588,13 @@ export const SecretTableRow = ({
                     return (
                       <Fragment key={`secret-expanded-${slug}-${secretKey}`}>
                         <TableRow className="group hover:z-10">
+                          <TableCell
+                            aria-hidden="true"
+                            className={twMerge(
+                              "w-10 max-w-10 min-w-10",
+                              hasOverride && "border-b-border/50"
+                            )}
+                          />
                           <TableCell
                             isTruncatable
                             className={hasOverride ? "border-b-border/50" : undefined}
@@ -582,7 +638,8 @@ export const SecretTableRow = ({
                             </div>
                           </TableCell>
                           <TableCell
-                            className={twMerge("col-span-2", hasOverride && "border-b-border/50")}
+                            colSpan={2}
+                            className={hasOverride ? "border-b-border/50" : undefined}
                           >
                             <SecretEditTableRow
                               secretPath={secretPath}
@@ -622,8 +679,9 @@ export const SecretTableRow = ({
                             className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]"
                             key={`secret-override-${slug}-${secretKey}`}
                           >
+                            <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10" />
                             <TableCell />
-                            <TableCell>
+                            <TableCell colSpan={2}>
                               <SecretOverrideRow
                                 secretName={secretKey}
                                 environment={slug}

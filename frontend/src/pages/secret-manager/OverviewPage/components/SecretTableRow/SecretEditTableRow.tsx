@@ -1497,7 +1497,7 @@ export const SecretEditTableRow = ({
                 <DropdownMenuSubTrigger
                   disabled={isPendingDelete || isCreatable || isImportedSecret}
                   className={twMerge(
-                    "px-2.5 py-1.5 text-xs",
+                    "px-2.5 py-1.5",
                     (comment ||
                       (canReadTags && tags?.length) ||
                       reminder ||
@@ -1511,7 +1511,7 @@ export const SecretEditTableRow = ({
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="min-w-[185px]">
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5 text-xs"
+                    className="px-2.5 py-1.5"
                     onClick={() => setPendingAnnotation("comment")}
                   >
                     <MessageSquareIcon className={twMerge(comment && "text-project")} />
@@ -1520,7 +1520,7 @@ export const SecretEditTableRow = ({
                   <Tooltip open={!canReadTags ? undefined : false} disableHoverableContent>
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
-                        className="px-2.5 py-1.5 text-xs"
+                        className="px-2.5 py-1.5"
                         isDisabled={!canReadTags}
                         onClick={() => setPendingAnnotation("tags")}
                       >
@@ -1538,7 +1538,7 @@ export const SecretEditTableRow = ({
                   >
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
-                        className="px-2.5 py-1.5 text-xs"
+                        className="px-2.5 py-1.5"
                         isDisabled={!secretId || isPendingCreate}
                         onClick={() => setPendingAnnotation("reminder")}
                       >
@@ -1549,7 +1549,7 @@ export const SecretEditTableRow = ({
                     <TooltipContent side="left">Create Secret to Add Reminder</TooltipContent>
                   </Tooltip>
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5 text-xs"
+                    className="px-2.5 py-1.5"
                     onClick={() => setPendingAnnotation("metadata")}
                   >
                     <CodeXmlIcon className={twMerge(secretMetadata?.length && "text-project")} />
@@ -1566,7 +1566,7 @@ export const SecretEditTableRow = ({
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5 text-xs"
+                    className="px-2.5 py-1.5"
                     onClick={() => setIsSecretReferenceOpen(true)}
                     isDisabled={!canReadSecretValue || !secretId || isEmpty}
                   >
@@ -1593,7 +1593,7 @@ export const SecretEditTableRow = ({
                   >
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
-                        className="px-2.5 py-1.5 text-xs"
+                        className="px-2.5 py-1.5"
                         onClick={() => setIsVersionHistoryOpen(true)}
                         isDisabled={
                           isPendingBatchChange ||
@@ -1625,7 +1625,7 @@ export const SecretEditTableRow = ({
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5 text-xs"
+                    className="px-2.5 py-1.5"
                     onClick={() => {
                       if (!subscription?.secretAccessInsights) {
                         handlePopUpOpen("accessInsightsUpgrade");
@@ -1672,7 +1672,7 @@ export const SecretEditTableRow = ({
                     }
                     onCheckedChange={() => handleToggleMultilineEncoding()}
                     onSelect={(e) => e.preventDefault()}
-                    className="px-2.5 py-1.5 text-xs"
+                    className="px-2.5 py-1.5"
                   >
                     <WrapTextIcon />
                     Multi-line Encoding
@@ -1702,7 +1702,7 @@ export const SecretEditTableRow = ({
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5 text-xs"
+                    className="px-2.5 py-1.5"
                     onClick={() => onAddOverride?.()}
                     isDisabled={
                       isPendingBatchChange ||
@@ -1743,7 +1743,7 @@ export const SecretEditTableRow = ({
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5 text-xs"
+                    className="px-2.5 py-1.5"
                     isDisabled={
                       isPendingBatchChange ||
                       secretValueHidden ||
@@ -1786,7 +1786,7 @@ export const SecretEditTableRow = ({
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5 text-xs"
+                    className="px-2.5 py-1.5"
                     onClick={() => handlePopUpOpen("duplicateSecret")}
                     isDisabled={isPendingBatchChange || isManagedSecret || isCreatable || !secretId}
                   >
@@ -1828,7 +1828,7 @@ export const SecretEditTableRow = ({
                   >
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
-                        className="px-2.5 py-1.5 text-xs"
+                        className="px-2.5 py-1.5"
                         onClick={toggleModal}
                         isDisabled={
                           isPendingBatchChange ||

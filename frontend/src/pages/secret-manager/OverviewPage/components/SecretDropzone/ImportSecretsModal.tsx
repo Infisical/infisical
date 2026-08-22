@@ -681,7 +681,7 @@ export const ImportSecretsModal = ({
         else onOpenChange(open);
       }}
     >
-      <DialogContent className="max-w-4xl">
+      <DialogContent>
         <ImportSecretsContent
           environments={environments}
           projectId={projectId}
