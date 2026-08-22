@@ -33,6 +33,7 @@ import {
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSub
 } from "@app/context";
 
@@ -104,15 +105,23 @@ const ActionsMultiSelect = ({
   const memberGrantPrivileges = Boolean(rule?.[ProjectPermissionMemberActions.GrantPrivileges]);
   const identityGrantPrivileges = Boolean(rule?.[ProjectPermissionIdentityActions.GrantPrivileges]);
   const groupsGrantPrivileges = Boolean(rule?.[ProjectPermissionGroupActions.GrantPrivileges]);
+  const folderManageAccess = Boolean(rule?.[ProjectPermissionSecretFolderActions.ManageAccess]);
 
   const legacyActionsState = useMemo(
     () => ({
       secretsRead,
       memberGrantPrivileges,
       identityGrantPrivileges,
-      groupsGrantPrivileges
+      groupsGrantPrivileges,
+      folderManageAccess
     }),
-    [secretsRead, memberGrantPrivileges, identityGrantPrivileges, groupsGrantPrivileges]
+    [
+      secretsRead,
+      memberGrantPrivileges,
+      identityGrantPrivileges,
+      groupsGrantPrivileges,
+      folderManageAccess
+    ]
   );
 
   const visibleActions = useMemo(
@@ -123,6 +132,15 @@ const ActionsMultiSelect = ({
         // Hide legacy "read" action for secrets unless already selected
         if (subject === ProjectPermissionSub.Secrets && value === "read") {
           return legacyActionsState.secretsRead;
+        }
+
+        // manage-access is only obtainable through the folder access flow; show it only on
+        // roles that already hold it (the built-in admin role)
+        if (
+          subject === ProjectPermissionSub.SecretFolders &&
+          value === ProjectPermissionSecretFolderActions.ManageAccess
+        ) {
+          return legacyActionsState.folderManageAccess;
         }
 
         // Hide legacy "grant-privileges" actions unless already selected

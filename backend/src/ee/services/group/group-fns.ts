@@ -395,6 +395,8 @@ export const removeUsersFromGroupByUserIds = async ({
   userDAL,
   userGroupMembershipDAL,
   projectKeyDAL,
+  additionalPrivilegeDAL,
+  permissionService,
   tx: outerTx,
   membershipGroupDAL,
   shouldFailOnMissingMembers = true,
@@ -487,6 +489,8 @@ export const removeUsersFromGroupByUserIds = async ({
         )
       );
 
+      const projectsToInvalidateFolderPermissionsFor = new Set<string>();
+
       for await (const userId of membersToRemoveFromGroupNonPending.map((member) => member.id)) {
         const projectsUserStillMemberOf = await userGroupMembershipDAL.filterProjectsByUserMembership(
           userId,
@@ -506,6 +510,24 @@ export const removeUsersFromGroupByUserIds = async ({
             },
             tx
           );
+
+          // additional privileges are keyed on actor + project, not membership, so leaving the
+          // user's last route into these projects must reap them or they reactivate if the user
+          // is ever re-added
+          const deletedPrivileges = await additionalPrivilegeDAL.delete(
+            {
+              actorUserId: userId,
+              $in: {
+                projectId: projectsToDeleteKeyFor
+              }
+            },
+            tx
+          );
+          deletedPrivileges.forEach((privilege) => {
+            if (privilege.folderId && privilege.projectId) {
+              projectsToInvalidateFolderPermissionsFor.add(privilege.projectId);
+            }
+          });
         }
 
         await userGroupMembershipDAL.delete(
@@ -515,6 +537,10 @@ export const removeUsersFromGroupByUserIds = async ({
           },
           tx
         );
+      }
+
+      for await (const projectId of projectsToInvalidateFolderPermissionsFor) {
+        await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
       }
     }
 

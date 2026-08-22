@@ -302,6 +302,10 @@ export enum ProjectPermissionSecretApprovalRequestActions {
   Read = "read"
 }
 
+export enum ProjectPermissionSecretFolderActions {
+  ManageAccess = "manage-access"
+}
+
 export type MemberManagementSubjectFields = {
   userEmail?: string;
   assignableRole?: string;
@@ -536,6 +540,13 @@ export type ProjectPermissionSet =
     ]
   | [
       ProjectPermissionActions,
+      (
+        | ProjectPermissionSub.SecretFolders
+        | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SecretFolderSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionSecretFolderActions,
       (
         | ProjectPermissionSub.SecretFolders
         | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SecretFolderSubjectFields)

@@ -58,6 +58,7 @@ export enum ApiDocsTags {
   ProxiedServices = "Proxied Services",
   IdentitySpecificPrivilegesV1 = "Identity Specific Privileges",
   IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
+  FolderAccess = "Folder Access",
   AppConnections = "App Connections",
   SecretSyncs = "Secret Syncs",
   PkiSyncs = "PKI Syncs",
@@ -1788,6 +1789,63 @@ The permission object for the privilege.
     projectSlug: "The slug of the project of the identity in.",
     identityId: "The ID of the machine identity to list.",
     unpacked: "Whether the system should send the permissions as unpacked."
+  }
+};
+
+export const FOLDER_ACCESS = {
+  CREATE: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder to grant access on.",
+    userId: "The ID of the user to grant folder access to.",
+    identityId: "The ID of the machine identity to grant folder access to.",
+    permission:
+      "The folder role to grant. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.",
+    isTemporary:
+      "Whether the folder access is temporary. Omit the type object for permanent access. The full-access role must be permanent.",
+    temporaryMode: "Type of temporary access given. Types: relative.",
+    temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
+    temporaryAccessStartTime: "ISO time the temporary access starts."
+  },
+  UPDATE: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder the access is on.",
+    userId: "The ID of the user whose folder access to update.",
+    identityId: "The ID of the machine identity whose folder access to update.",
+    permission:
+      "The folder role to change the access to. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.",
+    isTemporary:
+      "Whether the folder access is temporary. Pass isTemporary false to make it permanent; omit the type object to leave the current temporal state unchanged. The full-access role must be permanent, so making an access temporary also requires lowering its role.",
+    temporaryMode: "Type of temporary access given. Types: relative.",
+    temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
+    temporaryAccessStartTime: "ISO time the temporary access starts."
+  },
+  DELETE: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder the access is on.",
+    userId: "The ID of the user whose folder access to revoke.",
+    identityId: "The ID of the machine identity whose folder access to revoke."
+  },
+  LIST_USERS: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder to list access for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th user.",
+    limit: "The number of users to return.",
+    search: "The text string that user names and email addresses will be filtered by."
+  },
+  LIST_IDENTITIES: {
+    projectId: "The ID of the project the folder is in.",
+    environmentSlug: "The slug of the environment the folder is in.",
+    secretPath: "The path of the folder to list access for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th machine identity.",
+    limit: "The number of machine identities to return.",
+    search: "The text string that machine identity names will be filtered by."
+  },
+  PERMISSION_AUDIT: {
+    includeFolderPermissions: "Whether to include folder-scoped access grants in the returned permission sources."
   }
 };
 

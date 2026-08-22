@@ -366,7 +366,7 @@ const Page = () => {
                 identityMembershipDetails={identityMembershipDetails}
                 isMembershipDetailsLoading={isMembershipDetailsLoading}
               />
-              {!isStandaloneProduct && (
+              {!isStandaloneProduct && currentProject.isLegacyAdditionalPrivilegesEnabled && (
                 <IdentityProjectAdditionalPrivilegeSection
                   identityMembershipDetails={identityMembershipDetails}
                 />

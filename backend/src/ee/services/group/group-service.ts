@@ -23,6 +23,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TGenericPermission } from "@app/lib/types";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/alert-recipient-cleanup-fns";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
@@ -99,7 +100,11 @@ type TGroupServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getOrgPermission" | "getOrgPermissionByRoles" | "invalidateProjectFolderPermissionCache"
+  >;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
@@ -120,6 +125,7 @@ export const groupServiceFactory = ({
   projectDAL,
   projectBotDAL,
   projectKeyDAL,
+  additionalPrivilegeDAL,
   permissionService,
   licenseService,
   oidcConfigDAL,
@@ -1191,6 +1197,8 @@ export const groupServiceFactory = ({
       userGroupMembershipDAL,
       membershipGroupDAL,
       projectKeyDAL,
+      additionalPrivilegeDAL,
+      permissionService,
       alertChannelRecipientDAL
     });
 

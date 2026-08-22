@@ -22,6 +22,7 @@ export * from "./certManagerInstance";
 export * from "./dynamicSecret";
 export * from "./dynamicSecretLease";
 export * from "./emailDomains";
+export * from "./folderAccess";
 export * from "./gateway-pools";
 export * from "./gateways";
 export * from "./githubOrgSyncConfig";

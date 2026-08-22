@@ -5,7 +5,8 @@ import {
   FolderInputIcon,
   InfoIcon,
   TrashIcon,
-  Undo2Icon
+  Undo2Icon,
+  UsersIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -34,6 +35,10 @@ type Props = {
   onToggleFolderEdit: (name: string) => void;
   onToggleFolderMove: (name: string) => void;
   onToggleFolderDelete: (name: string) => void;
+  onToggleFolderAccess?: (name: string) => void;
+  canManageFolderAccess?: boolean;
+  canEditFolder: boolean;
+  canDeleteFolder: boolean;
   pendingAction?: PendingAction;
   onBatchRevert?: (folderName: string) => void;
   isSelectionDisabled?: boolean;
@@ -49,6 +54,10 @@ export const FolderTableRow = ({
   onToggleFolderEdit,
   onToggleFolderMove,
   onToggleFolderDelete,
+  onToggleFolderAccess,
+  canManageFolderAccess,
+  canEditFolder,
+  canDeleteFolder,
   onClick,
   pendingAction,
   onBatchRevert,
@@ -144,6 +153,7 @@ export const FolderTableRow = ({
                   variant="ghost"
                   size="xs"
                   className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                  isDisabled={!canEditFolder}
                   onClick={(e) => {
                     onToggleFolderMove(folderName);
                     e.stopPropagation();
@@ -152,7 +162,7 @@ export const FolderTableRow = ({
                   <FolderInputIcon />
                 </IconButton>
               </TooltipTrigger>
-              <TooltipContent>Move Folder</TooltipContent>
+              <TooltipContent>{canEditFolder ? "Move Folder" : "Access Restricted"}</TooltipContent>
             </Tooltip>
           )}
           {pendingAction !== PendingAction.Delete && (
@@ -162,6 +172,7 @@ export const FolderTableRow = ({
                   variant="ghost"
                   size="xs"
                   className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                  isDisabled={!canEditFolder}
                   onClick={(e) => {
                     onToggleFolderEdit(folderName);
                     e.stopPropagation();
@@ -170,9 +181,29 @@ export const FolderTableRow = ({
                   <EditIcon />
                 </IconButton>
               </TooltipTrigger>
-              <TooltipContent>Edit Folder</TooltipContent>
+              <TooltipContent>{canEditFolder ? "Edit Folder" : "Access Restricted"}</TooltipContent>
             </Tooltip>
           )}
+          {onToggleFolderAccess &&
+            canManageFolderAccess &&
+            pendingAction !== PendingAction.Delete && (
+              <Tooltip disableHoverableContent>
+                <TooltipTrigger>
+                  <IconButton
+                    variant="ghost"
+                    size="xs"
+                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                    onClick={(e) => {
+                      onToggleFolderAccess(folderName);
+                      e.stopPropagation();
+                    }}
+                  >
+                    <UsersIcon />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>Manage Access</TooltipContent>
+              </Tooltip>
+            )}
           {pendingAction ? (
             <Tooltip disableHoverableContent>
               <TooltipTrigger>
@@ -197,6 +228,7 @@ export const FolderTableRow = ({
                   variant="ghost"
                   size="xs"
                   className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
+                  isDisabled={!canDeleteFolder}
                   onClick={(e) => {
                     onToggleFolderDelete(folderName);
                     e.stopPropagation();
@@ -205,7 +237,9 @@ export const FolderTableRow = ({
                   <TrashIcon />
                 </IconButton>
               </TooltipTrigger>
-              <TooltipContent>Delete Folder</TooltipContent>
+              <TooltipContent>
+                {canDeleteFolder ? "Delete Folder" : "Access Restricted"}
+              </TooltipContent>
             </Tooltip>
           )}
         </div>
