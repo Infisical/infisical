@@ -55,7 +55,7 @@ Infisical supports three methods for connecting to GitHub.
 
                     Back in your Infisical instance, you can configure the GitHub App credentials in one of two ways:
 
-                    **Option 1: Server Admin Panel (Recommended)**
+                    **Option 1: Server Admin Panel (Recommended for an instance-default shared app)**
 
                     Navigate to the server admin panel > **Integrations** > **GitHub App** and enter the GitHub application credentials:
                     ![integrations github app admin panel](/images/integrations/github/app/self-hosted-github-app-admin-panel.png)
@@ -81,7 +81,7 @@ Infisical supports three methods for connecting to GitHub.
                         If your shared GitHub App is registered on a GitHub Enterprise Server instance, you must set `INF_APP_CONNECTION_GITHUB_APP_HOST` to that instance's hostname. Without it, the OAuth exchange will be directed to `github.com` instead of your GHES host.
                     </Note>
 
-                    Once configured, you can use the GitHub integration via app authentication. If you configured the credentials using environment variables, restart your Infisical instance for the changes to take effect. If you configured them through the server admin panel, allow approximately 5 minutes for the changes to propagate.
+                    Once configured, you can use the GitHub integration via app authentication. The server admin panel and environment-variable paths both configure the shared **Instance** GitHub App option shown in project and organization app connections. If you configured the credentials using environment variables, restart your Infisical instance for the changes to take effect. If you configured them through the server admin panel, allow approximately 5 minutes for the changes to propagate before the shared **Instance** option appears in the App Connections flow.
                 </Step>
             </Steps>
         </Accordion>
@@ -101,7 +101,7 @@ Infisical supports three methods for connecting to GitHub.
                 Select the **GitHub App** method.
 
                 Choose which GitHub App to use for the connection:
-                - **Instance** — the instance-default GitHub App configured by your Infisical server admin.
+                - **Instance** — the instance-default GitHub App configured by your Infisical server admin. If you followed the self-hosted setup above via the server admin panel or environment variables, this is usually the option you want.
                 - **Private** — a GitHub App registered under your organization. Select an existing one from the list, or click the gear to manage your private apps.
 
                 <Note>
