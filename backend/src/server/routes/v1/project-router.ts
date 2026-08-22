@@ -921,7 +921,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     method: "PUT",
     url: "/:projectId/workflow-integration",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     schema: {
       operationId: "updateProjectWorkflowIntegration",
