@@ -13,5 +13,7 @@ export enum ProxiedServiceSubstitutionSurface {
   Header = "header",
   Path = "path",
   Query = "query",
-  Body = "body"
+  Body = "body",
+  // Applies to frames the agent sends after a WebSocket upgrade, not to the upgrade request itself
+  WebSocket = "websocket"
 }

@@ -7,7 +7,8 @@ const SURFACE_LABELS: Record<ProxiedServiceSubstitutionSurface, string> = {
   [ProxiedServiceSubstitutionSurface.Path]: "Path",
   [ProxiedServiceSubstitutionSurface.Query]: "Query",
   [ProxiedServiceSubstitutionSurface.Body]: "Body",
-  [ProxiedServiceSubstitutionSurface.Header]: "Header"
+  [ProxiedServiceSubstitutionSurface.Header]: "Header",
+  [ProxiedServiceSubstitutionSurface.WebSocket]: "WebSocket Message"
 };
 
 type SurfaceOption = {

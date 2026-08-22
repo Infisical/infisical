@@ -1686,7 +1686,7 @@ export const PROXIED_SERVICES = {
     placeholderValue:
       "For credential substitution: the placeholder value the agent proxy swaps for the real secret value on the wire.",
     substitutionSurfaces:
-      "For credential substitution: which request surfaces are scanned for the placeholder. Allowed values: 'header', 'path', 'query', 'body'."
+      "For credential substitution: which request surfaces are scanned for the placeholder. Allowed values: 'header', 'path', 'query', 'body', 'websocket'. The 'websocket' surface scans text messages the agent sends after a WebSocket upgrade, rather than the upgrade request itself."
   }
 } as const;
 
