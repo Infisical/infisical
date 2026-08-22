@@ -1,5 +1,6 @@
 import RE2 from "re2";
 
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { PkiSyncStatus } from "./pki-sync-enums";
@@ -52,10 +53,17 @@ const DEADLINE_GRACE_MS = 5_000;
 
 const sentenceCase = (text: string): string => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 
+export enum HostCommandFailure {
+  TimedOut = "timed-out",
+  Rejected = "rejected",
+  Unreachable = "unreachable"
+}
+
 export type THostCommandResult = {
   status: PkiSyncStatus.Succeeded | PkiSyncStatus.Failed;
   exitCode?: number;
   timedOut?: boolean;
+  failure?: HostCommandFailure;
   durationMs: number;
   output?: string;
   failureDetail?: string;
@@ -78,7 +86,12 @@ const findHostCommandVariables = (command?: string): Set<string> => {
 
 export const toPosixShellLiteral = (value: string): string => `'${value.split("'").join(`'\\''`)}'`;
 
-export const toPowerShellLiteral = (value: string): string => `'${value.split("'").join("''")}'`;
+const POWERSHELL_SINGLE_QUOTES = new Set(["'", "‘", "’", "‚", "‛"]);
+
+export const toPowerShellLiteral = (value: string): string =>
+  `'${Array.from(value)
+    .map((character) => (POWERSHELL_SINGLE_QUOTES.has(character) ? `${character}${character}` : character))
+    .join("")}'`;
 
 export const formatHostCommandVariables = (variables: string[]): string =>
   variables.map((variable) => `{{${variable}}}`).join(", ");
@@ -98,6 +111,9 @@ export const commandNeedsCertificateData = (command?: string): boolean => {
   const used = findHostCommandVariables(command);
   return CERTIFICATE_DEPENDENT_HOST_COMMAND_VARIABLES.some((variable) => used.has(variable));
 };
+
+export const commandUsesHostCommandVariable = (command: string | undefined, variable: HostCommandVariable): boolean =>
+  findHostCommandVariables(command).has(variable);
 
 export const findSingleCertificateHostCommandVariables = (command?: string): HostCommandVariable[] => {
   const used = findHostCommandVariables(command);
@@ -227,6 +243,11 @@ const COMMAND_TIMEOUT_ERROR_PATTERN = new RE2("command timed out|rpc timed out",
 const isTimeoutFailure = (err: unknown, message: string): boolean =>
   err instanceof HostCommandTimeoutError || COMMAND_TIMEOUT_ERROR_PATTERN.test(message);
 
+const classifyFailure = (err: unknown, message: string): HostCommandFailure => {
+  if (isTimeoutFailure(err, message)) return HostCommandFailure.TimedOut;
+  return err instanceof BadRequestError ? HostCommandFailure.Rejected : HostCommandFailure.Unreachable;
+};
+
 const withHostCommandDeadline = <T>(execute: () => Promise<T>, timeoutMs: number, graceMs: number): Promise<T> => {
   let timer: NodeJS.Timeout;
 
@@ -275,17 +296,19 @@ export const runHostCommand = async (args: {
   } catch (err) {
     const durationMs = Date.now() - startedAt;
     const error = redact((err as Error)?.message ?? "Unknown error");
+    const failure = classifyFailure(err, error);
     logger.warn(`PKI sync ${kind} could not run [syncId=${syncId}] [durationMs=${durationMs}]: ${error}`);
     return {
       status: PkiSyncStatus.Failed,
       durationMs,
       error,
-      timedOut: isTimeoutFailure(err, error)
+      failure,
+      timedOut: failure === HostCommandFailure.TimedOut
     };
   }
 };
 
-export const hostCommandMessageSubject = (kind: HostCommandKind): string => sentenceCase(kind);
+const hostCommandMessageSubject = (kind: HostCommandKind): string => sentenceCase(kind);
 
 export const buildHostCommandFailureMessage = (
   kind: HostCommandKind,
@@ -295,9 +318,15 @@ export const buildHostCommandFailureMessage = (
   const detail = result.failureDetail ?? firstNonEmptyLine(result.output);
 
   if (result.exitCode === undefined) {
-    return result.timedOut
-      ? `${subject} did not finish within its ${HOST_COMMAND_TIMEOUT_MS[kind] / 1000}s limit`
-      : `${subject} could not run: the destination host could not be reached`;
+    if (result.failure === HostCommandFailure.TimedOut || result.timedOut) {
+      return `${subject} did not finish within its ${HOST_COMMAND_TIMEOUT_MS[kind] / 1000}s limit`;
+    }
+
+    if (result.failure === HostCommandFailure.Rejected && result.error) {
+      return `${subject} could not run: ${truncate(result.error, MAX_FAILURE_DETAIL_CHARS)}`;
+    }
+
+    return `${subject} could not run: the destination host could not be reached`;
   }
 
   const prefix = `${subject} failed (exit ${result.exitCode})`;

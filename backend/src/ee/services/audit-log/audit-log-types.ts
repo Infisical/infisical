@@ -4569,7 +4569,6 @@ interface PkiSyncTestHealthCheckEvent {
     connectionName: string;
     destination: string;
     command: string;
-    ranAt: Date;
     result?: THealthCheckCommandResult;
   };
 }
@@ -4581,7 +4580,6 @@ interface PkiSyncHealthCheckEvent {
     syncName: string;
     destination: string;
     command: string;
-    ranAt: Date;
     result?: THealthCheckCommandResult;
   };
 }

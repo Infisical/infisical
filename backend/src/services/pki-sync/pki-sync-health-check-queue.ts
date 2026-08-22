@@ -255,6 +255,13 @@ export const pkiSyncHealthCheckQueueFactory = ({
       return;
     }
 
+    if (pkiSync.syncStatus === PkiSyncStatus.Running) {
+      logger.info(
+        `cron[${CronJobName.PkiSyncHealthCheck}]: a sync is delivering to this host, skipping [syncId=${syncId}]`
+      );
+      return undefined;
+    }
+
     const pkiSyncWithCredentials = await hydratePkiSyncCredentials({
       pkiSync,
       appConnectionDAL,
@@ -300,7 +307,6 @@ export const pkiSyncHealthCheckQueueFactory = ({
           syncName: pkiSync.name,
           destination: pkiSync.destination,
           command,
-          ranAt: new Date(),
           result
         }
       }

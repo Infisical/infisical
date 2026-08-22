@@ -72,7 +72,7 @@ export const PkiSyncCommandsSection = ({ pkiSync }: Props) => {
                               {lastHealthCheckStatus === PkiSyncStatus.Failed ? "Failed" : "Passed"}
                             </Badge>
                             <span>
-                              {format(new Date(lastHealthCheckRanAt), "yyyy-MM-dd, h:mm a")}
+                              {format(new Date(lastHealthCheckRanAt), "yyyy-MM-dd, hh:mm aaa")}
                             </span>
                           </div>
                         ) : (

@@ -3,6 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 import { PkiSyncStatus } from "./pki-sync-enums";
 import {
   findSingleCertificateHostCommandVariables,
+  HostCommandFailure,
   HostCommandVariable,
   renderHostCommandContext,
   toPosixShellLiteral,
@@ -354,11 +355,25 @@ describe("buildPostSyncCommandFailureMessage", () => {
     const message = buildPostSyncCommandFailureMessage({
       status: PkiSyncStatus.Failed,
       durationMs: 10,
-      error: "Running a command on the host requires the SSH connection to use a gateway."
+      failure: HostCommandFailure.Unreachable,
+      error: "failed to dial target SSH server: dial tcp 10.0.0.1:22: connect: connection refused"
     });
 
     expect(message).toBe("Post-sync command could not run: the destination host could not be reached");
-    expect(message).not.toContain("SSH connection");
+    expect(message).not.toContain("dial tcp");
+  });
+
+  test("passes on the reason we rejected the command ourselves, because it names what to change", () => {
+    const message = buildPostSyncCommandFailureMessage({
+      status: PkiSyncStatus.Failed,
+      durationMs: 10,
+      failure: HostCommandFailure.Rejected,
+      error: "Running a command on the host requires the SSH connection to use a gateway."
+    });
+
+    expect(message).toBe(
+      "Post-sync command could not run: Running a command on the host requires the SSH connection to use a gateway."
+    );
   });
 
   test("truncates a long detail so it fits the sync message column", () => {

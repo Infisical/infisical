@@ -1,3 +1,5 @@
+import forge from "node-forge";
+
 import {
   exportCertificateForSync,
   getExportedCertificateFileSuffixes,
@@ -99,14 +101,61 @@ describe("getExportedCertificateFileSuffixes matches the real export", () => {
     }
   );
 
-  test.each([true, false])("PKCS#12 is always a single .pfx (includeKey=%s)", (includePrivateKey) => {
-    expect(
-      getExportedCertificateFileSuffixes({
+  const realPair = (() => {
+    const keys = forge.pki.rsa.generateKeyPair(1024);
+    const cert = forge.pki.createCertificate();
+    cert.publicKey = keys.publicKey;
+    cert.serialNumber = "01";
+    cert.validity.notBefore = new Date(2026, 0, 1);
+    cert.validity.notAfter = new Date(2027, 0, 1);
+    const attrs = [{ name: "commonName", value: "api.example.com" }];
+    cert.setSubject(attrs);
+    cert.setIssuer(attrs);
+    cert.sign(keys.privateKey);
+
+    return {
+      certificate: forge.pki.certificateToPem(cert),
+      privateKey: forge.pki.privateKeyInfoToPem(
+        forge.pki.wrapRsaPrivateKey(forge.pki.privateKeyToAsn1(keys.privateKey))
+      )
+    };
+  })();
+
+  test.each([
+    [true, true],
+    [true, false],
+    [false, true],
+    [false, false]
+  ])("PKCS#12 includeKey=%s chain=%s", async (includePrivateKey, hasCertificateChain) => {
+    const shape = {
+      format: PkiSyncExportFormat.Pkcs12 as const,
+      includePrivateKey,
+      hasCertificateChain,
+      hasPrivateKey: true
+    };
+
+    const exported = await exportCertificateForSync({
+      format: shape.format,
+      certificate: realPair.certificate,
+      certificateChain: hasCertificateChain ? realPair.certificate : undefined,
+      privateKey: realPair.privateKey,
+      includePrivateKey,
+      password: "pw",
+      alias: "api.example.com"
+    });
+
+    expect(getExportedCertificateFileSuffixes(shape).sort()).toEqual(suffixes(exported));
+  });
+
+  test("PKCS#12 needs the private key, so a certificate without one cannot be exported at all", async () => {
+    await expect(
+      exportCertificateForSync({
         format: PkiSyncExportFormat.Pkcs12,
-        includePrivateKey,
-        hasCertificateChain: true,
-        hasPrivateKey: true
+        certificate: realPair.certificate,
+        includePrivateKey: true,
+        password: "pw",
+        alias: "api.example.com"
       })
-    ).toEqual([".pfx"]);
+    ).rejects.toThrow(/PKCS#12 export is not supported for this key type/);
   });
 });

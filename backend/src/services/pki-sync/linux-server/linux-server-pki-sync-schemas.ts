@@ -6,7 +6,7 @@ import { pkiDescriptionSchema } from "@app/services/certificate-common/certifica
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PemCertificateExtension, PkiSyncExportFormat } from "@app/services/pki-sync/pki-sync-export-fns";
-import { HostCommandSchema, PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import { BaseHealthCheckTestSchema, HostCommandSchema, PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { LINUX_SERVER_NAMING } from "./linux-server-pki-sync-constants";
 
@@ -132,11 +132,7 @@ export const LinuxServerPkiSyncListItemSchema = z.object({
   canRemoveCertificates: z.literal(true)
 });
 
-export const LinuxServerPkiSyncHealthCheckTestSchema = z.object({
-  connectionId: z.string().uuid(),
-  applicationId: z.string().uuid().optional(),
-  syncId: z.string().uuid().optional(),
-  name: z.string().trim().max(256).optional(),
+export const LinuxServerPkiSyncHealthCheckTestSchema = BaseHealthCheckTestSchema.extend({
   destinationConfig: LinuxServerPkiSyncConfigSchema,
   syncOptions: LinuxServerPkiSyncOptionsSchema.partial()
 });

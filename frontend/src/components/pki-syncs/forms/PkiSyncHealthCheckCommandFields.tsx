@@ -43,7 +43,6 @@ export const PkiSyncHealthCheckCommandFields = ({
         connectionId,
         applicationId: applicationId ?? undefined,
         syncId,
-        name: syncId ? undefined : watch("name"),
         destinationConfig: (destinationConfig ?? {}) as Record<string, unknown>,
         syncOptions: { healthCheckCommand: command }
       });
@@ -65,7 +64,7 @@ export const PkiSyncHealthCheckCommandFields = ({
       id="health-check-command"
       label="Health check"
       descriptions={HEALTH_CHECK_COMMAND_VARIABLE_DESCRIPTIONS}
-      placeholder={COMMAND_PLACEHOLDERS[destination ?? watch("destination")]}
+      placeholder={COMMAND_PLACEHOLDERS[effectiveDestination]}
       canEditCommand={canEditCommand}
       tooltipFooter={
         <>

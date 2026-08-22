@@ -25,7 +25,7 @@ import { TSyncMetadata } from "../certificate-sync/certificate-sync-schemas";
 import { certificateNameSchemaAllowsMultipleCertificates } from "./pki-sync-certificate-name-fns";
 import { encryptPkiSyncCredentials } from "./pki-sync-credentials-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
-import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
+import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncExportFormat } from "./pki-sync-export-fns";
 import {
   enterprisePkiSyncCheck,
@@ -37,7 +37,6 @@ import {
   applyHealthCheckCommandUpdate,
   assertHealthCheckCommandIsTestable,
   getHealthCheckCommand,
-  HEALTH_CHECK_COMMAND_OPTION_KEY,
   HEALTH_CHECK_OWNED_MESSAGE_SUBJECTS,
   normalizeNewHealthCheckCommand,
   toHealthCheckApiResult
@@ -878,7 +877,6 @@ export const pkiSyncServiceFactory = ({
     projectId: string;
     applicationId?: string;
     syncId?: string;
-    name?: string;
   }) => {
     if (args.syncId) {
       const pkiSync = await pkiSyncDAL.findById(args.syncId);
@@ -889,18 +887,14 @@ export const pkiSyncServiceFactory = ({
       return { projectId: pkiSync.projectId, applicationId: pkiSync.applicationId, name: pkiSync.name };
     }
 
-    if (args.applicationId) {
-      return { projectId: args.projectId, applicationId: args.applicationId, name: args.name ?? "" };
-    }
-
-    if (!args.name) {
+    if (!args.applicationId) {
       throw new BadRequestError({
         message:
-          "Provide the application, the sync's name, or the id of the sync being edited, so the command can be authorized."
+          "Provide the Application the sync belongs to, or the id of the sync being edited, so the command can be authorized."
       });
     }
 
-    return { projectId: args.projectId, name: args.name };
+    return { projectId: args.projectId, applicationId: args.applicationId, name: "" };
   };
 
   const testPkiSyncHealthCheckCommand = async (
@@ -909,7 +903,6 @@ export const pkiSyncServiceFactory = ({
       connectionId: string;
       applicationId?: string;
       syncId?: string;
-      name?: string;
       destinationConfig: Record<string, unknown>;
       syncOptions: Record<string, unknown>;
       projectId: string;
@@ -952,7 +945,6 @@ export const pkiSyncServiceFactory = ({
           connectionName: connection.name,
           destination: args.destination,
           command,
-          ranAt: new Date(),
           result
         }
       }

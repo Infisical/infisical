@@ -13,6 +13,7 @@ import {
   TTriggerPkiSyncSyncCertificatesDTO,
   TUpdatePkiSyncDTO
 } from "@app/hooks/api/pkiSyncs/types";
+import { ApiErrorTypes } from "@app/hooks/api/types";
 
 export const useCreatePkiSync = () => {
   const queryClient = useQueryClient();
@@ -71,12 +72,12 @@ export const useDeletePkiSync = () => {
 
 export const useTestPkiSyncHealthCheck = () => {
   return useMutation({
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
     mutationFn: async ({
       destination,
       connectionId,
       applicationId,
       syncId,
-      name,
       destinationConfig,
       syncOptions
     }: {
@@ -84,13 +85,12 @@ export const useTestPkiSyncHealthCheck = () => {
       connectionId: string;
       applicationId?: string;
       syncId?: string;
-      name?: string;
       destinationConfig: Record<string, unknown>;
       syncOptions: Record<string, unknown>;
     }) => {
       const { data } = await apiRequest.post<{ healthCheck: TPkiSyncHealthCheckResult }>(
         `/api/v1/cert-manager/syncs/${destination}/test-health-check`,
-        { connectionId, applicationId, syncId, name, destinationConfig, syncOptions }
+        { connectionId, applicationId, syncId, destinationConfig, syncOptions }
       );
 
       return data.healthCheck;
@@ -101,6 +101,7 @@ export const useTestPkiSyncHealthCheck = () => {
 export const useRunPkiSyncHealthCheck = () => {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
     mutationFn: async ({
       syncId,
       destination

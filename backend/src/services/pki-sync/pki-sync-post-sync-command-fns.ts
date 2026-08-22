@@ -2,7 +2,6 @@ import {
   applyHostCommandOptionUpdate,
   buildHostCommandContext,
   buildHostCommandFailureMessage,
-  HOST_COMMAND_TIMEOUT_MS,
   HostCommandKind,
   normalizeNewHostCommandOption,
   runHostCommand,
@@ -12,15 +11,11 @@ import {
   THostCommandResult
 } from "./pki-sync-host-command-fns";
 
-export const POST_SYNC_COMMAND_TIMEOUT_MS = HOST_COMMAND_TIMEOUT_MS[HostCommandKind.PostSync];
-
 export const POST_SYNC_COMMAND_OPTION_KEY = "postSyncCommand";
 
 export type TPostSyncCommandContext = THostCommandContext;
 
 export type TPostSyncCommandResult = THostCommandResult;
-
-export type TPostSyncCommandExecutionResult = THostCommandExecutionResult;
 
 export type TPostSyncCommandPlan = { command: string; context: TPostSyncCommandContext };
 
@@ -65,7 +60,7 @@ export const buildPostSyncCommandPlan = (args: {
 
 export const runPostSyncCommand = (args: {
   syncId: string;
-  execute: () => Promise<TPostSyncCommandExecutionResult>;
+  execute: () => Promise<THostCommandExecutionResult>;
   secretsToRedact?: Array<string | undefined>;
 }): Promise<TPostSyncCommandResult> => runHostCommand({ ...args, kind: HostCommandKind.PostSync });
 

@@ -9,7 +9,7 @@ import {
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
 
-import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
+import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 
 export type TPkiSyncDALFactory = ReturnType<typeof pkiSyncDALFactory>;
 
@@ -331,13 +331,19 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     }
   };
 
+  const $whereHealthCheckStillConfigured = (builder: Knex.QueryBuilder) => {
+    void builder.whereRaw(
+      `("${TableName.PkiSync}"."syncOptions" ->> '${HEALTH_CHECK_COMMAND_OPTION_KEY}') IS NOT NULL`
+    );
+  };
+
   const recordHealthCheckOutcome = async (
     syncId: string,
     outcome: { status: PkiSyncStatus.Succeeded | PkiSyncStatus.Failed; message: string | null; ranAt: Date },
     tx?: Knex
   ) => {
     try {
-      return await (tx || db)(TableName.PkiSync).where({ id: syncId }).update({
+      return await (tx || db)(TableName.PkiSync).where({ id: syncId }).where($whereHealthCheckStillConfigured).update({
         lastHealthCheckRanAt: outcome.ranAt,
         lastHealthCheckStatus: outcome.status,
         lastHealthCheckMessage: outcome.message
@@ -357,6 +363,7 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     try {
       return await (tx || db)(TableName.PkiSync)
         .where({ id: syncId })
+        .where($whereHealthCheckStillConfigured)
         .where((builder) => {
           void builder.whereNull("lastSyncMessage");
           $whereMessageStartsWithAny(builder, failurePrefixes);
@@ -392,9 +399,9 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.PkiSync)
         .join(TableName.Project, `${TableName.PkiSync}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Project}.deleteAfter`)
-        .select(`${TableName.PkiSync}.id`, `${TableName.PkiSync}.destination`)
-        .whereRaw(`("${TableName.PkiSync}"."syncOptions" ->> 'healthCheckCommand') IS NOT NULL`)
-        .orderBy(`${TableName.PkiSync}.createdAt`, "asc")) as Array<{ id: string; destination: string }>;
+        .select(`${TableName.PkiSync}.id`)
+        .where($whereHealthCheckStillConfigured)
+        .orderBy(`${TableName.PkiSync}.createdAt`, "asc")) as Array<{ id: string }>;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find PKI syncs with a healthCheck command" });
     }

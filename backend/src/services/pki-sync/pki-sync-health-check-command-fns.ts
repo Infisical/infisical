@@ -1,6 +1,6 @@
 import { BadRequestError } from "@app/lib/errors";
 
-import { PkiSyncStatus } from "./pki-sync-enums";
+import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSyncStatus } from "./pki-sync-enums";
 import {
   getExportedCertificateFileSuffixes,
   PemCertificateExtension,
@@ -11,10 +11,11 @@ import {
   buildHostCommandContext,
   buildHostCommandFailureMessage,
   commandNeedsCertificateData,
+  commandUsesHostCommandVariable,
   findCertificateDependentHostCommandVariables,
   formatHostCommandVariables,
-  HOST_COMMAND_TIMEOUT_MS,
   HostCommandKind,
+  HostCommandVariable,
   normalizeNewHostCommandOption,
   runHostCommand,
   THostCommandCertificate,
@@ -23,10 +24,6 @@ import {
   THostCommandResult
 } from "./pki-sync-host-command-fns";
 import { TCertificateMap, TPkiSyncSyncResult } from "./pki-sync-types";
-
-export const HEALTH_CHECK_COMMAND_TIMEOUT_MS = HOST_COMMAND_TIMEOUT_MS[HostCommandKind.HealthCheck];
-
-export const HEALTH_CHECK_COMMAND_OPTION_KEY = "healthCheckCommand";
 
 export type THealthCheckCommandResult = THostCommandResult;
 
@@ -54,6 +51,14 @@ export const assertHealthCheckCommandIsTestable = (syncOptions: Record<string, u
       message: `A test cannot resolve ${formatHostCommandVariables(
         certificateVariables
       )} because no certificate is linked yet. Use {{certificateDirectory}} to test, or save the sync and run the health check from its actions menu.`
+    });
+  }
+
+  if (commandUsesHostCommandVariable(command, HostCommandVariable.Pkcs12Password)) {
+    throw new BadRequestError({
+      message: `A test cannot resolve ${formatHostCommandVariables([
+        HostCommandVariable.Pkcs12Password
+      ])} because the export password belongs to a saved sync. Save the sync and run the health check from its actions menu.`
     });
   }
 

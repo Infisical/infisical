@@ -28,7 +28,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.alterTable(TableName.PkiSync, (t) => {
       if (!existing.has("lastHealthCheckRanAt")) t.timestamp("lastHealthCheckRanAt", { useTz: true });
       if (!existing.has("lastHealthCheckStatus")) t.string("lastHealthCheckStatus");
-      if (!existing.has("lastHealthCheckMessage")) t.string("lastHealthCheckMessage", 1024);
+      if (!existing.has("lastHealthCheckMessage")) t.string("lastHealthCheckMessage");
     });
   }
 

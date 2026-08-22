@@ -10,18 +10,32 @@ import { TPkiSync } from "./types";
 
 const useCanSetHostCommand = (
   action: PkiApplicationResourceActions,
+  projectAction: ProjectPermissionPkiSyncActions,
   applicationId?: string | null
 ) => {
+  const { permission: projectPermission } = useProjectPermission();
   const { data: appPermissionData } = useGetPkiApplicationPermissions(applicationId ?? "");
+
+  if (!applicationId) {
+    return projectPermission.can(projectAction, ProjectPermissionSub.PkiSyncs);
+  }
 
   return Boolean(appPermissionData?.permission?.can(action, PkiApplicationResourceSub.PkiSyncs));
 };
 
 export const useCanSetPostSyncCommand = (applicationId?: string | null) =>
-  useCanSetHostCommand(PkiApplicationResourceActions.SetPostSyncCommand, applicationId);
+  useCanSetHostCommand(
+    PkiApplicationResourceActions.SetPostSyncCommand,
+    ProjectPermissionPkiSyncActions.SetPostSyncCommand,
+    applicationId
+  );
 
 export const useCanSetHealthCheckCommand = (applicationId?: string | null) =>
-  useCanSetHostCommand(PkiApplicationResourceActions.SetHealthCheckCommand, applicationId);
+  useCanSetHostCommand(
+    PkiApplicationResourceActions.SetHealthCheckCommand,
+    ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
+    applicationId
+  );
 
 export const usePkiSyncPermissions = (pkiSync: TPkiSync) => {
   const { permission: projectPermission } = useProjectPermission();

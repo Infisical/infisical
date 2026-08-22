@@ -1,5 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
+import { BadRequestError } from "@app/lib/errors";
+
 import { PkiSyncStatus } from "./pki-sync-enums";
 import { PemCertificateExtension, PkiSyncExportFormat } from "./pki-sync-export-fns";
 import {
@@ -9,19 +11,16 @@ import {
   buildHealthCheckFailureMessageFor,
   buildHealthCheckFailureSyncResult,
   didHealthCheckFail,
-  HEALTH_CHECK_COMMAND_TIMEOUT_MS,
   normalizeNewHealthCheckCommand,
   runHealthCheckCommand,
   SCHEDULED_HEALTH_CHECK_MESSAGE_SUBJECT
 } from "./pki-sync-health-check-command-fns";
 import {
-  HostCommandKind,
-  hostCommandMessageSubject,
+  HostCommandFailure,
   renderHostCommandContext,
   toPosixShellLiteral,
   toPowerShellLiteral
 } from "./pki-sync-host-command-fns";
-import { POST_SYNC_COMMAND_TIMEOUT_MS } from "./pki-sync-post-sync-command-fns";
 import { TCertificateMap } from "./pki-sync-types";
 
 vi.mock("@app/lib/logger", () => ({
@@ -56,12 +55,6 @@ const planFor = (command: string, certificateMap: TCertificateMap, overrides = {
     joinPath: posixJoin,
     ...overrides
   });
-
-describe("health check timeout", () => {
-  test("is much shorter than a post-sync command, because it gates delivery", () => {
-    expect(HEALTH_CHECK_COMMAND_TIMEOUT_MS).toBeLessThan(POST_SYNC_COMMAND_TIMEOUT_MS);
-  });
-});
 
 describe("buildHealthCheckCommandPlan", () => {
   test("returns undefined when no check is configured", () => {
@@ -186,6 +179,27 @@ describe("renderHostCommandContext", () => {
     );
   });
 
+  test.each([
+    ["left single quotation mark", "\u2018"],
+    ["right single quotation mark", "\u2019"],
+    ["single low-9 quotation mark", "\u201a"],
+    ["single high-reversed-9 quotation mark", "\u201b"]
+  ])("doubles PowerShell's %s, which also ends a single-quoted string", (_name, quote) => {
+    const commonName = `app${quote}; Remove-Item C:\\ -Recurse`;
+
+    expect(
+      renderHostCommandContext("Write-Output {{commonName}}", { ...context, commonName }, toPowerShellLiteral)
+    ).toBe(`Write-Output 'app${quote}${quote}; Remove-Item C:\\ -Recurse'`);
+  });
+
+  test("leaves a typographic quote alone for POSIX, which does not treat it as a quote", () => {
+    const commonName = "app\u2019x";
+
+    expect(renderHostCommandContext("echo {{commonName}}", { ...context, commonName }, toPosixShellLiteral)).toBe(
+      "echo 'app\u2019x'"
+    );
+  });
+
   test("leaves braces that are not one of our variables exactly as written", () => {
     expect(renderHostCommandContext("kubectl get po -o jsonpath='{{.status}}'", context, toPosixShellLiteral)).toBe(
       "kubectl get po -o jsonpath='{{.status}}'"
@@ -227,6 +241,21 @@ describe("runHealthCheckCommand", () => {
     expect(result.status).toBe(PkiSyncStatus.Failed);
     expect(result.exitCode).toBeUndefined();
     expect(result.error).toBe("gateway unreachable");
+    expect(result.failure).toBe(HostCommandFailure.Unreachable);
+  });
+
+  test("marks a reason we raised ourselves as rejected, so the message can be shown as-is", async () => {
+    const result = await runHealthCheckCommand({
+      syncId: "sync-1",
+      execute: async () => {
+        throw new BadRequestError({
+          message: "Running a command on the host requires the SSH connection to use a gateway."
+        });
+      }
+    });
+
+    expect(result.failure).toBe(HostCommandFailure.Rejected);
+    expect(buildHealthCheckCommandFailureMessage(result)).toContain("requires the SSH connection to use a gateway");
   });
 
   test("redacts the export password from captured output", async () => {
@@ -285,7 +314,7 @@ describe("the scheduled check owns a prefix distinct from a sync run's", () => {
 
 describe("healthCheck failure messages carry the prefix the DAL matches on", () => {
   test("every failure shape starts with the prefix, so a check can take over and clear its own status", () => {
-    const prefix = hostCommandMessageSubject(HostCommandKind.HealthCheck);
+    const prefix = "Health check";
     const shapes = [
       { status: PkiSyncStatus.Failed as const, exitCode: 3, durationMs: 12, failureDetail: "nginx is down" },
       { status: PkiSyncStatus.Failed as const, exitCode: 1, durationMs: 5 },
@@ -340,11 +369,25 @@ describe("buildHealthCheckCommandFailureMessage", () => {
     const message = buildHealthCheckCommandFailureMessage({
       status: PkiSyncStatus.Failed,
       durationMs: 120,
+      failure: HostCommandFailure.Unreachable,
       error: "failed to dial target SSH server: dial tcp 10.0.0.1:22: connect: connection refused"
     });
 
     expect(message).toBe("Health check could not run: the destination host could not be reached");
     expect(message).not.toContain("dial tcp");
+  });
+
+  test("passes on the reason we rejected the command ourselves, because it names what to change", () => {
+    const message = buildHealthCheckCommandFailureMessage({
+      status: PkiSyncStatus.Failed,
+      durationMs: 4,
+      failure: HostCommandFailure.Rejected,
+      error: "Running a command on the host requires the SSH connection to use a gateway."
+    });
+
+    expect(message).toBe(
+      "Health check could not run: Running a command on the host requires the SSH connection to use a gateway."
+    );
   });
 });
 

@@ -171,7 +171,7 @@ A check is limited to 8192 characters, counted as you write it, before variables
     The sync is marked failed and the reason appears as the sync's last error. Every certificate in the run is reported as skipped with that same reason, so it is clear nothing reached the host. Files already on the server from an earlier run are left exactly as they are, because the sync never wrote or deleted anything.
   </Accordion>
   <Accordion title="Where do I see the result of the daily check?">
-    A failing daily check marks the sync failed and puts the reason in its last error, the same place a failed sync run reports one, so a broken host shows up wherever you already watch your syncs. A passing check changes nothing. Either way the run is recorded in the sync's logs with the command and its full output.
+    A failing daily check marks the sync failed and puts the reason in its last error, the same place a failed sync run reports one, so a broken host shows up wherever you already watch your syncs. A passing check clears a reason an earlier check reported, and changes nothing otherwise. Either way the run is recorded in the sync's logs with the command and the first part of its output.
   </Accordion>
   <Accordion title="Is there a time limit?">
     Yes, 15 seconds, and a check that runs out of time counts as a failure. The limit is deliberately much shorter than the post-sync command's, because the check gates delivery: a host that cannot answer a readiness question in fifteen seconds is itself the problem worth reporting. Keep the check to a question that is cheap to answer.

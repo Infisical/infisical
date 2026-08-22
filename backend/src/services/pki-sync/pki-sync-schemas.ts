@@ -105,3 +105,10 @@ export const PkiSyncSchema = z.object({
   lastHealthCheckStatus: z.nativeEnum(PkiSyncStatus).nullable().optional(),
   lastHealthCheckMessage: z.string().nullable().optional()
 });
+
+export const BaseHealthCheckTestSchema = z.object({
+  connectionId: z.string().uuid(),
+  applicationId: z.string().uuid().optional(),
+  syncId: z.string().uuid().optional(),
+  name: z.string().trim().max(256).optional()
+});
