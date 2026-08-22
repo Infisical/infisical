@@ -42,6 +42,24 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     },
     handler: async (req) => {
       const service = await server.services.proxiedService.create(req.body, req.permission);
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.ProxiedServiceCreated,
+          organizationId: req.permission.orgId,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            proxiedServiceId: service.id,
+            name: service.name,
+            projectId: req.body.projectId,
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            credentialCount: req.body.credentials.length,
+            credentialRoles: [...new Set(req.body.credentials.map((c) => c.role))]
+          }
+        })
+        .catch(() => {});
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.body.projectId,
@@ -208,6 +226,24 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
         { serviceId: req.params.serviceId, ...req.body },
         req.permission
       );
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.ProxiedServiceUpdated,
+          organizationId: req.permission.orgId,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            proxiedServiceId: service.id,
+            name: service.name,
+            projectId: service.projectId,
+            environment: service.environment,
+            secretPath: service.secretPath,
+            credentialCount: service.credentials.length,
+            credentialRoles: [...new Set(service.credentials.map((c) => c.role))]
+          }
+        })
+        .catch(() => {});
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: service.projectId,
@@ -272,6 +308,22 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
         { serviceId: req.params.serviceId },
         req.permission
       );
+
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.ProxiedServiceDeleted,
+          organizationId: req.permission.orgId,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            proxiedServiceId: service.id,
+            name: service.name,
+            projectId: service.projectId,
+            environment: service.environment,
+            secretPath: service.secretPath
+          }
+        })
+        .catch(() => {});
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: service.projectId,
