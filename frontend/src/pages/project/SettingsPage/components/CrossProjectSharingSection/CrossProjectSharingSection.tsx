@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { format, formatDistanceToNowStrict } from "date-fns";
+import { subject } from "@casl/ability";
 import {
   Box,
   ChevronRight,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PermissionDeniedBanner } from "@app/components/permissions";
 import {
   Accordion,
   AccordionContent,
@@ -44,12 +46,18 @@ import {
   EmptyTitle,
   IconButton,
   Input,
+  Skeleton,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
-import { useProject } from "@app/context";
+import {
+  ProjectPermissionProjectFolderGrantActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import {
   TProjectFolderGrant,
   useListProjectFolderGrants
@@ -80,6 +88,9 @@ const groupGrantsByProject = (grants: TProjectFolderGrant[]): ProjectGroup[] => 
     grants: projectGrants
   }));
 };
+
+const projectFolderGrantSubject = (environment: string, secretPath: string) =>
+  subject(ProjectPermissionSub.ProjectFolderGrant, { environment, secretPath });
 
 type DeleteProjectGrantsDialogProps = {
   grants: TProjectFolderGrant[];
@@ -188,10 +199,46 @@ export const CrossProjectSharingSection = () => {
   const [editData, setEditData] = useState<ShareSecretsEditData | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProjectGroup | null>(null);
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
+  const canEditGrants =
+    permission.can(
+      ProjectPermissionProjectFolderGrantActions.CreateGrant,
+      ProjectPermissionSub.ProjectFolderGrant
+    ) &&
+    permission.can(
+      ProjectPermissionProjectFolderGrantActions.RevokeGrant,
+      ProjectPermissionSub.ProjectFolderGrant
+    );
+  const canRevokeGrants = permission.can(
+    ProjectPermissionProjectFolderGrantActions.RevokeGrant,
+    ProjectPermissionSub.ProjectFolderGrant
+  );
 
-  const { data: grants = [] } = useListProjectFolderGrants(currentProject.id);
+  const canCreateGrant = (environment: string, secretPath: string) =>
+    permission.can(
+      ProjectPermissionProjectFolderGrantActions.CreateGrant,
+      projectFolderGrantSubject(environment, secretPath)
+    );
 
-  const projectGroups = useMemo(() => groupGrantsByProject(grants), [grants]);
+  const canRevokeGrant = (environment: string, secretPath: string) =>
+    permission.can(
+      ProjectPermissionProjectFolderGrantActions.RevokeGrant,
+      projectFolderGrantSubject(environment, secretPath)
+    );
+
+  const canCreateAnyGrant = permission.rulesFor(
+    ProjectPermissionProjectFolderGrantActions.CreateGrant,
+    ProjectPermissionSub.ProjectFolderGrant
+  ).some((rule) => !rule.inverted);
+
+  const canReadGrants = permission.can(
+    ProjectPermissionProjectFolderGrantActions.ReadGrant,
+    ProjectPermissionSub.ProjectFolderGrant
+  );
+  const { data: grants, isPending: isGrantsLoading } = useListProjectFolderGrants(
+    currentProject.id,
+    canReadGrants
+  );
 
   const handleEdit = (group: ProjectGroup) => {
     setEditData({
@@ -201,6 +248,132 @@ export const CrossProjectSharingSection = () => {
     });
     setIsShareSheetOpen(true);
   };
+
+  const projectGroups = useMemo(() => groupGrantsByProject(grants ?? []), [grants]);
+
+  let grantsContent: JSX.Element;
+  if (!canReadGrants) {
+    grantsContent = <PermissionDeniedBanner />;
+  } else if (isGrantsLoading) {
+    grantsContent = (
+      <div className="space-y-3" aria-label="Loading shared projects">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+      </div>
+    );
+  } else if (grants?.length === 0) {
+    grantsContent = (
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>No projects have access yet</EmptyTitle>
+          <EmptyDescription>Share secrets to grant another project read access.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  } else {
+    grantsContent = (
+      <Accordion type="multiple" defaultValue={projectGroups.map((g) => g.targetProjectId)}>
+        {projectGroups.map((projectGroup) => (
+          <AccordionItem key={projectGroup.targetProjectId} value={projectGroup.targetProjectId}>
+            <AccordionTrigger>
+              <div className="flex flex-1 items-center gap-3">
+                <Badge variant="project" className="gap-1.5">
+                  <Box className="size-3" />
+                  {projectGroup.targetProjectName}
+                </Badge>
+                <span className="text-xs text-muted">
+                  {projectGroup.totalSecrets}{" "}
+                  {projectGroup.totalSecrets === 1 ? "secret" : "secrets"} shared
+                </span>
+              </div>
+              {(canEditGrants || canRevokeGrants || canCreateAnyGrant) && (
+                <div
+                  className="pr-2"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  role="presentation"
+                >
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <IconButton aria-label="Actions" variant="ghost-muted" size="xs">
+                        <EllipsisVerticalIcon className="size-4" />
+                      </IconButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {(canEditGrants ||
+                        projectGroup.grants.some((grant) =>
+                          canRevokeGrant(grant.environmentSlug, grant.secretPath)
+                        )) && (
+                        <DropdownMenuItem onClick={() => handleEdit(projectGroup)}>
+                          <PencilIcon className="mr-2 size-4" />
+                          Edit
+                        </DropdownMenuItem>
+                      )}
+                      {projectGroup.grants.every((grant) =>
+                        canRevokeGrant(grant.environmentSlug, grant.secretPath)
+                      ) && (
+                        <DropdownMenuItem
+                          variant="danger"
+                          onClick={() => setDeleteTarget(projectGroup)}
+                        >
+                          <TrashIcon className="mr-2 size-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+            </AccordionTrigger>
+            <AccordionContent className="p-6">
+              <div className="rounded-md border border-border">
+                <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-border px-4 py-2 text-xs text-muted">
+                  <span>Shared location in this project</span>
+                  <span className="w-24 text-right">Secrets shared</span>
+                </div>
+                {projectGroup.grants
+                  .sort((a, b) => {
+                    const envOrder = a.environmentName.localeCompare(b.environmentName);
+                    if (envOrder !== 0) return envOrder;
+                    return a.secretPath.localeCompare(b.secretPath);
+                  })
+                  .map((grant) => (
+                    <div
+                      key={grant.id}
+                      className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-border px-4 py-2.5 last:border-b-0"
+                    >
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex w-fit items-center gap-2 text-sm">
+                            <Badge variant="neutral" className="gap-1.5">
+                              <Layers className="size-3" />
+                              {grant.environmentName}
+                            </Badge>
+                            <ChevronRight className="size-3.5 text-muted" />
+                            <FolderIcon className="size-3.5 text-muted" />
+                            <span>{grant.secretPath}</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Shared{" "}
+                          {formatDistanceToNowStrict(new Date(grant.createdAt), {
+                            addSuffix: true
+                          })}{" "}
+                          ({format(new Date(grant.createdAt), "MMM d, yyyy 'at' h:mm a")})
+                        </TooltipContent>
+                      </Tooltip>
+                      <span className="w-24 text-right text-sm tabular-nums">
+                        {grant.secretCount}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    );
+  }
 
   const handleSheetOpenChange = (open: boolean) => {
     setIsShareSheetOpen(open);
@@ -215,22 +388,26 @@ export const CrossProjectSharingSection = () => {
             Cross-Project Secret Sharing
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-reference#cross-project-secret-sharing" />
           </CardTitle>
-          <Button
-            variant="project"
-            size="sm"
-            onClick={() => {
-              setEditData(null);
-              setIsShareSheetOpen(true);
-            }}
-          >
-            <Plus className="size-3.5" />
-            Share Secrets
-          </Button>
+          {canCreateAnyGrant && (
+            <Button
+              variant="project"
+              size="sm"
+              onClick={() => {
+                setEditData(null);
+                setIsShareSheetOpen(true);
+              }}
+            >
+              <Plus className="size-3.5" />
+              Share Secrets
+            </Button>
+          )}
           <ShareSecretsSheet
             isOpen={isShareSheetOpen}
             onOpenChange={handleSheetOpenChange}
             editData={editData}
-            existingGrants={grants}
+            existingGrants={grants ?? []}
+            canCreateGrant={canCreateGrant}
+            canRevokeGrant={canRevokeGrant}
           />
         </div>
         <p className="max-w-2xl text-sm text-accent">
@@ -247,109 +424,7 @@ export const CrossProjectSharingSection = () => {
           <span className="text-sm text-mineshaft-400">Linked Projects</span>
           <Badge variant="neutral">{projectGroups.length}</Badge>
         </div>
-        {grants.length === 0 ? (
-          <Empty>
-            <EmptyHeader>
-              <EmptyTitle>No projects have access yet</EmptyTitle>
-              <EmptyDescription>
-                Share secrets to grant another project read access.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : (
-          <Accordion type="multiple" defaultValue={projectGroups.map((g) => g.targetProjectId)}>
-            {projectGroups.map((projectGroup) => (
-              <AccordionItem
-                key={projectGroup.targetProjectId}
-                value={projectGroup.targetProjectId}
-              >
-                <AccordionTrigger>
-                  <div className="flex flex-1 items-center gap-3">
-                    <Badge variant="project" className="gap-1.5">
-                      <Box className="size-3" />
-                      {projectGroup.targetProjectName}
-                    </Badge>
-                    <span className="text-xs text-muted">
-                      {projectGroup.totalSecrets}{" "}
-                      {projectGroup.totalSecrets === 1 ? "secret" : "secrets"} shared
-                    </span>
-                  </div>
-                  <div
-                    className="pr-2"
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
-                    role="presentation"
-                  >
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <IconButton aria-label="Actions" variant="ghost-muted" size="xs">
-                          <EllipsisVerticalIcon className="size-4" />
-                        </IconButton>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(projectGroup)}>
-                          <PencilIcon className="mr-2 size-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          variant="danger"
-                          onClick={() => setDeleteTarget(projectGroup)}
-                        >
-                          <TrashIcon className="mr-2 size-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="p-6">
-                  <div className="rounded-md border border-mineshaft-600">
-                    <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2 text-xs text-muted">
-                      <span>Shared location in this project</span>
-                      <span className="w-24 text-right">Secrets shared</span>
-                    </div>
-                    {projectGroup.grants
-                      .sort((a, b) => {
-                        const envOrder = a.environmentName.localeCompare(b.environmentName);
-                        if (envOrder !== 0) return envOrder;
-                        return a.secretPath.localeCompare(b.secretPath);
-                      })
-                      .map((grant) => (
-                        <div
-                          key={grant.id}
-                          className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2.5 last:border-b-0"
-                        >
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex w-fit items-center gap-2 text-sm">
-                                <Badge variant="neutral" className="gap-1.5">
-                                  <Layers className="size-3" />
-                                  {grant.environmentName}
-                                </Badge>
-                                <ChevronRight className="size-3.5 text-muted" />
-                                <FolderIcon className="size-3.5 text-muted" />
-                                <span>{grant.secretPath}</span>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              Shared{" "}
-                              {formatDistanceToNowStrict(new Date(grant.createdAt), {
-                                addSuffix: true
-                              })}{" "}
-                              ({format(new Date(grant.createdAt), "MMM d, yyyy 'at' h:mm a")})
-                            </TooltipContent>
-                          </Tooltip>
-                          <span className="w-24 text-right text-sm tabular-nums">
-                            {grant.secretCount}
-                          </span>
-                        </div>
-                      ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        )}
+        {grantsContent}
       </CardContent>
       <DeleteProjectGrantsDialog
         grants={deleteTarget?.grants ?? []}
