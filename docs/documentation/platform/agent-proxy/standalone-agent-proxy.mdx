@@ -123,6 +123,10 @@ Starting the proxy in a shell is fine while you are trying it out, but it dies w
   Keep the Agent Proxy on a private network reachable only by your agent machines (see [Network placement](#network-placement)). To run more than one instance, see [High availability](#high-availability).
 </Note>
 
+## Resource requirements
+
+2 vCPU and 4 GB of RAM is a reasonable starting point for a few dozen agents. The proxy keeps its state in memory, so RAM is rarely the driver. CPU tracks the volume of traffic you route through it rather than the number of agents, and a single instance accepts up to 512 concurrent connections. The first limit most deployments reach is the API load from each agent's polling, which a longer poll interval reduces (see [Caching and polling](#caching-and-polling)). As guidance rather than a benchmarked limit, expect one instance to serve roughly 30 to 50 agents; to grow past that, add instances behind a load balancer instead of moving to a larger host (see [High availability](#high-availability)).
+
 ## Network placement
 
 Check that the proxy sits where the diagram above shows it:
