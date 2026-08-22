@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { format, formatDistanceToNowStrict } from "date-fns";
+import { subject } from "@casl/ability";
 import {
   Box,
   ChevronRight,
@@ -14,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { PermissionDeniedBanner, ProjectPermissionCan } from "@app/components/permissions";
+import { PermissionDeniedBanner } from "@app/components/permissions";
 import {
   Accordion,
   AccordionContent,
@@ -87,6 +88,9 @@ const groupGrantsByProject = (grants: TProjectFolderGrant[]): ProjectGroup[] => 
     grants: projectGrants
   }));
 };
+
+const projectFolderGrantSubject = (environment: string, secretPath: string) =>
+  subject(ProjectPermissionSub.ProjectFolderGrant, { environment, secretPath });
 
 type DeleteProjectGrantsDialogProps = {
   grants: TProjectFolderGrant[];
@@ -210,6 +214,23 @@ export const CrossProjectSharingSection = () => {
     ProjectPermissionSub.ProjectFolderGrant
   );
 
+  const canCreateGrant = (environment: string, secretPath: string) =>
+    permission.can(
+      ProjectPermissionProjectFolderGrantActions.CreateGrant,
+      projectFolderGrantSubject(environment, secretPath)
+    );
+
+  const canRevokeGrant = (environment: string, secretPath: string) =>
+    permission.can(
+      ProjectPermissionProjectFolderGrantActions.RevokeGrant,
+      projectFolderGrantSubject(environment, secretPath)
+    );
+
+  const canCreateAnyGrant = permission.rulesFor(
+    ProjectPermissionProjectFolderGrantActions.CreateGrant,
+    ProjectPermissionSub.ProjectFolderGrant
+  ).some((rule) => !rule.inverted);
+
   const canReadGrants = permission.can(
     ProjectPermissionProjectFolderGrantActions.ReadGrant,
     ProjectPermissionSub.ProjectFolderGrant
@@ -265,7 +286,7 @@ export const CrossProjectSharingSection = () => {
                   {projectGroup.totalSecrets === 1 ? "secret" : "secrets"} shared
                 </span>
               </div>
-              {(canEditGrants || canRevokeGrants) && (
+              {(canEditGrants || canRevokeGrants || canCreateAnyGrant) && (
                 <div
                   className="pr-2"
                   onClick={(e) => e.stopPropagation()}
@@ -279,17 +300,18 @@ export const CrossProjectSharingSection = () => {
                       </IconButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {canEditGrants && (
+                      {(canEditGrants ||
+                        projectGroup.grants.some((grant) =>
+                          canRevokeGrant(grant.environmentSlug, grant.secretPath)
+                        )) && (
                         <DropdownMenuItem onClick={() => handleEdit(projectGroup)}>
                           <PencilIcon className="mr-2 size-4" />
                           Edit
                         </DropdownMenuItem>
                       )}
-                      <ProjectPermissionCan
-                        I={ProjectPermissionProjectFolderGrantActions.RevokeGrant}
-                        a={ProjectPermissionSub.ProjectFolderGrant}
-                        passThrough={false}
-                      >
+                      {projectGroup.grants.every((grant) =>
+                        canRevokeGrant(grant.environmentSlug, grant.secretPath)
+                      ) && (
                         <DropdownMenuItem
                           variant="danger"
                           onClick={() => setDeleteTarget(projectGroup)}
@@ -297,15 +319,15 @@ export const CrossProjectSharingSection = () => {
                           <TrashIcon className="mr-2 size-4" />
                           Delete
                         </DropdownMenuItem>
-                      </ProjectPermissionCan>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
               )}
             </AccordionTrigger>
             <AccordionContent className="p-6">
-              <div className="rounded-md border border-mineshaft-600">
-                <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2 text-xs text-muted">
+              <div className="rounded-md border border-border">
+                <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-border px-4 py-2 text-xs text-muted">
                   <span>Shared location in this project</span>
                   <span className="w-24 text-right">Secrets shared</span>
                 </div>
@@ -318,7 +340,7 @@ export const CrossProjectSharingSection = () => {
                   .map((grant) => (
                     <div
                       key={grant.id}
-                      className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2.5 last:border-b-0"
+                      className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-border px-4 py-2.5 last:border-b-0"
                     >
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -366,30 +388,26 @@ export const CrossProjectSharingSection = () => {
             Cross-Project Secret Sharing
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-reference#cross-project-secret-sharing" />
           </CardTitle>
-          <ProjectPermissionCan
-            I={ProjectPermissionProjectFolderGrantActions.CreateGrant}
-            a={ProjectPermissionSub.ProjectFolderGrant}
-          >
-            {(isAllowed) => (
-              <Button
-                variant="project"
-                size="sm"
-                onClick={() => {
-                  setEditData(null);
-                  setIsShareSheetOpen(true);
-                }}
-                isDisabled={!isAllowed}
-              >
-                <Plus className="size-3.5" />
-                Share Secrets
-              </Button>
-            )}
-          </ProjectPermissionCan>
+          {canCreateAnyGrant && (
+            <Button
+              variant="project"
+              size="sm"
+              onClick={() => {
+                setEditData(null);
+                setIsShareSheetOpen(true);
+              }}
+            >
+              <Plus className="size-3.5" />
+              Share Secrets
+            </Button>
+          )}
           <ShareSecretsSheet
             isOpen={isShareSheetOpen}
             onOpenChange={handleSheetOpenChange}
             editData={editData}
             existingGrants={grants ?? []}
+            canCreateGrant={canCreateGrant}
+            canRevokeGrant={canRevokeGrant}
           />
         </div>
         <p className="max-w-2xl text-sm text-accent">
