@@ -24,7 +24,7 @@ import { PAM_FOLDER_TABS } from "../../components/pamResourceTabs";
 type Props = {
   folder: TPamFolderWithCount;
   onOpenTab: (tab: PamSheetTab) => void;
-  onAddAccount: () => void;
+  onAddAccount?: () => void;
   onDelete: () => void;
 };
 
@@ -80,21 +80,23 @@ export const FolderActionsMenu = ({ folder, onOpenTab, onAddAccount, onDelete }:
             </Tooltip>
           );
         })}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div>
-              <DropdownMenuItem isDisabled={!canCreateAccounts} onClick={onAddAccount}>
-                <Plus />
-                Add Account
-              </DropdownMenuItem>
-            </div>
-          </TooltipTrigger>
-          {!canCreateAccounts && showReason && (
-            <TooltipContent side="left">
-              You don&apos;t have permission to create accounts in this folder
-            </TooltipContent>
-          )}
-        </Tooltip>
+        {onAddAccount && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <DropdownMenuItem isDisabled={!canCreateAccounts} onClick={onAddAccount}>
+                  <Plus />
+                  Add Account
+                </DropdownMenuItem>
+              </div>
+            </TooltipTrigger>
+            {!canCreateAccounts && showReason && (
+              <TooltipContent side="left">
+                You don&apos;t have permission to create accounts in this folder
+              </TooltipContent>
+            )}
+          </Tooltip>
+        )}
         <DropdownMenuSeparator />
         <Tooltip>
           <TooltipTrigger asChild>

@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown, FolderOpen, FolderPlus, Layers, Plus, Search } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -43,6 +44,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { useOrganization } from "@app/context";
 import {
   PamAccountType,
   PamResourcePermissionActions,
@@ -64,6 +66,7 @@ import { LaunchSessionSheet } from "../components/LaunchSessionSheet";
 import { RequestAccessSheet } from "../components/RequestAccessSheet";
 import { PamDocsUrls } from "../pam-docs-urls";
 import { AccountDetailSheet } from "./components/AccountDetailSheet";
+import { AccountsBreadcrumb } from "./components/AccountsBreadcrumb";
 import { CreateAccountSheet } from "./components/CreateAccountSheet";
 import { CreateFolderModal } from "./components/CreateFolderModal";
 import { DeleteAccountModal } from "./components/DeleteAccountModal";
@@ -75,10 +78,11 @@ const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
 
 export const PamAccountsPage = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const [searchInput, setSearchInput] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string>("");
   const [selectedAccountType, setSelectedAccountType] = useState<string>("");
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
   // Every role sees the same folder/account structure; permissions only disable actions on a row,
   // never hide it. Capabilities just drive the create affordances and the empty-state copy.
@@ -119,8 +123,7 @@ export const PamAccountsPage = () => {
   // produces, and the match highlighting all read from the same settled value.
   const [debouncedSearch] = useDebounce(searchInput);
   const query = debouncedSearch.trim();
-  const filterActive = Boolean(query || selectedAccountType);
-  const hasActiveFilters = Boolean(query || selectedFolderId || selectedAccountType);
+  const filterActive = Boolean(query || selectedFolderId || selectedAccountType);
 
   // Filtering is done server-side in a single request across every folder the caller can read, so
   // searching doesn't have to open (and fetch) each folder just to filter its rows in the client.
@@ -143,15 +146,6 @@ export const PamAccountsPage = () => {
     return grouped;
   }, [matches]);
 
-  const toggleFolder = useCallback((folderId: string) => {
-    setExpandedFolders((prev) => {
-      const next = new Set(prev);
-      if (next.has(folderId)) next.delete(folderId);
-      else next.add(folderId);
-      return next;
-    });
-  }, []);
-
   const allFolders = selectedFolderId
     ? folders.filter((folder) => folder.id === selectedFolderId)
     : folders;
@@ -161,9 +155,6 @@ export const PamAccountsPage = () => {
     : allFolders;
   const folderDropdownOptions = folders;
 
-  const isFolderOpen = (folderId: string) =>
-    filterActive || folderId === selectedFolderId || expandedFolders.has(folderId);
-
   // First search has no cached matches to fall back on, so show skeletons instead of an empty table.
   const isSearching = filterActive && isLoadingMatches;
   const showEmpty = !isLoadingFolders && !isSearching && visibleFolders.length === 0;
@@ -171,7 +162,7 @@ export const PamAccountsPage = () => {
   // Compute empty state messages to avoid nested ternaries
   let emptyTitle: string;
   let emptyDescription: string;
-  if (hasActiveFilters) {
+  if (filterActive) {
     emptyTitle = "No accounts match your filters";
     emptyDescription = "Try adjusting your search or filters.";
   } else if (canManage) {
@@ -231,6 +222,7 @@ export const PamAccountsPage = () => {
           <CardTitle>
             Accounts
             <DocumentationLinkBadge href={PamDocsUrls.accounts.overview} />
+            <AccountsBreadcrumb orgId={currentOrg.id} />
           </CardTitle>
           <CardDescription>
             Launch sessions for accounts you have access to, or manage account settings.
@@ -387,10 +379,14 @@ export const PamAccountsPage = () => {
                 <FolderAccountRows
                   key={folder.id}
                   folder={folder}
-                  isOpen={isFolderOpen(folder.id)}
-                  onToggle={() => toggleFolder(folder.id)}
                   search={debouncedSearch}
                   accounts={filterActive ? (matchesByFolder[folder.id] ?? []) : undefined}
+                  onOpenFolderView={() =>
+                    navigate({
+                      to: "/organizations/$orgId/pam/accounts/$folderId",
+                      params: { orgId: currentOrg.id, folderId: folder.id }
+                    })
+                  }
                   onOpenAccount={(id, tab) => accountSheet.openSheet(id, tab)}
                   onLaunchAccount={setLaunchAccount}
                   onRequestAccess={setRequestAccount}
