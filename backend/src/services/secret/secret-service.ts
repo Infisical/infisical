@@ -37,6 +37,7 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 import {
   SecretUpdateMode,
@@ -214,6 +215,8 @@ export const secretServiceFactory = ({
       });
     }
 
+    recordLegacyRootKeyUsageMetric({ operation: "decrypt", surface: "blind_index" });
+    logger.info(`Legacy root key used for a v1 blind index [projectId=${projectId}]`);
     const secretBlindIndex = await buildSecretBlindIndexFromName({
       secretName,
       keyEncoding: secretBlindIndexDoc.keyEncoding as SecretKeyEncoding,

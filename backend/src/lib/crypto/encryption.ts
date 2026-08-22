@@ -3,6 +3,7 @@ import argon2 from "argon2";
 import { SecretKeyEncoding } from "@app/db/schemas";
 
 import { crypto, SymmetricKeySize } from "./cryptography";
+import { getLegacyDecryptionCandidates } from "./legacy-key";
 
 type TBuildSecretBlindIndexDTO = {
   secretName: string;
@@ -27,18 +28,33 @@ export const buildSecretBlindIndexFromName = async ({
   encryptionKey,
   rootEncryptionKey
 }: TBuildSecretBlindIndexDTO) => {
-  if (!encryptionKey && !rootEncryptionKey) throw new Error("Missing secret blind index key");
+  // Snapshot over the passed-in env keys: after a rotation the environment holds the new key while
+  // this salt is still under the old one.
+  const candidates = getLegacyDecryptionCandidates();
+  if (!candidates.length) candidates.push({ ENCRYPTION_KEY: encryptionKey, ROOT_ENCRYPTION_KEY: rootEncryptionKey });
+
+  if (!candidates.some((candidate) => candidate.ENCRYPTION_KEY || candidate.ROOT_ENCRYPTION_KEY)) {
+    throw new Error("Missing secret blind index key");
+  }
+
   let salt = "";
-  if (rootEncryptionKey && keyEncoding === SecretKeyEncoding.BASE64) {
-    salt = crypto
-      .encryption()
-      .symmetric()
-      .decrypt({ iv, ciphertext, key: rootEncryptionKey, tag, keySize: SymmetricKeySize.Bits256 });
-  } else if (encryptionKey && keyEncoding === SecretKeyEncoding.UTF8) {
-    salt = crypto
-      .encryption()
-      .symmetric()
-      .decrypt({ iv, ciphertext, key: encryptionKey, tag, keySize: SymmetricKeySize.Bits128 });
+  for (const candidate of candidates) {
+    try {
+      if (candidate.ROOT_ENCRYPTION_KEY && keyEncoding === SecretKeyEncoding.BASE64) {
+        salt = crypto
+          .encryption()
+          .symmetric()
+          .decrypt({ iv, ciphertext, key: candidate.ROOT_ENCRYPTION_KEY, tag, keySize: SymmetricKeySize.Bits256 });
+      } else if (candidate.ENCRYPTION_KEY && keyEncoding === SecretKeyEncoding.UTF8) {
+        salt = crypto
+          .encryption()
+          .symmetric()
+          .decrypt({ iv, ciphertext, key: candidate.ENCRYPTION_KEY, tag, keySize: SymmetricKeySize.Bits128 });
+      }
+    } catch {
+      salt = "";
+    }
+    if (salt) break;
   }
   if (!salt) throw new Error("Missing secret blind index key");
 

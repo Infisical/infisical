@@ -10,6 +10,7 @@ import {
 } from "@app/db/schemas";
 import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
 import { LicenseType } from "@app/ee/services/license/license-types";
+import { ENCRYPTION_KEY_ROTATION } from "@app/lib/api-docs";
 import { getConfig, overridableKeys } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
@@ -22,13 +23,14 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { RotationBlocker } from "@app/services/encryption-key-rotation/encryption-key-rotation-types";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { SanitizedUserSchema } from "../sanitizedSchemas";
+import { booleanSchema, SanitizedUserSchema } from "../sanitizedSchemas";
 
 const SuperAdminSchema = SanitizedUserSchema.extend({
   superAdmin: z.boolean().optional().nullable()
@@ -634,6 +636,166 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       await server.services.superAdmin.updateRootEncryptionStrategy(req.body.strategy);
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/encryption/status",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getAdminEncryptionStatus",
+      description: ENCRYPTION_KEY_ROTATION.STATUS.description,
+      response: {
+        200: z.object({
+          status: z.object({
+            activeFingerprint: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.STATUS.activeFingerprint),
+            encryptionStrategy: z.string().nullable(),
+            pendingRotation: z
+              .object({
+                id: z.string().uuid(),
+                createdAt: z.date(),
+                fingerprint: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.STATUS.pendingFingerprint)
+              })
+              .nullable()
+              .describe(ENCRYPTION_KEY_ROTATION.STATUS.pendingRotation),
+            retainedKey: z
+              .object({
+                id: z.string().uuid(),
+                supersededAt: z.date(),
+                lastResolvedAt: z.date().nullable().describe(ENCRYPTION_KEY_ROTATION.STATUS.lastResolvedAt),
+                fingerprint: z.string().nullable()
+              })
+              .nullable(),
+            history: z
+              .object({
+                kekFingerprint: z.string(),
+                activatedAt: z.date(),
+                supersededAt: z.date().nullish(),
+                retiredAt: z.date().nullish()
+              })
+              .array()
+              .describe(ENCRYPTION_KEY_ROTATION.STATUS.history),
+            blockers: z.nativeEnum(RotationBlocker).array()
+          })
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async () => {
+      const status = await server.services.encryptionKeyRotation.getStatus();
+
+      return { status };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/encryption/rotations",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "createAdminEncryptionKeyRotation",
+      description: ENCRYPTION_KEY_ROTATION.CREATE.description,
+      querystring: z.object({
+        supersede: booleanSchema.default(false).describe(ENCRYPTION_KEY_ROTATION.CREATE.supersede)
+      }),
+      response: {
+        201: z.object({
+          rotation: z.object({
+            id: z.string().uuid(),
+            fingerprint: z.string().describe(ENCRYPTION_KEY_ROTATION.CREATE.fingerprint),
+            key: z.string().describe(ENCRYPTION_KEY_ROTATION.CREATE.key),
+            supersedesRetainedKey: z
+              .object({ fingerprint: z.string().nullable(), lastResolvedAt: z.date().nullable() })
+              .optional()
+              .describe(ENCRYPTION_KEY_ROTATION.CREATE.supersedesRetainedKey)
+          })
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req, res) => {
+      const rotation = await server.services.encryptionKeyRotation.createRotation({
+        supersede: req.query.supersede
+      });
+
+      // The key appears here and nowhere else, so it must not be cached along the way.
+      void res.header("Cache-Control", "no-store");
+      void res.status(201);
+      return { rotation };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/encryption/rotations/:rotationId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "deleteAdminEncryptionKeyRotation",
+      description: ENCRYPTION_KEY_ROTATION.DISCARD.description,
+      params: z.object({
+        rotationId: z.string().uuid().describe(ENCRYPTION_KEY_ROTATION.DISCARD.rotationId)
+      })
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req, res) => {
+      await server.services.encryptionKeyRotation.discardRotation(req.params.rotationId);
+
+      void res.status(204);
+    }
+  });
+
+  // RPC-shaped on purpose: the operator is finishing a rotation, not deleting a key they may not know
+  // exists, and "instances still use this" reads as a precondition on an action, oddly on a DELETE.
+  server.route({
+    method: "POST",
+    url: "/encryption/rotations/:rotationId/complete",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "completeAdminEncryptionKeyRotation",
+      description: ENCRYPTION_KEY_ROTATION.COMPLETE.description,
+      params: z.object({
+        rotationId: z.string().uuid().describe(ENCRYPTION_KEY_ROTATION.COMPLETE.rotationId)
+      }),
+      // Defaults to absent, so a scripted caller that says nothing still gets the guard.
+      body: z
+        .object({
+          acknowledged: z.boolean().optional().describe(ENCRYPTION_KEY_ROTATION.COMPLETE.acknowledged)
+        })
+        .nullish()
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req, res) => {
+      await server.services.encryptionKeyRotation.completeRotation({
+        rotationId: req.params.rotationId,
+        acknowledged: req.body?.acknowledged
+      });
+
+      void res.status(204);
     }
   });
 

@@ -200,6 +200,9 @@ const envSchema = z
     // TODO(akhilmhdh): will be changed to one
     ENCRYPTION_KEY: zpStr(z.string().optional()),
     ROOT_ENCRYPTION_KEY: zpStr(z.string().optional()),
+    // A convergence window, not a rollback window: it lets instances that have not restarted onto the
+    // new key keep booting, and covers a new key that turns out to be lost. Then the old key is gone.
+    KMS_ROOT_KEY_RETENTION_DAYS: z.coerce.number().int().min(1).max(90).default(7),
     QUEUE_WORKERS_ENABLED: zodStrBool.default("true"),
     QUEUE_WORKER_PROFILE: z.nativeEnum(QueueWorkerProfile).default(QueueWorkerProfile.All),
     HTTPS_ENABLED: zodStrBool,

@@ -3983,3 +3983,43 @@ export const SECRET_VALIDATION_RULES = {
     ruleId: "The ID of the secret validation rule to delete."
   }
 } as const;
+
+export const ENCRYPTION_KEY_ROTATION = {
+  STATUS: {
+    description:
+      "Report the state of the instance encryption key: which key is active, whether a rotation is staged or awaiting completion, and what is blocking one.",
+    activeFingerprint:
+      "A non-reversible label for the key this instance is currently running with. Use it to identify which archived key a database backup needs.",
+    pendingRotation:
+      "A generated key that has not been applied yet. Staging a rotation changes nothing until an instance starts with the new key.",
+    pendingFingerprint:
+      "Fingerprint of the generated key, so you can confirm the value you are about to deploy is the one you copied.",
+    lastResolvedAt:
+      "When an instance last started using the previous key. Recent means one is probably still running and would fail to restart if the key were removed. Null only means none has started since the rotation, not that none exists.",
+    history:
+      "Every key this instance has used, oldest last. Retained after a key is removed, so a restored backup can be matched to an archived key."
+  },
+  CREATE: {
+    description:
+      "Generate a new value for ENCRYPTION_KEY. The key is returned once and never stored, and nothing changes until an instance starts with it.",
+    supersede:
+      "Replace an already-generated key that has not been applied yet. The replaced key stops working immediately.",
+    fingerprint:
+      "A non-reversible label for the new key. Record it alongside the key so a backup can be matched to it later.",
+    key: "The new value for ENCRYPTION_KEY. Shown only in this response and never recoverable. Store it before closing.",
+    supersedesRetainedKey:
+      "Present when the previous rotation's key has not been removed yet. Applying this key removes it immediately, so any instance still running it will fail to restart."
+  },
+  DISCARD: {
+    description:
+      "Discard a generated key that has not been applied. Use this immediately if the key may have been exposed.",
+    rotationId: "ID of the staged rotation to discard."
+  },
+  COMPLETE: {
+    description:
+      "Remove the previous encryption key now that every instance is using the new one. This cannot be undone: after it, losing the new key means losing access to all stored secrets.",
+    rotationId: "ID of the previous key to remove.",
+    acknowledged:
+      "Remove the key even though an instance started on it recently. Any instance still using that key will fail its next restart until it is given the new one."
+  }
+};

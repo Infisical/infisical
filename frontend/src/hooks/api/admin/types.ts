@@ -240,3 +240,39 @@ export type TResendOrgInviteDTO = {
   organizationId: string;
   membershipId: string;
 };
+
+export enum EncryptionRotationBlocker {
+  HsmStrategy = "hsm-strategy",
+  RotationPending = "rotation-pending"
+}
+
+export type TEncryptionStatus = {
+  activeFingerprint: string | null;
+  encryptionStrategy: string | null;
+  pendingRotation: { id: string; createdAt: string; fingerprint: string | null } | null;
+  retainedKey: {
+    id: string;
+    supersededAt: string;
+    lastResolvedAt: string | null;
+    fingerprint: string | null;
+  } | null;
+  history: {
+    kekFingerprint: string;
+    activatedAt: string;
+    supersededAt?: string | null;
+    retiredAt?: string | null;
+  }[];
+  blockers: EncryptionRotationBlocker[];
+};
+
+export type TCreatedEncryptionKeyRotation = {
+  id: string;
+  fingerprint: string;
+  key: string;
+  supersedesRetainedKey?: { fingerprint: string | null; lastResolvedAt: string | null };
+};
+
+export type TCompleteEncryptionKeyRotationDTO = {
+  rotationId: string;
+  acknowledged: boolean;
+};

@@ -8,6 +8,7 @@ import {
   AdminGetOrganizationsFilters,
   AdminGetUsersFilters,
   AdminIntegrationsConfig,
+  TEncryptionStatus,
   TGetEmailDomainsResponse,
   TGetEnvOverrides,
   TGetIdentitiesResponse,
@@ -34,6 +35,7 @@ export const adminQueryKeys = {
     [adminStandaloneKeys.getIdentities, { filters }] as const,
   getAdminSlackConfig: () => ["admin-slack-config"] as const,
   getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const,
+  getEncryptionStatus: () => ["server-encryption-status"] as const,
   getInvalidateCache: () => ["admin-invalidate-cache"] as const,
   getAdminIntegrationsConfig: () => ["admin-integrations-config"] as const,
   getEnvOverrides: () => ["env-overrides"] as const,
@@ -143,6 +145,19 @@ export const useGetServerRootKmsEncryptionDetails = () => {
       );
 
       return data;
+    }
+  });
+};
+
+export const useGetEncryptionStatus = () => {
+  return useQuery({
+    queryKey: adminQueryKeys.getEncryptionStatus(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ status: TEncryptionStatus }>(
+        "/api/v1/admin/encryption/status"
+      );
+
+      return data.status;
     }
   });
 };

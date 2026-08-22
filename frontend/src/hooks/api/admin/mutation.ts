@@ -10,7 +10,9 @@ import {
   AdminEmailDomain,
   RootKeyEncryptionStrategy,
   TAdminCreateEmailDomainDTO,
+  TCompleteEncryptionKeyRotationDTO,
   TCreateAdminUserDTO,
+  TCreatedEncryptionKeyRotation,
   TCreateOrganizationDTO,
   TInvalidateCacheDTO,
   TResendOrgInviteDTO,
@@ -187,6 +189,48 @@ export const useUpdateServerEncryptionStrategy = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.getServerEncryptionStrategies() });
+    }
+  });
+};
+
+export const useCreateEncryptionKeyRotation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ supersede }: { supersede?: boolean } = {}) => {
+      const { data } = await apiRequest.post<{ rotation: TCreatedEncryptionKeyRotation }>(
+        `/api/v1/admin/encryption/rotations${supersede ? "?supersede=true" : ""}`
+      );
+
+      return data.rotation;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.getEncryptionStatus() });
+    }
+  });
+};
+
+export const useDiscardEncryptionKeyRotation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (rotationId: string) => {
+      await apiRequest.delete(`/api/v1/admin/encryption/rotations/${rotationId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.getEncryptionStatus() });
+    }
+  });
+};
+
+export const useCompleteEncryptionKeyRotation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ rotationId, acknowledged }: TCompleteEncryptionKeyRotationDTO) => {
+      await apiRequest.post(`/api/v1/admin/encryption/rotations/${rotationId}/complete`, {
+        acknowledged
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.getEncryptionStatus() });
     }
   });
 };
