@@ -8,7 +8,7 @@ description: "Let external platforms request delegated access to Infisical on a 
 A common use case is wiring Infisical into a developer platform as an External Auth provider, so that `infisical run` can fetch secrets at runtime inside a remote development environment using the developer's own permissions.
 
 <Info>
-  This page covers the browser-based authorization code flow, where each user approves the application on a consent screen. If you are registering trusted middleware that acts on behalf of many users and has no browser to redirect through, see [OAuth Token Exchange](/documentation/platform/oauth-token-exchange).
+  This page covers the browser-based authorization code flow, where each user approves the application on a consent screen. If you are registering trusted middleware that acts on behalf of many users and has no browser to redirect through, see [OAuth token exchange](/documentation/platform/oauth-token-exchange).
 </Info>
 
 <Note>
@@ -23,7 +23,7 @@ OAuth Applications turn Infisical into an OAuth 2.0 authorization server. The mo
 - **User (resource owner)** - the Infisical user who authorizes the application to act on their behalf.
 - **Infisical (authorization + resource server)** - issues the tokens and serves the protected API.
 
-Tokens issued through this flow are marked as delegated OAuth tokens. They are accepted **only** on the small set of read-only endpoints that opt into OAuth, and the granted scopes are intersected with the user's existing permissions on every request.
+Tokens issued through this flow are marked as delegated OAuth tokens. The granted scopes are intersected with the user's existing permissions on every request, so with `secrets:read` the only thing a token can do is read secrets, folders, and imports the user can already read.
 
 ### Flow
 
@@ -70,7 +70,7 @@ OAuth applications are managed at the organization level. You need permission to
 
     - **Name** (required): A friendly name shown to users on the consent screen.
     - **Description** (optional): A short note about what the application is used for. Also shown on the consent screen.
-    - **Flow**: Leave **Authorization code** selected. See [OAuth Token Exchange](/documentation/platform/oauth-token-exchange) for the other flow.
+    - **Flow**: Leave **Authorization code** selected. See [OAuth token exchange](/documentation/platform/oauth-token-exchange) for the other flow.
     - **Redirect URIs** (required): One URI per line. The authorization flow will only ever redirect to one of these exact URIs. Each must use `https://`; `http://` is allowed only for loopback addresses such as `localhost`, `127.0.0.1`, and `::1`.
     - **Require PKCE (S256)**: When enabled, authorization requests that do not include a PKCE code challenge are rejected. Recommended for public clients.
   </Step>
@@ -158,7 +158,7 @@ Use the access token as a standard Bearer token on the supported read-only secre
 curl https://app.infisical.com/api/v4/secrets \
   -H "Authorization: Bearer <access_token>" \
   --get \
-  --data-urlencode "workspaceId=<project-id>" \
+  --data-urlencode "projectId=<project-id>" \
   --data-urlencode "environment=dev"
 ```
 
@@ -167,7 +167,7 @@ The effective permissions are the **intersection** of the user's permissions and
 ## Security model
 
 - **Delegated access is bounded by the user.** Tokens are intersected with the authorizing user's CASL permissions on every request. They cannot exceed what the user can do, and revoking the user's access revokes the token's access.
-- **Read-only by design.** Only a deliberately minimal set of read-only secret-fetch endpoints accept OAuth tokens. Write endpoints and account endpoints (MFA, session management, TOTP, and similar) never accept them.
+- **Read-only by design.** `secrets:read` is the only scope available, and it grants read actions alone, so a token issued through this flow cannot write. Account endpoints (password, MFA, session management, TOTP, and similar) never accept a delegated token at all.
 - **MFA is enforced at consent.** If the user's organization requires MFA, the consent flow requires the matching MFA challenge to be completed before an authorization code is issued.
 - **Strict redirect URIs.** Authorization only ever redirects to an exact registered URI. Non-loopback URIs must use `https://`.
 - **One-time authorization codes.** Codes are single-use, short-lived, and bound to the client and redirect URI they were issued for.

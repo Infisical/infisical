@@ -1,16 +1,16 @@
 ---
-title: OAuth Token Exchange
+title: OAuth token exchange
 description: "Let trusted middleware act on behalf of your users in Infisical using tokens from your own identity provider."
 ---
 
 **Token exchange** lets a trusted service you run present a user's token from your identity provider and receive an Infisical token for that same user. The service acts as the user rather than as a shared service account, so every action is attributed to the real person and bounded by their own access.
 
 <Info>
-  This page is for organization admins registering middleware that acts on behalf of many users. If your platform can redirect a user's browser to a consent screen, use the authorization code flow on [OAuth Applications](/documentation/platform/oauth-applications) instead.
+  This page is for organization admins registering middleware that acts on behalf of many users. If your platform can redirect a user's browser to a consent screen, use the authorization code flow on [OAuth applications](/documentation/platform/oauth-applications) instead.
 </Info>
 
 <Note>
-  Token exchange requires an active **OIDC** SSO configuration for your organization. Infisical verifies the tokens your middleware presents against that same provider, so there is nothing to trust until OIDC SSO is set up. See [SSO overview](/documentation/platform/sso/overview).
+  Token exchange requires an active **OIDC** SSO configuration for your organization. Infisical verifies the tokens your middleware presents against that same provider, so disabling or deleting that configuration stops token exchange working, and changing its issuer changes who can vouch for your users. See [SSO overview](/documentation/platform/sso/overview).
 </Note>
 
 ## When to use token exchange
@@ -56,12 +56,14 @@ Structurally, this is your organization's OIDC sign-in with the token handed ove
 
 The issued token carries the user's **full effective permissions**, not a narrowed subset. There is no consent screen and no scope list: an organization admin approves the delegation once, when registering the application.
 
-Four things it deliberately cannot do:
+The token works across the Infisical API wherever the user's own permissions allow, with four deliberate exceptions:
 
-- **Manage the user's account.** Changing MFA, revoking sessions, and other account self-management actions are never reachable with a delegated token.
-- **Create or delete an organization.** Both require the user's own sign-in, so a delegated token is rejected on those endpoints even when the user is an organization admin.
-- **Mint another credential.** Machine identity tokens and client secrets, service tokens, KMIP client certificates, and gateway or relay enrollment tokens all outlive the delegation that created them, so those endpoints stay first-party. Revoking this application has to revoke everything it obtained.
-- **Outlive its access token.** No refresh token is issued, so your middleware exchanges again against the still-valid identity provider token.
+- **Managing the user's account.** Password, MFA, session, and notification endpoints are never reachable with a delegated token.
+- **Creating or deleting an organization.** Both require the user's own sign-in, so a delegated token is rejected even when the user is an organization admin.
+- **Minting another credential.** Machine identity tokens and client secrets, service tokens, KMIP client certificates, and gateway or relay enrollment tokens all outlive the delegation that created them, so those endpoints stay first-party. Revoking this application has to revoke everything it obtained.
+- **Widening its own access.** Managing OAuth applications, instance admin settings, and privilege assumption stay first-party.
+
+No refresh token is issued. When the access token expires, your middleware exchanges again against the still-valid identity provider token.
 
 <Warning>
   The issued token is a bearer credential held by your middleware, protected by that service rather than by the user's hardware key or device trust. Treat the middleware as a system that can act as any of its users.
@@ -70,11 +72,10 @@ Four things it deliberately cannot do:
 ## Before you start
 
 - **OIDC SSO is configured and enabled** for your organization.
-- **Your identity provider signs tokens with an asymmetric algorithm** (RS256, RS512, or EdDSA) and publishes a key ID (`kid`) in the token header.
+- **Your identity provider signs tokens with an asymmetric algorithm** (RS256, RS512, or EdDSA), matching the algorithm on your OIDC SSO configuration, and publishes a key ID (`kid`) in the token header.
 - **Its tokens carry an expiry (`exp`).** Infisical rejects a token without one, since it would be replayable indefinitely.
-- **Each user has signed in to Infisical through OIDC SSO at least once.** Infisical matches the token's subject to the account created on that sign-in, so treat one browser sign-in as an onboarding step.
-- **Your middleware has its own registration in your identity provider**, so its tokens carry an audience distinct from Infisical's.
-- **Its tokens are addressed to that registration alone**, or carry an `azp` claim naming it. See [Why the audience matters](#why-the-audience-matters).
+- **Each user has signed in to Infisical through OIDC SSO at least once.** Infisical matches the token's subject to the account created on that sign-in, so treat one browser sign-in as an onboarding step. The user also has to be an active member of the organization with their account set up and unlocked.
+- **Your middleware has its own registration in your identity provider**, so its tokens carry an audience distinct from Infisical's, and are addressed to that registration alone or carry an `azp` claim naming it. See [Why the audience matters](#why-the-audience-matters).
 
 ## Registering your middleware
 
@@ -143,7 +144,7 @@ The response is an access token for the user the subject token identified:
 }
 ```
 
-Access token lifetime follows your organization's **user token expiration** setting, falling back to the platform default of 10 days when that is not set. Because the middleware holds a credential that acts as the user, set a short expiration on the organization rather than relying on that default.
+Access token lifetime is the shorter of your organization's **user token expiration** setting and the platform default of 10 days. Because the middleware holds a credential that acts as the user, set a short expiration on the organization rather than relying on that default.
 
 <Note>
   `scope`, `audience`, and `resource` are rejected rather than ignored. This grant has no scope concept, and the expected audience is fixed on the application, so silently dropping those parameters would leave you believing a restriction was applied when it was not.
@@ -159,17 +160,13 @@ curl https://app.infisical.com/api/v4/secrets \
   --data-urlencode "environment=dev"
 ```
 
-<Note>
-  Delegated tokens are currently accepted on the read-only secret-fetch endpoints. Endpoint coverage is expanding; if your integration needs an endpoint that rejects a delegated token, let us know which one.
-</Note>
-
 ## Cache the access token
 
 <Warning>
   Exchange once per user and reuse the access token until it expires. Do not exchange on every request your middleware serves.
 </Warning>
 
-Exchanging per request throws away that whole window and makes your identity provider a hard dependency of every Infisical call: a momentary blip there fails your own request path, and both Infisical and your provider see traffic proportional to your request volume rather than your user count.
+Exchanging per request makes your identity provider a hard dependency of every Infisical call, so a momentary blip there fails your own request path.
 
 - Keep the token in memory keyed by the subject token's `sub` claim, alongside its expiry.
 - Refresh slightly early, say 60 seconds before `expires_in` elapses, so an in-flight request never carries a token that expires mid-call.
@@ -177,41 +174,34 @@ Exchanging per request throws away that whole window and makes your identity pro
 - Drop the entry when the user's session at your identity provider ends, so their Infisical access does not outlive it.
 
 <Note>
-  The token endpoint is rate limited per source IP, so every instance of your middleware behind one egress address shares a single budget. Caching correctly means roughly one exchange per user per token lifetime, which stays well inside it. Exchanging per request will be throttled under load.
+  The token endpoint is rate limited per source IP, so every instance of your middleware behind one egress address shares a single budget. Caching correctly means roughly one exchange per user per token lifetime, which stays well inside it.
 </Note>
 
 ## What Infisical verifies
 
 Every exchange checks all of the following and names the failure in its error:
 
-- The **signature** validates against your identity provider's published keys.
+- The **signature** validates against your identity provider's published keys, using the algorithm your OIDC SSO configuration declares.
 - The **issuer** matches your organization's configured OIDC SSO issuer.
-- The **audience** matches the audience configured on the application.
+- The **audience** matches the audience configured on the application, and any `azp` claim names it too.
 - The token **carries an `exp` claim and has not passed it**, and is not used before its `nbf` time.
-- The **signing algorithm** matches your OIDC SSO configuration.
-- The token's **subject** resolves to a user who has signed in through your organization's OIDC SSO and is an active member of it.
-- That user's **Infisical account is usable**: setup is complete and the account is not locked.
+- The token's **subject** resolves to a user who has signed in through your organization's OIDC SSO, whose account is set up and unlocked, and who is an active member of the organization.
 - **MFA** requirements are satisfied, either because none apply or because the application declares that the identity provider enforces them.
 
 ## Audit trail
 
 Each exchange records an audit event attributed to the **subject user**, with the requesting application in its metadata. Every later action taken with the issued token appears under the same person.
 
-## Dependency on SSO
-
-Token exchange has no trust anchor of its own:
-
-- **Disabling or deleting the OIDC SSO configuration stops token exchange working.**
-- **Changing the issuer changes who can vouch for your users.** Migrating identity providers moves both browser sign-in and token exchange at once.
-
-The **OAuth Applications** page lists which applications use token exchange, so you can see the blast radius before changing either.
-
 ## Revoking access
 
-Three actions revoke every token the application has issued, so they stop working on the next request rather than living until expiry:
+These actions revoke every token the application has issued, so they stop working on the next request rather than living until expiry:
 
 - **Deleting the application.**
 - **Rotating the client secret.** On a token exchange application the secret is the whole authority, so rotating it after a leak also cuts off whatever was minted with the old one. Expect the middleware to be signed out of every user until it picks up the new secret.
 - **Turning off the token exchange grant.**
+- **Changing the audience**, in either direction, since tokens already issued were accepted on a basis that no longer holds.
+- **Turning off Identity provider enforces MFA.** That declaration is what let those exchanges skip an MFA requirement, so withdrawing it withdraws the tokens too.
+
+Deactivating a user's organization membership stops further exchanges for that user, and the **OAuth Applications** page lists which applications use token exchange, so you can see the blast radius before changing SSO.
 
 Because no refresh tokens are issued, exposure from a compromised middleware is otherwise bounded by the remaining lifetime of the access tokens it holds.
