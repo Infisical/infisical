@@ -93,7 +93,7 @@ export const ViewHoneyTokenCredentialsModal = ({
 }: Props) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Honey Token Credentials</DialogTitle>
           {honeyToken && (

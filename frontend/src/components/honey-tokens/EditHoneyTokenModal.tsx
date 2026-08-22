@@ -15,7 +15,7 @@ export const EditHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Props)
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>
             <HoneyTokenModalHeader type={honeyToken.type as HoneyTokenType} isEdit />
