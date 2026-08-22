@@ -86,8 +86,14 @@
                   "documentation/platform/identities/machine-identities"
                 ]
               },
-              "documentation/platform/oauth-applications",
-              "documentation/platform/oauth-token-exchange",
+              {
+                "group": "OAuth applications",
+                "pages": [
+                  "documentation/platform/oauth-applications/overview",
+                  "documentation/platform/oauth-applications/authorization-code",
+                  "documentation/platform/oauth-applications/token-exchange"
+                ]
+              },
               {
                 "group": "Access control",
                 "pages": [
@@ -4540,6 +4546,14 @@
     }
   },
   "redirects": [
+    {
+      "source": "/documentation/platform/oauth-applications",
+      "destination": "/documentation/platform/oauth-applications/overview"
+    },
+    {
+      "source": "/documentation/platform/oauth-token-exchange",
+      "destination": "/documentation/platform/oauth-applications/token-exchange"
+    },
     {
       "source": "/integrations/platforms/docker-intro",
       "destination": "/integrations/platforms/docker"

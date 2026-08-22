@@ -1,12 +1,14 @@
 ---
-title: OAuth token exchange
+title: Token exchange
 description: "Let trusted middleware act on behalf of your users in Infisical using tokens from your own identity provider."
 ---
 
 **Token exchange** lets a trusted service you run present a user's token from your identity provider and receive an Infisical token for that same user. The service acts as the user rather than as a shared service account, so every action is attributed to the real person and bounded by their own access.
 
+It is one of the two flows an [OAuth application](/documentation/platform/oauth-applications/overview) can use, and the one to reach for when there is no browser to redirect.
+
 <Info>
-  This page is for organization admins registering middleware that acts on behalf of many users. If your platform can redirect a user's browser to a consent screen, use the authorization code flow on [OAuth applications](/documentation/platform/oauth-applications) instead.
+  This page is for organization admins registering middleware that acts on behalf of many users. If your platform can redirect a user's browser to a consent screen, use the [authorization code](/documentation/platform/oauth-applications/authorization-code) flow instead.
 </Info>
 
 <Note>
@@ -96,7 +98,7 @@ You need permission to manage both OAuth applications and SSO, because enabling 
 
     There is no issuer to set here. Infisical always verifies against your organization's OIDC SSO provider, which cannot be overridden per application.
 
-    An application uses one flow or the other. Registering it for token exchange rules out the authorization code flow, and the reverse, so a service that needs both needs two registrations. This holds for the API too: sending `grantTypes` containing both the token-exchange grant and `authorization_code` is rejected.
+    An application uses one flow or the other, so a service that needs both needs two registrations.
   </Step>
   <Step title="Store the credentials">
     Infisical shows the **Client ID** and **Client Secret** on creation.

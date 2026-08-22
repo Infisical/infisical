@@ -164,7 +164,7 @@ Then test the login two ways:
 
 Token exchange lets trusted middleware present a user's token from your IdP and receive that user's
 Infisical token. Its trust anchor is the org's OIDC SSO config, so everything above has to be working
-first. See [OAuth Token Exchange](docs/documentation/platform/oauth-token-exchange) for the product docs.
+first. See [OAuth Token Exchange](docs/documentation/platform/oauth-applications/token-exchange) for the product docs.
 
 No license is needed. `plan.oidcSSO` is only checked when creating or updating an OIDC config through
 the API, and `make seed-dev-oidc` writes the row directly.

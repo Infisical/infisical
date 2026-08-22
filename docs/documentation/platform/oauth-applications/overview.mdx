@@ -1,0 +1,50 @@
+---
+title: OAuth applications
+sidebarTitle: Overview
+description: "Let external platforms and services act in Infisical on behalf of your users."
+---
+
+**OAuth Applications** let you register an outside platform or service as an OAuth 2.0 client so it can act in Infisical **on behalf of one of your users** rather than as a shared service account. The client never sees the user's password or session, every action is attributed to the real person, and the access it gets is bounded by that person's own permissions.
+
+An OAuth application obtains its tokens through one of two flows, chosen when you register it:
+
+<CardGroup cols={2}>
+  <Card
+    title="Authorization code"
+    icon="browser"
+    href="/documentation/platform/oauth-applications/authorization-code"
+  >
+    The user approves the application on an Infisical consent screen in their browser. Best for a platform integrating with Infisical as an external auth provider, such as one where `infisical run` fetches secrets with the developer's own permissions.
+  </Card>
+  <Card
+    title="Token exchange"
+    icon="right-left"
+    href="/documentation/platform/oauth-applications/token-exchange"
+  >
+    Trusted middleware you run presents a user's token from your identity provider and receives an Infisical token for that same user. Best for MCP servers, internal developer portals, and API gateways that have no browser to redirect through.
+  </Card>
+</CardGroup>
+
+## Choosing a flow
+
+|  | Authorization code | Token exchange |
+| --- | --- | --- |
+| Who approves the delegation | Each user, on a consent screen | An organization admin, once at registration |
+| Needs a browser redirect | Yes | No |
+| What the token can do | Only the requested scopes, intersected with the user's permissions | The user's full effective permissions |
+| Refresh tokens | Yes | No, exchange again instead |
+| Prerequisites | Registered redirect URIs | An active OIDC SSO configuration for the organization |
+
+## Managing applications
+
+OAuth applications are managed at the organization level. Head to **Organization Settings** and open **OAuth Applications** from the sidebar. You need permission to manage OAuth applications in the organization, and token exchange additionally requires permission to manage SSO.
+
+Every application gets a **Client ID** and a **Client Secret** on creation. The secret is shown only once: store it securely, and if it is lost, rotate it from the application's menu rather than expecting to retrieve the original value.
+
+## What a delegated token can never do
+
+Whichever flow issued it, a delegated token cannot manage the authorizing user's account. Password, MFA, session, TOTP, and notification endpoints reject it outright, so an integration can never use its access to take over the account behind it. The individual flow pages cover the rest of each one's limits.
+
+## Revoking access
+
+Deleting an application immediately revokes every token it issued, in both flows. The other levers differ, most notably client secret rotation, which cuts off existing tokens on a token exchange application but not on an authorization code one. See [revoking authorization code access](/documentation/platform/oauth-applications/authorization-code#revoking-access) and [revoking token exchange access](/documentation/platform/oauth-applications/token-exchange#revoking-access).

@@ -1,14 +1,14 @@
 ---
-title: OAuth applications
+title: Authorization code
 description: "Let external platforms request delegated access to Infisical on a user's behalf using OAuth 2.0."
 ---
 
-**OAuth Applications** let you register an external platform as an OAuth 2.0 client so it can request **delegated access** to Infisical on behalf of one of your users. The platform never sees the user's password or session; instead it runs a standard authorization code flow, the user reviews and approves the request on an Infisical consent screen, and the platform receives short-lived access and refresh tokens scoped to that user.
+The **authorization code** flow lets an [OAuth application](/documentation/platform/oauth-applications/overview) request **delegated access** to Infisical on behalf of one of your users. The platform never sees the user's password or session; instead it runs a standard authorization code flow, the user reviews and approves the request on an Infisical consent screen, and the platform receives short-lived access and refresh tokens scoped to that user.
 
 A common use case is wiring Infisical into a developer platform as an External Auth provider, so that `infisical run` can fetch secrets at runtime inside a remote development environment using the developer's own permissions.
 
 <Info>
-  This page covers the browser-based authorization code flow, where each user approves the application on a consent screen. If you are registering trusted middleware that acts on behalf of many users and has no browser to redirect through, see [OAuth token exchange](/documentation/platform/oauth-token-exchange).
+  This page covers the browser-based flow, where each user approves the application on a consent screen. If you are registering trusted middleware that acts on behalf of many users and has no browser to redirect through, see [token exchange](/documentation/platform/oauth-applications/token-exchange).
 </Info>
 
 <Note>
@@ -17,7 +17,7 @@ A common use case is wiring Infisical into a developer platform as an External A
 
 ## Concept
 
-OAuth Applications turn Infisical into an OAuth 2.0 authorization server. The model has three parties:
+This flow turns Infisical into an OAuth 2.0 authorization server. The model has three parties:
 
 - **OAuth application (client)** - the external platform you register in Infisical. It holds a client ID and client secret.
 - **User (resource owner)** - the Infisical user who authorizes the application to act on their behalf.
@@ -70,7 +70,7 @@ OAuth applications are managed at the organization level. You need permission to
 
     - **Name** (required): A friendly name shown to users on the consent screen.
     - **Description** (optional): A short note about what the application is used for. Also shown on the consent screen.
-    - **Flow**: Leave **Authorization code** selected. See [OAuth token exchange](/documentation/platform/oauth-token-exchange) for the other flow.
+    - **Flow**: Leave **Authorization code** selected. See [token exchange](/documentation/platform/oauth-applications/token-exchange) for the other flow.
     - **Redirect URIs** (required): One URI per line. The authorization flow will only ever redirect to one of these exact URIs. Each must use `https://`; `http://` is allowed only for loopback addresses such as `localhost`, `127.0.0.1`, and `::1`.
     - **Require PKCE (S256)**: When enabled, authorization requests that do not include a PKCE code challenge are rejected. Recommended for public clients.
   </Step>
@@ -177,4 +177,4 @@ The effective permissions are the **intersection** of the user's permissions and
 
 Deleting an OAuth application from the **OAuth Applications** tab immediately revokes every access and refresh token that application issued, so they stop working on the next request rather than living until expiry.
 
-Rotating the client secret invalidates the old secret for future token requests but leaves already-issued tokens working until they expire, so users of the integration are not signed out. The secret alone cannot mint a token in this flow: it has to be paired with an authorization code from a user's browser or with a refresh token. To cut existing access off immediately, delete the application. Rotation on a [token exchange](/documentation/platform/oauth-token-exchange) application behaves differently, because there the secret is sufficient on its own.
+Rotating the client secret invalidates the old secret for future token requests but leaves already-issued tokens working until they expire, so users of the integration are not signed out. The secret alone cannot mint a token in this flow: it has to be paired with an authorization code from a user's browser or with a refresh token. To cut existing access off immediately, delete the application. Rotation on a [token exchange](/documentation/platform/oauth-applications/token-exchange) application behaves differently, because there the secret is sufficient on its own.
