@@ -662,10 +662,11 @@ export const secretApprovalRequestServiceFactory = ({
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
-    const reviewers = secretApprovalRequest.reviewers.reduce<Record<string, ApprovalStatus>>(
-      (prev, curr) => ({ ...prev, [curr.userId.toString()]: curr.status as ApprovalStatus }),
-      {}
-    );
+    const reviewers = secretApprovalRequest.reviewers.reduce<Record<string, ApprovalStatus>>((prev, curr) => {
+      // eslint-disable-next-line no-param-reassign
+      prev[curr.userId.toString()] = curr.status as ApprovalStatus;
+      return prev;
+    }, {});
     const hasMinApproval =
       secretApprovalRequest.policy.approvals <=
       secretApprovalRequest.policy.approvers.filter(({ userId: approverId }) =>
