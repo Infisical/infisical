@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
 import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@app/components/v3";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
 
 import { ShareSecretForm } from "./components";
 
@@ -20,9 +20,10 @@ export const ShareSecretPage = () => {
       </Helmet>
       <AuthPageHeader />
 
-      <Card className="z-50 m-auto w-full max-w-xl">
+      <Card className="z-50 m-auto w-full max-w-2xl">
         <CardHeader>
           <CardTitle>Share a Secret</CardTitle>
+          <CardDescription>Create an encrypted link that expires automatically.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-y-4">
           <ShareSecretForm isPublic />

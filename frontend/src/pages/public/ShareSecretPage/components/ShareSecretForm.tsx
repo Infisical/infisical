@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearch } from "@tanstack/react-router";
-import { Check, ClipboardCheck, Copy, ForwardIcon, Info, Lock } from "lucide-react";
+import { Check, Info, Lock } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
@@ -12,14 +12,18 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
   Field,
   FieldDescription,
   FieldError,
   FieldLabel,
-  IconButton,
   Input,
+  InputGroup,
+  InputGroupInput,
   Select,
   SelectContent,
   SelectItem,
@@ -88,6 +92,21 @@ type Props = {
   allowSecretSharingOutsideOrganization?: boolean;
   maxSharedSecretLifetime?: number;
   maxSharedSecretViewLimit?: number | null;
+  onResultActionsChange?: (actions: SharedSecretResultActions | null) => void;
+};
+
+type SharedSecretDetails = {
+  name?: string;
+  expiresIn: string;
+  maxViews: string;
+  access: string;
+  password: string;
+};
+
+export type SharedSecretResultActions = {
+  hasLink: boolean;
+  createMore: () => void;
+  copyLink?: () => void;
 };
 
 export const ShareSecretForm = ({
@@ -95,12 +114,23 @@ export const ShareSecretForm = ({
   value,
   allowSecretSharingOutsideOrganization = true,
   maxSharedSecretLifetime,
-  maxSharedSecretViewLimit
+  maxSharedSecretViewLimit,
+  onResultActionsChange
 }: Props) => {
   const [secretLink, setSecretLink] = useState<string | null>(null);
+  const [sharedSecretDetails, setSharedSecretDetails] = useState<SharedSecretDetails | null>(null);
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
     initialState: "Copy to clipboard"
   });
+  const clearResult = () => {
+    setSharedSecretDetails(null);
+    setSecretLink(null);
+    onResultActionsChange?.(null);
+  };
+  const copyResultLink = () => {
+    navigator.clipboard.writeText(secretLink || "");
+    setCopyTextSecret("Copied");
+  };
   const subOrganization = useSearch({
     strict: false,
     select: (el) => el?.subOrganization
@@ -163,8 +193,23 @@ export const ShareSecretForm = ({
       allowExternalEmails
     });
 
+    setSharedSecretDetails({
+      name,
+      expiresIn: expiresInOptions.find((option) => option.value === expiresIn)?.label ?? expiresIn,
+      maxViews: shouldLimitView
+        ? `${viewLimit} view${Number(viewLimit) === 1 ? "" : "s"}`
+        : "Unlimited",
+      access:
+        formAccessType === SecretSharingAccessType.Organization ||
+        !allowSecretSharingOutsideOrganization
+          ? "Organization only"
+          : "Anyone with the link",
+      password: password ? "Protected" : "Not protected"
+    });
+
     if (processedEmails && processedEmails.length > 0) {
       setSecretLink("");
+      onResultActionsChange?.({ hasLink: false, createMore: clearResult });
 
       const showAccountRequiredMessage = !allowExternalEmails && !isOrgAccess;
 
@@ -181,6 +226,7 @@ export const ShareSecretForm = ({
       }
 
       setSecretLink(link.toString());
+      onResultActionsChange?.({ hasLink: true, createMore: clearResult, copyLink: copyResultLink });
 
       navigator.clipboard.writeText(link.toString());
 
@@ -195,7 +241,7 @@ export const ShareSecretForm = ({
 
   if (secretLink === null)
     return (
-      <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-5">
         {!isPublic && (
           <Controller
             control={control}
@@ -332,11 +378,11 @@ export const ShareSecretForm = ({
         )}
 
         {(!isPublic || maxSharedSecretViewLimit === null || isLimitingView) && (
-          <Accordion type="single" collapsible variant="ghost">
+          <Accordion type="single" collapsible variant="default" className="mt-1">
             <AccordionItem value="advance-settings">
               <AccordionTrigger>Advanced Settings</AccordionTrigger>
-              <AccordionContent className="flex flex-col gap-y-4">
-                <div className="flex w-full items-end gap-2 overflow-visible">
+              <AccordionContent className="flex flex-col gap-y-5">
+                <div className="grid w-full gap-4 overflow-visible sm:grid-cols-2">
                   {maxSharedSecretViewLimit === null && (
                     <Controller
                       control={control}
@@ -485,9 +531,9 @@ export const ShareSecretForm = ({
             </AccordionItem>
           </Accordion>
         )}
-        <div className="flex w-full justify-end">
+        <div className="flex w-full flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           {isPublic && (
-            <Badge variant="ghost" className="mt-auto mr-auto">
+            <Badge variant="ghost" className="mr-auto">
               <img
                 src="/images/logotransparent_trimmed.png"
                 alt="Infisical"
@@ -500,6 +546,7 @@ export const ShareSecretForm = ({
             size="md"
             variant="project"
             type="submit"
+            className="w-full sm:w-auto"
             isPending={isSubmitting}
             isDisabled={isSubmitting}
           >
@@ -511,39 +558,74 @@ export const ShareSecretForm = ({
 
   if (secretLink === "")
     return (
-      <>
-        <div className="relative flex items-center justify-center rounded-lg border border-border bg-container p-4 pr-6 text-foreground/85">
-          <Check className="mr-2 size-4 text-success" />
-          <span>Shared secret link has been emailed to select users.</span>
-        </div>
-        <Button className="w-full" variant="project" size="lg" onClick={() => setSecretLink(null)}>
-          Share Another Secret
-          <ForwardIcon />
-        </Button>
-      </>
+      <div className="flex flex-col gap-4">
+        <Alert variant="success">
+          <Check />
+          <AlertTitle>Secret link sent</AlertTitle>
+          <AlertDescription>
+            The shared secret link has been emailed to the selected recipients.
+          </AlertDescription>
+        </Alert>
+        {!onResultActionsChange && (
+          <Button className="w-full" variant="project" size="lg" onClick={clearResult}>
+            Create more
+          </Button>
+        )}
+      </div>
     );
 
   return (
-    <>
-      <div className="relative flex items-center justify-between rounded-md border border-border bg-container p-2 pr-5 pl-3 text-base text-label">
-        <p className="mr-4 break-all">{secretLink}</p>
-        <IconButton
-          aria-label="copy icon"
-          variant="ghost-muted"
-          size="sm"
-          className="absolute top-1 right-1"
-          onClick={() => {
-            navigator.clipboard.writeText(secretLink || "");
-            setCopyTextSecret("Copied");
-          }}
-        >
-          {isCopyingSecret ? <ClipboardCheck className="size-4" /> : <Copy className="size-4" />}
-        </IconButton>
-      </div>
-      <Button className="w-full" variant="project" size="lg" onClick={() => setSecretLink(null)}>
-        Share Another Secret
-        <ForwardIcon />
-      </Button>
-    </>
+    <div className="flex flex-col gap-4">
+      <Alert variant="success">
+        <Check />
+        <AlertTitle>Secret link created</AlertTitle>
+        <AlertDescription>The link was copied to your clipboard.</AlertDescription>
+      </Alert>
+      {sharedSecretDetails && (
+        <div className="rounded-md border border-border bg-container p-4 text-sm">
+          <p className="text-heading mb-3 font-medium">Shared secret details</p>
+          <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
+            <div>
+              <dt className="text-muted">Name</dt>
+              <dd className="break-words text-label">{sharedSecretDetails.name || "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">Expires in</dt>
+              <dd className="text-label">{sharedSecretDetails.expiresIn}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">Maximum views</dt>
+              <dd className="text-label">{sharedSecretDetails.maxViews}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">Access</dt>
+              <dd className="text-label">{sharedSecretDetails.access}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">Password</dt>
+              <dd className="text-label">{sharedSecretDetails.password}</dd>
+            </div>
+          </dl>
+        </div>
+      )}
+      <InputGroup>
+        <InputGroupInput
+          aria-label="Shared secret link"
+          value={secretLink || ""}
+          readOnly
+          className="min-w-0 font-mono text-xs"
+        />
+      </InputGroup>
+      {!onResultActionsChange && (
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button className="w-full sm:flex-1" variant="project" size="lg" onClick={clearResult}>
+            Create more
+          </Button>
+          <Button className="w-full sm:flex-1" variant="outline" size="lg" onClick={copyResultLink}>
+            {isCopyingSecret ? "Copied" : "Copy shared link"}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 };
