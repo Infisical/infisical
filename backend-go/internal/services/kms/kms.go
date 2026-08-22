@@ -248,7 +248,7 @@ func (s *Service) generateEncryptedKeyMaterial() ([]byte, error) {
 
 // decryptInternalKmsKey loads a KMS key record and decrypts its key material using the root key.
 // For internal KMS keys only. Returns error for external KMS keys.
-func (s *Service) decryptInternalKmsKey(ctx context.Context, kmsKeyID uuid.UUID) ([]byte, error) {
+func (s *Service) decryptInternalKmsKey(ctx context.Context, q pg.Querier, kmsKeyID uuid.UUID) ([]byte, error) {
 	query := `
 		SELECT
 			kmsKey.id,
@@ -261,7 +261,7 @@ func (s *Service) decryptInternalKmsKey(ctx context.Context, kmsKeyID uuid.UUID)
 		LEFT JOIN external_kms externalKms ON externalKms."kmsKeyId" = kmsKey.id
 		WHERE kmsKey.id = @kmsKeyID
 	`
-	row := s.db.Replica().QueryRow(ctx, query, pgx.NamedArgs{"kmsKeyID": kmsKeyID})
+	row := q.QueryRow(ctx, query, pgx.NamedArgs{"kmsKeyID": kmsKeyID})
 
 	var (
 		id                          uuid.UUID
