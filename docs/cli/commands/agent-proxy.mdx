@@ -40,7 +40,7 @@ These subcommands run the [Infisical Agent Proxy](/documentation/platform/agent-
 
 - `run` is for an agent on your own computer. It does the proxy's work and the agent's launch in one process, authenticating as your logged-in user, and sandboxes the agent. It always starts its own proxy, so `--proxy` is rejected rather than ignored. See [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy).
 - `start` runs the proxy as a long-running service on a host of its own, serving agents across your network.
-- `connect` launches an agent behind a proxy **already running elsewhere**, setting up proxy routing, CA trust, and placeholder credentials. It needs a proxy address, which is why it goes with `start`. Both authenticate with a [machine identity](/documentation/platform/identities/machine-identities) via [Universal Auth](/documentation/platform/identities/universal-auth), and the proxy's is always separate from your agents'; see [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
+- `connect` launches an agent behind a proxy **already running elsewhere**, setting up proxy routing, CA trust, and placeholder credentials. It needs a proxy address, which is why it goes with `start`. Both authenticate as a [machine identity](/documentation/platform/identities/machine-identities), by any of the CLI's auth methods, and the proxy's identity is always separate from your agents'; see [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
 
 Each arrangement stands on its own: `run` is complete by itself, and a deployed proxy pairs only with `connect`. All three read the same [proxied services](/documentation/platform/agent-proxy/proxied-services) and secrets from Infisical.
 
@@ -246,8 +246,18 @@ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
 
 ### Environment variables
 
+  <Accordion title="INFISICAL_AUTH_METHOD">
+    How to authenticate the agent proxy's machine identity. Alternative to passing `--auth-method`; see that flag for the methods and the credentials each one takes.
+
+    ```bash
+      # Example
+      export INFISICAL_AUTH_METHOD=aws-iam
+      export INFISICAL_MACHINE_IDENTITY_ID=<agent-proxy-machine-identity-id>
+    ```
+  </Accordion>
+
   <Accordion title="INFISICAL_UNIVERSAL_AUTH_CLIENT_ID / INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET">
-    The Universal Auth credentials of the agent proxy's machine identity. Alternative to passing `--client-id` and `--client-secret`.
+    The Universal Auth credentials of the agent proxy's machine identity. Alternative to passing `--client-id` and `--client-secret`. Setting both is taken to mean `universal-auth`, so `INFISICAL_AUTH_METHOD` can be left unset.
 
     ```bash
       # Example
@@ -304,12 +314,62 @@ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
     Default value: `60`
   </Accordion>
 
+  <Accordion title="--auth-method">
+    How to authenticate the agent proxy's machine identity: `universal-auth`, `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, `aws-iam`, `oidc-auth`, `jwt-auth`, or `ldap-auth`. Alternative to the `INFISICAL_AUTH_METHOD` environment variable.
+
+    Omit it and passing `--client-id` with `--client-secret` is taken to mean `universal-auth`, so a Universal Auth setup needs no extra flag. A token takes precedence over both, including one that came from `INFISICAL_TOKEN` rather than `--token`.
+
+    The proxy re-authenticates before its token expires, using the same credential each time, so it keeps running for as long as that credential stays valid. That holds indefinitely for client credentials, LDAP, and the cloud methods, which re-read the host's identity every time. It does not hold for `jwt-auth` and `oidc-auth`: the JWT you passed is reused at every refresh, so a short-lived one (a CI OIDC token, say) will already have expired by then. Use those two only with a JWT that outlives the proxy.
+
+    ```bash
+    # Example: on a Kubernetes pod, with no credential to provision
+    infisical secrets agent-proxy start \
+      --auth-method=kubernetes \
+      --machine-identity-id=<machine-identity-id> \
+      --service-account-token-path=/var/run/secrets/kubernetes.io/serviceaccount/token
+    ```
+  </Accordion>
+
   <Accordion title="--client-id / --client-secret">
     Universal Auth credentials for the agent proxy's machine identity. Alternative to the `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` / `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` environment variables.
 
     ```bash
     # Example
     infisical secrets agent-proxy start --client-id=<client-id> --client-secret=<client-secret>
+    ```
+  </Accordion>
+
+  <Accordion title="--machine-identity-id">
+    The machine identity to authenticate as. Required by every method except `universal-auth`, which identifies itself by its client id. Alternative to the `INFISICAL_MACHINE_IDENTITY_ID` environment variable.
+  </Accordion>
+
+  <Accordion title="Credentials for the other auth methods">
+    Each method takes the credential it needs, and each flag has an environment variable alternative:
+
+    | Flag | Used by | Environment variable |
+    | --- | --- | --- |
+    | `--service-account-token-path` | `kubernetes` | `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH` |
+    | `--service-account-key-file-path` | `gcp-iam` | `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH` |
+    | `--jwt` | `oidc-auth`, `jwt-auth` | `INFISICAL_JWT` |
+    | `--ldap-username` / `--ldap-password` | `ldap-auth` | `INFISICAL_LDAP_USERNAME` / `INFISICAL_LDAP_PASSWORD` |
+
+    `aws-iam`, `azure` and `gcp-id-token` take no credential of their own: they authenticate with the identity the host already has, so `--machine-identity-id` is all they need.
+
+    On Kubernetes the token path has to be given explicitly; on a pod it is `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+  </Accordion>
+
+  <Accordion title="--organization-slug">
+    Scope the identity to this sub-organization. Defaults to the organization the identity was created in.
+  </Accordion>
+
+  <Accordion title="--token">
+    Run on a machine identity access token you have already fetched, instead of authenticating. Also read from `INFISICAL_TOKEN`.
+
+    The proxy cannot renew a token it did not fetch, so it stops working once that token expires, and says so in a warning at startup. Prefer `--auth-method` for anything long-lived.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy start --token=<access-token>
     ```
   </Accordion>
 
@@ -354,7 +414,11 @@ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
   - Real values for regular secrets the agent has **Read Value** on in the scoped folder, including secrets imported into it (similar to `infisical run`). This is opt-in; an agent identity scoped to just the proxy permission has no read access, and brokered credentials never appear in the agent's environment. If the agent can read a secret that a proxied service brokers to it, `connect` refuses to start, since the agent would receive the real value directly and bypass the proxy; fix the permissions or pass `--allow-readable-brokered-secrets` to override.
   - `INFISICAL_TOKEN` set to the agent's access token, so the agent can run Infisical CLI commands itself.
 
-  The client ID and client secret used to authenticate are stripped from the child environment. The wrapper forwards signals to the agent process and exits with its exit code.
+  The credentials used to authenticate are stripped from the child environment, whichever auth method they belong to, along with `INFISICAL_AUTH_METHOD` itself. The wrapper forwards signals to the agent process and exits with its exit code.
+
+  <Note>
+    The agent's token is written into its environment once, at launch. `connect` does not renew it, so an agent outliving its token's TTL starts getting `403` from the proxy and has to be relaunched. Give the agent identity's auth method a TTL that covers how long you expect the agent to run.
+  </Note>
 
   <Note>
     Every input below resolves from the same sources, in order: **the flag → an environment variable → `.infisical.json` → the built-in default.** An explicitly-passed flag always wins. This is why, where the environment variables are already set on the host, the command collapses to `infisical secrets agent-proxy connect -- claude`.
@@ -372,8 +436,19 @@ infisical secrets agent-proxy connect -- claude
 
 ### Environment variables
 
+  <Accordion title="INFISICAL_AUTH_METHOD">
+    How to authenticate the agent's machine identity. Alternative to passing `--auth-method`; see that flag for the methods and the credentials each one takes. Stripped from the agent's own environment along with the credentials.
+
+    ```bash
+      # Example
+      export INFISICAL_AUTH_METHOD=jwt-auth
+      export INFISICAL_MACHINE_IDENTITY_ID=<agent-machine-identity-id>
+      export INFISICAL_JWT=<jwt>
+    ```
+  </Accordion>
+
   <Accordion title="INFISICAL_UNIVERSAL_AUTH_CLIENT_ID / INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET">
-    The Universal Auth credentials of the agent's machine identity. Alternative to passing `--client-id` and `--client-secret`.
+    The Universal Auth credentials of the agent's machine identity. Alternative to passing `--client-id` and `--client-secret`. Setting both is taken to mean `universal-auth`, so `INFISICAL_AUTH_METHOD` can be left unset.
 
     ```bash
       # Example
@@ -476,6 +551,21 @@ infisical secrets agent-proxy connect -- claude
     ```
   </Accordion>
 
+  <Accordion title="--auth-method">
+    How to authenticate the agent's machine identity: `universal-auth`, `kubernetes`, `azure`, `gcp-id-token`, `gcp-iam`, `aws-iam`, `oidc-auth`, `jwt-auth`, or `ldap-auth`. Alternative to the `INFISICAL_AUTH_METHOD` environment variable.
+
+    Omit it and passing `--client-id` with `--client-secret` is taken to mean `universal-auth`, so a Universal Auth setup needs no extra flag. In CI, `jwt-auth` and `oidc-auth` let a runner authenticate with the token its platform already issues, so there is no stored credential on the runner at all.
+
+    ```bash
+    # Example: a CI runner authenticating with its OIDC token
+    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod \
+      --auth-method=oidc-auth \
+      --machine-identity-id=<machine-identity-id> \
+      --jwt=<ci-oidc-token> \
+      -- claude
+    ```
+  </Accordion>
+
   <Accordion title="--client-id / --client-secret">
     Universal Auth credentials for the agent's machine identity. Alternative to the `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` / `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` environment variables.
 
@@ -483,6 +573,31 @@ infisical secrets agent-proxy connect -- claude
     # Example
     infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --env=prod --client-id=<client-id> --client-secret=<client-secret> -- claude
     ```
+  </Accordion>
+
+  <Accordion title="--machine-identity-id">
+    The machine identity to authenticate as. Required by every method except `universal-auth`, which identifies itself by its client id. Alternative to the `INFISICAL_MACHINE_IDENTITY_ID` environment variable.
+  </Accordion>
+
+  <Accordion title="Credentials for the other auth methods">
+    Each method takes the credential it needs, and each flag has an environment variable alternative:
+
+    | Flag | Used by | Environment variable |
+    | --- | --- | --- |
+    | `--service-account-token-path` | `kubernetes` | `INFISICAL_KUBERNETES_SERVICE_ACCOUNT_TOKEN_PATH` |
+    | `--service-account-key-file-path` | `gcp-iam` | `INFISICAL_GCP_IAM_SERVICE_ACCOUNT_KEY_FILE_PATH` |
+    | `--jwt` | `oidc-auth`, `jwt-auth` | `INFISICAL_JWT` |
+    | `--ldap-username` / `--ldap-password` | `ldap-auth` | `INFISICAL_LDAP_USERNAME` / `INFISICAL_LDAP_PASSWORD` |
+
+    `aws-iam`, `azure` and `gcp-id-token` take no credential of their own: they authenticate with the identity the host already has, so `--machine-identity-id` is all they need.
+
+    On Kubernetes the token path has to be given explicitly; on a pod it is `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+
+    All of these are stripped from the agent's environment. Prefer the environment variables to the flags: a flag value sits in the wrapper's own argv, which on Linux the agent can read from `/proc`.
+  </Accordion>
+
+  <Accordion title="--organization-slug">
+    Scope the identity to this sub-organization. Defaults to the organization the identity was created in.
   </Accordion>
 
   <Accordion title="--token">
