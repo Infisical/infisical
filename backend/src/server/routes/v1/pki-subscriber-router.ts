@@ -412,6 +412,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiSubscribers],
+      operationId: "deletePkiSubscriber",
       description: "Delete PKI Subscriber",
       params: z.object({
         subscriberName: z.string().describe(PKI_SUBSCRIBERS.DELETE.subscriberName)
