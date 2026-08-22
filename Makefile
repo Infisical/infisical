@@ -16,6 +16,13 @@ up-prod:
 down:
 	docker compose -f docker-compose.dev.yml down
 
+# Wipes the persisted Vite dep-prebundle cache. Reach for this when the dev server serves
+# stale or broken /node_modules/.vite/deps chunks; it re-optimizes on the next `make up-dev`.
+COMPOSE_PROJECT_NAME ?= $(notdir $(CURDIR))
+clear-frontend-cache:
+	docker compose -f docker-compose.dev.yml rm -sf frontend
+	docker volume rm -f $(COMPOSE_PROJECT_NAME)_frontend_vite_cache
+
 reviewable-ui:
 	cd frontend && \
 	npm run lint:fix && \

@@ -178,6 +178,10 @@ services:
       - ./frontend/src:/app/src/ # mounted whole src to avoid missing reload on new files
       - ./frontend/public:/app/public
       - ./frontend/index.html:/app/index.html
+      # Persist Vite's optimized dep cache across container recreation. Without it a fresh
+      # container re-prebundles and hands out new chunk hashes, so an open tab 404s on
+      # /node_modules/.vite/deps/chunk-*.js ("error loading dynamically imported module").
+      - frontend_vite_cache:/app/node_modules/.vite
     env_file: .env
 
   backend-go:
@@ -437,4 +441,6 @@ volumes:
   softhsm_tokens:
     driver: local
   authentik_postgres:
+    driver: local
+  frontend_vite_cache:
     driver: local
