@@ -1,7 +1,13 @@
 import { LockIcon } from "lucide-react";
 
-import { Blur } from "@app/components/v2/Blur";
-import { TableCell, TableRow, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import {
+  Blur,
+  TableCell,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
 

@@ -6,8 +6,6 @@ import {
   TreeItemIndex,
   UncontrolledTreeEnvironment
 } from "react-complex-tree";
-import { faExclamationTriangle, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
   Background,
@@ -18,9 +16,24 @@ import {
   ReactFlowProvider
 } from "@xyflow/react";
 import { AxiosError } from "axios";
+import {
+  CircleHelpIcon,
+  EyeIcon,
+  EyeOffIcon,
+  LoaderCircleIcon,
+  TriangleAlertIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { FormControl, FormLabel, SecretInput, Spinner, Tooltip } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldLabel,
+  SecretInput,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
 import { useGetSecretReferences, useGetSecretReferenceTree } from "@app/hooks/api";
@@ -158,10 +171,17 @@ const SecretTree = ({
         ) : (
           <span className={isRoot ? "font-medium" : ""}>{title}</span>
         )}
-        <Tooltip className="max-w-md break-words" content={value || "No value"}>
-          <span className={`px-1 text-xs ${value ? "text-mineshaft-400" : "text-red-400"}`}>
-            <FontAwesomeIcon icon={value ? faEye : faEyeSlash} size="sm" />
-          </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label={value ? "View referenced secret value" : "Referenced secret has no value"}
+              className={`px-1 text-xs ${value ? "text-muted" : "text-danger"}`}
+            >
+              {value ? <EyeIcon className="size-3" /> : <EyeOffIcon className="size-3" />}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-md break-words">{value || "No value"}</TooltipContent>
         </Tooltip>
       </span>
     );
@@ -241,8 +261,9 @@ const SecretDependencyTree = ({ secretPath, environment, secretKey }: Props) => 
 
   if (isPending) {
     return (
-      <div className="flex items-center justify-center py-4">
-        <Spinner className="text-mineshaft-400" />
+      <div className="flex items-center justify-center py-4" role="status">
+        <LoaderCircleIcon className="size-4 animate-spin text-muted" />
+        <span className="sr-only">Loading secret dependencies</span>
       </div>
     );
   }
@@ -250,18 +271,18 @@ const SecretDependencyTree = ({ secretPath, environment, secretKey }: Props) => 
   if (!flowData || flowData.nodes.length === 0) {
     return (
       <div className="flex items-center justify-center py-4">
-        <span className="text-sm text-mineshaft-400">No secrets reference this secret</span>
+        <span className="text-sm text-muted">No secrets reference this secret</span>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="h-72 w-full rounded-md border border-mineshaft-600">
+      <div className="h-72 w-full rounded-md border border-border">
         {isError ? (
-          <div className="flex h-full items-center justify-center">
-            <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2 text-red-500" />
-            <p className="text-red-500">Error fetching secret dependency tree</p>
+          <div className="flex h-full items-center justify-center gap-2 text-danger" role="alert">
+            <TriangleAlertIcon className="size-4" />
+            <p>Error fetching secret dependency tree</p>
           </div>
         ) : (
           <ReactFlowProvider>
@@ -286,7 +307,7 @@ const SecretDependencyTree = ({ secretPath, environment, secretKey }: Props) => 
           </ReactFlowProvider>
         )}
       </div>
-      <div className="mt-2 text-xs text-mineshaft-400">
+      <div className="mt-2 text-xs text-muted">
         Shows secrets that depend on this secret. Each level is referenced by the one above it.
       </div>
     </div>
@@ -364,8 +385,9 @@ export const SecretReferenceTree = ({
 
   if (isPending) {
     return (
-      <div className="flex items-center justify-center py-4">
-        <Spinner className="text-mineshaft-400" />
+      <div className="flex items-center justify-center py-4" role="status">
+        <LoaderCircleIcon className="size-4 animate-spin text-muted" />
+        <span className="sr-only">Loading secret references</span>
       </div>
     );
   }
@@ -374,65 +396,110 @@ export const SecretReferenceTree = ({
 
   return (
     <SecretReferenceCloseContext.Provider value={onClose}>
-      <div>
-        <FormControl
-          label="Expanded value"
-          tooltipText={
-            hasCirculars
-              ? "This secret contains circular references. Value shown is resolved once, with circular paths truncated in the reference tree below."
-              : undefined
-          }
-          tooltipClassName="max-w-md break-words"
-        >
-          <SecretInput
-            key="value-overriden"
-            isReadOnly
-            value={secretValue}
-            containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-700 px-2 py-1.5"
-          />
-        </FormControl>
-
-        <FormLabel
-          tooltipText="Overview of all secrets across your project that this secret references. Note that you are only able to view the references that you have access to."
-          className="mb-2"
-          label="Reference Tree"
-        />
-        <div className="secret-tree-container relative max-h-96 thin-scrollbar overflow-auto rounded-md border border-mineshaft-600 bg-bunker-700 p-3 text-sm text-mineshaft-200">
-          {isError && (
-            <div className="flex items-center justify-center py-4">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2 text-red-500" />
-              <p className="text-red-500">Error fetching secret reference tree</p>
-            </div>
-          )}
-          {!isError && hasReferences && treeItems.rootId && (
-            <SecretTree
-              items={treeItems.items}
-              rootId={treeItems.rootId}
-              treeId="reference-tree"
-              defaultExpandedIds={[treeItems.expandId]}
-              onSecretClick={handleSecretClick}
+      <div className="flex flex-col gap-6">
+        <Field>
+          <div className="flex items-center gap-1.5">
+            <FieldLabel htmlFor="expanded-secret-value">Expanded value</FieldLabel>
+            {hasCirculars && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="About circular references"
+                    className="text-muted hover:text-foreground"
+                  >
+                    <CircleHelpIcon className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md break-words">
+                  This secret contains circular references. Value shown is resolved once, with
+                  circular paths truncated in the reference tree below.
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+          <FieldContent>
+            <SecretInput
+              id="expanded-secret-value"
+              key="value-overriden"
+              isReadOnly
+              value={secretValue}
+              containerClassName="bg-container font-mono"
             />
-          )}
-          {!isError && !hasReferences && (
-            <div className="flex items-center justify-center py-4">
-              <span className="text-mineshaft-400">This secret does not contain references</span>
-            </div>
-          )}
-        </div>
-        <div className="mt-2 text-xs text-mineshaft-400">
-          Click a secret key to navigate to it (expand/collapse with the arrow).
-        </div>
+          </FieldContent>
+        </Field>
 
-        <FormLabel
-          tooltipText="Overview of all secrets across your project that this secret is referenced by. Note that you are only able to view the references that you have access to."
-          className="mt-6 mb-2"
-          label="Dependency Tree"
-        />
-        <SecretDependencyTree
-          secretPath={secretPath}
-          environment={environment}
-          secretKey={secretKey}
-        />
+        <section>
+          <div className="mb-2 flex items-center gap-1.5 text-xs text-accent">
+            <h3>Reference Tree</h3>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="About the reference tree"
+                  className="text-muted hover:text-foreground"
+                >
+                  <CircleHelpIcon className="size-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-md">
+                Overview of all secrets across your project that this secret references. You can
+                only view references you have access to.
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="secret-tree-container relative max-h-96 thin-scrollbar overflow-auto rounded-md border border-border bg-container p-3 text-sm text-foreground">
+            {isError && (
+              <div className="flex items-center justify-center gap-2 py-4 text-danger" role="alert">
+                <TriangleAlertIcon className="size-4" />
+                <p>Error fetching secret reference tree</p>
+              </div>
+            )}
+            {!isError && hasReferences && treeItems.rootId && (
+              <SecretTree
+                items={treeItems.items}
+                rootId={treeItems.rootId}
+                treeId="reference-tree"
+                defaultExpandedIds={[treeItems.expandId]}
+                onSecretClick={handleSecretClick}
+              />
+            )}
+            {!isError && !hasReferences && (
+              <div className="flex items-center justify-center py-4">
+                <span className="text-muted">This secret does not contain references</span>
+              </div>
+            )}
+          </div>
+          <div className="mt-2 text-xs text-muted">
+            Click a secret key to navigate to it (expand/collapse with the arrow).
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-2 flex items-center gap-1.5 text-xs text-accent">
+            <h3>Dependency Tree</h3>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="About the dependency tree"
+                  className="text-muted hover:text-foreground"
+                >
+                  <CircleHelpIcon className="size-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-md">
+                Overview of all secrets across your project that reference this secret. You can only
+                view references you have access to.
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <SecretDependencyTree
+            secretPath={secretPath}
+            environment={environment}
+            secretKey={secretKey}
+          />
+        </section>
       </div>
     </SecretReferenceCloseContext.Provider>
   );

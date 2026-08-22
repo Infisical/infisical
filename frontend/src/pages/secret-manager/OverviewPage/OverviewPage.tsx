@@ -48,13 +48,7 @@ import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotat
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
 import { CommitHistorySheet } from "@app/components/secrets/CommitHistorySheet";
-import {
-  Button as ButtonV2,
-  DeleteActionModal,
-  Modal,
-  ModalContent,
-  PageHeader
-} from "@app/components/v2";
+import { Button as ButtonV2, DeleteActionModal, Modal, ModalContent } from "@app/components/v2";
 import {
   Alert,
   AlertDialog,
@@ -69,7 +63,6 @@ import {
   AlertTitle,
   Badge,
   Button,
-  Card,
   CardContent,
   CardHeader,
   Checkbox,
@@ -82,6 +75,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  PageHeader,
   Pagination,
   Sheet,
   SheetContent,
@@ -124,6 +118,7 @@ import {
 } from "@app/helpers/userTablePreferences";
 import {
   useCanUseProjectAppConnectionImport,
+  useDelayedLoading,
   useLocalStorageState,
   usePagination,
   usePopUp,
@@ -643,15 +638,15 @@ const OverviewPageContent = () => {
     useGetImportedSecretsAllEnvs({
       projectId,
       path: secretPath,
-      environments: (userAvailableEnvs || []).map(({ slug }) => slug)
+      environments: visibleEnvs.map(({ slug }) => slug)
     });
 
   const importedSecretsFlat = useMemo(() => {
-    if (!userAvailableEnvs.length) return [];
+    if (!visibleEnvs.length) return [];
 
     return (
       secretImports?.flatMap(({ data }, index) => {
-        const sourceEnv = userAvailableEnvs[index]?.slug;
+        const sourceEnv = visibleEnvs[index]?.slug;
         if (!sourceEnv) return [];
 
         return (data ?? []).map((item) => ({
@@ -662,7 +657,7 @@ const OverviewPageContent = () => {
         }));
       }) ?? []
     );
-  }, [secretImports, userAvailableEnvs]);
+  }, [secretImports, visibleEnvs]);
 
   const isFilteredByResources = Object.values(filter).some(Boolean);
   const activeTagSlugs = useMemo(
@@ -673,34 +668,36 @@ const OverviewPageContent = () => {
     [tagFilter]
   );
 
+  const overviewQueryParams = {
+    projectId,
+    environments: visibleEnvs.map((env) => env.slug),
+    secretPath,
+    orderDirection,
+    orderBy,
+    includeFolders: isFilteredByResources ? filter.folder : true,
+    includeDynamicSecrets: isFilteredByResources ? filter.dynamic : true,
+    includeSecrets: activeTagSlugs.length > 0 || (isFilteredByResources ? filter.secret : true),
+    includeImports: isFilteredByResources ? (filter[RowType.SecretImport] ?? true) : true,
+    includeSecretRotations: isFilteredByResources ? filter.rotation : true,
+    includeHoneyTokens: isFilteredByResources ? (filter[RowType.HoneyToken] ?? true) : true,
+    includeProxiedServices: isFilteredByResources ? (filter[RowType.ProxiedService] ?? true) : true,
+    search: searchFilter,
+    tags: tagFilter,
+    limit,
+    offset
+  };
+
   const {
     isPending: isOverviewLoading,
     data: overview,
     isPlaceholderData,
     isFetching: isOverviewFetching
-  } = useGetProjectSecretsOverview(
-    {
-      projectId,
-      environments: visibleEnvs.map((env) => env.slug),
-      secretPath,
-      orderDirection,
-      orderBy,
-      includeFolders: isFilteredByResources ? filter.folder : true,
-      includeDynamicSecrets: isFilteredByResources ? filter.dynamic : true,
-      includeSecrets: activeTagSlugs.length > 0 || (isFilteredByResources ? filter.secret : true),
-      includeImports: isFilteredByResources ? (filter[RowType.SecretImport] ?? true) : true,
-      includeSecretRotations: isFilteredByResources ? filter.rotation : true,
-      includeHoneyTokens: isFilteredByResources ? (filter[RowType.HoneyToken] ?? true) : true,
-      includeProxiedServices: isFilteredByResources
-        ? (filter[RowType.ProxiedService] ?? true)
-        : true,
-      search: searchFilter,
-      tags: tagFilter,
-      limit,
-      offset
-    },
-    { enabled: isProjectV3 }
-  );
+  } = useGetProjectSecretsOverview(overviewQueryParams, { enabled: isProjectV3 });
+  const isOverviewPending = isOverviewLoading || isPlaceholderData;
+  const showDelayedOverviewSkeleton = useDelayedLoading(isPlaceholderData, {
+    resetKey: JSON.stringify(overviewQueryParams)
+  });
+  const showOverviewSkeleton = isOverviewLoading || showDelayedOverviewSkeleton;
 
   const {
     secrets,
@@ -2512,7 +2509,7 @@ const OverviewPageContent = () => {
   const hasPendingCreates =
     mergedSecKeys.length > secKeys.length ||
     mergedFolderNamesAndDescriptions.some((f) => f.pendingAction === PendingAction.Create);
-  const isTableEmpty = totalCount === 0 && !hasPendingCreates && !isOverviewLoading;
+  const isTableEmpty = totalCount === 0 && !hasPendingCreates && !isOverviewPending;
   const isTagFilterEmpty =
     activeTagSlugs.length > 0 &&
     mergedSecKeys.length === 0 &&
@@ -2522,12 +2519,12 @@ const OverviewPageContent = () => {
     honeyTokenNames.length === 0 &&
     proxiedServiceNames.length === 0 &&
     secretImportNames.length === 0 &&
-    !isOverviewLoading;
+    !isOverviewPending;
 
   useEffect(() => {
     // track previous page size to make navigation loading rows less janky
-    if (!isOverviewLoading) prevPageSize.current = Math.min(perPage, totalCount);
-  }, [isOverviewLoading, totalCount, perPage]);
+    if (!isOverviewPending) prevPageSize.current = Math.min(perPage, totalCount);
+  }, [isOverviewPending, totalCount, perPage]);
 
   useEffect(() => {
     const element = tableRef.current;
@@ -2584,54 +2581,6 @@ const OverviewPageContent = () => {
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
       <div className="relative mx-auto mb-18 max-w-8xl text-mineshaft-50 dark:scheme-dark">
-        <div className="flex w-full items-baseline justify-between">
-          <PageHeader
-            scope={ProjectType.SecretManager}
-            title="Project Overview"
-            description={
-              <p className="text-md text-bunker-300">
-                Inject your secrets using
-                <a
-                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                  href="https://infisical.com/docs/cli/overview"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Infisical CLI
-                </a>
-                ,
-                <a
-                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                  href="https://infisical.com/docs/api-reference/overview/introduction"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Infisical API
-                </a>
-                ,
-                <a
-                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                  href="https://infisical.com/docs/sdks/overview"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Infisical SDKs
-                </a>
-                , and
-                <a
-                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
-                  href="https://infisical.com/docs/documentation/getting-started/introduction"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  more
-                </a>
-                . Click the Explore button to view the secret details section.
-              </p>
-            }
-          />
-        </div>
-
         <SelectionPanel
           secretPath={secretPath}
           selectedEntries={selectedEntries}
@@ -2642,38 +2591,101 @@ const OverviewPageContent = () => {
           visibleEnvs={visibleEnvs}
         />
 
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-3 overflow-hidden dashboard:flex-row dashboard:items-center">
-              <div className="flex flex-1 items-center gap-x-3 overflow-hidden whitespace-nowrap dashboard:mr-auto">
-                <EnvironmentSelect
-                  selectedEnvs={filteredEnvs}
-                  setSelectedEnvs={setFilteredEnvs}
-                  isDisabled={
-                    isBatchModeActive &&
-                    (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
+        <div className="flex flex-col gap-5">
+          <PageHeader
+            className="mb-0 pl-2"
+            scope={ProjectType.SecretManager}
+            title={currentProject.name}
+            description={currentProject.description}
+          >
+            {userAvailableEnvs.length > 0 && (
+              <AddResourceButtons
+                onAddSecret={() => handlePopUpOpen("addSecretsInAllEnvs")}
+                onAddFolder={() => {
+                  handlePopUpOpen("addFolder");
+                }}
+                onImportSecrets={() => handlePopUpOpen("importSecrets")}
+                onAddDyanamicSecret={() => {
+                  if (subscription?.dynamicSecret) {
+                    handlePopUpOpen("addDynamicSecret");
+                    return;
                   }
-                />
+                  handlePopUpOpen("upgradePlan", {
+                    isEnterpriseFeature: true,
+                    text: "Upgrade to the Infisical Secret Management advanced plan to unlock dynamic secrets."
+                  });
+                }}
+                onAddSecretRotation={() => {
+                  if (subscription?.secretRotation) {
+                    handlePopUpOpen("addSecretRotation");
+                    return;
+                  }
+                  handlePopUpOpen("upgradePlan", {
+                    text: "Adding secret rotations can be unlocked if you upgrade to Infisical Pro plan."
+                  });
+                }}
+                onAddHoneyToken={async () => {
+                  if (subscription?.honeyTokens) {
+                    try {
+                      const { data } = await apiRequest.get<{ used: number; limit: number }>(
+                        "/api/v1/honey-tokens/limits",
+                        {
+                          params: { projectId }
+                        }
+                      );
+
+                      if (data.used >= data.limit) {
+                        handlePopUpOpen("upgradePlan", {
+                          text: `You have used ${data.used} out of the ${data.limit} honey token limit.`
+                        });
+                        return;
+                      }
+                    } catch {
+                      createNotification({
+                        text: "Failed to check honey token limits. Please try again.",
+                        type: "error"
+                      });
+                      return;
+                    }
+
+                    handlePopUpOpen("addHoneyToken");
+                    return;
+                  }
+                  handlePopUpOpen("upgradePlan", {
+                    text: "Adding honey tokens can be unlocked if you upgrade to Infisical Pro plan."
+                  });
+                }}
+                onAddProxiedService={() => {
+                  if (subscription?.secretsBrokering) {
+                    handlePopUpOpen("addProxiedService");
+                    return;
+                  }
+                  handlePopUpOpen("upgradePlan", {
+                    isEnterpriseFeature: true,
+                    text: "Secrets brokering can be unlocked if you upgrade to Infisical Enterprise plan."
+                  });
+                }}
+                onReplicateSecrets={() => handlePopUpOpen("replicateFolder")}
+                isDyanmicSecretAvailable={userAvailableDynamicSecretEnvs.length > 0}
+                isSecretRotationAvailable={userAvailableSecretRotationEnvs.length > 0}
+                isHoneyTokenAvailable
+                isReplicateSecretsAvailable={visibleEnvs.length === 1}
+                onAddSecretImport={handleAddSecretImport}
+                isSecretImportAvailable={userAvailableSecretImportEnvs.length > 0}
+                isSingleEnvSelected={isSingleEnvView}
+                hasVaultConnection={hasVaultConnection}
+                hasDopplerConnection={hasDopplerConnection}
+                onImportFromVault={() => handlePopUpOpen("importFromVault")}
+                onImportFromDoppler={() => handlePopUpOpen("importFromDoppler")}
+              />
+            )}
+          </PageHeader>
+          <CardHeader>
+            <div className="flex flex-col gap-2">
+              <div className="flex min-w-56 items-center overflow-hidden px-2 whitespace-nowrap">
                 <FolderBreadcrumb secretPath={secretPath} onResetSearch={handleResetSearch} />
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                {userAvailableEnvs.length > 0 && (
-                  <DownloadEnvButton
-                    secretPath={secretPath}
-                    environments={visibleEnvs}
-                    projectId={projectId}
-                  />
-                )}
-                {userAvailableEnvs.length > 0 && (
-                  <ResourceFilter
-                    rowTypeFilter={filter}
-                    onToggleRowType={handleToggleRowType}
-                    tags={tags}
-                    selectedTagSlugs={tagFilter}
-                    onToggleTag={handleToggleTag}
-                    onClearTags={handleClearTags}
-                  />
-                )}
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <ResourceSearchInput
                   key={secretPath}
                   value={searchFilter}
@@ -2682,87 +2694,34 @@ const OverviewPageContent = () => {
                   environments={userAvailableEnvs}
                   projectId={currentProject?.id}
                 />
-                {userAvailableEnvs.length > 0 && (
-                  <AddResourceButtons
-                    onAddSecret={() => handlePopUpOpen("addSecretsInAllEnvs")}
-                    onAddFolder={() => {
-                      handlePopUpOpen("addFolder");
-                    }}
-                    onImportSecrets={() => handlePopUpOpen("importSecrets")}
-                    onAddDyanamicSecret={() => {
-                      if (subscription?.dynamicSecret) {
-                        handlePopUpOpen("addDynamicSecret");
-                        return;
-                      }
-                      handlePopUpOpen("upgradePlan", {
-                        isEnterpriseFeature: true,
-                        text: "Upgrade to the Infisical Secret Management advanced plan to unlock dynamic secrets."
-                      });
-                    }}
-                    onAddSecretRotation={() => {
-                      if (subscription?.secretRotation) {
-                        handlePopUpOpen("addSecretRotation");
-                        return;
-                      }
-                      handlePopUpOpen("upgradePlan", {
-                        text: "Adding secret rotations can be unlocked if you upgrade to Infisical Pro plan."
-                      });
-                    }}
-                    onAddHoneyToken={async () => {
-                      if (subscription?.honeyTokens) {
-                        try {
-                          const { data } = await apiRequest.get<{ used: number; limit: number }>(
-                            "/api/v1/honey-tokens/limits",
-                            {
-                              params: { projectId }
-                            }
-                          );
-
-                          if (data.used >= data.limit) {
-                            handlePopUpOpen("upgradePlan", {
-                              text: `You have used ${data.used} out of the ${data.limit} honey token limit.`
-                            });
-                            return;
-                          }
-                        } catch {
-                          createNotification({
-                            text: "Failed to check honey token limits. Please try again.",
-                            type: "error"
-                          });
-                          return;
-                        }
-
-                        handlePopUpOpen("addHoneyToken");
-                        return;
-                      }
-                      handlePopUpOpen("upgradePlan", {
-                        text: "Adding honey tokens can be unlocked if you upgrade to Infisical Pro plan."
-                      });
-                    }}
-                    onAddProxiedService={() => {
-                      if (subscription?.secretsBrokering) {
-                        handlePopUpOpen("addProxiedService");
-                        return;
-                      }
-                      handlePopUpOpen("upgradePlan", {
-                        isEnterpriseFeature: true,
-                        text: "Secrets brokering can be unlocked if you upgrade to Infisical Enterprise plan."
-                      });
-                    }}
-                    onReplicateSecrets={() => handlePopUpOpen("replicateFolder")}
-                    isDyanmicSecretAvailable={userAvailableDynamicSecretEnvs.length > 0}
-                    isSecretRotationAvailable={userAvailableSecretRotationEnvs.length > 0}
-                    isHoneyTokenAvailable
-                    isReplicateSecretsAvailable={visibleEnvs.length === 1}
-                    onAddSecretImport={handleAddSecretImport}
-                    isSecretImportAvailable={userAvailableSecretImportEnvs.length > 0}
-                    isSingleEnvSelected={isSingleEnvView}
-                    hasVaultConnection={hasVaultConnection}
-                    hasDopplerConnection={hasDopplerConnection}
-                    onImportFromVault={() => handlePopUpOpen("importFromVault")}
-                    onImportFromDoppler={() => handlePopUpOpen("importFromDoppler")}
+                <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
+                  {userAvailableEnvs.length > 0 && (
+                    <DownloadEnvButton
+                      secretPath={secretPath}
+                      environments={userAvailableEnvs}
+                      projectId={projectId}
+                      selectedEnvironment={singleVisibleEnv ?? undefined}
+                    />
+                  )}
+                  {userAvailableEnvs.length > 0 && (
+                    <ResourceFilter
+                      rowTypeFilter={filter}
+                      onToggleRowType={handleToggleRowType}
+                      tags={tags}
+                      selectedTagSlugs={tagFilter}
+                      onToggleTag={handleToggleTag}
+                      onClearTags={handleClearTags}
+                    />
+                  )}
+                  <EnvironmentSelect
+                    selectedEnvs={filteredEnvs}
+                    setSelectedEnvs={setFilteredEnvs}
+                    isDisabled={
+                      isBatchModeActive &&
+                      (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
+                    }
                   />
-                )}
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -2908,7 +2867,7 @@ const OverviewPageContent = () => {
                         >
                           <button type="button" onClick={toggleBatchMode}>
                             <GroupIcon />
-                            Batch Edit Mode
+                            Batch Edit
                           </button>
                         </Badge>
                       </TooltipTrigger>
@@ -3084,7 +3043,7 @@ const OverviewPageContent = () => {
                           })
                         ) : (
                           <TableHead className="w-full">
-                            <div className="flex w-full items-center justify-between">
+                            <div className="flex w-full items-center justify-between gap-2">
                               Value
                               <div className="flex items-center gap-2">
                                 <Badge variant="ghost" asChild>
@@ -3095,15 +3054,14 @@ const OverviewPageContent = () => {
                                     {isSingleEnvSecretsVisible ? (
                                       <>
                                         <EyeOffIcon />
-                                        Hide
+                                        Hide Values
                                       </>
                                     ) : (
                                       <>
                                         <EyeIcon />
-                                        Reveal
+                                        Reveal All
                                       </>
-                                    )}{" "}
-                                    Values
+                                    )}
                                   </button>
                                 </Badge>
                                 {isProtectedBranch && (
@@ -3151,7 +3109,7 @@ const OverviewPageContent = () => {
                                     >
                                       <button type="button" onClick={toggleBatchMode}>
                                         <GroupIcon />
-                                        Batch Edit Mode
+                                        Batch Edit
                                       </button>
                                     </Badge>
                                   </TooltipTrigger>
@@ -3171,7 +3129,7 @@ const OverviewPageContent = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody className="transition-all duration-500">
-                      {isOverviewLoading || isPlaceholderData ? (
+                      {showOverviewSkeleton ? (
                         Array.from({ length: prevPageSize.current || perPage }).map((_, index) => (
                           <TableRow className="group" key={`loading-row-${index + 1}`}>
                             <TableCell
@@ -3471,7 +3429,7 @@ const OverviewPageContent = () => {
               </>
             )}
           </CardContent>
-        </Card>
+        </div>
       </div>
       <Sheet
         modal={false}

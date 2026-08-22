@@ -1,2 +1,2 @@
 export { InfisicalSecretInput } from "./InfisicalSecretInput";
-export { SecretInput } from "./SecretInput";
+export { SecretInput, type SecretInputVariant } from "./SecretInput";

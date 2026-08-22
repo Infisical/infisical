@@ -440,7 +440,7 @@ const Content = ({
     activeConditions.length > 0;
 
   const noResultsEmpty = (
-    <Empty className="mt-7 border">
+    <Empty className="bg-transparent shadow-none">
       <EmptyHeader>
         <EmptyTitle>No results match search.</EmptyTitle>
         <EmptyDescription>Try updating your search filters...</EmptyDescription>
@@ -454,7 +454,7 @@ const Content = ({
       resultsContent = <QuickSearchResultsSkeleton />;
     } else if (metadataResultsByEnv.length === 0) {
       resultsContent = (
-        <Empty className="mt-7 border">
+        <Empty className="bg-transparent shadow-none">
           <EmptyHeader>
             <EmptyTitle>No secrets match these conditions.</EmptyTitle>
             <EmptyDescription>Try removing a condition or switching ALL to ANY.</EmptyDescription>
@@ -542,7 +542,7 @@ const Content = ({
     }
   } else if (!isBuilderOpen) {
     resultsContent = (
-      <Empty className="mt-7 border">
+      <Empty className="bg-transparent shadow-none">
         <EmptyHeader>
           <EmptyTitle>Start typing to begin search...</EmptyTitle>
           <EmptyDescription>Search by resource name, secret metadata or tag...</EmptyDescription>
@@ -555,7 +555,7 @@ const Content = ({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col p-4 pb-6">
-      <div className="flex gap-2 border-b border-border pb-4">
+      <div className="flex gap-2">
         <DropdownMenu>
           <Tooltip>
             <TooltipTrigger asChild>

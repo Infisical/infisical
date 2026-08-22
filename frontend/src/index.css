@@ -399,6 +399,25 @@ html[data-platform="ios"] {
     }
   }
 
+  @keyframes inputErrorShake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20% {
+      transform: translateX(-3px);
+    }
+    40% {
+      transform: translateX(3px);
+    }
+    60% {
+      transform: translateX(-2px);
+    }
+    80% {
+      transform: translateX(1px);
+    }
+  }
+
   @keyframes popup {
     0% {
       transform: scale(0.2);
@@ -497,6 +516,20 @@ html[data-platform="ios"] {
 
   .type-reverse {
     animation: type 1.8s ease-out 0s infinite alternate-reverse both;
+  }
+
+  [data-slot="input"][aria-invalid="true"],
+  [data-slot="textarea"][aria-invalid="true"],
+  [data-slot="input-group"]:has([data-slot="input-group-control"][aria-invalid="true"]) {
+    animation: inputErrorShake 200ms cubic-bezier(0.77, 0, 0.175, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-slot="input"][aria-invalid="true"],
+    [data-slot="textarea"][aria-invalid="true"],
+    [data-slot="input-group"]:has([data-slot="input-group-control"][aria-invalid="true"]) {
+      animation: none;
+    }
   }
 }
 

@@ -35,8 +35,6 @@ import {
   ResolvedSecretValuePopover,
   SecretReferenceTree
 } from "@app/components/secrets/SecretReferenceDetails";
-import { Input, Modal, ModalContent } from "@app/components/v2";
-import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +46,11 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
   Badge,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -62,7 +65,8 @@ import {
   FieldContent,
   FieldLabel,
   IconButton,
-  Input as V3Input,
+  InfisicalSecretInput,
+  Input,
   Popover,
   PopoverAnchor,
   PopoverContent,
@@ -925,17 +929,21 @@ export const SecretEditTableRow = ({
       render={({ field, fieldState: { error } }) => (
         <Input
           autoComplete="off"
-          isReadOnly={isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue}
-          autoCapitalization={currentProject?.autoCapitalization}
-          variant="plain"
+          readOnly={isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue}
           placeholder={error?.message || "Secret name"}
           isError={Boolean(error)}
           {...field}
           value={field.value ?? ""}
           className={twMerge(
-            "w-full px-0 text-foreground placeholder:text-red-500 focus:ring-transparent",
+            "h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 text-foreground shadow-none placeholder:text-danger focus-visible:border-transparent focus-visible:ring-0",
             isPendingDelete && "text-danger/75 line-through"
           )}
+          onChange={(event) => {
+            const value = currentProject?.autoCapitalization
+              ? event.currentTarget.value.toUpperCase()
+              : event.currentTarget.value;
+            field.onChange(value);
+          }}
           onBlur={(e) => {
             field.onBlur();
             if (!isBatchMode && field.onChange) field.onChange(e);
@@ -975,7 +983,7 @@ export const SecretEditTableRow = ({
                 Type <span className="font-bold">{secretName}</span> to confirm
               </FieldLabel>
               <FieldContent>
-                <V3Input
+                <Input
                   value={deleteConfirmation}
                   onChange={(e) => setDeleteConfirmation(e.target.value)}
                   placeholder={`Type ${secretName} here`}
@@ -1035,6 +1043,7 @@ export const SecretEditTableRow = ({
             render={({ field }) => (
               <InfisicalSecretInput
                 {...field}
+                variant="plain"
                 isReadOnly={isReadOnly}
                 value={
                   secretValueHidden
@@ -1474,7 +1483,7 @@ export const SecretEditTableRow = ({
             </Tooltip>
             <DropdownMenuContent
               align="end"
-              className="min-w-[200px] [&_[data-variant=default]]:text-mineshaft-100 [&_[data-variant=default]:focus]:text-foreground [&_svg:not([class*='size-'])]:!size-3"
+              className="min-w-[200px] [&_[data-variant=default]]:text-foreground [&_svg:not([class*='size-'])]:!size-3"
               onCloseAutoFocus={(e) => {
                 e.preventDefault();
                 if (pendingAnnotation === "comment") setIsCommentOpen(true);
@@ -1488,7 +1497,7 @@ export const SecretEditTableRow = ({
                 <DropdownMenuSubTrigger
                   disabled={isPendingDelete || isCreatable || isImportedSecret}
                   className={twMerge(
-                    "px-2.5 py-1.5 text-xs",
+                    "px-2.5 py-1.5",
                     (comment ||
                       (canReadTags && tags?.length) ||
                       reminder ||
@@ -1502,7 +1511,7 @@ export const SecretEditTableRow = ({
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="min-w-[185px]">
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5 text-xs"
+                    className="px-2.5 py-1.5"
                     onClick={() => setPendingAnnotation("comment")}
                   >
                     <MessageSquareIcon className={twMerge(comment && "text-project")} />
@@ -1511,7 +1520,7 @@ export const SecretEditTableRow = ({
                   <Tooltip open={!canReadTags ? undefined : false} disableHoverableContent>
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
-                        className="px-2.5 py-1.5 text-xs"
+                        className="px-2.5 py-1.5"
                         isDisabled={!canReadTags}
                         onClick={() => setPendingAnnotation("tags")}
                       >
@@ -1529,7 +1538,7 @@ export const SecretEditTableRow = ({
                   >
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
-                        className="px-2.5 py-1.5 text-xs"
+                        className="px-2.5 py-1.5"
                         isDisabled={!secretId || isPendingCreate}
                         onClick={() => setPendingAnnotation("reminder")}
                       >
@@ -1540,7 +1549,7 @@ export const SecretEditTableRow = ({
                     <TooltipContent side="left">Create Secret to Add Reminder</TooltipContent>
                   </Tooltip>
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5 text-xs"
+                    className="px-2.5 py-1.5"
                     onClick={() => setPendingAnnotation("metadata")}
                   >
                     <CodeXmlIcon className={twMerge(secretMetadata?.length && "text-project")} />
@@ -1557,7 +1566,7 @@ export const SecretEditTableRow = ({
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5 text-xs"
+                    className="px-2.5 py-1.5"
                     onClick={() => setIsSecretReferenceOpen(true)}
                     isDisabled={!canReadSecretValue || !secretId || isEmpty}
                   >
@@ -1584,7 +1593,7 @@ export const SecretEditTableRow = ({
                   >
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
-                        className="px-2.5 py-1.5 text-xs"
+                        className="px-2.5 py-1.5"
                         onClick={() => setIsVersionHistoryOpen(true)}
                         isDisabled={
                           isPendingBatchChange ||
@@ -1616,7 +1625,7 @@ export const SecretEditTableRow = ({
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5 text-xs"
+                    className="px-2.5 py-1.5"
                     onClick={() => {
                       if (!subscription?.secretAccessInsights) {
                         handlePopUpOpen("accessInsightsUpgrade");
@@ -1663,7 +1672,7 @@ export const SecretEditTableRow = ({
                     }
                     onCheckedChange={() => handleToggleMultilineEncoding()}
                     onSelect={(e) => e.preventDefault()}
-                    className="px-2.5 py-1.5 text-xs"
+                    className="px-2.5 py-1.5"
                   >
                     <WrapTextIcon />
                     Multi-line Encoding
@@ -1693,7 +1702,7 @@ export const SecretEditTableRow = ({
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5 text-xs"
+                    className="px-2.5 py-1.5"
                     onClick={() => onAddOverride?.()}
                     isDisabled={
                       isPendingBatchChange ||
@@ -1734,7 +1743,7 @@ export const SecretEditTableRow = ({
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5 text-xs"
+                    className="px-2.5 py-1.5"
                     isDisabled={
                       isPendingBatchChange ||
                       secretValueHidden ||
@@ -1777,7 +1786,7 @@ export const SecretEditTableRow = ({
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
-                    className="px-2.5 py-1.5 text-xs"
+                    className="px-2.5 py-1.5"
                     onClick={() => handlePopUpOpen("duplicateSecret")}
                     isDisabled={isPendingBatchChange || isManagedSecret || isCreatable || !secretId}
                   >
@@ -1819,7 +1828,7 @@ export const SecretEditTableRow = ({
                   >
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
-                        className="px-2.5 py-1.5 text-xs"
+                        className="px-2.5 py-1.5"
                         onClick={toggleModal}
                         isDisabled={
                           isPendingBatchChange ||
@@ -1855,21 +1864,22 @@ export const SecretEditTableRow = ({
           </DropdownMenu>
         </div>
       )}
-      <Modal isOpen={isSecretReferenceOpen} onOpenChange={setIsSecretReferenceOpen}>
-        <ModalContent
-          className="max-w-3xl"
-          title="Secret Reference Details"
-          subTitle="Visual breakdown of secrets referenced by this secret."
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
+      <Dialog open={isSecretReferenceOpen} onOpenChange={setIsSecretReferenceOpen}>
+        <DialogContent className="max-w-3xl" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Secret Reference Details</DialogTitle>
+            <DialogDescription>
+              Visual breakdown of secrets referenced by this secret.
+            </DialogDescription>
+          </DialogHeader>
           <SecretReferenceTree
             secretPath={secretPath}
             environment={environment}
             secretKey={secretName}
             onClose={() => setIsSecretReferenceOpen(false)}
           />
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
       <Sheet open={isVersionHistoryOpen} onOpenChange={setIsVersionHistoryOpen}>
         <SheetContent onOpenAutoFocus={(e) => e.preventDefault()} className="gap-y-0" side="right">
           <SheetHeader>
@@ -1962,7 +1972,7 @@ export const SecretEditTableRow = ({
                 Type <span className="font-bold">confirm</span> to proceed
               </FieldLabel>
               <FieldContent>
-                <V3Input
+                <Input
                   value={editConfirmation}
                   onChange={(e) => setEditConfirmation(e.target.value)}
                   placeholder="Type confirm here"
@@ -2001,15 +2011,11 @@ export const SecretEditTableRow = ({
   if (isSingleEnvView) {
     return (
       <>
-        <TableCell
-          className={twMerge("border-r pt-1 align-top", isOverride && "border-b-border/50")}
-        >
+        <TableCell className={twMerge("border-r", isOverride && "border-b-border/50")}>
           {nameInput}
         </TableCell>
-        <TableCell
-          className={twMerge("relative w-full p-0 px-2", isOverride && "border-b-border/50")}
-        >
-          <div className="flex w-full flex-col gap-y-2 py-1.5">{valueContent}</div>
+        <TableCell className={twMerge("relative w-full", isOverride && "border-b-border/50")}>
+          <div className="flex w-full flex-col gap-y-2">{valueContent}</div>
         </TableCell>
       </>
     );
