@@ -338,7 +338,7 @@ describe("Full delegation marker on a delegated OAuth token", async () => {
 
     const res = await testServer.inject({
       method: "DELETE",
-      url: `/api/v2/organization/${seedData1.organization.id}`,
+      url: `/api/v2/organizations/${seedData1.organization.id}`,
       headers: { authorization: `Bearer ${token}` }
     });
 
