@@ -4060,6 +4060,7 @@ interface CreateCmekEvent {
     description?: string;
     encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
     isExportable?: boolean;
+    hasDeleteProtection?: boolean;
   };
 }
 
@@ -4074,8 +4075,10 @@ interface UpdateCmekEvent {
   type: EventType.UPDATE_CMEK;
   metadata: {
     keyId: string;
+    keyName: string;
     name?: string;
     description?: string;
+    hasDeleteProtection?: boolean;
   };
 }
 
