@@ -173,13 +173,13 @@ export const cmekServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Delete, ProjectPermissionSub.Cmek);
 
-    if (key.hasDeleteProtection) {
+    const [deletedKey] = await kmsDAL.delete({ id: keyId, hasDeleteProtection: false });
+
+    if (!deletedKey) {
       throw new BadRequestError({
         message: `Key with ID ${keyId} has delete protection enabled. Disable delete protection on the key before deleting it.`
       });
     }
-
-    await kmsDAL.deleteById(keyId);
 
     return key;
   };
