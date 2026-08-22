@@ -30,6 +30,7 @@ import {
 import { useDebounce } from "@app/hooks";
 import {
   TVercelConnectionOrganization,
+  useVercelConnectionGetProject,
   useVercelConnectionListOrganizations
 } from "@app/hooks/api/appConnections/vercel";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
@@ -58,9 +59,11 @@ export const VercelSyncFields = () => {
 
   const [projectSearch, setProjectSearch] = useState("");
   const [debouncedProjectSearch] = useDebounce(projectSearch, 300);
+  const [customBranches, setCustomBranches] = useState<string[]>([]);
 
   const connectionId = useWatch({ name: "connection.id", control });
   const currentApp = watch("destinationConfig.app");
+  const currentAppName = watch("destinationConfig.appName");
   const currentEnv = watch("destinationConfig.env");
   const scope = watch("destinationConfig.scope");
   const teamId = watch("destinationConfig.teamId");
@@ -80,9 +83,12 @@ export const VercelSyncFields = () => {
     }
   );
 
-  const selectedProject = teams
-    ?.find((team) => team.apps.some((app) => app.id === currentApp))
-    ?.apps.find((app) => app.id === currentApp);
+  const isTeamScope = scope === VercelSyncScope.Team;
+
+  const { data: selectedProject, isLoading: isSelectedProjectLoading } =
+    useVercelConnectionGetProject(connectionId, currentApp, teamId || undefined, {
+      enabled: Boolean(connectionId) && Boolean(currentApp) && !isTeamScope
+    });
 
   const allApps =
     teams?.flatMap((team) =>
@@ -90,10 +96,25 @@ export const VercelSyncFields = () => {
     ) || [];
 
   const availableApps = useMemo(() => {
-    if (scope !== VercelSyncScope.Team) return allApps;
+    if (!isTeamScope) return allApps;
 
     return allApps.filter((app) => app.teamId === teamId);
-  }, [allApps, teamId]);
+  }, [allApps, teamId, isTeamScope]);
+
+  // the project list is server-side filtered by search, so the selected project is often absent
+  // from the current results — fall back to the values already stored on the form
+  const selectedAppOption = useMemo(() => {
+    if (!currentApp) return null;
+
+    return (
+      availableApps.find((app) => app.id === currentApp) ?? {
+        id: currentApp,
+        name: selectedProject?.name || currentAppName || currentApp,
+        teamId: teamId || "",
+        teamName: teams?.find((team) => team.id === teamId)?.name || ""
+      }
+    );
+  }, [availableApps, currentApp, currentAppName, selectedProject, teamId, teams]);
 
   const environmentOptions = useMemo(() => {
     return standardVercelEnvironments
@@ -109,16 +130,15 @@ export const VercelSyncFields = () => {
           name: env.slug
         })) || []
       );
-  }, [currentApp]);
+  }, [selectedProject]);
 
-  const previewBranchOptions =
-    selectedProject?.previewBranches?.map((branch) => ({
-      id: branch,
-      name: branch
-    })) || [];
+  const previewBranchOptions = useMemo(() => {
+    const branches = new Set([...(selectedProject?.previewBranches ?? []), ...customBranches]);
+
+    return [...branches].map((branch) => ({ id: branch, name: branch }));
+  }, [selectedProject, customBranches]);
 
   const isPreviewEnvironment = currentEnv === "preview";
-  const isTeamScope = scope === VercelSyncScope.Team;
 
   return (
     <FieldGroup>
@@ -294,7 +314,7 @@ export const VercelSyncFields = () => {
           <Controller
             name="destinationConfig.app"
             control={control}
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
+            render={({ field: { onChange }, fieldState: { error } }) => (
               <Field>
                 <FieldLabel>
                   Vercel Project
@@ -309,8 +329,8 @@ export const VercelSyncFields = () => {
                           includes the desired project.
                         </span>
                         <span>
-                          Use the search bar to filter projects by name. By default only 10 projects
-                          are shown, but you can search for more projects by name.
+                          Use the search bar to filter projects by name. By default only the first
+                          100 projects are shown, but you can search for more projects by name.
                         </span>
                       </div>
                     </TooltipContent>
@@ -325,7 +345,7 @@ export const VercelSyncFields = () => {
                     }}
                     isLoading={isTeamsLoading && Boolean(connectionId)}
                     isDisabled={!connectionId}
-                    value={availableApps.find((app) => app.id === value) ?? null}
+                    value={selectedAppOption}
                     onChange={(option) => {
                       const selected = option as SingleValue<(typeof availableApps)[number]>;
                       onChange(selected?.id ?? null);
@@ -355,14 +375,14 @@ export const VercelSyncFields = () => {
                 <FieldLabel>Vercel Project Environment</FieldLabel>
                 <FieldContent>
                   <FilterableSelect
-                    isDisabled={!connectionId || !currentApp}
+                    isDisabled={!connectionId || !currentApp || isSelectedProjectLoading}
                     value={
                       value
-                        ? {
-                            key: environmentOptions.find((env) => env.key === value)?.key,
-                            type: environmentOptions.find((env) => env.key === value)?.type,
-                            name: environmentOptions.find((env) => env.key === value)?.name
-                          }
+                        ? (environmentOptions.find((env) => env.key === value) ?? {
+                            key: value,
+                            type: value,
+                            name: value
+                          })
                         : null
                     }
                     onChange={(option) => {
@@ -397,17 +417,24 @@ export const VercelSyncFields = () => {
                     <CreatableSelect
                       className="w-full"
                       placeholder="Select a branch..."
-                      isLoading={isTeamsLoading && Boolean(connectionId) && Boolean(currentApp)}
+                      isLoading={isSelectedProjectLoading}
                       isDisabled={!connectionId || !currentApp}
                       options={previewBranchOptions}
-                      value={previewBranchOptions.find((branch) => branch.id === value) ?? null}
+                      value={
+                        (value
+                          ? (previewBranchOptions.find((branch) => branch.id === value) ?? {
+                              id: value,
+                              name: value
+                            })
+                          : null) as SingleValue<{ id: string; name: string }>
+                      }
                       onChange={(option) =>
                         onChange((option as SingleValue<{ id: string }>)?.id || "")
                       }
                       onCreateOption={(option) => {
-                        onChange(option);
                         if (!option || option.trim() === "") return;
-                        previewBranchOptions.push({ id: option, name: option });
+                        onChange(option);
+                        setCustomBranches((prev) => [...prev, option]);
                       }}
                       // eslint-disable-next-line @typescript-eslint/no-unused-vars
                       getNewOptionData={(inputValue, _optionLabel) => {
