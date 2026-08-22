@@ -29,7 +29,8 @@ export enum AcmeDnsProvider {
   ROUTE53 = "route53",
   Cloudflare = "cloudflare",
   DNSMadeEasy = "dns-made-easy",
-  AzureDNS = "azure-dns"
+  AzureDNS = "azure-dns",
+  UltraDNS = "ultradns"
 }
 
 export enum CaRenewalStatus {

@@ -114,7 +114,9 @@ export enum IntegrationUrls {
   GITHUB_USER_INSTALLATIONS = "https://api.github.com/user/installations",
   CHEF_API_URL = "https://api.chef.io",
   DNS_MADE_EASY_API_URL = "https://api.dnsmadeeasy.com",
-  DNS_MADE_EASY_SANDBOX_API_URL = "https://api.sandbox.dnsmadeeasy.com"
+  DNS_MADE_EASY_SANDBOX_API_URL = "https://api.sandbox.dnsmadeeasy.com",
+  ULTRADNS_API_URL = "https://api.ultradns.com",
+  ULTRADNS_TEST_API_URL = "https://test-api.ultradns.com"
 }
 
 export const getIntegrationOptions = async () => {

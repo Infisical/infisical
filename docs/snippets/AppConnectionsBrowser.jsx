@@ -268,6 +268,13 @@ export const AppConnectionsBrowser = () => {
       category: "Networking & DNS",
     },
     {
+      name: "UltraDNS",
+      slug: "ultradns",
+      path: "/integrations/app-connections/ultradns",
+      description: "Learn how to connect Infisical to UltraDNS for ACME DNS validation.",
+      category: "Networking & DNS",
+    },
+    {
       name: "Windmill",
       slug: "windmill",
       path: "/integrations/app-connections/windmill",
