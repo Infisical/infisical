@@ -50,6 +50,7 @@ type EnvPayload = { name: string; slug: string; id: string; deleteAfter?: string
 type Props = {
   handlePopUpOpen: (popUpName: keyof UsePopUpState<[PopUpKeys]>, env: EnvPayload) => void;
   isDeletePending: boolean;
+  onMutationPendingChange: (isPending: boolean) => void;
 };
 
 const getActorLabel = (actor: ProjectDeletedEnvActor | null): string => {
@@ -78,7 +79,11 @@ const formatRemainingDuration = (target: Date): string | null => {
   return nonZero.map(([value, suffix]) => `${value}${suffix}`).join(" ");
 };
 
-export const EnvironmentTable = ({ handlePopUpOpen, isDeletePending }: Props) => {
+export const EnvironmentTable = ({
+  handlePopUpOpen,
+  isDeletePending,
+  onMutationPendingChange
+}: Props) => {
   const { currentProject } = useProject();
   const { subscription } = useSubscription();
 
@@ -104,6 +109,7 @@ export const EnvironmentTable = ({ handlePopUpOpen, isDeletePending }: Props) =>
     }
 
     setPendingAction({ type: "reorder", id, direction });
+    onMutationPendingChange(true);
 
     try {
       await updateEnvironment.mutateAsync({
@@ -118,6 +124,7 @@ export const EnvironmentTable = ({ handlePopUpOpen, isDeletePending }: Props) =>
       });
     } finally {
       setPendingAction(undefined);
+      onMutationPendingChange(false);
     }
   };
 
@@ -132,6 +139,7 @@ export const EnvironmentTable = ({ handlePopUpOpen, isDeletePending }: Props) =>
     }
 
     setPendingAction({ type: "restore", id });
+    onMutationPendingChange(true);
 
     try {
       await restoreEnvironment.mutateAsync({
@@ -151,6 +159,7 @@ export const EnvironmentTable = ({ handlePopUpOpen, isDeletePending }: Props) =>
       });
     } finally {
       setPendingAction(undefined);
+      onMutationPendingChange(false);
     }
   };
 
