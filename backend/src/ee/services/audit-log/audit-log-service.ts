@@ -156,17 +156,8 @@ export const auditLogServiceFactory = ({
     if (appCfg.DISABLE_AUDIT_LOG_GENERATION) {
       return;
     }
-    // Events with no inherent scope. Logins have no org context yet; instance root-key rotation is
-    // instance-level, and req.permission.orgId is only guaranteed for machine identities, so requiring a
-    // scope here would let the audit write fail an operation that has already happened.
-    const SCOPELESS_EVENTS: EventType[] = [
-      EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH,
-      EventType.GET_ENCRYPTION_STATUS,
-      EventType.CREATE_ENCRYPTION_KEY_ROTATION,
-      EventType.DELETE_ENCRYPTION_KEY_ROTATION,
-      EventType.COMPLETE_ENCRYPTION_KEY_ROTATION
-    ];
-    if (!SCOPELESS_EVENTS.includes(data.event.type)) {
+    // Events that don't require projectId or orgId (login events where org context may not be available)
+    if (data.event.type !== EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH) {
       if (!data.projectId && !data.orgId)
         throw new BadRequestError({ message: "Must specify either project id or org id" });
     }

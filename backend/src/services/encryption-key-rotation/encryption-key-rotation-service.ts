@@ -225,7 +225,6 @@ export const encryptionKeyRotationServiceFactory = ({
       logger.info(
         `Encryption key rotation discarded [rotationId=${rotationId}] [fingerprint=${row.kekFingerprint ?? "unknown"}]`
       );
-      return { fingerprint: row.kekFingerprint ?? null };
     });
   };
 
@@ -264,8 +263,9 @@ export const encryptionKeyRotationServiceFactory = ({
         });
       }
 
-      logger.info(`Encryption key rotation completed, previous key removed [retainedKeyId=${rotationId}]`);
-      return { retiredFingerprint: row.kekFingerprint ?? null };
+      logger.info(
+        `Encryption key rotation completed, previous key removed [retainedKeyId=${rotationId}] [fingerprint=${row.kekFingerprint ?? "unknown"}]`
+      );
     });
   };
 
@@ -284,7 +284,10 @@ export const encryptionKeyRotationServiceFactory = ({
         if (!current || current.activatedAt) return false;
         return Boolean(await kmsRootConfigDAL.deleteById(row.id, tx));
       });
-      if (removed) logger.info(`Discarded an encryption key rotation that was never applied [rotationId=${row.id}]`);
+      if (removed)
+        logger.info(
+          `Discarded an encryption key rotation that was never applied [rotationId=${row.id}] [fingerprint=${row.kekFingerprint ?? "unknown"}]`
+        );
     }
 
     if (!retained.length) return;
@@ -311,7 +314,10 @@ export const encryptionKeyRotationServiceFactory = ({
         if (!current || !current.supersededAt) return false;
         return $retireRetainedKey(tx, current);
       });
-      if (removed) logger.info(`Removed a superseded encryption key [retainedKeyId=${row.id}]`);
+      if (removed)
+        logger.info(
+          `Removed a superseded encryption key [retainedKeyId=${row.id}] [fingerprint=${row.kekFingerprint ?? "unknown"}]`
+        );
     }
 
     const kept = retained.filter((row) => !eligible.includes(row) && row.lastResolvedAt);

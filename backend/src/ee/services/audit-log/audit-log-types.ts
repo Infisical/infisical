@@ -891,13 +891,7 @@ export enum EventType {
   CREATE_ALERT = "create-alert",
   UPDATE_ALERT = "update-alert",
   DELETE_ALERT = "delete-alert",
-  TEST_ALERT_CHANNEL = "test-alert-channel",
-
-  // Instance root encryption key rotation
-  GET_ENCRYPTION_STATUS = "get-encryption-status",
-  CREATE_ENCRYPTION_KEY_ROTATION = "create-encryption-key-rotation",
-  DELETE_ENCRYPTION_KEY_ROTATION = "delete-encryption-key-rotation",
-  COMPLETE_ENCRYPTION_KEY_ROTATION = "complete-encryption-key-rotation"
+  TEST_ALERT_CHANNEL = "test-alert-channel"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -7099,40 +7093,6 @@ interface TestAlertChannelEvent {
   };
 }
 
-interface GetEncryptionStatusEvent {
-  type: EventType.GET_ENCRYPTION_STATUS;
-  metadata: {
-    activeFingerprint: string | null;
-    hasPendingRotation: boolean;
-    hasRetainedKey: boolean;
-  };
-}
-
-interface CreateEncryptionKeyRotationEvent {
-  type: EventType.CREATE_ENCRYPTION_KEY_ROTATION;
-  metadata: {
-    rotationId: string;
-    fingerprint: string;
-    supersededPending: boolean;
-  };
-}
-
-interface DeleteEncryptionKeyRotationEvent {
-  type: EventType.DELETE_ENCRYPTION_KEY_ROTATION;
-  metadata: {
-    rotationId: string;
-    fingerprint: string | null;
-  };
-}
-
-interface CompleteEncryptionKeyRotationEvent {
-  type: EventType.COMPLETE_ENCRYPTION_KEY_ROTATION;
-  metadata: {
-    retainedKeyId: string;
-    retiredFingerprint: string | null;
-  };
-}
-
 export type Event =
   | CreateAlertEvent
   | UpdateAlertEvent
@@ -7764,8 +7724,4 @@ export type Event =
   | UpdateGroupProjectMembershipEvent
   | RemoveGroupFromProjectEvent
   | CreateProjectFolderGrantEvent
-  | DeleteProjectFolderGrantEvent
-  | GetEncryptionStatusEvent
-  | CreateEncryptionKeyRotationEvent
-  | DeleteEncryptionKeyRotationEvent
-  | CompleteEncryptionKeyRotationEvent;
+  | DeleteProjectFolderGrantEvent;

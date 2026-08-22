@@ -8,7 +8,6 @@ import {
   OrgMembershipsSchema,
   OrgMembershipStatus
 } from "@app/db/schemas";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
 import { LicenseType } from "@app/ee/services/license/license-types";
 import { ENCRYPTION_KEY_ROTATION } from "@app/lib/api-docs";
@@ -31,7 +30,7 @@ import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { SanitizedUserSchema } from "../sanitizedSchemas";
+import { booleanSchema, SanitizedUserSchema } from "../sanitizedSchemas";
 
 const SuperAdminSchema = SanitizedUserSchema.extend({
   superAdmin: z.boolean().optional().nullable()
@@ -689,20 +688,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         verifySuperAdmin(req, res, done);
       });
     },
-    handler: async (req) => {
+    handler: async () => {
       const status = await server.services.encryptionKeyRotation.getStatus();
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        event: {
-          type: EventType.GET_ENCRYPTION_STATUS,
-          metadata: {
-            activeFingerprint: status.activeFingerprint,
-            hasPendingRotation: Boolean(status.pendingRotation),
-            hasRetainedKey: Boolean(status.retainedKey)
-          }
-        }
-      });
 
       return { status };
     }
@@ -718,7 +705,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       operationId: "createAdminEncryptionKeyRotation",
       description: ENCRYPTION_KEY_ROTATION.CREATE.description,
       querystring: z.object({
-        supersede: z.coerce.boolean().default(false).describe(ENCRYPTION_KEY_ROTATION.CREATE.supersede)
+        supersede: booleanSchema.default(false).describe(ENCRYPTION_KEY_ROTATION.CREATE.supersede)
       }),
       response: {
         201: z.object({
@@ -742,19 +729,6 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     handler: async (req, res) => {
       const rotation = await server.services.encryptionKeyRotation.createRotation({
         supersede: req.query.supersede
-      });
-
-      // Fingerprint only. The key itself is in the response body and must reach no other sink.
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        event: {
-          type: EventType.CREATE_ENCRYPTION_KEY_ROTATION,
-          metadata: {
-            rotationId: rotation.id,
-            fingerprint: rotation.fingerprint,
-            supersededPending: req.query.supersede
-          }
-        }
       });
 
       // The key appears here and nowhere else, so it must not be cached along the way.
@@ -783,15 +757,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req, res) => {
-      const { fingerprint } = await server.services.encryptionKeyRotation.discardRotation(req.params.rotationId);
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        event: {
-          type: EventType.DELETE_ENCRYPTION_KEY_ROTATION,
-          metadata: { rotationId: req.params.rotationId, fingerprint }
-        }
-      });
+      await server.services.encryptionKeyRotation.discardRotation(req.params.rotationId);
 
       void res.status(204);
     }
@@ -824,17 +790,9 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req, res) => {
-      const { retiredFingerprint } = await server.services.encryptionKeyRotation.completeRotation({
+      await server.services.encryptionKeyRotation.completeRotation({
         rotationId: req.params.rotationId,
         acknowledged: req.body?.acknowledged
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        event: {
-          type: EventType.COMPLETE_ENCRYPTION_KEY_ROTATION,
-          metadata: { retainedKeyId: req.params.rotationId, retiredFingerprint }
-        }
       });
 
       void res.status(204);

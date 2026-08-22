@@ -44,7 +44,6 @@ export const kmsRootConfigDALFactory = (db: TDbClient) => {
     }
   };
 
-  /** Newest first; the GC relies on that ordering. */
   const findRetained = async (tx?: Knex) => {
     try {
       return await (tx || db)(TableName.KmsServerRootConfig)
