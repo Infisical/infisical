@@ -7,7 +7,7 @@ import {
   WindowsFileAccess
 } from "@app/hooks/api/pkiSyncs";
 
-import { BasePkiSyncSchema, PostSyncCommandSchema } from "./base-pki-sync-schema";
+import { BasePkiSyncSchema, HostCommandSchema } from "./base-pki-sync-schema";
 
 const compileNameSchema = (val: string) =>
   val
@@ -41,7 +41,8 @@ const WindowsServerSyncOptionsSchema = z.object({
     .max(20)
     .optional(),
   includePrivateKey: z.boolean().default(true),
-  postSyncCommand: PostSyncCommandSchema,
+  healthCheckCommand: HostCommandSchema,
+  postSyncCommand: HostCommandSchema,
   certificateNameSchema: z
     .string()
     .trim()

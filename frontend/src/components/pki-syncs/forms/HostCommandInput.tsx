@@ -3,8 +3,6 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 
 import { TextArea } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { POST_SYNC_COMMAND_VARIABLE_DESCRIPTIONS } from "@app/helpers/pkiSyncs";
-import { PostSyncCommandVariable } from "@app/hooks/api/pkiSyncs";
 
 const OPEN_VARIABLE_PATTERN = /\{\{([a-zA-Z0-9_]*)$/;
 
@@ -14,17 +12,19 @@ type Props = {
   id: string;
   value: string;
   onChange: (value: string) => void;
-  variables: PostSyncCommandVariable[];
+  variables: string[];
+  descriptions: Record<string, string>;
   placeholder?: string;
   isError?: boolean;
   isDisabled?: boolean;
 };
 
-export const PostSyncCommandInput = ({
+export const HostCommandInput = ({
   id,
   value,
   onChange,
   variables,
+  descriptions,
   placeholder,
   isError,
   isDisabled
@@ -59,7 +59,7 @@ export const PostSyncCommandInput = ({
     setHighlightedIndex(0);
   };
 
-  const insertVariable = (variable: PostSyncCommandVariable) => {
+  const insertVariable = (variable: string) => {
     if (variableStart === -1) return;
 
     const before = value.slice(0, variableStart);
@@ -157,9 +157,7 @@ export const PostSyncCommandInput = ({
             >
               <div className="flex min-w-0 items-center gap-2">
                 <span className="shrink-0">{variable}</span>
-                <span className="truncate text-xs text-muted">
-                  {POST_SYNC_COMMAND_VARIABLE_DESCRIPTIONS[variable]}
-                </span>
+                <span className="truncate text-xs text-muted">{descriptions[variable]}</span>
               </div>
               <span className="shrink-0 text-xs text-muted opacity-0 transition-opacity group-hover:opacity-100">
                 insert

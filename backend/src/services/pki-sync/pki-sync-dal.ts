@@ -9,7 +9,7 @@ import {
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
 
-import { PkiSync } from "./pki-sync-enums";
+import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 
 export type TPkiSyncDALFactory = ReturnType<typeof pkiSyncDALFactory>;
 
@@ -331,8 +331,88 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     }
   };
 
+  const $whereHealthCheckStillConfigured = (builder: Knex.QueryBuilder) => {
+    void builder.whereRaw(
+      `("${TableName.PkiSync}"."syncOptions" ->> '${HEALTH_CHECK_COMMAND_OPTION_KEY}') IS NOT NULL`
+    );
+  };
+
+  const recordHealthCheckOutcome = async (
+    syncId: string,
+    outcome: { status: PkiSyncStatus.Succeeded | PkiSyncStatus.Failed; message: string | null; ranAt: Date },
+    tx?: Knex
+  ) => {
+    try {
+      return await (tx || db)(TableName.PkiSync).where({ id: syncId }).where($whereHealthCheckStillConfigured).update({
+        lastHealthCheckRanAt: outcome.ranAt,
+        lastHealthCheckStatus: outcome.status,
+        lastHealthCheckMessage: outcome.message
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Record health check outcome - PKI Sync" });
+    }
+  };
+
+  const $whereMessageStartsWithAny = (builder: Knex.QueryBuilder, prefixes: string[]) => {
+    prefixes.forEach((prefix) => {
+      void builder.orWhereRaw(`left("lastSyncMessage", ?) = ?`, [prefix.length, prefix]);
+    });
+  };
+
+  const reportHealthCheckFailure = async (syncId: string, message: string, failurePrefixes: string[], tx?: Knex) => {
+    try {
+      return await (tx || db)(TableName.PkiSync)
+        .where({ id: syncId })
+        .where($whereHealthCheckStillConfigured)
+        .where((builder) => {
+          void builder.whereNull("lastSyncMessage");
+          $whereMessageStartsWithAny(builder, failurePrefixes);
+        })
+        .update({ syncStatus: PkiSyncStatus.Failed, lastSyncMessage: message });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Report health check failure - PKI Sync" });
+    }
+  };
+
+  const clearReportedHealthCheckFailure = async (syncId: string, failurePrefixes: string[], tx?: Knex) => {
+    const knex = tx || db;
+
+    try {
+      return await knex(TableName.PkiSync)
+        .where({ id: syncId })
+        .where((builder) => $whereMessageStartsWithAny(builder, failurePrefixes))
+        .update({
+          syncStatus: knex.raw(`CASE WHEN "lastSyncedAt" IS NULL THEN ? ELSE ? END`, [
+            PkiSyncStatus.Pending,
+            PkiSyncStatus.Succeeded
+          ]) as unknown as string,
+          lastSyncMessage: null
+        });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Clear reported health check failure - PKI Sync" });
+    }
+  };
+
+  const findPkiSyncsWithHealthCheckCommand = async () => {
+    try {
+      return (await db
+        .replicaNode()(TableName.PkiSync)
+        .join(TableName.Project, `${TableName.PkiSync}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .select(`${TableName.PkiSync}.id`)
+        .where($whereHealthCheckStillConfigured)
+        .orderBy(`${TableName.PkiSync}.createdAt`, "asc")) as Array<{ id: string }>;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find PKI syncs with a healthCheck command" });
+    }
+  };
+
   return {
     ...pkiSyncOrm,
+    recordHealthCheckOutcome,
+    reportHealthCheckFailure,
+    clearReportedHealthCheckFailure,
+    findPkiSyncsWithHealthCheckCommand,
     findByProjectId,
     findByProjectIdWithSubscribers,
     findBySubscriberId,

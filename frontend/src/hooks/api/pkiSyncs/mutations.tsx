@@ -1,17 +1,19 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { PkiSyncStatus } from "@app/hooks/api/pkiSyncs/enums";
+import { PkiSync, PkiSyncStatus } from "@app/hooks/api/pkiSyncs/enums";
 import { pkiSyncKeys } from "@app/hooks/api/pkiSyncs/queries";
 import {
   TCreatePkiSyncDTO,
   TDeletePkiSyncDTO,
   TPkiSync,
+  TPkiSyncHealthCheckResult,
   TTriggerPkiSyncImportCertificatesDTO,
   TTriggerPkiSyncRemoveCertificatesDTO,
   TTriggerPkiSyncSyncCertificatesDTO,
   TUpdatePkiSyncDTO
 } from "@app/hooks/api/pkiSyncs/types";
+import { ApiErrorTypes } from "@app/hooks/api/types";
 
 export const useCreatePkiSync = () => {
   const queryClient = useQueryClient();
@@ -64,6 +66,59 @@ export const useDeletePkiSync = () => {
     onSuccess: (_, { syncId, projectId }) => {
       queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
       queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+    }
+  });
+};
+
+export const useTestPkiSyncHealthCheck = () => {
+  return useMutation({
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    mutationFn: async ({
+      destination,
+      connectionId,
+      applicationId,
+      syncId,
+      destinationConfig,
+      syncOptions
+    }: {
+      destination: PkiSync;
+      connectionId: string;
+      applicationId?: string;
+      syncId?: string;
+      destinationConfig: Record<string, unknown>;
+      syncOptions: Record<string, unknown>;
+    }) => {
+      const { data } = await apiRequest.post<{ healthCheck: TPkiSyncHealthCheckResult }>(
+        `/api/v1/cert-manager/syncs/${destination}/test-health-check`,
+        { connectionId, applicationId, syncId, destinationConfig, syncOptions }
+      );
+
+      return data.healthCheck;
+    }
+  });
+};
+
+export const useRunPkiSyncHealthCheck = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    mutationFn: async ({
+      syncId,
+      destination
+    }: {
+      syncId: string;
+      destination: PkiSync;
+      projectId: string;
+    }) => {
+      const { data } = await apiRequest.post<{ healthCheck: TPkiSyncHealthCheckResult }>(
+        `/api/v1/cert-manager/syncs/${destination}/${syncId}/run-health-check`
+      );
+
+      return data.healthCheck;
+    },
+    onSuccess: (_, { syncId, projectId }) => {
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
     }
   });
 };
