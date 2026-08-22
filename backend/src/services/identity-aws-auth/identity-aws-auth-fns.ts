@@ -91,3 +91,42 @@ export const extractPrincipalArn = (arn: string, formatAsIamRole: boolean = fals
 
   return `arn:${entity.Partition}:${formatAsIamRole ? "iam" : entity.Service}::${entity.AccountNumber}:${entity.Type}/${entity.FriendlyName}`;
 };
+
+// Regional, FIPS, and VPC PrivateLink STS endpoints reject SigV4 requests whose credential
+// scope region does not match the endpoint's region. In AWS STS hosts the region is the label
+// following the "sts" (or "sts-fips") service label (e.g. sts.eu-west-1.amazonaws.com,
+// vpce-0abc.sts.eu-west-1.vpce.amazonaws.com). The global endpoint (sts.amazonaws.com) and
+// non-AWS hosts (e.g. LocalStack) carry no region.
+export const stsEndpointRegion = (stsEndpoint: string): string | undefined => {
+  try {
+    const { hostname } = new URL(stsEndpoint);
+    const labels = hostname.split(".");
+    const stsLabelIndex = labels.findIndex((label) => label === "sts" || label === "sts-fips");
+    if (stsLabelIndex === -1) return undefined;
+    const region = labels[stsLabelIndex + 1];
+    // the global endpoint has the domain in the region position, not a region
+    return region === "amazonaws" ? undefined : region;
+  } catch {
+    return undefined;
+  }
+};
+
+// Picks the STS URL used to validate a login's signed GetCallerIdentity request.
+//
+// Only the AWS global endpoint follows the caller's credential scope region: it accepts any
+// region scope, and regional routing keeps validation close to the caller. Every other
+// configured endpoint is operator intent and is honored. Regional, FIPS, GovCloud, China, and
+// VPC endpoints additionally reject a mismatched caller region (returning null) instead of
+// silently re-routing validation to a commercial endpoint the operator never configured.
+export const resolveStsLoginUrl = (stsEndpoint: string, callerRegion: string | null): string | null => {
+  try {
+    if (new URL(stsEndpoint).hostname === "sts.amazonaws.com") {
+      return callerRegion ? `https://sts.${callerRegion}.amazonaws.com` : stsEndpoint;
+    }
+  } catch {
+    // fall through: honor the configured value as-is
+  }
+  const configuredRegion = stsEndpointRegion(stsEndpoint);
+  if (configuredRegion !== undefined && callerRegion !== configuredRegion) return null;
+  return stsEndpoint;
+};
