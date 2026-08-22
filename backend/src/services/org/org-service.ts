@@ -122,7 +122,7 @@ type TOrgServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<
     TLicenseServiceFactory,
-    "getPlan" | "updateSubscriptionOrgMemberCount" | "generateOrgCustomerId" | "removeOrgCustomer"
+    "getPlan" | "updateSubscriptionOrgMemberCount" | "cancelOrgSubscription"
   >;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
@@ -672,23 +672,16 @@ export const orgServiceFactory = ({
   const createOrganization = async (
     {
       userId,
-      userEmail,
       orgName
     }: {
       userId?: string;
       orgName: string;
-      userEmail?: string | null;
     },
     trx?: Knex
   ) => {
-    const customerId = await licenseService.generateOrgCustomerId(orgName, userEmail);
-
     const createOrg = async (tx: Knex) => {
       // akhilmhdh: for now this is auto created. in future we can input from user and for previous users just modifiy
-      const org = await orgDAL.create(
-        { name: orgName, customerId, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) },
-        tx
-      );
+      const org = await orgDAL.create({ name: orgName, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) }, tx);
       if (userId) {
         const membership = await orgDAL.createMembership(
           {
@@ -789,6 +782,12 @@ export const orgServiceFactory = ({
     const decodedToken = crypto.jwt().verify(authToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
     if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
 
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
+    // if root org null = this is a root org then cancel the subscription.
+    if (!org.rootOrgId) {
+      await licenseService.cancelOrgSubscription(orgId);
+    }
+
     const response = await orgDAL.transaction(async (tx) => {
       const projects = await projectDAL.find({ orgId }, { tx });
 
@@ -803,10 +802,6 @@ export const orgServiceFactory = ({
       }
 
       const deletedOrg = await orgDAL.deleteById(orgId, tx);
-
-      if (deletedOrg.customerId) {
-        await licenseService.removeOrgCustomer(deletedOrg.customerId);
-      }
 
       // Generate new tokens without the organization ID present
       const user = await userDAL.findById(userId, tx);
