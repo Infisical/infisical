@@ -57,7 +57,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
 
@@ -202,7 +202,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.org.resendOrgMemberInvitation({
         orgId: req.permission.orgId,

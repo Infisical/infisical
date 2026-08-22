@@ -173,6 +173,129 @@ Auth extraction happens in `src/server/plugins/auth/`:
 - **JWT** — user browser sessions (decoded from `Authorization: Bearer` header)
 - **IDENTITY_ACCESS_TOKEN** — machine-to-machine identity tokens
 - **SCIM_TOKEN** — SCIM provisioning tokens
+- **OAUTH**: delegated user tokens from the `oauth-client` module. Same JWT shape and session binding as
+  `JWT`, told apart by an `oauthClientId` claim. Opt-in per route: `verify-auth.ts` rejects them anywhere
+  that doesn't list `AuthMode.OAUTH`, because a route authenticating on bare `userId` never builds the
+  permission that enforces delegation. Most `AuthMode.JWT` routes now list `AuthMode.OAUTH` too. The
+  exceptions, none of which can be scope-narrowed, stay first-party only:
+  - account self-management (user, password, MFA, sessions, login, signup, notifications, announcements)
+  - super-admin routes (`v1/admin-router.ts`, `ee/v1/rate-limit-router.ts`), gated by `verifySuperAdmin`,
+    which reads `user.superAdmin` rather than a CASL ability
+  - OAuth client CRUD + consent (`v1/oauth-router.ts`) and `ee/v1/assume-privilege-router.ts`, where a
+    delegated token could widen its own grant
+  - five org routes held back individually and commented as such: `GET /v1/organization`,
+    `GET /v1/organization/accessible-with-sub-orgs`, `POST /v2/organizations`, `GET /v1/organization/:organizationId`,
+    `DELETE /v2/organizations/:organizationId`
+  - **every route that mints a long-lived credential**, each commented as such: identity token-auth tokens
+    (`POST /v1/auth/token-auth/identities/:identityId/tokens`), universal-auth client secrets
+    (`POST /v1/auth/universal-auth/identities/:identityId/client-secrets`), service tokens
+    (`POST /v2/service-token`), KMIP client certificates (`POST /v1/kmip/clients/:id/certificates`), and the
+    gateway / relay / KMIP-server enrollment tokens (`POST .../token-auth/generate-enrollment-token`). See
+    below.
+
+  Rough proxy: nothing passing `requireOrg: false` accepts `AuthMode.OAUTH`, since with no org there's no
+  ability to narrow. Before adding `AuthMode.OAUTH` to a route, check the handler actually builds an
+  org/project/resource permission.
+
+  **Building a permission isn't the same as checking one, and only the check is narrowed.** A handler that
+  calls `getOrgPermission`/`getProjectPermission` and throws the ability away is using it as a membership
+  gate: the intersection with granted scopes happens inside, but nothing reads the result, so a scoped
+  token passes like a first-party session. That's why `GET /v1/organization/:organizationId` came back off
+  the list. The membership-only reads that keep `AuthMode.OAUTH` return project metadata a secrets client
+  needs to operate rather than org or security config: `getAProject` (clients resolve environment slugs
+  before reading secrets) and `getProjectKmsKeys`. A CASL gate isn't the fix there, since the operation has
+  no subject, any member with an identity token can already call it, and a gate would change first-party
+  behaviour. Weigh a route in this position on what it returns.
+
+  **A route that mints a credential can't accept a delegated one either.** Everything the revocation story
+  rests on (deleting the application, rotating its secret, withdrawing its grant, deactivating the user)
+  reaches only the OAuth sessions tagged with `getOauthClientSessionUserAgent`. An identity access token, a
+  universal-auth client secret, a service token, a KMIP client certificate, or a redeemed enrollment token is
+  a separate row with its own lifetime, so a compromised client could mint one (token auth accepts a TTL of
+  years) and keep the access after every handle we have on it is pulled. The credential also outranks its
+  minter: it authenticates as a machine identity whose permissions no OAuth scope intersects. This is why
+  credential issuance is on the exception list above regardless of how well the route builds its permission,
+  and why a new issuance route starts first-party only.
+
+  **A route that mints session tokens can't accept a delegated one.** `DELETE /v2/organizations/:organizationId`
+  deletes the org the caller's token points at, so it reissues the user's session through
+  `loginService.generateUserTokens` and returns it. `generateUserTokens` has no oauthClientId, scopes or
+  delegation parameter, so the reissued pair is a first-party session regardless of what came in: a
+  delegated caller would exit with credentials good for account management and org creation, the families
+  deliberately closed to OAuth. Weigh any route that issues credentials the same way.
+
+**Delegated tokens carry exactly one delegation marker, never both** (`oauth-client-types.ts`):
+- `scopes: [...]` from the authorization code grant. `permission-service` intersects the user's CASL rules
+  with them (`applyOauthScopeToOrgRules` / `applyOauthScopeToProjectRules`).
+- `delegation: "full"` from the RFC 8693 token exchange grant, which has no scopes and carries the user's
+  authorization unnarrowed.
+
+**Absence of both has to keep meaning zero permissions.** `inject-identity.ts` sets
+`RequestContextKey.OauthScopes` for every scope-narrowed token (even `[]`, which denies everything) and
+leaves it unset only for `delegation: "full"`; `getDelegatedOauthScopes` reads an unset key as "no
+narrowing". Matching full delegation positively is what makes a dropped claim fail closed instead of
+quietly promoting the token.
+
+**Token exchange trusts the org's OIDC SSO config, not per-client configuration**
+(`oauth-token-exchange-fns.ts`), so the issuers that can vouch for a user through exchange are exactly the
+ones that can already log them in. The one per-application field is `tokenExchangeAudience`, and it does
+the security work: without it, any token that issuer signed for any application in the customer's estate
+is exchangeable. Enabling the grant, changing the audience, or rotating the secret of an exchange
+application all need `OrgPermissionSsoActions.Edit` on top of the usual `OauthClients` check
+(`checkSsoConfigPermission`). Rotation counts because its response hands back a working credential for
+acting as any of the org's users, so leaving it out would make the create/update check a speed bump. Any
+future operation that establishes this trust or hands out a credential for it goes through the same gate.
+
+**`getOrgPermission` is not a membership check.** It builds a CASL ability from the actor's roles, and the
+org-scope query in `permission-dal.ts` filters on org, actor and scope without ever reading
+`Membership.isActive` or `Membership.status`. Every other user-token route got its token from a browser
+login, where `selectOrganization` (`auth-login-service.ts`) rejects an inactive membership. Token exchange
+mints a user token with no login in front of it, so `exchangeSubjectToken` checks membership state itself.
+Without that, deactivating a member doesn't revoke their access. Any future non-interactive way of minting
+a user token needs the same check.
+
+**Withdrawing an exchange application's authority has to revoke the tokens it already issued.** Deleting
+the client and rotating its secret both call `revokeSessionsByUserAgent`, and so does any update that
+narrows the exchange's trust: removing the grant, changing `tokenExchangeAudience`, or switching
+`tokenExchangeIdpSatisfiesMfa` off (`hasWithdrawnTokenExchangeTrust`). These are the same fields
+`hasClientAuthorityChanged` guards, and for the same reason, so a new field belongs in both. An admin
+narrowing any of them is responding to a problem, so it has to reach the tokens already out there rather
+than wait for them to expire. Widening does not revoke: turning the MFA declaration on grants more without
+invalidating anything already issued. Sessions are tagged with
+`getOauthClientSessionUserAgent(clientId)`, the only handle we have on them. Rotation revokes only on
+exchange applications: there the secret alone mints tokens for any user, whereas in the redirect flow it
+has to be paired with an authorization code or refresh token and blanket revocation would just sign
+everyone out. The tag is per client, not per grant, which is unambiguous because a client cannot hold
+both flows: `assertValidOauthClientGrantConfig` rejects the token-exchange grant alongside
+`authorization_code`, in the API as well as the UI, so an application is either a redirect-flow client or
+an exchange client. A service needing both registers twice.
+
+**That sweep only reaps sessions that already exist, so the exchange rechecks the client after creating
+its own.** `exchangeSubjectToken` authenticates the client, then spends provider discovery, JWKS
+verification and several DB reads before inserting a session, long enough for a revocation to land in
+between and delete nothing. So once the session exists it re-reads the client via
+`oauthClientDAL.findByIdOnPrimary` and rejects (re-running the sweep) if the secret hash changed, the
+grant is gone, the row is gone, or either field carrying the exchange's federation trust has been narrowed
+(`tokenExchangeAudience` and `tokenExchangeIdpSatisfiesMfa`, both read off the replica). Anything a future
+field grants the exchange belongs in `hasClientAuthorityChanged` for the same reason. Two things make this
+sufficient: every withdrawal path commits its write to the client *before* deleting sessions, so a session
+that survived the delete belongs to a request whose client row is already stale; and the re-read hits the
+**primary**, since the replica `authenticateClient` reads can still be serving the pre-revocation row.
+Only the exchange grant needs it, because the authorization code and refresh branches read an existing
+session instead of creating one, so a racing revoke either fails them closed or kills the session behind
+the token they just signed.
+
+**Everything the exchange fetches from the IdP is cached for 10 minutes, and nothing read from our own
+database is.** A middleware typically exchanges once per request it serves, so the discovery document and
+the `JwksClient` are cached per URL in `oauth-token-exchange-fns.ts`; without that the provider becomes a
+synchronous dependency of every Infisical call the middleware makes. When extending it:
+- **Don't cache the resolved trust anchor.** The signature algorithm and preferred issuer come from
+  `oidc_configs`, and an admin editing either has to take effect on the next request.
+- **Failed fetches are evicted, not cached**, so a provider blip lasts as long as the blip. Caching the
+  failure turns a 5-second outage into 10 minutes of them.
+- **Entries hold the in-flight promise**, so concurrent callers on a cold entry coalesce onto one fetch.
+- Expiry also rebuilds the SSRF-pinned agent, which is what lets a legitimate DNS change at the provider
+  get picked up at all.
 
 **Deprecated auth modes (do not use in new code):**
 - **API_KEY** — user API keys (from `x-api-key` header). Deprecated — use identity access tokens instead.

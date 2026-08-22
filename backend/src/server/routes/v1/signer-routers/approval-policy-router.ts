@@ -32,7 +32,7 @@ export const registerSignerApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.signerPolicy.getPolicy({
         signerId: req.params.signerId,
@@ -56,7 +56,7 @@ export const registerSignerApprovalPolicyRouter = async (server: FastifyZodProvi
       params: SignerIdParamsSchema,
       body: ApprovalPolicyBodySchema
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const policy = await server.services.signerPolicy.updatePolicy({
         signerId: req.params.signerId,

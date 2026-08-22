@@ -30,7 +30,7 @@ export const registerPkiApplicationGroupMembershipRouter = async (server: Fastif
       params: ApplicationIdParamsSchema,
       response: { 200: z.object({ memberships: z.array(ApplicationMemberSchema) }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const memberships = await server.services.pkiApplicationMembership.listMembers({
         actor: req.permission.type,
@@ -68,7 +68,7 @@ export const registerPkiApplicationGroupMembershipRouter = async (server: Fastif
       body: RoleBodySchema,
       response: { 200: z.object({ membership: ApplicationMemberSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const membership = await server.services.pkiApplicationMembership.addMember({
         actor: req.permission.type,
@@ -127,7 +127,7 @@ export const registerPkiApplicationGroupMembershipRouter = async (server: Fastif
       body: RoleBodySchema,
       response: { 200: z.object({ membership: ApplicationMemberSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const membership = await server.services.pkiApplicationMembership.updateMemberRole({
         actor: req.permission.type,
@@ -186,7 +186,7 @@ export const registerPkiApplicationGroupMembershipRouter = async (server: Fastif
       params: GroupParamsSchema,
       response: { 200: RemoveResponseSchema }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationMembership.removeMember({
         actor: req.permission.type,

@@ -48,7 +48,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "listOrganizationGroupMemberships",
@@ -107,7 +107,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "createOrganizationGroupMembership",
@@ -200,7 +200,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getOrganizationGroupMembership",
@@ -239,7 +239,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "updateOrganizationGroupMembership",
@@ -325,7 +325,7 @@ export const registerOrganizationMembershipsRouter = async (server: FastifyZodPr
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "deleteOrganizationGroupMembership",

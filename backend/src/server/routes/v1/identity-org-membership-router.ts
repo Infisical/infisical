@@ -23,7 +23,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       hide: true,
       operationId: "createOrganizationIdentityMembership",
@@ -113,7 +113,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       hide: true,
       operationId: "updateOrganizationIdentityMembership",
@@ -205,7 +205,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       hide: true,
       operationId: "deleteOrganizationIdentityMembership",
@@ -260,7 +260,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       hide: true,
       operationId: "listOrganizationIdentityMemberships",
@@ -357,7 +357,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       hide: true,
       operationId: "getOrganizationIdentityMembershipById",
@@ -420,7 +420,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "listAvailableOrganizationIdentities",

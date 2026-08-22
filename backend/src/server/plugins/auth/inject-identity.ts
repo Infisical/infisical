@@ -21,6 +21,7 @@ import {
   TRelayAccessTokenJwtPayload
 } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
+import { OauthDelegationMode } from "@app/services/oauth-client/oauth-client-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 export type TAuthMode =
@@ -112,6 +113,14 @@ export type TAuthMode =
       authMethod: null;
       token: TKmipServerAccessTokenJwtPayload;
     };
+
+// A first-party session and a delegated OAuth token have the same auth shape, so a handler that only
+// needs the acting user (name, email, session id) should take both instead of narrowing on AuthMode.JWT.
+// Narrowing silently costs the OAuth caller its audit trail or actor metadata.
+export const isUserSessionAuth = (
+  auth: TAuthMode
+): auth is Extract<TAuthMode, { authMode: AuthMode.JWT | AuthMode.OAUTH }> =>
+  auth.authMode === AuthMode.JWT || auth.authMode === AuthMode.OAUTH;
 
 export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
   const apiKey = req.headers?.["x-api-key"];
@@ -306,9 +315,9 @@ export const injectIdentity = fp(
             await server.services.authToken.fnValidateJwtIdentity(token);
           requestContext.set(RequestContextKey.OrgId, orgId);
           requestContext.set(RequestContextKey.OrgName, orgName);
-          // Always set (even as []) so permission-service can distinguish a delegated OAuth request
-          // that must be scope-narrowed from a first-party session that must not be.
-          requestContext.set(RequestContextKey.OauthScopes, token.scopes ?? []);
+          if (token.delegation !== OauthDelegationMode.Full) {
+            requestContext.set(RequestContextKey.OauthScopes, token.scopes ?? []);
+          }
           requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
           req.auth = {
             authMode: AuthMode.OAUTH,

@@ -74,7 +74,7 @@ export const registerSyncPkiEndpoints = ({
         200: z.object({ pkiSyncs: responseSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
 
@@ -113,7 +113,7 @@ export const registerSyncPkiEndpoints = ({
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
 
@@ -152,7 +152,7 @@ export const registerSyncPkiEndpoints = ({
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const pkiSync = await server.services.pkiSync.createPkiSync(
         { ...req.body, projectId: req.body.projectId ?? req.internalCertManagerProjectId, destination },
@@ -211,7 +211,7 @@ export const registerSyncPkiEndpoints = ({
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
 
@@ -265,7 +265,7 @@ export const registerSyncPkiEndpoints = ({
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
 
@@ -318,7 +318,7 @@ export const registerSyncPkiEndpoints = ({
         200: z.object({ message: z.string() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
 
@@ -353,7 +353,7 @@ export const registerSyncPkiEndpoints = ({
           200: z.object({ message: z.string() })
         }
       },
-      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
       handler: async (req) => {
         const { pkiSyncId } = req.params;
 
@@ -389,7 +389,7 @@ export const registerSyncPkiEndpoints = ({
           200: z.object({ message: z.string() })
         }
       },
-      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
       handler: async (req) => {
         const { pkiSyncId } = req.params;
 
