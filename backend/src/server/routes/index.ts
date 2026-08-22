@@ -199,6 +199,7 @@ import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { cronJobFactory } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
+import { initGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { logger } from "@app/lib/logger";
 import { Redlock } from "@app/lib/red-lock";
 import { TQueueServiceFactory } from "@app/queue";
@@ -576,6 +577,10 @@ export const registerRoutes = async (
   const redlock = new Redlock([redis], { retryCount: 0 });
   const cronJob = cronJobFactory({ redis, redlock });
   cronJob.start();
+
+  // Reached from the gateway proxy layer in src/lib, which has no DI, so it is installed as a module
+  // singleton rather than threaded through every call site.
+  const gatewayLoadTracker = initGatewayLoadTracker(keyStore);
 
   await server.register(registerSecretScanningV2Webhooks, {
     prefix: "/secret-scanning/webhooks"
@@ -4260,6 +4265,9 @@ export const registerRoutes = async (
   }
 
   server.addHook("onClose", async () => {
+    // Drops this pod's published counts, so a rolling deploy does not leave its already-dead
+    // channels counting against those gateways for the freshness window.
+    await gatewayLoadTracker.shutdown();
     cronJobs.forEach((job) => job.stop());
     await cronJob.stop();
     await telemetryService.flushAll();

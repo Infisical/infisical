@@ -10,6 +10,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
+import { getGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
@@ -464,6 +465,7 @@ export const gatewayV2ServiceFactory = ({
     });
 
     return {
+      gatewayId,
       relayHost: relayCredentials.relayHost,
       gateway: {
         clientCertificate: clientCert.toString("pem"),
@@ -627,6 +629,7 @@ export const gatewayV2ServiceFactory = ({
     });
 
     return {
+      gatewayId,
       relayHost: relayCredentials.relayHost,
       gateway: {
         clientCertificate: clientCert.toString("pem"),
@@ -891,9 +894,7 @@ export const gatewayV2ServiceFactory = ({
         },
         {
           protocol: GatewayProxyProtocol.Health,
-          relayHost: gatewayV2ConnectionDetails.relayHost,
-          gateway: gatewayV2ConnectionDetails.gateway,
-          relay: gatewayV2ConnectionDetails.relay
+          ...gatewayV2ConnectionDetails
         }
       );
     } catch (err) {
@@ -984,6 +985,35 @@ export const gatewayV2ServiceFactory = ({
 
     await gatewayV2DAL.updateById(gateway.id, { capabilities: nextCapabilities });
     await $checkGatewayHealth(gateway.id);
+  };
+
+  const reportMetrics = async ({
+    orgPermission,
+    activeChannels
+  }: {
+    orgPermission: OrgServiceActor;
+    activeChannels: number;
+  }) => {
+    let gateway;
+    if (orgPermission.type === ActorType.GATEWAY) {
+      gateway = await gatewayV2DAL.findById(orgPermission.id);
+    } else {
+      // Same check heartbeat makes: an identity whose gateway permission was revoked must not keep
+      // submitting occupancy values and steering pool routing.
+      await $validateIdentityAccessToGateway(orgPermission.orgId, orgPermission.id, orgPermission.authMethod);
+      gateway = await gatewayV2DAL.findOne({ orgId: orgPermission.orgId, identityId: orgPermission.id });
+    }
+
+    if (!gateway || gateway.orgId !== orgPermission.orgId) {
+      throw new NotFoundError({ message: `Gateway with ID '${orgPermission.id}' not found` });
+    }
+
+    // Do not mark the gateway alive here. A load report only proves the gateway can reach us;
+    // heartbeat proves we can reach it back through the relay. Updating liveness from this would
+    // keep a gateway whose relay path is broken looking healthy.
+    await getGatewayLoadTracker()?.recordReportedLoad(gateway.id, activeChannels);
+
+    return { gatewayId: gateway.id, activeChannels };
   };
 
   const deleteGatewayById = async ({ orgPermission, id }: { orgPermission: OrgServiceActor; id: string }) => {
@@ -1321,6 +1351,7 @@ export const gatewayV2ServiceFactory = ({
   return {
     listGateways,
     registerGateway,
+    reportMetrics,
     getPlatformConnectionDetailsByGatewayId,
     getPAMConnectionDetails,
     deleteGatewayById,
