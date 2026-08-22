@@ -17,6 +17,13 @@ export enum UserAgentType {
   TERRAFORM = "terraform",
   NODE_SDK = "InfisicalNodeSDK",
   PYTHON_SDK = "InfisicalPythonSDK",
+  AGENT = "infisical-agent",
+  K8_EXTERNAL_SECRETS_OPERATOR = "k8-external-secrets-operator",
+  GO_SDK = "infisical-go-sdk",
+  RUBY_SDK = "infisical-ruby-sdk",
+  DOTNET_SDK = "Infisical.Sdk",
+  RUST_SDK = "infisical-rs",
+  CPP_SDK = "infisical-cpp-sdk",
   OTHER = "other"
 }
 

@@ -29,6 +29,28 @@ export const getUserAgentType = (userAgent: string | undefined) => {
   if (userAgent.includes(UserAgentType.PYTHON_SDK)) {
     return UserAgentType.PYTHON_SDK;
   }
+  // clients that send a bare or versioned user agent, e.g. "infisical-go-sdk" or "infisical-agent/1.2.3"
+  const exactOrVersionedMatches = [
+    UserAgentType.AGENT,
+    UserAgentType.K8_EXTERNAL_SECRETS_OPERATOR,
+    UserAgentType.GO_SDK,
+    UserAgentType.RUBY_SDK,
+    UserAgentType.DOTNET_SDK,
+    UserAgentType.RUST_SDK,
+    UserAgentType.CPP_SDK
+  ];
+  for (const match of exactOrVersionedMatches) {
+    if (userAgent === match || userAgent.startsWith(`${match}/`)) {
+      return match;
+    }
+  }
+  // current-generation python/node SDK user agents map to the existing SDK channels
+  if (userAgent === "infisical-python-sdk" || userAgent.startsWith("infisical-python-sdk/")) {
+    return UserAgentType.PYTHON_SDK;
+  }
+  if (userAgent === "infisical-nodejs-sdk" || userAgent.startsWith("infisical-nodejs-sdk/")) {
+    return UserAgentType.NODE_SDK;
+  }
   return UserAgentType.OTHER;
 };
 

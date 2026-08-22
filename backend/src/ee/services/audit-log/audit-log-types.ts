@@ -175,7 +175,14 @@ export enum UserAgentType {
   TERRAFORM = "terraform",
   OTHER = "other",
   PYTHON_SDK = "InfisicalPythonSDK",
-  NODE_SDK = "InfisicalNodeSDK"
+  NODE_SDK = "InfisicalNodeSDK",
+  AGENT = "infisical-agent",
+  K8_EXTERNAL_SECRETS_OPERATOR = "k8-external-secrets-operator",
+  GO_SDK = "infisical-go-sdk",
+  RUBY_SDK = "infisical-ruby-sdk",
+  DOTNET_SDK = "Infisical.Sdk",
+  RUST_SDK = "infisical-rs",
+  CPP_SDK = "infisical-cpp-sdk"
 }
 
 export enum EventType {
