@@ -58,8 +58,9 @@ User authentication is designed for individual developers and supports multiple 
       `--organization-id`.
     </ParamField>
     <ParamField query="organization-id" type="string" optional>
-      Your organization id. Required for direct login along with `--password`
-      and `--email`.
+      Your organization ID. Required for direct login along with `--password`
+      and `--email`. This flag also accepts a sub-organization ID if you want to
+      authenticate directly into a [sub-organization](/documentation/platform/sub-organizations).
     </ParamField>
     <ParamField query="interactive" type="boolean" optional>
       Force interactive CLI login instead of browser-based authentication.
@@ -472,7 +473,9 @@ The login command supports a number of flags that you can use for different auth
     ```
 
     #### Description
-    User organization id. Required if you want to do a non-interactive login when the **--method** flag is set to **user**. Must be used together with the `--email` and `--password` flag.
+    User organization ID. Required if you want to do a non-interactive login when the **--method** flag is set to **user**. Must be used together with the `--email` and `--password` flag.
+
+    This flag also accepts a sub-organization ID if you want to authenticate directly into a [sub-organization](/documentation/platform/sub-organizations).
 
     <Tip>
       You can omit the **--method=user** if you want as it's the default method.
