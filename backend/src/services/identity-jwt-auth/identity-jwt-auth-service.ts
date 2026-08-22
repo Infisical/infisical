@@ -53,7 +53,7 @@ import { recordIdentityLastLoginDebounced } from "../membership-identity/members
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityJwtAuthDALFactory } from "./identity-jwt-auth-dal";
-import { doesFieldValueMatchJwtPolicy } from "./identity-jwt-auth-fns";
+import { doesAudValueMatchJwtPolicy, doesFieldValueMatchJwtPolicy, hasJwtAudienceClaim } from "./identity-jwt-auth-fns";
 import {
   JwtConfigurationType,
   TAttachJwtAuthDTO,
@@ -240,7 +240,8 @@ export const identityJwtAuthServiceFactory = ({
       }
 
       if (identityJwtAuth.boundAudiences) {
-        if (!tokenData.aud) {
+        const audience = tokenData.aud as string | string[] | undefined;
+        if (!hasJwtAudienceClaim(audience)) {
           throw new UnauthorizedError({
             message: "Access denied: token has no audience field",
             detail: {
@@ -255,7 +256,7 @@ export const identityJwtAuthServiceFactory = ({
         if (
           !identityJwtAuth.boundAudiences
             .split(", ")
-            .some((policyValue) => doesFieldValueMatchJwtPolicy(tokenData.aud, policyValue))
+            .some((policyValue) => doesAudValueMatchJwtPolicy(audience, policyValue))
         ) {
           throw new UnauthorizedError({
             message: "Access denied: token audience not allowed",
