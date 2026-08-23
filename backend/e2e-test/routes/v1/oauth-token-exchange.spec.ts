@@ -362,6 +362,119 @@ describe("Full delegation marker on a delegated OAuth token", async () => {
 
 // A refresh token only works if the application holds the refresh_token grant, so issuing one without it
 // hands back a credential the token endpoint rejects on use.
+describe("Access token TTL is per application", async () => {
+  const REDIRECT_URI = "https://app.example.com/callback";
+
+  const issueAccessToken = async (accessTokenTTL?: number) => {
+    const created = await createClient({
+      name: `e2e-access-token-ttl-${accessTokenTTL ?? "default"}`,
+      grantTypes: [OauthGrantType.AuthorizationCode, OauthGrantType.RefreshToken],
+      redirectUris: [REDIRECT_URI],
+      ...(accessTokenTTL === undefined ? {} : { accessTokenTTL })
+    });
+
+    expect(created.statusCode).toBe(200);
+    const { client, clientSecret } = JSON.parse(created.payload) as {
+      client: { id: string; clientId: string; accessTokenTTL: number };
+      clientSecret: string;
+    };
+
+    const consented = await consent({ client_id: client.clientId, redirect_uri: REDIRECT_URI });
+    const { callbackUrl } = JSON.parse(consented.payload) as { callbackUrl: string };
+
+    const token = await postToken({
+      grant_type: OauthGrantType.AuthorizationCode,
+      code: new URL(callbackUrl).searchParams.get("code") as string,
+      redirect_uri: REDIRECT_URI,
+      client_id: client.clientId,
+      client_secret: clientSecret
+    });
+
+    return { client, token };
+  };
+
+  test("defaults to one day when the field is omitted", async () => {
+    const { client, token } = await issueAccessToken();
+
+    expect(client.accessTokenTTL).toBe(86400);
+    expect(token.statusCode).toBe(200);
+    expect((JSON.parse(token.payload) as { expires_in: number }).expires_in).toBe(86400);
+
+    await deleteClient(client.id);
+  });
+
+  test("a shorter TTL becomes the issued token's expires_in", async () => {
+    const { client, token } = await issueAccessToken(1800);
+
+    expect(client.accessTokenTTL).toBe(1800);
+    expect(token.statusCode).toBe(200);
+    expect((JSON.parse(token.payload) as { expires_in: number }).expires_in).toBe(1800);
+
+    await deleteClient(client.id);
+  });
+
+  // The application's TTL is a ceiling, not an override, so asking for longer than the instance
+  // allows must not widen it past JWT_AUTH_LIFETIME.
+  test("a TTL longer than the instance lifetime is capped, not honoured", async () => {
+    const { client, token } = await issueAccessToken(90 * 24 * 60 * 60);
+
+    expect(client.accessTokenTTL).toBe(90 * 24 * 60 * 60);
+    expect(token.statusCode).toBe(200);
+    const { expires_in: expiresIn } = JSON.parse(token.payload) as { expires_in: number };
+    expect(expiresIn).toBeLessThan(client.accessTokenTTL);
+
+    await deleteClient(client.id);
+  });
+
+  test("rejects a TTL outside the allowed bounds", async () => {
+    const tooShort = await createClient({
+      name: "e2e-access-token-ttl-too-short",
+      redirectUris: [REDIRECT_URI],
+      accessTokenTTL: 59
+    });
+    expect(tooShort.statusCode).toBe(422);
+
+    const tooLong = await createClient({
+      name: "e2e-access-token-ttl-too-long",
+      redirectUris: [REDIRECT_URI],
+      accessTokenTTL: 90 * 24 * 60 * 60 + 1
+    });
+    expect(tooLong.statusCode).toBe(422);
+  });
+
+  test("an update changes the TTL of tokens issued afterwards", async () => {
+    const { client } = await issueAccessToken(3600);
+
+    const updated = await testServer.inject({
+      method: "PATCH",
+      url: `/api/v1/oauth/clients/${client.id}`,
+      headers: { authorization: `Bearer ${jwtAuthToken}` },
+      body: { accessTokenTTL: 600 }
+    });
+    expect(updated.statusCode).toBe(200);
+
+    const consented = await consent({ client_id: client.clientId, redirect_uri: REDIRECT_URI });
+    const { callbackUrl } = JSON.parse(consented.payload) as { callbackUrl: string };
+
+    // The secret is unchanged by the update, so a fresh code redeems against the new TTL.
+    const clientSecretRes = await rotateClientSecret(client.id);
+    const { clientSecret } = JSON.parse(clientSecretRes.payload) as { clientSecret: string };
+
+    const token = await postToken({
+      grant_type: OauthGrantType.AuthorizationCode,
+      code: new URL(callbackUrl).searchParams.get("code") as string,
+      redirect_uri: REDIRECT_URI,
+      client_id: client.clientId,
+      client_secret: clientSecret
+    });
+
+    expect(token.statusCode).toBe(200);
+    expect((JSON.parse(token.payload) as { expires_in: number }).expires_in).toBe(600);
+
+    await deleteClient(client.id);
+  });
+});
+
 describe("Refresh token issuance follows the registered grants", async () => {
   const REDIRECT_URI = "https://app.example.com/callback";
 

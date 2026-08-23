@@ -18,6 +18,11 @@ import {
   FieldLabel,
   FieldTitle,
   Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -61,6 +66,32 @@ const splitRedirectUris = (value: string) =>
     .map((uri) => uri.trim())
     .filter(Boolean);
 
+// Mirrors the bounds the API enforces on accessTokenTTL, so a bad value is caught before the request.
+const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 86400;
+const MIN_ACCESS_TOKEN_TTL_SECONDS = 60;
+const MAX_ACCESS_TOKEN_TTL_SECONDS = 90 * 24 * 60 * 60;
+
+const TTL_UNITS = [
+  { value: "m", label: "Minutes", seconds: 60 },
+  { value: "h", label: "Hours", seconds: 60 * 60 },
+  { value: "d", label: "Days", seconds: 24 * 60 * 60 },
+  { value: "w", label: "Weeks", seconds: 7 * 24 * 60 * 60 }
+] as const;
+
+type TTtlUnit = (typeof TTL_UNITS)[number]["value"];
+
+const ttlToSeconds = (value: number, unit: TTtlUnit) =>
+  value * (TTL_UNITS.find((entry) => entry.value === unit)?.seconds ?? 1);
+
+// Pick the largest unit that divides the stored seconds exactly, so a one-day TTL reads back as
+// "1 Days" rather than "1440 Minutes".
+const secondsToTtl = (totalSeconds: number): { value: number; unit: TTtlUnit } => {
+  const unit = [...TTL_UNITS].reverse().find((entry) => totalSeconds % entry.seconds === 0);
+  if (!unit) return { value: totalSeconds, unit: "m" };
+
+  return { value: totalSeconds / unit.seconds, unit: unit.value };
+};
+
 // The API lets a client hold several grants, but the UI sticks to one flow per application: the two
 // share no config and delegate differently, so an application needing both goes through the API.
 enum OauthClientFlow {
@@ -75,6 +106,10 @@ const oauthClientFormSchema = z
     flow: z.nativeEnum(OauthClientFlow),
     redirectUris: z.string().trim(),
     requirePkce: z.boolean(),
+    accessTokenTtlValue: z.number().int().min(1, "Value must be at least 1"),
+    accessTokenTtlUnit: z.enum(["m", "h", "d", "w"], {
+      invalid_type_error: "Please select a valid time unit"
+    }),
     tokenExchangeAudience: z.string().trim().max(255),
     tokenExchangeIdpSatisfiesMfa: z.boolean()
   })
@@ -98,6 +133,15 @@ const oauthClientFormSchema = z
           message: `Invalid redirect URI: ${invalidUri}`
         });
       }
+    }
+
+    const ttlSeconds = ttlToSeconds(data.accessTokenTtlValue, data.accessTokenTtlUnit);
+    if (ttlSeconds < MIN_ACCESS_TOKEN_TTL_SECONDS || ttlSeconds > MAX_ACCESS_TOKEN_TTL_SECONDS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["accessTokenTtlValue"],
+        message: "Access token lifetime must be between 1 minute and 90 days"
+      });
     }
 
     if (data.flow === OauthClientFlow.TokenExchange && !data.tokenExchangeAudience) {
@@ -143,6 +187,8 @@ export const OauthClientModal = ({ popUp, handlePopUpClose, onCreated }: Props) 
       flow: OauthClientFlow.AuthorizationCode,
       redirectUris: "",
       requirePkce: false,
+      accessTokenTtlValue: secondsToTtl(DEFAULT_ACCESS_TOKEN_TTL_SECONDS).value,
+      accessTokenTtlUnit: secondsToTtl(DEFAULT_ACCESS_TOKEN_TTL_SECONDS).unit,
       tokenExchangeAudience: "",
       tokenExchangeIdpSatisfiesMfa: false
     }
@@ -165,6 +211,10 @@ export const OauthClientModal = ({ popUp, handlePopUpClose, onCreated }: Props) 
         : OauthClientFlow.AuthorizationCode,
       redirectUris: client?.redirectUris?.join("\n") ?? "",
       requirePkce: client?.requirePkce ?? false,
+      accessTokenTtlValue: secondsToTtl(client?.accessTokenTTL ?? DEFAULT_ACCESS_TOKEN_TTL_SECONDS)
+        .value,
+      accessTokenTtlUnit: secondsToTtl(client?.accessTokenTTL ?? DEFAULT_ACCESS_TOKEN_TTL_SECONDS)
+        .unit,
       tokenExchangeAudience: client?.tokenExchangeAudience ?? "",
       tokenExchangeIdpSatisfiesMfa: client?.tokenExchangeIdpSatisfiesMfa ?? false
     });
@@ -184,6 +234,7 @@ export const OauthClientModal = ({ popUp, handlePopUpClose, onCreated }: Props) 
         : [OauthGrantType.AuthorizationCode, OauthGrantType.RefreshToken],
       redirectUris: isTokenExchange ? [] : splitRedirectUris(form.redirectUris),
       requirePkce: isTokenExchange ? false : form.requirePkce,
+      accessTokenTTL: ttlToSeconds(form.accessTokenTtlValue, form.accessTokenTtlUnit),
       tokenExchangeIdpSatisfiesMfa: isTokenExchange ? form.tokenExchangeIdpSatisfiesMfa : false
     };
 
@@ -279,6 +330,64 @@ export const OauthClientModal = ({ popUp, handlePopUpClose, onCreated }: Props) 
                   </Field>
                 )}
               />
+              <Field>
+                <div className="flex gap-4">
+                  <Controller
+                    control={control}
+                    name="accessTokenTtlValue"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field className="flex-1">
+                        <FieldLabel htmlFor="oauth-client-access-token-ttl-value">
+                          Access token lifetime
+                        </FieldLabel>
+                        <Input
+                          {...field}
+                          id="oauth-client-access-token-ttl-value"
+                          type="number"
+                          min={1}
+                          step={1}
+                          value={field.value}
+                          onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
+                          isError={Boolean(error)}
+                        />
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="accessTokenTtlUnit"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field className="flex-1">
+                        <FieldLabel htmlFor="oauth-client-access-token-ttl-unit">
+                          Time unit
+                        </FieldLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger
+                            id="oauth-client-access-token-ttl-unit"
+                            className="w-full"
+                            isError={Boolean(error)}
+                          >
+                            <SelectValue placeholder="Select time unit" />
+                          </SelectTrigger>
+                          <SelectContent position="popper">
+                            {TTL_UNITS.map(({ value, label }) => (
+                              <SelectItem key={value} value={value}>
+                                {label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                </div>
+                <FieldDescription>
+                  How long tokens issued to this application stay valid. Your organization&apos;s
+                  session length still applies, so the shorter of the two wins.
+                </FieldDescription>
+              </Field>
               <Controller
                 control={control}
                 name="flow"

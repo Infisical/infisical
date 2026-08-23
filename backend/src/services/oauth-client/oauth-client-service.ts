@@ -35,6 +35,7 @@ import {
   PKCE_CODE_VERIFIER_REGEX
 } from "./oauth-client-fns";
 import {
+  DEFAULT_OAUTH_ACCESS_TOKEN_TTL_SECONDS,
   OauthAuthorizationCodePayloadSchema,
   OauthDelegationMode,
   OauthGrantType,
@@ -316,6 +317,7 @@ export const oauthClientServiceFactory = ({
       grantTypes,
       redirectUris,
       requirePkce: dto.requirePkce ?? false,
+      accessTokenTTL: dto.accessTokenTTL ?? DEFAULT_OAUTH_ACCESS_TOKEN_TTL_SECONDS,
       tokenExchangeAudience: isTokenExchangeEnabled ? tokenExchangeAudience : null,
       tokenExchangeIdpSatisfiesMfa: isTokenExchangeEnabled ? tokenExchangeIdpSatisfiesMfa : false
     });
@@ -383,6 +385,7 @@ export const oauthClientServiceFactory = ({
           grantTypes: dto.grantTypes ? grantTypes : undefined,
           redirectUris: isRedirectBased ? dto.redirectUris : [],
           requirePkce: isRedirectBased ? dto.requirePkce : false,
+          accessTokenTTL: dto.accessTokenTTL,
           tokenExchangeAudience: nextTokenExchangeAudience,
           tokenExchangeIdpSatisfiesMfa: nextTokenExchangeIdpSatisfiesMfa
         },
@@ -582,20 +585,25 @@ export const oauthClientServiceFactory = ({
     return client;
   };
 
-  const resolveTokenLifetimes = (org?: TOrganizations) => {
+  // The application's own TTL is a ceiling on its access tokens, not an override: the instance's
+  // JWT_AUTH_LIFETIME and the org's session length still apply, so an application cannot hand out a
+  // token that outlives the org's own policy. Refresh tokens keep following the org alone, since they
+  // exist to outlive individual access tokens.
+  const resolveTokenLifetimes = (client: Pick<TOauthClients, "accessTokenTTL">, org?: TOrganizations) => {
     const appCfg = getConfig();
-    let accessTokenExpiresIn: string | number = appCfg.JWT_AUTH_LIFETIME;
+    let accessTokenExpiresIn: string | number = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, client.accessTokenTTL);
     let refreshTokenExpiresIn: string | number = appCfg.JWT_REFRESH_LIFETIME;
 
     if (org?.userTokenExpiration) {
-      accessTokenExpiresIn = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);
+      accessTokenExpiresIn = getMinExpiresIn(accessTokenExpiresIn, org.userTokenExpiration);
       refreshTokenExpiresIn = org.userTokenExpiration;
     }
 
     return { accessTokenExpiresIn, refreshTokenExpiresIn };
   };
 
-  const getTokenLifetimes = async (orgId: string) => resolveTokenLifetimes(await orgDAL.findById(orgId));
+  const getTokenLifetimes = async (client: Pick<TOauthClients, "accessTokenTTL">, orgId: string) =>
+    resolveTokenLifetimes(client, await orgDAL.findById(orgId));
 
   // RFC 8693 token exchange is the SSO login path with the token handed to us directly instead of
   // collected through a browser redirect. With no redirect URI, no PKCE and no browser session to anchor
@@ -717,7 +725,7 @@ export const oauthClientServiceFactory = ({
       });
     }
 
-    const { accessTokenExpiresIn } = resolveTokenLifetimes(org);
+    const { accessTokenExpiresIn } = resolveTokenLifetimes(client, org);
 
     const accessToken = signOauthToken(
       {
@@ -813,7 +821,7 @@ export const oauthClientServiceFactory = ({
       const tokenSession = await tokenService.getUserTokenSessionById(codePayload.tokenVersionId, codePayload.userId);
       if (!tokenSession) throw new UnauthorizedError({ message: "User session not found" });
 
-      const { accessTokenExpiresIn, refreshTokenExpiresIn } = await getTokenLifetimes(codePayload.orgId);
+      const { accessTokenExpiresIn, refreshTokenExpiresIn } = await getTokenLifetimes(client, codePayload.orgId);
 
       const grantedScopes = codePayload.scopes ?? [];
 
@@ -871,7 +879,10 @@ export const oauthClientServiceFactory = ({
       throw new UnauthorizedError({ message: "Invalid refresh token" });
     }
 
-    const { accessTokenExpiresIn, refreshTokenExpiresIn } = await getTokenLifetimes(decodedToken.organizationId);
+    const { accessTokenExpiresIn, refreshTokenExpiresIn } = await getTokenLifetimes(
+      client,
+      decodedToken.organizationId
+    );
 
     let { refreshToken } = dto;
     let { refreshVersion } = tokenVersion;

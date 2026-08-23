@@ -35,12 +35,17 @@ export enum OauthDelegationMode {
   Full = "full"
 }
 
+export const DEFAULT_OAUTH_ACCESS_TOKEN_TTL_SECONDS = 86400;
+export const MIN_OAUTH_ACCESS_TOKEN_TTL_SECONDS = 60;
+export const MAX_OAUTH_ACCESS_TOKEN_TTL_SECONDS = 90 * 24 * 60 * 60;
+
 export type TCreateOauthClientDTO = {
   name: string;
   description?: string;
   grantTypes: OauthGrantType[];
   redirectUris: string[];
   requirePkce?: boolean;
+  accessTokenTTL?: number;
   tokenExchangeAudience?: string;
   tokenExchangeIdpSatisfiesMfa?: boolean;
 };
@@ -52,6 +57,7 @@ export type TUpdateOauthClientDTO = {
   grantTypes?: OauthGrantType[];
   redirectUris?: string[];
   requirePkce?: boolean;
+  accessTokenTTL?: number;
   tokenExchangeAudience?: string | null;
   tokenExchangeIdpSatisfiesMfa?: boolean;
 };

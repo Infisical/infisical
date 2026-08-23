@@ -95,6 +95,7 @@ You need permission to manage both OAuth applications and SSO, because enabling 
     - **Flow**: Select **Token exchange**.
     - **Audience** (required): The audience your identity provider puts in tokens it issues for this middleware, for example `api://internal-mcp`. Infisical rejects any token carrying a different audience.
     - **Identity provider enforces MFA**: Turn this on to declare that your identity provider already requires MFA. Without it, exchanges fail for any user who requires MFA, because there is no Infisical MFA challenge to run.
+    - **Access token lifetime**: How long the tokens this application issues stay valid, 1 day by default. These tokens act as the user and carry no refresh token, so keep it to the shortest window your middleware can re-exchange within.
 
     There is no issuer to set here. Infisical always verifies against your organization's OIDC SSO provider, which cannot be overridden per application.
 
@@ -142,11 +143,11 @@ The response is an access token for the user the subject token identified:
   "access_token": "...",
   "issued_token_type": "urn:ietf:params:oauth:token-type:access_token",
   "token_type": "Bearer",
-  "expires_in": 3600
+  "expires_in": 86400
 }
 ```
 
-Access token lifetime is the shorter of your organization's **user token expiration** setting and the platform default of 10 days. Because the middleware holds a credential that acts as the user, set a short expiration on the organization rather than relying on that default.
+Access token lifetime is the shortest of the application's **access token lifetime** (1 day by default), your organization's session length, and the instance default of 10 days. The application's own value is a ceiling rather than an override: it can shorten the lifetime but never extend it past what the organization allows. Because the middleware holds a credential that acts as the user, shorten it on the application rather than relying on the default.
 
 <Note>
   `scope`, `audience`, and `resource` are rejected rather than ignored. This grant has no scope concept, and the expected audience is fixed on the application, so silently dropping those parameters would leave you believing a restriction was applied when it was not.
@@ -176,7 +177,7 @@ Exchanging per request makes your identity provider a hard dependency of every I
 - Drop the entry when the user's session at your identity provider ends, so their Infisical access does not outlive it.
 
 <Note>
-  The token endpoint is rate limited per source IP, so every instance of your middleware behind one egress address shares a single budget. Caching correctly means roughly one exchange per user per token lifetime, which stays well inside it.
+  Cache wherever you run Infisical. On Infisical Cloud the token endpoint is rate limited per source IP, so every instance of your middleware behind one egress address shares a single budget, and caching correctly means roughly one exchange per user per token lifetime, which stays well inside it. A self-hosted instance applies no limit of its own, so set one at your ingress and rely on caching to keep the endpoint quiet.
 </Note>
 
 ## What Infisical verifies

@@ -6750,6 +6750,7 @@ interface CreateOauthClientEvent {
     clientId: string;
     name: string;
     grantTypes: string[];
+    accessTokenTTL: number;
     tokenExchangeAudience?: string | null;
     tokenExchangeIdpSatisfiesMfa: boolean;
   };
@@ -6762,6 +6763,7 @@ interface UpdateOauthClientEvent {
     clientId: string;
     name: string;
     grantTypes: string[];
+    accessTokenTTL: number;
     tokenExchangeAudience?: string | null;
     tokenExchangeIdpSatisfiesMfa: boolean;
   };

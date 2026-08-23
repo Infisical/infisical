@@ -9,7 +9,10 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { isAllowedRedirectUri, parseBasicAuthHeader } from "@app/services/oauth-client/oauth-client-fns";
 import {
   ACCEPTED_SUBJECT_TOKEN_TYPES,
+  DEFAULT_OAUTH_ACCESS_TOKEN_TTL_SECONDS,
   DEFAULT_OAUTH_GRANT_TYPES,
+  MAX_OAUTH_ACCESS_TOKEN_TTL_SECONDS,
+  MIN_OAUTH_ACCESS_TOKEN_TTL_SECONDS,
   OauthGrantType,
   OauthTokenType
 } from "@app/services/oauth-client/oauth-client-types";
@@ -43,6 +46,15 @@ const tokenExchangeAudienceSchema = z
   .max(255)
   .describe("The expected 'aud' claim of subject tokens presented to the token exchange grant.");
 
+const accessTokenTtlSchema = z
+  .number()
+  .int()
+  .min(MIN_OAUTH_ACCESS_TOKEN_TTL_SECONDS)
+  .max(MAX_OAUTH_ACCESS_TOKEN_TTL_SECONDS)
+  .describe(
+    "How long, in seconds, the access tokens this application issues stay valid. A ceiling rather than an override: the instance and organization token lifetimes still apply, so the issued token's 'expires_in' is the shortest of the three."
+  );
+
 const tokenExchangeIdpSatisfiesMfaSchema = z
   .boolean()
   .describe(
@@ -64,6 +76,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
         grantTypes: grantTypesSchema.default([...DEFAULT_OAUTH_GRANT_TYPES]),
         redirectUris: redirectUriSchema.array().max(32).default([]),
         requirePkce: z.boolean().optional(),
+        accessTokenTTL: accessTokenTtlSchema.default(DEFAULT_OAUTH_ACCESS_TOKEN_TTL_SECONDS),
         tokenExchangeAudience: tokenExchangeAudienceSchema.optional(),
         tokenExchangeIdpSatisfiesMfa: tokenExchangeIdpSatisfiesMfaSchema.optional()
       }),
@@ -88,6 +101,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
             clientId: client.clientId,
             name: client.name,
             grantTypes: client.grantTypes,
+            accessTokenTTL: client.accessTokenTTL,
             tokenExchangeAudience: client.tokenExchangeAudience,
             tokenExchangeIdpSatisfiesMfa: client.tokenExchangeIdpSatisfiesMfa
           }
@@ -160,6 +174,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
         grantTypes: grantTypesSchema.optional(),
         redirectUris: redirectUriSchema.array().max(32).optional(),
         requirePkce: z.boolean().optional(),
+        accessTokenTTL: accessTokenTtlSchema.optional(),
         tokenExchangeAudience: tokenExchangeAudienceSchema.nullable().optional(),
         tokenExchangeIdpSatisfiesMfa: tokenExchangeIdpSatisfiesMfaSchema.optional()
       }),
@@ -186,6 +201,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
             clientId: client.clientId,
             name: client.name,
             grantTypes: client.grantTypes,
+            accessTokenTTL: client.accessTokenTTL,
             tokenExchangeAudience: client.tokenExchangeAudience,
             tokenExchangeIdpSatisfiesMfa: client.tokenExchangeIdpSatisfiesMfa
           }

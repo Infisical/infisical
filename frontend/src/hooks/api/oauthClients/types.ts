@@ -14,6 +14,7 @@ export type TOauthClient = {
   grantTypes: OauthGrantType[];
   redirectUris: string[];
   requirePkce: boolean;
+  accessTokenTTL: number;
   tokenExchangeAudience?: string | null;
   tokenExchangeIdpSatisfiesMfa: boolean;
   createdAt: string;
@@ -26,6 +27,7 @@ export type TCreateOauthClientDTO = {
   grantTypes: OauthGrantType[];
   redirectUris: string[];
   requirePkce?: boolean;
+  accessTokenTTL?: number;
   tokenExchangeAudience?: string;
   tokenExchangeIdpSatisfiesMfa?: boolean;
 };
@@ -37,6 +39,7 @@ export type TUpdateOauthClientDTO = {
   grantTypes?: OauthGrantType[];
   redirectUris?: string[];
   requirePkce?: boolean;
+  accessTokenTTL?: number;
   tokenExchangeAudience?: string | null;
   tokenExchangeIdpSatisfiesMfa?: boolean;
 };

@@ -272,8 +272,13 @@ narrows the exchange's trust: removing the grant, changing `tokenExchangeAudienc
 `tokenExchangeIdpSatisfiesMfa` off (`hasWithdrawnTokenExchangeTrust`). These are the same fields
 `hasClientAuthorityChanged` guards, and for the same reason, so a new field belongs in both. An admin
 narrowing any of them is responding to a problem, so it has to reach the tokens already out there rather
-than wait for them to expire. Widening does not revoke: turning the MFA declaration on grants more without
-invalidating anything already issued. Sessions are tagged with
+than wait for them to expire. The test is whether the field carries federation trust, not merely whether
+it can be narrowed: `accessTokenTTL` is deliberately in neither, because it decides how long a new token
+lasts rather than whose tokens are exchangeable or which MFA requirement may be skipped. Shortening it on
+a live application is routine tuning, so revoking every user's session would be a surprising side effect,
+and putting it in `hasClientAuthorityChanged` would fail in-flight exchanges on a harmless edit. An admin
+who does want the issued tokens gone rotates the secret. Widening does not revoke: turning the MFA
+declaration on grants more without invalidating anything already issued. Sessions are tagged with
 `getOauthClientSessionUserAgent(clientId)`, the only handle we have on them. Rotation revokes only on
 exchange applications: there the secret alone mints tokens for any user, whereas in the redirect flow it
 has to be paired with an authorization code or refresh token and blanket revocation would just sign
