@@ -14,7 +14,6 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
-  Badge,
   Button,
   Card,
   CardAction,
@@ -225,23 +224,18 @@ export const OrgOauthClientsTab = () => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {usesAuthorizationCode && (
-                                <Badge variant="neutral">Authorization code</Badge>
-                              )}
-                              {usesTokenExchange && <Badge variant="info">Token exchange</Badge>}
-                            </div>
+                            {[
+                              usesAuthorizationCode && "Authorization code",
+                              usesTokenExchange && "Token exchange"
+                            ]
+                              .filter(Boolean)
+                              .join(", ")}
                           </TableCell>
                           <TableCell>
                             {!usesAuthorizationCode && (
                               <span className="text-muted">Not applicable</span>
                             )}
-                            {usesAuthorizationCode && client.requirePkce && (
-                              <Badge variant="success">Required</Badge>
-                            )}
-                            {usesAuthorizationCode && !client.requirePkce && (
-                              <span className="text-muted">Optional</span>
-                            )}
+                            {usesAuthorizationCode && (client.requirePkce ? "Required" : "Optional")}
                           </TableCell>
                           <TableCell>{format(new Date(client.createdAt), "MMM d, yyyy")}</TableCell>
                           <TableCell className="text-right">
