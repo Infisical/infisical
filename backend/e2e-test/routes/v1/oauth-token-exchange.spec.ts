@@ -276,6 +276,22 @@ describe("POST /api/v1/oauth/token, token exchange grant", async () => {
     expect(res.statusCode).toBe(400);
     expect(res.payload).toContain("not supported");
   });
+
+  // Ignoring these would answer a delegation request with an impersonation token, since the issued
+  // token records no acting party.
+  test("rejects an actor token rather than ignoring it", async () => {
+    const res = await postToken(exchangeBody({ actor_token: "some.actor.jwt" }));
+
+    expect(res.statusCode).toBe(400);
+    expect(res.payload).toContain("'actor_token'");
+  });
+
+  test("rejects an actor token type on its own", async () => {
+    const res = await postToken(exchangeBody({ actor_token_type: OauthTokenType.Jwt }));
+
+    expect(res.statusCode).toBe(400);
+    expect(res.payload).toContain("'actor_token'");
+  });
 });
 
 // Same session as the working jwtAuthToken, so it passes signature and session validation and differs

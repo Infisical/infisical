@@ -150,7 +150,9 @@ The response is an access token for the user the subject token identified:
 Access token lifetime is the shortest of the application's **access token lifetime** (1 day by default), your organization's session length, and the instance default of 10 days. The application's own value is a ceiling rather than an override: it can shorten the lifetime but never extend it past what the organization allows. Because the middleware holds a credential that acts as the user, shorten it on the application rather than relying on the default.
 
 <Note>
-  `scope`, `audience`, and `resource` are rejected rather than ignored. This grant has no scope concept, and the expected audience is fixed on the application, so silently dropping those parameters would leave you believing a restriction was applied when it was not.
+  `scope`, `audience`, `resource`, and `actor_token` are rejected rather than ignored. This grant has no scope concept, and the expected audience is fixed on the application, so silently dropping those parameters would leave you believing a restriction was applied when it was not.
+
+  `actor_token` is refused for the same reason. RFC 8693 uses it to request **delegation**, where the issued token records that your middleware is acting for the user. Infisical issues an **impersonation** token, which is indistinguishable from the user's own and names no acting party, so accepting the parameter and dropping it would answer a delegation request with something weaker than you asked for. The requesting application is still recorded, in the audit event for the exchange and in every event the issued token produces.
 </Note>
 
 Use the access token as a standard Bearer token:

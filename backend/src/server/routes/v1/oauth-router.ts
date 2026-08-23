@@ -440,6 +440,8 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
         subject_token: z.string().max(8192).optional(),
         subject_token_type: z.nativeEnum(OauthTokenType).optional(),
         requested_token_type: z.nativeEnum(OauthTokenType).optional(),
+        actor_token: z.string().max(8192).optional(),
+        actor_token_type: z.string().max(255).optional(),
         audience: z.string().max(255).optional(),
         resource: z.string().max(2048).optional(),
         scope: z.string().max(2048).optional()
@@ -494,6 +496,13 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
         if (req.body.requested_token_type && req.body.requested_token_type !== OauthTokenType.AccessToken) {
           throw new BadRequestError({
             message: `Unsupported 'requested_token_type'. Only '${OauthTokenType.AccessToken}' can be issued.`
+          });
+        }
+
+        if (req.body.actor_token || req.body.actor_token_type) {
+          throw new BadRequestError({
+            message:
+              "The 'actor_token' and 'actor_token_type' parameters are not supported. This grant issues a token that acts as the user in the subject token, and does not record the application as a separate acting party."
           });
         }
 
