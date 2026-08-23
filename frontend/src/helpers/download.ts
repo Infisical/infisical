@@ -13,29 +13,23 @@ type SecretEnvFileImport = {
   secrets: SecretEnvFileSecret[];
 };
 
+type SecretEnvFileEntry = {
+  key: string;
+  value: string;
+  comment?: string;
+};
+
 export const downloadTxtFile = (filename: string, content: string) => {
   const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
   FileSaver.saveAs(blob, filename);
 };
 
-export const hasSecretEnvFileEntries = (
-  localSecrets: SecretEnvFileSecret[],
-  importedSecrets: SecretEnvFileImport[]
-) =>
-  localSecrets.some(({ type }) => type !== SecretType.Personal) ||
-  importedSecrets.some(({ secrets }) => secrets.some(({ type }) => type !== SecretType.Personal));
-
-/**
- * Merges local secrets with imported secrets (local > later imports > earlier imports),
- * and formats them as a .env file string.
- * Personal overrides take precedence over shared secret values.
- */
-export const formatSecretEnvFile = (
+const getSecretEnvFileEntries = (
   localSecrets: SecretEnvFileSecret[],
   importedSecrets: SecretEnvFileImport[]
 ) => {
   const secretsPicked = new Set<string>();
-  const secretsToDownload: { key: string; value: string; comment?: string }[] = [];
+  const secretsToDownload: SecretEnvFileEntry[] = [];
 
   // Build a map of personal override values (personal overrides take precedence)
   const personalOverrides = new Map<string, { value?: string }>();
@@ -82,7 +76,24 @@ export const formatSecretEnvFile = (
     }
   }
 
-  const file = secretsToDownload
+  return secretsToDownload;
+};
+
+export const getSecretEnvFileEntryCount = (
+  localSecrets: SecretEnvFileSecret[],
+  importedSecrets: SecretEnvFileImport[]
+) => getSecretEnvFileEntries(localSecrets, importedSecrets).length;
+
+/**
+ * Merges local secrets with imported secrets (local > later imports > earlier imports),
+ * and formats them as a .env file string.
+ * Personal overrides take precedence over shared secret values.
+ */
+export const formatSecretEnvFile = (
+  localSecrets: SecretEnvFileSecret[],
+  importedSecrets: SecretEnvFileImport[]
+) =>
+  getSecretEnvFileEntries(localSecrets, importedSecrets)
     .sort((a, b) => a.key.toLowerCase().localeCompare(b.key.toLowerCase()))
     .reduce((prev, { key, comment, value }) => {
       const escapedValue = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
@@ -97,9 +108,6 @@ export const formatSecretEnvFile = (
 
       return `${prev}${commentLines}\n${key}=${formattedValue}\n`;
     }, "");
-
-  return file;
-};
 
 export const downloadSecretEnvFile = (
   environment: string,

@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { subject } from "@casl/ability";
-import { CopyPlus, FolderInputIcon, TagsIcon, TrashIcon } from "lucide-react";
+import { CopyIcon, CopyPlus, FolderInputIcon, TagsIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -18,8 +18,10 @@ import {
   useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
+import { formatSecretEnvFile } from "@app/helpers/download";
 import { usePopUp } from "@app/hooks";
 import { useDeleteSecretBatch } from "@app/hooks/api";
+import { fetchSecretValue } from "@app/hooks/api/dashboard/queries";
 import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
@@ -70,6 +72,7 @@ export const SelectionPanel = ({
   usedBySecretSyncs = [],
   visibleEnvs
 }: Props) => {
+  const [isCopyingSecrets, setIsCopyingSecrets] = useState(false);
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
 
@@ -361,6 +364,61 @@ export const SelectionPanel = ({
     ([, secret]) => !secret.secretValueHidden
   );
 
+  const selectedSecretsToCopy = Object.values(selectedEntries[EntryType.SECRET]).flatMap(
+    (perEnv) => {
+      const secrets = Object.values(perEnv);
+      return secrets.length === 1 ? secrets : [];
+    }
+  );
+  const canCopySelectedSecrets =
+    selectedKeysCount > 0 &&
+    selectedCount === selectedKeysCount &&
+    selectedSecretsToCopy.length === selectedKeysCount &&
+    selectedSecretsToCopy.every(
+      (secret) => !secret.secretValueHidden || Boolean(secret.idOverride)
+    );
+
+  const handleCopySelectedSecrets = async () => {
+    if (!canCopySelectedSecrets) return;
+
+    setIsCopyingSecrets(true);
+    try {
+      const secrets = await Promise.all(
+        selectedSecretsToCopy.map(async (secret) => {
+          const data = await fetchSecretValue({
+            projectId,
+            environment: secret.env,
+            secretPath: secret.path ?? secretPath,
+            secretKey: secret.key,
+            isOverride: Boolean(secret.idOverride)
+          });
+
+          return {
+            secretKey: secret.key,
+            secretValue: data.valueOverride ?? data.value ?? "",
+            secretComment: secret.comment
+          };
+        })
+      );
+
+      await navigator.clipboard.writeText(formatSecretEnvFile(secrets, []));
+      createNotification({
+        title: "Secrets copied to clipboard",
+        text: "The selected secrets are ready to paste.",
+        type: "success"
+      });
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        title: "Failed to copy secrets",
+        text: "Please try again later.",
+        type: "error"
+      });
+    } finally {
+      setIsCopyingSecrets(false);
+    }
+  };
+
   const duplicateSourceEnvSlugForPermission =
     selectedKeysCount > 0 && duplicateSourceEnvSlugs.size === 1
       ? selectedSecretEntries[0]?.[0]
@@ -372,6 +430,17 @@ export const SelectionPanel = ({
   return (
     <>
       <SelectedActionBar selectedCount={selectedCount} onClearSelection={resetSelectedEntries}>
+        {canCopySelectedSecrets && (
+          <Button
+            isPending={isCopyingSecrets}
+            variant="project"
+            onClick={handleCopySelectedSecrets}
+            size="xs"
+          >
+            <CopyIcon />
+            Copy
+          </Button>
+        )}
         {selectedKeysCount > 0 && (
           <Tooltip open={isTagActionDisabled ? undefined : false}>
             <TooltipTrigger>

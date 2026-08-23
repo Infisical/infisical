@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
   IconButton,
   Tooltip,
@@ -16,7 +17,7 @@ import {
 import {
   downloadTxtFile,
   formatSecretEnvFile,
-  hasSecretEnvFileEntries
+  getSecretEnvFileEntryCount
 } from "@app/helpers/download";
 import {
   fetchProjectSecrets,
@@ -40,9 +41,10 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
     isError: isPreflightError,
     isLoading: isPreflightLoading
   } = useGetProjectSecretsExportPreflight({ projectId, environment, secretPath });
-  const hasDownloadableSecrets = Boolean(
-    preflightData && hasSecretEnvFileEntries(preflightData.secrets, preflightData.imports)
-  );
+  const secretCount = preflightData
+    ? getSecretEnvFileEntryCount(preflightData.secrets, preflightData.imports)
+    : 0;
+  const hasDownloadableSecrets = secretCount > 0;
   const isExporting = Boolean(pendingAction);
   const isEmpty = !isPreflightLoading && !isPreflightError && !hasDownloadableSecrets;
   const isDisabled = environments.length !== 1 || isPreflightLoading || isEmpty;
@@ -132,14 +134,19 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
         </TooltipTrigger>
         <TooltipContent>{tooltipContent}</TooltipContent>
       </Tooltip>
-      <DropdownMenuContent align="end" className="w-60">
+      <DropdownMenuContent align="end">
+        {preflightData && (
+          <DropdownMenuLabel>
+            {secretCount} {secretCount === 1 ? "secret" : "secrets"}
+          </DropdownMenuLabel>
+        )}
         <DropdownMenuItem onClick={() => handleSecretExport("clipboard")}>
           <CopyIcon />
-          Copy secrets to clipboard
+          Copy to clipboard
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleSecretExport("download")}>
           <DownloadIcon />
-          Download secrets as .env
+          Download as .env
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

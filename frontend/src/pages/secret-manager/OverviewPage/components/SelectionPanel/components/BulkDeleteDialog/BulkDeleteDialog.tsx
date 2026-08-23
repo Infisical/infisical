@@ -3,18 +3,15 @@ import { FolderIcon, KeyIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
-  Button,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Field,
-  FieldContent,
-  FieldLabel,
-  Input,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Table,
   TableBody,
   TableCell,
@@ -28,6 +25,8 @@ import { SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 
 import { EntryType } from "../../SelectionPanel";
+
+const CONFIRMATION_KEYWORD = "delete";
 
 type BulkDeleteDialogProps = {
   isOpen: boolean;
@@ -55,7 +54,6 @@ const BulkDeleteDialogContent = ({
   secretsToDeleteKeys,
   usedBySecretSyncsFiltered
 }: Omit<BulkDeleteDialogProps, "isOpen">) => {
-  const [confirmText, setConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
   const hasAffectedResources =
@@ -95,7 +93,6 @@ const BulkDeleteDialogContent = ({
   }, [selectedEntries]);
 
   const onConfirmDelete = async () => {
-    if (confirmText !== "delete") return;
     setIsDeleting(true);
     try {
       await onDeleteApproved();
@@ -105,11 +102,11 @@ const BulkDeleteDialogContent = ({
   };
 
   return (
-    <DialogContent className="max-w-3xl [&>*]:min-w-0">
-      <DialogHeader>
-        <DialogTitle>{title}</DialogTitle>
-        {subTitle && <DialogDescription>{subTitle}</DialogDescription>}
-      </DialogHeader>
+    <AlertDialogContent className="max-w-3xl [&>*]:min-w-0">
+      <AlertDialogHeader>
+        <AlertDialogTitle>{title}</AlertDialogTitle>
+        {subTitle && <AlertDialogDescription>{subTitle}</AlertDialogDescription>}
+      </AlertDialogHeader>
 
       {selectedResources.length > 0 && (
         <Table
@@ -176,48 +173,34 @@ const BulkDeleteDialogContent = ({
         />
       )}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          onConfirmDelete();
+      <AlertDialogConfirmationField
+        inputProps={{ placeholder: "Type delete here" }}
+        onConfirm={() => {
+          if (!isDeleting) onConfirmDelete();
         }}
-      >
-        <Field>
-          <FieldLabel>
-            Type <span className="font-bold">delete</span> to perform this action
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="Type delete here"
-              autoComplete="off"
-            />
-          </FieldContent>
-        </Field>
-      </form>
+      />
 
-      <DialogFooter>
-        <DialogClose asChild>
-          <Button variant="outline">Cancel</Button>
-        </DialogClose>
-        <Button
+      <AlertDialogFooter>
+        <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>
+        <AlertDialogAction
           variant="danger"
-          isDisabled={confirmText !== "delete" || isDeleting}
           isPending={isDeleting}
-          onClick={onConfirmDelete}
+          onClick={(event) => {
+            event.preventDefault();
+            onConfirmDelete();
+          }}
         >
           Delete
-        </Button>
-      </DialogFooter>
-    </DialogContent>
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
   );
 };
 
 export const BulkDeleteDialog = ({ isOpen, onOpenChange, ...props }: BulkDeleteDialogProps) => {
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <AlertDialog open={isOpen} confirmationValue={CONFIRMATION_KEYWORD} onOpenChange={onOpenChange}>
       {isOpen && <BulkDeleteDialogContent onOpenChange={onOpenChange} {...props} />}
-    </Dialog>
+    </AlertDialog>
   );
 };
