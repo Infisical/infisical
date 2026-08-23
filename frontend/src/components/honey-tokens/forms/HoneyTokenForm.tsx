@@ -333,18 +333,19 @@ export const HoneyTokenForm = ({
             </aside>
           </div>
         </form>
-        <SheetFooter className="items-center justify-between border-t">
+        <SheetFooter className="flex-col items-stretch border-t sm:flex-row sm:items-center sm:justify-between">
           <span className="text-xs text-muted">
             Step {displayedStepNumber} of {totalSteps}
           </span>
-          <div className="flex items-center gap-3">
-            <Button onClick={handlePrev} variant="outline">
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+            <Button className="w-full sm:w-fit" onClick={handlePrev} variant="outline">
               Back
             </Button>
             <Button
               onClick={handleNext}
               isPending={isSubmitting || isValidating}
               isDisabled={isSubmitting || isValidating}
+              className="w-full sm:w-fit"
               variant={isFinalStep ? "org" : "outline"}
             >
               {isFinalStep ? "Create Honey Token" : "Next"}

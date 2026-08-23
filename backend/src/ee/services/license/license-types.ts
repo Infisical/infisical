@@ -110,8 +110,8 @@ export type TFeatureSet = {
   fips: false;
   eventSubscriptions: false;
   secretShareExternalBranding: false;
-  honeyTokens: boolean;
-  honeyTokenLimit: number;
+  honeyTokens: false;
+  honeyTokenLimit: 0;
   secretsBrokering: true;
   secretSyncLimit: null;
   maxInternalCas: null;
