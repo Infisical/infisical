@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -121,17 +121,12 @@ const FLOW_DESCRIPTIONS: Record<OauthClientFlow, string> = {
 type Props = {
   popUp: UsePopUpState<["clientForm"]>;
   handlePopUpClose: (popUpName: keyof UsePopUpState<["clientForm"]>) => void;
-  handlePopUpToggle: (popUpName: keyof UsePopUpState<["clientForm"]>, state?: boolean) => void;
   onCreated?: (client: TOauthClient, clientSecret: string) => void;
 };
 
-export const OauthClientModal = ({
-  popUp,
-  handlePopUpClose,
-  handlePopUpToggle,
-  onCreated
-}: Props) => {
-  const editingClient = popUp?.clientForm?.data as TOauthClient | undefined;
+export const OauthClientModal = ({ popUp, handlePopUpClose, onCreated }: Props) => {
+  const isSheetOpen = Boolean(popUp?.clientForm?.isOpen);
+  const [editingClient, setEditingClient] = useState<TOauthClient | undefined>();
   const isEditing = Boolean(editingClient);
 
   const { currentOrg } = useOrganization();
@@ -158,20 +153,23 @@ export const OauthClientModal = ({
     flow === OauthClientFlow.TokenExchange && !isOidcConfigPending && !hasActiveOidcSso;
 
   useEffect(() => {
-    if (popUp?.clientForm?.isOpen) {
-      reset({
-        name: editingClient?.name ?? "",
-        description: editingClient?.description ?? "",
-        flow: editingClient?.grantTypes?.includes(OauthGrantType.TokenExchange)
-          ? OauthClientFlow.TokenExchange
-          : OauthClientFlow.AuthorizationCode,
-        redirectUris: editingClient?.redirectUris?.join("\n") ?? "",
-        requirePkce: editingClient?.requirePkce ?? false,
-        tokenExchangeAudience: editingClient?.tokenExchangeAudience ?? "",
-        tokenExchangeIdpSatisfiesMfa: editingClient?.tokenExchangeIdpSatisfiesMfa ?? false
-      });
-    }
-  }, [popUp?.clientForm?.isOpen]);
+    if (!isSheetOpen) return;
+
+    const client = popUp?.clientForm?.data as TOauthClient | undefined;
+    setEditingClient(client);
+    reset({
+      name: client?.name ?? "",
+      description: client?.description ?? "",
+      flow: client?.grantTypes?.includes(OauthGrantType.TokenExchange)
+        ? OauthClientFlow.TokenExchange
+        : OauthClientFlow.AuthorizationCode,
+      redirectUris: client?.redirectUris?.join("\n") ?? "",
+      requirePkce: client?.requirePkce ?? false,
+      tokenExchangeAudience: client?.tokenExchangeAudience ?? "",
+      tokenExchangeIdpSatisfiesMfa: client?.tokenExchangeIdpSatisfiesMfa ?? false
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSheetOpen]);
 
   const { mutateAsync: createOauthClient, isPending: isCreating } = useCreateOauthClient();
   const { mutateAsync: updateOauthClient, isPending: isUpdating } = useUpdateOauthClient();
@@ -229,8 +227,9 @@ export const OauthClientModal = ({
     <Sheet
       open={popUp?.clientForm?.isOpen}
       onOpenChange={(isOpen) => {
-        handlePopUpToggle("clientForm", isOpen);
-        if (!isOpen) reset();
+        if (isOpen) return;
+        handlePopUpClose("clientForm");
+        reset();
       }}
     >
       <SheetContent className="sm:max-w-xl">

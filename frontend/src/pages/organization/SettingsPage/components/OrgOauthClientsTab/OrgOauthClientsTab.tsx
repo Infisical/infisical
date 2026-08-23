@@ -315,7 +315,6 @@ export const OrgOauthClientsTab = () => {
       <OauthClientModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
-        handlePopUpToggle={handlePopUpToggle}
         onCreated={(client, clientSecret) =>
           handlePopUpOpen("clientSecret", {
             clientName: client.name,
