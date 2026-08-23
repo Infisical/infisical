@@ -10,20 +10,26 @@ type Props = {
 };
 
 export const HoneyTokenConfigurationFields = ({ environments }: Props) => {
-  const { control } = useFormContext<THoneyTokenForm>();
+  const { control, setValue } = useFormContext<THoneyTokenForm>();
 
   return (
     environments && (
       <Controller
         control={control}
         name="environment"
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
+        render={({ field: { value }, fieldState: { error } }) => (
           <Field>
             <FieldLabel>Environment</FieldLabel>
             <FieldContent>
               <FilterableSelect
                 value={value}
-                onChange={onChange}
+                onChange={(environment) =>
+                  setValue("environment", environment as ProjectEnv, {
+                    shouldDirty: true,
+                    shouldTouch: true,
+                    shouldValidate: true
+                  })
+                }
                 options={environments}
                 placeholder="Select an environment..."
                 getOptionLabel={(option) => option?.name}
