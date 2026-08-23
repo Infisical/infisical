@@ -2,6 +2,8 @@ import { Controller, useFormContext } from "react-hook-form";
 import { ArrowRightIcon, InfoIcon, KeyIcon, LockIcon } from "lucide-react";
 
 import {
+  Alert,
+  AlertDescription,
   Badge,
   FieldError,
   FieldLabel,
@@ -112,11 +114,13 @@ export const AwsHoneyTokenMappingFields = () => {
           {mappingError}
         </div>
       )}
-      <div className="mt-2 flex items-start gap-2 rounded-sm border border-info/40 bg-info/10 p-3 text-xs text-foreground">
-        <InfoIcon className="mt-0.5 size-3.5 shrink-0 text-info" />
-        These keys will appear as normal secrets in your project but are tied to a sandboxed IAM
-        user with zero permissions. Any API call made with these credentials triggers an alert.
-      </div>
+      <Alert variant="info">
+        <InfoIcon />
+        <AlertDescription>
+          These keys will appear as normal secrets in your project but are tied to a sandboxed IAM
+          user with zero permissions. Any API call made with these credentials triggers an alert.
+        </AlertDescription>
+      </Alert>
     </div>
   );
 };

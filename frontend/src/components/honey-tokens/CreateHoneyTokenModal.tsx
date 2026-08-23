@@ -37,7 +37,7 @@ const DEFAULT_HONEY_TOKEN_TYPE = HONEY_TOKEN_TYPES.length === 1 ? HONEY_TOKEN_TY
 
 const Content = ({ setSelectedType, selectedType, onCancel, ...props }: ContentProps) => {
   if (selectedType) {
-    return <HoneyTokenForm onCancel={onCancel} type={selectedType} {...props} />;
+    return <HoneyTokenForm layout="sheet" onCancel={onCancel} type={selectedType} {...props} />;
   }
 
   return <HoneyTokenSelect onSelect={setSelectedType} />;
@@ -75,13 +75,12 @@ export const CreateHoneyTokenModal = ({ onOpenChange, isOpen, ...props }: Props)
 
   return (
     <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
-      <SheetContent className="flex h-full max-h-full w-full flex-col gap-y-0 p-0 sm:w-3/4 sm:max-w-[1500px]">
-        <SheetHeader>
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-[1500px]">
+        <SheetHeader className="border-b">
           {selectedType ? (
-            <>
-              <SheetTitle className="sr-only">Configure honey token</SheetTitle>
+            <SheetTitle>
               <HoneyTokenModalHeader type={selectedType} />
-            </>
+            </SheetTitle>
           ) : (
             <SheetTitle>
               <div className="flex items-center gap-x-2">
