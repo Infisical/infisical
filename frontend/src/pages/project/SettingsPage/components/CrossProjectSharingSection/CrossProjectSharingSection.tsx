@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
+import { subject } from "@casl/ability";
 import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { format, formatDistanceToNowStrict } from "date-fns";
-import { subject } from "@casl/ability";
 import {
   Box,
   ChevronRight,
@@ -226,10 +226,12 @@ export const CrossProjectSharingSection = () => {
       projectFolderGrantSubject(environment, secretPath)
     );
 
-  const canCreateAnyGrant = permission.rulesFor(
-    ProjectPermissionProjectFolderGrantActions.CreateGrant,
-    ProjectPermissionSub.ProjectFolderGrant
-  ).some((rule) => !rule.inverted);
+  const canCreateAnyGrant = permission
+    .rulesFor(
+      ProjectPermissionProjectFolderGrantActions.CreateGrant,
+      ProjectPermissionSub.ProjectFolderGrant
+    )
+    .some((rule) => !rule.inverted);
 
   const canReadGrants = permission.can(
     ProjectPermissionProjectFolderGrantActions.ReadGrant,
