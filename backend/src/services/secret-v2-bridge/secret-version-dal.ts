@@ -163,10 +163,11 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
             );
           }
         );
-      return docs.reduce<Record<string, TSecretVersionsV2>>(
-        (prev, curr) => ({ ...prev, [curr.secretId || ""]: curr }),
-        {}
-      );
+      return docs.reduce<Record<string, TSecretVersionsV2>>((prev, curr) => {
+        // eslint-disable-next-line no-param-reassign
+        prev[curr.secretId || ""] = curr;
+        return prev;
+      }, {});
     } catch (error) {
       throw new DatabaseError({ error, name: "FindLatestVersionMany" });
     }
@@ -478,10 +479,11 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
       const allDocs = [...latestVersions, ...specificVersionsWithLatest];
 
       // Convert array to record with secretId as key
-      return allDocs.reduce<Record<string, TSecretVersionsV2>>(
-        (prev, curr) => ({ ...prev, [curr.secretId || ""]: curr }),
-        {}
-      );
+      return allDocs.reduce<Record<string, TSecretVersionsV2>>((prev, curr) => {
+        // eslint-disable-next-line no-param-reassign
+        prev[curr.secretId || ""] = curr;
+        return prev;
+      }, {});
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByIdsWithLatestVersion" });
     }

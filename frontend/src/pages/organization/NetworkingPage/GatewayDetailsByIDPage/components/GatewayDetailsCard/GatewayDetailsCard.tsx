@@ -34,7 +34,10 @@ import { useUpdateGateway } from "@app/hooks/api/gateways-v2";
 import { TGatewayV2, TGatewayV2WithAuthMethod } from "@app/hooks/api/gateways-v2/types";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 
-import { NetworkingAuthMethodForm } from "../../../components/NetworkingAuthMethodForm";
+import {
+  NetworkingAuthMethodForm,
+  toNetworkingAuthMethodInput
+} from "../../../components/NetworkingAuthMethodForm";
 
 const HealthBadge = ({ gateway }: { gateway: TGatewayV2 }) => {
   if (!gateway.heartbeat && !gateway.heartbeatTTL) {
@@ -147,19 +150,13 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
                   currentMethod={authMethod}
                   isDisabled={!isAllowed}
                   isPending={isUpdatingAuthMethod}
+                  availableMethods={["token", "aws", "kubernetes"]}
+                  currentGatewayId={gateway.id}
                   onUpdate={async (form) => {
                     try {
                       await updateGateway({
                         gatewayId: gateway.id,
-                        authMethod:
-                          form.method === "aws"
-                            ? {
-                                method: "aws",
-                                stsEndpoint: form.stsEndpoint,
-                                allowedPrincipalArns: form.allowedPrincipalArns,
-                                allowedAccountIds: form.allowedAccountIds
-                              }
-                            : { method: "token" }
+                        authMethod: toNetworkingAuthMethodInput(form)
                       });
                       createNotification({ type: "success", text: "Auth method updated" });
                       return true;

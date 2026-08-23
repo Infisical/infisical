@@ -12,8 +12,9 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { AccessRestrictedBanner, PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 import {
+  AccessRestrictedDialog,
   Button,
   DeleteConfirmDialog,
   DocumentationLinkBadge,
@@ -60,18 +61,14 @@ type PermissionedTabProps = {
 
 const PermissionedTab = ({ value, label, isBlocked, blockedReason }: PermissionedTabProps) => {
   if (!isBlocked) {
-    return (
-      <TabsTrigger value={value} className="flex-none">
-        {label}
-      </TabsTrigger>
-    );
+    return <TabsTrigger value={value}>{label}</TabsTrigger>;
   }
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <span className="inline-flex">
-          <TabsTrigger value={value} disabled className="flex-none">
+          <TabsTrigger value={value} disabled>
             {label}
           </TabsTrigger>
         </span>
@@ -175,9 +172,7 @@ export const ApplicationDetailsByIDPage = () => {
 
   if (isAccessForbidden) {
     return (
-      <div className="container mx-auto flex h-full items-center justify-center p-16">
-        <AccessRestrictedBanner body="You do not have access to this application. Reach out to an administrator to request access." />
-      </div>
+      <AccessRestrictedDialog description="You don't have access to this application. An administrator can grant it." />
     );
   }
 
@@ -270,7 +265,7 @@ export const ApplicationDetailsByIDPage = () => {
                 })
               }
             >
-              <TabsList variant="project" className="w-full justify-start">
+              <TabsList variant="project" aria-label="Application sections">
                 {(canViewCertificates || isNonMemberAdmin) && (
                   <PermissionedTab
                     value="certificates"
@@ -295,12 +290,8 @@ export const ApplicationDetailsByIDPage = () => {
                     blockedReason="You do not have permission to view certificate syncs"
                   />
                 )}
-                <TabsTrigger value="members" className="flex-none">
-                  Members
-                </TabsTrigger>
-                <TabsTrigger value="settings" className="flex-none">
-                  Settings
-                </TabsTrigger>
+                <TabsTrigger value="members">Members</TabsTrigger>
+                <TabsTrigger value="settings">Settings</TabsTrigger>
               </TabsList>
               {canViewCertificates && (
                 <TabsContent className="pt-2" value="certificates">

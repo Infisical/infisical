@@ -30,3 +30,5 @@ export enum HsmKeyAlgorithm {
   ECC_P256 = "ECC_P256",
   ECC_P384 = "ECC_P384"
 }
+
+export const SIGNER_APPROVAL_REQUIRED_ERROR_NAME = "ApprovalRequired";

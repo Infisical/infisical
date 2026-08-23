@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { ms } from "@app/lib/ms";
+
 /**
  * Knex's `t.string(col)` maps to `varchar(255)`, which is what every PKI table uses for its
  * free-form text columns. Validate against the same bound at the API edge so an over-long value
@@ -7,6 +9,10 @@ import { z } from "zod";
  * (string_data_right_truncation) wrapped in a 500.
  */
 export const PKI_TEXT_COLUMN_MAX_LENGTH = 255;
+
+export const PKI_ALT_NAMES_COLUMN_MAX_LENGTH = 4096;
+
+const MAX_CERTIFICATE_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000;
 
 /**
  * Free-form description of a PKI resource. Bounded to the `varchar(255)` description column shared
@@ -18,10 +24,6 @@ export const pkiDescriptionSchema = z
   .trim()
   .max(PKI_TEXT_COLUMN_MAX_LENGTH, `Description cannot exceed ${PKI_TEXT_COLUMN_MAX_LENGTH} characters`);
 
-/**
- * A single X.509 subject attribute (CN, O, OU, C, ST, L). Every column these land in —
- * certificate_requests, certificates, internal_certificate_authorities — is `varchar(255)`.
- */
 export const subjectAttributeSchema = z.string().trim().max(PKI_TEXT_COLUMN_MAX_LENGTH);
 
 export const domainComponentSchema = z
@@ -31,6 +33,8 @@ export const domainComponentSchema = z
   .max(255)
   .refine((value) => !value.includes(","), { message: "Domain component cannot contain a comma" });
 
+export const MAX_DOMAIN_COMPONENTS = 50;
+
 /**
  * Domain components are persisted comma-joined into a single `varchar(255)` column
  * (certificate_requests.domainComponents, certificates.subjectDomainComponents), so the combined
@@ -38,7 +42,7 @@ export const domainComponentSchema = z
  */
 export const domainComponentsSchema = z
   .array(domainComponentSchema)
-  .max(50)
+  .max(MAX_DOMAIN_COMPONENTS)
   .refine(
     (components) => components.join(",").length <= PKI_TEXT_COLUMN_MAX_LENGTH,
     `Domain components cannot exceed ${PKI_TEXT_COLUMN_MAX_LENGTH} characters in total`
@@ -76,16 +80,6 @@ export enum TAltNameType {
   UPN = "upn"
 }
 
-/**
- * Single source of truth for subject alternative name types.
- *
- * To support a new one: add a member to CertSubjectAlternativeNameType and to TAltNameType
- * (certificate-types.ts), then add one row here.
- *
- * `generalNameType` is the value @peculiar/x509 uses for the GeneralName, both when parsing a CSR
- * and when building the extension. `otherNameOid` is set only for types carried as an otherName
- * rather than a native GeneralName choice.
- */
 export const CERT_SUBJECT_ALTERNATIVE_NAMES: Record<
   CertSubjectAlternativeNameType,
   { generalNameType: TAltNameType; otherNameOid?: string }
@@ -206,46 +200,21 @@ export const mapKeyUsageToLegacy = (usage: CertKeyUsageType): string => {
   }
 };
 
+const KEY_USAGE_BY_ALIAS = new Map<string, CertKeyUsageType>(
+  Object.values(CertKeyUsageType).flatMap((standard) => [
+    [mapKeyUsageToLegacy(standard), standard] as const,
+    [standard, standard] as const
+  ])
+);
+
 export const mapLegacyKeyUsageToStandard = (usage: string): CertKeyUsageType => {
-  switch (usage) {
-    case "digitalSignature":
-    case "digital_signature":
-      return CertKeyUsageType.DIGITAL_SIGNATURE;
-    case "keyEncipherment":
-    case "key_encipherment":
-      return CertKeyUsageType.KEY_ENCIPHERMENT;
-    case "nonRepudiation":
-    case "non_repudiation":
-      return CertKeyUsageType.NON_REPUDIATION;
-    case "dataEncipherment":
-    case "data_encipherment":
-      return CertKeyUsageType.DATA_ENCIPHERMENT;
-    case "keyAgreement":
-    case "key_agreement":
-      return CertKeyUsageType.KEY_AGREEMENT;
-    case "keyCertSign":
-    case "key_cert_sign":
-      return CertKeyUsageType.KEY_CERT_SIGN;
-    case "cRLSign":
-    case "crl_sign":
-      return CertKeyUsageType.CRL_SIGN;
-    case "encipherOnly":
-    case "encipher_only":
-      return CertKeyUsageType.ENCIPHER_ONLY;
-    case "decipherOnly":
-    case "decipher_only":
-      return CertKeyUsageType.DECIPHER_ONLY;
-    default:
-      throw new Error(`Unknown key usage: ${usage}`);
+  const standard = KEY_USAGE_BY_ALIAS.get(usage);
+  if (!standard) {
+    throw new Error(`Unknown key usage: ${usage}`);
   }
+  return standard;
 };
 
-/**
- * Single source of truth for extended key usages.
- *
- * To support a new one: add a member to CertExtendedKeyUsageType and to CertExtendedKeyUsage
- * (certificate-types.ts), then add one row here.
- */
 export const CERT_EXTENDED_KEY_USAGES: Record<
   CertExtendedKeyUsageType,
   { oid: string; legacyName: CertExtendedKeyUsage }
@@ -373,3 +342,50 @@ export const SAN_EFFECT_OPTIONS = Object.values(CertSanEffect);
 export const POLICY_STATE_OPTIONS = Object.values(CertPolicyState);
 export const KEY_ALGORITHM_OPTIONS = Object.values(CertKeyAlgorithm);
 export const SIGNATURE_ALGORITHM_OPTIONS = Object.values(CertSignatureAlgorithm);
+
+export const subjectAlternativeNameSchema = z.object({
+  type: z.nativeEnum(CertSubjectAlternativeNameType),
+  value: z
+    .string()
+    .trim()
+    .min(1, "SAN value cannot be empty")
+    .max(PKI_TEXT_COLUMN_MAX_LENGTH, `SAN value cannot exceed ${PKI_TEXT_COLUMN_MAX_LENGTH} characters`)
+});
+
+export const certificateAttributesSchema = z.object({
+  commonName: subjectAttributeSchema.nullish(),
+  organization: subjectAttributeSchema.nullish(),
+  organizationalUnit: subjectAttributeSchema.nullish(),
+  country: subjectAttributeSchema.nullish(),
+  state: subjectAttributeSchema.nullish(),
+  locality: subjectAttributeSchema.nullish(),
+  domainComponents: domainComponentsSchema.nullish(),
+  keyUsages: z.nativeEnum(CertKeyUsageType).array().max(20).optional(),
+  extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().max(20).optional(),
+  altNames: z
+    .array(subjectAlternativeNameSchema)
+    .max(100, "Cannot exceed 100 subject alternative names")
+    .refine(
+      (names) => names.map((san) => san.value).join(",").length <= PKI_ALT_NAMES_COLUMN_MAX_LENGTH,
+      `Subject alternative names cannot exceed ${PKI_ALT_NAMES_COLUMN_MAX_LENGTH} characters in total`
+    )
+    .optional(),
+  signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
+  keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
+  ttl: z
+    .string()
+    .trim()
+    .max(32)
+    .refine((val) => {
+      if (!val) return true;
+      const parsed = ms(val);
+      return parsed > 0 && parsed <= MAX_CERTIFICATE_TTL_MS;
+    }, "TTL must be a positive duration that ends within 100 years")
+    .optional(),
+  basicConstraints: z
+    .object({
+      isCA: z.boolean(),
+      pathLength: z.number().int().min(0).max(255).optional()
+    })
+    .optional()
+});

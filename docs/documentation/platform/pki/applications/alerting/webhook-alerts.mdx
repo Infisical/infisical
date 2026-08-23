@@ -1,5 +1,5 @@
 ---
-title: "Webhook Alerts"
+title: "Webhook alerts"
 sidebarTitle: "Webhook"
 description: "Send certificate alert notifications to a webhook URL."
 ---
@@ -10,7 +10,7 @@ Send certificate alert notifications to any HTTP endpoint. Webhook alerts let yo
   Alerts are configured per Application and apply to all certificates within that Application.
 </Info>
 
-## Create a Webhook Alert
+## Create a webhook alert
 
 <Steps>
   <Step title="Navigate to your Application">
@@ -41,7 +41,7 @@ Send certificate alert notifications to any HTTP endpoint. Webhook alerts let yo
   </Step>
 </Steps>
 
-## Webhook Event Types
+## Webhook event types
 
 Each alert type maps to a corresponding CloudEvents event type:
 
@@ -52,7 +52,7 @@ Each alert type maps to a corresponding CloudEvents event type:
 | Certificate Renewal | `com.infisical.pki.certificate.renewal` | `certificate-renewal-alert` |
 | Certificate Revocation | `com.infisical.pki.certificate.revocation` | `certificate-revocation-alert` |
 
-## Webhook Payload Format
+## Webhook payload format
 
 Webhook notifications are sent as HTTP POST requests with a [CloudEvents](https://cloudevents.io/) compliant JSON payload.
 
@@ -138,7 +138,7 @@ Webhook notifications are sent as HTTP POST requests with a [CloudEvents](https:
   </Tab>
 </Tabs>
 
-## Webhook Signature Verification
+## Webhook signature verification
 
 If you configure a signing secret, Infisical includes an `x-infisical-signature` header with each request:
 
@@ -151,7 +151,7 @@ x-infisical-signature: t=<timestamp>,v1=<signature>
 | `t=<timestamp>` | Unix timestamp (milliseconds) when signed |
 | `v1=<signature>` | HMAC SHA256 signature |
 
-### Verify the Signature
+### Verify the signature
 
 1. Extract timestamp and signature from the header
 2. Concatenate: `{timestamp}.{raw-body}`
@@ -179,7 +179,7 @@ function verifyWebhookSignature(header, body, secret) {
 }
 ```
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="Slack Alerts" icon="slack" href="/documentation/platform/pki/applications/alerting/slack-alerts">

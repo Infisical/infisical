@@ -1,6 +1,6 @@
 ---
-title: "infisical pam"
-description: "Securely access your infrastructure through Infisical's Privileged Access Management"
+title: "pam access"
+description: "Access a PAM-managed database, server, or cloud account from your terminal"
 ---
 
 ```bash
@@ -9,32 +9,21 @@ infisical pam access <path> [flags]
 
 ## Description
 
-The `infisical pam` command provides brokered, credential-less access to your PAM-managed resources — databases, servers, and cloud accounts — through Infisical's Gateway.
+Open one PAM-managed account for your own use, brokered through Infisical's [Gateway](/documentation/platform/gateways/overview) so you never handle its credentials. Requires `infisical login`.
 
-All PAM commands require the user to be logged in via `infisical login`.
+This single command handles every account type: the CLI adapts its behavior to whichever type the account's template defines (see [Account Types and Behavior](#account-types-and-behavior) below).
 
-### Command Structure
+<Note>
+  To open several accounts at once for an AI agent, use [`infisical pam agentic access`](/cli/commands/pam-agentic) instead, which can also authenticate as a [machine identity](/documentation/platform/identities/machine-identities) so an agent can run unattended.
+</Note>
 
-```
-infisical pam
-└── access <path>     # unified, path-based access to all PAM resources
-```
-
-## infisical pam access
-
-Access your PAM-managed resources. This unified command handles every account type — the CLI adapts its behavior to whichever type the account's template defines (see [Account Types and Behavior](#account-types-and-behavior) below).
-
-```bash
-infisical pam access <path> [flags]
-```
-
-### Arguments
+## Arguments
 
 | Argument | Description |
 |----------|-------------|
 | `<path>` | **Required.** Path to the PAM account in format `folder/account-name` |
 
-### Flags
+## Flags
 
 <Accordion title="--duration">
   Session duration. Supports Go duration format (e.g., `1h`, `30m`, `2h30m`).
@@ -85,7 +74,7 @@ infisical pam access <path> [flags]
   ```
 </Accordion>
 
-## Account Types and Behavior
+## Account types and behavior
 
 Based on the account's template, the CLI starts the appropriate local proxy or credential helper.
 
@@ -106,6 +95,23 @@ Based on the account's template, the CLI starts the appropriate local proxy or c
     | MySQL | `mysql://<username>@127.0.0.1:<port>/<database>` |
     | SQL Server | `sqlserver://<username>@127.0.0.1:<port>?database=<database>` |
     | MongoDB | `mongodb://127.0.0.1:<port>/<database>` |
+  </Accordion>
+
+  <Accordion title="Redis">
+    Starts a local Redis proxy on `127.0.0.1`. Connect using any Redis client with no password, as authentication is handled by the proxy.
+
+    ```bash
+    # Example
+    infisical pam access production/cache-primary --duration 2h
+    ```
+
+    Then connect with `redis-cli` or any Redis client:
+
+    ```bash
+    redis-cli -h 127.0.0.1 -p <port>
+    ```
+
+    Connection string format: `redis://127.0.0.1:<port>`
   </Accordion>
 
   <Accordion title="SSH">
@@ -223,7 +229,7 @@ Based on the account's template, the CLI starts the appropriate local proxy or c
   </Accordion>
 </AccordionGroup>
 
-## MFA Support
+## MFA support
 
 If your organization requires MFA for PAM access:
 
@@ -232,7 +238,11 @@ If your organization requires MFA for PAM access:
 3. CLI polls for up to 5 minutes for completion
 4. Access continues automatically after MFA verification
 
-## Reason Prompting
+<Note>
+  This is the only command that can satisfy an MFA requirement. [`pam agentic access`](/cli/commands/pam-agentic) does not support MFA-gated accounts yet, so reach those here.
+</Note>
+
+## Reason prompting
 
 Some PAM policies require an audit reason. Behavior:
 
@@ -247,7 +257,7 @@ Some PAM policies require an audit reason. Behavior:
 infisical pam access production/database --reason "Investigating incident INC-1234"
 ```
 
-## Error Messages
+## Error messages
 
 | Error | Cause | Solution |
 |-------|-------|----------|

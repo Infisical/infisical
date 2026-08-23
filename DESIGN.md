@@ -17,7 +17,7 @@ Infisical is a security tool for operators. The interface reads like
 infrastructure: dense, calm, and legible. Decorative treatments are reserved
 for brand-forward surfaces such as authentication and onboarding; the core
 product remains utilitarian. Dark is the native medium; the page canvas is
-`--color-background`, and light themes are not part of the system yet.
+`--color-page`, and light themes are not part of the system yet.
 
 Color carries **meaning before brand**. A danger badge is red because the
 action is destructive, not because red is the accent. A project-colored button
@@ -30,7 +30,7 @@ values are masked by default; revealing one is an intentional act.
 
 **Key characteristics:**
 
-- Dark-native; `--color-background` page canvas
+- Dark-native; `--color-page` page canvas
 - Semantic-first color (danger / success / warning / info / neutral)
 - Scope-aware (org / sub-org / project / admin)
 - Border-defined depth; overlapping labels retain the shared Badge styling
@@ -70,7 +70,8 @@ Used to signal the scope a surface, badge, or action belongs to.
 
 | Role              | Token                     |
 | ----------------- | ------------------------- |
-| Page background   | `--color-background`      |
+| Page canvas       | `--color-page`            |
+| Background        | `--color-background`      |
 | Foreground text   | `--color-foreground`      |
 | Card surface      | `--color-card`            |
 | Popover / Sheet   | `--color-popover`         |
@@ -126,7 +127,7 @@ font or substitute one role for another:
 | Role                    | Class                                                                     | Notes                                                              |
 | ----------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | Page title (h1)         | `text-2xl font-medium underline underline-offset-4 decoration-<scope>/90` | In `PageHeader`; scope icon (size 26) sits inline before the title |
-| Page description        | `text-mineshaft-300`                                                      | Sits under the title, `mt-1.5`                                     |
+| Page description        | `text-label`                                                              | Sits under the title, `mt-1.5`                                     |
 | Card title              | `text-lg font-semibold leading-none`                                      | `flex gap-1.5` so badges can sit inline                            |
 | Card description        | `text-sm text-accent`                                                     |                                                                    |
 | Body                    | `text-sm`                                                                 | Default for table cells, form values, dialog content               |
@@ -148,7 +149,6 @@ labels, and dropdown menu items. See §8 for voice rules on copy itself.
 
 New UI must use v3 components from [`frontend/src/components/v3/`](frontend/src/components/v3).
 The v2 library is legacy; only fall back when no v3 equivalent exists.
-`PageHeader` is the notable exception — still v2, still canonical for page titles.
 
 For exact tokens, class lists, and every variant, read the component source
 and its `*.stories.tsx` — this doc cites them rather than duplicating them.
@@ -186,18 +186,20 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 
 #### Forms
 
-| Component                                                                                                                                   | Reach for this when…                                                                                        |
-| ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| [`Field`](frontend/src/components/v3/generic/Field/Field.tsx)                                                                               | Wrap every form control — label + control + description + error. **Never render a bare control in a form.** |
-| [`Label`](frontend/src/components/v3/generic/Label/Label.tsx)                                                                               | Standalone form label outside a `Field`.                                                                    |
-| [`Input`](frontend/src/components/v3/generic/Input/Input.tsx) / [`TextArea`](frontend/src/components/v3/generic/TextArea/TextArea.tsx)      | Single-line / multi-line text entry.                                                                        |
-| [`InputGroup`](frontend/src/components/v3/generic/InputGroup/InputGroup.tsx)                                                                | Input with left/right addons — search bars, prefixed values.                                                |
-| [`Select`](frontend/src/components/v3/generic/Select/Select.tsx) / [`ReactSelect`](frontend/src/components/v3/generic/ReactSelect/index.ts) | Native-style dropdown / async or searchable dropdown.                                                       |
-| [`Switch`](frontend/src/components/v3/generic/Switch/Switch.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx)   | Boolean toggle / multi-select boolean.                                                                      |
-| [`Calendar`](frontend/src/components/v3/generic/Calendar/Calendar.tsx)                                                                      | Date / multi-date / range picker primitive.                                                                 |
-| [`DateRangeFilter`](frontend/src/components/v3/generic/DateRangeFilter/DateRangeFilter.tsx)                                                 | Date-range filter with presets — for filter bars.                                                           |
-| [`SecretInput`](frontend/src/components/v3/generic/SecretInput/SecretInput.tsx)                                                             | Secret-value editor with mask toggle and `${var}` highlighting.                                             |
-| [`PasswordGenerator`](frontend/src/components/v3/generic/PasswordGenerator/PasswordGenerator.tsx)                                           | Generate a password against project secret-validation rules.                                                |
+| Component                                                                                                                                 | Reach for this when…                                                                                        |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| [`Field`](frontend/src/components/v3/generic/Field/Field.tsx)                                                                             | Wrap every form control — label + control + description + error. **Never render a bare control in a form.** |
+| [`Label`](frontend/src/components/v3/generic/Label/Label.tsx)                                                                             | Standalone form label outside a `Field`.                                                                    |
+| [`Input`](frontend/src/components/v3/generic/Input/Input.tsx) / [`TextArea`](frontend/src/components/v3/generic/TextArea/TextArea.tsx)    | Single-line / multi-line text entry.                                                                        |
+| [`InputGroup`](frontend/src/components/v3/generic/InputGroup/InputGroup.tsx)                                                              | Input with left/right addons — search bars, prefixed values.                                                |
+| [`Select`](frontend/src/components/v3/generic/Select/Select.tsx)                                                                          | Non-searchable single-select with a short, known option list.                                               |
+| [`Combobox`](frontend/src/components/v3/generic/Combobox/Combobox.tsx)                                                                    | Searchable single- or multi-select with chips, rich rows, and viewport-aware positioning.                   |
+| [`ReactSelect`](frontend/src/components/v3/generic/ReactSelect/index.ts)                                                                  | Sunsetting compatibility path for creatable, grouped, or advanced custom-rendering behavior.                |
+| [`Switch`](frontend/src/components/v3/generic/Switch/Switch.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx) | Boolean toggle / multi-select boolean.                                                                      |
+| [`Calendar`](frontend/src/components/v3/generic/Calendar/Calendar.tsx)                                                                    | Date / multi-date / range picker primitive.                                                                 |
+| [`DateRangeFilter`](frontend/src/components/v3/generic/DateRangeFilter/DateRangeFilter.tsx)                                               | Date-range filter with presets — for filter bars.                                                           |
+| [`SecretInput`](frontend/src/components/v3/generic/SecretInput/SecretInput.tsx)                                                           | Secret-value editor with mask toggle and `${var}` highlighting.                                             |
+| [`PasswordGenerator`](frontend/src/components/v3/generic/PasswordGenerator/PasswordGenerator.tsx)                                         | Generate a password against project secret-validation rules.                                                |
 
 #### Containers & overlays
 
@@ -245,16 +247,20 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 | Component                                                                                                         | Reach for this when…                                                                  |
 | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | [`Separator`](frontend/src/components/v3/generic/Separator/Separator.tsx)                                         | Horizontal/vertical divider.                                                          |
+| [`AccessRestrictedBanner`](frontend/src/components/v3/platform/AccessRestrictedBanner.tsx)                       | Dedicated full-surface state for content blocked by the user's current permissions.  |
 | [`ScopeIcons`](frontend/src/components/v3/platform/ScopeIcons.tsx)                                                | `OrgIcon` / `SubOrgIcon` / `ProjectIcon` / `InstanceIcon` — use when intent is scope. |
-| [`DocumentationLinkBadge`](frontend/src/components/v3/platform/DocumentationLinkBadge/DocumentationLinkBadge.tsx) | Inline "Documentation" link badge in `CardTitle`.                                     |
+| [`SecretManagerResources`](frontend/src/components/v3/platform/SecretManagerResources/SecretManagerResources.ts) | Canonical Secret Manager resource catalog (icon, color classes, name, slug, permission subject). |
+| [`ProjectPermissionSubjects`](frontend/src/components/v3/platform/ProjectPermissionSubjects/ProjectPermissionSubjects.ts) | Icon and tile color for every project policy subject (`ProjectPermissionSub`). |
+| [`PageHeader`](frontend/src/components/v3/platform/PageHeader/PageHeader.tsx)                                     | Canonical full-width page heading with scope semantics, description, and page actions. |
+| [`DocumentationLinkBadge`](frontend/src/components/v3/platform/DocumentationLinkBadge/DocumentationLinkBadge.tsx) | Inline "Documentation" link badge in `CardTitle`.                                      |
 
 **Icons** — [`lucide-react`](https://lucide.dev). Sizing is bound by the
 host component; don't override unless necessary.
 
 ## 5. Layout Principles
 
-- **Page container** — `max-w-8xl` (88rem) centered, `bg-bunker-800`.
-- **Page header** — `PageHeader` with scope icon + underlined `h1` + description. See [`PageHeader.tsx`](frontend/src/components/v2/PageHeader/PageHeader.tsx). Always set `scope` to the correct hierarchy level.
+- **Page container** — `max-w-8xl` (88rem) centered, `bg-page`.
+- **Page header** — v3 `PageHeader` with scope icon + underlined `h1` + description. Import it from `@app/components/v3` and always set `scope` to the correct hierarchy level. See [`PageHeader.tsx`](frontend/src/components/v3/platform/PageHeader/PageHeader.tsx).
 - **Section** — one `Card` per logical section. Title + optional `DocumentationLinkBadge` in `CardHeader`; primary action in `CardAction` (top-right).
 - **Tables inside Cards** — filters and search sit in the `CardHeader` above the table; pagination sits in the `CardFooter` or bottom of `CardContent`. **Empty state** — when the table has no rows (and isn't loading), hide the `Table` entirely and render `Empty` in its place; never leave a column header floating above a blank body. Add `className="border"` to `Empty` whenever it's nested in a `Card`, `Sheet`, or `Dialog` so the dashed frame is visible against the parent surface (the component ships dashed-but-borderless on purpose for page-level use).
 - **Forms inside Sheets/Dialog** — create / edit flows open in a Sheet or Dialog, never inline, never as a full-page route. **Pick by form size:** small forms (1–2 fields, e.g. "Add domain", "Rename") go in a centered `Dialog`; large or multi-step forms (multiple fields, scrollable detail, file uploads, wizard steps) go in a right-side `Sheet`. When in doubt, default to Dialog — Sheet is for cases where Dialog feels cramped.
@@ -268,7 +274,7 @@ for elements that float (Popover, DropdownMenu, Sheet).
 
 | Layer           | Surface                                  | Border                        |
 | --------------- | ---------------------------------------- | ----------------------------- |
-| Page            | `bg-bunker-800`                          | —                             |
+| Page            | `bg-page`                                | —                             |
 | Card            | `bg-card`                                | `border-border`               |
 | Popover / Sheet | `bg-popover`                             | `border-border` + `shadow-lg` |
 | Row hover       | `bg-container-hover`                     | —                             |
@@ -398,6 +404,13 @@ Pasteable prompt fragments for AI coding agents producing new UI.
 > sentence naming the consequence, ending with "This cannot be undone."
 > Confirm button is variant `danger`. Cancel button is variant `outline`.
 
+**Unsaved changes:**
+
+> Use `DiscardChangesAlertDialog` with `useDiscardChangesGuard`. Title:
+> "Discard Changes?". Description names what will be lost. Confirm is
+> Discard (`danger`); cancel is Keep Editing. Overlay editors intercept
+> close with `requestDiscard`. Do not use `window.confirm`.
+
 **A documentation link in a section:**
 
 > Use `DocumentationLinkBadge` from `@app/components/v3/platform`. Place it
@@ -406,7 +419,7 @@ Pasteable prompt fragments for AI coding agents producing new UI.
 **Refer to:**
 
 - [`Badge.stories.tsx`](frontend/src/components/v3/generic/Badge/Badge.stories.tsx) — canonical semantic reference for variant choice.
-- [`OverviewPage`](frontend/src/pages/secret-manager/OverviewPage) — full-page reference (PageHeader, Card-with-table, Create Secret Sheet, filters, DropdownMenu + ButtonGroup).
+- [`OverviewPage`](frontend/src/pages/secret-manager/OverviewPage) — full-page composition reference (Card-with-table, Create Secret Sheet, filters, DropdownMenu + ButtonGroup). Use the v3 `PageHeader` documented above rather than mirroring its legacy header import.
 - [`AccessControlPage`](frontend/src/pages/project/AccessControlPage) — full-page reference (permission-gated actions, `DocumentationLinkBadge`, role badges with `ClockAlertIcon` for expired access).
 - §8 above for any user-visible copy.
 
@@ -421,7 +434,7 @@ Pasteable prompt fragments for AI coding agents producing new UI.
 4. **Adding a variant** — extend the `cva()` block in the component and add
    a story. Keep the tint pattern (`bg-<c>/15 border-<c>/10` for Badge,
    `bg-<c>/10 border-<c>/25` for Button).
-5. **Never use v2 for new code** — unless no v3 equivalent exists.
-   `PageHeader` is the notable v2 exception still used by all pages.
+5. **Never use v2 for new code** — unless no v3 equivalent exists. Use the v3
+   `PageHeader` for new page headings; existing v2 consumers migrate separately.
 6. **Before merging** — `make reviewable-ui` (lint + type-check).
 7. **When in doubt** — mirror `OverviewPage`.

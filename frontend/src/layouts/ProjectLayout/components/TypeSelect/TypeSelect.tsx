@@ -1,19 +1,9 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check } from "lucide-react";
 
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
-import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-  IconButton,
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-  PopoverTrigger
-} from "@app/components/v3";
+import { Command, CommandGroup, CommandItem, CommandList } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { getCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import {
@@ -25,6 +15,11 @@ import {
 import { useGetUserProjects } from "@app/hooks/api";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import {
+  NavbarSwitcher,
+  NavbarSwitcherContent,
+  NavbarSwitcherTrigger
+} from "@app/layouts/NavbarSwitcher";
 
 const PRODUCT_TYPES: ProjectType[] = [
   ProjectType.SecretManager,
@@ -112,8 +107,7 @@ const TypeSelectInner = ({
     <div
       className={`flex h-full min-w-16 items-center gap-1 pr-2 pl-1 ${showDivider ? "mr-2 border-r border-border" : "mr-2"}`}
     >
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverAnchor className="absolute left-18" />
+      <NavbarSwitcher open={open} onOpenChange={setOpen}>
         <button
           type="button"
           onClick={() => {
@@ -136,12 +130,8 @@ const TypeSelectInner = ({
           <ProductIcon className="h-[14px] w-[14px] shrink-0" />
           <span className="truncate">{pillLabel}</span>
         </button>
-        <PopoverTrigger asChild>
-          <IconButton variant="ghost" size="xs" aria-label="switch-product-type">
-            <ChevronsUpDown />
-          </IconButton>
-        </PopoverTrigger>
-        <PopoverContent align="start" sideOffset={20} className="w-80 p-0">
+        <NavbarSwitcherTrigger aria-label="switch-product-type" />
+        <NavbarSwitcherContent className="w-80">
           <Command>
             <CommandList>
               <CommandGroup heading="Products">
@@ -171,8 +161,8 @@ const TypeSelectInner = ({
               </CommandGroup>
             </CommandList>
           </Command>
-        </PopoverContent>
-      </Popover>
+        </NavbarSwitcherContent>
+      </NavbarSwitcher>
 
       <CertManagerNotConfiguredModal
         isOpen={isCertManagerSetupOpen}

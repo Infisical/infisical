@@ -5,7 +5,6 @@ import { z } from "zod";
 import { CertificatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
-import { NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { isUuidV4 } from "@app/lib/validator";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -19,16 +18,19 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
   CertExtendedKeyUsageType,
+  certificateAttributesSchema,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
-  domainComponentsSchema,
   subjectAttributeSchema
 } from "@app/services/certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { TCertificateIssuanceResponse } from "@app/services/certificate-v3/certificate-v3-types";
+import {
+  CertificateRenewalKeySource,
+  TCertificateIssuanceResponse
+} from "@app/services/certificate-v3/certificate-v3-types";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -41,6 +43,8 @@ type CertificateServiceResponse = TCertificateIssuanceResponse | Omit<TCertifica
 // their format here (wildcards like *.example.com are valid); only bound the length, which
 // subjectAttributeSchema does against the varchar(255) columns they are persisted in.
 const subjectAttributeField = subjectAttributeSchema;
+
+const csrSchema = z.string().trim().min(1, "CSR cannot be empty").max(4096, "CSR cannot exceed 4096 characters");
 
 const extractCertificateData = (
   data: CertificateServiceResponse
@@ -136,46 +140,11 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         .object({
           profileId: z.string().uuid(),
           applicationId: z.string().uuid().optional(),
-          csr: z
-            .string()
-            .trim()
-            .min(1, "CSR cannot be empty")
-            .max(4096, "CSR cannot exceed 4096 characters")
-            .optional(),
-          attributes: z
-            .object({
-              commonName: subjectAttributeField.nullish(),
-              organization: subjectAttributeField.nullish(),
-              organizationalUnit: subjectAttributeField.nullish(),
-              country: subjectAttributeField.nullish(),
-              state: subjectAttributeField.nullish(),
-              locality: subjectAttributeField.nullish(),
-              domainComponents: domainComponentsSchema.nullish(),
-              keyUsages: z.nativeEnum(CertKeyUsageType).array().optional(),
-              extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
-              altNames: z
-                .array(
-                  z.object({
-                    type: z.nativeEnum(CertSubjectAlternativeNameType),
-                    value: z.string().min(1, "SAN value cannot be empty")
-                  })
-                )
-                .optional(),
-              signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
-              keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
-              ttl: z
-                .string()
-                .trim()
-                .refine((val) => !val || ms(val) > 0, "TTL must be a positive number")
-                .optional(),
+          csr: csrSchema.optional(),
+          attributes: certificateAttributesSchema
+            .extend({
               notBefore: validateCaDateField.optional(),
-              notAfter: validateCaDateField.optional(),
-              basicConstraints: z
-                .object({
-                  isCA: z.boolean(),
-                  pathLength: z.number().int().min(0).optional()
-                })
-                .optional()
+              notAfter: validateCaDateField.optional()
             })
             .optional(),
           removeRootsFromChain: booleanSchema.default(false).optional(),
@@ -281,7 +250,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
           properties: {
-            orgId: req.permission.orgId
+            orgId: req.permission.orgId,
+            projectId: data.projectId,
+            applicationId: requestBody.applicationId,
+            profileId: requestBody.profileId
           }
         });
 
@@ -332,7 +304,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           distinctId: getTelemetryDistinctId(req),
           organizationId: req.permission.orgId,
           properties: {
-            orgId: req.permission.orgId
+            orgId: req.permission.orgId,
+            projectId: data.projectId,
+            applicationId: requestBody.applicationId,
+            profileId: requestBody.profileId
           }
         });
 
@@ -410,7 +385,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: data.projectId,
+          applicationId: requestBody.applicationId,
+          profileId: requestBody.profileId
         }
       });
 
@@ -1161,14 +1139,22 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       hide: false,
       operationId: "renewCertificate",
       tags: [ApiDocsTags.PkiCertificates],
+      description:
+        "Renew a certificate. The renewed certificate copies the one being renewed, then applies only the changes supplied here. Profile defaults are not applied.",
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().uuid().describe(CERTIFICATES.RENEW.id)
       }),
       body: z
         .object({
-          removeRootsFromChain: booleanSchema.default(false).optional()
+          removeRootsFromChain: booleanSchema.default(false).describe(CERTIFICATES.RENEW.removeRootsFromChain),
+          renewalKeySource: z
+            .nativeEnum(CertificateRenewalKeySource)
+            .optional()
+            .describe(CERTIFICATES.RENEW.renewalKeySource),
+          csr: csrSchema.optional().describe(CERTIFICATES.RENEW.csr),
+          attributes: certificateAttributesSchema.optional().describe(CERTIFICATES.RENEW.attributes)
         })
-        .optional(),
+        .nullish(),
       response: {
         200: z.object({
           certificate: z.string().trim(),
@@ -1183,24 +1169,16 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const originalCertificate = await server.services.certificate.getCert({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        id: req.params.id
-      });
-      if (!originalCertificate) {
-        throw new NotFoundError({ message: "Original certificate not found" });
-      }
-
       const data = await server.services.certificateV3.renewCertificate({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         certificateId: req.params.id,
-        removeRootsFromChain: req.body?.removeRootsFromChain
+        removeRootsFromChain: req.body?.removeRootsFromChain,
+        renewalKeySource: req.body?.renewalKeySource,
+        csr: req.body?.csr,
+        attributes: req.body?.attributes
       });
 
       await server.services.auditLog.createAuditLog({
@@ -1212,7 +1190,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             originalCertificateId: req.params.id,
             newCertificateId: data.certificateId || "",
             profileName: data.profileName,
-            commonName: data.commonName || ""
+            commonName: data.commonName || "",
+            renewalKeySource: req.body?.renewalKeySource ?? CertificateRenewalKeySource.New,
+            changedAttributes: data.changedAttributes ?? []
           }
         }
       });
@@ -1222,7 +1202,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: data.projectId
         }
       });
 
@@ -1289,6 +1270,17 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           }
         });
 
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.CertificateUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            orgId: req.permission.orgId,
+            projectId: data.projectId,
+            updatedField: "renewal-config"
+          }
+        });
+
         return {
           message: "Auto-renewal disabled successfully"
         };
@@ -1317,6 +1309,17 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           }
         });
 
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.CertificateUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            orgId: req.permission.orgId,
+            projectId: data.projectId,
+            updatedField: "renewal-config"
+          }
+        });
+
         return {
           message: "Certificate configuration updated successfully",
           renewBeforeDays: data.renewBeforeDays
@@ -1342,7 +1345,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate",
       params: z.object({
-        id: z.string().trim().describe(CERTIFICATES.GET.id)
+        id: z.string().trim().uuid().describe(CERTIFICATES.GET.id)
       }),
       response: {
         200: z.object({
@@ -1374,6 +1377,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             caType: z.enum(["internal", "external"]).nullable().optional(),
             profileName: z.string().nullable().optional(),
             applicationName: z.string().nullable().optional(),
+            hasPrivateKey: z.boolean().describe(CERTIFICATES.GET.hasPrivateKey),
             metadata: z.array(z.object({ key: z.string(), value: z.string() })).optional()
           })
         })
@@ -1420,7 +1424,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Update certificate",
       params: z.object({
-        id: z.string().trim().describe(CERTIFICATES.GET.id)
+        id: z.string().trim().uuid().describe(CERTIFICATES.GET.id)
       }),
       body: z.object({
         metadata: ResourceMetadataNonEncryptionSchema.optional()
@@ -1454,6 +1458,17 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             }
           }
         });
+
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.CertificateUpdated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            orgId: req.permission.orgId,
+            projectId: result.projectId,
+            updatedField: "certificate"
+          }
+        });
       }
 
       return { metadata: result.metadata };
@@ -1473,7 +1488,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate private key",
       params: z.object({
-        id: z.string().trim().describe(CERTIFICATES.GET.id)
+        id: z.string().trim().uuid().describe(CERTIFICATES.GET.id)
       }),
       response: {
         200: z.string().trim()
@@ -1501,6 +1516,16 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertificatePrivateKeyDownloaded,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: cert.projectId
+        }
+      });
+
       addNoCacheHeaders(reply);
 
       return certPrivateKey;
@@ -1520,7 +1545,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate bundle including the certificate, chain, and private key.",
       params: z.object({
-        id: z.string().trim().describe(CERTIFICATES.GET_CERT.id)
+        id: z.string().trim().uuid().describe(CERTIFICATES.GET_CERT.id)
       }),
       response: {
         200: z.object({
@@ -1560,7 +1585,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           format: "pem-bundle",
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: cert.projectId
         }
       });
 
@@ -1629,6 +1655,17 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertificateImported,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: cert.projectId,
+          applicationId: req.body.applicationId
+        }
+      });
+
       return {
         certificate,
         certificateChain,
@@ -1693,7 +1730,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: ca.projectId,
+          revocationReason: req.body.revocationReason
         }
       });
 
@@ -1718,7 +1757,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Delete certificate",
       params: z.object({
-        id: z.string().trim().describe(CERTIFICATES.DELETE.id)
+        id: z.string().trim().uuid().describe(CERTIFICATES.DELETE.id)
       }),
       response: {
         200: z.object({
@@ -1753,7 +1792,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: deletedCert.projectId
         }
       });
 
@@ -1828,7 +1868,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Get certificate body of certificate",
       params: z.object({
-        id: z.string().trim().describe(CERTIFICATES.GET_CERT.id)
+        id: z.string().trim().uuid().describe(CERTIFICATES.GET_CERT.id)
       }),
       response: {
         200: z.object({
@@ -1881,7 +1921,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiCertificates],
       description: "Download certificate in PKCS12 format",
       params: z.object({
-        id: z.string().trim().describe(CERTIFICATES.GET.id)
+        id: z.string().trim().uuid().describe(CERTIFICATES.GET.id)
       }),
       body: z.object({
         password: z
@@ -1924,7 +1964,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           format: "pkcs12",
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: cert.projectId
         }
       });
 

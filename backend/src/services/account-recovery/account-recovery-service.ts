@@ -32,18 +32,19 @@ export const accountRecoveryServiceFactory = ({
   /*
    * Account recovery flow via email. Step 1: send recovery email
    */
-  const sendRecoveryEmail = async (unsanitizedEmail: string) => {
+  const sendRecoveryEmail = async (unsanitizedUsername: string) => {
     const sendEmail = async () => {
-      const email = sanitizeEmail(unsanitizedEmail);
-      const user = await userDAL.findOne({ username: email });
+      const username = sanitizeEmail(unsanitizedUsername);
+      const user = await userDAL.findOne({ username });
       if (!user) throw new BadRequestError({ message: "Failed to find user data" });
 
       if (user && user.isAccepted) {
         const cfg = getConfig();
 
+        const recipient = user.email ?? user.username;
         const hasEmailAuth = user.authMethods?.includes(AuthMethod.EMAIL);
         const substitutions: Record<string, unknown> = {
-          email,
+          username: user.username,
           isCloud: cfg.isCloud,
           siteUrl: cfg.SITE_URL || "",
           hasEmailAuth,
@@ -71,7 +72,7 @@ export const accountRecoveryServiceFactory = ({
         substitutions.token = token;
         await smtpService.sendMail({
           template: SmtpTemplates.ResetPassword,
-          recipients: [email],
+          recipients: [recipient],
           subjectLine: "Infisical account recovery",
           substitutions
         });
@@ -85,10 +86,10 @@ export const accountRecoveryServiceFactory = ({
   /*
    * Account recovery flow via email. Step 2: verify the token and inject a temp token to reset password
    */
-  const verifyRecoveryEmail = async (unsanitizedEmail: string, code: string) => {
+  const verifyRecoveryEmail = async (unsanitizedUsername: string, code: string) => {
     const cfg = getConfig();
-    const email = sanitizeEmail(unsanitizedEmail);
-    const user = await userDAL.findOne({ username: email });
+    const username = sanitizeEmail(unsanitizedUsername);
+    const user = await userDAL.findOne({ username });
 
     // Use a dummy userId when there's no valid user.
     const shouldReject = !user || (user && !user.isAccepted);

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PencilIcon } from "lucide-react";
@@ -6,8 +6,17 @@ import picomatch from "picomatch";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Lottie, Modal, ModalContent } from "@app/components/v2";
+import { PageLoader } from "@app/components/v3";
 import {
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Button,
   Card,
@@ -16,6 +25,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -25,7 +39,15 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  Field,
+  FieldLabel,
   IconButton,
+  Input,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
   Table,
   TableBody,
   TableCell,
@@ -52,7 +74,8 @@ import { TProjectRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import { canModifyByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
 
-import { MemberRoleModify } from "./MemberRoleModify";
+import { MemberMultiRoleModify } from "./MemberMultiRoleModify";
+import { MemberSingleRoleModify } from "./MemberSingleRoleModify";
 
 type Props = {
   membershipDetails: TWorkspaceUser;
@@ -70,6 +93,7 @@ export const MemberRoleDetailsSection = ({
   const { projectId, currentProject } = useProject();
   const { permission } = useProjectPermission();
   const navigate = useNavigate();
+  const [deleteRoleConfirmation, setDeleteRoleConfirmation] = useState("");
 
   const assignRoleConditions = useMemo(
     () => getMemberAssignRoleConditions(permission),
@@ -90,9 +114,10 @@ export const MemberRoleDetailsSection = ({
 
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deleteRole",
+    "modifyManyRoles",
     "modifyRole"
   ] as const);
-  const { mutateAsync: updateUserWorkspaceRole } = useUpdateUserWorkspaceRole();
+  const updateUserWorkspaceRole = useUpdateUserWorkspaceRole();
 
   const isOwnProjectMembershipDetails = userId === membershipDetails?.user?.id;
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
@@ -100,7 +125,7 @@ export const MemberRoleDetailsSection = ({
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TProjectRole;
     const updatedRoles = membershipDetails?.roles?.filter((el) => el.id !== id);
-    await updateUserWorkspaceRole({
+    await updateUserWorkspaceRole.mutateAsync({
       projectId,
       projectType: currentProject?.type,
       roles: updatedRoles.map(
@@ -130,6 +155,7 @@ export const MemberRoleDetailsSection = ({
       membershipId: isCertManager ? membershipDetails.user.id : membershipDetails.id
     });
     createNotification({ type: "success", text: "Successfully removed role" });
+    setDeleteRoleConfirmation("");
     handlePopUpClose("deleteRole");
   };
 
@@ -154,7 +180,7 @@ export const MemberRoleDetailsSection = ({
                       size="xs"
                       variant="outline"
                       onClick={() => {
-                        handlePopUpOpen("modifyRole");
+                        handlePopUpOpen("modifyManyRoles");
                       }}
                       isDisabled={isEditDisabled}
                     >
@@ -183,9 +209,8 @@ export const MemberRoleDetailsSection = ({
           {
             /* eslint-disable-next-line no-nested-ternary */
             isMembershipDetailsLoading ? (
-              // scott: todo proper loader
-              <div className="flex h-40 w-full items-center justify-center">
-                <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+              <div className="h-40 w-full">
+                <PageLoader lottieClassName="w-16" />
               </div>
             ) : hasRoles ? (
               <Table>
@@ -202,6 +227,18 @@ export const MemberRoleDetailsSection = ({
                     const isExpired =
                       roleDetails.isTemporary &&
                       new Date() > new Date(roleDetails.temporaryAccessEndTime || "");
+
+                    const navigateToRole = () =>
+                      navigate({
+                        to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                        params: {
+                          projectId: currentProject.id,
+                          roleSlug:
+                            roleDetails.role === "custom"
+                              ? roleDetails.customRoleSlug
+                              : roleDetails.role
+                        }
+                      });
 
                     let text = "Permanent";
                     let toolTipText = "Non-Expiring Access";
@@ -225,21 +262,12 @@ export const MemberRoleDetailsSection = ({
                       <TableRow
                         className={`group h-10 ${isCertManager ? "" : "cursor-pointer"}`}
                         key={`user-project-identity-${roleDetails?.id}`}
-                        onClick={
-                          isCertManager
-                            ? undefined
-                            : () =>
-                                navigate({
-                                  to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
-                                  params: {
-                                    projectId: currentProject.id,
-                                    roleSlug:
-                                      roleDetails.role === "custom"
-                                        ? roleDetails.customRoleSlug
-                                        : roleDetails.role
-                                  }
-                                })
-                        }
+                        role={isCertManager ? undefined : "link"}
+                        tabIndex={isCertManager ? undefined : 0}
+                        onKeyDown={(event) => {
+                          if (!isCertManager && event.key === "Enter") navigateToRole();
+                        }}
+                        onClick={isCertManager ? undefined : navigateToRole}
                       >
                         <TableCell className="max-w-0 truncate">
                           {roleDetails.role === "custom"
@@ -271,12 +299,30 @@ export const MemberRoleDetailsSection = ({
                                 <IconButton
                                   size="xs"
                                   variant="ghost"
+                                  aria-label="Open role actions"
                                   onClick={(e) => e.stopPropagation()}
+                                  onKeyDown={(e) => e.stopPropagation()}
                                 >
                                   <EllipsisIcon />
                                 </IconButton>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
+                                <ProjectPermissionCan
+                                  I={ProjectPermissionActions.Edit}
+                                  a={ProjectPermissionSub.Member}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePopUpOpen("modifyRole", roleDetails);
+                                      }}
+                                      isDisabled={!isAllowed || !canModifyMemberRoles}
+                                    >
+                                      Modify Role
+                                    </DropdownMenuItem>
+                                  )}
+                                </ProjectPermissionCan>
                                 <ProjectPermissionCan
                                   I={ProjectPermissionActions.Edit}
                                   a={ProjectPermissionSub.Member}
@@ -325,7 +371,7 @@ export const MemberRoleDetailsSection = ({
                           variant="project"
                           size="xs"
                           onClick={() => {
-                            handlePopUpOpen("modifyRole");
+                            handlePopUpOpen("modifyManyRoles");
                           }}
                           isDisabled={isEditDisabled}
                         >
@@ -354,27 +400,95 @@ export const MemberRoleDetailsSection = ({
         </CardContent>
       </Card>
 
-      <DeleteActionModal
-        isOpen={popUp.deleteRole.isOpen}
-        deleteKey="remove"
-        title={`Do you want to remove role ${(popUp?.deleteRole?.data as TProjectRole)?.slug}?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
-        onDeleteApproved={() => handleRoleDelete()}
-      />
-      <Modal
-        isOpen={popUp.modifyRole.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("modifyRole", isOpen)}
+      <AlertDialog
+        open={popUp.deleteRole.isOpen}
+        onOpenChange={(isOpen) => {
+          if (updateUserWorkspaceRole.isPending) return;
+          if (!isOpen) setDeleteRoleConfirmation("");
+          handlePopUpToggle("deleteRole", isOpen);
+        }}
       >
-        <ModalContent
-          title="Roles"
-          subTitle="Select one or more of the pre-defined or custom roles to configure project permissions."
-        >
-          <MemberRoleModify
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Remove role &quot;{(popUp?.deleteRole?.data as TProjectRole)?.slug}&quot;?
+            </AlertDialogTitle>
+            <Alert variant="danger" appearance="borderless">
+              <AlertDescription>
+                This role will no longer grant access to this user.
+              </AlertDescription>
+            </Alert>
+          </AlertDialogHeader>
+          <Field>
+            <FieldLabel htmlFor="remove-member-role-confirmation">
+              Type &quot;remove&quot; to confirm
+            </FieldLabel>
+            <Input
+              id="remove-member-role-confirmation"
+              value={deleteRoleConfirmation}
+              onChange={(event) => setDeleteRoleConfirmation(event.target.value)}
+              autoComplete="off"
+              disabled={updateUserWorkspaceRole.isPending}
+            />
+          </Field>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={updateUserWorkspaceRole.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={updateUserWorkspaceRole.isPending}
+              isDisabled={deleteRoleConfirmation !== "remove"}
+              onClick={(event) => {
+                event.preventDefault();
+                handleRoleDelete().catch(() => undefined);
+              }}
+            >
+              Remove Role
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <Sheet
+        open={popUp.modifyManyRoles.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("modifyManyRoles", isOpen)}
+      >
+        <SheetContent className="flex flex-col gap-0 sm:max-w-xl">
+          <SheetHeader className="border-b">
+            <SheetTitle>Roles</SheetTitle>
+            <SheetDescription>
+              Select one or more of the pre-defined or custom roles to configure project
+              permissions.
+            </SheetDescription>
+          </SheetHeader>
+          <MemberMultiRoleModify
             projectMember={membershipDetails}
             onOpenUpgradeModal={onOpenUpgradeModal}
+            onClose={() => handlePopUpClose("modifyManyRoles")}
           />
-        </ModalContent>
-      </Modal>
+        </SheetContent>
+      </Sheet>
+      <Dialog
+        open={popUp.modifyRole.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("modifyRole", isOpen)}
+      >
+        <DialogContent className="overflow-visible sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Edit Role</DialogTitle>
+            <DialogDescription>
+              Update this role assignment and its access duration.
+            </DialogDescription>
+          </DialogHeader>
+          {popUp.modifyRole.data && (
+            <MemberSingleRoleModify
+              projectMember={membershipDetails}
+              role={popUp.modifyRole.data as TWorkspaceUser["roles"][number]}
+              onOpenUpgradeModal={onOpenUpgradeModal}
+              onSuccess={() => handlePopUpClose("modifyRole")}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

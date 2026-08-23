@@ -47,6 +47,7 @@ import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/E
 import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotations-v2/ReconcileLocalAccountRotationModal";
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
+import { CommitHistorySheet } from "@app/components/secrets/CommitHistorySheet";
 import {
   Button as ButtonV2,
   DeleteActionModal,
@@ -305,6 +306,7 @@ const OverviewPageContent = () => {
       environments: el.environments,
       dynamicSecretId: el.dynamicSecretId,
       honeyTokenId: el.honeyTokenId,
+      tags: el.tags,
       filterBy: el.filterBy
     })
   });
@@ -456,18 +458,18 @@ const OverviewPageContent = () => {
   );
 
   // Apply one-shot deep-link inputs to local filters, then strip them from the URL in a SINGLE
-  // navigate. These arrive either from a notification/email link (`search`, `filterBy`) or from
-  // the secret reference tree (`environments` + `search`). Handling them in one effect/navigate
+  // navigate. These arrive from notifications, legacy dashboard bookmarks (`tags`, `filterBy`),
+  // or the secret reference tree (`environments` + `search`). Handling them in one effect/navigate
   // (rather than two racing effects) guarantees every param is cleared after it's applied. That
   // matters most for `environments`: re-selecting the same environment from the reference tree
   // changes the param again and re-fires this effect instead of being a no-op. Runs reactively
   // (not mount-only) because the tree is rendered inside this page, so navigating from a node
   // updates the params without remounting.
   useEffect(() => {
-    const { search, filterBy, environments: envSlugs, ...query } = routerSearch;
+    const { search, tags, filterBy, environments: envSlugs, ...query } = routerSearch;
     const hasEnvLink = Boolean(envSlugs?.length);
 
-    if (!search && !filterBy && !hasEnvLink) return;
+    if (!search && !tags && !filterBy && !hasEnvLink) return;
     // Env link present but envs not loaded yet → wait so we don't strip it before applying.
     if (hasEnvLink && userAvailableEnvs.length === 0) return;
 
@@ -480,15 +482,31 @@ const OverviewPageContent = () => {
       }
     }
 
-    if (search || filterBy) {
+    if (search || tags || filterBy) {
       const initialFilter = { ...DEFAULT_FILTER_STATE };
       if (filterBy) {
-        const rowType = Object.values(RowType).find((rt) => rt === filterBy);
-        if (rowType) {
-          initialFilter[rowType] = true;
-        }
+        filterBy
+          .split(",")
+          .map((value) => value.trim())
+          .filter((value): value is RowType => Object.values(RowType).includes(value as RowType))
+          .forEach((rowType) => {
+            initialFilter[rowType] = true;
+          });
       }
+
+      const initialTagFilter = (tags ?? "")
+        .split(",")
+        .reduce<Record<string, boolean>>((acc, tag) => {
+          const tagSlug = tag.trim();
+          if (tagSlug) acc[tagSlug] = true;
+          return acc;
+        }, {});
+      if (Object.keys(initialTagFilter).length > 0) {
+        initialFilter[RowType.Secret] = true;
+      }
+
       setFilter(initialFilter);
+      setTagFilter(initialTagFilter);
 
       if (search) {
         setSearchFilter(search as string);
@@ -498,6 +516,7 @@ const OverviewPageContent = () => {
     navigate({ search: query, replace: true });
   }, [
     routerSearch.search,
+    routerSearch.tags,
     routerSearch.filterBy,
     routerSearch.environments?.join(","),
     userAvailableEnvs.length
@@ -542,9 +561,8 @@ const OverviewPageContent = () => {
   }, [canApproveAny, pendingApprovalsCount, openApprovalRequests, visibleEnvs, secretPath]);
 
   const {
-    data: { count: singleEnvCommitCount, folderId: singleEnvFolderId } = {
-      count: 0,
-      folderId: ""
+    data: { count: singleEnvCommitCount } = {
+      count: 0
     },
     isPending: isSingleEnvCommitCountPending,
     isFetching: isSingleEnvCommitCountFetching
@@ -918,6 +936,9 @@ const OverviewPageContent = () => {
   ] as const);
 
   const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
+  const [commitHistoryEnv, setCommitHistoryEnv] = useState<{ slug: string; name: string } | null>(
+    null
+  );
 
   // Auto-open honey token drawer when linked via notification/email
   useEffect(() => {
@@ -937,7 +958,7 @@ const OverviewPageContent = () => {
     }
   }, [routerSearch.dynamicSecretId, dynamicSecrets?.map((ds) => ds.id).join(",")]);
 
-  const handleViewCommitHistory = async (envSlug: string, preloadedFolderId?: string) => {
+  const handleViewCommitHistory = (envSlug: string) => {
     if (!subscription?.pitRecovery) {
       handlePopUpOpen("upgradePlan", {
         text: "You can use point-in-time recovery if you upgrade your Infisical plan."
@@ -947,25 +968,8 @@ const OverviewPageContent = () => {
 
     if (!canReadCommits) return;
 
-    let targetFolderId = preloadedFolderId;
-    if (!targetFolderId) {
-      try {
-        const res = await apiRequest.get<{ count: number; folderId: string }>(
-          "/api/v1/pit/commits/count",
-          { params: { environment: envSlug, path: secretPath, projectId } }
-        );
-        targetFolderId = res.data.folderId;
-      } catch {
-        createNotification({ type: "error", text: "Failed to load commit history" });
-        return;
-      }
-    }
-
-    navigate({
-      to: "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId",
-      params: { orgId, projectId, folderId: targetFolderId, environment: envSlug },
-      search: (query: Record<string, string | string[]>) => ({ ...query, secretPath })
-    });
+    const env = userAvailableEnvs.find((el) => el.slug === envSlug);
+    setCommitHistoryEnv({ slug: envSlug, name: env?.name ?? envSlug });
   };
 
   const handleAddSecretImport = () => {
@@ -2882,7 +2886,7 @@ const OverviewPageContent = () => {
                         type="button"
                         onClick={() => {
                           if (singleVisibleEnv) {
-                            handleViewCommitHistory(singleVisibleEnv.slug, singleEnvFolderId);
+                            handleViewCommitHistory(singleVisibleEnv.slug);
                           }
                         }}
                       >
@@ -3125,10 +3129,7 @@ const OverviewPageContent = () => {
                                     type="button"
                                     onClick={() => {
                                       if (singleVisibleEnv) {
-                                        handleViewCommitHistory(
-                                          singleVisibleEnv.slug,
-                                          singleEnvFolderId
-                                        );
+                                        handleViewCommitHistory(singleVisibleEnv.slug);
                                       }
                                     }}
                                   >
@@ -3783,6 +3784,18 @@ const OverviewPageContent = () => {
         projectId={projectId}
         onOpenChange={(isOpen) => handlePopUpToggle("viewHoneyTokenCredentials", isOpen)}
       />
+      {commitHistoryEnv && (
+        <CommitHistorySheet
+          isOpen
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setCommitHistoryEnv(null);
+          }}
+          projectId={projectId}
+          environment={commitHistoryEnv.slug}
+          environmentName={commitHistoryEnv.name}
+          secretPath={secretPath}
+        />
+      )}
       <HoneyTokenDetailsDrawer
         projectId={projectId}
         honeyTokenId={detailsDrawerHoneyTokenId}

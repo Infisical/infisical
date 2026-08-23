@@ -78,7 +78,7 @@ export const MicrosoftTeamsIntegrationForm = ({ adminIntegrationsConfig }: Props
               <div className="text-[15px] font-medium">Microsoft Teams</div>
             </div>
           </AccordionTrigger>
-          <AccordionContent>
+          <AccordionContent className="p-6">
             <div className="flex w-full flex-col gap-4">
               <div className="max-w-lg text-sm text-label">
                 Step 1: Create and configure Microsoft Teams bot and Azure Resources. Please refer

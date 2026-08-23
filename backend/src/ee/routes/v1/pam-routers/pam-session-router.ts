@@ -22,6 +22,7 @@ const SanitizedSessionSchema = PamSessionsSchema.pick({
   accountType: true,
   accountName: true,
   userId: true,
+  identityId: true,
   actorName: true,
   actorEmail: true,
   actorIp: true,
@@ -148,7 +149,11 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const result = await server.services.pamSession.getSessionCredentials(req.params.sessionId, req.permission.id);
+      const result = await server.services.pamSession.getSessionCredentials(
+        req.params.sessionId,
+        req.permission.id,
+        req.permission.orgId
+      );
 
       if (result.sessionStarted) {
         await server.services.auditLog.createAuditLog({
@@ -340,10 +345,17 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.auth.authMode !== AuthMode.JWT) {
-        throw new BadRequestError({ message: "Account access requires JWT authentication" });
+      let actorEmail = "";
+      let actorName = "";
+      if (req.auth.authMode === AuthMode.JWT) {
+        actorEmail = req.auth.user.email ?? "";
+        actorName = `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim();
+      } else if (req.auth.authMode === AuthMode.IDENTITY_ACCESS_TOKEN) {
+        actorName = req.auth.identityName;
+      } else {
+        throw new BadRequestError({ message: "Account access requires user or machine identity authentication" });
       }
 
       const result = await server.services.pamSession.access({
@@ -355,8 +367,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           actorOrgId: req.permission.orgId,
           actorAuthMethod: req.permission.authMethod
         },
-        actorEmail: req.auth.user.email ?? "",
-        actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
+        actorEmail,
+        actorName,
         actorIp: req.realIp ?? "",
         actorUserAgent: req.headers["user-agent"] ?? "",
         reason: req.body.reason,

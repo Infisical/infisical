@@ -15,6 +15,7 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
+import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-validators";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
@@ -27,7 +28,7 @@ import {
   extractCertificateRequestFromCSR
 } from "@app/services/certificate-common/certificate-csr-utils";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
-import { TCertificateRequest } from "@app/services/certificate-policy/certificate-policy-types";
+import { TCertificateRequest, TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -104,6 +105,7 @@ const buildRevalidationRequest = ({
   notBefore,
   notAfter,
   altNames,
+  basicConstraints,
   profileDefaults,
   ttl
 }: {
@@ -121,6 +123,7 @@ const buildRevalidationRequest = ({
   notBefore?: Date | null;
   notAfter?: Date | null;
   altNames?: TAltNameEntry[] | null;
+  basicConstraints?: { isCA: boolean; pathLength?: number | null } | null;
   profileDefaults: Parameters<typeof applyProfileDefaults>[1];
   ttl?: string;
 }): TCertificateRequest => {
@@ -148,6 +151,13 @@ const buildRevalidationRequest = ({
     const { keyAlgorithm: csrKeyAlg, signatureAlgorithm: csrSigAlg } = extractAlgorithmsFromCSR(csr);
     mappedRequest.keyAlgorithm = csrKeyAlg;
     mappedRequest.signatureAlgorithm = csrSigAlg;
+  }
+  // The stored value wins over anything reconstructed from the CSR or profile defaults.
+  if (basicConstraints) {
+    mappedRequest.basicConstraints = {
+      isCA: basicConstraints.isCA,
+      pathLength: basicConstraints.pathLength ?? undefined
+    };
   }
   if (notAfter) {
     mappedRequest.notBefore = notBefore || undefined;
@@ -359,12 +369,7 @@ export const certificateApprovalServiceFactory = (
       notAfter?: Date;
     };
     policy?: {
-      subject?: Array<{
-        type: string;
-        allowed?: string[];
-        required?: string[];
-        denied?: string[];
-      }>;
+      subject?: TSubjectRule[];
       sans?: Array<{
         type: string;
         allowed?: string[];
@@ -666,6 +671,12 @@ export const certificateApprovalServiceFactory = (
       });
     }
 
+    if (caType === CaType.AWS_PCA) {
+      validateAwsPcaCaIssuanceInputs({
+        basicConstraints: certRequest.basicConstraints as { isCA: boolean; pathLength?: number | null } | null
+      });
+    }
+
     if (caType === CaType.GODADDY) {
       // Validate the CSR's actual contents when one is present, so an approved BYO CSR can't carry a
       // non-RSA key or extra SANs the GoDaddy guard never saw.
@@ -696,6 +707,7 @@ export const certificateApprovalServiceFactory = (
       notBefore: certRequest.notBefore,
       notAfter: certRequest.notAfter,
       altNames,
+      basicConstraints: certRequest.basicConstraints as { isCA: boolean; pathLength?: number | null } | null,
       profileDefaults: profile.defaults,
       ttl: effectiveTtl
     });
@@ -731,6 +743,7 @@ export const certificateApprovalServiceFactory = (
       country: certRequest.country || undefined,
       state: certRequest.state || undefined,
       locality: certRequest.locality || undefined,
+      basicConstraints: certRequest.basicConstraints as { isCA: boolean; pathLength?: number | null } | null,
       ...(certRequest.applicationId && { applicationId: certRequest.applicationId })
     });
 

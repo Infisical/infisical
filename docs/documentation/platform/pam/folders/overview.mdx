@@ -16,7 +16,7 @@ Common patterns:
 
 The right pattern depends on your organization. Folder-level permissions are the primary way to grant access, though you can also assign access directly on individual accounts when needed.
 
-## Creating a Folder
+## Creating a folder
 
 <Steps>
   <Step title="Navigate to Accounts">
@@ -34,11 +34,11 @@ The right pattern depends on your organization. Folder-level permissions are the
 
 Once created, you can start adding accounts to it. But first, you'll probably want to set up who can manage this folder.
 
-## Managing Access
+## Managing access
 
-Access to a folder is controlled through **[memberships](/documentation/platform/pam/concepts/access-control)**. You assign users or groups a role, and that role determines what they can do.
+Access to a folder is controlled through **[memberships](/documentation/platform/pam/concepts/access-control)**. You assign a user, group, or [machine identity](/documentation/platform/identities/machine-identities) a role, and that role determines what they can do.
 
-### Adding Members
+### Adding members
 
 <Steps>
   <Step title="Open the folder">
@@ -52,7 +52,7 @@ Access to a folder is controlled through **[memberships](/documentation/platform
     
     | Field | Description |
     |-------|-------------|
-    | **User/Group** | Who you're granting access to |
+    | **User/Group/Identity** | Who you're granting access to |
     | **Role** | What they can do (see roles below) |
     | **Expires** | Optional expiration date for temporary access |
     
@@ -70,19 +70,20 @@ Access to a folder is controlled through **[memberships](/documentation/platform
 
 When you assign a role on a folder, it applies to **all accounts** inside that folder. This is the main way to grant access — you don't have to set up permissions on each account individually.
 
-### Time-Bound Access
+### Time-bound access
 
 For contractors or temporary team members, set an expiration when adding the membership. The access is automatically revoked when it expires — no manual cleanup needed.
 
-### Groups vs Individual Users
+### Users, groups, and machine identities
 
-You can grant access to individual users or to groups:
+You can grant folder access to any of the three:
 - **Individual users** — straightforward, easy to audit
 - **Groups** — access follows group membership; when someone joins or leaves the group, their folder access updates automatically
+- **Machine identities** — for unattended workloads, such as an [AI agent](/documentation/platform/pam/ai-agents/overview) on a schedule. **Connector** is the usual role, and time-bound access works here too.
 
-Groups are managed at the organization level and can sync from identity providers like Okta or Azure AD.
+Groups are managed at the organization level and can sync from identity providers like Okta or Entra ID.
 
-## Next Steps
+## Next steps
 
 Now that you have a folder, you'll want to add accounts to it. But before that, you might want to set up [templates](/documentation/platform/pam/templates/overview) to define what rules apply to those accounts.
 

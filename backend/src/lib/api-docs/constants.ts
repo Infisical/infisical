@@ -54,6 +54,7 @@ export enum ApiDocsTags {
   DynamicSecrets = "Dynamic Secrets",
   SecretImports = "Secret Imports",
   SecretRotations = "Secret Rotations",
+  SecretValidationRules = "Secret Validation Rules",
   ProxiedServices = "Proxied Services",
   IdentitySpecificPrivilegesV1 = "Identity Specific Privileges",
   IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
@@ -892,6 +893,60 @@ export const ORGANIZATIONS = {
   }
 } as const;
 
+export const INSIGHTS = {
+  GET_SECRETS_SUMMARY: {
+    activeLeases:
+      "The number of dynamic secret leases currently active across the organization's secret management projects. Revoked and expired leases are not counted.",
+    users: "The number of users who have accepted an active membership in the organization.",
+    identities: "The number of machine identities that belong to the organization."
+  },
+  GET_SECRETS_PROJECTS: {
+    offset: "The number of projects to skip before returning results.",
+    limit: "The maximum number of projects to return per page.",
+    projectId: "The ID of the project.",
+    projectName: "The name of the project.",
+    projectSlug: "The slug of the project.",
+    duplicatedSecrets:
+      "The number of secrets in the project whose value is shared with at least one other secret in the same project. Secrets whose value is a reference to another secret are counted as duplicates. Null when the project does not have secret blind indexing enabled.",
+    staleSecrets: "The number of secrets in the project that have not been updated in the last 90 days.",
+    failedRotations: "The number of secret rotations in the project whose last rotation attempt failed.",
+    failedSyncs: "The number of secret syncs in the project whose last sync attempt failed.",
+    orphanedLeases:
+      "The number of dynamic secret leases in the project that failed to be revoked and require manual cleanup.",
+    totalSecrets: "The total number of shared secrets in the project.",
+    warnings: "The counts of outstanding issues detected in the project.",
+    severityScore:
+      "A relative score used to rank projects by the severity of their outstanding issues. The scoring heuristic may change over time.",
+    totalProjects: "The total number of secret management projects in the organization.",
+    projectsWithIssues: "The number of secret management projects in the organization with at least one issue."
+  },
+  GET_SECRETS_ACCESS_VOLUME: {
+    days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",
+    date: "The day the accesses happened on, in UTC, as YYYY-MM-DD.",
+    total:
+      "The number of times a secret value was accessed across every project in the organization on this day, by any user or machine identity."
+  },
+  GET_SECRETS_AUTH_METHOD_DISTRIBUTION: {
+    methods:
+      "One entry for each machine identity authentication method that was used to access a secret value in the last seven days, ordered from most to least used. Methods that were not used are not included.",
+    authMethod: "The machine identity authentication method that was used to authenticate the accesses.",
+    count:
+      "The number of times a secret value was accessed across every project in the organization using this authentication method.",
+    totalFetches:
+      "The total number of times a secret value was accessed by a machine identity across every project in the organization in the last seven days. Accesses by users are not counted, and neither are accesses whose authentication method could not be determined, which happens for accesses recorded before the method was captured in audit logs."
+  },
+  GET_STATIC_SECRETS_USAGE: {
+    weeks:
+      "One entry for each of the last twelve weeks, oldest first. Weeks in which no secret was created are included with a count of zero.",
+    weekStart:
+      "The Monday the week starts on, in UTC, as YYYY-MM-DD. Weeks are UTC calendar weeks, not a rolling window anchored on today.",
+    totalSecrets:
+      "The number of static secrets created across every secret management project in the organization during this week. Each week is counted on its own, so this is not a running total. Personal secret overrides are not counted, and neither are secrets in projects or environments that have been deleted. Because deleted secrets leave no record, a week counts only the secrets created then that still exist today, so earlier weeks understate what was created at the time and drift lower as those secrets are deleted.",
+    isPartial:
+      "Whether the week is still in progress. True for the last entry only, which covers Monday through now rather than a full week, so its count is not comparable to the weeks before it."
+  }
+} as const;
+
 export const ORG_IDENTITY_MEMBERSHIP = {
   CREATE_IDENTITY_MEMBERSHIP: {
     identityId: "The ID of the machine identity to create the membership for.",
@@ -1463,6 +1518,10 @@ export const DASHBOARD = {
     includeSecretRotations: "Whether to include secret rotations in the response.",
     includeHoneyTokens: "Whether to include honey tokens in the response.",
     includeProxiedServices: "Whether to include proxied services in the response."
+  },
+  SECRET_DEEP_SEARCH: {
+    offset: "The offset to start from, applied to each resource type separately.",
+    limit: "The number of results to return per resource type."
   }
 } as const;
 
@@ -2085,7 +2144,17 @@ export const CERTIFICATE_AUTHORITIES = {
 export const CERTIFICATES = {
   GET: {
     id: "The ID of the certificate to get.",
-    serialNumber: "The serial number of the certificate to get."
+    serialNumber: "The serial number of the certificate to get.",
+    hasPrivateKey: "Whether Infisical holds the private key for this certificate."
+  },
+  RENEW: {
+    id: "The ID of the certificate to renew.",
+    renewalKeySource:
+      "How the renewed certificate's key pair is handled. 'new' generates a fresh pair, 'reuse' keeps the current one so the renewed certificate carries the same public key, and 'csr' takes the key from a supplied signing request. Defaults to 'new'.",
+    csr: "A PEM-encoded certificate signing request to renew from. Its subject, key and extensions take precedence, so only TTL and basic constraints may be set alongside it.",
+    attributes:
+      "Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied.",
+    removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain."
   },
   REVOKE: {
     id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
@@ -2121,6 +2190,19 @@ export const CERTIFICATES = {
     privateKey:
       "The PEM-encoded private key associated with the imported certificate. Returned only when a private key was supplied at import.",
     serialNumber: "The serial number of the imported certificate."
+  }
+};
+
+const domainComponentRule = (rule: string) =>
+  `Domain component sequences that are ${rule}. Each entry is one sequence, its components comma-joined most specific first: "corp,example,com" matches DC=corp,DC=example,DC=com. A request matches a sequence only when its components line up position by position, so the same labels in another order do not match.`;
+
+const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.`;
+
+export const CERTIFICATE_POLICIES = {
+  SUBJECT_DOMAIN_COMPONENT_RULE: {
+    allowed: domainComponentRule("permitted"),
+    required: domainComponentRule("required"),
+    denied: DOMAIN_COMPONENT_DENIED_RULE
   }
 };
 
@@ -3792,24 +3874,45 @@ export const GATEWAYS = {
   CREATE: {
     name: "Name of the gateway.",
     authMethod:
-      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
+      "Auth method to configure on the gateway. `aws` carries the AWS allowlists; `kubernetes` carries the cluster host and namespace/service account allowlists; `token` is configurationless and requires a separate POST /v3/gateways/:id/token call to mint the bootstrap token."
   },
   UPDATE: {
     authMethod:
-      "Replacement auth method. Same shape as in create — `aws` with allowlists or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
+      "Replacement auth method. Same shape as in create: `aws` with allowlists, `kubernetes` with cluster config, or `token` with no config. Existing gateways keep working until they restart and re-authenticate via the new method."
   },
   AUTH_METHOD: {
     stsEndpoint: "The endpoint URL for the AWS STS API.",
     allowedPrincipalArns:
       "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
     allowedAccountIds:
-      "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical."
+      "The comma-separated list of trusted AWS account IDs that are allowed to authenticate with Infisical.",
+    kubernetesHost:
+      "The URL of the Kubernetes API server that Infisical reviews the gateway's service account token against (e.g. https://my-cluster.example.com:6443). Omit only when tokenReviewMode is 'gateway', where the reviewing gateway calls its own API server.",
+    tokenReviewMode:
+      "Who performs the TokenReview. 'api' means Infisical does, using the configured token reviewer JWT. 'gateway' means the selected gateway does, using its own in-cluster service account, which requires no Kubernetes host or reviewer token but requires that gateway to run as a pod in the cluster.",
+    gatewayId:
+      "The gateway to route TokenReview traffic through, for clusters whose API server Infisical cannot reach. Must be a different gateway that is already enrolled and connected. Mutually exclusive with gatewayPoolId.",
+    gatewayPoolId:
+      "The gateway pool to route TokenReview traffic through. Any healthy member performs the request, so this survives a single gateway going offline. Mutually exclusive with gatewayId.",
+    caCertificate:
+      "The PEM-encoded CA certificate that issued the Kubernetes API server's TLS certificate. Required when the API server uses a certificate the system trust store does not recognise, which is the usual case for a cluster CA.",
+    tokenReviewerJwt:
+      "A long-lived service account token with the system:auth-delegator ClusterRole used to submit TokenReview requests. Omit to have the gateway's own token act as the reviewer. Write-only: never returned by the API.",
+    allowedNamespaces:
+      "The comma-separated list of Kubernetes namespaces whose service accounts are allowed to authenticate as this gateway. Supports `*` wildcards.",
+    allowedNames:
+      "The comma-separated list of Kubernetes service account names that are allowed to authenticate as this gateway. Supports `*` wildcards.",
+    allowedAudience:
+      "The audience the gateway's service account token must carry. Leave empty to skip the audience check.",
+    verifyTlsCertificate:
+      "Whether to verify the Kubernetes API server's TLS certificate. Verified against the CA certificate when one is configured, otherwise against the system trust store."
   },
   LOGIN: {
-    gatewayId: "The ID of the gateway logging in (AWS method only).",
+    gatewayId: "The ID of the gateway logging in (AWS and Kubernetes methods only).",
     iamHttpRequestMethod: "The HTTP request method used in the signed STS request.",
     iamRequestBody: "The base64-encoded body of the signed STS request.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
+    jwt: "The projected Kubernetes service account token of the pod the gateway runs in (Kubernetes method only).",
     token: "The one-time enrollment token previously issued for this gateway (token method only)."
   }
 } as const;
@@ -3831,5 +3934,52 @@ export const RELAYS = {
     iamRequestBody: "The base64-encoded body of the signed STS request.",
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
     token: "The one-time enrollment token previously issued for this relay (token method only)."
+  }
+} as const;
+
+export const SECRET_VALIDATION_RULES = {
+  RULE: {
+    type: "The kind of secret the rule applies to. Determines which fields the rule accepts and where the constraints are enforced: `static-secrets` constraints run on write, while `dynamic-secrets` and `secret-rotations` constraints shape the generated credential.",
+    constraints:
+      "The constraints enforced by this rule. Each constraint names what it checks (`type`), what it applies to (`appliesTo`), and its `value`, e.g. the minimum character count for `min-length` or the pattern for `regex-pattern`.",
+    dynamicSecretProviders:
+      "The dynamic secret providers this rule applies to. A lease is only constrained when its provider is listed here.",
+    secretRotationProviders:
+      "The secret rotation providers this rule applies to. A rotation is only constrained when its provider is listed here.",
+    appliesToStatic: "What the constraint checks: the secret key or the secret value.",
+    appliesToGenerated: "What the constraint checks: the generated credential.",
+    constraintTypeStatic:
+      "The kind of check this constraint performs, e.g. `min-length`, `regex-pattern`, `required-prefix`, or `prevent-value-reuse`.",
+    constraintTypeGenerated:
+      "The kind of check this constraint performs, e.g. `min-length`, `regex-pattern`, or `required-prefix`.",
+    constraintValue:
+      "The value the constraint is checked against, e.g. the minimum length, the regex pattern, or the required prefix/suffix string."
+  },
+  LIST: {
+    projectId: "The ID of the project to list secret validation rules for."
+  },
+  CREATE: {
+    projectId: "The ID of the project to create the secret validation rule in.",
+    name: "The name of the secret validation rule.",
+    description: "An optional description of the secret validation rule.",
+    environmentSlug:
+      "The slug of the environment this rule is scoped to. Omit to apply the rule to every environment in the project.",
+    secretPath: "The secret path this rule is scoped to.",
+    rule: "The rule configuration: which secret type it targets and the constraints to enforce."
+  },
+  UPDATE: {
+    projectId: "The ID of the project the secret validation rule belongs to.",
+    ruleId: "The ID of the secret validation rule to update.",
+    name: "The name of the secret validation rule.",
+    description: "An optional description of the secret validation rule.",
+    environmentSlug:
+      "The slug of the environment this rule is scoped to. Omit to leave the current scope unchanged; pass `null` to make the rule apply to every environment in the project.",
+    secretPath: "The secret path this rule is scoped to.",
+    rule: "The rule configuration: which secret type it targets and the constraints to enforce. Replaces the existing configuration as a whole, or omits to leave it untouched.",
+    isActive: "Whether the secret validation rule is active."
+  },
+  DELETE: {
+    projectId: "The ID of the project the secret validation rule belongs to.",
+    ruleId: "The ID of the secret validation rule to delete."
   }
 } as const;

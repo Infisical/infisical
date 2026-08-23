@@ -64,6 +64,14 @@ It is a floor, not an exhaustive standard: user-understandable error messages an
 
 That list describes what the guide currently covers; it is **not** a test for whether the guide applies. Do not skip it because a change does not look like one of those topics. Read it, then decide which items are relevant.
 
+### Code Comments
+
+**Default to no comments.** One earns its place only by explaining *why*: a non-obvious constraint, a workaround, an ordering dependency, or logic that looks wrong until you know the reason.
+
+Never write: narration restating the next line; section headers inside a function (`// --- validation ---`); change history (`// Added retry logic`, `// NEW`); references to plans, tickets, PRs, or reviewers; docstrings restating the signature; commented-out code.
+
+Before finishing, delete any comment you added that only says what the code says.
+
 ### Design System & Voice
 
 The v3 visual system (colors, typography, components, layout) and product voice/content tone are documented in [`DESIGN.md`](DESIGN.md). Read it before producing new UI or user-visible copy.
@@ -71,6 +79,8 @@ The v3 visual system (colors, typography, components, layout) and product voice/
 ### Documentation
 
 When writing or editing documentation in `docs/`, follow the [Documentation Style Guide](docs/STYLE_GUIDE.md). It covers writing for users (not implementers), Mintlify component usage, cross-referencing, page structure, and more.
+
+Run `make lint-docs` after any change under `docs/`. It runs [Vale](https://vale.sh) over the docs and enforces the mechanical half of the style guide: sentence case in headings and frontmatter titles, product and vendor spellings, spelling against a curated vocabulary, `$` prompts in code blocks, and em dash density. See [docs/CONTRIBUTING.MD](docs/CONTRIBUTING.MD) for how to extend the vocabulary or suppress a rule. It is the same invocation Mintlify's Vale CI check runs, so local and CI agree. Note that Vale cannot see prose indented four or more spaces inside components -- roughly half of this repo -- and reports nothing about what it skipped, so a clean run does not mean a nested page was checked.
 
 ### Auth & Permissions
 

@@ -2,7 +2,12 @@ import { FieldValues, Path, UseFormSetError } from "react-hook-form";
 import axios from "axios";
 import { z } from "zod";
 
-import { PamAccountType, PamFieldWidget, TPamFieldDescriptor } from "@app/hooks/api/pam";
+import {
+  PamAccountType,
+  PamFieldWidget,
+  TPamFieldCondition,
+  TPamFieldDescriptor
+} from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
@@ -40,18 +45,52 @@ export const buildEditCredentialValues = (
     })
   );
 
-const isFieldVisible = (field: TPamFieldDescriptor, values: Record<string, unknown>) =>
-  !field.showWhen || values[field.showWhen.field] === field.showWhen.equals;
+export type TPamFieldGroup = "connectionDetails" | "credentials";
+export type TPamFieldGroupValues = Record<TPamFieldGroup, Record<string, unknown>>;
+
+// A field's condition reads its own group unless the reference is qualified, since a connection
+// detail can depend on how the account authenticates
+const conditionHolds = (
+  condition: TPamFieldCondition,
+  group: TPamFieldGroup,
+  values: TPamFieldGroupValues
+): boolean => {
+  const separatorIdx = condition.field.indexOf(".");
+  const [targetGroup, key] =
+    separatorIdx === -1
+      ? [group, condition.field]
+      : [
+          condition.field.slice(0, separatorIdx) as TPamFieldGroup,
+          condition.field.slice(separatorIdx + 1)
+        ];
+
+  return values[targetGroup]?.[key] === condition.equals;
+};
+
+export const resolveForcedRule = (
+  field: TPamFieldDescriptor,
+  group: TPamFieldGroup,
+  values: TPamFieldGroupValues
+) => field.forceWhen?.find((rule) => conditionHolds(rule.when, group, values));
+
+export const isFieldVisible = (
+  field: TPamFieldDescriptor,
+  group: TPamFieldGroup,
+  values: TPamFieldGroupValues
+) => !field.showWhen || conditionHolds(field.showWhen, group, values);
 
 export const getMissingRequiredFields = (
   fields: TPamFieldDescriptor[],
-  values: Record<string, unknown>
+  group: TPamFieldGroup,
+  values: TPamFieldGroupValues
 ): string[] =>
   fields
     .filter((field) => {
-      if (field.widget === PamFieldWidget.Boolean || !isFieldVisible(field, values)) return false;
-      if (!field.required && !field.secret) return false;
-      const value = values[field.key];
+      if (field.widget === PamFieldWidget.Boolean || !isFieldVisible(field, group, values)) {
+        return false;
+      }
+      if (!field.required && !(field.secret && !field.optional)) return false;
+      const value = values[group][field.key];
       return value === undefined || value === null || String(value).trim() === "";
     })
     .map((field) => field.key);

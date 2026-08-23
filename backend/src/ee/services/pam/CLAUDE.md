@@ -12,19 +12,19 @@ table) and let the code carry the detail.
 
 All PAM services live under `backend/src/ee/services/pam-*/`:
 
-| Directory | Purpose |
-|---|---|
-| `pam/` | Shared enums, permission helpers (`pam-permission.ts`), validators, policy registry (`pam-policies.ts`), and this file |
-| `pam-folder/` | Folder CRUD + folder-level permission checks |
-| `pam-account/` | Account CRUD, credential encryption, gateway attachment, SSH CA, account-type config |
-| `pam-account-template/` | Account templates (type + policies + settings) |
-| `pam-account-rotation/` | Scheduled + on-demand SQL credential rotation |
-| `pam-session/` + `pam-web-access/` | Session lifecycle and WebSocket session handlers (Postgres/SSH/RDP) |
-| `pam-session-recording/` | Recording chunk storage/retrieval + storage providers |
-| `pam-membership/` | Product + resource membership management |
-| `pam-project/` | PAM project bootstrap + resolver |
-| `pam-access-request/` | Folder approval config, access-request lifecycle, chat notifications |
-| `pam-discovery/` | Discovery sources → staged accounts for import |
+| Directory                          | Purpose                                                                                                                |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `pam/`                             | Shared enums, permission helpers (`pam-permission.ts`), validators, policy registry (`pam-policies.ts`), and this file |
+| `pam-folder/`                      | Folder CRUD + folder-level permission checks                                                                           |
+| `pam-account/`                     | Account CRUD, credential encryption, gateway attachment, SSH CA, account-type config                                   |
+| `pam-account-template/`            | Account templates (type + policies + settings)                                                                         |
+| `pam-account-rotation/`            | Scheduled + on-demand SQL credential rotation                                                                          |
+| `pam-session/` + `pam-web-access/` | Session lifecycle and WebSocket session handlers (Postgres/SSH/RDP)                                                    |
+| `pam-session-recording/`           | Recording chunk storage/retrieval + storage providers                                                                  |
+| `pam-membership/`                  | Product + resource membership management                                                                               |
+| `pam-project/`                     | PAM project bootstrap + resolver                                                                                       |
+| `pam-access-request/`              | Folder approval config, access-request lifecycle, chat notifications                                                   |
+| `pam-discovery/`                   | Discovery sources → staged accounts for import                                                                         |
 
 Routes: `backend/src/ee/routes/v1/pam-routers/`. DI wiring: `backend/src/server/routes/index.ts` (narrow
 new deps with `Pick<>`).
@@ -38,14 +38,36 @@ use them instead of re-implementing. Every list/mutation endpoint checks an **ac
 membership. There is **no org-admin fallback**: permission needs project-scoped membership.
 
 Gotchas:
+
+- **Product membership is plain project membership, so PAM roles inherit the generic project role rules.**
+  `PamProductRole.Admin`/`Member` are stored as the `admin`/`member` project membership roles, which means a
+  product member would otherwise pick up the generic project Member ability — including identity CRUD.
+  In a PAM project those slugs resolve to their own rule sets — `pamProjectAdminPermissions` /
+  `pamProjectMemberPermissions` in `permission/default-roles.ts`, dispatched by project type in
+  `buildProjectPermissionRules` — rather than the generic project Admin/Member abilities. A product
+  member gets read-only visibility of members, groups and identities and nothing else, because
+  everything they are entitled to comes from their folder/account memberships. Managing identities,
+  users and groups is a product admin responsibility; without the split, a product member inherited
+  identity create/edit and could attach an auth method to a product admin identity and log in with its
+  PAM access. Anything that is not `admin` (including `custom`, which is also how additional privileges
+  arrive) resolves to the member set, so a custom role cannot reintroduce project-level power in PAM.
+  `getProjectPermissionByRoles` resolves the project type too, so the privilege-boundary comparison
+  measures a product admin against the PAM rule sets and not the generic ones.
 - **Audit logs** are served through the shared org audit-log endpoint but scoped by the PAM model
   (`pam/pam-audit-log-fns.ts`), not the generic project `AuditLogs` permission. Any new account- or
   folder-scoped event **must** put `accountId`/`folderId` in its `eventMetadata`, or it lands in the
   product-level bucket and is hidden from resource viewers.
 - Gated accounts (`requiresApproval`) require `LaunchSessions` **and** a valid approval grant, enforced in
   both the session and web-access services.
-- PAM endpoints accept JWT + identity tokens; session launch/web-access are JWT-only; gateway-facing
-  endpoints use `AuthMode.GATEWAY_ACCESS_TOKEN`.
+- PAM endpoints accept JWT + identity tokens, including CLI session launch (`POST /pam/sessions/access`)
+  and raising access requests (`POST /pam/access-requests`); web access stays JWT-only, as does
+  reviewing/revoking (identities are never approvers). MFA-gated accounts still reject machine actors,
+  since no machine can satisfy an OTP. Gateway-facing endpoints use `AuthMode.GATEWAY_ACCESS_TOKEN`.
+- **Actor columns come in pairs, and every lookup must filter the right one.** Sessions use
+  `userId`/`identityId`, approval requests `requesterId`/`machineIdentityId`, grants
+  `granteeUserId`/`granteeMachineIdentityId` — exactly one is set per row. `pam-access-request-service.ts`
+  centralizes this in `actorRequestFilter` / `actorGrantFilter`; use them instead of hardcoding a column,
+  or a machine identity silently reads another actor's rows (or none at all).
 
 ## PAM Project (consolidated + lazy)
 
@@ -61,6 +83,27 @@ in one `ACCOUNT_TYPE_CONFIGS` entry in `pam-account/pam-account-schemas.ts`. For
 the frontend renders create/edit forms from `GET /pam/accounts/types` metadata, so there are **no per-type
 frontend components**. Adding a type is mostly a config entry + an icon; the gateway extension points are
 `extractGatewayTarget` and `buildSessionGatewayConnectionDetails` in the same file.
+
+**Auth methods** are a discriminated union on `credentials`. `forceWhen` (a UI hint, applied server-side
+by `applyForcedFields` on create/update and mirrored by the form) pins fields an auth method leaves no
+choice about; its condition may cross field groups (`credentials.authMethod` from a connection field).
+TLS trust stays where it is for every other database account: the operator supplies `sslCertificate`,
+and Infisical ships no CA material.
+
+Postgres AWS IAM auth mints an RDS token backend-side (`generateRdsAuthToken`) and hands it to the
+gateway as the password, so the gateway is unchanged and the role trust model matches every other AWS
+integration (Infisical assumes it, External ID = org ID). The token lives 15 minutes while sessions run
+longer, so the gateway caps its credential cache for postgres and re-fetches (`pam-proxy.go`).
+
+**Adding an auth method to an existing type is a compatibility event.** Stored credentials (and API
+callers) predating the discriminator carry none, which a `z.discriminatedUnion` rejects outright, so the
+union goes through `withLegacyAuthMethod` and every path that reads the blob without re-parsing goes
+through `normalizeCredentialAuthMethod`. The rotation cron validates the stored blob on every run, so
+skipping this breaks rotation for every existing account of that type, not just edits.
+
+Postgres AWS IAM auth is the reference implementation: the **gateway** mints the RDS token per connection
+from its own AWS identity (`packages/pam/aws_rds_auth.go`), so no secret is stored, none crosses the wire,
+and the 15-minute token lifetime never collides with session duration.
 
 **Connection test** (`assertConnectionOk`) runs inside account `create`/`update` and **throws to block the write**
 if the target can't be reached/authenticated. Per-type behaviour lives in `pam-account-connection-test.ts`:

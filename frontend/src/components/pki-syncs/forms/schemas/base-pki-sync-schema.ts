@@ -1,6 +1,6 @@
 import { AnyZodObject, z } from "zod";
 
-export const POST_SYNC_COMMAND_MAX_LENGTH = 2048;
+export const POST_SYNC_COMMAND_MAX_LENGTH = 8192;
 
 export const PostSyncCommandSchema = z
   .string()

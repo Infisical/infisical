@@ -6,7 +6,6 @@ import { ClockAlertIcon, ClockIcon, EllipsisIcon, PencilIcon } from "lucide-reac
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Lottie, Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -16,6 +15,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -26,6 +30,12 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  PageLoader,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
   Table,
   TableBody,
   TableCell,
@@ -54,7 +64,10 @@ import {
   getIdentityAssignRoleConditions
 } from "@app/lib/fn/permission";
 
+import { IdentityActionConfirmationDialog } from "../IdentityActionConfirmationDialog";
+import { TIdentityRole } from "./identityRoleAssignment";
 import { IdentityRoleModify } from "./IdentityRoleModify";
+import { IdentitySingleRoleModify } from "./IdentitySingleRoleModify";
 
 type Props = {
   identityMembershipDetails: IdentityProjectMembershipV1;
@@ -70,7 +83,8 @@ export const IdentityRoleDetailsSection = ({
   const navigate = useNavigate();
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deleteRole",
-    "modifyRole"
+    "modifyRole",
+    "modifySingleRole"
   ] as const);
   const { mutateAsync: updateIdentityProjectMembership } = useUpdateProjectIdentityMembership();
 
@@ -128,14 +142,20 @@ export const IdentityRoleDetailsSection = ({
 
   const hasRoles = Boolean(identityMembershipDetails?.roles.length);
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const isPam = currentProject?.type === ProjectType.PAM;
+  // Products where the underlying project is an internal detail the user never sees
+  const isStandaloneProduct = isCertManager || isPam;
+  // PAM has a single built-in product role edited from its own Access Control page; the generic
+  // multi-role editor (custom roles, temporary access) doesn't apply, so the card is read-only here.
+  const isRoleEditable = !isPam;
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>{isCertManager ? "Roles" : "Project Roles"}</CardTitle>
+          <CardTitle>{isStandaloneProduct ? "Roles" : "Project Roles"}</CardTitle>
           <CardDescription>Manage roles assigned to this machine identity</CardDescription>
-          {hasRoles && (
+          {hasRoles && isRoleEditable && (
             <CardAction>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
@@ -179,9 +199,8 @@ export const IdentityRoleDetailsSection = ({
           {
             /* eslint-disable-next-line no-nested-ternary */
             isMembershipDetailsLoading ? (
-              // scott: todo proper loader
-              <div className="flex h-40 w-full items-center justify-center">
-                <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+              <div className="h-40">
+                <PageLoader lottieClassName="w-16" />
               </div>
             ) : hasRoles ? (
               <Table>
@@ -194,6 +213,8 @@ export const IdentityRoleDetailsSection = ({
                 </TableHeader>
                 <TableBody>
                   {identityMembershipDetails?.roles?.map((roleDetails) => {
+                    const roleSlug =
+                      roleDetails.role === "custom" ? roleDetails.customRoleSlug : roleDetails.role;
                     const isTemporary = roleDetails?.isTemporary;
                     const isExpired =
                       roleDetails.isTemporary &&
@@ -220,19 +241,35 @@ export const IdentityRoleDetailsSection = ({
                     return (
                       <TableRow
                         key={`user-project-identity-${roleDetails?.id}`}
-                        className={isCertManager ? "" : "cursor-pointer"}
+                        className={isStandaloneProduct ? "" : "cursor-pointer"}
+                        role={isStandaloneProduct ? undefined : "button"}
+                        tabIndex={isStandaloneProduct ? undefined : 0}
+                        onKeyDown={(event) => {
+                          if (
+                            isStandaloneProduct ||
+                            event.target !== event.currentTarget ||
+                            (event.key !== "Enter" && event.key !== " ")
+                          ) {
+                            return;
+                          }
+                          event.preventDefault();
+                          navigate({
+                            to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                            params: {
+                              projectId: currentProject.id,
+                              roleSlug
+                            }
+                          });
+                        }}
                         onClick={
-                          isCertManager
+                          isStandaloneProduct
                             ? undefined
                             : () =>
                                 navigate({
                                   to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
                                   params: {
                                     projectId: currentProject.id,
-                                    roleSlug:
-                                      roleDetails.role === "custom"
-                                        ? roleDetails.customRoleSlug
-                                        : roleDetails.role
+                                    roleSlug
                                   }
                                 })
                         }
@@ -261,41 +298,59 @@ export const IdentityRoleDetailsSection = ({
                           )}
                         </TableCell>
                         <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton
-                                size="xs"
-                                variant="ghost"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <EllipsisIcon />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <ProjectPermissionCan
-                                I={ProjectPermissionActions.Edit}
-                                a={subject(ProjectPermissionSub.Identity, {
-                                  identityId: identityMembershipDetails.identity.id
-                                })}
-                              >
-                                {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePopUpOpen("deleteRole", {
-                                        id: roleDetails?.id,
-                                        slug: roleDetails?.customRoleName || roleDetails?.role
-                                      });
-                                    }}
-                                    isDisabled={!isAllowed || !canModifyIdentityRoles}
-                                    variant="danger"
-                                  >
-                                    Remove Role
-                                  </DropdownMenuItem>
-                                )}
-                              </ProjectPermissionCan>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          {isRoleEditable && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <IconButton
+                                  aria-label={`Open actions for ${
+                                    roleDetails.role === "custom"
+                                      ? roleDetails.customRoleName
+                                      : formatProjectRoleName(roleDetails.role)
+                                  } role`}
+                                  size="xs"
+                                  variant="ghost"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <EllipsisIcon />
+                                </IconButton>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <ProjectPermissionCan
+                                  I={ProjectPermissionActions.Edit}
+                                  a={subject(ProjectPermissionSub.Identity, {
+                                    identityId: identityMembershipDetails.identity.id
+                                  })}
+                                >
+                                  {(isAllowed) => (
+                                    <>
+                                      <DropdownMenuItem
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          handlePopUpOpen("modifySingleRole", roleDetails);
+                                        }}
+                                        isDisabled={!isAllowed || !canModifyIdentityRoles}
+                                      >
+                                        Modify Role
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          handlePopUpOpen("deleteRole", {
+                                            id: roleDetails?.id,
+                                            slug: roleDetails?.customRoleName || roleDetails?.role
+                                          });
+                                        }}
+                                        isDisabled={!isAllowed || !canModifyIdentityRoles}
+                                        variant="danger"
+                                      >
+                                        Remove Role
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </ProjectPermissionCan>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -308,66 +363,98 @@ export const IdentityRoleDetailsSection = ({
                   <EmptyTitle>This machine identity doesn&apos;t have any roles</EmptyTitle>
                   <EmptyDescription>Give this machine identity one or more roles</EmptyDescription>
                 </EmptyHeader>
-                <EmptyContent>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Edit}
-                    a={subject(ProjectPermissionSub.Identity, {
-                      identityId: identityMembershipDetails.identity.id
-                    })}
-                  >
-                    {(isAllowed) => {
-                      const isEditDisabled = !isAllowed || !canModifyIdentityRoles;
-                      const button = (
-                        <Button
-                          variant="project"
-                          size="xs"
-                          onClick={() => {
-                            handlePopUpOpen("modifyRole");
-                          }}
-                          isDisabled={isEditDisabled}
-                        >
-                          <PencilIcon />
-                          Edit Roles
-                        </Button>
-                      );
-                      return isEditDisabled ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="inline-block">{button}</span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            You don&apos;t have permission to edit this identity&apos;s roles
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        button
-                      );
-                    }}
-                  </ProjectPermissionCan>
-                </EmptyContent>
+                {isRoleEditable && (
+                  <EmptyContent>
+                    <ProjectPermissionCan
+                      I={ProjectPermissionActions.Edit}
+                      a={subject(ProjectPermissionSub.Identity, {
+                        identityId: identityMembershipDetails.identity.id
+                      })}
+                    >
+                      {(isAllowed) => {
+                        const isEditDisabled = !isAllowed || !canModifyIdentityRoles;
+                        const button = (
+                          <Button
+                            variant="project"
+                            size="xs"
+                            onClick={() => {
+                              handlePopUpOpen("modifyRole");
+                            }}
+                            isDisabled={isEditDisabled}
+                          >
+                            <PencilIcon />
+                            Edit Roles
+                          </Button>
+                        );
+                        return isEditDisabled ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-block">{button}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              You don&apos;t have permission to edit this identity&apos;s roles
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          button
+                        );
+                      }}
+                    </ProjectPermissionCan>
+                  </EmptyContent>
+                )}
               </Empty>
             )
           }
         </CardContent>
       </Card>
-      <DeleteActionModal
-        isOpen={popUp.deleteRole.isOpen}
-        deleteKey="remove"
-        title={`Do you want to remove role ${(popUp?.deleteRole?.data as TProjectRole)?.slug}?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
-        onDeleteApproved={() => handleRoleDelete()}
+      <IdentityActionConfirmationDialog
+        open={popUp.deleteRole.isOpen}
+        confirmationText="remove"
+        title={`Remove role ${(popUp?.deleteRole?.data as TProjectRole)?.slug || ""}?`}
+        description="The machine identity will lose the permissions granted by this role."
+        actionLabel="Remove Role"
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
+        onConfirm={handleRoleDelete}
       />
-      <Modal
-        isOpen={popUp.modifyRole.isOpen}
+      <Dialog
+        open={popUp.modifySingleRole.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("modifySingleRole", isOpen)}
+      >
+        <DialogContent className="overflow-visible sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Edit Role</DialogTitle>
+            <DialogDescription>
+              Update this role assignment and its access duration.
+            </DialogDescription>
+          </DialogHeader>
+          {popUp.modifySingleRole.data && (
+            <IdentitySingleRoleModify
+              identityProjectMembership={identityMembershipDetails}
+              role={popUp.modifySingleRole.data as TIdentityRole}
+              onSuccess={() => handlePopUpClose("modifySingleRole")}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+      <Sheet
+        open={popUp.modifyRole.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("modifyRole", isOpen)}
       >
-        <ModalContent
-          title="Roles"
-          subTitle="Select one or more of the pre-defined or custom roles to configure project permissions."
-        >
-          <IdentityRoleModify identityProjectMembership={identityMembershipDetails} />
-        </ModalContent>
-      </Modal>
+        <SheetContent className="sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>Roles</SheetTitle>
+            <SheetDescription>
+              {isStandaloneProduct
+                ? "Select one or more of the pre-defined roles to configure access."
+                : "Select one or more of the pre-defined or custom roles to configure project permissions."}
+            </SheetDescription>
+          </SheetHeader>
+          <IdentityRoleModify
+            identityProjectMembership={identityMembershipDetails}
+            onClose={() => handlePopUpClose("modifyRole")}
+          />
+        </SheetContent>
+      </Sheet>
     </>
   );
 };

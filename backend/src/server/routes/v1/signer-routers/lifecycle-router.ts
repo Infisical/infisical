@@ -134,7 +134,9 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: signer.projectId,
+          signerId: signer.id
         }
       });
 
@@ -350,6 +352,17 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SignerUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: signer.projectId,
+          signerId: signer.id
+        }
+      });
+
       return signer;
     }
   });
@@ -395,7 +408,9 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          orgId: req.permission.orgId
+          orgId: req.permission.orgId,
+          projectId: signer.projectId,
+          signerId: signer.id
         }
       });
 
@@ -441,6 +456,18 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         event: {
           type: wantDisabled ? EventType.DISABLE_PKI_SIGNER : EventType.ENABLE_PKI_SIGNER,
           metadata: { signerId: signer.id, name: signer.name }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SignerUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId: signer.projectId,
+          signerId: signer.id,
+          status: req.body.status
         }
       });
 

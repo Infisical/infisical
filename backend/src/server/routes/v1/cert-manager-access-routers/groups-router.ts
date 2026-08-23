@@ -10,8 +10,10 @@ import {
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { RolesUpdateBodySchema } from "./schemas";
 
@@ -154,6 +156,17 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
           }
         }
       });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerMemberAdded,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId,
+          memberType: "group",
+          role: roles.map((r) => r.role).join(",")
+        }
+      });
       return {
         groupMembership: {
           ...full,
@@ -195,6 +208,16 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
           }
         }
       });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerMemberUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId,
+          memberType: "group"
+        }
+      });
       return {
         roles: groupMembership.roles.map((el) => ({ ...el, projectMembershipId: groupMembership.id }))
       };
@@ -230,6 +253,16 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
         event: {
           type: EventType.REMOVE_CERT_MANAGER_GROUP,
           metadata: { groupId: req.params.groupId, membershipId: groupMembership.id }
+        }
+      });
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.CertManagerMemberRemoved,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: req.permission.orgId,
+          projectId,
+          memberType: "group"
         }
       });
       return {

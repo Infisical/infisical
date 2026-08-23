@@ -5,7 +5,7 @@ description: "Fetch secrets from Infisical in Microsoft Power Apps through an Az
 
 Power Apps has no native way to fetch secrets from Infisical, and hardcoding secrets in app logic exposes them to anyone with collaboration rights. This integration places an Azure Function between your Power App and Infisical: the function fetches secrets with the [Infisical .NET SDK](/sdks/languages/dotnet), and the Power App calls the function through a custom connector.
 
-## How It Works
+## How it works
 
 1. The Power App invokes an Azure Function through a custom connector.
 2. The function authenticates with Infisical using a [machine identity](/documentation/platform/identities/machine-identities) and fetches the secret it needs.
@@ -26,7 +26,7 @@ There are two patterns for the last step:
 
 ## Setup
 
-### 1. Create an Azure Function
+### 1. Create an Azure function
 
 Create a new Azure Function using the [Function App](https://azuremarketplace.microsoft.com/en-us/marketplace/apps/Microsoft.FunctionApp?tab=Overview) from the Azure Marketplace.
 
@@ -56,7 +56,7 @@ The code above is written for the older runtime. You may need to change the runt
 
 Finally, publish the Swagger (API) definitions and enable cross-origin resource sharing (CORS). The wildcard option allows all hosts; restrict it for production use.
 
-### 2. Fetch Secrets from Infisical
+### 2. Fetch secrets from Infisical
 
 Add the [Infisical .NET SDK](/sdks/languages/dotnet) to the function so it can fetch secrets:
 
@@ -100,7 +100,7 @@ using (var httpClient = new HttpClient())
 }
 ```
 
-### 3. Create a Custom Connector
+### 3. Create a custom connector
 
 Create the custom connector from the data pane in Power Apps using **Create from Azure Service (Preview)**:
 

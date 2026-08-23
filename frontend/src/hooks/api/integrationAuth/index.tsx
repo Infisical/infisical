@@ -2,7 +2,6 @@ export { useDuplicateIntegrationAuth } from "./mutations";
 export {
   useAuthorizeIntegration,
   useDeleteIntegrationAuth,
-  useDeleteIntegrationAuths,
   useGetIntegrationAuthApps,
   useGetIntegrationAuthBitbucketWorkspaces,
   useGetIntegrationAuthById,

@@ -11,6 +11,7 @@ import {
 } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
+import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
@@ -23,6 +24,7 @@ import {
 } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TIp } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -38,9 +40,8 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { AlertPrincipalType } from "../alert/alert-types";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
-import { ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
-import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { ActorType, AuthMethod } from "../auth/auth-type";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TIdentityTokenAuthDALFactory } from "../identity-token-auth/identity-token-auth-dal";
 import { KMS_ROOT_CONFIG_UUID } from "../kms/kms-fns";
 import { TKmsRootConfigDALFactory } from "../kms/kms-root-config-dal";
@@ -78,7 +79,7 @@ import {
 type TSuperAdminServiceFactoryDep = {
   identityDAL: TIdentityDALFactory;
   identityTokenAuthDAL: TIdentityTokenAuthDALFactory;
-  identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
+  identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "issueIdentityAccessToken">;
   orgDAL: TOrgDALFactory;
   serverCfgDAL: TSuperAdminDALFactory;
   userDAL: TUserDALFactory;
@@ -93,7 +94,10 @@ type TSuperAdminServiceFactoryDep = {
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
-  licenseService: Pick<TLicenseServiceFactory, "onPremFeatures" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<
+    TLicenseServiceFactory,
+    "onPremFeatures" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount"
+  >;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
   invalidateCacheQueue: TInvalidateCacheQueueFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -152,7 +156,7 @@ export const superAdminServiceFactory = ({
   kmsRootConfigDAL,
   kmsService,
   licenseService,
-  identityAccessTokenDAL,
+  identityAccessTokenService,
   identityTokenAuthDAL,
   microsoftTeamsService,
   invalidateCacheQueue,
@@ -664,31 +668,26 @@ export const superAdminServiceFactory = ({
         tx
       );
 
-      const newToken = await identityAccessTokenDAL.create(
-        {
-          identityId: newIdentity.id,
-          isAccessTokenRevoked: false,
-          accessTokenTTL: tokenAuth.accessTokenTTL,
-          accessTokenMaxTTL: tokenAuth.accessTokenMaxTTL,
-          accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: tokenAuth.accessTokenNumUsesLimit,
-          name: "Instance Admin Token",
-          authMethod: IdentityAuthMethod.TOKEN_AUTH,
-          subOrganizationId: organization.id
-        },
-        tx
-      );
+      // Issue through the standard path so the JWT carries an exp claim; a
+      // hand-rolled no-exp token is rejected as over max age since the legacy
+      // token cutoff (LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT).
+      const { accessToken } = await identityAccessTokenService.issueIdentityAccessToken({
+        identityId: newIdentity.id,
+        identityName: newIdentity.name,
+        authMethod: IdentityAuthMethod.TOKEN_AUTH,
+        orgId: organization.id,
+        rootOrgId: organization.id,
+        parentOrgId: organization.id,
+        subOrganizationId: organization.id,
+        accessTokenTTL: Number(tokenAuth.accessTokenTTL),
+        accessTokenMaxTTL: Number(tokenAuth.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(tokenAuth.accessTokenNumUsesLimit),
+        accessTokenPeriod: 0,
+        accessTokenTrustedIps: tokenAuth.accessTokenTrustedIps as TIp[],
+        persistToPg: { tx, name: "Instance Admin Token" }
+      });
 
-      const generatedAccessToken = crypto.jwt().sign(
-        {
-          identityId: newIdentity.id,
-          identityAccessTokenId: newToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET
-      );
-
-      return { identity: newIdentity, auth: tokenAuth, credentials: { token: generatedAccessToken } };
+      return { identity: newIdentity, auth: tokenAuth, credentials: { token: accessToken } };
     });
 
     const shouldDisableSignUp = !appCfg.isCloud;
@@ -860,7 +859,7 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "This endpoint is not supported for cloud instances" });
 
     const serverAdmin = await userDAL.findById(actor.id);
-    const plan = licenseService.onPremFeatures;
+    const identityLimit = getEnforcedIdentityLimit(licenseService.onPremFeatures);
 
     const isEmailInvalid = await isDisposableEmail(inviteAdminEmails);
     if (isEmailInvalid) {
@@ -893,6 +892,16 @@ export const superAdminServiceFactory = ({
         },
         tx
       );
+
+      if (identityLimit) {
+        const { identitiesUsed } = await licenseService.getOrgSeatUsage(org.id, tx);
+        if (identitiesUsed >= identityLimit) {
+          throw new BadRequestError({
+            name: "InviteUser",
+            message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
+          });
+        }
+      }
 
       const users: Pick<TUsers, "id" | "firstName" | "lastName" | "email" | "username" | "isAccepted">[] = [];
 
@@ -927,15 +936,6 @@ export const superAdminServiceFactory = ({
             },
             tx
           );
-        }
-
-        const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
-        if (!isEnterpriseBypass && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
-          // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
-          throw new BadRequestError({
-            name: "InviteUser",
-            message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
-          });
         }
 
         const membership = await orgDAL.createMembership(

@@ -1,0 +1,33 @@
+version: v0.162.20
+releasedAt: 2026-08-17T20:15:19+01:00
+sourceTag: v0.162.20
+previousTag: v0.162.19
+impactLevel: low
+summary: Adds one startup database migration for PKI certificate policy subject
+  data. No new self-hosted configuration or deployment changes need operator
+  updates.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: PKI domain component migration
+    description: Startup now runs a data migration on PKI certificate policies. It
+      joins multi-label domain component subject rules into comma-separated
+      sequences for existing policy records.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260806134218_certificate-policy-domain-component-sequences.ts
+        path: backend/src/db/migrations/20260806134218_certificate-policy-domain-component-sequences.ts
+        description: Migration updates PkiCertificatePolicy subject JSON
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-08-17T19:47:04.974Z
+  sourceRange:
+    from: v0.162.19
+    to: v0.162.20

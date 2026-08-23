@@ -14,8 +14,9 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { PamAccountType, PamProductRole } from "../pam/pam-enums";
+import { PamAccountType, PamPostgresAuthMethod, PamProductRole } from "../pam/pam-enums";
 import {
   checkAccountAccess,
   getResourceIdsWithActions,
@@ -28,6 +29,7 @@ import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-t
 import { TPamAccountDependencyDALFactory } from "../pam-discovery/pam-account-dependency-dal";
 import { resolveHostsViaDcDns, winrmRpcWithGateway } from "../pam-discovery/pam-discovery-fns";
 import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
+import { generateRdsAuthToken } from "../pam-session/aws-iam/aws-iam-federation";
 import {
   TGetPamAccountRotationDTO,
   TListPamRotationCandidatesDTO,
@@ -78,6 +80,7 @@ type TPamAccountRotationServiceFactoryDep = {
     | "transaction"
   >;
   pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "find">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
@@ -105,6 +108,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     gatewayPoolService,
     pamAccountDependencyDAL,
     pamDiscoverySourceDAL,
+    projectDAL,
     rotationHandlers = PAM_ROTATION_FACTORY_MAP
   } = deps;
 
@@ -123,7 +127,13 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     return JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;
   };
 
-  type TSqlAccountCredentials = { username: string; password?: string; authMethod?: string };
+  type TSqlAccountCredentials = {
+    username: string;
+    password?: string;
+    authMethod?: string;
+    awsRegion?: string;
+    roleArn?: string;
+  };
 
   const decryptSqlCredentials = async (
     projectId: string,
@@ -424,6 +434,35 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     return visible.filter((v): v is { id: string; name: string; discoverySources: string[] } => v !== null);
   };
 
+  // A rotator authenticates as itself to run the password change. An IAM login has no stored password,
+  // so it gets the same short-lived token a session would.
+  const resolveRotatorPassword = async (
+    projectId: string,
+    credentials: TSqlAccountCredentials,
+    connectionDetails: Record<string, unknown>
+  ): Promise<string> => {
+    if (credentials.authMethod !== PamPostgresAuthMethod.AwsIam) {
+      if (!credentials.password) {
+        throw new BadRequestError({ message: "Rotation account has no stored password" });
+      }
+      return credentials.password;
+    }
+
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: "Project not found" });
+
+    const { host, port } = connectionDetails as { host: string; port: number };
+    return generateRdsAuthToken({
+      roleArn: credentials.roleArn as string,
+      externalId: project.orgId,
+      roleSessionName: "infisical-pam-rotation",
+      region: credentials.awsRegion as string,
+      host,
+      port,
+      username: credentials.username
+    });
+  };
+
   const resolveRotator = async (
     account: TPamAccountDetail,
     targetCredentials: TSqlAccountCredentials,
@@ -458,15 +497,13 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       account.accountType as PamAccountType,
       rotator.encryptedCredentials
     );
-    if (!rotatorCredentials.password) {
-      throw new BadRequestError({ message: "Rotation account has no stored password" });
-    }
     const rotatorConnectionDetails = resolveConnectionDetails(
       account.accountType as PamAccountType,
       await decrypt(projectId, rotator.encryptedConnectionDetails)
     );
+    const rotatorPassword = await resolveRotatorPassword(projectId, rotatorCredentials, rotatorConnectionDetails);
     return {
-      auth: { username: rotatorCredentials.username, password: rotatorCredentials.password },
+      auth: { username: rotatorCredentials.username, password: rotatorPassword },
       connectionDetails: rotatorConnectionDetails,
       gatewayId: rotator.gatewayId ?? rotator.templateGatewayId,
       gatewayPoolId: rotator.gatewayPoolId ?? rotator.templateGatewayPoolId

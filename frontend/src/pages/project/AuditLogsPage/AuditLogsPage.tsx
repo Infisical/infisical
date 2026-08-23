@@ -12,7 +12,7 @@ export const AuditLogsPage = () => {
   const { isSubOrganization } = useOrganization();
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between text-white">
       <Helmet>
         <title>{isCertManager ? "Audit Logs" : "Project Audit Logs"}</title>
         <link rel="icon" href="/infisical.ico" />

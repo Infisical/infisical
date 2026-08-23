@@ -17,6 +17,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   Empty,
@@ -231,7 +232,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
               <span className="my-4 text-sm text-danger">{errors.users.message}</span>
             )}
             {users.length > 0 ? (
-              <Table className="table-fixed">
+              <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Username</TableHead>
@@ -340,7 +341,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
       </form>
 
       <Dialog open={isAddUserModalOpen} onOpenChange={setIsAddUserModalOpen}>
-        <DialogContent className="max-w-xl overflow-visible">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Add Users to Template</DialogTitle>
             <DialogDescription>
@@ -395,7 +396,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
                 )}
               />
             </div>
-            <div className="mt-8 flex items-center justify-end gap-4">
+            <DialogFooter className="mt-8">
               <Button type="button" variant="ghost" onClick={handleCloseAddUserModal}>
                 Cancel
               </Button>
@@ -406,7 +407,7 @@ export const ProjectTemplateUsersSection = ({ projectTemplate }: Props) => {
               >
                 Add Users
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

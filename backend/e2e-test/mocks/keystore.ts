@@ -185,6 +185,7 @@ export const mockKeyStore = (): TKeyStoreFactory => {
       return list.length;
     },
     streamAdd: async () => null,
+    streamLength: async () => 0,
     streamRange: async () => [],
     streamTrim: async () => 0,
     streamCollect: async () => ({ entries: [], lastId: null })

@@ -45,7 +45,7 @@ sequenceDiagram
 - A Venafi Application with an Issuing Template that supports CA certificate issuance
 - An intermediate CA created in Infisical (not yet installed)
 
-## Guide to Installing an Intermediate CA via Venafi
+## Guide to installing an intermediate CA via Venafi
 
 <Tabs>
   <Tab title="Infisical UI">
@@ -82,7 +82,7 @@ sequenceDiagram
   <Tab title="API">
     <Steps>
       <Step title="Create an Intermediate CA">
-        If you haven't already, create an intermediate CA by making an API request to the [Create CA](/api-reference/endpoints/certificate-authorities/create) API endpoint.
+        If you haven't already, create an intermediate CA by making an API request to the [Create CA](/api-reference/endpoints/certificate-authorities/internal/create) API endpoint.
 
         ### Sample request
 
@@ -186,7 +186,7 @@ sequenceDiagram
   </Tab>
 </Tabs>
 
-## Auto-Renewal
+## Auto-renewal
 
 Infisical supports automatic renewal of intermediate CA certificates signed by Venafi. When enabled, Infisical will automatically submit a new CSR to Venafi and import the renewed certificate before the current one expires.
 
@@ -197,7 +197,7 @@ Infisical supports automatic renewal of intermediate CA certificates signed by V
     Toggle **Auto-Renewal** on and set the **Days Before Expiry** to configure when the renewal should be triggered.
   </Tab>
   <Tab title="API">
-    ### Enable Auto-Renewal
+    ### Enable auto-renewal
 
     ```bash Request
     curl --location --request PATCH 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<intermediate-ca-id>/auto-renewal' \
@@ -229,7 +229,7 @@ Infisical supports automatic renewal of intermediate CA certificates signed by V
   </Tab>
 </Tabs>
 
-## Manual Renewal
+## Manual renewal
 
 You can also manually trigger a renewal for a Venafi-signed intermediate CA at any time.
 
@@ -255,7 +255,7 @@ You can also manually trigger a renewal for a Venafi-signed intermediate CA at a
   </Tab>
 </Tabs>
 
-## Signing Configuration Management
+## Signing configuration management
 
 You can view and update the signing configuration for a Venafi-signed CA at any time:
 

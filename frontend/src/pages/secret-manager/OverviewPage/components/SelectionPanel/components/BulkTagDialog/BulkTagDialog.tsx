@@ -10,6 +10,7 @@ import {
   Button,
   CreatableSelect,
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
@@ -258,6 +259,7 @@ const BulkTagDialogContent = ({
   return (
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <form
+      className="flex min-h-0 min-w-0 flex-1 flex-col gap-4"
       onSubmit={handleSubmit(onSubmit)}
       onKeyDown={(e) => {
         if (e.key === "Enter") e.preventDefault();
@@ -271,54 +273,56 @@ const BulkTagDialogContent = ({
         </DialogDescription>
       </DialogHeader>
       {selectedResources.length > 0 && (
-        <Table containerClassName="max-h-[40vh] mt-4 overflow-auto">
-          <TableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
-            <TableRow>
-              <TableHead className="sticky left-0 z-20 w-10 max-w-10 min-w-10 border-b-0 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
-                Type
-              </TableHead>
-              <TableHead className="sticky left-10 z-20 max-w-[30vw] min-w-[30vw] border-b-0 bg-container shadow-[inset_-1px_0_0_var(--color-border),inset_0_-1px_0_var(--color-border)]">
-                Name
-              </TableHead>
-              {visibleEnvs.map((env) => (
-                <TableHead
-                  key={env.slug}
-                  className="w-32 max-w-32 border-r border-b-0 text-center shadow-[inset_0_-1px_0_var(--color-border)] last:border-r-0"
-                  isTruncatable
-                >
-                  {env.name}
+        <DialogBody className="overflow-hidden">
+          <Table containerClassName="max-h-full overflow-auto">
+            <TableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
+              <TableRow>
+                <TableHead className="sticky left-0 z-20 w-10 max-w-10 min-w-10 border-b-0 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+                  Type
                 </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {selectedResources.map((item) => (
-              <TableRow key={item.name} className="group">
-                <TableCell className="sticky left-0 z-10 bg-container transition-colors duration-75 group-hover:bg-container-hover">
-                  <KeyIcon className="size-4 text-secret" />
-                </TableCell>
-                <TableCell
-                  className="sticky left-10 z-10 max-w-80 bg-container shadow-[inset_-1px_0_0_var(--color-border)] transition-colors duration-75 group-hover:bg-container-hover"
-                  isTruncatable
-                >
-                  {item.name}
-                </TableCell>
+                <TableHead className="sticky left-10 z-20 max-w-[30vw] min-w-[30vw] border-b-0 bg-container shadow-[inset_-1px_0_0_var(--color-border),inset_0_-1px_0_var(--color-border)]">
+                  Name
+                </TableHead>
                 {visibleEnvs.map((env) => (
-                  <TableCell key={env.slug} className="border-r text-center last:border-r-0">
-                    {item.envSlugs.has(env.slug) ? (
-                      <TagsIcon className="inline-block size-4 text-project" />
-                    ) : (
-                      <span className="text-muted">&mdash;</span>
-                    )}
-                  </TableCell>
+                  <TableHead
+                    key={env.slug}
+                    className="w-32 max-w-32 border-r border-b-0 text-center shadow-[inset_0_-1px_0_var(--color-border)] last:border-r-0"
+                    isTruncatable
+                  >
+                    {env.name}
+                  </TableHead>
                 ))}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {selectedResources.map((item) => (
+                <TableRow key={item.name} className="group">
+                  <TableCell className="sticky left-0 z-10 bg-container transition-colors duration-75 group-hover:bg-container-hover">
+                    <KeyIcon className="size-4 text-secret" />
+                  </TableCell>
+                  <TableCell
+                    className="sticky left-10 z-10 max-w-80 bg-container shadow-[inset_-1px_0_0_var(--color-border)] transition-colors duration-75 group-hover:bg-container-hover"
+                    isTruncatable
+                  >
+                    {item.name}
+                  </TableCell>
+                  {visibleEnvs.map((env) => (
+                    <TableCell key={env.slug} className="border-r text-center last:border-r-0">
+                      {item.envSlugs.has(env.slug) ? (
+                        <TagsIcon className="inline-block size-4 text-project" />
+                      ) : (
+                        <span className="text-muted">&mdash;</span>
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DialogBody>
       )}
 
-      <div className="flex flex-col gap-4 py-4">
+      <div className="flex shrink-0 flex-col gap-4">
         <Field>
           <FieldLabel>Tags</FieldLabel>
           <FieldContent>
@@ -391,7 +395,7 @@ export const BulkTagDialog = ({ isOpen, onOpenChange, ...contentProps }: Props) 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       {isOpen && (
-        <DialogContent className="max-w-7xl">
+        <DialogContent className="max-w-5xl">
           <BulkTagDialogContent {...contentProps} onClose={() => onOpenChange(false)} />
         </DialogContent>
       )}

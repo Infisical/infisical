@@ -84,6 +84,7 @@ export enum ProjectPermissionIdentityActions {
   AssignAdditionalPrivileges = "assign-additional-privileges",
   AssumePrivileges = "assume-privileges",
   RevokeAuth = "revoke-auth",
+  EditAuth = "edit-auth",
   CreateToken = "create-token",
   GetToken = "get-token",
   DeleteToken = "delete-token"
@@ -396,6 +397,7 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
     ],
     [ProjectPermissionIdentityActions.AssumePrivileges]: ["identityId"],
     [ProjectPermissionIdentityActions.RevokeAuth]: ["identityId"],
+    [ProjectPermissionIdentityActions.EditAuth]: ["identityId"],
     [ProjectPermissionIdentityActions.CreateToken]: ["identityId"],
     [ProjectPermissionIdentityActions.GetToken]: ["identityId"],
     [ProjectPermissionIdentityActions.DeleteToken]: ["identityId"]
@@ -1886,7 +1888,8 @@ export const buildServiceTokenProjectPermission = (
             environment
           });
         }
-        if (canRead) {
+        // Folder read is implied-for-all, so it isn't granted explicitly for read-scoped tokens.
+        if (canRead && subject !== ProjectPermissionSub.SecretFolders) {
           if (!useLegacyRead && subject === ProjectPermissionSub.Secrets) {
             // @ts-expect-error CASL's per-action condition schema doesn't expose $glob, but the
             // conditionsMatcher resolves it at runtime; same pattern is used in the legacy branch.
