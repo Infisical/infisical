@@ -195,12 +195,13 @@ Auth extraction happens in `src/server/plugins/auth/`:
     `GET /v1/organization/:organizationId`
   - `POST /v2/organizations/privilege-system-upgrade`, which gates on `hasRole(Admin)` rather than a CASL
     ability and one-way-switches the org's whole privilege model
-  - **every route that mints a long-lived credential**, each commented as such: identity token-auth tokens
+  - **every route that mints a long-lived credential**: identity token-auth tokens
     (`POST /v1/auth/token-auth/identities/:identityId/tokens`), universal-auth client secrets
     (`POST /v1/auth/universal-auth/identities/:identityId/client-secrets`), service tokens
-    (`POST /v2/service-token`), KMIP client certificates (`POST /v1/kmip/clients/:id/certificates`), and the
-    gateway / relay / KMIP-server enrollment tokens (`POST .../token-auth/generate-enrollment-token`). See
-    below.
+    (`POST /v2/service-token`), SCIM tokens (`POST /v1/scim/scim-tokens`), KMIP client certificates
+    (`POST /v1/kmip/clients/:id/certificates`), and the gateway / relay / KMIP-server enrollment tokens
+    (`POST .../token-auth/generate-enrollment-token`). Only the issuing route is held back: listing and
+    revoking these credentials return no secret material and stay open. See below.
 
   Rough proxy: nothing passing `requireOrg: false` accepts `AuthMode.OAUTH`, since with no org there's no
   ability to narrow. Before adding `AuthMode.OAUTH` to a route, check the handler actually builds an
@@ -222,12 +223,13 @@ Auth extraction happens in `src/server/plugins/auth/`:
   **A route that mints a credential can't accept a delegated one either.** Everything the revocation story
   rests on (deleting the application, rotating its secret, withdrawing its grant, deactivating the user)
   reaches only the OAuth sessions tagged with `getOauthClientSessionUserAgent`. An identity access token, a
-  universal-auth client secret, a service token, a KMIP client certificate, or a redeemed enrollment token is
-  a separate row with its own lifetime, so a compromised client could mint one (token auth accepts a TTL of
-  years) and keep the access after every handle we have on it is pulled. The credential also outranks its
-  minter: it authenticates as a machine identity whose permissions no OAuth scope intersects. This is why
-  credential issuance is on the exception list above regardless of how well the route builds its permission,
-  and why a new issuance route starts first-party only.
+  universal-auth client secret, a service token, a SCIM token, a KMIP client certificate, or a redeemed
+  enrollment token is a separate row with its own lifetime, so a compromised client could mint one (token
+  auth accepts a TTL of years, SCIM tokens up to 730 days) and keep the access after every handle we have
+  on it is pulled. The credential also outranks its minter: it authenticates as a machine identity whose
+  permissions no OAuth scope intersects, or in the SCIM case one that can create and delete the org's
+  members. This is why credential issuance is on the exception list above regardless of how well the route
+  builds its permission, and why a new issuance route starts first-party only.
 
   **A route that mints session tokens can't accept a delegated one.** `DELETE /v2/organizations/:organizationId`
   deletes the org the caller's token points at, so it reissues the user's session through
