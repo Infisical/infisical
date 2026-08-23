@@ -39,6 +39,12 @@ export const secretKeys = {
     viewSecretValue
   }: TGetProjectSecretsKey) =>
     [{ projectId, environment, secretPath, viewSecretValue }, "secrets"] as const,
+  getProjectSecretExportPreflight: ({
+    projectId,
+    environment,
+    secretPath
+  }: Pick<TGetProjectSecretsKey, "projectId" | "environment" | "secretPath">) =>
+    [{ projectId, environment, secretPath }, "secrets", "export-preflight"] as const,
   getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"] as const,
   getSecretVersionValue: (secretId: string, version: number) =>
     ["secret-versions", secretId, version] as const,
@@ -63,8 +69,7 @@ export const fetchProjectSecrets = async ({
   secretPath,
   includeImports,
   expandSecretReferences,
-  viewSecretValue,
-  recursive
+  viewSecretValue
 }: TGetProjectSecretsKey) => {
   const { data } = await apiRequest.get<SecretV3RawResponse>("/api/v4/secrets", {
     params: {
@@ -73,13 +78,34 @@ export const fetchProjectSecrets = async ({
       secretPath,
       viewSecretValue,
       expandSecretReferences,
-      recursive,
-      includeImports
+      include_imports: includeImports
     }
   });
 
   return data;
 };
+
+export const useGetProjectSecretsExportPreflight = ({
+  projectId,
+  environment,
+  secretPath
+}: Pick<TGetProjectSecretsKey, "projectId" | "environment" | "secretPath">) =>
+  useQuery({
+    enabled: Boolean(projectId && environment),
+    queryKey: secretKeys.getProjectSecretExportPreflight({
+      projectId,
+      environment,
+      secretPath
+    }),
+    queryFn: () =>
+      fetchProjectSecrets({
+        projectId,
+        environment,
+        secretPath,
+        includeImports: true,
+        viewSecretValue: false
+      })
+  });
 
 export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
   const personalSecrets: Record<

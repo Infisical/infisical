@@ -2698,9 +2698,8 @@ const OverviewPageContent = () => {
                   {userAvailableEnvs.length > 0 && (
                     <DownloadEnvButton
                       secretPath={secretPath}
-                      environments={userAvailableEnvs}
+                      environments={visibleEnvs}
                       projectId={projectId}
-                      selectedEnvironment={singleVisibleEnv ?? undefined}
                     />
                   )}
                   {userAvailableEnvs.length > 0 && (
