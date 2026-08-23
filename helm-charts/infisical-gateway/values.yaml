@@ -9,7 +9,8 @@ secret:
   name: "infisical-gateway-environment"
 
 gateway:
-  # Name of the gateway created in the Infisical UI. Required when enrollment.method is set.
+  # Name of the gateway created in the Infisical UI. Required by the default CLI
+  # image (positional `gateway start <name>`). Also required when enrollment.method is set.
   name: ""
 
   # Infisical instance URL (e.g. https://app.infisical.com). Required when enrollment.method is set.
