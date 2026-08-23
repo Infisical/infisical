@@ -199,26 +199,30 @@ export const EnvironmentSection = () => {
               .
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-2 rounded-md border border-border bg-foreground/5 p-3 text-sm">
-            <div className="flex gap-2">
-              <RotateCcwIcon className="mt-0.5 size-4 shrink-0 text-muted" />
-              <p>
-                <span className="font-medium text-foreground">Restore anytime within 14 days</span>{" "}
-                <span className="opacity-80">secrets, folders, and history are preserved.</span>
-              </p>
-            </div>
-            <div className="flex gap-2 opacity-80">
-              <KeyIcon className="mt-0.5 size-4 shrink-0 text-muted" />
-              <p>
-                Service tokens and integrations referencing {deleteEnvData?.slug ?? ""} will fail to
-                resolve. Fix or remove them before the grace period ends.
-              </p>
-            </div>
-            <div className="flex gap-2 opacity-80">
-              <ClockIcon className="mt-0.5 size-4 shrink-0 text-muted" />
-              <p>After 14 days, all secret data is wiped and cannot be recovered.</p>
-            </div>
-          </div>
+          <Card className="p-3 text-sm">
+            <CardContent className="space-y-2">
+              <div className="flex gap-2">
+                <RotateCcwIcon className="mt-0.5 size-4 shrink-0 text-muted" />
+                <p>
+                  <span className="font-medium text-foreground">
+                    Restore anytime within 14 days
+                  </span>{" "}
+                  <span className="opacity-80">secrets, folders, and history are preserved.</span>
+                </p>
+              </div>
+              <div className="flex gap-2 opacity-80">
+                <KeyIcon className="mt-0.5 size-4 shrink-0 text-muted" />
+                <p>
+                  Service tokens and integrations referencing {deleteEnvData?.slug ?? ""} will fail
+                  to resolve. Fix or remove them before the grace period ends.
+                </p>
+              </div>
+              <div className="flex gap-2 opacity-80">
+                <ClockIcon className="mt-0.5 size-4 shrink-0 text-muted" />
+                <p>After 14 days, all secret data is wiped and cannot be recovered.</p>
+              </div>
+            </CardContent>
+          </Card>
           <AlertDialogFooter className="sm:justify-between">
             <Button
               variant="danger"
@@ -265,14 +269,9 @@ export const EnvironmentSection = () => {
           <Alert variant="danger">
             <TriangleAlertIcon />
             <AlertDescription>
-              <p>
-                <span className="font-medium text-foreground">All secrets and folders</span> will be
-                wiped from storage.
-              </p>
-              <p>
-                Any service token or integration referencing {hardDeleteEnvData?.slug ?? ""} will
-                fail immediately and cannot be restored from this UI.
-              </p>
+              All secrets and folders will be wiped from storage. Any service token or integration
+              referencing {hardDeleteEnvData?.slug ?? ""} will fail immediately and cannot be
+              restored from this UI.
             </AlertDescription>
           </Alert>
           <div className="w-full pt-2 pb-4">
