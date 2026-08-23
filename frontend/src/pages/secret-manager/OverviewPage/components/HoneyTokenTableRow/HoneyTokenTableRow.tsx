@@ -99,7 +99,6 @@ export const HoneyTokenTableRow = ({
             <IconButton
               variant="ghost"
               size="sm"
-              className="border-0"
               aria-label={`View details for ${honeyToken.name}`}
               onClick={() => onViewDetails(honeyToken)}
             >
@@ -121,7 +120,6 @@ export const HoneyTokenTableRow = ({
                 <IconButton
                   variant="ghost"
                   size="sm"
-                  className="border-0"
                   aria-label={`View credentials for ${honeyToken.name}`}
                   isDisabled={!isAllowed || isRevoked}
                   onClick={() => onViewCredentials(honeyToken)}
@@ -148,7 +146,6 @@ export const HoneyTokenTableRow = ({
                 <IconButton
                   variant="ghost"
                   size="sm"
-                  className="border-0"
                   aria-label={`Edit ${honeyToken.name}`}
                   isDisabled={!isAllowed || isRevoked}
                   onClick={() => onEdit(honeyToken)}
@@ -174,7 +171,7 @@ export const HoneyTokenTableRow = ({
                   <IconButton
                     variant="ghost"
                     size="sm"
-                    className="border-0 hover:text-danger"
+                    className="hover:text-danger"
                     aria-label={`Revoke ${honeyToken.name}`}
                     onClick={() => onRevoke(honeyToken)}
                     isDisabled={!isAllowed}
