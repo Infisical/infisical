@@ -21,8 +21,6 @@ export async function up(knex: Knex): Promise<void> {
       await knex.schema.alterTable(TableName.SecretApprovalRequest, (tb) => {
         tb.uuid("committerIdentityId").nullable();
         tb.foreign("committerIdentityId").references("id").inTable(TableName.Identity).onDelete("SET NULL");
-
-        tb.index("committerIdentityId");
       });
     }
   }
