@@ -86,6 +86,7 @@ import {
 } from "../permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
+import { getCommitterIds } from "../secret-approval-policy/secret-approval-policy-fns";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
 import { hasSecretUpdateCommitConflict, sendApprovalEmailsFn } from "./secret-approval-request-fns";
@@ -328,6 +329,7 @@ export const secretApprovalRequestServiceFactory = ({
       !canReadApprovalRequests &&
       !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerUserId !== actorId &&
+      secretApprovalRequest.committerIdentityId !== actorId &&
       !policy.approvers.find(({ userId }) => userId === actorId)
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
@@ -845,6 +847,24 @@ export const secretApprovalRequestServiceFactory = ({
           }
         }
 
+        // Back-fill secretId on approval commit rows so created secrets are traceable
+        // This is useful for clients that require polling when a approval request is created
+        // for example our terraform provider.
+        if (newSecrets.length) {
+          const newSecretsByKey = new Map(newSecrets.map((s) => [s.key, s.id]));
+          await Promise.all(
+            secretCreationCommits
+              .filter((commit) => newSecretsByKey.has(commit.key))
+              .map((commit) =>
+                secretApprovalRequestSecretDAL.updateV2ById(
+                  commit.id,
+                  { secretId: newSecretsByKey.get(commit.key)! },
+                  tx
+                )
+              )
+          );
+        }
+
         const updationBlindIndexes = await Promise.all(
           secretUpdationCommits.map((el) => {
             const shouldComputeBlindIndex =
@@ -1273,7 +1293,15 @@ export const secretApprovalRequestServiceFactory = ({
             username: secretApprovalRequest.committerUser?.username ?? ""
           }
         }
-      : undefined;
+      : secretApprovalRequest.committerIdentity
+        ? {
+            type: ActorType.IDENTITY,
+            metadata: {
+              identityId: secretApprovalRequest.committerIdentity.identityId,
+              name: secretApprovalRequest.committerIdentity.name
+            }
+          }
+        : undefined;
 
     const secretMutationEvents: Event[] = [];
 
@@ -1591,7 +1619,7 @@ export const secretApprovalRequestServiceFactory = ({
           policyId: policy.id,
           status: "open",
           hasMerged: false,
-          committerUserId: actorId
+          ...getCommitterIds(actor, actorId)
         },
         tx
       );
@@ -1668,7 +1696,10 @@ export const secretApprovalRequestServiceFactory = ({
     });
 
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
-    const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+    const user =
+      actor === ActorType.IDENTITY
+        ? undefined
+        : await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
 
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${projectId}`;
     const approvalPath = `${projectPath}/approval`;
@@ -1684,7 +1715,8 @@ export const secretApprovalRequestServiceFactory = ({
         notification: {
           type: TriggerFeature.SECRET_APPROVAL,
           payload: {
-            userEmail: user.email as string,
+            userEmail: user?.email ?? undefined,
+            machineIdentityId: actor === ActorType.IDENTITY ? actorId : undefined,
             environment: env.name,
             secretPath,
             projectId,
@@ -1716,7 +1748,7 @@ export const secretApprovalRequestServiceFactory = ({
     void telemetryService
       .sendPostHogEvents({
         event: PostHogEventTypes.SecretApprovalRequestSubmitted,
-        distinctId: user.username ?? user.email ?? actorId,
+        distinctId: user?.username ?? user?.email ?? actorId,
         organizationId: actorOrgId,
         properties: {
           requestId: secretApprovalRequest.id,
@@ -1724,7 +1756,8 @@ export const secretApprovalRequestServiceFactory = ({
           projectId,
           environment,
           secretPath,
-          numberOfCommits: commits.length
+          numberOfCommits: commits.length,
+          actorType: actor as string
         }
       })
       .catch(() => {});
@@ -1746,8 +1779,8 @@ export const secretApprovalRequestServiceFactory = ({
     updateMode = SecretUpdateMode.FailOnNotFound,
     trx: providedTx
   }: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex }) => {
-    if (actor === ActorType.SERVICE || actor === ActorType.IDENTITY)
-      throw new BadRequestError({ message: "Cannot use service token or machine token over protected branches" });
+    if (actor === ActorType.SERVICE)
+      throw new BadRequestError({ message: "Cannot use service token over protected branches" });
 
     const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
@@ -2105,7 +2138,7 @@ export const secretApprovalRequestServiceFactory = ({
           policyId: policy.id,
           status: "open",
           hasMerged: false,
-          committerUserId: actorId,
+          ...getCommitterIds(actor, actorId),
           commitMessage
         },
         tx
@@ -2166,7 +2199,10 @@ export const secretApprovalRequestServiceFactory = ({
       ? await executeApprovalRequestCreation(providedTx)
       : await secretApprovalRequestDAL.transaction(executeApprovalRequestCreation);
 
-    const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+    const user =
+      actor === ActorType.IDENTITY
+        ? undefined
+        : await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
 
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${project.id}`;
@@ -2180,7 +2216,7 @@ export const secretApprovalRequestServiceFactory = ({
         notification: {
           type: TriggerFeature.SECRET_APPROVAL,
           payload: {
-            userEmail: user.email as string,
+            userEmail: user?.email ?? "machine-identity",
             environment: env.name,
             secretPath,
             projectId,
@@ -2212,7 +2248,7 @@ export const secretApprovalRequestServiceFactory = ({
     void telemetryService
       .sendPostHogEvents({
         event: PostHogEventTypes.SecretApprovalRequestSubmitted,
-        distinctId: user.username ?? user.email ?? actorId,
+        distinctId: user?.username ?? user?.email ?? actorId,
         organizationId: actorOrgId,
         properties: {
           requestId: secretApprovalRequest.id,
@@ -2220,7 +2256,8 @@ export const secretApprovalRequestServiceFactory = ({
           projectId,
           environment,
           secretPath,
-          numberOfCommits: commits.length
+          numberOfCommits: commits.length,
+          actorType: actor as string
         }
       })
       .catch(() => {});

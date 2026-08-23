@@ -12,6 +12,7 @@ export type TSecretApprovalPolicy = {
   updatedAt: Date;
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
+  bypassForMachineIdentities: boolean;
 };
 
 export enum ApproverType {
@@ -55,6 +56,7 @@ export type TCreateSecretPolicyDTO = {
   approvals?: number;
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
+  bypassForMachineIdentities?: boolean;
 };
 
 export type TUpdateSecretPolicyDTO = {
@@ -65,6 +67,7 @@ export type TUpdateSecretPolicyDTO = {
   secretPath?: string;
   approvals?: number;
   allowedSelfApprovals?: boolean;
+  bypassForMachineIdentities?: boolean;
   enforcementLevel?: EnforcementLevel;
   // for invalidating list
   projectId: string;

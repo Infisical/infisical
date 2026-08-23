@@ -801,6 +801,7 @@ export type TSecretApprovalRequestSubmittedEvent = {
     environment: string;
     secretPath: string;
     numberOfCommits: number;
+    actorType: string;
   };
 };
 
