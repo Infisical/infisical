@@ -7,6 +7,7 @@ import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthTermsNotice } from "@app/components/auth/AuthTermsNotice";
 import CodeInputStep from "@app/components/auth/CodeInputStep";
 import InitialSignupStep from "@app/components/auth/InitialSignupStep";
+import { OnboardingProgress } from "@app/components/auth/OnboardingPageLayout";
 import ProductSelectionStep from "@app/components/auth/ProductSelectionStep";
 import SignupCompleteStep from "@app/components/auth/SignupCompleteStep";
 import { getSignupProduct, SignupProductType } from "@app/components/auth/signupProducts";
@@ -246,10 +247,8 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
   const totalSteps = serverDetails?.emailConfigured ? 4 : 3;
   const stepNumber = STEP_NUMBERS[section];
   const stepIndicator =
-    !isInvite && stepNumber ? (
-      <span className="rounded-sm border border-border bg-container/50 px-2.5 py-0.5 font-jetbrains-mono text-[10px] tracking-widest text-muted uppercase">
-        Step {stepNumber} of {totalSteps}
-      </span>
+    !isInvite && stepNumber && stepNumber > 1 ? (
+      <OnboardingProgress currentStep={stepNumber} totalSteps={totalSteps} />
     ) : undefined;
 
   const completeAsideDescription = (() => {
