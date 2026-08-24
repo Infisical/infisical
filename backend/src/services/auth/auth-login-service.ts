@@ -58,6 +58,7 @@ import {
   getRequiredMfaMethod,
   isOAuthLoginMethodDisabled,
   OAuthAuthMethod,
+  resolveInvitingOrgId,
   verifyCaptcha
 } from "./auth-fns";
 import {
@@ -812,10 +813,12 @@ export const authLoginServiceFactory = ({
     // Mirror complete-account's invite detection: a not-yet-accepted user who already has an org
     // membership was invited (the inviter created it), versus an organic signup that has none yet.
     // Only meaningful when this login completes the signup, so skip the read for accepted users.
-    const wasInvited =
+    const pendingInviteMemberships =
       !wasUserAcceptedBeforeLogin && user
-        ? (await orgDAL.findMembership({ actorUserId: user.id, scope: AccessScope.Organization })).length > 0
-        : false;
+        ? await orgDAL.findMembership({ actorUserId: user.id, scope: AccessScope.Organization })
+        : [];
+    const wasInvited = pendingInviteMemberships.length > 0;
+    const invitingOrgId = resolveInvitingOrgId(pendingInviteMemberships);
 
     const serverCfg = await getServerCfg();
 
@@ -1112,6 +1115,7 @@ export const authLoginServiceFactory = ({
       didCompleteSignup,
       // meaningful only alongside didCompleteSignup: tags the completed signup as an invite
       wasInvited,
+      invitingOrgId,
       authMethod,
       orgId,
       orgName

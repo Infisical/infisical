@@ -168,3 +168,11 @@ export const verifyCaptcha = async (consecutiveFailedPasswordAttempts?: number |
     }
   }
 };
+
+/*
+ * The org that invited a user who has not accepted yet. A user can hold several pending invites, and
+ * the membership query returns them unordered, so the oldest one is picked: that is the invite the
+ * signup link came from.
+ */
+export const resolveInvitingOrgId = (memberships: { scopeOrgId: string; createdAt: Date }[]) =>
+  [...memberships].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0]?.scopeOrgId;

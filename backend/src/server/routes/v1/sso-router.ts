@@ -34,7 +34,7 @@ import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
 import { OrgAuthMethod } from "@app/services/org/org-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { PostHogEventTypes, SignupAttributionType, SignupSource } from "@app/services/telemetry/telemetry-types";
 
 const passport = new Authenticator({ key: "sso", userProperty: "passportUser" });
 
@@ -513,14 +513,20 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             typeof req.cookies?.hubspotutk === "string" ? req.cookies.hubspotutk.slice(0, 512) : undefined
           );
         }
+        // orgId is only set when this login resolved a session org, which an invited first-time
+        // signup has not, so fall back to the org whose invite brought them here.
+        const signupOrganizationId = passportResult.orgId || passportResult.invitingOrgId;
         void server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.UserSignedUp,
           distinctId: user.username ?? "",
-          ...(passportResult.orgId ? { organizationId: passportResult.orgId } : {}),
+          ...(signupOrganizationId ? { organizationId: signupOrganizationId } : {}),
           properties: {
             username: user.username,
             email: user.email ?? "",
-            ...(passportResult.wasInvited ? { attributionSource: "Team Invite" } : {}),
+            ...(passportResult.wasInvited
+              ? { attributionSource: "Team Invite", attributionType: SignupAttributionType.SystemDerived }
+              : {}),
+            signupSource: passportResult.wasInvited ? SignupSource.TeamInvite : SignupSource.SelfServe,
             signupMethod
           }
         });

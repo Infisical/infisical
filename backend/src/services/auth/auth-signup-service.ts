@@ -15,7 +15,7 @@ import { SmtpTemplates, throwIfSmtpError, TSmtpService } from "../smtp/smtp-serv
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TAuthDALFactory } from "./auth-dal";
-import { extractBearerToken } from "./auth-fns";
+import { extractBearerToken, resolveInvitingOrgId } from "./auth-fns";
 import { TAuthLoginFactory } from "./auth-login-service";
 import { TSignupOnboardingResponseDALFactory } from "./auth-signup-onboarding-dal";
 import { CompleteAccountType, TCompleteAccountDTO, TRecordSignupOnboardingDTO } from "./auth-signup-type";
@@ -183,6 +183,7 @@ export const authSignupServiceFactory = ({
     // whether the request is valid. This prevents timing-based user/alias enumeration.
     let authMethod: AuthMethod;
     let organizationId: string | undefined;
+    let invitingOrgId: string | undefined;
     let isInvitedUser = false;
     if (dto.type === CompleteAccountType.Email) {
       // Determine rejection before hashing, but don't throw yet
@@ -211,6 +212,7 @@ export const authSignupServiceFactory = ({
           { tx }
         );
         isInvitedUser = existingMemberships.length > 0;
+        invitingOrgId = resolveInvitingOrgId(existingMemberships);
         if (!isInvitedUser && dto.organizationName) {
           const org = await orgService.createOrganization(
             {
@@ -310,6 +312,7 @@ export const authSignupServiceFactory = ({
       refreshToken: tokens.refresh,
       authMethod,
       organizationId,
+      invitingOrgId,
       isInvitedUser
     };
   };
