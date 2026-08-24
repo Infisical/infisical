@@ -235,7 +235,8 @@ export const OrgOauthClientsTab = () => {
                             {!usesAuthorizationCode && (
                               <span className="text-muted">Not applicable</span>
                             )}
-                            {usesAuthorizationCode && (client.requirePkce ? "Required" : "Optional")}
+                            {usesAuthorizationCode &&
+                              (client.requirePkce ? "Required" : "Optional")}
                           </TableCell>
                           <TableCell>{format(new Date(client.createdAt), "MMM d, yyyy")}</TableCell>
                           <TableCell className="text-right">
