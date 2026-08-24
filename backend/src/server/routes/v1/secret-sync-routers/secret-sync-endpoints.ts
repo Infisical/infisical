@@ -373,7 +373,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        projectId: secretSync.projectId,
         event: {
           type: EventType.DELETE_SECRET_SYNC,
           metadata: {
