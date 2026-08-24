@@ -9,7 +9,9 @@ export {
 export {
   folderAccessKeys,
   useListFolderAccessIdentities,
-  useListFolderAccessUsers
+  useListFolderAccessUsers,
+  useListIdentityFolderAccess,
+  useListUserFolderAccess
 } from "./queries";
 export type {
   TCreateIdentityFolderAccessDTO,
@@ -20,8 +22,12 @@ export type {
   TFolderAccessIdentity,
   TFolderAccessUser,
   TFolderGrantType,
+  TIdentityFolderAccess,
   TListFolderAccessActorsDTO,
+  TListIdentityFolderAccessDTO,
+  TListUserFolderAccessDTO,
   TUpdateIdentityFolderAccessDTO,
-  TUpdateUserFolderAccessDTO
+  TUpdateUserFolderAccessDTO,
+  TUserFolderAccess
 } from "./types";
 export { SecretFolderRole } from "./types";

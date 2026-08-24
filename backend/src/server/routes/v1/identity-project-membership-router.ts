@@ -731,6 +731,44 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
 
   server.route({
     method: "GET",
+    url: "/identities/:identityId/secret-folder-access",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "listIdentityFolderAccess",
+      tags: [ApiDocsTags.FolderAccess],
+      description: "List every folder a machine identity has been granted access on in a project.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim().min(1).max(64).describe(FOLDER_ACCESS.LIST_IDENTITY_GRANTS.projectId),
+        identityId: z.string().uuid().describe(FOLDER_ACCESS.LIST_IDENTITY_GRANTS.identityId)
+      }),
+      response: {
+        200: z.object({
+          folderAccess: identityFolderAccessResponseSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { folderAccess } = await server.services.folderPermission.listActorFolderGrants({
+        permission: req.permission,
+        projectId: req.params.projectId,
+        target: { actorId: req.params.identityId, actorType: ActorType.IDENTITY }
+      });
+
+      return { folderAccess: folderAccess.map((grant) => ({ ...grant, identityId: req.params.identityId })) };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/secret-folder-access/identities",
     config: {
       rateLimit: readLimit

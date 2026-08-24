@@ -8,8 +8,6 @@ import {
   FilterableSelect,
   Input,
   Label,
-  RadioGroup,
-  RadioGroupItem,
   Sheet,
   SheetContent,
   SheetFooter,
@@ -25,17 +23,14 @@ import {
   useListFolderAccessUsers
 } from "@app/hooks/api/folderAccess";
 
-import {
-  DEFAULT_TEMPORARY_RANGE,
-  FOLDER_ROLE_TIERS,
-  TEMPORARY_RANGE_PRESETS
-} from "./folder-access.const";
+import { DEFAULT_TEMPORARY_RANGE, TEMPORARY_RANGE_PRESETS } from "./folder-access.const";
 import {
   isValidTemporaryRange,
   TFolderAccessActor,
   toIdentityActor,
   toUserActor
 } from "./folder-access.utils";
+import { FolderTierRadioGroup } from "./FolderTierRadioGroup";
 
 const CANDIDATE_LIMIT = 100;
 
@@ -182,33 +177,7 @@ export const AddFolderAccessSheet = ({
 
           <div className="space-y-2">
             <Label>Permission</Label>
-            <RadioGroup value={tier} onValueChange={(value) => setTier(value as SecretFolderRole)}>
-              {FOLDER_ROLE_TIERS.map((option) => (
-                <Label
-                  key={option.value}
-                  htmlFor={`folder-tier-${option.value}`}
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${
-                    tier === option.value
-                      ? "border-project/35 bg-project/5"
-                      : "border-border bg-card"
-                  }`}
-                >
-                  <RadioGroupItem
-                    id={`folder-tier-${option.value}`}
-                    value={option.value}
-                    className="mt-0.5"
-                  />
-                  <span className="space-y-0.5">
-                    <span className="block text-sm font-medium text-foreground">
-                      {option.label}
-                    </span>
-                    <span className="block text-xs leading-relaxed text-muted">
-                      {option.description}
-                    </span>
-                  </span>
-                </Label>
-              ))}
-            </RadioGroup>
+            <FolderTierRadioGroup value={tier} onValueChange={setTier} />
           </div>
 
           <div className="space-y-2">

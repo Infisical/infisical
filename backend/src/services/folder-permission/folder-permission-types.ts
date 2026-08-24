@@ -54,6 +54,12 @@ export type TDeleteFolderGrantDTO = {
   target: TFolderGrantActor;
 };
 
+export type TListActorFolderGrantsDTO = {
+  permission: OrgServiceActor;
+  projectId: string;
+  target: TFolderGrantActor;
+};
+
 export type TListFolderAccessActorsDTO = {
   permission: OrgServiceActor;
   projectId: string;

@@ -24,6 +24,9 @@ const invalidateFolderAccess = (
   queryClient.invalidateQueries({
     predicate: (query) => {
       const label = query.queryKey[1];
+      if (label === "user-folder-access" || label === "identity-folder-access") {
+        return (query.queryKey[0] as { projectId?: string })?.projectId === projectId;
+      }
       if (label !== "folder-access-users" && label !== "folder-access-identities") return false;
       const params = query.queryKey[0] as {
         projectId?: string;

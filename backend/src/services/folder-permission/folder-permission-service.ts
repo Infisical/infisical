@@ -13,6 +13,7 @@ import {
   assertFullAccessIsPermanent,
   assertGrantTargetEligible,
   assertManageFolderAccess,
+  assertReadActorGrantsAccess,
   computeTemporaryFields,
   getFolderAccessPermission,
   resolveFolder,
@@ -23,6 +24,7 @@ import {
 import {
   TCreateFolderGrantDTO,
   TDeleteFolderGrantDTO,
+  TListActorFolderGrantsDTO,
   TListFolderAccessActorsDTO,
   TUpdateFolderGrantDTO
 } from "./folder-permission-types";
@@ -30,9 +32,9 @@ import {
 type TFolderPermissionServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<
     TAdditionalPrivilegeDALFactory,
-    "findOne" | "create" | "updateById" | "deleteById" | "transaction"
+    "findOne" | "find" | "create" | "updateById" | "deleteById" | "transaction"
   >;
-  secretFolderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
+  secretFolderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
   folderPermissionDAL: Pick<
     TFolderPermissionDALFactory,
@@ -209,11 +211,45 @@ export const folderPermissionServiceFactory = ({
     };
   };
 
+  const listActorFolderGrants = async (dto: TListActorFolderGrantsDTO) => {
+    const { projectId, target } = dto;
+    const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
+    assertReadActorGrantsAccess(callerPermission, target);
+
+    const rows = await additionalPrivilegeDAL.find({
+      projectId,
+      [targetActorField(target)]: target.actorId,
+      $notNull: ["folderId"]
+    });
+    const grantRows = rows.filter((row) => row.role);
+    if (!grantRows.length) return { folderAccess: [] };
+
+    const folders = await secretFolderDAL.findSecretPathByFolderIds(
+      projectId,
+      grantRows.map((row) => row.folderId as string)
+    );
+
+    // a grant whose folder no longer resolves (soft-deleted environment) is omitted, matching how
+    // the permission layer treats it
+    const folderAccess = grantRows
+      .flatMap((row, idx) => {
+        const folder = folders[idx];
+        if (!folder) return [];
+        return [
+          toFolderGrant(row, projectId, { id: folder.id, path: folder.path, environmentSlug: folder.environmentSlug })
+        ];
+      })
+      .sort((a, b) => a.environment.localeCompare(b.environment) || a.secretPath.localeCompare(b.secretPath));
+
+    return { folderAccess };
+  };
+
   return {
     createFolderGrant,
     updateFolderGrant,
     deleteFolderGrant,
     listFolderAccessUsers,
-    listFolderAccessIdentities
+    listFolderAccessIdentities,
+    listActorFolderGrants
   };
 };

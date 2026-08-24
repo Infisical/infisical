@@ -522,4 +522,105 @@ describe("Identity folder access CRUD", () => {
       });
     });
   });
+
+  describe("actor grant listing", () => {
+    const listTarget = { environmentSlug: seedData1.environment.slug, secretPath: "/identity-folder-access-list" };
+    let listFolder: { id: string; name: string };
+    let listIdentityId: string;
+
+    beforeAll(async () => {
+      listFolder = await createFolder({ path: "/", name: "identity-folder-access-list" });
+      const listIdentity = await createProjectIdentity(ProjectMembershipRole.Member);
+      listIdentityId = listIdentity.identityId;
+    });
+
+    afterAll(async () => {
+      await deleteFolder({ path: "/", id: listFolder.id });
+      await deleteProjectIdentity(listIdentityId);
+    });
+
+    test("returns an empty list for an identity with no grants", async () => {
+      const res = await testServer.inject({
+        method: "GET",
+        url: folderAccessUrl(listIdentityId),
+        headers: authHeaders()
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ folderAccess: [] });
+    });
+
+    test("lists every folder grant for the identity across the project, sorted by path", async () => {
+      const temporaryAccessStartTime = new Date().toISOString();
+      const firstRes = await testServer.inject({
+        method: "POST",
+        url: folderAccessUrl(listIdentityId),
+        headers: authHeaders(),
+        body: { ...folderTarget, permission: SecretFolderRole.List }
+      });
+      expect(firstRes.statusCode).toBe(200);
+
+      const secondRes = await testServer.inject({
+        method: "POST",
+        url: folderAccessUrl(listIdentityId),
+        headers: authHeaders(),
+        body: {
+          ...listTarget,
+          permission: SecretFolderRole.Manage,
+          type: {
+            isTemporary: true,
+            temporaryMode: TemporaryPermissionMode.Relative,
+            temporaryRange: "4h",
+            temporaryAccessStartTime
+          }
+        }
+      });
+      expect(secondRes.statusCode).toBe(200);
+
+      try {
+        const listRes = await testServer.inject({
+          method: "GET",
+          url: folderAccessUrl(listIdentityId),
+          headers: authHeaders()
+        });
+        expect(listRes.statusCode).toBe(200);
+        const { folderAccess } = listRes.json();
+        expect(folderAccess).toHaveLength(2);
+        expect(folderAccess[0]).toEqual(
+          expect.objectContaining({
+            identityId: listIdentityId,
+            projectId,
+            permission: SecretFolderRole.List,
+            environment: seedData1.environment.slug,
+            secretPath: folderTarget.secretPath,
+            isTemporary: false,
+            temporaryRange: null
+          })
+        );
+        expect(folderAccess[1]).toEqual(
+          expect.objectContaining({
+            identityId: listIdentityId,
+            permission: SecretFolderRole.Manage,
+            secretPath: listTarget.secretPath,
+            isTemporary: true,
+            temporaryMode: TemporaryPermissionMode.Relative,
+            temporaryRange: "4h"
+          })
+        );
+        expect(new Date(folderAccess[1].temporaryAccessStartTime).toISOString()).toBe(temporaryAccessStartTime);
+      } finally {
+        await testServer.inject({
+          method: "DELETE",
+          url: folderAccessUrl(listIdentityId),
+          headers: authHeaders(),
+          body: { ...folderTarget }
+        });
+        await testServer.inject({
+          method: "DELETE",
+          url: folderAccessUrl(listIdentityId),
+          headers: authHeaders(),
+          body: { ...listTarget }
+        });
+      }
+    });
+  });
 });

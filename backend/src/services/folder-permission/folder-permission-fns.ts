@@ -3,6 +3,8 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { ActionProjectType, SecretFolderRole, TAdditionalPrivileges, TemporaryPermissionMode } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -81,6 +83,23 @@ export const getFolderAccessPermission = async (
     actionProjectType: ActionProjectType.SecretManager
   });
   return callerPermission;
+};
+
+export const assertReadActorGrantsAccess = (
+  callerPermission: Awaited<ReturnType<typeof getFolderAccessPermission>>,
+  target: TFolderGrantActor
+) => {
+  if (target.actorType === ActorType.USER) {
+    ForbiddenError.from(callerPermission).throwUnlessCan(
+      ProjectPermissionMemberActions.Read,
+      ProjectPermissionSub.Member
+    );
+  } else {
+    ForbiddenError.from(callerPermission).throwUnlessCan(
+      ProjectPermissionIdentityActions.Read,
+      ProjectPermissionSub.Identity
+    );
+  }
 };
 
 export const assertManageFolderAccess = (

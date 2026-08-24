@@ -49,6 +49,7 @@ import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace, useGetWorkspaceUserDetails } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { FolderAccessSection } from "@app/pages/project/components/FolderAccessSection";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { MemberPermissionAuditSheet } from "./components/MemberPermissionAuditSheet";
@@ -282,6 +283,20 @@ export const Page = () => {
               />
               {!isCertManager && currentProject.isLegacyAdditionalPrivilegesEnabled && (
                 <MemberProjectAdditionalPrivilegeSection membershipDetails={membershipDetails} />
+              )}
+              {currentProject.type === ProjectType.SecretManager && (
+                <FolderAccessSection
+                  actor={{
+                    type: "user",
+                    id: membershipDetails.user.id,
+                    membershipId: membershipDetails.id,
+                    username: membershipDetails.user.username,
+                    email: membershipDetails.user.email,
+                    firstName: membershipDetails.user.firstName,
+                    lastName: membershipDetails.user.lastName
+                  }}
+                  hideActions={isOwnProjectMembershipDetails}
+                />
               )}
             </div>
           </div>

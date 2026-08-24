@@ -54,6 +54,7 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { useRemovePamProductIdentityMember } from "@app/hooks/api/pam";
 import { projectIdentityQuery, useDeleteProjectIdentity } from "@app/hooks/api/projectIdentity";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { FolderAccessSection } from "@app/pages/project/components/FolderAccessSection";
 import { ProjectIdentityAuthenticationSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityAuthSection";
 import { ProjectIdentityDetailsSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityDetailsSection";
 import { ProjectAccessControlTabs } from "@app/types/project";
@@ -369,6 +370,15 @@ const Page = () => {
               {!isStandaloneProduct && currentProject.isLegacyAdditionalPrivilegesEnabled && (
                 <IdentityProjectAdditionalPrivilegeSection
                   identityMembershipDetails={identityMembershipDetails}
+                />
+              )}
+              {currentProject.type === ProjectType.SecretManager && (
+                <FolderAccessSection
+                  actor={{
+                    type: "identity",
+                    id: identityMembershipDetails.identity.id,
+                    name: identityMembershipDetails.identity.name
+                  }}
                 />
               )}
             </div>

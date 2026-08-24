@@ -1844,6 +1844,14 @@ export const FOLDER_ACCESS = {
     limit: "The number of machine identities to return.",
     search: "The text string that machine identity names will be filtered by."
   },
+  LIST_USER_GRANTS: {
+    projectId: "The ID of the project to list the user's folder access grants in.",
+    userId: "The ID of the user whose folder access grants to list."
+  },
+  LIST_IDENTITY_GRANTS: {
+    projectId: "The ID of the project to list the machine identity's folder access grants in.",
+    identityId: "The ID of the machine identity whose folder access grants to list."
+  },
   PERMISSION_AUDIT: {
     includeFolderPermissions: "Whether to include folder-scoped access grants in the returned permission sources."
   }

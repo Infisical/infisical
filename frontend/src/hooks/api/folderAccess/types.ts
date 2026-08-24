@@ -47,6 +47,20 @@ export type TFolderAccessIdentity = {
   folderRBACAccess: TFolderAccess | null;
 };
 
+export type TUserFolderAccess = TFolderAccess & { userId: string };
+
+export type TIdentityFolderAccess = TFolderAccess & { identityId: string };
+
+export type TListUserFolderAccessDTO = {
+  projectId: string;
+  userId: string;
+};
+
+export type TListIdentityFolderAccessDTO = {
+  projectId: string;
+  identityId: string;
+};
+
 export type TListFolderAccessActorsDTO = {
   projectId: string;
   environmentSlug: string;

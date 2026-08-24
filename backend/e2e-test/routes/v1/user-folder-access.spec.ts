@@ -879,6 +879,118 @@ describe("User folder access CRUD", () => {
       });
       expect(createRes.statusCode).toBe(403);
     });
+
+    test("cannot list a user's folder grants", async () => {
+      const res = await testServer.inject({
+        method: "GET",
+        url: folderAccessUrl(),
+        headers: outsiderHeaders()
+      });
+      expect(res.statusCode).toBe(403);
+    });
+  });
+
+  describe("actor grant listing", () => {
+    const listTarget = { environmentSlug: seedData1.environment.slug, secretPath: "/user-folder-access-list" };
+    let listFolder: { id: string; name: string };
+    let listUserId: string;
+
+    beforeAll(async () => {
+      listFolder = await createFolder({ path: "/", name: "user-folder-access-list" });
+      const listUser = await createProjectUser(ProjectMembershipRole.Member);
+      listUserId = listUser.userId;
+    });
+
+    afterAll(async () => {
+      await deleteFolder({ path: "/", id: listFolder.id });
+      await deleteProjectUser(listUserId);
+    });
+
+    test("returns an empty list for a user with no grants", async () => {
+      const res = await testServer.inject({
+        method: "GET",
+        url: folderAccessUrl(listUserId),
+        headers: authHeaders()
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ folderAccess: [] });
+    });
+
+    test("lists every folder grant for the user across the project, sorted by path", async () => {
+      const temporaryAccessStartTime = new Date().toISOString();
+      const firstRes = await testServer.inject({
+        method: "POST",
+        url: folderAccessUrl(listUserId),
+        headers: authHeaders(),
+        body: { ...folderTarget, permission: SecretFolderRole.Read }
+      });
+      expect(firstRes.statusCode).toBe(200);
+
+      const secondRes = await testServer.inject({
+        method: "POST",
+        url: folderAccessUrl(listUserId),
+        headers: authHeaders(),
+        body: {
+          ...listTarget,
+          permission: SecretFolderRole.Edit,
+          type: {
+            isTemporary: true,
+            temporaryMode: TemporaryPermissionMode.Relative,
+            temporaryRange: "30m",
+            temporaryAccessStartTime
+          }
+        }
+      });
+      expect(secondRes.statusCode).toBe(200);
+
+      try {
+        const listRes = await testServer.inject({
+          method: "GET",
+          url: folderAccessUrl(listUserId),
+          headers: authHeaders()
+        });
+        expect(listRes.statusCode).toBe(200);
+        const { folderAccess } = listRes.json();
+        expect(folderAccess).toHaveLength(2);
+        expect(folderAccess[0]).toEqual(
+          expect.objectContaining({
+            userId: listUserId,
+            projectId,
+            permission: SecretFolderRole.Read,
+            environment: seedData1.environment.slug,
+            secretPath: folderTarget.secretPath,
+            isTemporary: false,
+            temporaryRange: null
+          })
+        );
+        expect(folderAccess[1]).toEqual(
+          expect.objectContaining({
+            userId: listUserId,
+            permission: SecretFolderRole.Edit,
+            secretPath: listTarget.secretPath,
+            isTemporary: true,
+            temporaryMode: TemporaryPermissionMode.Relative,
+            temporaryRange: "30m"
+          })
+        );
+        expect(new Date(folderAccess[1].temporaryAccessStartTime).toISOString()).toBe(temporaryAccessStartTime);
+        expect(folderAccess[0]).not.toHaveProperty("name");
+        expect(folderAccess[0]).not.toHaveProperty("permissions");
+      } finally {
+        await testServer.inject({
+          method: "DELETE",
+          url: folderAccessUrl(listUserId),
+          headers: authHeaders(),
+          body: { ...folderTarget }
+        });
+        await testServer.inject({
+          method: "DELETE",
+          url: folderAccessUrl(listUserId),
+          headers: authHeaders(),
+          body: { ...listTarget }
+        });
+      }
+    });
   });
 
   describe("group removal reaps folder grants", () => {

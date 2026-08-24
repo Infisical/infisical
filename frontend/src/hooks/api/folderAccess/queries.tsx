@@ -2,7 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TFolderAccessIdentity, TFolderAccessUser, TListFolderAccessActorsDTO } from "./types";
+import {
+  TFolderAccessIdentity,
+  TFolderAccessUser,
+  TIdentityFolderAccess,
+  TListFolderAccessActorsDTO,
+  TListIdentityFolderAccessDTO,
+  TListUserFolderAccessDTO,
+  TUserFolderAccess
+} from "./types";
 
 const DEFAULT_LIMIT = 50;
 
@@ -30,7 +38,11 @@ export const folderAccessKeys = {
     [
       { projectId, environmentSlug, secretPath, offset, limit, search },
       "folder-access-identities"
-    ] as const
+    ] as const,
+  listUserGrants: ({ projectId, userId }: TListUserFolderAccessDTO) =>
+    [{ projectId, userId }, "user-folder-access"] as const,
+  listIdentityGrants: ({ projectId, identityId }: TListIdentityFolderAccessDTO) =>
+    [{ projectId, identityId }, "identity-folder-access"] as const
 };
 
 export const useListFolderAccessUsers = ({
@@ -60,6 +72,33 @@ export const useListFolderAccessUsers = ({
       return data;
     },
     enabled: Boolean(projectId) && Boolean(environmentSlug) && Boolean(secretPath)
+  });
+
+export const useListUserFolderAccess = ({ projectId, userId }: TListUserFolderAccessDTO) =>
+  useQuery({
+    queryKey: folderAccessKeys.listUserGrants({ projectId, userId }),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ folderAccess: TUserFolderAccess[] }>(
+        `/api/v1/projects/${projectId}/users/${userId}/secret-folder-access`
+      );
+      return data.folderAccess;
+    },
+    enabled: Boolean(projectId) && Boolean(userId)
+  });
+
+export const useListIdentityFolderAccess = ({
+  projectId,
+  identityId
+}: TListIdentityFolderAccessDTO) =>
+  useQuery({
+    queryKey: folderAccessKeys.listIdentityGrants({ projectId, identityId }),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ folderAccess: TIdentityFolderAccess[] }>(
+        `/api/v1/projects/${projectId}/memberships/identities/${identityId}/secret-folder-access`
+      );
+      return data.folderAccess;
+    },
+    enabled: Boolean(projectId) && Boolean(identityId)
   });
 
 export const useListFolderAccessIdentities = ({
