@@ -561,7 +561,7 @@ export const secretApprovalRequestServiceFactory = ({
       {
         // The job id must differ per delivery. A stable id would let BullMQ deduplicate every
         // state change after the first on the same request and drop it without a trace.
-        jobId: `change-request-webhook-${secretApprovalRequest.id}-${action}-${Date.now()}`,
+        jobId: `change-request-webhook-${secretApprovalRequest.id}-${action}-${Date.now()}-${alphaNumericNanoId(6)}`,
         removeOnFail: { count: 5 },
         removeOnComplete: true,
         delay: 1000,

@@ -233,8 +233,13 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const sql = findQuery({ [`${TableName.SecretApprovalRequest}.id` as "id"]: id }, tx || db.replicaNode());
-      const docs = await sql;
+      let docs = await findQuery({ [`${TableName.SecretApprovalRequest}.id` as "id"]: id }, tx || db.replicaNode());
+      // A caller that just committed a write reads its own row here, and a replica may not have
+      // replayed it yet. Confirm a miss against the primary so a lagging replica cannot make a
+      // committed request look absent.
+      if (!docs.length && !tx) {
+        docs = await findQuery({ [`${TableName.SecretApprovalRequest}.id` as "id"]: id }, db.primaryNode());
+      }
       const formattedDoc = sqlNestRelationships({
         data: docs,
         key: "id",

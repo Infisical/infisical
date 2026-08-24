@@ -166,12 +166,12 @@ describe("getWebhookPayload: secrets.change-request.modified", () => {
       payload: {
         ...changeRequestPayload,
         type: WebhookType.GENERAL,
-        commitMessage: "fixed the bug",
-        bypassReason: "on-call approved",
+        commitMessage: "Rotated the staging database password",
+        bypassReason: "On-call approved during the outage",
         request: {
           ...changeRequestPayload.request,
-          commitMessage: "fixed the bug",
-          bypassReason: "on-call approved"
+          commitMessage: "Rotated the staging database password",
+          bypassReason: "On-call approved during the outage"
         }
       }
     } as unknown as Parameters<typeof getWebhookPayload>[0];
@@ -179,6 +179,8 @@ describe("getWebhookPayload: secrets.change-request.modified", () => {
     const result = getWebhookPayload(eventWithFreeText);
 
     const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain("Rotated the staging database password");
+    expect(serialized).not.toContain("On-call approved during the outage");
     expect(serialized).not.toContain("commitMessage");
     expect(serialized).not.toContain("bypassReason");
   });
@@ -425,6 +427,15 @@ describe("isWebhookPathSubscribed", () => {
       ["/prod-a/*", "/prod-b/*", false]
     ])("request %s against hook %s is %s", (requestPath, hookPath, expected) => {
       expect(isWebhookPathSubscribed(WebhookEvents.AccessRequestModified, requestPath, hookPath)).toBe(expected);
+    });
+  });
+
+  describe("a shared literal prefix delivers even where the patterns cannot overlap", () => {
+    test.each([
+      ["/api/*/private", "/api/*/public"],
+      ["/production/api/*", "/prod"]
+    ])("request %s against hook %s still delivers", (requestPath, hookPath) => {
+      expect(isWebhookPathSubscribed(WebhookEvents.AccessRequestModified, requestPath, hookPath)).toBe(true);
     });
   });
 });
