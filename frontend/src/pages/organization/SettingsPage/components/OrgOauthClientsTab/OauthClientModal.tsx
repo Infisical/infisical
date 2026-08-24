@@ -264,13 +264,8 @@ export const OauthClientModal = ({ popUp, handlePopUpClose, onCreated }: Props) 
       }
       handlePopUpClose("clientForm");
       reset();
-    } catch (error) {
-      createNotification({
-        text:
-          (error as Error)?.message ||
-          `Failed to ${isEditing ? "update" : "create"} OAuth application`,
-        type: "error"
-      });
+    } catch {
+      // Reported by the mutation cache's global onError.
     }
   };
 

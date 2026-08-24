@@ -87,11 +87,8 @@ export const OrgOauthClientsTab = () => {
         type: "success"
       });
       handlePopUpClose("deleteClient");
-    } catch (error) {
-      createNotification({
-        text: (error as Error)?.message || "Failed to delete OAuth application",
-        type: "error"
-      });
+    } catch {
+      // Reported by the mutation cache's global onError; caught here only to keep the dialog open.
     }
   };
 
@@ -113,11 +110,8 @@ export const OrgOauthClientsTab = () => {
         text: "Successfully rotated client secret",
         type: "success"
       });
-    } catch (error) {
-      createNotification({
-        text: (error as Error)?.message || "Failed to rotate client secret",
-        type: "error"
-      });
+    } catch {
+      // Reported by the mutation cache's global onError; caught here only to keep the dialog open.
     }
   };
 
