@@ -128,7 +128,7 @@ const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RegexPattern]: "Pattern",
   [ConstraintType.MinLength]: "Min length",
   [ConstraintType.MaxLength]: "Max length",
-  [ConstraintType.PreventValueReuse]: "Prevent reuse of previous values"
+  [ConstraintType.PreventValueReuse]: "Prevent value repetition"
 };
 
 const RuleOptionComponent = ({ isSelected, children, ...props }: OptionProps<RuleOption>) => (

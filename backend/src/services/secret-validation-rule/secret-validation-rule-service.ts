@@ -9,6 +9,7 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { expandSecretReferencesFactory } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
@@ -56,9 +57,10 @@ const $toRuleRecord = (rule: TSecretValidationRules, inputs: TSecretValidationRu
 type TSecretValidationRuleServiceFactoryDep = {
   secretValidationRuleDAL: TSecretValidationRuleDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
   secretDAL: TSecretV2BridgeDALFactory;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "find">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: TKmsServiceFactory;
 };
@@ -71,6 +73,7 @@ export const secretValidationRuleServiceFactory = ({
   folderDAL,
   secretDAL,
   secretVersionV2BridgeDAL,
+  projectDAL,
   permissionService,
   kmsService
 }: TSecretValidationRuleServiceFactoryDep) => {
@@ -394,6 +397,12 @@ export const secretValidationRuleServiceFactory = ({
       )
     );
 
+    const duplicateValuesRule = matchingRules.find((r) =>
+      r.inputs.constraints?.some(
+        (c) => c.type === ConstraintType.PreventDuplicatedValues && c.appliesTo === ConstraintTarget.SecretValue
+      )
+    );
+
     const previousValuesMap: Record<string, string[]> = {};
     if (hasPreventValueReuseConstraint) {
       const secretIdsToCheck = secrets.filter((s) => s.secretId).map((s) => s.secretId!);
@@ -423,6 +432,84 @@ export const secretValidationRuleServiceFactory = ({
       }
     }
 
+    // Build a map of secret key -> duplicate info for the PreventDuplicatedValues constraint.
+    // Uses the blind index to find existing secrets with the same value within the rule's scope.
+    const duplicateOfMap: Record<string, { key: string; environment: string; path: string }> = {};
+    if (duplicateValuesRule) {
+      const project = await projectDAL.findById(projectId);
+      if (project.secretBlindIndexEnabled) {
+        const { generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
+
+        const secretsWithValues = secrets.filter((s) => s.value !== undefined);
+        const blindIndexes = await Promise.all(
+          secretsWithValues.map((s) => generateSecretBlindIndex(Buffer.from(s.value!)))
+        );
+
+        // Detect intra-batch duplicates (two secrets in the same request with the same value)
+        // Those were not added yet, so we can't rely on the database check.
+        const seenInBatch = new Map<string, { key: string; environment: string; path: string }>();
+        for (let i = 0; i < secretsWithValues.length; i += 1) {
+          const blindIndexValue = blindIndexes[i];
+          if (seenInBatch.has(blindIndexValue)) {
+            duplicateOfMap[secretsWithValues[i].key] = seenInBatch.get(blindIndexValue)!;
+          } else {
+            seenInBatch.set(blindIndexValue, { key: secretsWithValues[i].key, environment, path: secretPath });
+          }
+        }
+
+        const uniqueBlindIndexes = [...new Set(blindIndexes.filter(Boolean))];
+        if (uniqueBlindIndexes.length) {
+          const excludeSecretIds = secrets.filter((s) => s.secretId).map((s) => s.secretId!);
+          const ruleEnvId = duplicateValuesRule.envId ?? undefined;
+          const existingDuplicates = await secretDAL.findExistingSecretsByBlindIndexes(
+            projectId,
+            uniqueBlindIndexes,
+            excludeSecretIds.length ? excludeSecretIds : undefined,
+            ruleEnvId
+          );
+
+          if (existingDuplicates.length) {
+            const folderIds = [...new Set(existingDuplicates.map((d) => d.folderId))];
+            const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, folderIds);
+            const folderIdToPath = new Map(folderIds.map((id, i) => [id, folderPaths[i]?.path ?? "/"]));
+
+            const ruleSecretPath = duplicateValuesRule.secretPath;
+
+            const blindIndexToExisting = new Map(
+              existingDuplicates
+                .filter((dup) => {
+                  if (!dup.secretValueBlindIndex) return false;
+                  const dupPath = folderIdToPath.get(dup.folderId) ?? "/";
+                  return picomatch.isMatch(dupPath, ruleSecretPath, { strictSlashes: false });
+                })
+                .map((dup) => [
+                  dup.secretValueBlindIndex!,
+                  {
+                    key: dup.key,
+                    environment: dup.environment,
+                    path: folderIdToPath.get(dup.folderId) ?? "/"
+                  }
+                ])
+            );
+
+            for (let i = 0; i < secretsWithValues.length; i += 1) {
+              if (duplicateOfMap[secretsWithValues[i].key]) {
+                // eslint-disable-next-line no-continue
+                continue;
+              }
+              const existing = blindIndexToExisting.get(blindIndexes[i]);
+              if (existing) {
+                duplicateOfMap[secretsWithValues[i].key] = existing;
+              }
+            }
+          }
+        }
+      }
+    }
+
     const resolvedSecrets = await Promise.all(
       secrets.map(async (s) => ({
         key: s.key,
@@ -432,7 +519,8 @@ export const secretValidationRuleServiceFactory = ({
           environment,
           secretKey: s.key
         }),
-        ...(s.secretId && previousValuesMap[s.secretId] ? { previousValues: previousValuesMap[s.secretId] } : {})
+        ...(s.secretId && previousValuesMap[s.secretId] ? { previousValues: previousValuesMap[s.secretId] } : {}),
+        ...(duplicateOfMap[s.key] ? { duplicateOf: duplicateOfMap[s.key] } : {})
       }))
     );
 

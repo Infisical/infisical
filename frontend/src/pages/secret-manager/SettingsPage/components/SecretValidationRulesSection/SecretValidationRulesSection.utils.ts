@@ -73,20 +73,20 @@ export const CONSTRAINT_OPTIONS: {
   },
   {
     type: ConstraintType.PreventValueReuse,
-    label: "Prevent Value Reuse",
+    label: "Prevent Value Repetition",
     description: "Prevent reusing previous secret values",
     cardDescription:
-      "When a secret is updated, its new value is validated against the specified number of prior versions.",
+      "When a secret is updated, its new value is checked against the specified number of prior versions to prevent reuse of previous values.",
     placeholder: 10,
     icon: HistoryIcon,
     allowedTargets: [ConstraintTarget.SecretValue]
   },
   {
     type: ConstraintType.PreventDuplicatedValues,
-    label: "Prevent Duplicated Values",
+    label: "Prevent Duplicate Values",
     description: "Prevent multiple secrets from sharing the same value",
     cardDescription:
-      "When a secret is created or updated, its value is checked against all secrets across every environment and folder in the project to prevent duplicates.",
+      "When a secret is created or updated, its value is checked against all other secrets in the selected scope to prevent duplicates.",
     placeholder: "",
     icon: CopyXIcon,
     allowedTargets: [ConstraintTarget.SecretValue]
@@ -109,8 +109,8 @@ export const CONSTRAINT_TYPE_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RegexPattern]: "Regex Pattern",
   [ConstraintType.RequiredPrefix]: "Required Prefix",
   [ConstraintType.RequiredSuffix]: "Required Suffix",
-  [ConstraintType.PreventValueReuse]: "Prevent Value Reuse",
-  [ConstraintType.PreventDuplicatedValues]: "Prevent Duplicated Values"
+  [ConstraintType.PreventValueReuse]: "Prevent Value Repetition",
+  [ConstraintType.PreventDuplicatedValues]: "Prevent Duplicate Values"
 };
 
 export enum RuleType {

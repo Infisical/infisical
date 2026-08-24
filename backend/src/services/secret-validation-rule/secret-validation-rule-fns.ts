@@ -183,6 +183,7 @@ type TSecretToValidate = {
   key: string;
   value?: string;
   previousValues?: string[];
+  duplicateOf?: { key: string; environment: string; path: string };
 };
 
 type TValidationRule = {
@@ -206,8 +207,10 @@ export const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RegexPattern]: "Regex pattern",
   [ConstraintType.RequiredPrefix]: "Required prefix",
   [ConstraintType.RequiredSuffix]: "Required suffix",
-  [ConstraintType.PreventValueReuse]: "Prevent reuse of previous secret values",
-  [ConstraintType.PreventDuplicatedValues]: "Prevent duplicated secret values"
+  [ConstraintType.PreventValueReuse]:
+    "When a secret is updated, its new value is checked against the specified number of prior versions to prevent reuse of previous values.",
+  [ConstraintType.PreventDuplicatedValues]:
+    "When a secret is created or updated, its value is checked against all other secrets in the selected scope to prevent duplicates."
 };
 
 const TARGET_LABELS: Record<ConstraintTarget, string> = {
@@ -286,8 +289,10 @@ export const evaluateConstraint = (constraint: TConstraint, secret: TSecretToVal
       return null;
     }
     case ConstraintType.PreventDuplicatedValues: {
-      // TODO: implement duplicate value detection across secrets in the same scope
-      return null;
+      if (secret.value === undefined || !secret.duplicateOf) {
+        return null;
+      }
+      return `${targetLabel} is already used by secret "${secret.duplicateOf.key}" in environment "${secret.duplicateOf.environment}" at path "${secret.duplicateOf.path}"`;
     }
     default:
       return null;
