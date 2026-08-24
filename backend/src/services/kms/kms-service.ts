@@ -1624,6 +1624,7 @@ export const kmsServiceFactory = ({
       const rootKey = await $decryptRootKey(row).then(
         (key) => key,
         (err: unknown) => {
+          if (row.encryptionStrategy === RootKeyEncryptionStrategy.HSM) throw err;
           errors.push(err);
           return null;
         }
@@ -1758,8 +1759,15 @@ export const kmsServiceFactory = ({
     if (current) return;
 
     const sentinel = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
-    await kmsKekHistoryDAL
-      .create({ kekFingerprint: fingerprint, activatedAt: sentinel?.activatedAt ?? sentinel?.createdAt ?? new Date() })
+    await kmsRootConfigDAL
+      .transaction(async (tx) => {
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
+        if (await kmsKekHistoryDAL.findCurrent(tx)) return;
+        await kmsKekHistoryDAL.create(
+          { kekFingerprint: fingerprint, activatedAt: sentinel?.activatedAt ?? sentinel?.createdAt ?? new Date() },
+          tx
+        );
+      })
       .catch((err: unknown) => {
         // Never block boot on a bookkeeping row.
         logger.warn({ err }, "KMS: Failed to record initial encryption key history entry");
@@ -1869,7 +1877,8 @@ export const kmsServiceFactory = ({
         KMS_ROOT_CONFIG_UUID,
         {
           encryptedRootKey,
-          encryptionStrategy: strategy
+          encryptionStrategy: strategy,
+          kekFingerprint: strategy === RootKeyEncryptionStrategy.Software ? $currentKekFingerprint() : null
         },
         tx
       );

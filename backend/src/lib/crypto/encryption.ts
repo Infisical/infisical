@@ -1,6 +1,7 @@
 import argon2 from "argon2";
 
 import { SecretKeyEncoding } from "@app/db/schemas";
+import { logger } from "@app/lib/logger";
 
 import { crypto, SymmetricKeySize } from "./cryptography";
 import { getLegacyDecryptionCandidates } from "./legacy-key";
@@ -38,6 +39,7 @@ export const buildSecretBlindIndexFromName = async ({
   }
 
   let salt = "";
+  let lastError: unknown;
   for (const candidate of candidates) {
     try {
       if (candidate.ROOT_ENCRYPTION_KEY && keyEncoding === SecretKeyEncoding.BASE64) {
@@ -51,12 +53,19 @@ export const buildSecretBlindIndexFromName = async ({
           .symmetric()
           .decrypt({ iv, ciphertext, key: candidate.ENCRYPTION_KEY, tag, keySize: SymmetricKeySize.Bits128 });
       }
-    } catch {
+    } catch (err) {
+      lastError = err;
       salt = "";
     }
     if (salt) break;
   }
-  if (!salt) throw new Error("Missing secret blind index key");
+  if (!salt) {
+    if (lastError) {
+      logger.error({ err: lastError }, "No configured encryption key decrypts this secret blind index salt");
+      throw new Error("No configured encryption key decrypts this secret blind index");
+    }
+    throw new Error("Missing secret blind index key");
+  }
 
   const secretBlindIndex = await argon2.hash(secretName, {
     type: argon2.argon2id,
