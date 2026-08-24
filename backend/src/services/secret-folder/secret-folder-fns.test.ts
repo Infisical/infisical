@@ -369,9 +369,7 @@ describe("checkFolderHasRbacPolicies", () => {
   test("returns false without querying for an empty subtree", async () => {
     const { dal, find } = makeDAL([{ id: "privilege-1" }]);
 
-    await expect(checkFolderHasRbacPolicies({ subtree: [] }, { additionalPrivilegeDAL: dal }, tx)).resolves.toBe(
-      false
-    );
+    await expect(checkFolderHasRbacPolicies({ subtree: [] }, { additionalPrivilegeDAL: dal }, tx)).resolves.toBe(false);
     expect(find).not.toHaveBeenCalled();
   });
 

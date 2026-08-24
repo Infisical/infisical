@@ -46,6 +46,7 @@ const createService = ({
   const insertOrgMembershipRevocationMarker = vi.fn().mockResolvedValue(undefined);
   const removeOrgMembershipRevocationMarkers = vi.fn().mockResolvedValue(undefined);
   const deleteAlertsForResource = vi.fn().mockResolvedValue(0);
+  const invalidateProjectFolderPermissionCache = vi.fn().mockResolvedValue(undefined);
 
   const membershipIdentityDAL = {
     findOne: vi.fn().mockResolvedValue(existingMembership),
@@ -71,7 +72,8 @@ const createService = ({
         .fn()
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
       // Role name "no-access" skips the privilege-boundary comparison in the guards.
-      getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ role: { name: "no-access" }, permission: null }])
+      getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ role: { name: "no-access" }, permission: null }]),
+      invalidateProjectFolderPermissionCache
     } as never,
     orgDAL: { findById: vi.fn().mockResolvedValue({}), findEffectiveOrgMembership: vi.fn() } as never,
     additionalPrivilegeDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,
@@ -97,7 +99,8 @@ const createService = ({
     bumpIdentityRevocationVersion,
     insertOrgMembershipRevocationMarker,
     removeOrgMembershipRevocationMarkers,
-    deleteAlertsForResource
+    deleteAlertsForResource,
+    invalidateProjectFolderPermissionCache
   };
 };
 
@@ -160,7 +163,7 @@ describe("deleteMembership alert cleanup", () => {
   });
 
   test("removing a project membership reaps only that project's alerts", async () => {
-    const { service, deleteAlertsForResource } = createService();
+    const { service, deleteAlertsForResource, invalidateProjectFolderPermissionCache } = createService();
 
     await service.deleteMembership({
       ...buildDto(),
@@ -178,6 +181,8 @@ describe("deleteMembership alert cleanup", () => {
       },
       expect.anything()
     );
+    expect(invalidateProjectFolderPermissionCache).toHaveBeenCalledTimes(1);
+    expect(invalidateProjectFolderPermissionCache).toHaveBeenCalledWith(PROJECT_ID, expect.anything());
   });
 });
 
