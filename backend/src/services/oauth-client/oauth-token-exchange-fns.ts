@@ -3,9 +3,11 @@ import { JwksClient } from "jwks-rsa";
 
 import { TOidcConfigs } from "@app/db/schemas";
 import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { buildSsrfSafeAgent, safeRequest } from "@app/lib/validator/safe-request";
+
+import { OauthTokenError, OauthTokenErrorCode } from "./oauth-token-error";
 
 const SSO_TAB_HINT = "Check Settings > SSO & Provisioning.";
 
@@ -114,14 +116,16 @@ export const resolveOidcTrustAnchor = async (oidcConfig: TOidcConfigs): Promise<
   const algorithm = oidcConfig.jwtSignatureAlgorithm || OIDCJWTSignatureAlgorithm.RS256;
 
   if (!ASYMMETRIC_SIGNATURE_ALGORITHMS.includes(algorithm)) {
-    throw new BadRequestError({
+    throw new OauthTokenError({
+      code: OauthTokenErrorCode.ServerError,
       message: `Token exchange requires an OIDC SSO configuration that uses an asymmetric JWT signature algorithm, but yours uses '${algorithm}'. Switch it to one of ${ASYMMETRIC_SIGNATURE_ALGORITHMS.join(", ")}. ${SSO_TAB_HINT}`
     });
   }
 
   if (oidcConfig.configurationType === OIDCConfigurationType.DISCOVERY_URL) {
     if (!oidcConfig.discoveryURL) {
-      throw new BadRequestError({
+      throw new OauthTokenError({
+        code: OauthTokenErrorCode.ServerError,
         message: `Your organization's OIDC SSO configuration has no discovery URL, so the identity provider's signing keys cannot be located. ${SSO_TAB_HINT}`
       });
     }
@@ -134,21 +138,24 @@ export const resolveOidcTrustAnchor = async (oidcConfig: TOidcConfigs): Promise<
         { error, orgId: oidcConfig.orgId },
         `OIDC discovery failed during token exchange [orgId=${oidcConfig.orgId}]`
       );
-      throw new BadRequestError({
+      throw new OauthTokenError({
+        code: OauthTokenErrorCode.ServerError,
         message: `Could not reach your organization's identity provider to load its signing keys. ${SSO_TAB_HINT}`
       });
     }
 
     const jwksUri = metadata.jwks_uri;
     if (!jwksUri) {
-      throw new BadRequestError({
+      throw new OauthTokenError({
+        code: OauthTokenErrorCode.ServerError,
         message: `Your organization's identity provider did not publish a 'jwks_uri' in its discovery document, so subject tokens cannot be verified. ${SSO_TAB_HINT}`
       });
     }
 
     const issuer = oidcConfig.issuer || metadata.issuer;
     if (!issuer) {
-      throw new BadRequestError({
+      throw new OauthTokenError({
+        code: OauthTokenErrorCode.ServerError,
         message: `Your organization's identity provider did not publish an issuer in its discovery document. ${SSO_TAB_HINT}`
       });
     }
@@ -157,7 +164,8 @@ export const resolveOidcTrustAnchor = async (oidcConfig: TOidcConfigs): Promise<
   }
 
   if (!oidcConfig.issuer || !oidcConfig.jwksUri) {
-    throw new BadRequestError({
+    throw new OauthTokenError({
+      code: OauthTokenErrorCode.ServerError,
       message: `Your organization's OIDC SSO configuration is missing an issuer or JWKS URI, so subject tokens cannot be verified. ${SSO_TAB_HINT}`
     });
   }
@@ -255,7 +263,8 @@ export const verifySubjectToken = async ({ subjectToken, oidcConfig, expectedAud
       });
     }
 
-    throw new BadRequestError({
+    throw new OauthTokenError({
+      code: OauthTokenErrorCode.ServerError,
       message: `Could not load signing keys from your organization's identity provider. ${SSO_TAB_HINT}`
     });
   }
@@ -269,7 +278,8 @@ export const verifySubjectToken = async ({ subjectToken, oidcConfig, expectedAud
       `Subject token signing key could not be imported during token exchange [orgId=${oidcConfig.orgId}] [kid=${kid}]`
     );
 
-    throw new BadRequestError({
+    throw new OauthTokenError({
+      code: OauthTokenErrorCode.ServerError,
       message: `Your organization's identity provider published a signing key ('${kid}') that cannot be used with the JWT signature algorithm its OIDC SSO configuration declares ('${anchor.algorithm}'). ${SSO_TAB_HINT}`
     });
   }

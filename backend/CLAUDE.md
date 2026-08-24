@@ -250,6 +250,43 @@ leaves it unset only for `delegation: "full"`; `getDelegatedOauthScopes` reads a
 narrowing". Matching full delegation positively is what makes a dropped claim fail closed instead of
 quietly promoting the token.
 
+**The token endpoint answers failures in RFC 6749 terms, not the house envelope.** `POST /v1/oauth/token`
+is the one route that does, because its contract is the RFC rather than our API conventions: generic OAuth
+client libraries branch on the `error` code, and `{ statusCode, message, error: "UnauthorizedError" }`
+leaves them unable to tell "rotate the client secret" from "re-authenticate the user" from "retry later".
+`OauthTokenError` (`oauth-token-error.ts`) carries the code, derives the status from it (400 for
+everything, 401 for `invalid_client`, 500 for `server_error`), and the shared error handler renders
+`{ error, error_description }` for it. When extending this:
+- **The handler's `try`/`catch` is the endpoint's only exit**, and every `return` inside it is awaited —
+  a bare `return promise` would resolve outside the `catch` and escape in the house envelope.
+- **The code a rejected grant earns depends on the grant.** RFC 8693 section 2.2.2 overrides RFC 6749 for
+  token exchange, and not in the direction you would guess: a `subject_token` "invalid for any reason, or
+  unacceptable based on policy" MUST be `invalid_request`, where the same class of failure on the redirect
+  and refresh grants is `invalid_grant`. So the exchange collapses "your token is bad" into "your request
+  is bad", and never returns `invalid_grant` at all. `REJECTED_GRANT_CODE_BY_GRANT_TYPE` holds this, and
+  `toOauthTokenError` takes the grant type to pick it. Client authentication stays `invalid_client` under
+  both, because there it is the client that failed rather than the token.
+- **`toOauthTokenError` defaults by error class**, never by message text: `UnauthorizedError` means a grant
+  we won't act on (the grant-dependent code above), `BadRequestError` a request we can't use
+  (`invalid_request`), and anything else is a bug or an outage, so it becomes a generic `server_error`
+  whose response carries no detail and whose original is logged. Throw `OauthTokenError` directly wherever
+  that default is wrong:
+  client authentication (`invalid_client`), a grant the client doesn't hold (`unauthorized_client`), a
+  mismatched redirect URI or PKCE verifier (`invalid_grant`, not `invalid_request`), the unsupported
+  `scope` (`invalid_scope`) and `audience`/`resource` (`invalid_target`) parameters, and org
+  misconfiguration or identity provider outages (`server_error`, since the request was fine).
+  `unauthorized_client` and `invalid_scope` are deliberate reads of RFC 8693's blanket "the request itself
+  is not valid" clause: both are the more specific RFC 6749 code for what actually went wrong, and worth
+  more to a caller than a third flavour of `invalid_request`. `invalid_target` is RFC 8693's own SHOULD.
+- **The route sets `attachValidation`** so a schema failure reaches the handler instead of being answered
+  by Fastify in the house envelope. An unrecognized `grant_type` earns `unsupported_grant_type`.
+- **`error_description` is sanitized, not trusted.** RFC 6749 section 5.2 allows only printable ASCII
+  without `"` or `\`, and our messages are written for humans; `toErrorDescription` normalises and bounds
+  them at the render boundary so no throw site has to remember.
+- Messages shared with a management route (the OIDC-config checks) take an error factory rather than
+  throwing, since registering an application and exchanging a token owe the same explanation in different
+  envelopes.
+
 **Token exchange trusts the org's OIDC SSO config, not per-client configuration**
 (`oauth-token-exchange-fns.ts`), so the issuers that can vouch for a user through exchange are exactly the
 ones that can already log them in. The one per-application field is `tokenExchangeAudience`, and it does

@@ -149,6 +149,35 @@ The response is an access token for the user the subject token identified:
 
 Access token lifetime is the shortest of the application's **access token lifetime** (1 day by default), your organization's session length, and the instance default of 10 days. The application's own value is a ceiling rather than an override: it can shorten the lifetime but never extend it past what the organization allows. Because the middleware holds a credential that acts as the user, shorten it on the application rather than relying on the default.
 
+### When an exchange fails
+
+Failures follow [RFC 8693 section 2.2.2](https://datatracker.ietf.org/doc/html/rfc8693#section-2.2.2), which builds on [RFC 6749 section 5.2](https://datatracker.ietf.org/doc/html/rfc6749#section-5.2), so an RFC-aware client library can classify them without reading the prose:
+
+```json
+{
+  "error": "invalid_request",
+  "error_description": "The subject token has expired."
+}
+```
+
+| `error`                  | Status | What it means                                                                                      |
+| ------------------------ | ------ | -------------------------------------------------------------------------------------------------- |
+| `invalid_client`         | 401    | The client ID or secret is wrong, or the secret was rotated mid-request. Reload your credentials.    |
+| `unauthorized_client`    | 400    | The application is not registered for this grant. An admin enables it on the application.           |
+| `invalid_request`        | 400    | A parameter is missing or malformed, **or the subject token was rejected**. See below.               |
+| `unsupported_grant_type` | 400    | The `grant_type` is not one Infisical issues tokens for.                                             |
+| `invalid_scope`          | 400    | A `scope` was sent. This grant has none.                                                             |
+| `invalid_target`         | 400    | An `audience` or `resource` was sent. The audience is fixed on the application.                       |
+| `server_error`           | 500    | Your OIDC SSO configuration is incomplete, or your identity provider could not be reached. Retry.     |
+
+<Warning>
+  RFC 8693 requires `invalid_request` for a subject token that is invalid for any reason or unacceptable by policy, so an expired token, a wrong audience, and a user who is not an active member all arrive under the same code as a malformed request. This grant never returns `invalid_grant`, which is what the authorization code flow uses for the equivalent failure.
+
+  The distinction lives in `error_description`, which names the specific check that failed. Branch on the description, or simply re-authenticate the user and retry once, rather than expecting a code per cause.
+</Warning>
+
+Retry on `server_error`. `invalid_client` and `unauthorized_client` need an operator, not a retry.
+
 <Note>
   `scope`, `audience`, `resource`, and `actor_token` are rejected rather than ignored. This grant has no scope concept, and the expected audience is fixed on the application, so silently dropping those parameters would leave you believing a restriction was applied when it was not.
 

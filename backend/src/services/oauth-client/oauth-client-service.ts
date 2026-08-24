@@ -48,6 +48,7 @@ import {
   TUpdateOauthClientDTO
 } from "./oauth-client-types";
 import { getOauthScopeDescriptions, parseOauthScopeString } from "./oauth-scope";
+import { OauthTokenError, OauthTokenErrorCode } from "./oauth-token-error";
 import { verifySubjectToken } from "./oauth-token-exchange-fns";
 
 type TOauthClientServiceFactoryDep = {
@@ -210,22 +211,25 @@ export const oauthClientServiceFactory = ({
 
   // Without a live OIDC config there's nothing to verify subject tokens against. Failing at config time
   // puts the message in front of the admin setting the application up.
-  const getActiveOidcConfigOrThrow = async (orgId: string) => {
+  //
+  // `buildError` is a parameter because the two callers owe the same explanation in different envelopes:
+  // registering an application is a bad request from the admin making it, while an exchange hitting this
+  // is an org misconfiguration the caller can do nothing about, and the token endpoint has to say so in
+  // RFC 6749 terms. Keeping the wording in one place is the point.
+  const getActiveOidcConfigOrThrow = async (orgId: string, buildError: (message: string) => Error) => {
     const org = await getClientOrg(orgId);
     const oidcConfig = await oidcConfigDAL.findOne({ orgId: org.id });
 
     if (!oidcConfig) {
-      throw new BadRequestError({
-        message:
-          "Token exchange verifies user tokens against your organization's OIDC SSO issuer, and your organization has no OIDC SSO configuration. Set one up under Settings > SSO & Provisioning first."
-      });
+      throw buildError(
+        "Token exchange verifies user tokens against your organization's OIDC SSO issuer, and your organization has no OIDC SSO configuration. Set one up under Settings > SSO & Provisioning first."
+      );
     }
 
     if (!oidcConfig.isActive) {
-      throw new BadRequestError({
-        message:
-          "Token exchange verifies user tokens against your organization's OIDC SSO issuer, and your organization's OIDC SSO is disabled. Enable it under Settings > SSO & Provisioning first."
-      });
+      throw buildError(
+        "Token exchange verifies user tokens against your organization's OIDC SSO issuer, and your organization's OIDC SSO is disabled. Enable it under Settings > SSO & Provisioning first."
+      );
     }
 
     return { oidcConfig, org };
@@ -279,7 +283,9 @@ export const oauthClientServiceFactory = ({
       }
     });
 
-    if (establishesTokenExchangeTrust) await getActiveOidcConfigOrThrow(actor.orgId);
+    if (establishesTokenExchangeTrust) {
+      await getActiveOidcConfigOrThrow(actor.orgId, (message) => new BadRequestError({ message }));
+    }
 
     return {
       grantTypes,
@@ -454,8 +460,9 @@ export const oauthClientServiceFactory = ({
 
   const assertGrantEnabled = (client: TOauthClients, grantType: OauthGrantType) => {
     if (!getGrantTypes(client).includes(grantType)) {
-      throw new UnauthorizedError({
-        message: `This application is not registered for the '${grantType}' grant type`
+      throw new OauthTokenError({
+        code: OauthTokenErrorCode.UnauthorizedClient,
+        message: `This application is not registered for the '${grantType}' grant type.`
       });
     }
   };
@@ -572,15 +579,18 @@ export const oauthClientServiceFactory = ({
   };
 
   const authenticateClient = async (clientId?: string, clientSecret?: string) => {
+    const invalidCredentials = (message: string) =>
+      new OauthTokenError({ code: OauthTokenErrorCode.InvalidClient, message });
+
     if (!clientId || !clientSecret) {
-      throw new UnauthorizedError({ message: "Missing OAuth client credentials" });
+      throw invalidCredentials("Missing OAuth client credentials.");
     }
 
     const client = await oauthClientDAL.findOne({ clientId });
-    if (!client) throw new UnauthorizedError({ message: "Invalid OAuth client credentials" });
+    if (!client) throw invalidCredentials("Invalid OAuth client credentials.");
 
     const isValidSecret = await crypto.hashing().compareHash(clientSecret, client.clientSecretHash);
-    if (!isValidSecret) throw new UnauthorizedError({ message: "Invalid OAuth client credentials" });
+    if (!isValidSecret) throw invalidCredentials("Invalid OAuth client credentials.");
 
     return client;
   };
@@ -613,13 +623,17 @@ export const oauthClientServiceFactory = ({
     dto: Extract<TOauthTokenExchangeDTO, { grantType: OauthGrantType.TokenExchange }>
   ) => {
     if (!client.tokenExchangeAudience) {
-      throw new BadRequestError({
+      throw new OauthTokenError({
+        code: OauthTokenErrorCode.ServerError,
         message:
           "This application has no token exchange audience configured, so subject tokens cannot be verified. Set one on the application under Organization Settings > OAuth Applications."
       });
     }
 
-    const { oidcConfig, org } = await getActiveOidcConfigOrThrow(client.orgId);
+    const { oidcConfig, org } = await getActiveOidcConfigOrThrow(
+      client.orgId,
+      (message) => new OauthTokenError({ code: OauthTokenErrorCode.ServerError, message })
+    );
 
     const { subject } = await verifySubjectToken({
       subjectToken: dto.subjectToken,
@@ -714,12 +728,17 @@ export const oauthClientServiceFactory = ({
       ip: dto.ip,
       userAgent: getOauthClientSessionUserAgent(client.clientId)
     });
-    if (!tokenSession) throw new BadRequestError({ message: "Failed to create user token session" });
+    if (!tokenSession)
+      throw new OauthTokenError({
+        code: OauthTokenErrorCode.ServerError,
+        message: "Failed to create a session for the user this token identifies."
+      });
 
     const currentClient = await oauthClientDAL.findByIdOnPrimary(client.id);
     if (hasClientAuthorityChanged(client, currentClient, OauthGrantType.TokenExchange)) {
       await tokenService.revokeSessionsByUserAgent(getOauthClientSessionUserAgent(client.clientId));
-      throw new UnauthorizedError({
+      throw new OauthTokenError({
+        code: OauthTokenErrorCode.InvalidClient,
         message:
           "This application's credentials or configuration changed while the token was being issued. Retry with the application's current client secret."
       });
@@ -801,7 +820,7 @@ export const oauthClientServiceFactory = ({
       }
 
       if (!dto.redirectUri || dto.redirectUri !== codePayload.redirectUri) {
-        throw new BadRequestError({ message: "Redirect URI mismatch" });
+        throw new OauthTokenError({ code: OauthTokenErrorCode.InvalidGrant, message: "Redirect URI mismatch." });
       }
 
       if (codePayload.codeChallenge) {
@@ -812,7 +831,7 @@ export const oauthClientServiceFactory = ({
           });
         }
         if (computePkceChallenge(dto.codeVerifier) !== codePayload.codeChallenge) {
-          throw new BadRequestError({ message: "PKCE challenge mismatch" });
+          throw new OauthTokenError({ code: OauthTokenErrorCode.InvalidGrant, message: "PKCE challenge mismatch." });
         }
       } else if (client.requirePkce) {
         throw new BadRequestError({ message: "This OAuth client requires PKCE" });

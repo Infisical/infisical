@@ -36,11 +36,11 @@ const consent = async (body: Record<string, string>) =>
     body
   });
 
-const postToken = async (body: Record<string, string>) =>
+const postToken = async (body: Record<string, string>, headers: Record<string, string> = {}) =>
   testServer.inject({
     method: "POST",
     url: "/api/v1/oauth/token",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
+    headers: { "content-type": "application/x-www-form-urlencoded", ...headers },
     payload: new URLSearchParams(body).toString()
   });
 
@@ -220,18 +220,53 @@ describe("POST /api/v1/oauth/token, token exchange grant", async () => {
     ...overrides
   });
 
+  // RFC 6749 section 5.2 and RFC 8693 section 2.2.2: the token endpoint answers with an `error` code
+  // from a fixed list plus an `error_description`, never the house `{ statusCode, message, error }`
+  // envelope, because generic client libraries branch on that code.
+  const expectOauthError = (
+    res: { statusCode: number; payload: string },
+    statusCode: number,
+    code: string,
+    descriptionFragment: string
+  ) => {
+    expect(res.statusCode).toBe(statusCode);
+
+    const body = JSON.parse(res.payload) as { error?: string; error_description?: string; message?: string };
+    expect(body.error).toBe(code);
+    expect(body.error_description).toContain(descriptionFragment);
+    expect(body.message).toBeUndefined();
+  };
+
   test("rejects invalid client credentials", async () => {
     const res = await postToken(exchangeBody({ client_secret: "not-the-secret" }));
 
-    expect(res.statusCode).toBe(401);
-    expect(res.payload).toContain("Invalid OAuth client credentials");
+    expectOauthError(res, 401, "invalid_client", "Invalid OAuth client credentials");
+  });
+
+  // RFC 6749 section 5.2 requires a challenge for the scheme the client authenticated with.
+  test("challenges a basic-auth client whose credentials are rejected", async () => {
+    const body = exchangeBody();
+    delete (body as Record<string, string>).client_id;
+    delete (body as Record<string, string>).client_secret;
+
+    const res = await postToken(body, {
+      authorization: `Basic ${Buffer.from(`${clientId}:not-the-secret`).toString("base64")}`
+    });
+
+    expectOauthError(res, 401, "invalid_client", "Invalid OAuth client credentials");
+    expect(res.headers["www-authenticate"]).toContain("Basic");
   });
 
   test("rejects a client that is not registered for the exchange grant", async () => {
     const res = await postToken(exchangeBody());
 
-    expect(res.statusCode).toBe(401);
-    expect(res.payload).toContain(TOKEN_EXCHANGE_GRANT);
+    expectOauthError(res, 400, "unauthorized_client", TOKEN_EXCHANGE_GRANT);
+  });
+
+  test("rejects an unrecognized grant type", async () => {
+    const res = await postToken(exchangeBody({ grant_type: "client_credentials" }));
+
+    expectOauthError(res, 400, "unsupported_grant_type", "grant_type");
   });
 
   test("requires a subject token", async () => {
@@ -240,8 +275,7 @@ describe("POST /api/v1/oauth/token, token exchange grant", async () => {
 
     const res = await postToken(body);
 
-    expect(res.statusCode).toBe(400);
-    expect(res.payload).toContain("subject_token");
+    expectOauthError(res, 400, "invalid_request", "subject_token");
   });
 
   test("requires a subject token type", async () => {
@@ -250,15 +284,13 @@ describe("POST /api/v1/oauth/token, token exchange grant", async () => {
 
     const res = await postToken(body);
 
-    expect(res.statusCode).toBe(400);
-    expect(res.payload).toContain("subject_token_type");
+    expectOauthError(res, 400, "invalid_request", "subject_token_type");
   });
 
   test("rejects an unsupported requested token type", async () => {
     const res = await postToken(exchangeBody({ requested_token_type: OauthTokenType.IdToken }));
 
-    expect(res.statusCode).toBe(400);
-    expect(res.payload).toContain("requested_token_type");
+    expectOauthError(res, 400, "invalid_request", "requested_token_type");
   });
 
   // RFC 8693 allows both, but this grant has no scopes and its audience is fixed per application, so
@@ -266,15 +298,13 @@ describe("POST /api/v1/oauth/token, token exchange grant", async () => {
   test("rejects a scope parameter rather than ignoring it", async () => {
     const res = await postToken(exchangeBody({ scope: "secrets:read" }));
 
-    expect(res.statusCode).toBe(400);
-    expect(res.payload).toContain("'scope' parameter is not supported");
+    expectOauthError(res, 400, "invalid_scope", "'scope' parameter is not supported");
   });
 
   test("rejects an audience parameter rather than ignoring it", async () => {
     const res = await postToken(exchangeBody({ audience: "api://something-else" }));
 
-    expect(res.statusCode).toBe(400);
-    expect(res.payload).toContain("not supported");
+    expectOauthError(res, 400, "invalid_target", "not supported");
   });
 
   // Ignoring these would answer a delegation request with an impersonation token, since the issued
@@ -282,15 +312,13 @@ describe("POST /api/v1/oauth/token, token exchange grant", async () => {
   test("rejects an actor token rather than ignoring it", async () => {
     const res = await postToken(exchangeBody({ actor_token: "some.actor.jwt" }));
 
-    expect(res.statusCode).toBe(400);
-    expect(res.payload).toContain("'actor_token'");
+    expectOauthError(res, 400, "invalid_request", "'actor_token'");
   });
 
   test("rejects an actor token type on its own", async () => {
     const res = await postToken(exchangeBody({ actor_token_type: OauthTokenType.Jwt }));
 
-    expect(res.statusCode).toBe(400);
-    expect(res.payload).toContain("'actor_token'");
+    expectOauthError(res, 400, "invalid_request", "'actor_token'");
   });
 });
 

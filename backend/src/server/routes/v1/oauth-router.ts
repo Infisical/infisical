@@ -16,6 +16,7 @@ import {
   OauthGrantType,
   OauthTokenType
 } from "@app/services/oauth-client/oauth-client-types";
+import { OauthTokenError, OauthTokenErrorCode, toOauthTokenError } from "@app/services/oauth-client/oauth-token-error";
 
 const SanitizedOauthClientSchema = OauthClientsSchema.omit({ clientSecretHash: true });
 
@@ -60,6 +61,16 @@ const tokenExchangeIdpSatisfiesMfaSchema = z
   .describe(
     "Declares that authentication at the identity provider satisfies this organization's MFA requirement. Required for token exchange in an organization that enforces MFA."
   );
+
+// The zod validator compiler hands Fastify the raw ZodError, whose `message` is the whole issue list
+// stringified as JSON. Summarise it instead, so error_description names the offending fields.
+const describeValidationError = (error: Error) => {
+  if (!(error instanceof z.ZodError)) return error.message;
+
+  return error.issues
+    .map((issue) => (issue.path.length ? `${issue.path.join(".")}: ${issue.message}` : issue.message))
+    .join("; ");
+};
 
 export const registerOAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -428,6 +439,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: authRateLimit
     },
+    attachValidation: true,
     schema: {
       body: z.object({
         grant_type: z.nativeEnum(OauthGrantType),
@@ -458,86 +470,110 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
+      void res.header("Cache-Control", "no-store");
+      void res.header("Pragma", "no-cache");
+
+      if (req.validationError) {
+        const grantType = (req.body as { grant_type?: unknown } | undefined)?.grant_type;
+        const isKnownGrantType =
+          typeof grantType === "string" && Object.values(OauthGrantType).includes(grantType as OauthGrantType);
+
+        throw new OauthTokenError({
+          code: isKnownGrantType ? OauthTokenErrorCode.InvalidRequest : OauthTokenErrorCode.UnsupportedGrantType,
+          message: isKnownGrantType
+            ? describeValidationError(req.validationError)
+            : `Unsupported 'grant_type'. Supported values are: ${Object.values(OauthGrantType).join(", ")}`
+        });
+      }
+
       const basicAuth = parseBasicAuthHeader(req.headers.authorization);
       const clientId = basicAuth?.clientId ?? req.body.client_id;
       const clientSecret = basicAuth?.clientSecret ?? req.body.client_secret;
 
-      void res.header("Cache-Control", "no-store");
-      void res.header("Pragma", "no-cache");
+      try {
+        if (req.body.grant_type === OauthGrantType.AuthorizationCode) {
+          if (!req.body.code) throw new BadRequestError({ message: "Missing authorization code" });
 
-      if (req.body.grant_type === OauthGrantType.AuthorizationCode) {
-        if (!req.body.code) throw new BadRequestError({ message: "Missing authorization code" });
+          return await server.services.oauthClient.exchangeToken({
+            grantType: OauthGrantType.AuthorizationCode,
+            code: req.body.code,
+            redirectUri: req.body.redirect_uri,
+            codeVerifier: req.body.code_verifier,
+            clientId,
+            clientSecret
+          });
+        }
 
-        return server.services.oauthClient.exchangeToken({
-          grantType: OauthGrantType.AuthorizationCode,
-          code: req.body.code,
-          redirectUri: req.body.redirect_uri,
-          codeVerifier: req.body.code_verifier,
+        if (req.body.grant_type === OauthGrantType.TokenExchange) {
+          if (!req.body.subject_token) {
+            throw new BadRequestError({ message: "Missing 'subject_token'" });
+          }
+
+          if (!req.body.subject_token_type) {
+            throw new BadRequestError({ message: "Missing 'subject_token_type'" });
+          }
+
+          if (!ACCEPTED_SUBJECT_TOKEN_TYPES.includes(req.body.subject_token_type)) {
+            throw new BadRequestError({
+              message: `Unsupported 'subject_token_type'. Supported values are: ${ACCEPTED_SUBJECT_TOKEN_TYPES.join(", ")}`
+            });
+          }
+
+          if (req.body.requested_token_type && req.body.requested_token_type !== OauthTokenType.AccessToken) {
+            throw new BadRequestError({
+              message: `Unsupported 'requested_token_type'. Only '${OauthTokenType.AccessToken}' can be issued.`
+            });
+          }
+
+          if (req.body.actor_token || req.body.actor_token_type) {
+            throw new BadRequestError({
+              message:
+                "The 'actor_token' and 'actor_token_type' parameters are not supported. This grant issues a token that acts as the user in the subject token, and does not record the application as a separate acting party."
+            });
+          }
+
+          if (req.body.scope) {
+            throw new OauthTokenError({
+              code: OauthTokenErrorCode.InvalidScope,
+              message:
+                "The 'scope' parameter is not supported on the token exchange grant. The issued token carries the user's own permissions."
+            });
+          }
+
+          if (req.body.audience || req.body.resource) {
+            throw new OauthTokenError({
+              code: OauthTokenErrorCode.InvalidTarget,
+              message:
+                "The 'audience' and 'resource' parameters are not supported. The expected subject token audience is configured on the application."
+            });
+          }
+
+          return await server.services.oauthClient.exchangeToken({
+            grantType: OauthGrantType.TokenExchange,
+            subjectToken: req.body.subject_token,
+            clientId,
+            clientSecret,
+            ip: req.realIp,
+            userAgent: req.headers["user-agent"]
+          });
+        }
+
+        if (!req.body.refresh_token) throw new BadRequestError({ message: "Missing refresh token" });
+
+        return await server.services.oauthClient.exchangeToken({
+          grantType: OauthGrantType.RefreshToken,
+          refreshToken: req.body.refresh_token,
           clientId,
           clientSecret
         });
+      } catch (error) {
+        const tokenError = toOauthTokenError(error, req.body.grant_type);
+        if (tokenError !== error && tokenError.oauthErrorCode === OauthTokenErrorCode.ServerError) {
+          req.log.error(error, "OAuth token request failed unexpectedly");
+        }
+
+        throw tokenError;
       }
-
-      if (req.body.grant_type === OauthGrantType.TokenExchange) {
-        if (!req.body.subject_token) {
-          throw new BadRequestError({ message: "Missing 'subject_token'" });
-        }
-
-        if (!req.body.subject_token_type) {
-          throw new BadRequestError({ message: "Missing 'subject_token_type'" });
-        }
-
-        if (!ACCEPTED_SUBJECT_TOKEN_TYPES.includes(req.body.subject_token_type)) {
-          throw new BadRequestError({
-            message: `Unsupported 'subject_token_type'. Supported values are: ${ACCEPTED_SUBJECT_TOKEN_TYPES.join(", ")}`
-          });
-        }
-
-        if (req.body.requested_token_type && req.body.requested_token_type !== OauthTokenType.AccessToken) {
-          throw new BadRequestError({
-            message: `Unsupported 'requested_token_type'. Only '${OauthTokenType.AccessToken}' can be issued.`
-          });
-        }
-
-        if (req.body.actor_token || req.body.actor_token_type) {
-          throw new BadRequestError({
-            message:
-              "The 'actor_token' and 'actor_token_type' parameters are not supported. This grant issues a token that acts as the user in the subject token, and does not record the application as a separate acting party."
-          });
-        }
-
-        if (req.body.scope) {
-          throw new BadRequestError({
-            message:
-              "The 'scope' parameter is not supported on the token exchange grant. The issued token carries the user's own permissions."
-          });
-        }
-
-        if (req.body.audience || req.body.resource) {
-          throw new BadRequestError({
-            message:
-              "The 'audience' and 'resource' parameters are not supported. The expected subject token audience is configured on the application."
-          });
-        }
-
-        return server.services.oauthClient.exchangeToken({
-          grantType: OauthGrantType.TokenExchange,
-          subjectToken: req.body.subject_token,
-          clientId,
-          clientSecret,
-          ip: req.realIp,
-          userAgent: req.headers["user-agent"]
-        });
-      }
-
-      if (!req.body.refresh_token) throw new BadRequestError({ message: "Missing refresh token" });
-
-      return server.services.oauthClient.exchangeToken({
-        grantType: OauthGrantType.RefreshToken,
-        refreshToken: req.body.refresh_token,
-        clientId,
-        clientSecret
-      });
     }
   });
 
