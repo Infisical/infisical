@@ -546,6 +546,12 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       }
     }
 
+    if (signingAlgorithm === SigningAlgorithm.ED25519_SHA_512 && isDigest) {
+      throw new BadRequestError({
+        message: `${signingAlgorithm} does not support digested input; use ${SigningAlgorithm.ED25519_PH_SHA_512}`
+      });
+    }
+
     if (isDigest) {
       if (signingAlgorithm.startsWith("RSASSA_PSS")) {
         throw new BadRequestError({
@@ -623,6 +629,12 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
             message: `${signingAlgorithm} requires digested input`
           });
         }
+      }
+
+      if (signingAlgorithm === SigningAlgorithm.ED25519_SHA_512 && isDigest) {
+        throw new BadRequestError({
+          message: `${signingAlgorithm} does not support digested input; use ${SigningAlgorithm.ED25519_PH_SHA_512}`
+        });
       }
 
       const { hashAlgorithm, padding, saltLength } = $getSigningParams(signingAlgorithm);

@@ -66,4 +66,29 @@ describe("KMS Ed25519 signing API", () => {
     expect(corrupted.statusCode).toBe(200);
     expect(JSON.parse(corrupted.payload)).toMatchObject({ signatureValid: false, signingAlgorithm });
   });
+
+  test("rejects digested input for raw Ed25519", async () => {
+    const sign = await request(`/api/v1/kms/keys/${keyId}/sign`, {
+      signingAlgorithm: "ED25519_SHA_512",
+      isDigest: true,
+      data: digest
+    });
+    expect(sign.statusCode).toBe(400);
+
+    const rawSign = await request(`/api/v1/kms/keys/${keyId}/sign`, {
+      signingAlgorithm: "ED25519_SHA_512",
+      isDigest: false,
+      data: message.toString("base64")
+    });
+    expect(rawSign.statusCode).toBe(200);
+    const { signature } = JSON.parse(rawSign.payload) as { signature: string };
+
+    const verify = await request(`/api/v1/kms/keys/${keyId}/verify`, {
+      signingAlgorithm: "ED25519_SHA_512",
+      isDigest: true,
+      data: digest,
+      signature
+    });
+    expect(verify.statusCode).toBe(400);
+  });
 });
