@@ -687,9 +687,13 @@ export const useGetFoldersMoveEligibility = (folderIds: string[], enabled = true
         blockingType?: FolderMoveBlockingType;
         blockingPath?: string;
       }[] = [];
+      // non-blocking: folders whose subtree carries folder-scoped access policies, surfaced as a warning
+      const seenRbacWarnings = new Set<string>();
+      const foldersWithRbacPolicies: string[] = [];
       results.forEach((result) => {
         const { data } = result;
-        if (data && !data.canMove && !seen.has(data.folderName)) {
+        if (!data) return;
+        if (!data.canMove && !seen.has(data.folderName)) {
           seen.add(data.folderName);
           blockedFolders.push({
             folderName: data.folderName,
@@ -697,9 +701,13 @@ export const useGetFoldersMoveEligibility = (folderIds: string[], enabled = true
             blockingPath: data.blockingPath
           });
         }
+        if (data.hasRbacPolicies && !seenRbacWarnings.has(data.folderName)) {
+          seenRbacWarnings.add(data.folderName);
+          foldersWithRbacPolicies.push(data.folderName);
+        }
       });
 
-      return { isChecking, canMove, blockedFolders };
+      return { isChecking, canMove, blockedFolders, foldersWithRbacPolicies };
     }
   });
 

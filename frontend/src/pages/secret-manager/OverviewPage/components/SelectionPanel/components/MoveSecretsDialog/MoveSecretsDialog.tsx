@@ -4,7 +4,13 @@ import { SingleValue } from "react-select";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
-import { CheckCircleIcon, CircleAlertIcon, InfoIcon, LoaderCircleIcon } from "lucide-react";
+import {
+  CheckCircleIcon,
+  CircleAlertIcon,
+  InfoIcon,
+  LoaderCircleIcon,
+  TriangleAlertIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
@@ -73,6 +79,7 @@ type Props = {
 
 type ContentProps = Omit<Props, "isOpen" | "onOpenChange"> & {
   onClose: () => void;
+  foldersWithRbacPolicies: string[];
 };
 
 type OptionValue = { secretPath: string };
@@ -381,6 +388,27 @@ const MoveBlockAlerts = ({
   );
 };
 
+const FolderRbacPoliciesWarning = ({ folderNames }: { folderNames: string[] }) => {
+  if (!folderNames.length) return null;
+
+  const isSingle = folderNames.length === 1;
+
+  return (
+    <Alert variant="warning" className="mt-4">
+      <TriangleAlertIcon />
+      <AlertTitle>
+        Folder permissions will move with {isSingle ? "this folder" : "these folders"}
+      </AlertTitle>
+      <AlertDescription>
+        Folder-specific permissions are granted on{" "}
+        {folderNames.map((name) => `"${name}"`).join(", ")} or{" "}
+        {isSingle ? "one of its subfolders" : "their subfolders"}. Users and identities with this
+        access will keep it at the new location.
+      </AlertDescription>
+    </Alert>
+  );
+};
+
 const SingleEnvContent = ({
   onComplete,
   onClose,
@@ -391,7 +419,8 @@ const SingleEnvContent = ({
   visibleEnvs,
   projectId,
   projectSlug,
-  sourceSecretPath
+  sourceSecretPath,
+  foldersWithRbacPolicies
 }: ContentProps) => {
   const sourceEnv = visibleEnvs[0];
   const moveCopy = getMoveSelectionCopy({ secrets, rotations, folders });
@@ -661,6 +690,7 @@ const SingleEnvContent = ({
         blockedDestinations={blockedDestinations}
         environments={environments}
       />
+      <FolderRbacPoliciesWarning folderNames={foldersWithRbacPolicies} />
       {showOverwriteOption && (
         <Controller
           control={control}
@@ -728,7 +758,8 @@ const MultiEnvContent = ({
   environments,
   projectId,
   projectSlug,
-  sourceSecretPath
+  sourceSecretPath,
+  foldersWithRbacPolicies
 }: ContentProps) => {
   const moveSecrets = useMoveSecrets();
   const moveSecretRotation = useMoveSecretRotation();
@@ -1090,6 +1121,7 @@ const MultiEnvContent = ({
         blockedDestinations={blockedDestinations}
         environments={environments}
       />
+      <FolderRbacPoliciesWarning folderNames={foldersWithRbacPolicies} />
       {showOverwriteOption && (
         <Controller
           control={control}
@@ -1227,7 +1259,8 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
 
   // gate the eligibility check on `isOpen` so selecting a folder never triggers the call, while the
   // snapshot keeps `folderIds` populated so the rendered view stays stable through the close animation
-  const { isChecking, canMove, blockedFolders } = useGetFoldersMoveEligibility(folderIds, isOpen);
+  const { isChecking, canMove, blockedFolders, foldersWithRbacPolicies } =
+    useGetFoldersMoveEligibility(folderIds, isOpen);
 
   const renderContent = () => {
     if (hasFolders && isChecking) {
@@ -1253,6 +1286,7 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
         <SingleEnvContent
           {...contentProps}
           visibleEnvs={visibleEnvs}
+          foldersWithRbacPolicies={foldersWithRbacPolicies}
           onClose={() => onOpenChange(false)}
         />
       );
@@ -1262,6 +1296,7 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, visibleEnvs, ...props }
       <MultiEnvContent
         {...contentProps}
         visibleEnvs={visibleEnvs}
+        foldersWithRbacPolicies={foldersWithRbacPolicies}
         onClose={() => onOpenChange(false)}
       />
     );

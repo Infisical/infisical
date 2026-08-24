@@ -16,6 +16,7 @@ import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-app
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
+import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TFolderMoveBlockingType } from "./secret-folder-types";
 
@@ -290,6 +291,22 @@ export const checkFolderMovePolicyBlock = async (
   }
 
   return null;
+};
+
+type TCheckFolderRbacPoliciesDeps = {
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "find">;
+};
+
+export const checkFolderHasRbacPolicies = async (
+  { subtree }: { subtree: { id: string }[] },
+  { additionalPrivilegeDAL }: TCheckFolderRbacPoliciesDeps,
+  tx: Knex
+): Promise<boolean> => {
+  const folderIds = subtree.map((f) => f.id);
+  if (!folderIds.length) return false;
+
+  const [privilege] = await additionalPrivilegeDAL.find({ $in: { folderId: folderIds } }, { limit: 1, tx });
+  return Boolean(privilege);
 };
 
 // throws the appropriate BadRequestError for a detected move block. the full subtree is always scanned to

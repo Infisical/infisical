@@ -27,6 +27,7 @@ import {
   buildChildrenMap,
   buildFolderPath,
   canActorReadBlock,
+  checkFolderHasRbacPolicies,
   checkFolderMoveBlock,
   checkFolderMovePolicyBlock,
   TFolderMoveAccessScope
@@ -72,7 +73,7 @@ import { TSecretFolderVersionDALFactory } from "./secret-folder-version-dal";
 
 type TSecretFolderServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
-  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "remapFolderIds">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "remapFolderIds" | "find">;
   folderDAL: TSecretFolderDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs" | "find">;
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestFolderVersions" | "create" | "insertMany" | "find">;
@@ -1496,7 +1497,8 @@ export const secretFolderServiceFactory = ({
   // destination paths for a governing policy (`destinationBlock`); a folder cannot be moved INTO a path governed
   // by a policy since the move would create its secrets there, bypassing the approval the policy requires. pass
   // `accessScope` to limit reporting to paths the actor may read; omit it (the move path) to always detect a block
-  // and gate only the resulting message.
+  // and gate only the resulting message. pass `checkRbacPolicies` to also report whether the subtree carries
+  // folder-scoped RBAC policies (`hasRbacPolicies`) — a warning, never a block.
   const $getFolderMoveBlocks = async (
     {
       subtree,
@@ -1504,7 +1506,8 @@ export const secretFolderServiceFactory = ({
       sourceEnvironment,
       sourceFolderPath,
       destination,
-      accessScope
+      accessScope,
+      checkRbacPolicies
     }: {
       subtree: { id: string; path: string }[];
       projectId: string;
@@ -1512,6 +1515,7 @@ export const secretFolderServiceFactory = ({
       sourceFolderPath: string;
       destination?: { environment: string; path: string };
       accessScope?: TFolderMoveAccessScope;
+      checkRbacPolicies?: boolean;
     },
     tx: Knex
   ) => {
@@ -1535,7 +1539,11 @@ export const secretFolderServiceFactory = ({
         )
       : null;
 
-    return { sourceBlock, destinationBlock };
+    const hasRbacPolicies = checkRbacPolicies
+      ? await checkFolderHasRbacPolicies({ subtree }, { additionalPrivilegeDAL }, tx)
+      : undefined;
+
+    return { sourceBlock, destinationBlock, hasRbacPolicies };
   };
 
   // checks whether a folder (and its entire recursive subtree) can be moved. when a destination is supplied, it
@@ -1552,8 +1560,6 @@ export const secretFolderServiceFactory = ({
   }: TGetFolderMoveEligibilityDTO): Promise<TFolderMoveEligibility> => {
     const folder = await getFolderById({ actor, actorId, actorOrgId, actorAuthMethod, id });
 
-    // resolve the actor's ability so subtree disclosure is gated by per-path read permission. this is
-    // request-memoized, so it reuses the lookup getFolderById already performed (no extra DB read).
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1569,8 +1575,6 @@ export const secretFolderServiceFactory = ({
     };
 
     const destinationParentPath = destinationPath ?? "/";
-    // a move only requires Create at the destination (the enforced move permission below). folder read is
-    // implied-for-all (folder list/get is not gated by a Read permission), so it is not required here.
     const canActorAccessDestination =
       !!destinationEnvironment &&
       permission.can(
@@ -1582,7 +1586,7 @@ export const secretFolderServiceFactory = ({
       );
 
     // run every read inside a transaction so it hits the primary database rather than a read replica
-    const { sourceBlock, destinationBlock } = await folderDAL.transaction(async (tx) => {
+    const { sourceBlock, destinationBlock, hasRbacPolicies } = await folderDAL.transaction(async (tx) => {
       // parent folder + full recursive subtree (with paths); reserved folders are already excluded.
       const subtree = await folderDAL.findByEnvsDeep({ parentIds: [folder.id] }, tx);
 
@@ -1596,7 +1600,8 @@ export const secretFolderServiceFactory = ({
             destinationEnvironment && canActorAccessDestination
               ? { environment: destinationEnvironment, path: path.join(destinationParentPath, folder.name) }
               : undefined,
-          accessScope
+          accessScope,
+          checkRbacPolicies: true
         },
         tx
       );
@@ -1617,7 +1622,8 @@ export const secretFolderServiceFactory = ({
       blockingPath: sourceBlock?.blockingAbsPath,
       destinationBlocked: destinationEnvironment ? !canActorAccessDestination || Boolean(destinationBlock) : undefined,
       destinationBlockingPath: readableDestinationBlock?.blockingPath,
-      destinationPolicyName: readableDestinationBlock?.policyName
+      destinationPolicyName: readableDestinationBlock?.policyName,
+      hasRbacPolicies
     };
   };
 
