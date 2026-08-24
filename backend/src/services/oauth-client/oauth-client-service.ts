@@ -16,6 +16,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedErro
 import { getMinExpiresIn } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
+import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { getRequiredMfaMethod } from "@app/services/auth/auth-fns";
 import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -761,6 +762,7 @@ export const oauthClientServiceFactory = ({
     await auditLogService.createAuditLog({
       ipAddress: dto.ip,
       userAgent: dto.userAgent,
+      userAgentType: getUserAgentType(dto.userAgent),
       orgId: client.orgId,
       actor: {
         type: ActorType.USER,
