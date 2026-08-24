@@ -1368,6 +1368,10 @@ res, err := client.Kms().Signing().SignData(infisical.KmsSignDataOptions{
       - `ECDSA_SHA_512`
       - `ECDSA_SHA_384`
       - `ECDSA_SHA_256`
+
+      Valid options for `ECC_NIST_ED25519` keys are:
+      - `ED25519_SHA_512`
+      - `ED25519_PH_SHA_512` (requires `IsDigest: true` and a 64-byte SHA-512 digest)
     </ParamField>
 
   </Expandable>
