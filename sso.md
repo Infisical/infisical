@@ -166,11 +166,11 @@ Token exchange lets trusted middleware present a user's token from your IdP and 
 Infisical token. Its trust anchor is the org's OIDC SSO config, so everything above has to be working
 first. See [OAuth Token Exchange](docs/documentation/platform/oauth-applications/token-exchange) for the product docs.
 
-No license is needed. `plan.oidcSSO` is only checked when creating or updating an OIDC config through
+No license is needed: `plan.oidcSSO` is only checked when creating or updating an OIDC config through
 the API, and `make seed-dev-oidc` writes the row directly.
 
-**1. Seed, then confirm the trust anchor resolves.** This is what decides whether the `iss` check
-passes, so check it rather than debugging a 401 later:
+**1. Seed, then confirm the trust anchor resolves.** This decides whether the `iss` check passes, so
+check it rather than debugging a rejection later:
 
 ```bash
 make seed-dev-oidc
@@ -181,8 +181,8 @@ docker compose -f docker-compose.dev.yml exec -T backend \
 ```
 
 Expect the issuer `http://localhost:8088/realms/infisical` (pinned by `KC_HOSTNAME`, and what tokens
-actually carry) and a `jwks_uri` on `keycloak:8080` that the backend can reach. The seeded config
-stores no issuer of its own, so the backend falls back to the discovered one.
+actually carry) and a `jwks_uri` on `keycloak:8080` the backend can reach. The seeded config stores no
+issuer of its own, so the backend falls back to the discovered one.
 
 **2. Register the application.** Sign in at http://localhost:8080 as `admin@oidc.com` /
 `password123!`, then **Organization Settings > OAuth Applications > Add Application**. Choose flow
@@ -208,13 +208,13 @@ curl -s -X POST http://localhost:8080/api/v1/oauth/token \
   -d subject_token_type=urn:ietf:params:oauth:token-type:id_token | python3 -m json.tool
 ```
 
-Use the **`id_token`**, not the access token. An ID token's `aud` is the requesting client by
-specification, so it is already `infisical-mcp`. The realm defines no audience mapper, so Keycloak's
-access token carries no `aud` at all (only `azp`) and is rejected.
+Use the **`id_token`**, not the access token: an ID token's `aud` is the requesting client by
+specification, so it is already `infisical-mcp`, while the realm defines no audience mapper, so
+Keycloak's access token carries no `aud` at all (only `azp`) and is rejected.
 
 The response has `access_token`, `issued_token_type`, `token_type`, `expires_in`, and deliberately no
-`refresh_token` and no `scope`. Decode it and you should see `delegation: "full"`, no `scopes` claim,
-and the seeded admin's `userId`.
+`refresh_token` or `scope`. Decode it and you should see `delegation: "full"`, no `scopes` claim, and
+the seeded admin's `userId`.
 
 **4. Check what the token can do.**
 
@@ -240,18 +240,20 @@ show the exchange attributed to `admin@oidc.com` with the acting application in 
 Keycloak issues the same `sub` to both clients and the browser login wrote the alias the exchange
 looks up.
 
-**Cases worth checking:**
+**Cases worth checking.** RFC 8693 requires `invalid_request` for a subject token rejected for any
+reason, so most of these come back 400 with the cause in `error_description`:
 
 | Case | How | Expect |
 | --- | --- | --- |
-| Cross-application replay | subject token from `infisical-dev` | 401, audience does not match |
-| Shared extra audience | add an audience mapper putting `infisical-mcp` on `infisical-dev`'s tokens, then send one | 401, issued to `infisical-dev`, not this application |
-| Access token instead of ID token | send `access_token` | 401, audience does not match |
-| Tampered signature | change a character in the third JWT segment | 401, could not be verified |
-| `scope` supplied | add `-d scope=secrets:read` | 400, scope not supported |
-| SSO disabled | `update oidc_configs set "isActive"=false;` | 400, naming the SSO settings |
-| MFA required | enforce org MFA, leave the application flag off | 401, MFA required |
-| Unregistered grant | use an authorization-code application's credentials | 401, not registered for the grant |
+| Cross-application replay | subject token from `infisical-dev` | 400 `invalid_request`, audience does not match |
+| Shared extra audience | add an audience mapper putting `infisical-mcp` on `infisical-dev`'s tokens, then send one | 400 `invalid_request`, issued to `infisical-dev`, not this application |
+| Access token instead of ID token | send `access_token` | 400 `invalid_request`, audience does not match |
+| Tampered signature | change a character in the third JWT segment | 400 `invalid_request`, could not be verified |
+| MFA required | enforce org MFA, leave the application flag off | 400 `invalid_request`, MFA required |
+| `scope` supplied | add `-d scope=secrets:read` | 400 `invalid_scope` |
+| Unregistered grant | use an authorization-code application's credentials | 400 `unauthorized_client` |
+| Wrong client secret | change a character in `CLIENT_SECRET` | 401 `invalid_client` |
+| SSO disabled | `update oidc_configs set "isActive"=false;` | 500 `server_error`, naming the SSO settings |
 
 ---
 

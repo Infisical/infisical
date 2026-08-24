@@ -138,9 +138,9 @@ The response contains:
 }
 ```
 
-Access token lifetime is the shortest of the application's **access token lifetime** (1 day by default), your organization's session length, and the instance default of 10 days. Refresh tokens follow the organization's session length rather than the application's lifetime, so shortening the lifetime shortens how long each access token lasts, not how long the client can keep refreshing. Refresh tokens rotate on use, and a refresh never broadens the scopes originally granted.
+Access token lifetime is the shortest of the application's **access token lifetime** (1 day by default), your organization's session length, and the instance default of 10 days. Refresh tokens follow the organization's session length instead, so shortening the application's lifetime shortens each access token, not how long the client can keep refreshing. Refresh tokens rotate on use, and a refresh never broadens the scopes originally granted.
 
-`refresh_token` is present only when the application holds the `refresh_token` grant, which applications created in the UI always do. If you registered one through the API with `grantTypes` limited to `authorization_code`, the field is omitted and the client should exchange a new authorization code when the access token expires.
+`refresh_token` is present only when the application holds the `refresh_token` grant, which applications created in the UI always do. If you registered one through the API with `grantTypes` limited to `authorization_code`, the field is omitted and the client exchanges a new authorization code when the access token expires.
 
 ### Validation endpoint
 

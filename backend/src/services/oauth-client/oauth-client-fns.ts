@@ -77,14 +77,12 @@ type TOauthClientAuthority = Pick<
 >;
 
 // Whether the client has lost the authority it was granted mid-request: deleted, secret rotated, or the
-// grant withdrawn. Comparing the stored hashes is enough, since a rotation writes a fresh bcrypt hash
-// with a new salt.
+// grant withdrawn. Comparing the stored hashes is enough, since a rotation writes a fresh bcrypt hash.
 //
-// Token exchange also compares the two fields carrying its federation trust. The audience is all that
-// stands between the caller and any token the issuer signs, and the IdP-MFA flag is what lets an
-// exchange skip an MFA requirement, so narrowing either withdraws authority just as much as rotating the
-// secret. The exchange reads them off a replica, so without this they'd survive the change for the
-// length of the replication lag.
+// Token exchange also compares the two fields carrying its federation trust: the audience is all that
+// stands between the caller and any token the issuer signs, and the IdP-MFA flag is what lets an exchange
+// skip an MFA requirement. The exchange reads both off a replica, so without this they'd survive the
+// change for the length of the replication lag.
 export const hasClientAuthorityChanged = (
   authenticated: TOauthClientAuthority,
   current: TOauthClientAuthority | undefined,
@@ -110,16 +108,14 @@ type TTokenExchangeTrust = {
   idpSatisfiesMfa?: boolean | null;
 };
 
-// Whether an update takes back federation trust the client already holds, in which case the tokens
-// issued under the old configuration have to go with it. Guards the same fields as
-// hasClientAuthorityChanged, for the same reason: the audience is what binds the exchange to one set of
-// subject tokens, and the IdP-MFA declaration is what lets an exchange skip an MFA requirement. An admin
-// narrowing either is responding to a problem, so it has to reach the tokens already out there instead
-// of waiting for them to expire. Rotating the secret revokes on the same grounds.
+// Whether an update takes back federation trust the client already holds, in which case the tokens issued
+// under the old configuration have to go with it. Guards the same fields as hasClientAuthorityChanged,
+// for the same reason. An admin narrowing either is responding to a problem, so it has to reach the tokens
+// already out there instead of waiting for them to expire.
 //
-// Any audience change counts, in either direction, because tokens issued under the old one were accepted
-// on a basis that no longer holds. The MFA declaration only counts when switched off: turning it on
-// widens what is exchangeable without invalidating anything already issued.
+// Any audience change counts, in either direction, since tokens issued under the old one were accepted on
+// a basis that no longer holds. The MFA declaration only counts when switched off: turning it on widens
+// what is exchangeable without invalidating anything already issued.
 export const hasWithdrawnTokenExchangeTrust = (previous: TTokenExchangeTrust, next: TTokenExchangeTrust) => {
   if (!previous.isEnabled) return false;
   if (!next.isEnabled) return true;

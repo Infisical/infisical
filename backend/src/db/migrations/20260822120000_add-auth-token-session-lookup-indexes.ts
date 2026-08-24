@@ -2,29 +2,26 @@ import { Knex } from "knex";
 
 import { TableName } from "../schemas";
 
-// auth_token_sessions carries a row per user session, so it is one of the largest tables on an
-// instance, and until now the primary key was its only index. Every lookup keyed on `id` rides that
-// PK (session validation on each authenticated request, refresh rotation, revoking one session), but
-// three filter shapes had nothing to use and seq-scanned the whole table:
+// auth_token_sessions is one of the largest tables on an instance, and the primary key was its only
+// index. Lookups keyed on `id` ride that PK, but three filter shapes seq-scanned the whole table:
 //
-//   {userAgent}              revokeSessionsByUserAgent, the only handle OAuth client revocation has
-//                            on the tokens a client issued. Two of its callers run inside a
-//                            transaction, so the scan also held a pooled connection for its duration.
+//   {userAgent}              revokeSessionsByUserAgent, the only handle OAuth client revocation has on
+//                            the tokens a client issued. Two callers run inside a transaction, so the
+//                            scan also held a pooled connection for its duration.
 //   {userId, ip, userAgent}  getUserTokenSession, on every login and every RFC 8693 token exchange.
 //   {userId}                 listing a user's sessions, and revoking all of them.
 //
-// The second index covers both of the userId shapes: the three-column lookup uses all of it, and the
-// userId-only lookups use its leftmost column. userAgent trails rather than leads it so that the
-// userAgent-only delete keeps its own tighter single-column index, which measured consistently faster
-// for that query than sharing a userAgent-leading composite.
+// The composite covers both userId shapes (the three-column lookup uses all of it, the userId-only
+// lookups its leftmost column). userAgent trails rather than leads so the userAgent-only delete keeps
+// its own single-column index, which measured consistently faster than a userAgent-leading composite.
 const USER_AGENT_INDEX = "idx_auth_token_sessions_user_agent";
 const USER_SESSION_INDEX = "idx_auth_token_sessions_user_id_ip_user_agent";
 const MIGRATION_TIMEOUT = 60 * 60 * 1000; // 60 minutes
 const MIGRATION_LOCK_TIMEOUT = 30 * 1000; // 30 seconds
 
 export async function up(knex: Knex): Promise<void> {
-  // statement_timeout / lock_timeout are session-local, so every statement here has to run on the
-  // same pooled connection as the CREATE INDEX CONCURRENTLY calls they are meant to govern.
+  // statement_timeout / lock_timeout are session-local, so they have to run on the same pooled
+  // connection as the CREATE INDEX CONCURRENTLY calls they govern.
   const connection = await knex.client.acquireConnection();
   const raw = (sql: string) => knex.raw(sql).connection(connection);
 

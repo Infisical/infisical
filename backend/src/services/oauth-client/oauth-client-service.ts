@@ -160,12 +160,9 @@ export const oauthClientServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.OauthClients);
   };
 
-  // Token exchange turns externally-issued tokens into Infisical user tokens, so establishing that
-  // trust (or handing out a credential for it) changes the org's federation posture, not just an
-  // application. Those operations need SSO Edit on top of the usual OauthClients check.
-  //
-  // `action` goes in the error because it's not obvious why an OAuth application change wants SSO
-  // permission.
+  // Token exchange turns externally-issued tokens into Infisical user tokens, so establishing that trust
+  // (or handing out a credential for it) changes the org's federation posture, not just an application.
+  // `action` goes in the error because it's not obvious why an OAuth change wants SSO permission.
   const checkSsoConfigPermission = async (actor: OrgServiceActor, action: string) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: actor.type,
@@ -192,10 +189,10 @@ export const oauthClientServiceFactory = ({
     return client;
   };
 
-  // Clients only ever live on a root org today, and that's where the things these flows read live too:
-  // MFA enforcement, the OIDC SSO config and OIDC user aliases, same as the login flow. Asserted rather
-  // than assumed, because if sub-orgs are ever allowed to own clients, an exchange would silently verify
-  // subject tokens against the sub-org's own OIDC config and look up aliases in the wrong org.
+  // Clients only ever live on a root org, and so do the things these flows read: MFA enforcement, the
+  // OIDC SSO config, OIDC user aliases. Asserted rather than assumed, because if sub-orgs are ever
+  // allowed to own clients, an exchange would verify subject tokens against the sub-org's own OIDC
+  // config and look up aliases in the wrong org.
   const getClientOrg = async (orgId: string): Promise<TOrganizations> => {
     const org = await orgDAL.findById(orgId);
     if (!org) throw new NotFoundError({ message: "OAuth client organization not found" });
@@ -212,10 +209,9 @@ export const oauthClientServiceFactory = ({
   // Without a live OIDC config there's nothing to verify subject tokens against. Failing at config time
   // puts the message in front of the admin setting the application up.
   //
-  // `buildError` is a parameter because the two callers owe the same explanation in different envelopes:
-  // registering an application is a bad request from the admin making it, while an exchange hitting this
-  // is an org misconfiguration the caller can do nothing about, and the token endpoint has to say so in
-  // RFC 6749 terms. Keeping the wording in one place is the point.
+  // `buildError` is a parameter so the wording lives in one place: registering an application is a bad
+  // request from the admin making it, while an exchange hitting this is an org misconfiguration the
+  // caller can do nothing about, which the token endpoint has to report in RFC 6749 terms.
   const getActiveOidcConfigOrThrow = async (orgId: string, buildError: (message: string) => Error) => {
     const org = await getClientOrg(orgId);
     const oidcConfig = await oidcConfigDAL.findOne({ orgId: org.id });
@@ -235,11 +231,9 @@ export const oauthClientServiceFactory = ({
     return { oidcConfig, org };
   };
 
-  // Register and update ask the same questions of a grant config, an update against the stored client
-  // and a register against nothing, so `client` is the only difference between the two callers.
-  //
-  // The token exchange gates only fire when the request actually touches that config, so an admin with
-  // just OauthClients Edit can still rename an application that happens to use the grant.
+  // Register and update ask the same questions of a grant config, so `client` (absent on register) is the
+  // only difference between the two callers. The token exchange gates fire only when the request actually
+  // touches that config, so an admin with just OauthClients Edit can still rename an exchange application.
   const resolveGrantConfig = async ({
     dto,
     actor,
@@ -595,10 +589,9 @@ export const oauthClientServiceFactory = ({
     return client;
   };
 
-  // The application's own TTL is a ceiling on its access tokens, not an override: the instance's
-  // JWT_AUTH_LIFETIME and the org's session length still apply, so an application cannot hand out a
-  // token that outlives the org's own policy. Refresh tokens keep following the org alone, since they
-  // exist to outlive individual access tokens.
+  // The application's own TTL is a ceiling, not an override: the instance's JWT_AUTH_LIFETIME and the
+  // org's session length still apply, so an application cannot hand out a token that outlives the org's
+  // policy. Refresh tokens follow the org alone, since they exist to outlive individual access tokens.
   const resolveTokenLifetimes = (client: Pick<TOauthClients, "accessTokenTTL">, org?: TOrganizations) => {
     const appCfg = getConfig();
     let accessTokenExpiresIn: string | number = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, client.accessTokenTTL);
@@ -616,8 +609,8 @@ export const oauthClientServiceFactory = ({
     resolveTokenLifetimes(client, await orgDAL.findById(orgId));
 
   // RFC 8693 token exchange is the SSO login path with the token handed to us directly instead of
-  // collected through a browser redirect. With no redirect URI, no PKCE and no browser session to anchor
-  // trust on, the audience check is all that stops any token the issuer signed being replayed here.
+  // collected through a browser redirect. With no redirect URI, PKCE or browser session to anchor trust
+  // on, the audience check is all that stops any token the issuer signed being replayed here.
   const exchangeSubjectToken = async (
     client: TOauthClients,
     dto: Extract<TOauthTokenExchangeDTO, { grantType: OauthGrantType.TokenExchange }>
@@ -734,6 +727,10 @@ export const oauthClientServiceFactory = ({
         message: "Failed to create a session for the user this token identifies."
       });
 
+    // A revocation can land between authenticating the client and inserting the session above, deleting
+    // nothing because the session did not exist yet. Every withdrawal path commits its client write
+    // before deleting sessions, so re-reading the client here catches it -- on the primary, since the
+    // replica can still be serving the pre-revocation row.
     const currentClient = await oauthClientDAL.findByIdOnPrimary(client.id);
     if (hasClientAuthorityChanged(client, currentClient, OauthGrantType.TokenExchange)) {
       await tokenService.revokeSessionsByUserAgent(getOauthClientSessionUserAgent(client.clientId));

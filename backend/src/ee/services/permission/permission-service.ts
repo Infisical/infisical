@@ -90,11 +90,9 @@ import {
 } from "./project-permission";
 
 // Returns the scopes to narrow this request to, or undefined when no narrowing applies. Any array, even
-// an empty one, means narrowing applies, so [] denies all scope-guarded access.
-//
-// undefined covers first-party sessions, background jobs and fully-delegated RFC 8693 tokens.
-// inject-identity leaves the key unset only for those and always sets it for scope-narrowed delegation,
-// so a token carrying neither marker still ends up with zero permissions.
+// an empty one, means narrowing applies, so [] denies all scope-guarded access. undefined covers
+// first-party sessions, background jobs and fully-delegated RFC 8693 tokens: inject-identity leaves the
+// key unset only for those, so a token carrying neither delegation marker ends up with zero permissions.
 const getDelegatedOauthScopes = (): OauthScope[] | undefined => {
   const raw = requestContext.get(RequestContextKey.OauthScopes);
   if (!raw) return undefined;

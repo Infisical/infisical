@@ -2,8 +2,8 @@ import { z } from "zod";
 
 import { AuthMethod, AuthModeRefreshJwtTokenPayload, MfaMethod } from "@app/services/auth/auth-type";
 
-// RFC 7591 client metadata. A client can hold several grants, and each one makes a different subset of
-// the client's fields meaningful. See assertValidOauthClientGrantConfig.
+// RFC 7591 client metadata. Each grant makes a different subset of the client's fields meaningful; see
+// assertValidOauthClientGrantConfig.
 export enum OauthGrantType {
   AuthorizationCode = "authorization_code",
   RefreshToken = "refresh_token",
@@ -24,13 +24,12 @@ export enum OauthTokenType {
   AccessToken = "urn:ietf:params:oauth:token-type:access_token"
 }
 
-// Both are verified the same way, as a signed JWT from the org's OIDC SSO issuer, so the only
-// difference is what the caller declares.
+// Both are verified identically, as a signed JWT from the org's OIDC SSO issuer.
 export const ACCEPTED_SUBJECT_TOKEN_TYPES: readonly OauthTokenType[] = [OauthTokenType.Jwt, OauthTokenType.IdToken];
 
 // Marks a token as carrying the user's authorization unnarrowed, unlike the consented scopes an
 // authorization-code token carries. A positive marker on purpose: absence has to keep meaning zero
-// permissions so a dropped claim fails closed.
+// permissions, so a dropped claim fails closed.
 export enum OauthDelegationMode {
   Full = "full"
 }

@@ -58,12 +58,13 @@ Structurally, this is your organization's OIDC sign-in with the token handed ove
 
 The issued token carries the user's **full effective permissions**, not a narrowed subset. There is no consent screen and no scope list: an organization admin approves the delegation once, when registering the application.
 
-The token works across the Infisical API wherever the user's own permissions allow, with four deliberate exceptions:
+The token works across the Infisical API wherever the user's own permissions allow, with five exceptions. Each is somewhere a delegated token could otherwise leave behind access that revoking the application would not take back:
 
 - **Managing the user's account.** Password, MFA, session, and notification endpoints are never reachable with a delegated token.
-- **Creating or deleting an organization**, including a sub-organization. All four require the user's own sign-in, so a delegated token is rejected even when the user is an organization admin. Updating an organization and managing its members stay available.
-- **Minting another credential.** Machine identity tokens and client secrets, service tokens, SCIM tokens, KMIP client certificates, and gateway or relay enrollment tokens all outlive the delegation that created them, so issuing one stays first-party. Listing and revoking them is still available, since neither hands back secret material. Revoking this application has to revoke everything it obtained.
-- **Widening its own access.** Managing OAuth applications, instance admin settings, upgrading the organization's privilege system, and both forms of privilege assumption stay first-party. That includes an organization admin granting themselves access to a project they are not a member of, because the membership it writes outlives the delegation that asked for it.
+- **Creating or deleting an organization**, including a sub-organization. All four need the user's own sign-in, even when they are an organization admin. Updating an organization and managing its members stay available.
+- **Minting another credential.** Machine identity tokens and client secrets, service tokens, SCIM tokens, KMIP client certificates, and gateway or relay enrollment tokens all outlive the delegation that created them, so issuing one stays first-party. Listing and revoking them stays available, since neither returns secret material.
+- **Setting up a way to sign in as a machine identity.** Adding or editing an identity's authentication method registers a signing key, trusted issuer, certificate authority, or cloud principal that can authenticate as that identity from then on. Infisical never holds it, so it would keep working after you revoked this application. Creating identities, assigning their roles, reading their authentication methods, and removing them stay available.
+- **Widening its own access.** Managing OAuth applications, instance admin settings, upgrading the organization's privilege system, and both forms of privilege assumption stay first-party. That includes an organization admin granting themselves access to a project they are not a member of, since the membership it writes outlives the delegation.
 
 No refresh token is issued. When the access token expires, your middleware exchanges again against the still-valid identity provider token.
 
@@ -76,8 +77,8 @@ No refresh token is issued. When the access token expires, your middleware excha
 - **OIDC SSO is configured and enabled** for your organization.
 - **Your identity provider signs tokens with an asymmetric algorithm** (RS256, RS512, or EdDSA), matching the algorithm on your OIDC SSO configuration, and publishes a key ID (`kid`) in the token header.
 - **Its tokens carry an expiry (`exp`).** Infisical rejects a token without one, since it would be replayable indefinitely.
-- **Each user has signed in to Infisical through OIDC SSO at least once.** Infisical matches the token's subject to the account created on that sign-in, so treat one browser sign-in as an onboarding step. The user also has to be an active member of the organization with their account set up and unlocked.
-- **Your middleware has its own registration in your identity provider**, so its tokens carry an audience distinct from Infisical's, and are addressed to that registration alone or carry an `azp` claim naming it. See [Why the audience matters](#why-the-audience-matters).
+- **Each user has signed in to Infisical through OIDC SSO at least once.** Infisical matches the token's subject to the account created on that sign-in, so treat one browser sign-in as an onboarding step. The user also has to be an active member of the organization, with their account set up and unlocked.
+- **Your middleware has its own registration in your identity provider**, so its tokens carry an audience distinct from Infisical's, addressed to that registration alone or carrying an `azp` claim naming it. See [Why the audience matters](#why-the-audience-matters).
 
 ## Registering your middleware
 
@@ -97,9 +98,7 @@ You need permission to manage both OAuth applications and SSO, because enabling 
     - **Identity provider enforces MFA**: Turn this on to declare that your identity provider already requires MFA. Without it, exchanges fail for any user who requires MFA, because there is no Infisical MFA challenge to run.
     - **Access token lifetime**: How long the tokens this application issues stay valid, 1 day by default. These tokens act as the user and carry no refresh token, so keep it to the shortest window your middleware can re-exchange within.
 
-    There is no issuer to set here. Infisical always verifies against your organization's OIDC SSO provider, which cannot be overridden per application.
-
-    An application uses one flow or the other, so a service that needs both needs two registrations.
+    There is no issuer to set here: Infisical always verifies against your organization's OIDC SSO provider, and that cannot be overridden per application. An application uses one flow or the other, so a service needing both needs two registrations.
   </Step>
   <Step title="Store the credentials">
     Infisical shows the **Client ID** and **Client Secret** on creation.
@@ -116,7 +115,7 @@ Your identity provider signs tokens for every application in your estate. Withou
 
 Set it to your middleware's own registration in your identity provider, never to Infisical's.
 
-Some providers can be configured to address one token to several audiences at once, which would let a token minted for another application list yours alongside its own. When a subject token carries more than one audience, Infisical requires an `azp` (authorized party) claim naming your configured audience, and rejects the token otherwise. A token addressed to a single audience needs no `azp`, but if it carries one, that claim must name your configured audience as well.
+Some providers can address one token to several audiences at once, which would let a token minted for another application list yours alongside its own. So when a subject token carries more than one audience, Infisical requires an `azp` (authorized party) claim naming your configured audience. A single-audience token needs no `azp`, but if it carries one, that claim must name your audience too.
 
 ## Exchanging a token
 
@@ -171,17 +170,17 @@ Failures follow [RFC 8693 section 2.2.2](https://datatracker.ietf.org/doc/html/r
 | `server_error`           | 500    | Your OIDC SSO configuration is incomplete, or your identity provider could not be reached. Retry.     |
 
 <Warning>
-  RFC 8693 requires `invalid_request` for a subject token that is invalid for any reason or unacceptable by policy, so an expired token, a wrong audience, and a user who is not an active member all arrive under the same code as a malformed request. This grant never returns `invalid_grant`, which is what the authorization code flow uses for the equivalent failure.
+  RFC 8693 requires `invalid_request` for a subject token that is invalid for any reason or unacceptable by policy, so an expired token, a wrong audience, and a user who is not an active member all arrive under the same code as a malformed request. This grant never returns `invalid_grant`.
 
-  The distinction lives in `error_description`, which names the specific check that failed. Branch on the description, or simply re-authenticate the user and retry once, rather than expecting a code per cause.
+  The distinction lives in `error_description`, which names the check that failed. Branch on that, or re-authenticate the user and retry once, rather than expecting a code per cause.
 </Warning>
 
 Retry on `server_error`. `invalid_client` and `unauthorized_client` need an operator, not a retry.
 
 <Note>
-  `scope`, `audience`, `resource`, and `actor_token` are rejected rather than ignored. This grant has no scope concept, and the expected audience is fixed on the application, so silently dropping those parameters would leave you believing a restriction was applied when it was not.
+  `scope`, `audience`, `resource`, and `actor_token` are rejected rather than ignored, so you are never left believing a restriction was applied when it was not.
 
-  `actor_token` is refused for the same reason. RFC 8693 uses it to request **delegation**, where the issued token records that your middleware is acting for the user. Infisical issues an **impersonation** token, which is indistinguishable from the user's own and names no acting party, so accepting the parameter and dropping it would answer a delegation request with something weaker than you asked for. The requesting application is still recorded, in the audit event for the exchange and in every event the issued token produces.
+  `actor_token` is refused for the same reason: RFC 8693 uses it to request **delegation**, where the issued token records your middleware as acting for the user. Infisical issues an **impersonation** token, indistinguishable from the user's own, so dropping the parameter would answer a delegation request with something weaker than you asked for. The requesting application is still recorded in the audit event for the exchange and in every event the issued token produces.
 </Note>
 
 Use the access token as a standard Bearer token:
@@ -208,7 +207,7 @@ Exchanging per request makes your identity provider a hard dependency of every I
 - Drop the entry when the user's session at your identity provider ends, so their Infisical access does not outlive it.
 
 <Note>
-  Cache wherever you run Infisical. On Infisical Cloud the token endpoint is rate limited per source IP, so every instance of your middleware behind one egress address shares a single budget, and caching correctly means roughly one exchange per user per token lifetime, which stays well inside it. A self-hosted instance applies no limit of its own, so set one at your ingress and rely on caching to keep the endpoint quiet.
+  On Infisical Cloud the token endpoint is rate limited per source IP, so every instance of your middleware behind one egress address shares a budget. Caching correctly means roughly one exchange per user per token lifetime, which stays well inside it. A self-hosted instance applies no limit of its own, so set one at your ingress.
 </Note>
 
 ## What Infisical verifies
@@ -236,6 +235,6 @@ These actions revoke every token the application has issued, so they stop workin
 - **Changing the audience**, in either direction, since tokens already issued were accepted on a basis that no longer holds.
 - **Turning off Identity provider enforces MFA.** That declaration is what let those exchanges skip an MFA requirement, so withdrawing it withdraws the tokens too.
 
-Deactivating a user's organization membership stops further exchanges for that user, and the **OAuth Applications** page lists which applications use token exchange, so you can see the blast radius before changing SSO.
+Deactivating a user's organization membership stops further exchanges for that user. The **OAuth Applications** page shows which applications use token exchange, so you can see the blast radius before changing SSO.
 
 Because no refresh tokens are issued, exposure from a compromised middleware is otherwise bounded by the remaining lifetime of the access tokens it holds.

@@ -115,8 +115,8 @@ export type TAuthMode =
     };
 
 // A first-party session and a delegated OAuth token have the same auth shape, so a handler that only
-// needs the acting user (name, email, session id) should take both instead of narrowing on AuthMode.JWT.
-// Narrowing silently costs the OAuth caller its audit trail or actor metadata.
+// needs the acting user (name, email, session id) should take both rather than narrow on AuthMode.JWT,
+// which silently costs the OAuth caller its audit trail or actor metadata.
 export const isUserSessionAuth = (
   auth: TAuthMode
 ): auth is Extract<TAuthMode, { authMode: AuthMode.JWT | AuthMode.OAUTH }> =>

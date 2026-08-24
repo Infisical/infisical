@@ -5,8 +5,8 @@ import { TableName } from "@app/db/schemas";
 // Every client registered before this migration was created for the redirect flow.
 const REDIRECT_FLOW_GRANT_TYPES = "'{authorization_code,refresh_token}'::text[]";
 
-// One day, in seconds. Deliberately shorter than JWT_AUTH_LIFETIME (10 days), which is what these
-// tokens fell back to before the column existed.
+// One day. Deliberately shorter than JWT_AUTH_LIFETIME (10 days), which is what these tokens fell back
+// to before the column existed.
 const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 86400;
 
 export async function up(knex: Knex): Promise<void> {
@@ -27,20 +27,20 @@ export async function up(knex: Knex): Promise<void> {
       t.specificType("grantTypes", "text[]").notNullable().defaultTo(knex.raw(REDIRECT_FLOW_GRANT_TYPES));
     }
 
-    // Expected `aud` of subject tokens. It's the application's own registration in the org's IdP, not
-    // Infisical's, so it can't be read off oidc_configs.
+    // Expected `aud` of subject tokens. It is the application's own registration in the org's IdP, not
+    // Infisical's, so it cannot be read off oidc_configs.
     if (!hasTokenExchangeAudience) {
       t.text("tokenExchangeAudience");
     }
 
-    // Token exchange has no Infisical MFA challenge to run, so an admin vouches that the IdP enforces
-    // it. Without that, exchanges fail for any user who requires MFA.
+    // Token exchange has no Infisical MFA challenge to run, so an admin vouches that the IdP enforces it.
+    // Without that, exchanges fail for any user who requires MFA.
     if (!hasTokenExchangeIdpSatisfiesMfa) {
       t.boolean("tokenExchangeIdpSatisfiesMfa").notNullable().defaultTo(false);
     }
 
-    // How long the access tokens this application issues stay valid. Unlike grantTypes the default is
-    // kept, because a create that omits it should get the product default rather than fail.
+    // Unlike grantTypes, the default is kept: a create that omits it should get the product default
+    // rather than fail.
     if (!hasAccessTokenTtl) {
       t.integer("accessTokenTTL").notNullable().defaultTo(DEFAULT_ACCESS_TOKEN_TTL_SECONDS);
     }

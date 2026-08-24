@@ -34,8 +34,8 @@ const buildDiscoveryDocumentUrl = (discoveryUrl: string) => {
 type TOidcDiscoveryMetadata = { jwks_uri?: string; issuer?: string };
 
 // Entries hold the in-flight promise so concurrent callers on a cold entry coalesce onto one fetch.
-// Rejections are dropped instead of cached, otherwise a 5-second provider blip becomes 10 minutes of
-// them. A full cache is cleared wholesale: the bound is there to cap memory, not to be a real LRU.
+// Rejections are dropped rather than cached, or a 5-second provider blip becomes 10 minutes of them. A
+// full cache is cleared wholesale: the bound caps memory, it is not a real LRU.
 const createTtlCache = <T>({ ttlMs, maxEntries }: { ttlMs: number; maxEntries: number }) => {
   const entries = new Map<string, { value: Promise<T>; expiresAt: number }>();
 
@@ -65,11 +65,10 @@ const MAX_CACHED_PROVIDER_URLS = 512;
 const DISCOVERY_METADATA_TTL_MS = 10 * 60 * 1000;
 const JWKS_CLIENT_TTL_MS = 10 * 60 * 1000;
 
-// Nothing stops a middleware from exchanging on every request, and without this cache that would make
-// the identity provider a synchronous dependency of every Infisical call it serves.
-//
-// Only the fetch is cached, never the resolved trust anchor: the algorithm and preferred issuer come
-// from the org's own SSO config, so changing either takes effect on the next request.
+// A middleware may exchange on every request, and without this cache that makes the identity provider a
+// synchronous dependency of every Infisical call it serves. Only the fetch is cached, never the resolved
+// trust anchor: the algorithm and preferred issuer come from the org's SSO config, so an admin's edit
+// takes effect on the next request.
 const discoveryMetadataCache = createTtlCache<TOidcDiscoveryMetadata>({
   ttlMs: DISCOVERY_METADATA_TTL_MS,
   maxEntries: MAX_CACHED_PROVIDER_URLS
@@ -81,7 +80,7 @@ const getDiscoveryMetadata = (documentUrl: string) =>
   );
 
 // jwks-rsa caches signing keys per instance, so one client per JWKS URI keeps a fetch off the hot path.
-// Entries still expire so the agent's pinned IPs get rebuilt: otherwise a legitimate DNS change at the
+// Entries still expire so the agent's pinned IPs get rebuilt, otherwise a legitimate DNS change at the
 // provider would never be picked up for the life of the process.
 const jwksClientCache = createTtlCache<JwksClient>({
   ttlMs: JWKS_CLIENT_TTL_MS,

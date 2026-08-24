@@ -43,7 +43,7 @@ Every application gets a **Client ID** and a **Client Secret** on creation. The 
 
 ## What a delegated token can never do
 
-Whichever flow issued it, a delegated token cannot manage the authorizing user's account. Password, MFA, session, TOTP, and notification endpoints reject it outright, so an integration can never use its access to take over the account behind it. The individual flow pages cover the rest of each one's limits.
+Whichever flow issued it, a delegated token cannot manage the authorizing user's account: password, MFA, session, TOTP, and notification endpoints reject it outright, so an integration can never take over the account behind it. Each flow page covers the rest of its own limits.
 
 ## Revoking access
 

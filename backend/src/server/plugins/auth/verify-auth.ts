@@ -18,14 +18,11 @@ export const verifyAuth =
     if (!req.auth) throw new UnauthorizedError({ message: "Token missing" });
 
     // Delegated OAuth access tokens are a separate auth mode a route has to opt into by listing
-    // AuthMode.OAUTH, deliberately not accepted on AuthMode.JWT alone. Scopes are only enforced when a
-    // handler builds an org/project permission, since that's where the ability gets intersected with
-    // them, so a route that authenticates on userId and builds no permission would skip the narrowing
-    // entirely. The families that can't do that check stay on AuthMode.JWT alone: account
-    // self-management (/me, password, MFA, sessions, login, signup, notifications), super-admin routes
-    // (verifySuperAdmin reads user.superAdmin, not a CASL ability), and the OAuth client/consent routes
-    // themselves, where a delegated token could widen its own grant. Rough proxy: nothing passing
-    // `requireOrg: false` accepts AuthMode.OAUTH, since with no org there's no ability to intersect.
+    // AuthMode.OAUTH, deliberately not accepted on AuthMode.JWT alone. Scopes are only enforced where a
+    // handler checks an org/project ability, since that check is what intersects them, so a route
+    // authenticating on bare userId would skip the narrowing entirely. Rough proxy: nothing passing
+    // `requireOrg: false` accepts AuthMode.OAUTH. See "Delegated OAuth tokens" in backend/CLAUDE.md for
+    // the families held back and why.
     const isAccessAllowed = authStrategies.some((strategy) => strategy === req.auth.authMode);
     if (!isAccessAllowed) {
       throw new ForbiddenRequestError({ name: `Forbidden access to ${req.url}` });

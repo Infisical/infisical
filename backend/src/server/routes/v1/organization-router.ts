@@ -45,9 +45,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    // Not open to AuthMode.OAUTH, unlike the rest of this router: with no org in context there's no
-    // permission to build, so nothing narrows the result and a token issued for one org would
-    // enumerate every org the user belongs to.
+    // Not open to AuthMode.OAUTH, unlike the rest of this router: with no org in context nothing narrows
+    // the result, so a token issued for one org would enumerate every org the user belongs to.
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       const organizations = await server.services.org.findAllOrganizationOfUser(req.permission.id);
@@ -72,9 +71,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    // Not open to AuthMode.OAUTH, unlike the rest of this router: with no org in context there's no
-    // permission to build, so nothing narrows the result and a token issued for one org would
-    // enumerate every org the user belongs to.
+    // Not open to AuthMode.OAUTH, unlike the rest of this router: with no org in context nothing narrows
+    // the result, so a token issued for one org would enumerate every org the user belongs to.
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       const organizations = await server.services.org.findAllAccessibleOrganizationsWithSubOrgs(req.permission.id);
