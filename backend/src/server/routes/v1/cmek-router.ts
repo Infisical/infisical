@@ -94,7 +94,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           algorithm: z.enum(AllowedKmsKeyAlgorithms).optional().describe(KMS.CREATE_KEY.algorithm),
           // Deprecated alias for `algorithm`, retained for backwards compatibility.
           encryptionAlgorithm: z.enum(AllowedKmsKeyAlgorithms).optional().describe(openApiHidden()),
-          isExportable: z.boolean().optional().default(true).describe(KMS.CREATE_KEY.isExportable)
+          isExportable: z.boolean().optional().default(true).describe(KMS.CREATE_KEY.isExportable),
+          hasDeleteProtection: z.boolean().optional().default(false).describe(KMS.CREATE_KEY.hasDeleteProtection)
         })
         .superRefine((data, ctx) => {
           const algorithm = data.algorithm ?? data.encryptionAlgorithm ?? SymmetricKeyAlgorithm.AES_GCM_256;
@@ -141,7 +142,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
-        body: { projectId, name, description, keyUsage, isExportable },
+        body: { projectId, name, description, keyUsage, isExportable, hasDeleteProtection },
         permission
       } = req;
 
@@ -157,7 +158,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           description,
           encryptionAlgorithm: algorithm,
           keyUsage,
-          isExportable
+          isExportable,
+          hasDeleteProtection
         },
         permission
       );
@@ -172,7 +174,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             name,
             description,
             encryptionAlgorithm: algorithm,
-            isExportable
+            isExportable,
+            hasDeleteProtection
           }
         }
       });
@@ -213,7 +216,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         name: keyNameSchema.optional().describe(KMS.UPDATE_KEY.name),
         isDisabled: z.boolean().optional().describe(KMS.UPDATE_KEY.isDisabled),
-        description: keyDescriptionSchema.describe(KMS.UPDATE_KEY.description)
+        description: keyDescriptionSchema.describe(KMS.UPDATE_KEY.description),
+        hasDeleteProtection: z.boolean().optional().describe(KMS.UPDATE_KEY.hasDeleteProtection)
       }),
       response: {
         200: z.object({
@@ -238,6 +242,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           type: EventType.UPDATE_CMEK,
           metadata: {
             keyId,
+            keyName: cmek.name,
             ...body
           }
         }
@@ -657,7 +662,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
                 // Deprecated alias for `algorithm`, retained for backwards compatibility.
                 encryptionAlgorithm: z.enum(AllowedKmsKeyAlgorithms).optional().describe(openApiHidden()),
                 keyMaterial: z.string().min(1),
-                isExportable: z.boolean().optional().default(true).describe(KMS.CREATE_KEY.isExportable)
+                isExportable: z.boolean().optional().default(true).describe(KMS.CREATE_KEY.isExportable),
+                hasDeleteProtection: z.boolean().optional().default(false).describe(KMS.CREATE_KEY.hasDeleteProtection)
               })
               .superRefine((data, ctx) => {
                 const algorithm = data.algorithm ?? data.encryptionAlgorithm;
@@ -730,7 +736,8 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             algorithm: (k.algorithm ?? k.encryptionAlgorithm)! as TCmekKeyEncryptionAlgorithm,
             keyUsage: k.keyUsage,
             keyMaterial: k.keyMaterial,
-            isExportable: k.isExportable
+            isExportable: k.isExportable,
+            hasDeleteProtection: k.hasDeleteProtection
           }))
         },
         permission
