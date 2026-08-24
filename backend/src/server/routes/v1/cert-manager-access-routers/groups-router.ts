@@ -101,7 +101,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     method: "POST",
     url: "/groups/:groupId",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "addCertManagerGroup",
       params: z.object({ groupId: z.string().uuid() }),
@@ -181,7 +181,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     method: "PATCH",
     url: "/groups/:groupId",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "updateCertManagerGroup",
       params: z.object({ groupId: z.string().uuid() }),
@@ -228,7 +228,7 @@ export const registerCertManagerAccessGroupsRouter = async (server: FastifyZodPr
     method: "DELETE",
     url: "/groups/:groupId",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "removeCertManagerGroup",
       params: z.object({ groupId: z.string().uuid() }),

@@ -198,7 +198,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
 
@@ -260,7 +260,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
 
@@ -320,7 +320,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
 
@@ -427,9 +427,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    // Not open to AuthMode.OAUTH, unlike the rest of this router: creating an org needs no org
-    // permission, so nothing is scope-narrowed and a delegated token could stand up an org the client
-    // was never granted anything in.
+    // Not open to AuthMode.OAUTH: creating an org needs no org permission, so nothing is scope-narrowed
+    // and a delegated token could stand up an org the client was never granted anything in.
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY], { requireOrg: false }),
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;

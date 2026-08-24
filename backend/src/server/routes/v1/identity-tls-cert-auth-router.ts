@@ -508,7 +508,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
       operationId: "deleteTlsCertAuth",

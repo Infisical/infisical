@@ -64,7 +64,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.createAdditionalPrivilege({
         permission: req.permission,
@@ -142,7 +142,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { privilege: privilegeDoc } = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.id);
 
@@ -206,7 +206,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { privilege: privilegeDoc } = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.id);
 

@@ -132,7 +132,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspace = await server.services.project.deleteProject({
         filter: {
@@ -216,7 +216,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspace = await server.services.project.updateProject({
         filter: {
@@ -276,7 +276,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspace = await server.services.project.updateAuditLogsRetention({
         actorId: req.permission.id,
@@ -477,7 +477,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const deletedIntegration = await server.services.project.deleteProjectWorkflowIntegration({
         actorId: req.permission.id,
@@ -557,7 +557,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workflowIntegrationConfig = await server.services.project.updateProjectWorkflowIntegration({
         actorId: req.permission.id,

@@ -58,7 +58,7 @@ export const registerSignerGroupMembershipRouter = async (server: FastifyZodProv
       body: z.object({ groupId: z.string().uuid(), role: SignerRoleSchema.default("operator") }),
       response: { 200: SignerMemberSchema }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.signerMembership.addMember({
         actor: req.permission.type,
@@ -115,7 +115,7 @@ export const registerSignerGroupMembershipRouter = async (server: FastifyZodProv
       body: RoleBodySchema,
       response: { 200: z.object({ membership: SignerMemberSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.signerMembership.updateMemberRole({
         actor: req.permission.type,
@@ -172,7 +172,7 @@ export const registerSignerGroupMembershipRouter = async (server: FastifyZodProv
       params: z.object({ signerId: z.string().uuid(), groupId: z.string().uuid() }),
       response: { 200: RemoveSignerMemberResponseSchema }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.signerMembership.removeMember({
         actor: req.permission.type,

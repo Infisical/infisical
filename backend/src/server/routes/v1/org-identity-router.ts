@@ -33,7 +33,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       operationId: "createOrganizationMachineIdentity",
       tags: [ApiDocsTags.Identities],
@@ -92,7 +92,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       operationId: "updateOrganizationMachineIdentity",
       tags: [ApiDocsTags.Identities],
@@ -158,7 +158,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       operationId: "deleteOrganizationMachineIdentity",
       tags: [ApiDocsTags.Identities],

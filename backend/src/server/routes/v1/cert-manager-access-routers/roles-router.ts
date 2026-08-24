@@ -93,7 +93,7 @@ export const registerCertManagerAccessRolesRouter = async (server: FastifyZodPro
     method: "POST",
     url: "/roles",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: { operationId: "createCertManagerRole" },
     handler: async () => {
       throw new BadRequestError({ message: CERT_MANAGER_CUSTOM_ROLE_ERROR });
@@ -104,7 +104,7 @@ export const registerCertManagerAccessRolesRouter = async (server: FastifyZodPro
     method: "PATCH",
     url: "/roles/:roleId",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "updateCertManagerRole",
       params: z.object({ roleId: z.string().trim().uuid() })
@@ -118,7 +118,7 @@ export const registerCertManagerAccessRolesRouter = async (server: FastifyZodPro
     method: "DELETE",
     url: "/roles/:roleId",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       operationId: "deleteCertManagerRole",
       params: z.object({ roleId: z.string().trim().uuid() })

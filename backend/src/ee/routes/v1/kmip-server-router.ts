@@ -111,7 +111,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         200: KmipServerWithAuthMethodSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { authMethod: authMethodInput, name, hostnamesOrIps, ttl, keyAlgorithm } = req.body;
       const authMethodArg =
@@ -229,7 +229,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         200: KmipServerWithAuthMethodSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { hostnamesOrIps, ttl, keyAlgorithm } = req.body;
       const hasFieldUpdate = hostnamesOrIps !== undefined || ttl !== undefined || keyAlgorithm !== undefined;
@@ -350,7 +350,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         200: z.object({ method: z.string() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.resourceAuthMethod.revokeAccess({
         resource: { type: "kmip", id: req.params.kmipServerId },
@@ -388,7 +388,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         200: SanitizedKmipServerSchema.omit({ canRevoke: true })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const kmipServer = await server.services.kmipServer.deleteKmipServer({
         kmipServerId: req.params.kmipServerId,

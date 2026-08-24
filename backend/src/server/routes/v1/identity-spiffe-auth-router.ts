@@ -371,7 +371,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
       operationId: "refreshSpiffeBundle",
@@ -421,7 +421,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
       operationId: "deleteSpiffeAuth",

@@ -45,8 +45,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    // Not open to AuthMode.OAUTH, unlike the rest of this router: with no org in context nothing narrows
-    // the result, so a token issued for one org would enumerate every org the user belongs to.
+    // Not open to AuthMode.OAUTH: with no org in context nothing narrows the result, so a token issued
+    // for one org would enumerate every org the user belongs to.
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       const organizations = await server.services.org.findAllOrganizationOfUser(req.permission.id);
@@ -71,8 +71,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    // Not open to AuthMode.OAUTH, unlike the rest of this router: with no org in context nothing narrows
-    // the result, so a token issued for one org would enumerate every org the user belongs to.
+    // Not open to AuthMode.OAUTH: with no org in context nothing narrows the result, so a token issued
+    // for one org would enumerate every org the user belongs to.
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       const organizations = await server.services.org.findAllAccessibleOrganizationsWithSubOrgs(req.permission.id);
@@ -460,7 +460,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const organization = await server.services.org.updateOrg({
         actor: req.permission.type,
@@ -530,7 +530,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const incidentContactsOrg = await req.server.services.org.createIncidentContact(
         req.permission.id,
@@ -558,7 +558,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const incidentContactsOrg = await req.server.services.org.deleteIncidentContact(
         req.permission.id,

@@ -191,7 +191,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         200: SanitizedProjectSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
 
     handler: async (req) => {
       const project = await server.services.project.deleteProject({
@@ -293,7 +293,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         200: SanitizedProjectSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const project = await server.services.project.updateProject({
         filter: {

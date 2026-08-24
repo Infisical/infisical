@@ -90,7 +90,7 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
       body: AddUsersBodySchema,
       response: { 200: AddUsersResponseSchema }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { emails } = req.body;
@@ -157,7 +157,7 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
       body: RoleBodySchema,
       response: { 200: z.object({ membership: ApplicationMemberSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.pkiApplicationMembership.updateMemberRole({
         actor: req.permission.type,
@@ -217,7 +217,7 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
       params: UserParamsSchema,
       response: { 200: RemoveResponseSchema }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationMembership.removeMember({
         actor: req.permission.type,

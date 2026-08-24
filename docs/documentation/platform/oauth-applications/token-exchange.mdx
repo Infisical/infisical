@@ -58,13 +58,7 @@ Structurally, this is your organization's OIDC sign-in with the token handed ove
 
 The issued token carries the user's **full effective permissions**, not a narrowed subset. There is no consent screen and no scope list: an organization admin approves the delegation once, when registering the application.
 
-The token works across the Infisical API wherever the user's own permissions allow, with five exceptions. Each is somewhere a delegated token could otherwise leave behind access that revoking the application would not take back:
-
-- **Managing the user's account.** Password, MFA, session, and notification endpoints are never reachable with a delegated token.
-- **Creating or deleting an organization**, including a sub-organization. All four need the user's own sign-in, even when they are an organization admin. Updating an organization and managing its members stay available.
-- **Minting another credential.** Machine identity tokens and client secrets, service tokens, SCIM tokens, KMIP client certificates, and gateway or relay enrollment tokens all outlive the delegation that created them, so issuing one stays first-party. Listing and revoking them stays available, since neither returns secret material.
-- **Setting up a way to sign in as a machine identity.** Adding or editing an identity's authentication method registers a signing key, trusted issuer, certificate authority, or cloud principal that can authenticate as that identity from then on. Infisical never holds it, so it would keep working after you revoked this application. Creating identities, assigning their roles, reading their authentication methods, and removing them stay available.
-- **Widening its own access.** Managing OAuth applications, instance admin settings, upgrading the organization's privilege system, and both forms of privilege assumption stay first-party. That includes an organization admin granting themselves access to a project they are not a member of, since the membership it writes outlives the delegation.
+It works across the Infisical API wherever the user's own permissions allow, within the limits every delegated token has: no administration changes, no account management, no organization creation. See [what a delegated token can never do](/documentation/platform/oauth-applications/overview#what-a-delegated-token-can-never-do).
 
 No refresh token is issued. When the access token expires, your middleware exchanges again against the still-valid identity provider token.
 
@@ -146,7 +140,7 @@ The response is an access token for the user the subject token identified:
 }
 ```
 
-Access token lifetime is the shortest of the application's **access token lifetime** (1 day by default), your organization's session length, and the instance default of 10 days. The application's own value is a ceiling rather than an override: it can shorten the lifetime but never extend it past what the organization allows. Because the middleware holds a credential that acts as the user, shorten it on the application rather than relying on the default.
+[Access token lifetime](/documentation/platform/oauth-applications/overview#managing-applications) defaults to 1 day. Because the middleware holds a credential that acts as the user, shorten it on the application rather than relying on that default.
 
 ### When an exchange fails
 

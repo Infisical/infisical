@@ -116,7 +116,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
         scimTokenId: z.string().trim()

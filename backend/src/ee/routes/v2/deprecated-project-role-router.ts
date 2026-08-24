@@ -53,7 +53,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const stringifiedPermissions = JSON.stringify(packRules(req.body.permissions));
 
@@ -143,7 +143,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const stringifiedPermissions = req.body.permissions ? JSON.stringify(packRules(req.body.permissions)) : undefined;
       const role = await server.services.role.updateRole({
@@ -221,7 +221,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const role = await server.services.role.deleteRole({
         permission: req.permission,

@@ -115,7 +115,7 @@ export const registerExternalKmsEndpoints = <
         200: sanitizedExternalSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { name, description, configuration } = req.body as {
         name: string;
@@ -186,7 +186,7 @@ export const registerExternalKmsEndpoints = <
         200: sanitizedExternalSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { name, description, configuration } = req.body as {
         name?: string;
@@ -253,7 +253,7 @@ export const registerExternalKmsEndpoints = <
         200: sanitizedExternalSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const externalKms = await server.services.externalKms.deleteById({
         actor: req.permission.type,

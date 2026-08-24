@@ -135,7 +135,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         200: SanitizedGatewayV2Schema
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.JWT]),
     handler: async (req) => {
       const gateway = await server.services.gatewayV2.deleteGatewayById({
         orgPermission: req.permission,
@@ -162,7 +162,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await server.services.gatewayV2.triggerHeartbeat({
         orgPermission: req.permission,

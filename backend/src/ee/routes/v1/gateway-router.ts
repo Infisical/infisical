@@ -152,7 +152,7 @@ export const registerGatewayRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.JWT]),
     handler: async (req) => {
       const gateway = await server.services.gateway.updateGatewayById({
         orgPermission: req.permission,
@@ -191,7 +191,7 @@ export const registerGatewayRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.JWT]),
     handler: async (req) => {
       const gateway = await server.services.gateway.deleteGatewayById({
         orgPermission: req.permission,

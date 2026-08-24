@@ -57,7 +57,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { trustedIp, project } = await server.services.trustedIp.addProjectIp({
         actorAuthMethod: req.permission.authMethod,
@@ -105,7 +105,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { trustedIp, project } = await server.services.trustedIp.updateProjectIp({
         projectId: req.params.projectId,
@@ -150,7 +150,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { trustedIp, project } = await server.services.trustedIp.deleteProjectIp({
         projectId: req.params.projectId,

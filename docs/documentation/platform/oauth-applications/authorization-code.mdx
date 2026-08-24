@@ -23,7 +23,7 @@ This flow turns Infisical into an OAuth 2.0 authorization server. The model has 
 - **User (resource owner)** - the Infisical user who authorizes the application to act on their behalf.
 - **Infisical (authorization + resource server)** - issues the tokens and serves the protected API.
 
-Tokens issued through this flow are marked as delegated OAuth tokens. The granted scopes are intersected with the user's existing permissions on every request, so with `secrets:read` the only thing a token can do is read secrets, folders, and imports the user can already read.
+Every action the token takes is attributed to the user, with the requesting application recorded alongside it in the audit log.
 
 ### Flow
 
@@ -59,11 +59,9 @@ Scopes are a coarse, named contract for what a delegated token is allowed to do.
 
 ## Creating an OAuth application
 
-OAuth applications are managed at the organization level. You need permission to manage OAuth applications in the organization.
-
 <Steps>
   <Step title="Open the OAuth Applications settings">
-    Head to **Organization Settings** and open **OAuth Applications** from the sidebar.
+    Head to **Organization Settings** and open **OAuth Applications** from the sidebar. You need permission to manage OAuth applications.
   </Step>
   <Step title="Add an application">
     Press **Add Application** and fill in the details:
@@ -73,6 +71,7 @@ OAuth applications are managed at the organization level. You need permission to
     - **Flow**: Leave **Authorization code** selected. See [token exchange](/documentation/platform/oauth-applications/token-exchange) for the other flow.
     - **Redirect URIs** (required): One URI per line. The authorization flow will only ever redirect to one of these exact URIs. Each must use `https://`; `http://` is allowed only for loopback addresses such as `localhost`, `127.0.0.1`, and `::1`.
     - **Require PKCE (S256)**: When enabled, authorization requests that do not include a PKCE code challenge are rejected. Recommended for public clients.
+    - **Access token lifetime**: How long the tokens this application issues stay valid, 1 day by default.
   </Step>
   <Step title="Store the credentials">
     On creation, Infisical shows the **Client ID** and **Client Secret**.
@@ -138,7 +137,7 @@ The response contains:
 }
 ```
 
-Access token lifetime is the shortest of the application's **access token lifetime** (1 day by default), your organization's session length, and the instance default of 10 days. Refresh tokens follow the organization's session length instead, so shortening the application's lifetime shortens each access token, not how long the client can keep refreshing. Refresh tokens rotate on use, and a refresh never broadens the scopes originally granted.
+[Access token lifetime](/documentation/platform/oauth-applications/overview#managing-applications) defaults to 1 day. Refresh tokens follow the organization's session length instead, so shortening the application's lifetime shortens each access token, not how long the client can keep refreshing. Refresh tokens rotate on use, and a refresh never broadens the scopes originally granted.
 
 `refresh_token` is present only when the application holds the `refresh_token` grant, which applications created in the UI always do. If you registered one through the API with `grantTypes` limited to `authorization_code`, the field is omitted and the client exchanges a new authorization code when the access token expires.
 
@@ -162,12 +161,9 @@ curl https://app.infisical.com/api/v4/secrets \
   --data-urlencode "environment=dev"
 ```
 
-The effective permissions are the **intersection** of the user's permissions and the granted scopes, so the token can read a secret only where the user could and the scope allows it.
-
 ## Security model
 
-- **Delegated access is bounded by the user.** Tokens are intersected with the authorizing user's CASL permissions on every request. They cannot exceed what the user can do, and revoking the user's access revokes the token's access.
-- **Read-only by design.** `secrets:read` is the only scope available, and it grants read actions alone, so a token issued through this flow cannot write. Account endpoints (password, MFA, session management, TOTP, and similar) never accept a delegated token at all.
+- **Read-only by design.** `secrets:read` is the only scope available and grants read actions alone, so a token from this flow reads secrets and reaches nothing else, administration included. The [shared limits](/documentation/platform/oauth-applications/overview#what-a-delegated-token-can-never-do) apply on top.
 - **MFA is enforced at consent.** If the user's organization requires MFA, the consent flow requires the matching MFA challenge to be completed before an authorization code is issued.
 - **Strict redirect URIs.** Authorization only ever redirects to an exact registered URI. Non-loopback URIs must use `https://`.
 - **One-time authorization codes.** Codes are single-use, short-lived, and bound to the client and redirect URI they were issued for.

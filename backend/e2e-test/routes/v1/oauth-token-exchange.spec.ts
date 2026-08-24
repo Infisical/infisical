@@ -389,6 +389,47 @@ describe("Full delegation marker on a delegated OAuth token", async () => {
     expect(res.statusCode).toBe(403);
   });
 
+  test("a fully-delegated token can read an administration resource", async () => {
+    const token = signDelegatedToken({ delegation: OauthDelegationMode.Full });
+
+    const res = await testServer.inject({
+      method: "GET",
+      url: `/api/v2/organizations/${seedData1.organization.id}/memberships`,
+      headers: { authorization: `Bearer ${token}` }
+    });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  // verifyAuth runs on onRequest, ahead of schema validation, so the membership id never has to exist:
+  // a delegated token is turned away for the auth mode alone.
+  test("a fully-delegated token cannot write to an administration resource", async () => {
+    const token = signDelegatedToken({ delegation: OauthDelegationMode.Full });
+
+    const res = await testServer.inject({
+      method: "PATCH",
+      url: `/api/v2/organizations/${seedData1.organization.id}/memberships/2d4f1a0e-7c31-4f5f-9b26-8e0a7c1d5b93`,
+      headers: { authorization: `Bearer ${token}` },
+      body: { role: "member" }
+    });
+
+    expect(res.statusCode).toBe(403);
+  });
+
+  // The SSO config read hands back the OIDC client secret, so it stays first-party alongside the writes.
+  test("a fully-delegated token cannot read a config that returns credential material", async () => {
+    const token = signDelegatedToken({ delegation: OauthDelegationMode.Full });
+
+    const res = await testServer.inject({
+      method: "GET",
+      url: `/api/v1/sso/oidc/config`,
+      headers: { authorization: `Bearer ${token}` },
+      query: { organizationId: seedData1.organization.id }
+    });
+
+    expect(res.statusCode).toBe(403);
+  });
+
   // Account routes authenticate on userId alone and build no permission, so they have to stay
   // unreachable whatever delegation marker the token carries.
   test("a fully-delegated token is still rejected on a JWT-only account route", async () => {

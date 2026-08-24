@@ -139,7 +139,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       operationId: "deleteServiceToken",
       params: z.object({

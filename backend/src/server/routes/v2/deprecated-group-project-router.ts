@@ -23,7 +23,7 @@ export const registerDeprecatedGroupProjectRouter = async (server: FastifyZodPro
   server.route({
     method: "POST",
     url: "/:projectId/groups/:groupIdOrName",
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     config: {
       rateLimit: writeLimit
     },
@@ -130,7 +130,7 @@ export const registerDeprecatedGroupProjectRouter = async (server: FastifyZodPro
   server.route({
     method: "PATCH",
     url: "/:projectId/groups/:groupId",
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProjectGroups],
@@ -214,7 +214,7 @@ export const registerDeprecatedGroupProjectRouter = async (server: FastifyZodPro
   server.route({
     method: "DELETE",
     url: "/:projectId/groups/:groupId",
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     config: {
       rateLimit: writeLimit
     },

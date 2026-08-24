@@ -43,7 +43,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
         200: z.string()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const url = await server.services.slack.getInstallUrl({
         actor: req.permission.type,
@@ -89,7 +89,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
         200: z.string()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const url = await server.services.slack.getReinstallUrl({
         actor: req.permission.type,
@@ -164,7 +164,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
         200: sanitizedSlackIntegrationSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const deletedSlackIntegration = await server.services.slack.deleteSlackIntegration({
         actor: req.permission.type,
@@ -297,7 +297,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
         200: sanitizedSlackIntegrationSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const slackIntegration = await server.services.slack.updateSlackIntegration({
         actor: req.permission.type,

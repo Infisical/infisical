@@ -41,7 +41,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
         200: KmipClientResponseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const kmipClient = await server.services.kmip.createKmipClient({
         actor: req.permission.type,
@@ -97,7 +97,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
         200: KmipClientResponseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const kmipClient = await server.services.kmip.updateKmipClient({
         actor: req.permission.type,
@@ -152,7 +152,7 @@ export const registerKmipRouter = async (server: FastifyZodProvider) => {
         200: KmipClientResponseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const kmipClient = await server.services.kmip.deleteKmipClient({
         actor: req.permission.type,

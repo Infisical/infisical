@@ -63,7 +63,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalPolicy.createSecretApprovalPolicy({
         actor: req.permission.type,
@@ -125,7 +125,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalPolicy.updateSecretApprovalPolicy({
         actor: req.permission.type,
@@ -155,7 +155,7 @@ export const registerDeprecatedSecretApprovalPolicyRouter = async (server: Fasti
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalPolicy.deleteSecretApprovalPolicy({
         actor: req.permission.type,

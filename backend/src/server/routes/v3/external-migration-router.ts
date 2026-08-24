@@ -28,7 +28,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     schema: {
       operationId: "importEnvKeyDataV3"
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const data = await req.file({
         limits: {
@@ -90,7 +90,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         gatewayPoolId: z.string().optional()
       })
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await server.services.migration.importVaultData({
         actorId: req.permission.id,

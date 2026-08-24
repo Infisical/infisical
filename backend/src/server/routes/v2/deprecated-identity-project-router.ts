@@ -26,7 +26,7 @@ export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZod
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProjectIdentities],
@@ -108,7 +108,7 @@ export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZod
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProjectIdentities],
@@ -187,7 +187,7 @@ export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZod
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProjectIdentities],

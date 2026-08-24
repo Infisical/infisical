@@ -429,7 +429,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       // Soft delete: returns fast (single UPDATE). The async cleanup worker hard-deletes the project
       // after its grace period.
@@ -524,7 +524,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const project = await server.services.project.updateProject({
         filter: {
@@ -590,7 +590,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       await server.services.project.enableSecretBlindIndex({
         projectId: req.params.projectId,
@@ -663,7 +663,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const project = await server.services.project.updateAuditLogsRetention({
         actorId: req.permission.id,
@@ -899,7 +899,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const deletedIntegration = await server.services.project.deleteProjectWorkflowIntegration({
         actorId: req.permission.id,
@@ -979,7 +979,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workflowIntegrationConfig = await server.services.project.updateProjectWorkflowIntegration({
         actorId: req.permission.id,
@@ -1149,7 +1149,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         200: z.void()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await server.services.project.upgradeProject({
         actorId: req.permission.id,

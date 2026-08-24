@@ -91,7 +91,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
         200: z.object({ grant: ProjectFolderGrantsSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const grant = await server.services.projectFolderGrant.createGrant({
         actorId: req.permission.id,
@@ -166,7 +166,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
         200: z.object({ grant: ProjectFolderGrantsSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const grant = await server.services.projectFolderGrant.deleteGrant({
         actorId: req.permission.id,

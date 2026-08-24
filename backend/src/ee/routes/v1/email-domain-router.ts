@@ -15,7 +15,7 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
         domain: z.string().trim().toLowerCase().min(1).describe("The domain to verify (e.g., company.com)")
@@ -67,7 +67,7 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
         emailDomainId: z.string().uuid().describe("The ID of the email domain to verify")
@@ -149,7 +149,7 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       params: z.object({
         emailDomainId: z.string().uuid().describe("The ID of the email domain to delete")

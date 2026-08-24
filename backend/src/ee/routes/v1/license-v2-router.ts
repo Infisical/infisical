@@ -250,7 +250,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         200: z.object({ success: z.boolean() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       return server.services.licenseV2.refreshEntitlements({
         orgId: req.params.organizationId,
@@ -293,7 +293,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         200: z.object({ url: z.string() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       return server.services.licenseV2.portalSession({
         orgId: req.params.organizationId,
@@ -316,7 +316,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         200: z.object({ url: z.string() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       return server.services.licenseV2.addPaymentMethod({
         orgId: req.params.organizationId,
@@ -350,7 +350,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         200: z.object({ preview: BillingV2PreviewSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       return server.services.licenseV2.previewChange({
         orgId: req.params.organizationId,
@@ -388,7 +388,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       // A first-touch org has no Stripe customer yet, so the server needs an email. Take it from the
       // authenticated user (JWT-only route) rather than trusting a client-supplied value.
@@ -418,7 +418,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         200: BillingV2MutationResultSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       return server.services.licenseV2.removeProduct({
         orgId: req.params.organizationId,
@@ -450,7 +450,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       return server.services.licenseV2.changeCommitments({
         orgId: req.params.organizationId,
@@ -480,7 +480,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       // A trial has no Stripe customer yet, so the server needs an email. Take it from the authenticated
       // user (this route is JWT-only) rather than trusting a client-supplied value.
@@ -512,7 +512,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       return server.services.licenseV2.cancelTrial({
         orgId: req.params.organizationId,
@@ -534,7 +534,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         200: BillingV2MutationResultSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       return server.services.licenseV2.cancelSubscription({
         orgId: req.params.organizationId,
@@ -555,7 +555,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         200: BillingV2MutationResultSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       return server.services.licenseV2.resumeSubscription({
         orgId: req.params.organizationId,

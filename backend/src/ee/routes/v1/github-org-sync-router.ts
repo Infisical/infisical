@@ -25,7 +25,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
         githubOrgName: GithubOrgNameCreateSchema,
@@ -65,7 +65,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z
         .object({
@@ -110,7 +110,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       response: {
         200: z.object({
@@ -167,7 +167,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       response: {
         200: z.object({

@@ -190,46 +190,75 @@ Two grants issue them: the authorization code flow (consented `scopes`) and the 
 (`delegation: "full"`, no scopes).
 
 **Opting a route in.** `verify-auth.ts` rejects `AuthMode.OAUTH` on any route that doesn't list it; most
-`AuthMode.JWT` routes now do. Before adding it, check the handler actually **checks** a CASL ability:
-that check is where the granted scopes get intersected in. Building an ability and throwing it away
+product `AuthMode.JWT` routes do. Two things have to hold before adding it. The route must not be an
+administration route (below). And the handler must actually **check** a CASL ability, because that check
+is where the granted scopes get intersected in: building an ability and throwing it away
 (`getOrgPermission` used as a membership gate), or reading `hasRole(...)` off its return value, narrows
 nothing; `hasRole` is the easy one to miss because it reads like authorization. Rough proxy: nothing
 passing `requireOrg: false` accepts `AuthMode.OAUTH`.
 
-First-party only:
+**Administration is read-only for a delegated token.** A delegated token can look at anything the
+authorizing user can, but it changes nothing under **Administration**: no create, update, or delete, at
+either level. The frontend nav is the boundary, and it is worth opening (`OrgNav.tsx`,
+`OrgSubmenuView.tsx`, `SecretManagerNav.tsx`, `submenus.tsx`) when a new route's side is unclear. The
+surfaces it covers:
+
+- **org access control** — members, groups, identities (including memberships, templates, and all
+  thirteen `identity-*-auth-router.ts`), org roles, invites, external group-to-role mapping
+- **usage & billing** — `ee/v1/license-router.ts`, `ee/v1/license-v2-router.ts`
+- **audit logs** — the org and project log reads plus audit log streams
+- **org settings** — org update and incident contacts, SSO and provisioning (SAML, OIDC, LDAP, SCIM,
+  GitHub org sync, email domains), networking (gateways, gateway pools, relays), encryption (external
+  KMS, KMIP, KMIP servers, HSM connectors), project templates, sub-orgs, workflow integrations
+  (Slack, Microsoft Teams), and the org-wide EnvKey/Vault migrations on the settings tab
+- **project access control** — memberships for users, groups and identities, project roles, additional
+  privileges, folder grants, project keys, service tokens, and the per-resource equivalents under PAM,
+  cert manager, code signing and PKI applications
+- **project settings** — project update and delete, environments, tags, approval policies, webhooks,
+  trusted IPs, secret validation rules, project KMS, blind index, audit log retention, E2EE upgrade,
+  and the secret scanning `configs` routes
+
+In practice that means `GET` keeps `AuthMode.OAUTH` and `POST` / `PATCH` / `PUT` / `DELETE` lose it. The
+method is the test because `CODE_QUALITY.md` already requires `GET` to be safe, so it needs no per-route
+judgment. Two adjustments to that rule, both small enough to enumerate:
+
+- **A `POST` that only reads keeps it.** Five endpoints are `POST` solely because a lookup needs a request
+  body: `POST /v1/identities/search`, `POST /v2/identities/search`, `POST /v2/identities/search/count`,
+  and the two `memberships/details` routes. All five check a CASL read ability.
+- **A read that hands back credential material loses it**, because the point of closing administration is
+  that a third-party application should not end up holding the org's secrets. Six routes:
+  `GET /v1/sso/oidc/config` (`clientSecret`), `GET /v1/ldap/config` (`bindPass`),
+  `GET /v1/auth/ldap-auth/identities/:identityId` (`bindPass`),
+  `GET /v1/workspace/:projectId/kms/backup` (the project's KMS backup blob), and Slack
+  `GET /install` / `GET /reinstall`, which gate on `OrgPermissionActions.Create` and exist only to start
+  an install. Everything else reads through a sanitized schema — `sanitizedClientSecretSchema` returns a
+  prefix, `sanitizedExternalSchemaForGetById` drops provider credentials, `ScimTokensSchema` carries no
+  token. Check the response schema, not the route name, before opening a new administration read.
+
+Three things are first-party outright, because they sit outside an org and the nav boundary doesn't
+reach them:
 - account self-management (user, password, MFA, sessions, login, signup, notifications, announcements)
 - super-admin routes (`v1/admin-router.ts`, `ee/v1/rate-limit-router.ts`), where `verifySuperAdmin` reads
   `user.superAdmin` rather than an ability
-- OAuth client CRUD + consent (`v1/oauth-router.ts`) and `ee/v1/assume-privilege-router.ts`, where a
-  delegated token could widen its own grant, plus
-  `POST /v1/organization-admin/projects/:projectId/grant-admin-access`, which writes a permanent
-  project-admin membership that outlives the delegation
-- creating or deleting an org, parent or sub: `POST /v2/organizations`,
-  `DELETE /v2/organizations/:organizationId`, `POST /v1/sub-orgs`, `DELETE /v1/sub-orgs/:subOrgId`.
-  Updating a sub-org and managing its memberships stay open
-- `POST /v2/organizations/privilege-system-upgrade`, which gates on `hasRole(Admin)`
-- the org reads that return more than the token's org: `GET /v1/organization`,
-  `GET /v1/organization/accessible-with-sub-orgs`, `GET /v1/organization/:organizationId`
-- routes that **mint a long-lived credential**: identity token-auth tokens, universal-auth client
-  secrets, service tokens, SCIM tokens, KMIP client certificates, and gateway / relay / KMIP-server
-  enrollment tokens. Issuance only: listing and revoking return no secret material and stay open
-- routes that **register an identity auth method**: attach (`POST`) and update (`PATCH`) on all thirteen
-  `identity-*-auth-router.ts`. `GET`, `DELETE`, `clear-lockouts` and `refresh-bundle` stay open
+- `POST /v2/organizations`, and the org reads that return more than the token's org: `GET /v1/organization`,
+  `GET /v1/organization/accessible-with-sub-orgs`, `GET /v1/organization/:organizationId`. All pass
+  `requireOrg: false`, so nothing narrows them
 
-The last two are one rule: **a route that leaves behind something able to authenticate later can't accept
-a delegated token.** Revocation reaches only the sessions tagged with `getOauthClientSessionUserAgent`, so
-an identity token, service token, client secret, or an auth method bound to a key the caller holds all
-survive deleting the application and rotating its secret, and authenticate as an identity no OAuth scope
-intersects. Whether the route hands secret material back is beside the point, so start any new route that
-writes a trust anchor (bound issuer, signing key, CA, cloud principal) first-party. Same test for a route
-that reissues the caller's session: `DELETE /v2/organizations/:organizationId` returns a fresh pair from
-`loginService.generateUserTokens`, which takes no delegation parameter, so a delegated caller would exit
-with a first-party session.
+Everything else that used to be listed here individually — OAuth client CRUD, assume-privilege, deleting
+an org or sub-org, minting SCIM tokens, KMIP client certificates or gateway / relay / KMIP-server
+enrollment tokens, registering identity auth methods — is an administration write, and closed by the rule
+above rather than by its own exception. Two of those reasons still generalize, so keep them in mind when a
+**product** route does the same thing:
 
-Membership-only reads that *keep* `AuthMode.OAUTH` return project metadata a secrets client needs
-(`getAProject`, so clients can resolve environment slugs, and `getProjectKmsKeys`) rather than org or
-security config. A CASL gate isn't the fix there: the operation has no subject, and any member with an
-identity token can already call it. Weigh a route in this position on what it returns.
+- **A route that leaves behind something able to authenticate later can't accept a delegated token.**
+  Revocation reaches only the sessions tagged with `getOauthClientSessionUserAgent`, so a credential or an
+  auth method bound to a key the caller holds survives deleting the application and rotating its secret,
+  and authenticates as a principal no OAuth scope intersects. Whether the route hands secret material back
+  is beside the point, so start any new route that writes a trust anchor (bound issuer, signing key, CA,
+  cloud principal) first-party.
+- **Nor can a route that reissues the caller's session.** `DELETE /v2/organizations/:organizationId`
+  returns a fresh pair from `loginService.generateUserTokens`, which takes no delegation parameter, so a
+  delegated caller would exit with a first-party session.
 
 **Delegation markers.** A token carries `scopes` or `delegation: "full"`, never both
 (`oauth-client-types.ts`). `permission-service` intersects the user's CASL rules with `scopes`

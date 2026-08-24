@@ -47,7 +47,7 @@ export const registerGcpKmsRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { region, authMethod } = req.body;
       let credentialJson: TExternalKmsGcpCredentialSchema | undefined;

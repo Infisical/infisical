@@ -50,7 +50,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const stringifiedPermissions = JSON.stringify(
         packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions, true))
@@ -140,7 +140,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const stringifiedPermissions = req.body.permissions
         ? JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions, true)))
@@ -223,7 +223,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { id: projectId } = await server.services.convertor.projectSlugToId({
         slug: req.params.projectSlug,

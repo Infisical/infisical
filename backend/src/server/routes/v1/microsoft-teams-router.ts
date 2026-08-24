@@ -68,7 +68,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
       })
     },
 
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await server.services.microsoftTeams.completeMicrosoftTeamsIntegration({
         tenantId: req.body.tenantId,
@@ -148,7 +148,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
         id: z.string()
       })
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const microsoftTeamsIntegration = await server.services.microsoftTeams.checkInstallationStatus({
         actor: req.permission.type,
@@ -192,7 +192,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
         200: sanitizedMicrosoftTeamsIntegrationSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const deletedMicrosoftTeamsIntegration = await server.services.microsoftTeams.deleteMicrosoftTeamsIntegration({
         actor: req.permission.type,
@@ -290,7 +290,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
         200: sanitizedMicrosoftTeamsIntegrationSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const microsoftTeamsIntegration = await server.services.microsoftTeams.updateMicrosoftTeamsIntegration({
         actor: req.permission.type,

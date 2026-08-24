@@ -31,19 +31,29 @@ An OAuth application obtains its tokens through one of two flows, chosen when yo
 | --- | --- | --- |
 | Who approves the delegation | Each user, on a consent screen | An organization admin, once at registration |
 | Needs a browser redirect | Yes | No |
-| What the token can do | Only the requested scopes, intersected with the user's permissions | The user's full effective permissions |
+| What the token can do | Only the requested scopes, intersected with the user's permissions | The user's full effective permissions, read-only for administration |
 | Refresh tokens | Yes | No, exchange again instead |
 | Prerequisites | Registered redirect URIs | An active OIDC SSO configuration for the organization |
 
 ## Managing applications
 
-OAuth applications are managed at the organization level. Head to **Organization Settings** and open **OAuth Applications** from the sidebar. You need permission to manage OAuth applications in the organization, and token exchange additionally requires permission to manage SSO.
+OAuth applications live at the organization level, under **Organization Settings** → **OAuth Applications**. Managing them needs permission to manage OAuth applications; token exchange additionally needs permission to manage SSO.
 
-Every application gets a **Client ID** and a **Client Secret** on creation. The secret is shown only once: store it securely, and if it is lost, rotate it from the application's menu rather than expecting to retrieve the original value.
+Access token lifetime is the shortest of the application's **access token lifetime** (1 day by default), your organization's session length, and the instance default of 10 days. The application's own value is a ceiling, not an override: it can shorten a token's life but never extend it past what the organization allows.
 
 ## What a delegated token can never do
 
-Whichever flow issued it, a delegated token cannot manage the authorizing user's account: password, MFA, session, TOTP, and notification endpoints reject it outright, so an integration can never take over the account behind it. Each flow page covers the rest of its own limits.
+**It cannot change anything under Administration**, at either the organization or the project level. Creating, updating and deleting there stay with a person signed in to the dashboard:
+
+- Access control: members, groups, machine identities, roles, and additional privileges
+- Usage and billing
+- Audit log streams
+- Organization settings: SSO and provisioning, networking, encryption, project templates, sub-organizations, OAuth applications, and workflow integrations
+- Project settings: general settings, environments, tags, policies, webhooks, and encryption
+
+**It cannot manage the authorizing user's account.** Password, MFA, session, TOTP, and notification endpoints reject it outright, so an integration can never take over the account behind it.
+
+**It cannot create an organization or change instance admin settings.** Both sit outside the organization the delegation was issued for, so neither is narrowed by it.
 
 ## Revoking access
 

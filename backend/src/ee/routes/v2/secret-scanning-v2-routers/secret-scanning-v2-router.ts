@@ -327,7 +327,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         200: z.object({ config: SecretScanningConfigsSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
         query: { projectId },

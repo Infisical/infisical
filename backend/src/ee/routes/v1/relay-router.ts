@@ -147,7 +147,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
         200: RelaysSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const relay = await server.services.relay.deleteRelay({
         id: req.params.id,

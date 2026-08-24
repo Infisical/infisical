@@ -37,7 +37,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const pool = await server.services.gatewayPool.createGatewayPool({
         name: req.body.name,
@@ -126,7 +126,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const pool = await server.services.gatewayPool.updateGatewayPool({
         poolId: req.params.poolId,
@@ -164,7 +164,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const pool = await server.services.gatewayPool.deleteGatewayPool({
         poolId: req.params.poolId,
@@ -209,7 +209,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { membership, poolName, gatewayName } = await server.services.gatewayPool.addGatewayToPool({
         poolId: req.params.poolId,
@@ -255,7 +255,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { membership, poolName, gatewayName } = await server.services.gatewayPool.removeGatewayFromPool({
         poolId: req.params.poolId,

@@ -35,7 +35,7 @@ export const createHsmConnectorRouter =
         body: CreateHsmConnectorBodySchema,
         response: { 200: z.object({ hsmConnector: HsmConnectorSanitizedSchema }) }
       },
-      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
       handler: async (req) => {
         const hsmConnector = await server.services.hsmConnector.createHsmConnector(
           {
@@ -118,7 +118,7 @@ export const createHsmConnectorRouter =
         body: UpdateHsmConnectorBodySchema,
         response: { 200: z.object({ hsmConnector: HsmConnectorSanitizedSchema }) }
       },
-      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
       handler: async (req) => {
         const hsmConnector = await server.services.hsmConnector.updateHsmConnector(
           {
@@ -159,7 +159,7 @@ export const createHsmConnectorRouter =
         params: HsmConnectorIdParamSchema,
         response: { 200: z.object({ id: z.string().uuid() }) }
       },
-      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
       handler: async (req) => {
         const deleted = await server.services.hsmConnector.deleteHsmConnector(
           { connectorId: req.params.connectorId },
@@ -188,7 +188,7 @@ export const createHsmConnectorRouter =
         params: HsmConnectorIdParamSchema,
         response: { 200: HsmConnectorTestResultSchema }
       },
-      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
       handler: async (req) => {
         const { projectId, name, result } = await server.services.hsmConnector.testHsmConnector(
           { connectorId: req.params.connectorId },
