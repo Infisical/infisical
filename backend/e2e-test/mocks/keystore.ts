@@ -111,6 +111,29 @@ export const mockKeyStore = (): TKeyStoreFactory => {
     hashGet: async (key, field) => {
       return hashStore[key]?.[field] ?? null;
     },
+    hashGetAll: async (key) => {
+      return { ...(hashStore[key] ?? {}) };
+    },
+    hashGetAllPrimary: async (key) => {
+      return { ...(hashStore[key] ?? {}) };
+    },
+    hashSetFieldWithMinExpiry: async (key, field, value) => {
+      if (!hashStore[key]) hashStore[key] = {};
+      hashStore[key][field] = value;
+    },
+    hashDeleteFields: async (key, fields) => {
+      const hash = hashStore[key];
+      if (!hash) return 0;
+
+      let deleted = 0;
+      fields.forEach((field) => {
+        if (field in hash) {
+          delete hash[field];
+          deleted += 1;
+        }
+      });
+      return deleted;
+    },
     pgIncrementBy: async () => {
       return 1;
     },

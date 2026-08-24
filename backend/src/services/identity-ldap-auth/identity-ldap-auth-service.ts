@@ -18,7 +18,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import {
   BadRequestError,
@@ -43,6 +43,13 @@ import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
+import {
+  clearIdentityLockoutsForAuthMethod,
+  clearIdentityLockoutState,
+  getIdentityLockoutState,
+  identityLockoutLockKey,
+  persistIdentityLockoutState
+} from "../identity/identity-fns";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -77,12 +84,11 @@ type TIdentityLdapAuthServiceFactoryDep = {
   identityAuthTemplateDAL: TIdentityAuthTemplateDALFactory;
   keyStore: Pick<
     TKeyStoreFactory,
-    | "setItemWithExpiry"
     | "setItemWithExpiryNX"
-    | "getItem"
-    | "deleteItem"
-    | "getKeysByPattern"
-    | "deleteItems"
+    | "hashGet"
+    | "hashGetAllPrimary"
+    | "hashSetFieldWithMinExpiry"
+    | "hashDeleteFields"
     | "acquireLock"
   >;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
@@ -93,11 +99,6 @@ type TIdentityLdapAuthServiceFactoryDep = {
 };
 
 export type TIdentityLdapAuthServiceFactory = ReturnType<typeof identityLdapAuthServiceFactory>;
-
-type LockoutObject = {
-  lockedOut: boolean;
-  failedAttempts: number;
-};
 
 export const identityLdapAuthServiceFactory = ({
   identityAccessTokenDAL,
@@ -909,14 +910,9 @@ export const identityLdapAuthServiceFactory = ({
     );
     const orgId = identity?.orgId ?? null;
 
-    const lockoutKey = KeyStorePrefixes.IdentityLockoutState(identityId, IdentityAuthMethod.LDAP_AUTH, usernameSlug);
+    const lockoutSelector = { identityId, authMethod: IdentityAuthMethod.LDAP_AUTH, slug: usernameSlug };
 
-    const lockoutRaw = await keyStore.getItem(lockoutKey);
-
-    let lockout: LockoutObject | undefined;
-    if (lockoutRaw) {
-      lockout = JSON.parse(lockoutRaw) as LockoutObject;
-    }
+    let lockout = await getIdentityLockoutState(lockoutSelector, keyStore);
 
     const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
     if (!identityLdapAuth) {
@@ -938,7 +934,7 @@ export const identityLdapAuthServiceFactory = ({
 
       // If auth succeeds, clear any existing lockout
       if (lockout) {
-        await keyStore.deleteItem(lockoutKey);
+        await clearIdentityLockoutState(lockoutSelector, keyStore);
       }
 
       return result;
@@ -948,22 +944,21 @@ export const identityLdapAuthServiceFactory = ({
         if (identityLdapAuth.lockoutEnabled) {
           let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
           try {
-            lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(lockoutKey)], 500, {
-              retryCount: 10,
-              retryDelay: 300,
-              retryJitter: 100
-            });
+            lock = await keyStore.acquireLock(
+              [identityLockoutLockKey(identityId, IdentityAuthMethod.LDAP_AUTH, usernameSlug)],
+              500,
+              {
+                retryCount: 10,
+                retryDelay: 300,
+                retryJitter: 100
+              }
+            );
 
             // Re-fetch the latest lockout data while holding the lock
-            const lockoutRawNew = await keyStore.getItem(lockoutKey);
-            if (lockoutRawNew) {
-              lockout = JSON.parse(lockoutRawNew) as LockoutObject;
-            } else {
-              lockout = {
-                lockedOut: false,
-                failedAttempts: 0
-              };
-            }
+            lockout = (await getIdentityLockoutState(lockoutSelector, keyStore)) ?? {
+              lockedOut: false,
+              failedAttempts: 0
+            };
 
             if (lockout.lockedOut) {
               throw new UnauthorizedError({
@@ -977,10 +972,15 @@ export const identityLdapAuthServiceFactory = ({
               lockout.lockedOut = true;
             }
 
-            await keyStore.setItemWithExpiry(
-              lockoutKey,
-              lockout.lockedOut ? identityLdapAuth.lockoutDurationSeconds : identityLdapAuth.lockoutCounterResetSeconds,
-              JSON.stringify(lockout)
+            await persistIdentityLockoutState(
+              {
+                ...lockoutSelector,
+                expiryInSeconds: lockout.lockedOut
+                  ? identityLdapAuth.lockoutDurationSeconds
+                  : identityLdapAuth.lockoutCounterResetSeconds
+              },
+              lockout,
+              keyStore
             );
           } catch (e) {
             if (lock === undefined) {
@@ -1058,9 +1058,7 @@ export const identityLdapAuthServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
     }
 
-    const deleted = await keyStore.deleteItems({
-      pattern: KeyStorePrefixes.IdentityLockoutStateByMethodPattern(identityId, IdentityAuthMethod.LDAP_AUTH)
-    });
+    const deleted = await clearIdentityLockoutsForAuthMethod(identityId, IdentityAuthMethod.LDAP_AUTH, keyStore);
 
     return { deleted, identityId, orgId: identityMembershipOrg.scopeOrgId };
   };

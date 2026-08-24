@@ -163,11 +163,8 @@ export const KeyStorePrefixes = {
   LicenseUsageReconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}` as const,
   LicenseUsageLastReported: (orgId: string, featureKey: string) =>
     `license-usage-last-reported-${orgId}-${featureKey}` as const,
-  IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
-    `lockout:identity:${identityId}:${authMethod}:${slug}` as const,
-  IdentityLockoutStateByMethodPattern: (identityId: string, authMethod: string) =>
-    `lockout:identity:${identityId}:${authMethod}:*` as const,
-  IdentityLockoutStatePattern: (identityId: string) => `lockout:identity:${identityId}:*` as const,
+  IdentityLockoutStateHash: (identityId: string) => `lockout:identity:${identityId}` as const,
+  IdentityLockoutStateField: (authMethod: string, slug: string) => `${authMethod}:${slug}` as const,
 
   TelemetryAggregatedEventStream: (event: string, bucketId: string) =>
     `telemetry-agg-stream:${event}:${bucketId}` as const,
@@ -306,6 +303,10 @@ export type TKeyStoreFactory = {
   // hash operations
   hashSet: (key: string, field: string, value: string) => Promise<number>;
   hashGet: (key: string, field: string) => Promise<string | null>;
+  hashGetAll: (key: string) => Promise<Record<string, string>>;
+  hashGetAllPrimary: (key: string) => Promise<Record<string, string>>;
+  hashSetFieldWithMinExpiry: (key: string, field: string, value: string, expiryInSeconds: number) => Promise<void>;
+  hashDeleteFields: (key: string, fields: string[]) => Promise<number>;
   // pg
   pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
   pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
@@ -532,6 +533,62 @@ export const keyStoreFactory = (
 
   const hashGet = async (key: string, field: string) => primaryRedis.hget(key, field);
 
+  const hashGetAll = async (key: string) => pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).hgetall(key);
+
+  const hashGetAllPrimary = async (key: string) => primaryRedis.hgetall(key);
+
+  // A hash carries one TTL for the whole key, so the expiry can only ever grow: shortening it would
+  // drop sibling fields that are still live. Callers stamp each field with its own deadline instead.
+  // HSET and EXPIRE go in one script so a crash between them cannot strand the hash without a TTL.
+  //
+  // Redis cannot expire an individual field, so a hash keyed by caller-supplied slugs would grow
+  // until the whole key expires. Fields past their own deadline are reaped here, but only once the
+  // hash is big enough to be worth walking, so the common one-or-two-field case pays nothing.
+  const HASH_SET_FIELD_WITH_MIN_EXPIRY = `
+    redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
+
+    local current = redis.call('TTL', KEYS[1])
+    local wanted = tonumber(ARGV[3])
+    if current < 0 or current < wanted then
+      redis.call('EXPIRE', KEYS[1], wanted)
+    end
+
+    if redis.call('HLEN', KEYS[1]) > tonumber(ARGV[5]) then
+      local now = tonumber(ARGV[4])
+      local entries = redis.call('HGETALL', KEYS[1])
+      for i = 1, #entries, 2 do
+        if entries[i] ~= ARGV[1] then
+          local ok, parsed = pcall(cjson.decode, entries[i + 1])
+          if ok and type(parsed) == 'table' and type(parsed.expiresAt) == 'number' and parsed.expiresAt <= now then
+            redis.call('HDEL', KEYS[1], entries[i])
+          end
+        end
+      end
+    end
+
+    return 1
+  `;
+
+  const HASH_FIELD_REAP_THRESHOLD = 50;
+
+  const hashSetFieldWithMinExpiry = async (key: string, field: string, value: string, expiryInSeconds: number) => {
+    await primaryRedis.eval(
+      HASH_SET_FIELD_WITH_MIN_EXPIRY,
+      1,
+      key,
+      field,
+      value,
+      String(expiryInSeconds),
+      String(Date.now()),
+      String(HASH_FIELD_REAP_THRESHOLD)
+    );
+  };
+
+  const hashDeleteFields = async (key: string, fields: string[]) => {
+    if (!fields.length) return 0;
+    return primaryRedis.hdel(key, ...fields);
+  };
+
   // List operations
   const listPush = async (key: string, value: string) => primaryRedis.rpush(key, value);
 
@@ -658,6 +715,10 @@ export const keyStoreFactory = (
     pgIncrementBy,
     hashSet,
     hashGet,
+    hashGetAll,
+    hashGetAllPrimary,
+    hashSetFieldWithMinExpiry,
+    hashDeleteFields,
     listPush,
     listRange,
     listRemove,
