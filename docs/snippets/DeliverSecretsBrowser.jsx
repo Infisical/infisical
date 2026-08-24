@@ -1,10 +1,6 @@
 export const DeliverSecretsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const currentPath =
-    typeof window === "undefined" ? "" : window.location.pathname;
-  const basePath =
-    currentPath === "/docs" || currentPath.startsWith("/docs/") ? "/docs" : "";
 
   const categories = [
   "All",
@@ -272,7 +268,7 @@ export const DeliverSecretsBrowser = () => {
           {filteredEntries.map((entry) => (
             <a
               key={`${entry.category}-${entry.path}`}
-              href={`${basePath}${entry.path}`}
+              href={entry.path}
               className="group block border border-gray-200 bg-white px-4 py-3 transition-colors hover:border-yellow-200 hover:bg-yellow-50/50 focus:outline-none focus:ring-2 focus:ring-yellow-500 dark:border-gray-700 dark:bg-black dark:hover:border-yellow-700 dark:hover:bg-yellow-950/20"
             >
               <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
