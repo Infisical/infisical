@@ -28,7 +28,7 @@ By the end, your Intune-managed devices will hold certificates from a CA you own
 
   That distinction is why you'll create two Intune profiles later: one to distribute the CA certificate, and one to request the device certificate.
 
-  [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) is the protocol a device uses to ask. SCEP normally authenticates requests with a shared challenge password that every device carries, but with Intune validation you never distribute one. Intune seals a unique, single-use challenge into each device's request, and Infisical asks Intune to confirm it before signing anything.
+  [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) is the protocol a device uses to ask for a certificate. SCEP normally authenticates requests with a shared challenge password that every device carries, but with Intune validation you never distribute one. Intune seals a unique, single-use challenge into each device's request, and Infisical asks Intune to confirm it before signing anything.
 
   ```mermaid
   sequenceDiagram
