@@ -1,5 +1,5 @@
 ---
-title: "Renewing Certificates"
+title: "Renewing certificates"
 sidebarTitle: "Renewal"
 description: "Manually renew a certificate, and change its subject, names, validity, or key pair as part of the renewal."
 ---
@@ -52,7 +52,7 @@ Not every option applies to every certificate. The renewal wizard greys out the 
 A self-signed certificate is signed by the private key that matches its own public key. A signing request carries only a public key, so there would be nothing to sign the renewal with. Reuse works because the existing key pair is available to sign with.
 
 <Note>
-  Certificates issued through Active Directory Certificate Services or Azure AD Certificate Services take their validity, key usages, extended key usages and basic constraints from the CA's own certificate template. The renewal wizard hides those fields for such certificates, because anything set here would be discarded by the CA. You can still change the subject and the alternative names.
+  Certificates issued through Active Directory Certificate Services or Azure AD CS take their validity, key usages, extended key usages and basic constraints from the CA's own certificate template. The renewal wizard hides those fields for such certificates, because anything set here would be discarded by the CA. You can still change the subject and the alternative names.
 </Note>
 
 Reuse is available for certificates issued with an Infisical-managed key pair. A certificate you issued from your own signing request can reuse its public key too: the renewal is made from that original request, so the key stays on your side.
@@ -97,7 +97,7 @@ Sending a property the CSR already carries is rejected rather than quietly ignor
         Pick one of the three options above. If you chose **Use a CSR**, paste it on the next step and you are done.
       </Step>
       <Step title="Adjust the subject and names">
-        The subject attributes and alternative names are prefilled from the current certificate. Change only what should differ.
+        The subject attributes and alternative names are filled in from the current certificate. Change only what should differ.
       </Step>
       <Step title="Set validity and extensions">
         Adjust the validity, algorithms, key usages, and basic constraints, then select **Renew certificate**.
