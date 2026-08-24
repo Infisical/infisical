@@ -841,15 +841,16 @@ export const orgServiceFactory = ({
     role,
     isActive,
     orgId,
-    userId,
+    actor,
+    actorId,
     membershipId,
     actorAuthMethod,
     actorOrgId,
     metadata
   }: TUpdateOrgMembershipDTO) => {
     const { permission } = await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: userId,
+      actor,
+      actorId,
       orgId,
       actorAuthMethod,
       actorOrgId,
@@ -866,7 +867,7 @@ export const orgServiceFactory = ({
       throw new NotFoundError({ message: `Organization membership with ID ${membershipId} not found` });
     if (foundMembership.scopeOrgId !== orgId)
       throw new UnauthorizedError({ message: "Updated org member doesn't belong to the organization" });
-    if (foundMembership.actorUserId === userId)
+    if (actor === ActorType.USER && foundMembership.actorUserId === actorId)
       throw new UnauthorizedError({ message: "Cannot update own organization membership" });
 
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
@@ -1180,14 +1181,15 @@ export const orgServiceFactory = ({
 
   const deleteOrgMembership = async ({
     orgId,
-    userId,
+    actor,
+    actorId,
     membershipId,
     actorAuthMethod,
     actorOrgId
   }: TDeleteOrgMembershipDTO) => {
     const { permission } = await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: userId,
+      actor,
+      actorId,
       orgId,
       actorAuthMethod,
       actorOrgId,
@@ -1202,7 +1204,7 @@ export const orgServiceFactory = ({
       projectKeyDAL,
       userAliasDAL,
       licenseService,
-      userId,
+      userId: actor === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       membershipRoleDAL,
       userGroupMembershipDAL,
@@ -1219,14 +1221,15 @@ export const orgServiceFactory = ({
 
   const bulkDeleteOrgMemberships = async ({
     orgId,
-    userId,
+    actor,
+    actorId,
     membershipIds,
     actorAuthMethod,
     actorOrgId
   }: TDeleteOrgMembershipsDTO) => {
     const { permission } = await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: userId,
+      actor,
+      actorId,
       orgId,
       actorAuthMethod,
       actorOrgId,
@@ -1234,7 +1237,7 @@ export const orgServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
 
-    if (membershipIds.includes(userId)) {
+    if (actor === ActorType.USER && membershipIds.includes(actorId)) {
       throw new BadRequestError({ message: "You cannot delete your own organization membership" });
     }
 
@@ -1245,7 +1248,7 @@ export const orgServiceFactory = ({
       projectKeyDAL,
       userAliasDAL,
       licenseService,
-      userId,
+      userId: actor === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       membershipRoleDAL,
       userGroupMembershipDAL,

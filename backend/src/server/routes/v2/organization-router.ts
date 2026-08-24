@@ -200,10 +200,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.auth.actor !== ActorType.USER) return;
-
       const membership = await server.services.org.updateOrgMembership({
-        userId: req.permission.id,
+        actor: req.permission.type,
+        actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId,
         membershipId: req.params.membershipId,
@@ -262,10 +261,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.auth.actor !== ActorType.USER) return;
-
       const membership = await server.services.org.deleteOrgMembership({
-        userId: req.permission.id,
+        actor: req.permission.type,
+        actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId,
         membershipId: req.params.membershipId,
@@ -322,10 +320,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.auth.actor !== ActorType.USER) return;
-
       const memberships = await server.services.org.bulkDeleteOrgMemberships({
-        userId: req.permission.id,
+        actor: req.permission.type,
+        actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId,
         membershipIds: req.body.membershipIds,
