@@ -3,7 +3,7 @@ name: "Publish FIPS test toolchain image"
 # Builds backend/Dockerfile.fips-toolchain and publishes it to GHCR so that
 # run-backend-tests.yml does not have to compile two OpenSSL trees on every PR.
 #
-# Tagged with the content hash of the toolchain Dockerfile: run-backend-tests.yml
+# Tagged with the content hash of the toolchain Dockerfile and OpenSSL helper sources: run-backend-tests.yml
 # computes the same hash and pulls that exact tag, falling back to building from
 # source when a PR changes the toolchain and the new tag isn't published yet.
 #
@@ -17,6 +17,7 @@ on:
       - main
     paths:
       - "backend/Dockerfile.fips-toolchain"
+      - "backend/src/lib/openssl-ext/**"
       - ".github/workflows/publish-fips-toolchain.yml"
   workflow_dispatch:
 
@@ -60,7 +61,7 @@ jobs:
           set -euo pipefail
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "image=ghcr.io/${OWNER}/backend-fips-toolchain" >> "$GITHUB_OUTPUT"
-          echo "tag=${{ hashFiles('backend/Dockerfile.fips-toolchain') }}" >> "$GITHUB_OUTPUT"
+          echo "tag=${{ hashFiles('backend/Dockerfile.fips-toolchain', 'backend/src/lib/openssl-ext/**') }}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push ${{ matrix.arch }}
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
@@ -98,7 +99,7 @@ jobs:
           set -euo pipefail
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           IMAGE="ghcr.io/${OWNER}/backend-fips-toolchain"
-          TAG="${{ hashFiles('backend/Dockerfile.fips-toolchain') }}"
+          TAG="${{ hashFiles('backend/Dockerfile.fips-toolchain', 'backend/src/lib/openssl-ext/**') }}"
           for target in "$TAG" main; do
             docker buildx imagetools create \
               -t "${IMAGE}:${target}" \

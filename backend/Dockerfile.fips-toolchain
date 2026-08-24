@@ -4,8 +4,9 @@
 # Instant Client) and changes very rarely, so it is published to GHCR by
 # .github/workflows/publish-fips-toolchain.yml and consumed by Dockerfile.dev.fips.
 #
-# Anything edited here changes the published tag, so CI will rebuild it from source on
-# the PR that changes it and publish the new tag once that PR lands on main.
+# Anything edited here or in src/lib/openssl-ext changes the published tag, so CI will
+# rebuild it from source on the PR that changes it and publish the new tag once that PR
+# lands on main.
 #
 # SCOPE: this is an internal CI build cache, not a supported Infisical artifact. It is
 # published publicly only so CI and local dev can pull it instead of recompiling. It is
