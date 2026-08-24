@@ -61,6 +61,7 @@ import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subsc
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { parseCertificateStatusFilter } from "../certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { expandInternalCa } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
@@ -1351,7 +1352,7 @@ export const projectServiceFactory = ({
       ...(commonName && { commonName }),
       ...(search && { search }),
       ...(status && {
-        status: Array.isArray(status) ? status : status.split(",").map((s) => s.trim())
+        status: Array.isArray(status) ? status : parseCertificateStatusFilter(status)
       }),
       ...(profileIds && { profileIds }),
       ...(fromDate && { fromDate }),

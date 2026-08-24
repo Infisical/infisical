@@ -20,6 +20,7 @@ import {
 import { CertSource, CertStatus, useGetCertificateById } from "@app/hooks/api";
 
 import {
+  getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails
 } from "../../CertificatesPage/components/CertificatesTable.utils";
@@ -64,6 +65,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
   const { variant: expiryVariant, label: expiryLabel } = getCertValidUntilBadgeDetails(
     certificate.notAfter
   );
+  const displayStatus = getCertificateDisplayStatus(certificate);
 
   const showCaLink = certificate.caId && certificate.caName && certificate.caType === "internal";
 
@@ -83,10 +85,10 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
             <Detail>
               <DetailLabel>Status</DetailLabel>
               <DetailValue>
-                {certificate.status === CertStatus.REVOKED ? (
-                  <Badge variant="danger">Revoked</Badge>
-                ) : (
+                {displayStatus.status === CertStatus.ACTIVE ? (
                   <Badge variant={expiryVariant}>{expiryLabel}</Badge>
+                ) : (
+                  <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
                 )}
               </DetailValue>
             </Detail>

@@ -1093,7 +1093,8 @@ export const PROJECTS = {
     limit: "The number of certificates to return.",
     forPkiSync: "Retrieve only certificates available for PKI sync.",
     search: "Search by SAN, CN, certificate ID, or serial number.",
-    status: "Filter by certificate status.",
+    status:
+      "Comma-separated list of certificate statuses to filter by. Supported values are active, renewed, expired and revoked. A certificate that has been renewed reports renewed instead of active until it expires or is revoked.",
     profileIds: "Filter by certificate profile IDs.",
     fromDate: "Filter certificates created from this date.",
     toDate: "Filter certificates created until this date.",

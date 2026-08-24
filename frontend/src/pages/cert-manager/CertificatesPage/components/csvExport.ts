@@ -1,6 +1,6 @@
 import { TCertificate, TCertificateSource } from "@app/hooks/api/certificates/types";
 
-import { getCertSourceLabel } from "./CertificatesTable.utils";
+import { getCertificateDisplayStatus, getCertSourceLabel } from "./CertificatesTable.utils";
 
 const CSV_COLUMNS = [
   { key: "commonName", header: "Common Name" },
@@ -40,6 +40,9 @@ export const certificatesToCSV = (certificates: TCertificate[]): string => {
     CSV_COLUMNS.map((col) => {
       if (col.key === "source") {
         return escapeCSV(getCertSourceLabel((cert.source ?? null) as TCertificateSource));
+      }
+      if (col.key === "status") {
+        return escapeCSV(getCertificateDisplayStatus(cert).label);
       }
       const value = cert[col.key as keyof TCertificate];
       if (value === null || value === undefined) return "";

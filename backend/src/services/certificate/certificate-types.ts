@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { TProjectPermission } from "@app/lib/types";
 import {
   CERT_EXTENDED_KEY_USAGES,
@@ -14,8 +16,30 @@ import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 export enum CertStatus {
   ACTIVE = "active",
   EXPIRED = "expired",
-  REVOKED = "revoked"
+  REVOKED = "revoked",
+  RENEWED = "renewed"
 }
+
+export const parseCertificateStatusFilter = (value: string) =>
+  value
+    .split(",")
+    .map((status) => status.trim())
+    .filter(Boolean);
+
+export const certificateStatusFilterSchema = z
+  .string()
+  .trim()
+  .max(100)
+  .refine(
+    (value) => {
+      const statuses = parseCertificateStatusFilter(value);
+      const allowed = Object.values(CertStatus) as string[];
+      return statuses.length > 0 && statuses.every((status) => allowed.includes(status));
+    },
+    {
+      message: `Certificate status filter must be a comma-separated list of: ${Object.values(CertStatus).join(", ")}.`
+    }
+  );
 
 export enum CertKeyAlgorithm {
   RSA_2048 = "RSA_2048",

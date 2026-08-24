@@ -26,6 +26,7 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { certificateStatusFilterSchema } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
@@ -1263,7 +1264,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe("Retrieve only certificates available for PKI sync"),
         search: z.string().trim().optional().describe("Search by SAN, CN, certificate ID, or serial number"),
-        status: z.string().optional().describe("Filter by certificate status"),
+        status: certificateStatusFilterSchema.optional().describe(PROJECTS.SEARCH_CERTIFICATES.status),
         profileIds: z
           .union([z.string().uuid(), z.array(z.string().uuid())])
           .transform((val) => (Array.isArray(val) ? val : [val]))
@@ -1317,7 +1318,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         limit: z.number().min(1).max(100).default(25).describe(PROJECTS.SEARCH_CERTIFICATES.limit),
         forPkiSync: z.boolean().default(false).optional().describe(PROJECTS.SEARCH_CERTIFICATES.forPkiSync),
         search: z.string().trim().optional().describe(PROJECTS.SEARCH_CERTIFICATES.search),
-        status: z.string().optional().describe(PROJECTS.SEARCH_CERTIFICATES.status),
+        status: certificateStatusFilterSchema.optional().describe(PROJECTS.SEARCH_CERTIFICATES.status),
         profileIds: z.array(z.string().uuid()).optional().describe(PROJECTS.SEARCH_CERTIFICATES.profileIds),
         fromDate: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.fromDate),
         toDate: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.toDate),
@@ -1417,6 +1418,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           totals: z.object({
             total: z.number(),
             active: z.number(),
+            renewed: z.number(),
             expiringSoon: z.number(),
             expired: z.number(),
             revoked: z.number()

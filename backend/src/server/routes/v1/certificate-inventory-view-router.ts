@@ -7,10 +7,11 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { certificateStatusFilterSchema } from "@app/services/certificate/certificate-types";
 
 const InventoryViewFiltersSchema = z
   .object({
-    status: z.string().max(100).optional(),
+    status: certificateStatusFilterSchema.optional(),
     notAfterTo: z.coerce.date().optional(),
     notAfterFrom: z.coerce.date().optional(),
     notBeforeTo: z.coerce.date().optional(),

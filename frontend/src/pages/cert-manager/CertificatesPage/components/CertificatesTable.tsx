@@ -94,6 +94,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { AssignCertificateToApplicationModal } from "./AssignCertificateToApplicationModal";
 import {
+  getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
   isExpiringWithinOneDay
@@ -491,7 +492,7 @@ export const CertificatesTable = ({
         const now = new Date();
         const in7d = new Date(now.getTime() + 7 * MS_PER_DAY);
         setAppliedFilters([
-          { id: "sv-status", field: "status", operator: "in", value: ["active"] },
+          { id: "sv-status", field: "status", operator: "in", value: [CertStatus.ACTIVE] },
           {
             id: "sv-expiry",
             field: "notAfter",
@@ -503,7 +504,7 @@ export const CertificatesTable = ({
         const now = new Date();
         const in30d = new Date(now.getTime() + 30 * MS_PER_DAY);
         setAppliedFilters([
-          { id: "sv-status", field: "status", operator: "in", value: ["active"] },
+          { id: "sv-status", field: "status", operator: "in", value: [CertStatus.ACTIVE] },
           {
             id: "sv-expiry",
             field: "notAfter",
@@ -511,13 +512,17 @@ export const CertificatesTable = ({
             value: in30d.toISOString().split("T")[0]
           }
         ]);
+      } else if (viewId === "system-renewed") {
+        setAppliedFilters([
+          { id: "sv-status", field: "status", operator: "in", value: [CertStatus.RENEWED] }
+        ]);
       } else if (viewId === "system-expired") {
         setAppliedFilters([
-          { id: "sv-status", field: "status", operator: "in", value: ["expired"] }
+          { id: "sv-status", field: "status", operator: "in", value: [CertStatus.EXPIRED] }
         ]);
       } else if (viewId === "system-revoked") {
         setAppliedFilters([
-          { id: "sv-status", field: "status", operator: "in", value: ["revoked"] }
+          { id: "sv-status", field: "status", operator: "in", value: [CertStatus.REVOKED] }
         ]);
       } else if (viewId === "system-pqc") {
         setAppliedFilters([
@@ -881,6 +886,7 @@ export const CertificatesTable = ({
               {!isPending &&
                 certificates.map((certificate) => {
                   const { variant, label } = getCertValidUntilBadgeDetails(certificate.notAfter);
+                  const displayStatus = getCertificateDisplayStatus(certificate);
                   const isRevoked = certificate.status === CertStatus.REVOKED;
                   const isExpired = new Date(certificate.notAfter) < new Date();
                   const isExpiringWithinDay = isExpiringWithinOneDay(certificate.notAfter);
@@ -954,13 +960,7 @@ export const CertificatesTable = ({
                       )}
                       {visibleColumns.has("status") && (
                         <TableCell>
-                          {isRevoked ? (
-                            <Badge variant="danger">Revoked</Badge>
-                          ) : isExpired ? (
-                            <Badge variant="danger">Expired</Badge>
-                          ) : (
-                            <Badge variant="success">Active</Badge>
-                          )}
+                          <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
                         </TableCell>
                       )}
                       {visibleColumns.has("health") && (
