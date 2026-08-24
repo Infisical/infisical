@@ -284,6 +284,14 @@ export const ViewSharedSecretByIDPage = () => {
           </CardHeader>
           <CardContent>{secretContent}</CardContent>
         </Card>
+        <a
+          href="/share-secret"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 text-xs text-muted underline-offset-4 transition-colors hover:text-foreground hover:underline"
+        >
+          Share your own secret
+        </a>
       </div>
       <AuthPageFooter />
     </div>

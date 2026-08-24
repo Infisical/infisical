@@ -96,19 +96,6 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
       )}
 
       <SecretShareInfo secret={secret} brandingTheme={brandingTheme} />
-
-      {!brandingTheme && (
-        <div className="mt-5 border-t border-border pt-4 text-center">
-          <a
-            href="/share-secret"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-muted underline-offset-4 transition-colors hover:text-accent hover:underline"
-          >
-            Share your own secret
-          </a>
-        </div>
-      )}
     </div>
   );
 };

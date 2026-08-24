@@ -125,21 +125,23 @@ export const RequestedSecretsRow = ({
               </IconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                isDisabled={Boolean(row.encryptedSecret) || isExpired}
-                onClick={() => {
-                  navigator.clipboard.writeText(
-                    `${window.location.origin}/secret-request/secret/${row.id}`
-                  );
-                  createNotification({
-                    text: "Secret request link copied to clipboard.",
-                    type: "success"
-                  });
-                }}
-              >
-                <Copy />
-                Copy Link
-              </DropdownMenuItem>
+              {!row.encryptedSecret && (
+                <DropdownMenuItem
+                  isDisabled={isExpired}
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      `${window.location.origin}/secret-request/secret/${row.id}`
+                    );
+                    createNotification({
+                      text: "Secret request link copied to clipboard.",
+                      type: "success"
+                    });
+                  }}
+                >
+                  <Copy />
+                  Copy Link
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 variant="danger"
                 onClick={() =>
