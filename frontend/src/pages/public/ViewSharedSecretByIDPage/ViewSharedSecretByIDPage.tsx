@@ -259,7 +259,7 @@ export const ViewSharedSecretByIDPage = () => {
             }}
           >
             <h1 className="mb-5 text-lg font-semibold" style={{ color: brandingTheme?.textColor }}>
-              View shared secret
+              View Shared Secret
             </h1>
             {secretContent}
           </div>
@@ -280,7 +280,7 @@ export const ViewSharedSecretByIDPage = () => {
       <div className="relative z-10 my-auto flex flex-col items-center py-10">
         <Card className="w-full max-w-xl">
           <CardHeader>
-            <CardTitle>View shared secret</CardTitle>
+            <CardTitle>View Shared Secret</CardTitle>
           </CardHeader>
           <CardContent>{secretContent}</CardContent>
         </Card>

@@ -1,6 +1,6 @@
-import { Check, Copy, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Check, Copy, Eye, EyeOff } from "lucide-react";
 
-import { Button } from "@app/components/v3";
+import { Button, IconButton } from "@app/components/v3";
 import { useTimedReset, useToggle } from "@app/hooks";
 import { TAccessSharedSecretResponse } from "@app/hooks/api/secretSharing";
 
@@ -12,6 +12,7 @@ type Props = {
   brandingTheme?: BrandingTheme;
 };
 
+// Fixed length so the mask never discloses how long the value is.
 const HIDDEN_SECRET = "••••••••••••••••";
 
 export const SecretContainer = ({ secret, brandingTheme }: Props) => {
@@ -44,67 +45,49 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
       }
     : undefined;
 
-  const secondaryButtonStyle = brandingTheme
-    ? {
-        backgroundColor: "transparent",
-        borderColor: brandingTheme.panelBorder,
-        color: brandingTheme.textMutedColor
-      }
-    : undefined;
+  const iconButtonStyle = brandingTheme ? { color: brandingTheme.textMutedColor } : undefined;
 
   return (
     <div style={panelStyle}>
       <div
-        className="mb-2 flex items-center gap-2 text-sm font-medium"
-        style={brandingTheme ? { color: brandingTheme.textColor } : undefined}
-      >
-        <ShieldCheck
-          className={`size-4 ${brandingTheme ? "" : "text-success"}`}
-          style={brandingTheme ? { color: brandingTheme.textMutedColor } : undefined}
-        />
-        Shared Secret
-      </div>
-
-      <div
-        className={`min-h-24 rounded-md border p-3 text-base ${
+        className={`relative rounded-md border p-3 ${
           brandingTheme ? "" : "border-border bg-container text-label"
         }`}
         style={secretDisplayStyle}
       >
-        <p className="min-w-0 font-mono break-all whitespace-pre-wrap">
+        <p className="max-h-64 thin-scrollbar overflow-y-auto pr-9 font-mono text-sm leading-relaxed break-all whitespace-pre-wrap">
           {isVisible ? secret.secretValue : HIDDEN_SECRET}
         </p>
+        <IconButton
+          variant="ghost"
+          size="sm"
+          className="absolute top-1.5 right-1.5"
+          aria-label={isVisible ? "Hide value" : "Reveal value"}
+          onClick={() => setIsVisible.toggle()}
+          style={iconButtonStyle}
+        >
+          {isVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </IconButton>
       </div>
 
-      <div className="mt-3 flex flex-col gap-2">
-        <Button
-          variant="outline"
-          size="lg"
-          isFullWidth
-          onClick={() => setIsVisible.toggle()}
-          style={secondaryButtonStyle}
-        >
-          {isVisible ? <EyeOff /> : <Eye />}
-          {isVisible ? "Hide Value" : "Reveal Value"}
-        </Button>
-        <Button
-          variant={brandingTheme ? "outline" : "project"}
-          size="lg"
-          isFullWidth
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(secret.secretValue);
-              setCopyTextSecret("Copied");
-            } catch {
-              setHasCopyFailed.on();
-            }
-          }}
-          style={primaryButtonStyle}
-        >
-          {isCopyingSecret ? <Check /> : <Copy />}
-          {isCopyingSecret ? "Copied" : "Copy Value"}
-        </Button>
-      </div>
+      <Button
+        className="mt-3"
+        variant={brandingTheme ? "outline" : "project"}
+        size="lg"
+        isFullWidth
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(secret.secretValue);
+            setCopyTextSecret("Copied");
+          } catch {
+            setHasCopyFailed.on();
+          }
+        }}
+        style={primaryButtonStyle}
+      >
+        {isCopyingSecret ? <Check /> : <Copy />}
+        {isCopyingSecret ? "Copied" : "Copy Value"}
+      </Button>
 
       {hasCopyFailed && (
         <p className="mt-2 text-2xs text-danger">
@@ -115,15 +98,15 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
       <SecretShareInfo secret={secret} brandingTheme={brandingTheme} />
 
       {!brandingTheme && (
-        <div className="mt-4 text-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-accent"
-            onClick={() => window.open("/share-secret", "_blank", "noopener")}
+        <div className="mt-5 border-t border-border pt-4 text-center">
+          <a
+            href="/share-secret"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-muted underline-offset-4 transition-colors hover:text-accent hover:underline"
           >
-            Share Your Own Secret
-          </Button>
+            Share your own secret
+          </a>
         </div>
       )}
     </div>
