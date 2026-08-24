@@ -9,25 +9,20 @@ vocab: false
 # Boundaries are written out per swap so they compose with the lookarounds
 # below instead of being wrapped a second time.
 nonword: true
-# A retired name is allowed when the text is explicitly saying it is retired.
-exceptions:
-  - formerly Azure AD
-  - formerly known as Azure AD
-  - previously Azure AD
-  - formerly Azure Active Directory
-  - formerly known as Azure Active Directory
-  - Azure Active Directory is now
-  # UI labels quoted verbatim. The product capitalizes this one.
-  - New Sub-Organization
-  - Create Sub-Organization
+# Contextual allowances are lookarounds on the swap keys, not `exceptions:`
+# entries. An exception that only *contains* the match ("formerly known as
+# Azure AD" around "Azure AD") is honored from Vale 3.15 onwards; the Mintlify
+# CI runner is older, so the whole block was inert there while passing locally.
+# Do not convert these back until that runner is known to be 3.15 or newer.
 swap:
   # --- Product naming ---
   # Secret Manager / Secrets Management live in SecretsManager.yml, which GCP
   # pages switch off.
-  # Microsoft renamed this. "Azure AD CS" is Certificate Services, not the
-  # identity product, so it is excluded.
-  '\bAzure Active Directory\b': Entra ID
-  '\bAzure AD\b(?! CS)': Entra ID
+  # Microsoft renamed this. A retired name stands where the text is explicitly
+  # saying it is retired. "Azure AD CS" is Certificate Services, not the
+  # identity product, so it is excluded under both of its spellings.
+  '(?<!formerly |known as |previously )\bAzure Active Directory\b(?! is now)': Entra ID
+  '(?<!formerly |known as |previously )\bAzure AD\b(?! CS| Certificate Services)': Entra ID
   '\bEntra Id\b': Entra ID
   '\bPostgres\b': PostgreSQL
   # Only the mixed-case form. The binary, package, and config file are
@@ -37,7 +32,9 @@ swap:
   '\bMongo DB\b': MongoDB
   '\bDigital Ocean\b': DigitalOcean
   '\bSDK''s\b': SDKs
-  '\bSub-Organization\b': Sub-organization
+  # "+ New Sub-Organization" and "Create Sub-Organization" are UI labels quoted
+  # verbatim; the product capitalizes those.
+  '(?<!\+ New |Create )\bSub-Organization\b': Sub-organization
   '\bSub-Organizations\b': Sub-organizations
 
   # --- Vendor casing ---
