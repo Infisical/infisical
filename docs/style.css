@@ -571,6 +571,7 @@ a.ifx-steps__label:hover {
 .ifx-card {
   --ifx-ink: #6f6f6f;
   --ifx-accent: #dbf530;
+  position: relative;
   display: flex;
   flex-direction: column;
   padding: 1.5rem;
@@ -667,6 +668,17 @@ a.ifx-card:hover .ifx-card__icon {
 a.ifx-card__title {
   align-self: flex-start;
   text-decoration: none;
+}
+
+div.ifx-card a.ifx-card__title::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+div.ifx-card a:not(.ifx-card__title) {
+  position: relative;
+  z-index: 1;
 }
 
 .ifx-card__chevron {
@@ -942,4 +954,35 @@ a.ifx-card__title:hover .ifx-card__chevron {
   .ifx-home__hero-aside {
     align-self: stretch;
   }
+}
+
+[data-component-part="field-name"] {
+  position: relative;
+}
+
+[data-component-part="field-name"]::after {
+  content: "Click to copy";
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  z-index: 50;
+  transform: translateX(-50%);
+  visibility: hidden;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  background: #18181b;
+  color: #ffffff;
+  font: 500 0.75rem/1 system-ui, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+[data-component-part="field-name"]:hover::after,
+[data-component-part="field-name"]:focus-visible::after {
+  visibility: visible;
+}
+
+[data-component-part="field-name"][data-copy-state="copied"]::after {
+  content: "Copied";
+  visibility: visible;
 }
