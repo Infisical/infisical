@@ -1,4 +1,5 @@
 import {
+  CopyXIcon,
   DatabaseIcon,
   HashIcon,
   HistoryIcon,
@@ -16,7 +17,8 @@ export enum ConstraintType {
   RegexPattern = "regex-pattern",
   RequiredPrefix = "required-prefix",
   RequiredSuffix = "required-suffix",
-  PreventValueReuse = "prevent-value-reuse"
+  PreventValueReuse = "prevent-value-reuse",
+  PreventDuplicatedValues = "prevent-duplicated-values"
 }
 
 export enum ConstraintTarget {
@@ -78,6 +80,16 @@ export const CONSTRAINT_OPTIONS: {
     placeholder: 10,
     icon: HistoryIcon,
     allowedTargets: [ConstraintTarget.SecretValue]
+  },
+  {
+    type: ConstraintType.PreventDuplicatedValues,
+    label: "Prevent Duplicated Values",
+    description: "Prevent multiple secrets from sharing the same value",
+    cardDescription:
+      "When a secret is created or updated, its value is checked against all secrets across every environment and folder in the project to prevent duplicates.",
+    placeholder: "",
+    icon: CopyXIcon,
+    allowedTargets: [ConstraintTarget.SecretValue]
   }
 ];
 
@@ -87,7 +99,8 @@ export const CONSTRAINT_VALUE_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RegexPattern]: "Pattern",
   [ConstraintType.RequiredPrefix]: "Text",
   [ConstraintType.RequiredSuffix]: "Text",
-  [ConstraintType.PreventValueReuse]: "Previous versions"
+  [ConstraintType.PreventValueReuse]: "Previous versions",
+  [ConstraintType.PreventDuplicatedValues]: ""
 };
 
 export const CONSTRAINT_TYPE_LABELS: Record<ConstraintType, string> = {
@@ -96,7 +109,8 @@ export const CONSTRAINT_TYPE_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RegexPattern]: "Regex Pattern",
   [ConstraintType.RequiredPrefix]: "Required Prefix",
   [ConstraintType.RequiredSuffix]: "Required Suffix",
-  [ConstraintType.PreventValueReuse]: "Prevent Value Reuse"
+  [ConstraintType.PreventValueReuse]: "Prevent Value Reuse",
+  [ConstraintType.PreventDuplicatedValues]: "Prevent Duplicated Values"
 };
 
 export enum RuleType {
@@ -149,10 +163,12 @@ export const SECRET_ROTATION_PROVIDER_OPTIONS: TProviderOption<SecretRotationRul
 // rotation at issue time because the generator happened to land on a prior
 // value.
 export const DYNAMIC_SECRET_RULE_DISALLOWED_CONSTRAINTS: ConstraintType[] = [
-  ConstraintType.PreventValueReuse
+  ConstraintType.PreventValueReuse,
+  ConstraintType.PreventDuplicatedValues
 ];
 export const SECRET_ROTATION_RULE_DISALLOWED_CONSTRAINTS: ConstraintType[] = [
-  ConstraintType.PreventValueReuse
+  ConstraintType.PreventValueReuse,
+  ConstraintType.PreventDuplicatedValues
 ];
 
 export const MAX_PREVENT_VALUE_REUSE_VERSIONS = 25;
@@ -163,10 +179,16 @@ export const constraintSchema = z
     appliesTo: z.nativeEnum(ConstraintTarget),
     value: z.string()
   })
-  .refine((c) => c.type === ConstraintType.PreventValueReuse || c.value.length > 0, {
-    message: "Value is required",
-    path: ["value"]
-  })
+  .refine(
+    (c) =>
+      c.type === ConstraintType.PreventValueReuse ||
+      c.type === ConstraintType.PreventDuplicatedValues ||
+      c.value.length > 0,
+    {
+      message: "Value is required",
+      path: ["value"]
+    }
+  )
   .superRefine((c, ctx) => {
     if (c.type === ConstraintType.PreventValueReuse) {
       const num = Number(c.value);

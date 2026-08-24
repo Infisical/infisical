@@ -24,7 +24,11 @@ const GENERATED_CONSTRAINT_TYPES = [
   ConstraintType.RequiredPrefix,
   ConstraintType.RequiredSuffix
 ] as const;
-const STATIC_CONSTRAINT_TYPES = [...GENERATED_CONSTRAINT_TYPES, ConstraintType.PreventValueReuse] as const;
+const STATIC_CONSTRAINT_TYPES = [
+  ...GENERATED_CONSTRAINT_TYPES,
+  ConstraintType.PreventValueReuse,
+  ConstraintType.PreventDuplicatedValues
+] as const;
 
 /** Embed description + example so Mintlify/OpenAPI curl samples include enum fields. */
 const openApiField = (description: string, example: string) => JSON.stringify({ description, example });
@@ -35,11 +39,16 @@ type TConstraintInput = {
   value: string;
 };
 
+const SECRET_VALUE_ONLY_CONSTRAINTS: ConstraintType[] = [
+  ConstraintType.PreventValueReuse,
+  ConstraintType.PreventDuplicatedValues
+];
+
 const valueRequiredRefinement = (c: TConstraintInput) =>
-  c.type === ConstraintType.PreventValueReuse || c.value.length > 0;
+  SECRET_VALUE_ONLY_CONSTRAINTS.includes(c.type) || c.value.length > 0;
 
 const preventValueReuseTargetRefinement = (c: TConstraintInput) =>
-  c.type !== ConstraintType.PreventValueReuse || c.appliesTo === ConstraintTarget.SecretValue;
+  !SECRET_VALUE_ONLY_CONSTRAINTS.includes(c.type) || c.appliesTo === ConstraintTarget.SecretValue;
 
 const preventValueReuseRangeRefinement = (c: TConstraintInput) => {
   if (c.type !== ConstraintType.PreventValueReuse) return true;
@@ -51,7 +60,7 @@ const withConstraintRefinements = <T extends z.ZodType<TConstraintInput>>(schema
   schema
     .refine(valueRequiredRefinement, { message: "Value is required", path: ["value"] })
     .refine(preventValueReuseTargetRefinement, {
-      message: "No value reuse constraint can only apply to secret values",
+      message: "This constraint type can only apply to secret values",
       path: ["appliesTo"]
     })
     .refine(preventValueReuseRangeRefinement, {

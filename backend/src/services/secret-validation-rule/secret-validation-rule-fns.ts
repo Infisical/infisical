@@ -206,7 +206,8 @@ export const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RegexPattern]: "Regex pattern",
   [ConstraintType.RequiredPrefix]: "Required prefix",
   [ConstraintType.RequiredSuffix]: "Required suffix",
-  [ConstraintType.PreventValueReuse]: "Prevent reuse of previous secret values"
+  [ConstraintType.PreventValueReuse]: "Prevent reuse of previous secret values",
+  [ConstraintType.PreventDuplicatedValues]: "Prevent duplicated secret values"
 };
 
 const TARGET_LABELS: Record<ConstraintTarget, string> = {
@@ -282,6 +283,10 @@ export const evaluateConstraint = (constraint: TConstraint, secret: TSecretToVal
       if (valuesToCheck.includes(secret.value)) {
         return `${targetLabel} cannot reuse any of the last ${versionCount} values`;
       }
+      return null;
+    }
+    case ConstraintType.PreventDuplicatedValues: {
+      // TODO: implement duplicate value detection across secrets in the same scope
       return null;
     }
     default:
