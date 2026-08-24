@@ -211,9 +211,15 @@ export const authSignupServiceFactory = ({
           },
           { tx }
         );
-        isInvitedUser = existingMemberships.length > 0;
-        invitingOrgId = resolveInvitingOrgId(existingMemberships, decodedToken.organizationId);
-        if (!isInvitedUser && dto.organizationName) {
+        // Org creation is skipped whenever the user already belongs to an org at all. Attribution is
+        // narrower: only a pending invitation means someone recruited them, since a signup can pick
+        // up an `Accepted` membership of its own accord (the self-hosted default auth org).
+        const pendingInviteMemberships = existingMemberships.filter(
+          (membership) => membership.status === OrgMembershipStatus.Invited
+        );
+        isInvitedUser = pendingInviteMemberships.length > 0;
+        invitingOrgId = resolveInvitingOrgId(pendingInviteMemberships, decodedToken.organizationId);
+        if (!existingMemberships.length && dto.organizationName) {
           const org = await orgService.createOrganization(
             {
               userId: user.id,
@@ -260,15 +266,17 @@ export const authSignupServiceFactory = ({
       }
 
       // An invitee whose provider did not verify their email completes signup here instead of in
-      // the email branch, so derive the same invite state: a membership on a not-yet-accepted user
-      // was created by whoever invited them.
+      // the email branch, so derive the same invite state. Only `Invited` counts: a signup can pick
+      // up an `Accepted` membership of its own accord (the self-hosted default auth org), and the
+      // rest of the codebase already treats `Invited` as what a pending invitation is.
       if (!user.isAccepted) {
-        const existingMemberships = await orgDAL.findMembership({
+        const pendingInviteMemberships = await orgDAL.findMembership({
           actorUserId: user.id,
-          scope: AccessScope.Organization
+          scope: AccessScope.Organization,
+          status: OrgMembershipStatus.Invited
         });
-        isInvitedUser = existingMemberships.length > 0;
-        invitingOrgId = resolveInvitingOrgId(existingMemberships, decodedToken.organizationId);
+        isInvitedUser = pendingInviteMemberships.length > 0;
+        invitingOrgId = resolveInvitingOrgId(pendingInviteMemberships, decodedToken.organizationId);
       }
 
       // Update user-level verification flags based on auth method

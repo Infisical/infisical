@@ -513,13 +513,10 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             typeof req.cookies?.hubspotutk === "string" ? req.cookies.hubspotutk.slice(0, 512) : undefined
           );
         }
-        // orgId is only set when this login resolved a session org, which an invited first-time
-        // signup has not, so fall back to the org whose invite brought them here.
-        const signupOrganizationId = passportResult.orgId || passportResult.invitingOrgId;
         void server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.UserSignedUp,
           distinctId: user.username ?? "",
-          ...(signupOrganizationId ? { organizationId: signupOrganizationId } : {}),
+          ...(passportResult.orgId ? { organizationId: passportResult.orgId } : {}),
           properties: {
             username: user.username,
             email: user.email ?? "",
