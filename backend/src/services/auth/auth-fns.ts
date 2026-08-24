@@ -170,9 +170,14 @@ export const verifyCaptcha = async (consecutiveFailedPasswordAttempts?: number |
 };
 
 /*
- * The org that invited a user who has not accepted yet. A user can hold several pending invites, and
- * the membership query returns them unordered, so the oldest one is picked: that is the invite the
- * signup link came from.
+ * The org that invited a user who has not accepted yet. `invitedOrgId` is the org the signup token
+ * was issued for, which is the invite this signup was started from, and is only trusted once it is
+ * one of the user's own memberships. Without it, the org is unambiguous only when the user holds a
+ * single membership: a user can be invited by several orgs before accepting, and there is nothing
+ * in the memberships themselves that says which invite was followed, so guessing one would group
+ * the signup under an org that did not recruit them. Attribute nothing rather than the wrong org.
  */
-export const resolveInvitingOrgId = (memberships: { scopeOrgId: string; createdAt: Date }[]) =>
-  [...memberships].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0]?.scopeOrgId;
+export const resolveInvitingOrgId = (memberships: { scopeOrgId: string }[], invitedOrgId?: string) => {
+  if (invitedOrgId && memberships.some((membership) => membership.scopeOrgId === invitedOrgId)) return invitedOrgId;
+  return memberships.length === 1 ? memberships[0].scopeOrgId : undefined;
+};

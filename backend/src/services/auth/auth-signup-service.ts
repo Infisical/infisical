@@ -212,7 +212,7 @@ export const authSignupServiceFactory = ({
           { tx }
         );
         isInvitedUser = existingMemberships.length > 0;
-        invitingOrgId = resolveInvitingOrgId(existingMemberships);
+        invitingOrgId = resolveInvitingOrgId(existingMemberships, decodedToken.organizationId);
         if (!isInvitedUser && dto.organizationName) {
           const org = await orgService.createOrganization(
             {
@@ -257,6 +257,18 @@ export const authSignupServiceFactory = ({
 
       if (shouldReject) {
         throw new BadRequestError({ message: "Invalid token" });
+      }
+
+      // An invitee whose provider did not verify their email completes signup here instead of in
+      // the email branch, so derive the same invite state: a membership on a not-yet-accepted user
+      // was created by whoever invited them.
+      if (!user.isAccepted) {
+        const existingMemberships = await orgDAL.findMembership({
+          actorUserId: user.id,
+          scope: AccessScope.Organization
+        });
+        isInvitedUser = existingMemberships.length > 0;
+        invitingOrgId = resolveInvitingOrgId(existingMemberships, decodedToken.organizationId);
       }
 
       // Update user-level verification flags based on auth method

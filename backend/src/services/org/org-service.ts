@@ -1138,7 +1138,10 @@ export const orgServiceFactory = ({
     const token = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.SIGNUP_TOKEN,
-        userId: user.id
+        userId: user.id,
+        // the invite this signup was started from, so completing the account can attribute it to
+        // this org rather than guess among every org that invited the user
+        organizationId: orgMembership.scopeOrgId
       },
       appCfg.AUTH_SECRET,
       {
