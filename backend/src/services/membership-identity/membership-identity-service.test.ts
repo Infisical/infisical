@@ -81,7 +81,7 @@ const createService = ({
     licenseService: { getPlan: vi.fn() } as never,
     applicationMembershipCleanupService: { cleanupActorApplicationMemberships: vi.fn() } as never,
     projectDAL: { findById: vi.fn() } as never,
-    keyStore: { hashGetAll: vi.fn().mockResolvedValue({}) } as never,
+    keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     usageMeteringService: { emit: vi.fn(), emitForProject: vi.fn() } as never,
     alertService: { deleteAlertsForResource } as never,
     identityAccessTokenService: {

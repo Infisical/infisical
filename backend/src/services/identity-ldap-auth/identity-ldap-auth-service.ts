@@ -85,10 +85,10 @@ type TIdentityLdapAuthServiceFactoryDep = {
   keyStore: Pick<
     TKeyStoreFactory,
     | "setItemWithExpiryNX"
-    | "hashGet"
-    | "hashGetAllPrimary"
-    | "hashSetFieldWithMinExpiry"
-    | "hashDeleteFields"
+    | "getItem"
+    | "setIndexedItemWithExpiry"
+    | "deleteIndexedItems"
+    | "sortedSetMembersPrimary"
     | "acquireLock"
   >;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;

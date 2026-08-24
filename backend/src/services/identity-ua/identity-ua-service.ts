@@ -80,10 +80,10 @@ type TIdentityUaServiceFactoryDep = {
   keyStore: Pick<
     TKeyStoreFactory,
     | "setItemWithExpiryNX"
-    | "hashGet"
-    | "hashGetAllPrimary"
-    | "hashSetFieldWithMinExpiry"
-    | "hashDeleteFields"
+    | "getItem"
+    | "setIndexedItemWithExpiry"
+    | "deleteIndexedItems"
+    | "sortedSetMembersPrimary"
     | "acquireLock"
   >;
 };

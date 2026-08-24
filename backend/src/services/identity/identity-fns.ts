@@ -4,66 +4,49 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 export type TIdentityLockoutState = {
   lockedOut: boolean;
   failedAttempts: number;
-  // Redis cannot expire an individual hash field. The key's TTL only garbage-collects the whole
-  // hash once its longest-lived field is gone, so this deadline is what makes a read correct.
-  expiresAt?: number;
 };
 
-const parseLockoutState = (raw: string): TIdentityLockoutState | null => {
-  try {
-    return JSON.parse(raw) as TIdentityLockoutState;
-  } catch {
-    // A single unreadable field must not fail the whole list page it was read for.
-    return null;
-  }
-};
+const lockoutIndexKey = (identityId: string) => KeyStorePrefixes.IdentityLockoutIndex(identityId);
+const lockoutMember = (authMethod: string, slug: string) => KeyStorePrefixes.IdentityLockoutMember(authMethod, slug);
+const lockoutItemKey = (identityId: string, authMethod: string, slug: string) =>
+  KeyStorePrefixes.IdentityLockoutState(identityId, authMethod, slug);
 
-const isLive = (state: TIdentityLockoutState, now: number) => !state.expiresAt || state.expiresAt > now;
-
-const lockoutHashKey = (identityId: string) => KeyStorePrefixes.IdentityLockoutStateHash(identityId);
-const lockoutField = (authMethod: string, slug: string) => KeyStorePrefixes.IdentityLockoutStateField(authMethod, slug);
-
-// Named after the hash key and field so the login paths serialise per lockout rather than per identity.
 export const identityLockoutLockKey = (identityId: string, authMethod: string, slug: string) =>
-  KeyStorePrefixes.IdentityLockoutLock(`${lockoutHashKey(identityId)}:${lockoutField(authMethod, slug)}`);
+  KeyStorePrefixes.IdentityLockoutLock(lockoutItemKey(identityId, authMethod, slug));
 
 export const getIdentityLockoutState = async (
   { identityId, authMethod, slug }: { identityId: string; authMethod: string; slug: string },
-  keyStore: Pick<TKeyStoreFactory, "hashGet">
+  keyStore: Pick<TKeyStoreFactory, "getItem">
 ): Promise<TIdentityLockoutState | undefined> => {
-  const raw = await keyStore.hashGet(lockoutHashKey(identityId), lockoutField(authMethod, slug));
+  const raw = await keyStore.getItem(lockoutItemKey(identityId, authMethod, slug));
   if (!raw) return undefined;
 
-  const state = parseLockoutState(raw);
-  if (!state || !isLive(state, Date.now())) return undefined;
-
-  return state;
+  try {
+    return JSON.parse(raw) as TIdentityLockoutState;
+  } catch {
+    // An unreadable value must not fail the login it was read for.
+    return undefined;
+  }
 };
 
+// Runs once per row on the list endpoints. Only locked methods are indexed, so this costs one range
+// read bounded by how many of an identity's methods are locked right now
 export const getIdentityActiveLockoutAuthMethods = async (
   identityId: string,
-  keyStore: Pick<TKeyStoreFactory, "hashGetAll">
+  keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">
 ) => {
-  const lockoutStates = await keyStore.hashGetAll(lockoutHashKey(identityId));
+  const members = await keyStore.sortedSetRangeByScore(lockoutIndexKey(identityId), Date.now(), "+inf");
 
-  const now = Date.now();
   const activeLockoutAuthMethods = new Set<string>();
-
-  Object.entries(lockoutStates ?? {}).forEach(([field, raw]) => {
-    const separatorIndex = field.indexOf(":");
-    if (separatorIndex <= 0) return;
-
-    const state = parseLockoutState(raw);
-    if (!state?.lockedOut || !isLive(state, now)) return;
-
-    activeLockoutAuthMethods.add(field.slice(0, separatorIndex));
+  members.forEach((member) => {
+    const separatorIndex = member.indexOf(":");
+    if (separatorIndex > 0) activeLockoutAuthMethods.add(member.slice(0, separatorIndex));
   });
 
   return Array.from(activeLockoutAuthMethods);
 };
 
-// The key TTL never shortens, so it always outlives the longest-lived field; expiresAt is what
-// retires this one.
+// The counter and the lockout share one key and one TTL.
 export const persistIdentityLockoutState = async (
   {
     identityId,
@@ -71,41 +54,50 @@ export const persistIdentityLockoutState = async (
     slug,
     expiryInSeconds
   }: { identityId: string; authMethod: string; slug: string; expiryInSeconds: number },
-  lockout: { lockedOut: boolean; failedAttempts: number },
-  keyStore: Pick<TKeyStoreFactory, "hashSetFieldWithMinExpiry">
+  lockout: TIdentityLockoutState,
+  keyStore: Pick<TKeyStoreFactory, "setIndexedItemWithExpiry">
 ) => {
-  await keyStore.hashSetFieldWithMinExpiry(
-    lockoutHashKey(identityId),
-    lockoutField(authMethod, slug),
-    JSON.stringify({ ...lockout, expiresAt: Date.now() + expiryInSeconds * 1000 }),
-    expiryInSeconds
-  );
+  await keyStore.setIndexedItemWithExpiry({
+    indexKey: lockoutIndexKey(identityId),
+    member: lockoutMember(authMethod, slug),
+    itemKey: lockoutItemKey(identityId, authMethod, slug),
+    value: JSON.stringify(lockout),
+    expiryInSeconds,
+    indexed: lockout.lockedOut
+  });
 };
 
+// Both halves, or the index keeps reporting a lockout whose key is already gone.
 export const clearIdentityLockoutState = async (
   { identityId, authMethod, slug }: { identityId: string; authMethod: string; slug: string },
-  keyStore: Pick<TKeyStoreFactory, "hashDeleteFields">
+  keyStore: Pick<TKeyStoreFactory, "deleteIndexedItems">
 ) => {
-  await keyStore.hashDeleteFields(lockoutHashKey(identityId), [lockoutField(authMethod, slug)]);
+  await keyStore.deleteIndexedItems({
+    indexKey: lockoutIndexKey(identityId),
+    members: [lockoutMember(authMethod, slug)],
+    itemKeys: [lockoutItemKey(identityId, authMethod, slug)]
+  });
 };
 
-// The field names carry the slugs, so the whole set for one method is addressable without the
-// pattern delete (a full keyspace SCAN) this replaced.
 export const clearIdentityLockoutsForAuthMethod = async (
   identityId: string,
   authMethod: string,
-  keyStore: Pick<TKeyStoreFactory, "hashGetAllPrimary" | "hashDeleteFields">
+  keyStore: Pick<TKeyStoreFactory, "sortedSetMembersPrimary" | "deleteIndexedItems">
 ) => {
-  const hashKey = lockoutHashKey(identityId);
-  const fieldPrefix = `${authMethod}:`;
+  const indexKey = lockoutIndexKey(identityId);
+  const memberPrefix = `${authMethod}:`;
 
-  // Primary, not a replica: this read decides what gets deleted, and a lagging replica would hide
-  // a lockout the admin just asked to clear.
-  const lockoutStates = await keyStore.hashGetAllPrimary(hashKey);
-  const fields = Object.keys(lockoutStates ?? {}).filter((field) => field.startsWith(fieldPrefix));
-  if (!fields.length) return 0;
+  const members = await keyStore.sortedSetMembersPrimary(indexKey);
+  const matching = members.filter((member) => member.startsWith(memberPrefix));
+  if (!matching.length) return 0;
 
-  return keyStore.hashDeleteFields(hashKey, fields);
+  await keyStore.deleteIndexedItems({
+    indexKey,
+    members: matching,
+    itemKeys: matching.map((member) => lockoutItemKey(identityId, authMethod, member.slice(memberPrefix.length)))
+  });
+
+  return matching.length;
 };
 
 export const buildAuthMethods = ({

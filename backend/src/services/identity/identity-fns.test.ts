@@ -10,123 +10,107 @@ import {
 } from "./identity-fns";
 
 const IDENTITY_ID = "6f7c1b6a-6e6f-4c0e-9f1a-2c2f5b8d9e01";
-const HASH_KEY = KeyStorePrefixes.IdentityLockoutStateHash(IDENTITY_ID);
+const INDEX_KEY = KeyStorePrefixes.IdentityLockoutIndex(IDENTITY_ID);
+const itemKey = (authMethod: string, slug: string) =>
+  KeyStorePrefixes.IdentityLockoutState(IDENTITY_ID, authMethod, slug);
 
-const lockedOut = (expiresAt?: number) => JSON.stringify({ lockedOut: true, failedAttempts: 5, expiresAt });
-const notLockedOut = () => JSON.stringify({ lockedOut: false, failedAttempts: 1 });
-
-const makeKeyStore = (hash: Record<string, string>) => ({
-  hashGetAll: vi.fn().mockResolvedValue(hash),
-  hashGetAllPrimary: vi.fn().mockResolvedValue(hash),
-  hashGet: vi.fn().mockResolvedValue(null),
-  hashDeleteFields: vi.fn().mockResolvedValue(0),
-  hashSetFieldWithMinExpiry: vi.fn().mockResolvedValue(undefined),
-  setItemWithExpiry: vi.fn().mockResolvedValue(undefined),
-  deleteItem: vi.fn().mockResolvedValue(1),
-  deleteItemsByKeyIn: vi.fn().mockResolvedValue(0),
+const makeKeyStore = () => ({
+  getItem: vi.fn().mockResolvedValue(null),
+  setIndexedItemWithExpiry: vi.fn().mockResolvedValue(undefined),
+  deleteIndexedItems: vi.fn().mockResolvedValue(undefined),
+  sortedSetRangeByScore: vi.fn().mockResolvedValue([]),
+  sortedSetMembersPrimary: vi.fn().mockResolvedValue([]),
   getKeysByPattern: vi.fn(),
-  getItem: vi.fn()
-});
-
-describe("getIdentityActiveLockoutAuthMethods", () => {
-  test("returns only the auth methods whose state is locked out", async () => {
-    const keyStore = makeKeyStore({
-      [`${IdentityAuthMethod.UNIVERSAL_AUTH}:client-a`]: lockedOut(),
-      [`${IdentityAuthMethod.LDAP_AUTH}:alice`]: notLockedOut()
-    });
-
-    await expect(getIdentityActiveLockoutAuthMethods(IDENTITY_ID, keyStore)).resolves.toEqual([
-      IdentityAuthMethod.UNIVERSAL_AUTH
-    ]);
-    expect(keyStore.hashGetAll).toHaveBeenCalledWith(HASH_KEY);
-  });
-
-  test("never scans the keyspace", async () => {
-    const keyStore = makeKeyStore({ [`${IdentityAuthMethod.UNIVERSAL_AUTH}:client-a`]: lockedOut() });
-
-    await getIdentityActiveLockoutAuthMethods(IDENTITY_ID, keyStore);
-
-    expect(keyStore.getKeysByPattern).not.toHaveBeenCalled();
-    expect(keyStore.getItem).not.toHaveBeenCalled();
-    expect(keyStore.hashGetAll).toHaveBeenCalledTimes(1);
-  });
-
-  test("de-duplicates an auth method locked out under several slugs", async () => {
-    const keyStore = makeKeyStore({
-      [`${IdentityAuthMethod.LDAP_AUTH}:alice`]: lockedOut(),
-      [`${IdentityAuthMethod.LDAP_AUTH}:bob`]: lockedOut()
-    });
-
-    await expect(getIdentityActiveLockoutAuthMethods(IDENTITY_ID, keyStore)).resolves.toEqual([
-      IdentityAuthMethod.LDAP_AUTH
-    ]);
-  });
-
-  test("returns an empty list for an empty hash and for a missing key", async () => {
-    await expect(getIdentityActiveLockoutAuthMethods(IDENTITY_ID, makeKeyStore({}))).resolves.toEqual([]);
-
-    const missing = { ...makeKeyStore({}), hashGetAll: vi.fn().mockResolvedValue(null) };
-    await expect(getIdentityActiveLockoutAuthMethods(IDENTITY_ID, missing)).resolves.toEqual([]);
-  });
-
-  test("drops a field whose own deadline has passed", async () => {
-    const keyStore = makeKeyStore({
-      [`${IdentityAuthMethod.UNIVERSAL_AUTH}:client-a`]: lockedOut(Date.now() - 1_000),
-      [`${IdentityAuthMethod.LDAP_AUTH}:alice`]: lockedOut(Date.now() + 60_000)
-    });
-
-    await expect(getIdentityActiveLockoutAuthMethods(IDENTITY_ID, keyStore)).resolves.toEqual([
-      IdentityAuthMethod.LDAP_AUTH
-    ]);
-  });
-
-  test("skips unparseable and malformed fields instead of throwing", async () => {
-    const keyStore = makeKeyStore({
-      "not-a-field": lockedOut(),
-      [`${IdentityAuthMethod.UNIVERSAL_AUTH}:client-a`]: "{{{",
-      [`${IdentityAuthMethod.LDAP_AUTH}:alice`]: lockedOut()
-    });
-
-    await expect(getIdentityActiveLockoutAuthMethods(IDENTITY_ID, keyStore)).resolves.toEqual([
-      IdentityAuthMethod.LDAP_AUTH
-    ]);
-  });
+  deleteItems: vi.fn()
 });
 
 describe("getIdentityLockoutState", () => {
   const selector = { identityId: IDENTITY_ID, authMethod: IdentityAuthMethod.UNIVERSAL_AUTH, slug: "client-a" };
 
-  test("reads the one field it needs, never the whole hash or a string key", async () => {
-    const keyStore = { ...makeKeyStore({}), hashGet: vi.fn().mockResolvedValue(lockedOut()) };
+  test("reads the one key it already knows, and never the index", async () => {
+    const keyStore = makeKeyStore();
+    keyStore.getItem.mockResolvedValue(JSON.stringify({ lockedOut: true, failedAttempts: 3 }));
 
-    await expect(getIdentityLockoutState(selector, keyStore)).resolves.toMatchObject({ lockedOut: true });
-    expect(keyStore.hashGet).toHaveBeenCalledWith(HASH_KEY, `${IdentityAuthMethod.UNIVERSAL_AUTH}:client-a`);
-    expect(keyStore.getItem).not.toHaveBeenCalled();
-    expect(keyStore.hashGetAll).not.toHaveBeenCalled();
+    await expect(getIdentityLockoutState(selector, keyStore)).resolves.toEqual({
+      lockedOut: true,
+      failedAttempts: 3
+    });
+    expect(keyStore.getItem).toHaveBeenCalledWith(itemKey(IdentityAuthMethod.UNIVERSAL_AUTH, "client-a"));
+    expect(keyStore.sortedSetRangeByScore).not.toHaveBeenCalled();
+    expect(keyStore.getKeysByPattern).not.toHaveBeenCalled();
   });
 
-  test("treats a field past its own deadline as absent", async () => {
-    const keyStore = { ...makeKeyStore({}), hashGet: vi.fn().mockResolvedValue(lockedOut(Date.now() - 1_000)) };
+  test("treats a missing key as no lockout, since the key's TTL is the expiry", async () => {
+    await expect(getIdentityLockoutState(selector, makeKeyStore())).resolves.toBeUndefined();
+  });
+
+  test("treats an unreadable value as no lockout rather than failing the login", async () => {
+    const keyStore = makeKeyStore();
+    keyStore.getItem.mockResolvedValue("{{{");
+
     await expect(getIdentityLockoutState(selector, keyStore)).resolves.toBeUndefined();
   });
+});
 
-  test("keeps a field whose deadline is still ahead", async () => {
-    const keyStore = { ...makeKeyStore({}), hashGet: vi.fn().mockResolvedValue(lockedOut(Date.now() + 60_000)) };
-    await expect(getIdentityLockoutState(selector, keyStore)).resolves.toMatchObject({ lockedOut: true });
+describe("getIdentityActiveLockoutAuthMethods", () => {
+  test("ranges the index by score and reports the methods it names", async () => {
+    const keyStore = makeKeyStore();
+    keyStore.sortedSetRangeByScore.mockResolvedValue([
+      `${IdentityAuthMethod.UNIVERSAL_AUTH}:client-a`,
+      `${IdentityAuthMethod.LDAP_AUTH}:alice`
+    ]);
+
+    await expect(getIdentityActiveLockoutAuthMethods(IDENTITY_ID, keyStore)).resolves.toEqual([
+      IdentityAuthMethod.UNIVERSAL_AUTH,
+      IdentityAuthMethod.LDAP_AUTH
+    ]);
+
+    const [key, min, max] = keyStore.sortedSetRangeByScore.mock.calls[0] as [string, number, string];
+    expect(key).toBe(INDEX_KEY);
+    expect(max).toBe("+inf");
+    // Filtering by score is what makes a member that outlived its key harmless.
+    expect(min).toBeGreaterThan(0);
   });
 
-  test("returns undefined for a missing or unreadable field", async () => {
-    const missing = { ...makeKeyStore({}), hashGet: vi.fn().mockResolvedValue(null) };
-    await expect(getIdentityLockoutState(selector, missing)).resolves.toBeUndefined();
+  test("reads no item keys at all", async () => {
+    const keyStore = makeKeyStore();
+    keyStore.sortedSetRangeByScore.mockResolvedValue([`${IdentityAuthMethod.LDAP_AUTH}:alice`]);
 
-    const corrupt = { ...makeKeyStore({}), hashGet: vi.fn().mockResolvedValue("{{{") };
-    await expect(getIdentityLockoutState(selector, corrupt)).resolves.toBeUndefined();
+    await getIdentityActiveLockoutAuthMethods(IDENTITY_ID, keyStore);
+
+    expect(keyStore.getItem).not.toHaveBeenCalled();
+    expect(keyStore.getKeysByPattern).not.toHaveBeenCalled();
+  });
+
+  test("reports a method locked under several slugs once", async () => {
+    const keyStore = makeKeyStore();
+    keyStore.sortedSetRangeByScore.mockResolvedValue([
+      `${IdentityAuthMethod.LDAP_AUTH}:alice`,
+      `${IdentityAuthMethod.LDAP_AUTH}:bob`
+    ]);
+
+    await expect(getIdentityActiveLockoutAuthMethods(IDENTITY_ID, keyStore)).resolves.toEqual([
+      IdentityAuthMethod.LDAP_AUTH
+    ]);
+  });
+
+  test("returns an empty list for an identity with no index", async () => {
+    await expect(getIdentityActiveLockoutAuthMethods(IDENTITY_ID, makeKeyStore())).resolves.toEqual([]);
+  });
+
+  test("ignores a member with no method separator", async () => {
+    const keyStore = makeKeyStore();
+    keyStore.sortedSetRangeByScore.mockResolvedValue(["malformed", `${IdentityAuthMethod.LDAP_AUTH}:alice`]);
+
+    await expect(getIdentityActiveLockoutAuthMethods(IDENTITY_ID, keyStore)).resolves.toEqual([
+      IdentityAuthMethod.LDAP_AUTH
+    ]);
   });
 });
 
 describe("persistIdentityLockoutState", () => {
-  test("writes the hash field only, stamped with its own deadline", async () => {
-    const keyStore = makeKeyStore({});
+  test("indexes a lockout so the list endpoints can see it", async () => {
+    const keyStore = makeKeyStore();
 
     await persistIdentityLockoutState(
       {
@@ -139,79 +123,96 @@ describe("persistIdentityLockoutState", () => {
       keyStore
     );
 
-    const [hashKey, field, payload, hashTtl] = keyStore.hashSetFieldWithMinExpiry.mock.calls[0] as [
-      string,
-      string,
-      string,
-      number
-    ];
+    expect(keyStore.setIndexedItemWithExpiry).toHaveBeenCalledWith({
+      indexKey: INDEX_KEY,
+      member: `${IdentityAuthMethod.UNIVERSAL_AUTH}:client-a`,
+      itemKey: itemKey(IdentityAuthMethod.UNIVERSAL_AUTH, "client-a"),
+      value: JSON.stringify({ lockedOut: true, failedAttempts: 3 }),
+      expiryInSeconds: 300,
+      indexed: true
+    });
+  });
 
-    expect(hashKey).toBe(HASH_KEY);
-    expect(field).toBe(`${IdentityAuthMethod.UNIVERSAL_AUTH}:client-a`);
-    expect(hashTtl).toBe(300);
-    expect(keyStore.setItemWithExpiry).not.toHaveBeenCalled();
+  test("does not index a failure counter", async () => {
+    // The list endpoints have no use for counters, and on LDAP their slug is caller-supplied. Keeping
+    // them out of the index is what stops a username spray from enlarging that read.
+    const keyStore = makeKeyStore();
 
-    const parsed = JSON.parse(payload) as { lockedOut: boolean; failedAttempts: number; expiresAt: number };
-    expect(parsed.lockedOut).toBe(true);
-    expect(parsed.failedAttempts).toBe(3);
-    expect(parsed.expiresAt).toBeGreaterThan(Date.now());
+    await persistIdentityLockoutState(
+      { identityId: IDENTITY_ID, authMethod: IdentityAuthMethod.LDAP_AUTH, slug: "alice", expiryInSeconds: 30 },
+      { lockedOut: false, failedAttempts: 1 },
+      keyStore
+    );
+
+    expect(keyStore.setIndexedItemWithExpiry).toHaveBeenCalledWith(expect.objectContaining({ indexed: false }));
   });
 });
 
 describe("clearIdentityLockoutState", () => {
-  test("removes the hash field and touches no string key", async () => {
-    const keyStore = makeKeyStore({});
+  test("removes the item and its index member together", async () => {
+    const keyStore = makeKeyStore();
 
     await clearIdentityLockoutState(
       { identityId: IDENTITY_ID, authMethod: IdentityAuthMethod.LDAP_AUTH, slug: "alice" },
       keyStore
     );
 
-    expect(keyStore.hashDeleteFields).toHaveBeenCalledWith(HASH_KEY, [`${IdentityAuthMethod.LDAP_AUTH}:alice`]);
-    expect(keyStore.deleteItem).not.toHaveBeenCalled();
+    // Dropping only the item would leave the index reporting a lockout that no longer exists.
+    expect(keyStore.deleteIndexedItems).toHaveBeenCalledWith({
+      indexKey: INDEX_KEY,
+      members: [`${IdentityAuthMethod.LDAP_AUTH}:alice`],
+      itemKeys: [itemKey(IdentityAuthMethod.LDAP_AUTH, "alice")]
+    });
   });
 });
 
 describe("clearIdentityLockoutsForAuthMethod", () => {
-  test("clears only the requested method's fields", async () => {
-    const keyStore = makeKeyStore({
-      [`${IdentityAuthMethod.UNIVERSAL_AUTH}:client-a`]: lockedOut(),
-      [`${IdentityAuthMethod.LDAP_AUTH}:alice`]: lockedOut(),
-      [`${IdentityAuthMethod.LDAP_AUTH}:bob`]: notLockedOut()
-    });
-    keyStore.hashDeleteFields.mockResolvedValue(2);
+  test("clears every locked slug for that method and no others", async () => {
+    const keyStore = makeKeyStore();
+    keyStore.sortedSetMembersPrimary.mockResolvedValue([
+      `${IdentityAuthMethod.UNIVERSAL_AUTH}:client-a`,
+      `${IdentityAuthMethod.LDAP_AUTH}:alice`,
+      `${IdentityAuthMethod.LDAP_AUTH}:bob`
+    ]);
 
     await expect(clearIdentityLockoutsForAuthMethod(IDENTITY_ID, IdentityAuthMethod.LDAP_AUTH, keyStore)).resolves.toBe(
       2
     );
 
-    expect(keyStore.hashDeleteFields).toHaveBeenCalledWith(HASH_KEY, [
-      `${IdentityAuthMethod.LDAP_AUTH}:alice`,
-      `${IdentityAuthMethod.LDAP_AUTH}:bob`
-    ]);
-    expect(keyStore.getKeysByPattern).not.toHaveBeenCalled();
-    expect(keyStore.deleteItemsByKeyIn).not.toHaveBeenCalled();
+    expect(keyStore.deleteIndexedItems).toHaveBeenCalledWith({
+      indexKey: INDEX_KEY,
+      members: [`${IdentityAuthMethod.LDAP_AUTH}:alice`, `${IdentityAuthMethod.LDAP_AUTH}:bob`],
+      itemKeys: [itemKey(IdentityAuthMethod.LDAP_AUTH, "alice"), itemKey(IdentityAuthMethod.LDAP_AUTH, "bob")]
+    });
   });
 
   test("decides what to delete from the primary, never a read replica", async () => {
-    // A replica read can lag behind a lockout the primary already holds, and the delete driven off
-    // it would leave that lockout in place after the admin asked to clear it.
-    const keyStore = makeKeyStore({ [`${IdentityAuthMethod.LDAP_AUTH}:alice`]: lockedOut() });
+    const keyStore = makeKeyStore();
+    keyStore.sortedSetMembersPrimary.mockResolvedValue([`${IdentityAuthMethod.LDAP_AUTH}:alice`]);
 
     await clearIdentityLockoutsForAuthMethod(IDENTITY_ID, IdentityAuthMethod.LDAP_AUTH, keyStore);
 
-    expect(keyStore.hashGetAllPrimary).toHaveBeenCalledWith(HASH_KEY);
-    expect(keyStore.hashGetAll).not.toHaveBeenCalled();
+    expect(keyStore.sortedSetMembersPrimary).toHaveBeenCalledWith(INDEX_KEY);
+    expect(keyStore.sortedSetRangeByScore).not.toHaveBeenCalled();
   });
 
-  test("is a no-op when the identity has no lockouts for that method", async () => {
-    const keyStore = makeKeyStore({ [`${IdentityAuthMethod.UNIVERSAL_AUTH}:client-a`]: lockedOut() });
+  test("never scans the keyspace", async () => {
+    const keyStore = makeKeyStore();
+    keyStore.sortedSetMembersPrimary.mockResolvedValue([`${IdentityAuthMethod.LDAP_AUTH}:alice`]);
+
+    await clearIdentityLockoutsForAuthMethod(IDENTITY_ID, IdentityAuthMethod.LDAP_AUTH, keyStore);
+
+    expect(keyStore.getKeysByPattern).not.toHaveBeenCalled();
+    expect(keyStore.deleteItems).not.toHaveBeenCalled();
+  });
+
+  test("is a no-op when the identity has no lockout for that method", async () => {
+    const keyStore = makeKeyStore();
+    keyStore.sortedSetMembersPrimary.mockResolvedValue([`${IdentityAuthMethod.UNIVERSAL_AUTH}:client-a`]);
 
     await expect(clearIdentityLockoutsForAuthMethod(IDENTITY_ID, IdentityAuthMethod.LDAP_AUTH, keyStore)).resolves.toBe(
       0
     );
-
-    expect(keyStore.deleteItemsByKeyIn).not.toHaveBeenCalled();
-    expect(keyStore.hashDeleteFields).not.toHaveBeenCalled();
+    expect(keyStore.deleteIndexedItems).not.toHaveBeenCalled();
   });
 });

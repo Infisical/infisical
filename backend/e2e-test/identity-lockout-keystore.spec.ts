@@ -7,14 +7,15 @@ import { IdentityAuthMethod } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import {
   clearIdentityLockoutsForAuthMethod,
+  clearIdentityLockoutState,
   getIdentityActiveLockoutAuthMethods,
   getIdentityLockoutState,
   persistIdentityLockoutState
 } from "@app/services/identity/identity-fns";
 
-// These run against the real Redis the e2e environment boots, because the behaviour under test is
-// server-side: the reap lives in a Lua script, and the regression this guards was a SCAN issued by
-// ioredis. The in-memory keystore the unit tests use fakes both, so it cannot see either.
+// Against the real Redis the e2e environment boots, because what is under test is server-side: the
+// write is a Lua script, expiry is Redis's own, and the regression this guards was a SCAN issued by
+// ioredis. The in-memory keystore the unit tests use fakes all three.
 declare const testRedis: Redis;
 declare const testKeyStore: TKeyStoreFactory;
 
@@ -26,181 +27,146 @@ const commandCalls = async (command: string) => {
   return line ? Number(/^[^:]+:calls=(\d+),/.exec(line)?.[1] ?? 0) : 0;
 };
 
-const lockoutFor = (id: string) => KeyStorePrefixes.IdentityLockoutStateHash(id);
+const indexKey = (id: string) => KeyStorePrefixes.IdentityLockoutIndex(id);
+const itemKey = (id: string, authMethod: string, slug: string) =>
+  KeyStorePrefixes.IdentityLockoutState(id, authMethod, slug);
 
-// Mirrors HASH_FIELD_REAP_THRESHOLD in the keystore: below this a hash is small enough that the
-// reap skips it entirely, so a handful of expired fields legitimately survive until the key's TTL.
-const REAP_THRESHOLD = 50;
-
-// The reap keeps its resume position in a field of the same hash, so it is excluded here: only
-// fields naming an auth method and slug are lockout state.
-const lockoutFieldCount = async (id: string) =>
-  Object.keys(await testRedis.hgetall(lockoutFor(id))).filter((field) => field.includes(":")).length;
+const lockout = (identityId: string, slug: string, expiryInSeconds: number, lockedOut: boolean) =>
+  persistIdentityLockoutState(
+    { identityId, authMethod: IdentityAuthMethod.LDAP_AUTH, slug, expiryInSeconds },
+    { lockedOut, failedAttempts: lockedOut ? 3 : 1 },
+    testKeyStore
+  );
 
 let identityId: string;
 
 beforeEach(async () => {
   identityId = randomUUID();
-  await testRedis.del(lockoutFor(identityId));
+  await testRedis.del(indexKey(identityId));
 });
 
 describe("identity lockout keystore", () => {
-  test("a lockout round-trips through the hash and is reported by auth method", async () => {
+  test("a lockout round-trips, and both the item and the index expire on their own", async () => {
+    await lockout(identityId, "alice", 300, true);
+
+    await expect(
+      getIdentityLockoutState({ identityId, authMethod: IdentityAuthMethod.LDAP_AUTH, slug: "alice" }, testKeyStore)
+    ).resolves.toEqual({ lockedOut: true, failedAttempts: 3 });
+
+    await expect(getIdentityActiveLockoutAuthMethods(identityId, testKeyStore)).resolves.toEqual([
+      IdentityAuthMethod.LDAP_AUTH
+    ]);
+
+    // Neither may outlive its lockout: a key with no TTL is a leak nothing reclaims.
+    const itemTtl = await testRedis.ttl(itemKey(identityId, IdentityAuthMethod.LDAP_AUTH, "alice"));
+    const idxTtl = await testRedis.ttl(indexKey(identityId));
+    expect(itemTtl).toBeGreaterThan(0);
+    expect(itemTtl).toBeLessThanOrEqual(300);
+    expect(idxTtl).toBeGreaterThan(0);
+  });
+
+  test("the index expiry only ever grows, so a short write cannot cut a long lockout short", async () => {
+    await lockout(identityId, "long", 3600, true);
+    await lockout(identityId, "short", 30, true);
+
+    expect(await testRedis.ttl(indexKey(identityId))).toBeGreaterThan(300);
+  });
+
+  test("a failure counter is never indexed, so spraying slugs cannot enlarge the list read", async () => {
+    // LDAP slugs are caller-supplied usernames. Counters are addressed directly by login and are of
+    // no use to the list endpoints, so keeping them out of the index is what bounds that read.
+    for (let i = 0; i < 500; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await lockout(identityId, `sprayed-${i}`, 60, false);
+    }
+
+    expect(await testRedis.zcard(indexKey(identityId))).toBe(0);
+    await expect(getIdentityActiveLockoutAuthMethods(identityId, testKeyStore)).resolves.toEqual([]);
+
+    // The counters themselves are still readable by the login path that knows their slug.
+    await expect(
+      getIdentityLockoutState({ identityId, authMethod: IdentityAuthMethod.LDAP_AUTH, slug: "sprayed-1" }, testKeyStore)
+    ).resolves.toEqual({ lockedOut: false, failedAttempts: 1 });
+
+    // ...and one real lockout among them is still found, without the spray inflating the index.
+    await lockout(identityId, "victim", 300, true);
+    expect(await testRedis.zcard(indexKey(identityId))).toBe(1);
+    await expect(getIdentityActiveLockoutAuthMethods(identityId, testKeyStore)).resolves.toEqual([
+      IdentityAuthMethod.LDAP_AUTH
+    ]);
+  });
+
+  test("a member that outlives its item is not reported, before anything prunes it", async () => {
+    // Redis expires the item on its own but cannot expire an index member, so the index is briefly
+    // stale. Reads range by score, which is why that staleness is never visible.
+    await lockout(identityId, "alice", 300, true);
+    await testRedis.del(itemKey(identityId, IdentityAuthMethod.LDAP_AUTH, "alice"));
+    await testRedis.zadd(indexKey(identityId), Date.now() - 1_000, `${IdentityAuthMethod.LDAP_AUTH}:alice`);
+
+    expect(await testRedis.zcard(indexKey(identityId))).toBe(1);
+    await expect(getIdentityActiveLockoutAuthMethods(identityId, testKeyStore)).resolves.toEqual([]);
+  });
+
+  test("expired members are pruned on write, in one command and with nothing left behind", async () => {
+    const stale = Array.from({ length: 400 }, (_, i) => [
+      Date.now() - 1_000,
+      `${IdentityAuthMethod.LDAP_AUTH}:old-${i}`
+    ]);
+    await testRedis.zadd(indexKey(identityId), ...stale.flat());
+    expect(await testRedis.zcard(indexKey(identityId))).toBe(400);
+
+    // A single write, not a batch that has to be repeated: the index is ordered by deadline, so one
+    // range removal takes every expired member regardless of how many there are.
+    await lockout(identityId, "alice", 300, true);
+
+    expect(await testRedis.zcard(indexKey(identityId))).toBe(1);
+    await expect(getIdentityActiveLockoutAuthMethods(identityId, testKeyStore)).resolves.toEqual([
+      IdentityAuthMethod.LDAP_AUTH
+    ]);
+  });
+
+  test("clearing one slug removes the item and its index member together", async () => {
+    await lockout(identityId, "alice", 300, true);
+    await lockout(identityId, "bob", 300, true);
+
+    await clearIdentityLockoutState(
+      { identityId, authMethod: IdentityAuthMethod.LDAP_AUTH, slug: "alice" },
+      testKeyStore
+    );
+
+    expect(await testRedis.exists(itemKey(identityId, IdentityAuthMethod.LDAP_AUTH, "alice"))).toBe(0);
+    expect(await testRedis.zscore(indexKey(identityId), `${IdentityAuthMethod.LDAP_AUTH}:alice`)).toBeNull();
+    expect(await testRedis.zscore(indexKey(identityId), `${IdentityAuthMethod.LDAP_AUTH}:bob`)).not.toBeNull();
+  });
+
+  test("clearing a method removes every locked slug for it, and leaves other methods alone", async () => {
+    await lockout(identityId, "alice", 300, true);
+    await lockout(identityId, "bob", 300, true);
     await persistIdentityLockoutState(
-      { identityId, authMethod: IdentityAuthMethod.UNIVERSAL_AUTH, slug: "client-a", expiryInSeconds: 300 },
+      {
+        identityId,
+        authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+        slug: "client-a",
+        expiryInSeconds: 300
+      },
       { lockedOut: true, failedAttempts: 3 },
       testKeyStore
     );
 
+    await expect(
+      clearIdentityLockoutsForAuthMethod(identityId, IdentityAuthMethod.LDAP_AUTH, testKeyStore)
+    ).resolves.toBe(2);
+
+    expect(await testRedis.exists(itemKey(identityId, IdentityAuthMethod.LDAP_AUTH, "alice"))).toBe(0);
+    expect(await testRedis.exists(itemKey(identityId, IdentityAuthMethod.LDAP_AUTH, "bob"))).toBe(0);
     await expect(getIdentityActiveLockoutAuthMethods(identityId, testKeyStore)).resolves.toEqual([
       IdentityAuthMethod.UNIVERSAL_AUTH
     ]);
-
-    // The key must expire on its own; a lockout hash that outlives its lockout is a leak.
-    const ttl = await testRedis.ttl(lockoutFor(identityId));
-    expect(ttl).toBeGreaterThan(0);
-    expect(ttl).toBeLessThanOrEqual(300);
-  });
-
-  test("the key TTL only ever grows, so a short write cannot cut a long lockout short", async () => {
-    await persistIdentityLockoutState(
-      { identityId, authMethod: IdentityAuthMethod.UNIVERSAL_AUTH, slug: "client-a", expiryInSeconds: 3600 },
-      { lockedOut: true, failedAttempts: 9 },
-      testKeyStore
-    );
-    await persistIdentityLockoutState(
-      { identityId, authMethod: IdentityAuthMethod.LDAP_AUTH, slug: "alice", expiryInSeconds: 30 },
-      { lockedOut: false, failedAttempts: 1 },
-      testKeyStore
-    );
-
-    expect(await testRedis.ttl(lockoutFor(identityId))).toBeGreaterThan(300);
-  });
-
-  test("a field past its own deadline is ignored even while the key is still alive", async () => {
-    // Redis cannot expire one field, so a long-lived sibling keeps an expired one resident. Reads
-    // have to honour expiresAt or a lockout outlives its duration.
-    await persistIdentityLockoutState(
-      { identityId, authMethod: IdentityAuthMethod.UNIVERSAL_AUTH, slug: "client-a", expiryInSeconds: 3600 },
-      { lockedOut: false, failedAttempts: 1 },
-      testKeyStore
-    );
-    await testRedis.hset(
-      lockoutFor(identityId),
-      KeyStorePrefixes.IdentityLockoutStateField(IdentityAuthMethod.LDAP_AUTH, "alice"),
-      JSON.stringify({ lockedOut: true, failedAttempts: 9, expiresAt: Date.now() - 1_000 })
-    );
-
-    await expect(getIdentityActiveLockoutAuthMethods(identityId, testKeyStore)).resolves.toEqual([]);
-    await expect(
-      getIdentityLockoutState({ identityId, authMethod: IdentityAuthMethod.LDAP_AUTH, slug: "alice" }, testKeyStore)
-    ).resolves.toBeUndefined();
-  });
-
-  test("expired fields are reaped on write, so the resident set tracks the counter window", async () => {
-    // Without the reap a field survives until the key TTL, which one 24h lockout can pin, rather
-    // than until its own deadline.
-    const expired = JSON.stringify({ lockedOut: true, failedAttempts: 1, expiresAt: Date.now() - 1_000 });
-    const sprayed: Record<string, string> = {};
-    for (let i = 0; i < 60; i += 1) {
-      sprayed[KeyStorePrefixes.IdentityLockoutStateField(IdentityAuthMethod.LDAP_AUTH, `sprayed-${i}`)] = expired;
-    }
-    await testRedis.hset(lockoutFor(identityId), sprayed);
-    expect(await lockoutFieldCount(identityId)).toBe(60);
-
-    await persistIdentityLockoutState(
-      { identityId, authMethod: IdentityAuthMethod.UNIVERSAL_AUTH, slug: "client-a", expiryInSeconds: 300 },
-      { lockedOut: false, failedAttempts: 1 },
-      testKeyStore
-    );
-
-    expect(await lockoutFieldCount(identityId)).toBe(1);
-    await expect(getIdentityActiveLockoutAuthMethods(identityId, testKeyStore)).resolves.toEqual([]);
-  });
-
-  test("the reap leaves live fields and fields carrying no deadline alone", async () => {
-    const now = Date.now();
-    const fields: Record<string, string> = {
-      [KeyStorePrefixes.IdentityLockoutStateField(IdentityAuthMethod.LDAP_AUTH, "live")]: JSON.stringify({
-        lockedOut: true,
-        failedAttempts: 9,
-        expiresAt: now + 600_000
-      }),
-      [KeyStorePrefixes.IdentityLockoutStateField(IdentityAuthMethod.TOKEN_AUTH, "no-deadline")]: JSON.stringify({
-        lockedOut: true,
-        failedAttempts: 9
-      }),
-      [KeyStorePrefixes.IdentityLockoutStateField(IdentityAuthMethod.AWS_AUTH, "unreadable")]: "{{{"
-    };
-    for (let i = 0; i < 60; i += 1) {
-      fields[KeyStorePrefixes.IdentityLockoutStateField(IdentityAuthMethod.LDAP_AUTH, `dead-${i}`)] = JSON.stringify({
-        lockedOut: true,
-        failedAttempts: 1,
-        expiresAt: now - 1_000
-      });
-    }
-    await testRedis.hset(lockoutFor(identityId), fields);
-
-    await persistIdentityLockoutState(
-      { identityId, authMethod: IdentityAuthMethod.UNIVERSAL_AUTH, slug: "client-a", expiryInSeconds: 300 },
-      { lockedOut: false, failedAttempts: 1 },
-      testKeyStore
-    );
-
-    expect(await lockoutFieldCount(identityId)).toBe(4);
-    await expect(getIdentityActiveLockoutAuthMethods(identityId, testKeyStore)).resolves.toEqual(
-      expect.arrayContaining([IdentityAuthMethod.LDAP_AUTH, IdentityAuthMethod.TOKEN_AUTH])
-    );
-  });
-
-  test.each([
-    // Below hash-max-listpack-entries (512 by default) HSCAN ignores cursor and COUNT and returns
-    // the whole hash; above it, real cursor semantics apply. The reap has to make progress in both.
-    { label: "listpack-encoded", fields: 400 },
-    { label: "hashtable-encoded", fields: 1200 }
-  ])("the reap eventually covers the whole $label hash instead of one fixed segment", async ({ fields }) => {
-    const expired = JSON.stringify({ lockedOut: false, failedAttempts: 1, expiresAt: Date.now() - 1_000 });
-    const sprayed: Record<string, string> = {};
-    for (let i = 0; i < fields; i += 1) {
-      sprayed[KeyStorePrefixes.IdentityLockoutStateField(IdentityAuthMethod.LDAP_AUTH, `sprayed-${i}`)] = expired;
-    }
-    await testRedis.hset(lockoutFor(identityId), sprayed);
-
-    const write = async () =>
-      persistIdentityLockoutState(
-        { identityId, authMethod: IdentityAuthMethod.UNIVERSAL_AUTH, slug: "client-a", expiryInSeconds: 300 },
-        { lockedOut: false, failedAttempts: 1 },
-        testKeyStore
-      );
-
-    // Counts lockout fields only: the reap keeps its resume position in a field of the same hash.
-    const lockoutFields = async () => lockoutFieldCount(identityId);
-
-    await write();
-    const afterOne = await lockoutFields();
-
-    // Bounded: one write must not have walked the whole hash, or the cost is caller-controlled.
-    expect(afterOne).toBeGreaterThan(1);
-
-    // ...and it must not stall. Scanning from a fixed start drains one segment and then returns the
-    // same live fields forever, leaving everything else resident until the key's TTL.
-    let remaining = afterOne;
-    for (let i = 0; i < 200 && remaining > REAP_THRESHOLD; i += 1) {
-      // eslint-disable-next-line no-await-in-loop
-      await write();
-      // eslint-disable-next-line no-await-in-loop
-      remaining = await lockoutFields();
-    }
-
-    // Down to within the threshold below which the reap deliberately stops walking. What matters is
-    // that the plateau is that constant and not whatever size the caller managed to grow the hash
-    // to -- a fixed scan start plateaus at the latter.
-    expect(remaining).toBeLessThanOrEqual(REAP_THRESHOLD);
   });
 
   test("no lockout path issues a SCAN, whatever the keyspace holds", async () => {
-    // The incident: one SCAN MATCH walk of the whole keyspace per identity on every list row.
-    // MATCH is a post-filter, so the cost tracked the keyspace, not the number of lockouts.
+    // The incident: one SCAN MATCH walk of the whole keyspace per identity on every list row. MATCH
+    // is a post-filter, so the cost tracked the keyspace, not the number of lockouts.
     const decoys: string[] = [];
     const pipeline = testRedis.pipeline();
     for (let i = 0; i < 2_000; i += 1) {
@@ -210,33 +176,27 @@ describe("identity lockout keystore", () => {
     }
     await pipeline.exec();
 
-    await persistIdentityLockoutState(
-      { identityId, authMethod: IdentityAuthMethod.UNIVERSAL_AUTH, slug: "client-a", expiryInSeconds: 300 },
-      { lockedOut: true, failedAttempts: 3 },
-      testKeyStore
-    );
+    await lockout(identityId, "alice", 300, true);
 
     const scanBefore = await commandCalls("scan");
-    const hgetallBefore = await commandCalls("hgetall");
+    const rangeBefore = await commandCalls("zrangebyscore");
 
-    // Every read shape the list, detail and admin paths use.
     const LIST_READS = 10;
     for (let i = 0; i < LIST_READS; i += 1) {
       // eslint-disable-next-line no-await-in-loop
       await getIdentityActiveLockoutAuthMethods(identityId, testKeyStore);
     }
     await getIdentityLockoutState(
-      { identityId, authMethod: IdentityAuthMethod.UNIVERSAL_AUTH, slug: "client-a" },
+      { identityId, authMethod: IdentityAuthMethod.LDAP_AUTH, slug: "alice" },
       testKeyStore
     );
-    await clearIdentityLockoutsForAuthMethod(identityId, IdentityAuthMethod.UNIVERSAL_AUTH, testKeyStore);
+    await clearIdentityLockoutsForAuthMethod(identityId, IdentityAuthMethod.LDAP_AUTH, testKeyStore);
 
-    // Proves the counter is actually being read before the SCAN assertion leans on it: a broken
-    // parser reports zero for every command, which would make that assertion pass having measured
-    // nothing. It also pins the cost itself -- one keyed read per list row, plus the clear path's.
-    expect(await commandCalls("hgetall")).toBe(hgetallBefore + LIST_READS + 1);
+    // Proves the counter is being read at all before the SCAN assertion leans on it: a broken parser
+    // reports zero for every command, which would make that assertion pass having measured nothing.
+    // It also pins the cost -- one keyed range read per list row, and no more.
+    expect(await commandCalls("zrangebyscore")).toBe(rangeBefore + LIST_READS);
     expect(await commandCalls("scan")).toBe(scanBefore);
-    await expect(getIdentityActiveLockoutAuthMethods(identityId, testKeyStore)).resolves.toEqual([]);
 
     await testRedis.del(...decoys);
   });

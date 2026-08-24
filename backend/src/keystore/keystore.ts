@@ -163,8 +163,11 @@ export const KeyStorePrefixes = {
   LicenseUsageReconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}` as const,
   LicenseUsageLastReported: (orgId: string, featureKey: string) =>
     `license-usage-last-reported-${orgId}-${featureKey}` as const,
-  IdentityLockoutStateHash: (identityId: string) => `lockout:identity:${identityId}` as const,
-  IdentityLockoutStateField: (authMethod: string, slug: string) => `${authMethod}:${slug}` as const,
+  IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
+    `lockout:identity:${identityId}:${authMethod}:${slug}` as const,
+  // Sorted set of the identity's *locked* auth methods, scored by when each lockout ends.
+  IdentityLockoutIndex: (identityId: string) => `lockout:identity:${identityId}` as const,
+  IdentityLockoutMember: (authMethod: string, slug: string) => `${authMethod}:${slug}` as const,
 
   TelemetryAggregatedEventStream: (event: string, bucketId: string) =>
     `telemetry-agg-stream:${event}:${bucketId}` as const,
@@ -305,8 +308,19 @@ export type TKeyStoreFactory = {
   hashGet: (key: string, field: string) => Promise<string | null>;
   hashGetAll: (key: string) => Promise<Record<string, string>>;
   hashGetAllPrimary: (key: string) => Promise<Record<string, string>>;
-  hashSetFieldWithMinExpiry: (key: string, field: string, value: string, expiryInSeconds: number) => Promise<void>;
-  hashDeleteFields: (key: string, fields: string[]) => Promise<number>;
+  // sorted-set indexed items: item key gets native TTL; optional index member is scored by the same
+  // deadline and pruned on write.
+  setIndexedItemWithExpiry: (arg: {
+    indexKey: string;
+    member: string;
+    itemKey: string;
+    value: string;
+    expiryInSeconds: number;
+    indexed: boolean;
+  }) => Promise<void>;
+  deleteIndexedItems: (arg: { indexKey: string; members: string[]; itemKeys: string[] }) => Promise<void>;
+  sortedSetRangeByScore: (key: string, min: string | number, max: string | number) => Promise<string[]>;
+  sortedSetMembersPrimary: (key: string) => Promise<string[]>;
   // pg
   pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
   pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
@@ -537,100 +551,78 @@ export const keyStoreFactory = (
 
   const hashGetAllPrimary = async (key: string) => primaryRedis.hgetall(key);
 
-  // A hash carries one TTL for the whole key, so the expiry can only ever grow: shortening it would
-  // drop sibling fields that are still live. Callers stamp each field with its own deadline instead.
-  // HSET and EXPIRE go in one script so a crash between them cannot strand the hash without a TTL.
-  //
-  // Redis cannot expire an individual field, so a hash keyed by caller-supplied slugs would grow
-  // until the whole key expires. Fields past their own deadline are reaped here, but only once the
-  // hash is big enough to be worth walking, so the common one-or-two-field case pays nothing.
-  //
-  // The reap walks one bounded HSCAN slice, never the whole hash.
-  const HASH_SET_FIELD_WITH_MIN_EXPIRY = `
-    redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
+  // KEYS[1] indexKey (ZSET), KEYS[2] itemKey (payload string).
+  // ARGV[1] member, ARGV[2] value, ARGV[3] expiryInSeconds, ARGV[4] expiresAt score (ms),
+  // ARGV[5] indexed ('1' | '0'), ARGV[6] now (ms, stale-index prune cutoff).
+  const INDEXED_ITEM_UPSERT = `
+    redis.call('SET', KEYS[2], ARGV[2], 'EX', ARGV[3])
 
-    local current = redis.call('TTL', KEYS[1])
-    local wanted = tonumber(ARGV[3])
-    if current < 0 or current < wanted then
-      redis.call('EXPIRE', KEYS[1], wanted)
+    if ARGV[5] == '1' then
+      redis.call('ZADD', KEYS[1], ARGV[4], ARGV[1])
+    else
+      redis.call('ZREM', KEYS[1], ARGV[1])
     end
 
-    if redis.call('HLEN', KEYS[1]) > tonumber(ARGV[5]) then
-      local now = tonumber(ARGV[4])
-      local batch = tonumber(ARGV[6])
-      -- Resume where the last reap stopped. A fixed start rescans one segment forever: it drains
-      -- that segment and then returns the same live fields on every write, leaving everything
-      -- outside it resident until the key's TTL. The cursor lives in the hash it describes so it
-      -- shares that TTL and needs no separate key; it carries no ':' so every reader of these
-      -- fields already skips it.
-      local cursorField = '__reap_cursor'
-      local position = tonumber(redis.call('HGET', KEYS[1], cursorField) or '0') or 0
+    redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[6])
 
-      local scanned = redis.call('HSCAN', KEYS[1], position, 'COUNT', batch)
-      local entries = scanned[2]
-      local total = #entries / 2
-
-      if total > 0 then
-        local take = math.min(total, batch)
-        local offset = 0
-        local nextPosition = tonumber(scanned[1])
-
-        local listpack = total > batch
-        if listpack then
-          -- A listpack-encoded hash ignores both the cursor and COUNT and returns every field, so
-          -- HSCAN cannot advance on its own and the window has to be tracked by hand.
-          offset = position % total
-        end
-
-        local kept = 0
-        for n = 0, take - 1 do
-          local i = math.floor((offset + n) % total) * 2 + 1
-          local name = entries[i]
-          local reaped = false
-
-          if name ~= ARGV[1] and name ~= cursorField then
-            local ok, parsed = pcall(cjson.decode, entries[i + 1])
-            if ok and type(parsed) == 'table' and type(parsed.expiresAt) == 'number' and parsed.expiresAt <= now then
-              redis.call('HDEL', KEYS[1], name)
-              reaped = true
-            end
-          end
-
-          if not reaped then kept = kept + 1 end
-        end
-
-        if listpack then
-          nextPosition = position + kept
-        end
-
-        redis.call('HSET', KEYS[1], cursorField, nextPosition)
+    if redis.call('ZCARD', KEYS[1]) == 0 then
+      redis.call('DEL', KEYS[1])
+    else
+      local current = redis.call('TTL', KEYS[1])
+      local wanted = tonumber(ARGV[3])
+      if current < 0 or current < wanted then
+        redis.call('EXPIRE', KEYS[1], wanted)
       end
     end
 
     return 1
   `;
 
-  const HASH_FIELD_REAP_THRESHOLD = 50;
-  const HASH_FIELD_REAP_BATCH = 64;
-
-  const hashSetFieldWithMinExpiry = async (key: string, field: string, value: string, expiryInSeconds: number) => {
+  const setIndexedItemWithExpiry: TKeyStoreFactory["setIndexedItemWithExpiry"] = async ({
+    indexKey,
+    member,
+    itemKey,
+    value,
+    expiryInSeconds,
+    indexed
+  }) => {
+    const now = Date.now();
     await primaryRedis.eval(
-      HASH_SET_FIELD_WITH_MIN_EXPIRY,
-      1,
-      key,
-      field,
+      INDEXED_ITEM_UPSERT,
+      2,
+      indexKey,
+      itemKey,
+      member,
       value,
       String(expiryInSeconds),
-      String(Date.now()),
-      String(HASH_FIELD_REAP_THRESHOLD),
-      String(HASH_FIELD_REAP_BATCH)
+      String(now + expiryInSeconds * 1000),
+      indexed ? "1" : "0",
+      String(now)
     );
   };
 
-  const hashDeleteFields = async (key: string, fields: string[]) => {
-    if (!fields.length) return 0;
-    return primaryRedis.hdel(key, ...fields);
+  const DELETE_INDEXED_ITEMS = `
+    for i = 1, #ARGV do
+      redis.call('ZREM', KEYS[1], ARGV[i])
+    end
+    for i = 2, #KEYS do
+      redis.call('DEL', KEYS[i])
+    end
+    if redis.call('ZCARD', KEYS[1]) == 0 then
+      redis.call('DEL', KEYS[1])
+    end
+    return 1
+  `;
+
+  const deleteIndexedItems: TKeyStoreFactory["deleteIndexedItems"] = async ({ indexKey, members, itemKeys }) => {
+    if (!members.length && !itemKeys.length) return;
+    await primaryRedis.eval(DELETE_INDEXED_ITEMS, itemKeys.length + 1, indexKey, ...itemKeys, ...members);
   };
+
+  const sortedSetRangeByScore = async (key: string, min: string | number, max: string | number) =>
+    pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).zrangebyscore(key, min, max);
+
+  const sortedSetMembersPrimary = async (key: string) => primaryRedis.zrange(key, 0, -1);
 
   // List operations
   const listPush = async (key: string, value: string) => primaryRedis.rpush(key, value);
@@ -760,8 +752,10 @@ export const keyStoreFactory = (
     hashGet,
     hashGetAll,
     hashGetAllPrimary,
-    hashSetFieldWithMinExpiry,
-    hashDeleteFields,
+    setIndexedItemWithExpiry,
+    deleteIndexedItems,
+    sortedSetRangeByScore,
+    sortedSetMembersPrimary,
     listPush,
     listRange,
     listRemove,

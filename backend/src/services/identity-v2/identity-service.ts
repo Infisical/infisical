@@ -74,7 +74,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "insertIdentityWideRevocationMarker" | "bumpIdentityRevocationVersion"
   >;
-  keyStore: Pick<TKeyStoreFactory, "hashGetAll">;
+  keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds" | "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   roleDAL: Pick<TRoleDALFactory, "find">;

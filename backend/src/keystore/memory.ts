@@ -10,6 +10,7 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
   const store: Record<string, string | number | Buffer> = {};
   const listStore: Record<string, string[]> = {};
   const hashStore: Record<string, Record<string, string>> = {};
+  const sortedSetStore: Record<string, Record<string, number>> = {};
   const getRegex = (pattern: string) =>
     new RE2(`^${pattern.replace(/[-[\]/{}()+?.\\^$|]/g, "\\$&").replace(/\*/g, ".*")}$`);
 
@@ -89,22 +90,31 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
     hashGetAllPrimary: async (key) => {
       return { ...(hashStore[key] ?? {}) };
     },
-    hashSetFieldWithMinExpiry: async (key, field, value) => {
-      if (!hashStore[key]) hashStore[key] = {};
-      hashStore[key][field] = value;
+    setIndexedItemWithExpiry: async ({ indexKey, member, itemKey, value, expiryInSeconds, indexed }) => {
+      store[itemKey] = value;
+      if (!sortedSetStore[indexKey]) sortedSetStore[indexKey] = {};
+      if (indexed) {
+        sortedSetStore[indexKey][member] = Date.now() + expiryInSeconds * 1000;
+      } else {
+        delete sortedSetStore[indexKey][member];
+      }
     },
-    hashDeleteFields: async (key, fields) => {
-      const hash = hashStore[key];
-      if (!hash) return 0;
-
-      let deleted = 0;
-      fields.forEach((field) => {
-        if (field in hash) {
-          delete hash[field];
-          deleted += 1;
-        }
-      });
-      return deleted;
+    deleteIndexedItems: async ({ indexKey, members, itemKeys }) => {
+      itemKeys.forEach((key) => delete store[key]);
+      members.forEach((member) => delete sortedSetStore[indexKey]?.[member]);
+    },
+    sortedSetRangeByScore: async (key, min, max) => {
+      const lower = min === "-inf" ? -Infinity : Number(min);
+      const upper = max === "+inf" ? Infinity : Number(max);
+      return Object.entries(sortedSetStore[key] ?? {})
+        .filter(([, score]) => score >= lower && score <= upper)
+        .sort(([, a], [, b]) => a - b)
+        .map(([member]) => member);
+    },
+    sortedSetMembersPrimary: async (key) => {
+      return Object.entries(sortedSetStore[key] ?? {})
+        .sort(([, a], [, b]) => a - b)
+        .map(([member]) => member);
     },
     pgIncrementBy: async () => {
       return 1;

@@ -76,7 +76,7 @@ const createService = ({
       getOrgPermissionByRoles: vi.fn()
     } as never,
     licenseService: { getPlan: vi.fn(), getOrgSeatUsage: vi.fn(), updateSubscriptionOrgMemberCount: vi.fn() } as never,
-    keyStore: { hashGetAll: vi.fn().mockResolvedValue({}) } as never,
+    keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     orgDAL: { findById: vi.fn(), findEffectiveOrgMembership: vi.fn() } as never,
     additionalPrivilegeDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,
     usageMeteringService: { emit: vi.fn() } as never,
