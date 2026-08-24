@@ -1,5 +1,3 @@
-import crypto from "node:crypto";
-
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 
 import { logger } from "../logger";
@@ -14,21 +12,14 @@ const RESERVATION_TTL_SECONDS = 240;
 // gateway handshake 120s, so releasing sooner would reopen the window the reservation covers.
 const RESERVATION_HOLD_MS = 230_000;
 const SUSPECT_TTL_SECONDS = 60;
-const LOAD_HASH_TTL_SECONDS = 600;
-
-// Another pod's published count is ignored past this age, so a pod that dies stops skewing selection
-// instead of leaving its channels counted forever.
-const PUBLISHED_COUNT_MAX_AGE_MS = 90_000;
-const PUBLISH_DEBOUNCE_MS = 250;
-const PUBLISH_REFRESH_MS = 20_000;
-
-const podId = crypto.randomUUID();
 
 export type TGatewayScore = {
-  score: number;
-  /** Occupancy excluding reservations, which the atomic claim reads for itself. */
+  /**
+   * Occupancy without reservations. The claim script reads the reservation keys itself, so adding
+   * them here as well would mean fetching them twice for the same decision.
+   */
   base: number;
-  /** False when this member is too old to report its own count, so its score is on a different scale. */
+  /** False when this member is too old to report its own count, which disables load-aware selection. */
   reported: boolean;
 };
 
@@ -41,7 +32,7 @@ type TGatewayLoadTracker = {
   markSuspect: (gatewayId: string) => Promise<void>;
   getScores: (gatewayIds: string[]) => Promise<Map<string, TGatewayScore>>;
   getSuspect: (gatewayIds: string[]) => Promise<Set<string>>;
-  shutdown: () => Promise<void>;
+  shutdown: () => void;
 };
 
 let tracker: TGatewayLoadTracker | undefined;
@@ -49,7 +40,6 @@ let tracker: TGatewayLoadTracker | undefined;
 const REPORTED_LOAD_TTL_SECONDS = 60;
 const REPORTED_LOAD_MAX_AGE_MS = 35_000;
 
-const loadKey = KeyStorePrefixes.GatewayLoad;
 const reportedKey = KeyStorePrefixes.GatewayReportedLoad;
 const reservationKey = KeyStorePrefixes.GatewayLoadReservation;
 const suspectKey = KeyStorePrefixes.GatewaySuspect;
@@ -58,14 +48,8 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
   // Open timestamps rather than a bare count, so a channel opened since a gateway's last report can
   // be added on top of that report instead of being invisible until the next one lands.
   const openChannels = new Map<string, number[]>();
-  const pendingPublish = new Set<string>();
   const reservationTimers = new Set<NodeJS.Timeout>();
   const pendingReservations = new Map<string, NodeJS.Timeout[]>();
-  let debounceTimer: NodeJS.Timeout | undefined;
-
-  const publishChain = new Map<string, Promise<void>>();
-
-  const channelCount = (gatewayId: string) => openChannels.get(gatewayId)?.length ?? 0;
 
   const releaseReservation = async (gatewayId: string) => {
     try {
@@ -92,55 +76,6 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
     else pendingReservations.set(gatewayId, [timer]);
   }
 
-  const publishNow = async (gatewayId: string) => {
-    const count = channelCount(gatewayId);
-    try {
-      // Holding nothing means dropping the field rather than writing a zero, so the hash only ever
-      // carries pods with live channels instead of accumulating one entry per restart.
-      if (count === 0) {
-        await keyStore.hashDelete(loadKey(gatewayId), podId);
-        return;
-      }
-      await keyStore.hashSet(loadKey(gatewayId), podId, `${count}:${Date.now()}`);
-      await keyStore.setExpiry(loadKey(gatewayId), LOAD_HASH_TTL_SECONDS);
-    } catch (err) {
-      logger.debug({ err, gatewayId }, `Failed to publish gateway load [gatewayId=${gatewayId}]`);
-    }
-  };
-
-  // Overlapping flushes must not interleave, or a hashSet for count 1 can land after the hashDelete
-  // for count 0 and leave this pod's field claiming load it does not hold.
-  const publish = (gatewayId: string) => {
-    const prev = publishChain.get(gatewayId) ?? Promise.resolve();
-    const next = prev.then(() => publishNow(gatewayId));
-    publishChain.set(gatewayId, next);
-    return next;
-  };
-
-  const flushPending = () => {
-    const ids = [...pendingPublish];
-    pendingPublish.clear();
-    debounceTimer = undefined;
-    void Promise.all(ids.map((id) => publish(id)));
-  };
-
-  const schedulePublish = (gatewayId: string) => {
-    pendingPublish.add(gatewayId);
-    if (!debounceTimer) {
-      debounceTimer = setTimeout(flushPending, PUBLISH_DEBOUNCE_MS);
-      debounceTimer.unref();
-    }
-  };
-
-  // Long-lived channels change the count once and then sit for hours, so the timestamp has to be
-  // refreshed independently or other pods would age the entry out while it is still accurate.
-  const refreshTimer = setInterval(() => {
-    for (const gatewayId of openChannels.keys()) {
-      schedulePublish(gatewayId);
-    }
-  }, PUBLISH_REFRESH_MS);
-  refreshTimer.unref();
-
   const recordReportedLoad = async (gatewayId: string, activeChannels: number) => {
     await keyStore.setItemWithExpiry(
       reportedKey(gatewayId),
@@ -162,7 +97,6 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
       reservationTimers.delete(timer);
       void releaseReservation(gatewayId);
     }
-    schedulePublish(gatewayId);
   };
 
   const channelClosed = (gatewayId: string) => {
@@ -170,7 +104,6 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
     // Drops the oldest: only the count and the open times matter, not which socket this was.
     open?.shift();
     if (!open?.length) openChannels.delete(gatewayId);
-    schedulePublish(gatewayId);
   };
 
   const reserve = async (gatewayId: string) => {
@@ -220,58 +153,35 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
     const scores = new Map<string, TGatewayScore>();
     if (gatewayIds.length === 0) return scores;
 
-    const [published, reservations, reported] = await Promise.all([
-      Promise.all(gatewayIds.map((id) => keyStore.hashGetAll(loadKey(id)))),
-      keyStore.getItemsPrimary(gatewayIds.map((id) => reservationKey(id))),
-      keyStore.getItemsPrimary(gatewayIds.map((id) => reportedKey(id)))
-    ]);
+    const reported = await keyStore.getItemsPrimary(gatewayIds.map((id) => reportedKey(id)));
 
-    const now = Date.now();
-    const publishedCutoff = now - PUBLISHED_COUNT_MAX_AGE_MS;
-    const reportedCutoff = now - REPORTED_LOAD_MAX_AGE_MS;
+    const reportedCutoff = Date.now() - REPORTED_LOAD_MAX_AGE_MS;
 
-    const parseStamped = (raw: string | null, cutoff: number) => {
+    const parseStamped = (raw: string | null) => {
       if (!raw) return undefined;
       const [countStr, tsStr] = raw.split(":");
       const count = Number(countStr);
       const at = Number(tsStr);
-      if (!Number.isFinite(count) || !Number.isFinite(at) || at < cutoff) return undefined;
-      return count;
+      if (!Number.isFinite(count) || !Number.isFinite(at) || at < reportedCutoff) return undefined;
+      return { count, at };
     };
 
     gatewayIds.forEach((gatewayId, idx) => {
-      // Never sum the two views: the gateway's own count already includes the channels this pod
-      // opened, so adding the per-pod counters would double count platform traffic.
-      const rawReported = reported[idx];
-      const reportedOccupancy = parseStamped(rawReported, reportedCutoff);
-      let occupancy = reportedOccupancy;
+      const report = parseStamped(reported[idx]);
 
-      if (occupancy !== undefined) {
+      // A gateway that cannot report is left at zero on purpose. Selection refuses to compare a pool
+      // containing one, so the number is never used, and inventing a platform-side count here would
+      // only look like a real occupancy to whoever reads it next.
+      let occupancy = 0;
+      if (report) {
         // The report is a snapshot up to its own timestamp. Anything this pod opened since then is
         // not in it yet, and without this every selection inside one report interval reads the same
         // stale number and piles onto the same member.
-        const reportedAt = Number((rawReported ?? "").split(":")[1]);
-        const openedSinceReport = Number.isFinite(reportedAt)
-          ? (openChannels.get(gatewayId) ?? []).filter((openedAt) => openedAt > reportedAt).length
-          : 0;
-        occupancy += openedSinceReport;
-      } else {
-        const fields = Object.entries(published[idx] ?? {})
-          // This pod's in-memory count is always fresher than what it last published.
-          .filter(([fieldPodId]) => fieldPodId !== podId);
-
-        occupancy = 0;
-        for (const [, raw] of fields) {
-          occupancy += parseStamped(raw, publishedCutoff) ?? 0;
-        }
-        occupancy += channelCount(gatewayId);
+        const openedSinceReport = (openChannels.get(gatewayId) ?? []).filter((openedAt) => openedAt > report.at).length;
+        occupancy = report.count + openedSinceReport;
       }
 
-      scores.set(gatewayId, {
-        base: occupancy,
-        score: occupancy + (Number(reservations[idx] ?? 0) || 0),
-        reported: reportedOccupancy !== undefined
-      });
+      scores.set(gatewayId, { base: occupancy, reported: report !== undefined });
     });
 
     return scores;
@@ -287,28 +197,14 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
     return suspect;
   };
 
-  const shutdown = async () => {
+  // Nothing here writes to Redis. Reservations this pod still holds are left to their TTL, which is
+  // the backstop that exists precisely for a pod that goes away without releasing them.
+  const shutdown = () => {
     tracker = undefined;
-    clearInterval(refreshTimer);
-    if (debounceTimer) clearTimeout(debounceTimer);
     for (const timer of reservationTimers) clearTimeout(timer);
     pendingReservations.clear();
     reservationTimers.clear();
-    publishChain.clear();
-
-    // Without this the published fields linger for the freshness window, so a rolling deploy leaves
-    // this pod's already-dead channels counting against those gateways.
-    const held = [...openChannels.keys()];
     openChannels.clear();
-    await Promise.all(
-      held.map(async (gatewayId) => {
-        try {
-          await keyStore.hashDelete(loadKey(gatewayId), podId);
-        } catch (err) {
-          logger.debug({ err, gatewayId }, `Failed to clear published load on shutdown [gatewayId=${gatewayId}]`);
-        }
-      })
-    );
   };
 
   tracker = {

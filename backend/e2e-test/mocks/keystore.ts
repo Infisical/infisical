@@ -138,14 +138,6 @@ export const mockKeyStore = (): TKeyStoreFactory => {
     hashGet: async (key, field) => {
       return hashStore[key]?.[field] ?? null;
     },
-    hashGetAll: async (key) => {
-      return { ...(hashStore[key] ?? {}) };
-    },
-    hashDelete: async (key, field) => {
-      if (!hashStore[key]?.[field]) return 0;
-      delete hashStore[key][field];
-      return 1;
-    },
     pgIncrementBy: async () => {
       return 1;
     },

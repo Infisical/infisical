@@ -85,8 +85,7 @@ export const KeyStorePrefixes = {
   // The braces are a Redis Cluster hash tag: only the tagged part picks the slot, so these land on
   // one node. Selection reads them for several gateways at once (one Lua script and two MGETs), and
   // cluster refuses a multi-key command whose keys span slots. They are small counters, so
-  // concentrating them costs nothing. GatewayLoad is read one key at a time and needs no tag.
-  GatewayLoad: (gatewayId: string) => `gateway-load:${gatewayId}` as const,
+  // concentrating them costs nothing.
   GatewayReportedLoad: (gatewayId: string) => `gateway-reported-load:{gw-pool}:${gatewayId}` as const,
   GatewayLoadReservation: (gatewayId: string) => `gateway-reservation:{gw-pool}:${gatewayId}` as const,
   GatewaySuspect: (gatewayId: string) => `gateway-suspect:{gw-pool}:${gatewayId}` as const,
@@ -316,8 +315,6 @@ export type TKeyStoreFactory = {
   // hash operations
   hashSet: (key: string, field: string, value: string) => Promise<number>;
   hashGet: (key: string, field: string) => Promise<string | null>;
-  hashGetAll: (key: string) => Promise<Record<string, string>>;
-  hashDelete: (key: string, field: string) => Promise<number>;
   // pg
   pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
   pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
@@ -592,10 +589,6 @@ export const keyStoreFactory = (
 
   const hashGet = async (key: string, field: string) => primaryRedis.hget(key, field);
 
-  const hashGetAll = async (key: string) => primaryRedis.hgetall(key);
-
-  const hashDelete = async (key: string, field: string) => primaryRedis.hdel(key, field);
-
   // List operations
   const listPush = async (key: string, value: string) => primaryRedis.rpush(key, value);
 
@@ -724,8 +717,6 @@ export const keyStoreFactory = (
     pgIncrementBy,
     hashSet,
     hashGet,
-    hashGetAll,
-    hashDelete,
     listPush,
     listRange,
     listRemove,

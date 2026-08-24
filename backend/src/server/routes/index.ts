@@ -4266,7 +4266,7 @@ export const registerRoutes = async (
   server.addHook("onClose", async () => {
     // Drops this pod's published counts, so a rolling deploy does not leave its already-dead
     // channels counting against those gateways for the freshness window.
-    await gatewayLoadTracker.shutdown();
+    gatewayLoadTracker.shutdown();
     cronJobs.forEach((job) => job.stop());
     await cronJob.stop();
     await telemetryService.flushAll();
