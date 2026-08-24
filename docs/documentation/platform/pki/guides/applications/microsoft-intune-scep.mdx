@@ -66,7 +66,7 @@ The certificate profile attached to your Infisical application must meet certain
 
 ### Ensure certificates can be issued immediately
 
-Intune has no pending state, so the certificate profile must allow Infisical to issue each certificate within a single SCEP exchange. Infisical rejects the SCEP enrollment in [Step 3](#step-3-turn-on-scep-enrollment) if either of these requirements isn't met:
+Intune has no pending state, so the certificate profile must allow Infisical to issue each certificate within a single SCEP exchange. Infisical rejects the SCEP enrollment in [Step 3](#step-3-turn-on-scep-enrollment-in-infisical) if either of these requirements isn't met:
 
 | Requirement | Why |
 | --- | --- |
@@ -83,6 +83,10 @@ A SCEP request carries no validity period or [extended key usages](/documentatio
 | **Extended Key Usages** | Add **Client Authentication** to allow the certificate to authenticate the device to Wi-Fi, VPN, or RADIUS |
 
 On the [certificate policy](/documentation/platform/pki/settings/policies) behind the profile, enable **Set maximum validity** and set **Duration** to the same lifetime as the profile's TTL. The profile sets how long certificates remain valid, while the policy prevents it from issuing a certificate with a longer lifetime.
+
+<Note>
+  Leave every other section of the policy unconfigured, so it places no constraint on what your devices ask for. If you followed the [issue your first certificate](/documentation/platform/pki/quick-starts/issue-first-certificate) guide, your policy came from the **TLS Server Certificate** preset, which requires **Server Authentication** and rejects these requests until you turn those sections off.
+</Note>
 
 ## Step 2: Connect Infisical to Intune
 
@@ -248,7 +252,7 @@ This profile gives each device the address of your endpoint and a single-use cha
     | **Certificate type** | **Device**, so the certificate identifies the machine rather than a person |
     | **Subject name format** | `CN={{DeviceName}}` or `CN={{AzureADDeviceId}}`, as described in the next step |
     | **Subject alternative name** | Leave empty for a device certificate |
-    | **Certificate validity period** | The same value as the profile's TTL from [Step 1](#step-1-prepare-the-certificate-profile) |
+    | **Certificate validity period** | The same value as the profile's TTL from [Step 1](#step-1-prepare-the-certificate-profile-in-infisical) |
     | **Key usage** | **Digital signature** and **Key encipherment** |
     | **Key size (bits)** | 2048 |
     | **Hash algorithm** | SHA-2, where the platform offers the field |
@@ -259,7 +263,7 @@ This profile gives each device the address of your endpoint and a single-use cha
 
     ![Intune SCEP certificate profile settings including the Infisical SCEP Server URL](/images/platform/pki/integrations/microsoft-intune/intune-scep-profile-settings.png)
 
-    **Certificate validity period** and **Extended key usage** are the two you're mirroring from [Step 1](#step-1-prepare-the-certificate-profile). Intune reports the enrollment as successful without comparing either one against the certificate it receives, so a mismatch here is never flagged.
+    **Certificate validity period** and **Extended key usage** are the two you're mirroring from [Step 1](#step-1-prepare-the-certificate-profile-in-infisical). Intune reports the enrollment as successful without comparing either one against the certificate it receives, so a mismatch here is never flagged.
 
     <Note>
       **Renewal threshold is a percentage of remaining life, not elapsed life.** A threshold of 20 means the device asks for a new certificate once 80 percent of the lifetime is gone, so roughly ten months into a one-year certificate.
@@ -321,7 +325,7 @@ Infisical's **Allow cert-based renewal** option stays off for Intune validation,
   <Accordion title="Enrollment fails even though the challenge was accepted">
     The challenge passed but issuance didn't complete. Either the requested certificate violates the [certificate policy](/documentation/platform/pki/settings/policies), or the profile is attached to an [approval policy](/documentation/platform/pki/applications/approvals) and the request is waiting for review.
 
-    Check the **Subject name format** in the Intune profile against what the policy allows. Intune has no pending state, so Infisical reports both cases to Intune as failures rather than leaving the device polling.
+    Check the **Subject name format** in the Intune profile, and the extended key usages and algorithms the policy permits, against the policy settings in [Step 1](#step-1-prepare-the-certificate-profile-in-infisical). Intune has no pending state, so Infisical reports both cases to Intune as failures rather than leaving the device polling.
   </Accordion>
   <Accordion title="The device receives a certificate but doesn't trust it">
     The trusted certificate profile didn't reach the device. Confirm it's assigned to the same groups as the SCEP profile, that it holds the certificate of the CA behind your profile, and on Windows that **Destination Store** is set to **Computer certificate store - Root**.
