@@ -21,7 +21,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
 import { TGatewayPoolDALFactory } from "./gateway-pool-dal";
 import { TGatewayPoolMembershipDALFactory } from "./gateway-pool-membership-dal";
-import { isPoolComparable, pickRandomGateway, shuffleForTieBreak } from "./gateway-pool-selection-fns";
+import { everyMemberReportsLoad, pickRandomGateway, shuffleForTieBreak } from "./gateway-pool-selection-fns";
 import {
   DEFAULT_POOL_FAILOVER_ATTEMPTS,
   TAddGatewayToPoolDTO,
@@ -300,7 +300,7 @@ export const gatewayPoolServiceFactory = ({
 
         const scores = await loadTracker.getScores(pool.map((gateway) => gateway.id));
 
-        if (isPoolComparable(pool, scores)) {
+        if (everyMemberReportsLoad(pool, scores)) {
           // Choose and claim atomically. Reading the minimum and then writing the reservation as two
           // calls lets every concurrent selection observe the same minimum and pile onto it.
           const claimed = await loadTracker.claimLeastLoaded(
@@ -312,7 +312,8 @@ export const gatewayPoolServiceFactory = ({
           selected = pool.find((gateway) => gateway.id === claimed);
           if (selected) claimedAtomically = true;
         } else {
-          // Mixed-version pool: the scales are not comparable, so there is nothing to claim against.
+          // At least one member is too old to report its load, so there is no sound comparison to
+          // make and nothing to claim against.
           selected = pickRandomGateway(pool);
         }
       } catch (err) {

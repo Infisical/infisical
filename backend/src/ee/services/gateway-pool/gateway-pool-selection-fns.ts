@@ -11,24 +11,18 @@ export const pickRandomGateway = <T extends TSelectableGateway>(
 };
 
 /**
- * Load numbers are only worth comparing when every member is measured the same way.
+ * Load-aware selection only runs when every member reports its own connection count.
  *
- * A gateway new enough to report sends its real connection count, including PAM sessions the
- * platform never sees. A gateway too old to report is counted only on the connections the platform
- * itself opened, which is always the lower number.
- *
- * So a pool mid-upgrade is the bad case: the old member always looks emptier and would soak up
- * traffic for the whole rollout. That pool gets no load awareness at all and falls back to random.
- * A pool where nobody reports is fine, because every member is measured the same lower way, so
- * comparing them is still fair.
+ * A gateway new enough to report sends its real count, including PAM sessions the platform never
+ * sees. A gateway too old to report can only be scored on the connections the platform itself
+ * opened, which is always lower and misses whatever it is really carrying. There is no way to line
+ * those two numbers up, and no reason to trust the second one on its own, so any pool that is not
+ * fully upgraded picks at random instead.
  */
-export const isPoolComparable = <T extends TSelectableGateway>(
+export const everyMemberReportsLoad = <T extends TSelectableGateway>(
   candidates: T[],
   scores: Map<string, TGatewayScore>
-): boolean => {
-  const reportedCount = candidates.filter((c) => scores.get(c.id)?.reported).length;
-  return reportedCount === 0 || reportedCount === candidates.length;
-};
+): boolean => candidates.length > 0 && candidates.every((candidate) => scores.get(candidate.id)?.reported);
 
 /** Ties are resolved by position, so shuffling first is what randomises between equally loaded members. */
 export const shuffleForTieBreak = <T>(candidates: T[], random: () => number): T[] => {

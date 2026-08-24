@@ -1,6 +1,6 @@
 import { TGatewayScore } from "@app/lib/gateway-v2/gateway-load-tracker";
 
-import { isPoolComparable, pickRandomGateway, shuffleForTieBreak } from "./gateway-pool-selection-fns";
+import { everyMemberReportsLoad, pickRandomGateway, shuffleForTieBreak } from "./gateway-pool-selection-fns";
 
 // Every member reports unless a test says otherwise; a mixed pool is covered separately.
 const reported = (entries: Record<string, number>): Map<string, TGatewayScore> =>
@@ -8,27 +8,31 @@ const reported = (entries: Record<string, number>): Map<string, TGatewayScore> =
 
 const gateways = [{ id: "a" }, { id: "b" }, { id: "c" }];
 
-describe("isPoolComparable", () => {
-  test("comparable when every member reports", () => {
-    expect(isPoolComparable(gateways, reported({ a: 1, b: 2, c: 3 }))).toBe(true);
+describe("everyMemberReportsLoad", () => {
+  test("true when every member reports", () => {
+    expect(everyMemberReportsLoad(gateways, reported({ a: 1, b: 2, c: 3 }))).toBe(true);
   });
 
-  test("comparable when no member reports, since the scale is consistent", () => {
+  test("false when no member reports, because a platform-side count is not the same measurement", () => {
     const legacy = new Map(["a", "b", "c"].map((id) => [id, { score: 1, base: 1, reported: false }]));
-    expect(isPoolComparable(gateways, legacy)).toBe(true);
+    expect(everyMemberReportsLoad(gateways, legacy)).toBe(false);
   });
 
-  test("not comparable when the pool is mid-rollout", () => {
+  test("false when the pool is mid-rollout", () => {
     const mixed = new Map([
       ["a", { score: 40, base: 40, reported: true }],
       ["b", { score: 0, base: 0, reported: false }],
       ["c", { score: 41, base: 41, reported: true }]
     ]);
-    expect(isPoolComparable(gateways, mixed)).toBe(false);
+    expect(everyMemberReportsLoad(gateways, mixed)).toBe(false);
   });
 
-  test("not comparable when a member has no data at all", () => {
-    expect(isPoolComparable(gateways, reported({ a: 5, b: 5 }))).toBe(false);
+  test("false when a member has no data at all", () => {
+    expect(everyMemberReportsLoad(gateways, reported({ a: 5, b: 5 }))).toBe(false);
+  });
+
+  test("false for an empty pool, so the caller never claims against nothing", () => {
+    expect(everyMemberReportsLoad([], reported({}))).toBe(false);
   });
 });
 

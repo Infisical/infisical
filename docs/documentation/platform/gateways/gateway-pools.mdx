@@ -67,9 +67,8 @@ Because the count comes from the gateway itself, it includes work the platform d
 
 <Warning>
   Load balancing requires gateways running a CLI version that reports connection counts. A gateway
-  on an older version does not report, and a pool that mixes reporting and non-reporting gateways
-  falls back to choosing at random rather than comparing counts that are not measured the same way.
-  Upgrade every gateway in a pool to get load balancing for that pool.
+  on an older version does not report, and a pool containing any non-reporting member falls back to
+  choosing at random. Upgrade every gateway in a pool to get load balancing for that pool.
 </Warning>
 
 ## Failover
