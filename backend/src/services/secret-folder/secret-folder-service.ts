@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError, MongoAbility, MongoQuery, subject } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
@@ -7,20 +7,15 @@ import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 import { ActionProjectType, TProjectEnvironments, TSecretFoldersInsert } from "@app/db/schemas";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
-import { isActiveRole, validateSecretMovePermissions } from "@app/ee/services/permission/permission-fns";
+import { validateSecretMovePermissions } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSecretFolderActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -31,7 +26,6 @@ import {
   assertFolderMoveAllowed,
   buildChildrenMap,
   buildFolderPath,
-  buildToAbsPath,
   canActorReadBlock,
   checkFolderMoveBlock,
   checkFolderMovePolicyBlock,
@@ -78,7 +72,7 @@ import { TSecretFolderVersionDALFactory } from "./secret-folder-version-dal";
 
 type TSecretFolderServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
-  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "remapFolderIds" | "find">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "remapFolderIds">;
   folderDAL: TSecretFolderDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs" | "find">;
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestFolderVersions" | "create" | "insertMany" | "find">;
@@ -153,67 +147,6 @@ export const secretFolderServiceFactory = ({
   reminderService,
   keyStore
 }: TSecretFolderServiceFactoryDep) => {
-  const $findGrantedFolderIds = async (projectId: string, folderIds: string[], tx?: Knex) => {
-    if (!folderIds.length) return new Set<string>();
-
-    const grants = await additionalPrivilegeDAL.find({ projectId, $in: { folderId: folderIds } }, { tx });
-    return new Set(
-      grants.filter((grant) => grant.role && isActiveRole(grant)).map((grant) => grant.folderId as string)
-    );
-  };
-
-  const $assertFolderGrantsRelocatable = async (
-    {
-      projectId,
-      permission,
-      operation,
-      relocations
-    }: {
-      projectId: string;
-      permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
-      operation: "move" | "rename";
-      relocations: { folderId: string; managePaths: { environment: string; secretPath: string }[] }[];
-    },
-    tx?: Knex
-  ) => {
-    const grantedFolderIds = await $findGrantedFolderIds(
-      projectId,
-      relocations.map((relocation) => relocation.folderId),
-      tx
-    );
-    if (!grantedFolderIds.size) return;
-
-    const blocked = relocations.find(
-      (relocation) =>
-        grantedFolderIds.has(relocation.folderId) &&
-        relocation.managePaths.some(({ environment, secretPath }) =>
-          permission.cannot(
-            ProjectPermissionSecretFolderActions.ManageAccess,
-            subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
-          )
-        )
-    );
-    if (blocked) {
-      const requiredPaths = blocked.managePaths.map(({ secretPath }) => `'${secretPath}'`).join(" and ");
-      throw new ForbiddenRequestError({
-        message: `Cannot ${operation} this folder: the folder at path '${blocked.managePaths[0].secretPath}' has access permissions assigned to users or identities. You need permission to manage folder access on ${requiredPaths} to ${operation} it.`
-      });
-    }
-  };
-
-  const $buildSubtreeRelocations = async (
-    { folderId, environment, folderPath }: { folderId: string; environment: string; folderPath: string },
-    tx: Knex
-  ) => {
-    const subtree = await folderDAL.findByEnvsDeep({ parentIds: [folderId] }, tx);
-    const toAbsPath = buildToAbsPath(folderPath);
-
-    return subtree.map((folder) => ({
-      folderId: folder.id,
-      managePaths: [{ environment, secretPath: toAbsPath(folder.path) }]
-    }));
-  };
-
   const createFolder = async ({
     projectId,
     actor,
@@ -478,19 +411,6 @@ export const secretFolderServiceFactory = ({
                 name: "Batch update folder"
               });
             }
-
-            await $assertFolderGrantsRelocatable(
-              {
-                projectId: projectId as string,
-                permission,
-                operation: "rename",
-                relocations: await $buildSubtreeRelocations(
-                  { folderId: folder.id, environment, folderPath: path.join(secretPath, folder.name) },
-                  tx
-                )
-              },
-              tx
-            );
           }
 
           const [doc] = await folderDAL.update(
@@ -631,21 +551,6 @@ export const secretFolderServiceFactory = ({
         });
       }
 
-      if (name !== folder.name) {
-        await $assertFolderGrantsRelocatable(
-          {
-            projectId,
-            permission,
-            operation: "rename",
-            relocations: await $buildSubtreeRelocations(
-              { folderId: folder.id, environment, folderPath: path.join(secretPath, folder.name) },
-              tx
-            )
-          },
-          tx
-        );
-      }
-
       const [doc] = await folderDAL.update(
         { envId: env.id, id: folder.id, parentId: parentFolder.id, isReserved: false },
         { name, description },
@@ -714,8 +619,8 @@ export const secretFolderServiceFactory = ({
     return folderDAL.findOne({ envId, id: idOrName, parentId, isReserved: false }, tx).catch(() => null);
   };
 
-  // the whole environment tree is loaded because folder RBAC grants and change policies both apply by
-  // absolute path, so every descendant of the deleted folder has to be resolved to one
+  // the whole environment tree is loaded because change policies apply by absolute path,
+  // so every descendant of the deleted folder has to be resolved to one
   const $getEnvFolderTree = async (projectId: string, env: TProjectEnvironments, tx?: Knex) => {
     const rootFolder = await folderDAL.findBySecretPath(projectId, env.slug, "/", tx);
     if (!rootFolder) throw new NotFoundError({ message: `Root folder not found` });
@@ -724,21 +629,17 @@ export const secretFolderServiceFactory = ({
     return { folderPaths, childrenMap: buildChildrenMap(folderPaths) };
   };
 
-  const $validateFolderPermission = async ({
+  const $validateFolderDeletePolicy = async ({
     projectId,
     env,
     folderId,
     folderTree,
-    actor,
-    permission,
     tx
   }: {
     projectId: string;
     env: TProjectEnvironments;
     folderId: string;
     folderTree: Awaited<ReturnType<typeof $getEnvFolderTree>>;
-    actor: ActorType;
-    permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
     tx?: Knex;
   }) => {
     const { folderPaths, childrenMap } = folderTree;
@@ -757,32 +658,6 @@ export const secretFolderServiceFactory = ({
       path: folder.path,
       id: folder.id
     }));
-
-    const grantedFolderIds = await $findGrantedFolderIds(
-      projectId,
-      folderPolicyPaths.map((p) => p.id),
-      tx
-    );
-    const unmanageableGrant = folderPolicyPaths.find(
-      (folderPolicyPath) =>
-        grantedFolderIds.has(folderPolicyPath.id) &&
-        permission.cannot(
-          ProjectPermissionSecretFolderActions.ManageAccess,
-          subject(ProjectPermissionSub.SecretFolders, {
-            environment: env.slug,
-            secretPath: folderPolicyPath.path
-          })
-        )
-    );
-    if (unmanageableGrant) {
-      throw new ForbiddenRequestError({
-        message: `Cannot delete this folder: the folder at path '${unmanageableGrant.path}' has access permissions assigned to users or identities. You need permission to manage folder access on '${unmanageableGrant.path}' to delete it.`
-      });
-    }
-
-    if (actor === ActorType.IDENTITY) {
-      return;
-    }
 
     // get secrets under the given folders
     const secrets = await secretV2BridgeDAL.findByFolderIds({
@@ -852,15 +727,15 @@ export const secretFolderServiceFactory = ({
         throw new NotFoundError({ message: `Folder with ID '${idOrName}' not found` });
       }
 
-      await $validateFolderPermission({
-        projectId,
-        env,
-        folderId: folderToDelete.id,
-        folderTree: await $getEnvFolderTree(projectId, env, tx),
-        actor,
-        permission,
-        tx
-      });
+      if (actor !== ActorType.IDENTITY) {
+        await $validateFolderDeletePolicy({
+          projectId,
+          env,
+          folderId: folderToDelete.id,
+          folderTree: await $getEnvFolderTree(projectId, env, tx),
+          tx
+        });
+      }
 
       // Check if folder contains resources (secrets, dynamic secrets, subfolders)
       if (!forceDelete) {
@@ -1490,7 +1365,7 @@ export const secretFolderServiceFactory = ({
             message: `Environment with slug '${environment}' not found`
           });
         }
-        const folderTree = await $getEnvFolderTree(projectId, env, tx);
+        const folderTree = actor !== ActorType.IDENTITY ? await $getEnvFolderTree(projectId, env, tx) : undefined;
 
         for (const folderSpec of envFolders) {
           const { path: secretPath, idOrName } = folderSpec;
@@ -1513,15 +1388,15 @@ export const secretFolderServiceFactory = ({
             });
           }
 
-          await $validateFolderPermission({
-            projectId,
-            env,
-            folderId: folderToDelete.id,
-            folderTree,
-            actor,
-            permission,
-            tx
-          });
+          if (folderTree) {
+            await $validateFolderDeletePolicy({
+              projectId,
+              env,
+              folderId: folderToDelete.id,
+              folderTree,
+              tx
+            });
+          }
 
           const [doc] = await folderDAL.delete(
             {
@@ -1959,22 +1834,6 @@ export const secretFolderServiceFactory = ({
           destinationSecretPath: entry.destinationAbsPath
         });
       }
-
-      await $assertFolderGrantsRelocatable(
-        {
-          projectId,
-          permission,
-          operation: "move",
-          relocations: plan.map((entry) => ({
-            folderId: entry.sourceFolderId,
-            managePaths: [
-              { environment: sourceEnvironment, secretPath: entry.sourceAbsPath },
-              { environment: destinationEnvironment, secretPath: entry.destinationAbsPath }
-            ]
-          }))
-        },
-        tx
-      );
 
       // 6. recreate the folder tree at the destination. inserting root-first satisfies the self-referencing
       // parentId FK; each new folder also gets a version row and an ADD commit (mirrors createManyFolders).
