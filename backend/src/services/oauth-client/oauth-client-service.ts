@@ -768,7 +768,8 @@ export const oauthClientServiceFactory = ({
           userId: user.id,
           email: user.email,
           username: user.username,
-          authMethod: AuthMethod.OIDC
+          authMethod: AuthMethod.OIDC,
+          oauthClientId: client.clientId
         }
       },
       event: {

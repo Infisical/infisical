@@ -66,12 +66,12 @@ const splitRedirectUris = (value: string) =>
     .map((uri) => uri.trim())
     .filter(Boolean);
 
-// Mirrors the bounds the API enforces on accessTokenTTL, so a bad value is caught before the request.
 const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 86400;
 const MIN_ACCESS_TOKEN_TTL_SECONDS = 60;
 const MAX_ACCESS_TOKEN_TTL_SECONDS = 90 * 24 * 60 * 60;
 
 const TTL_UNITS = [
+  { value: "s", label: "Seconds", seconds: 1 },
   { value: "m", label: "Minutes", seconds: 60 },
   { value: "h", label: "Hours", seconds: 60 * 60 },
   { value: "d", label: "Days", seconds: 24 * 60 * 60 },
@@ -80,15 +80,14 @@ const TTL_UNITS = [
 
 type TTtlUnit = (typeof TTL_UNITS)[number]["value"];
 
+const TTL_UNIT_VALUES = TTL_UNITS.map(({ value }) => value) as [TTtlUnit, ...TTtlUnit[]];
+
 const ttlToSeconds = (value: number, unit: TTtlUnit) =>
   value * (TTL_UNITS.find((entry) => entry.value === unit)?.seconds ?? 1);
 
-// Pick the largest unit that divides the stored seconds exactly, so a one-day TTL reads back as
-// "1 Days" rather than "1440 Minutes".
 const secondsToTtl = (totalSeconds: number): { value: number; unit: TTtlUnit } => {
-  const unit = [...TTL_UNITS].reverse().find((entry) => totalSeconds % entry.seconds === 0);
-  if (!unit) return { value: totalSeconds, unit: "m" };
-
+  const unit =
+    [...TTL_UNITS].reverse().find((entry) => totalSeconds % entry.seconds === 0) ?? TTL_UNITS[0];
   return { value: totalSeconds / unit.seconds, unit: unit.value };
 };
 
@@ -110,7 +109,7 @@ const oauthClientFormSchema = z
       .number({ invalid_type_error: "A lifetime value is required" })
       .int()
       .min(1, "Value must be at least 1"),
-    accessTokenTtlUnit: z.enum(["m", "h", "d", "w"], {
+    accessTokenTtlUnit: z.enum(TTL_UNIT_VALUES, {
       invalid_type_error: "Please select a valid time unit"
     }),
     tokenExchangeAudience: z.string().trim().max(255),
