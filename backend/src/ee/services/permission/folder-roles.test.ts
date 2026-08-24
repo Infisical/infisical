@@ -52,6 +52,7 @@ describe("Secret folder roles", () => {
 
       expect(list.can(ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSub.Secrets)).toBe(true);
       expect(list.can(ProjectPermissionSecretActions.ReadValue, ProjectPermissionSub.Secrets)).toBe(false);
+      expect(list.can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits)).toBe(false);
       expect(
         list.can(
           ProjectPermissionSecretEventActions.SubscribeToCreationEvents,
@@ -102,6 +103,15 @@ describe("Secret folder roles", () => {
       expect(
         fullAccess.can(ProjectPermissionSecretFolderActions.ManageAccess, ProjectPermissionSub.SecretFolders)
       ).toBe(true);
+    });
+
+    test("no tier can perform a commit rollback", () => {
+      LADDER.forEach((role) => {
+        expect(
+          abilityFor(role).can(ProjectPermissionCommitsActions.PerformRollback, ProjectPermissionSub.Commits),
+          `folder role '${role}' must not grant commit rollback`
+        ).toBe(false);
+      });
     });
 
     test("only Full Access can delete a folder", () => {

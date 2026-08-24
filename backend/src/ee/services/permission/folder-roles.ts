@@ -221,6 +221,10 @@ const buildFolderScopedDenyRules = () => {
     ],
     ProjectPermissionSub.HoneyTokens
   );
+  cannot(
+    [ProjectPermissionCommitsActions.Read, ProjectPermissionCommitsActions.PerformRollback],
+    ProjectPermissionSub.Commits
+  );
 
   return rules;
 };

@@ -385,8 +385,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         commitId: req.params.commitId,
         folderId: req.body.folderId,
         deepRollback: req.body.deepRollback,
-        message: req.body.message,
-        environment: req.body.environment
+        message: req.body.message
       });
 
       await server.services.auditLog.createAuditLog({

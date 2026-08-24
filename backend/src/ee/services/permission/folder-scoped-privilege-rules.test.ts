@@ -11,6 +11,7 @@ import { buildProjectPermissionRules } from "./permission-service";
 import { TProjectFolderScopedPrivilege } from "./permission-service-types";
 import {
   ProjectPermissionActions,
+  ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSecretActions,
@@ -50,7 +51,6 @@ describe("folder-scoped privilege deny coverage", () => {
   // paths, so the base project role keeps applying there.
   const DENY_EXEMPT_SUBJECTS: string[] = [
     ProjectPermissionSub.ProxiedServices,
-    ProjectPermissionSub.Commits,
     ProjectPermissionSub.ProjectFolderGrant
   ];
 
@@ -98,7 +98,8 @@ describe("folder-scoped privilege deny coverage", () => {
     [ProjectPermissionSub.SecretSyncs]: Object.values(ProjectPermissionSecretSyncActions),
     [ProjectPermissionSub.SecretRotation]: Object.values(ProjectPermissionSecretRotationActions),
     [ProjectPermissionSub.SecretEventSubscriptions]: Object.values(ProjectPermissionSecretEventActions),
-    [ProjectPermissionSub.HoneyTokens]: Object.values(ProjectPermissionHoneyTokenActions)
+    [ProjectPermissionSub.HoneyTokens]: Object.values(ProjectPermissionHoneyTokenActions),
+    [ProjectPermissionSub.Commits]: Object.values(ProjectPermissionCommitsActions)
   };
 
   test.each(FOLDER_SCOPED_DENY_RULES.map((rule) => String(rule.subject)))(
@@ -175,6 +176,66 @@ describe("folder-scoped privilege precedence", () => {
         subject(ProjectPermissionSub.SecretEventSubscriptions, grantedPath)
       )
     ).toBe(false);
+  });
+
+  test("commit history at the path requires the read tier", () => {
+    const grantedPath = { environment: "dev", secretPath: "/a/b" };
+
+    const readAbility = abilityFor(adminRoles, [privilege({ role: SecretFolderRole.Read })]);
+    expect(
+      readAbility.can(ProjectPermissionCommitsActions.Read, subject(ProjectPermissionSub.Commits, grantedPath))
+    ).toBe(true);
+
+    const listAbility = abilityFor(adminRoles, [privilege({ role: SecretFolderRole.List })]);
+    expect(
+      listAbility.can(ProjectPermissionCommitsActions.Read, subject(ProjectPermissionSub.Commits, grantedPath))
+    ).toBe(false);
+  });
+
+  test("a read grant strips commit rollback at the granted path only", () => {
+    const ability = abilityFor(adminRoles, [privilege({ role: SecretFolderRole.Read })]);
+
+    expect(
+      ability.can(
+        ProjectPermissionCommitsActions.PerformRollback,
+        subject(ProjectPermissionSub.Commits, { environment: "dev", secretPath: "/a/b" })
+      )
+    ).toBe(false);
+
+    expect(
+      ability.can(
+        ProjectPermissionCommitsActions.PerformRollback,
+        subject(ProjectPermissionSub.Commits, { environment: "dev", secretPath: "/other" })
+      )
+    ).toBe(true);
+    expect(
+      ability.can(
+        ProjectPermissionCommitsActions.PerformRollback,
+        subject(ProjectPermissionSub.Commits, { environment: "staging", secretPath: "/a/b" })
+      )
+    ).toBe(true);
+    expect(
+      ability.can(
+        ProjectPermissionCommitsActions.PerformRollback,
+        subject(ProjectPermissionSub.Commits, { environment: "dev", secretPath: "/a/b/c" })
+      )
+    ).toBe(true);
+  });
+
+  test("no folder role tier can perform a commit rollback at the granted path", () => {
+    const grantedPath = { environment: "dev", secretPath: "/a/b" };
+
+    Object.values(SecretFolderRole).forEach((role) => {
+      const ability = abilityFor(adminRoles, [privilege({ role })]);
+
+      expect(
+        ability.can(
+          ProjectPermissionCommitsActions.PerformRollback,
+          subject(ProjectPermissionSub.Commits, grantedPath)
+        ),
+        `folder role '${role}' must not grant commit rollback at the granted path`
+      ).toBe(false);
+    });
   });
 
   test("an edit grant gives a viewer more than their base role at the granted path", () => {
@@ -299,5 +360,21 @@ describe("filterOverriddenFolderScopedDenyRules", () => {
 
     expect(filtered.filter((rule) => !rule.inverted)).toEqual(rules.filter((rule) => !rule.inverted));
     expect(denyActionsFor(filtered, ProjectPermissionSub.SecretEventSubscriptions)).toEqual([]);
+  });
+
+  test("the commit rollback deny survives every tier while the read deny is dropped from the read tier up", () => {
+    const readTier = filterOverriddenFolderScopedDenyRules(
+      buildFolderScopedPrivilegeRules([privilege({ role: SecretFolderRole.Read })])
+    );
+    expect(denyActionsFor(readTier, ProjectPermissionSub.Commits)).toEqual([
+      ProjectPermissionCommitsActions.PerformRollback
+    ]);
+
+    const listTier = filterOverriddenFolderScopedDenyRules(
+      buildFolderScopedPrivilegeRules([privilege({ role: SecretFolderRole.List })])
+    );
+    expect(denyActionsFor(listTier, ProjectPermissionSub.Commits).sort()).toEqual(
+      [ProjectPermissionCommitsActions.Read, ProjectPermissionCommitsActions.PerformRollback].sort()
+    );
   });
 });
