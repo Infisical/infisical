@@ -1148,7 +1148,7 @@ export const SecretEditTableRow = ({
         <div
           className={twMerge(
             "absolute z-20 flex items-center gap-1.5 px-0.5 py-0.5",
-            isSingleEnvView ? "top-0.5 right-0.5" : "top-[0.25px] -right-1.5"
+            isSingleEnvView ? "top-1 right-1" : "top-[0.25px] -right-1.5"
           )}
         >
           <ProjectPermissionCan

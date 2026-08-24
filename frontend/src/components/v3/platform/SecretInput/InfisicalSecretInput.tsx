@@ -30,7 +30,7 @@ const getIndexOfUnclosedRefToTheRight = (value: string, pos: number) => {
 };
 
 type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "value"> & {
-  value?: string;
+  value?: string | null;
   onChange: (val: string) => void;
   variant?: SecretInputVariant;
   isImport?: boolean;
@@ -48,7 +48,7 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "val
 export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
   (
     {
-      value = "",
+      value: propValue,
       onChange,
       containerClassName,
       secretPath: propSecretPath,
@@ -58,6 +58,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     },
     ref
   ) => {
+    const value = propValue ?? "";
     const { currentProject } = useProject();
     const projectId = currentProject?.id || "";
     const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.OverviewPage.path });
