@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { OrgMembershipsSchema, OrgMembershipStatus, ProjectMembershipsSchema, ProjectsSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, ORGANIZATIONS } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -200,15 +201,29 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.auth.actor !== ActorType.USER) return;
-
       const membership = await server.services.org.updateOrgMembership({
-        userId: req.permission.id,
+        actor: req.permission.type,
+        actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId,
         membershipId: req.params.membershipId,
         actorOrgId: req.permission.orgId,
         ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.params.organizationId,
+        event: {
+          type: EventType.UPDATE_USER_ORG_MEMBERSHIP,
+          metadata: {
+            membershipId: membership.id,
+            userId: membership.actorUserId as string,
+            role: req.body.role,
+            isActive: req.body.isActive,
+            metadataKeys: req.body.metadata?.map(({ key }) => key)
+          }
+        }
       });
 
       if (req.body.role) {
@@ -262,14 +277,25 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.auth.actor !== ActorType.USER) return;
-
       const membership = await server.services.org.deleteOrgMembership({
-        userId: req.permission.id,
+        actor: req.permission.type,
+        actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId,
         membershipId: req.params.membershipId,
         actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.params.organizationId,
+        event: {
+          type: EventType.DELETE_USER_ORG_MEMBERSHIP,
+          metadata: {
+            membershipId: membership.id,
+            userId: membership.actorUserId as string
+          }
+        }
       });
 
       void server.services.telemetry.sendPostHogEvents({
@@ -322,15 +348,29 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.auth.actor !== ActorType.USER) return;
-
       const memberships = await server.services.org.bulkDeleteOrgMemberships({
-        userId: req.permission.id,
+        actor: req.permission.type,
+        actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId,
         membershipIds: req.body.membershipIds,
         actorOrgId: req.permission.orgId
       });
+
+      for (const membership of memberships) {
+        // eslint-disable-next-line no-await-in-loop
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.params.organizationId,
+          event: {
+            type: EventType.DELETE_USER_ORG_MEMBERSHIP,
+            metadata: {
+              membershipId: membership.id,
+              userId: membership.actorUserId as string
+            }
+          }
+        });
+      }
 
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.OrgMembershipDeleted,
