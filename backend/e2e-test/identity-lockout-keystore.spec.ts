@@ -144,6 +144,46 @@ describe("identity lockout keystore", () => {
     );
   });
 
+  test("the reap walks a bounded slice, so one write cannot be made to cost O(fields)", async () => {
+    // LDAP slugs are caller-supplied usernames, so the field count is attacker-driven. Walking the
+    // whole hash per write would make distributed attempts against one identity scale with the
+    // square of the number of sources, on the single-threaded server this change exists to protect.
+    const expired = JSON.stringify({ lockedOut: false, failedAttempts: 1, expiresAt: Date.now() - 1_000 });
+    const sprayed: Record<string, string> = {};
+    for (let i = 0; i < 400; i += 1) {
+      sprayed[KeyStorePrefixes.IdentityLockoutStateField(IdentityAuthMethod.LDAP_AUTH, `sprayed-${i}`)] = expired;
+    }
+    await testRedis.hset(lockoutFor(identityId), sprayed);
+
+    const write = async () =>
+      persistIdentityLockoutState(
+        { identityId, authMethod: IdentityAuthMethod.UNIVERSAL_AUTH, slug: "client-a", expiryInSeconds: 300 },
+        { lockedOut: false, failedAttempts: 1 },
+        testKeyStore
+      );
+
+    await write();
+    const afterOne = await testRedis.hlen(lockoutFor(identityId));
+
+    // Bounded: one write cannot have reclaimed all 400. If this ever reaches 1 the reap has gone
+    // back to walking the whole hash and the cost is caller-controlled again.
+    expect(afterOne).toBeGreaterThan(1);
+    expect(afterOne).toBeLessThan(401);
+
+    // ...but it reclaims far more per write than the single field a write adds, so it converges
+    // rather than falling behind.
+    let previous = afterOne;
+    for (let i = 0; i < 12; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await write();
+      // eslint-disable-next-line no-await-in-loop
+      const current = await testRedis.hlen(lockoutFor(identityId));
+      expect(current).toBeLessThanOrEqual(previous);
+      previous = current;
+    }
+    expect(previous).toBeLessThan(afterOne);
+  });
+
   test("no lockout path issues a SCAN, whatever the keyspace holds", async () => {
     // The incident: one SCAN MATCH walk of the whole keyspace per identity on every list row.
     // MATCH is a post-filter, so the cost tracked the keyspace, not the number of lockouts.

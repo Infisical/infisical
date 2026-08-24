@@ -544,6 +544,8 @@ export const keyStoreFactory = (
   // Redis cannot expire an individual field, so a hash keyed by caller-supplied slugs would grow
   // until the whole key expires. Fields past their own deadline are reaped here, but only once the
   // hash is big enough to be worth walking, so the common one-or-two-field case pays nothing.
+  //
+  // The reap walks one bounded HSCAN slice, never the whole hash.
   const HASH_SET_FIELD_WITH_MIN_EXPIRY = `
     redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
 
@@ -555,8 +557,13 @@ export const keyStoreFactory = (
 
     if redis.call('HLEN', KEYS[1]) > tonumber(ARGV[5]) then
       local now = tonumber(ARGV[4])
-      local entries = redis.call('HGETALL', KEYS[1])
-      for i = 1, #entries, 2 do
+      local batch = tonumber(ARGV[6])
+      local scanned = redis.call('HSCAN', KEYS[1], '0', 'COUNT', batch)
+      local entries = scanned[2]
+      -- COUNT is only a hint, and a listpack-encoded hash ignores it and returns every field, so the
+      -- loop is what actually bounds the decoding.
+      local limit = math.min(#entries, batch * 2)
+      for i = 1, limit, 2 do
         if entries[i] ~= ARGV[1] then
           local ok, parsed = pcall(cjson.decode, entries[i + 1])
           if ok and type(parsed) == 'table' and type(parsed.expiresAt) == 'number' and parsed.expiresAt <= now then
@@ -570,6 +577,7 @@ export const keyStoreFactory = (
   `;
 
   const HASH_FIELD_REAP_THRESHOLD = 50;
+  const HASH_FIELD_REAP_BATCH = 64;
 
   const hashSetFieldWithMinExpiry = async (key: string, field: string, value: string, expiryInSeconds: number) => {
     await primaryRedis.eval(
@@ -580,7 +588,8 @@ export const keyStoreFactory = (
       value,
       String(expiryInSeconds),
       String(Date.now()),
-      String(HASH_FIELD_REAP_THRESHOLD)
+      String(HASH_FIELD_REAP_THRESHOLD),
+      String(HASH_FIELD_REAP_BATCH)
     );
   };
 
