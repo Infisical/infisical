@@ -558,18 +558,52 @@ export const keyStoreFactory = (
     if redis.call('HLEN', KEYS[1]) > tonumber(ARGV[5]) then
       local now = tonumber(ARGV[4])
       local batch = tonumber(ARGV[6])
-      local scanned = redis.call('HSCAN', KEYS[1], '0', 'COUNT', batch)
+      -- Resume where the last reap stopped. A fixed start rescans one segment forever: it drains
+      -- that segment and then returns the same live fields on every write, leaving everything
+      -- outside it resident until the key's TTL. The cursor lives in the hash it describes so it
+      -- shares that TTL and needs no separate key; it carries no ':' so every reader of these
+      -- fields already skips it.
+      local cursorField = '__reap_cursor'
+      local position = tonumber(redis.call('HGET', KEYS[1], cursorField) or '0') or 0
+
+      local scanned = redis.call('HSCAN', KEYS[1], position, 'COUNT', batch)
       local entries = scanned[2]
-      -- COUNT is only a hint, and a listpack-encoded hash ignores it and returns every field, so the
-      -- loop is what actually bounds the decoding.
-      local limit = math.min(#entries, batch * 2)
-      for i = 1, limit, 2 do
-        if entries[i] ~= ARGV[1] then
-          local ok, parsed = pcall(cjson.decode, entries[i + 1])
-          if ok and type(parsed) == 'table' and type(parsed.expiresAt) == 'number' and parsed.expiresAt <= now then
-            redis.call('HDEL', KEYS[1], entries[i])
-          end
+      local total = #entries / 2
+
+      if total > 0 then
+        local take = math.min(total, batch)
+        local offset = 0
+        local nextPosition = tonumber(scanned[1])
+
+        local listpack = total > batch
+        if listpack then
+          -- A listpack-encoded hash ignores both the cursor and COUNT and returns every field, so
+          -- HSCAN cannot advance on its own and the window has to be tracked by hand.
+          offset = position % total
         end
+
+        local kept = 0
+        for n = 0, take - 1 do
+          local i = math.floor((offset + n) % total) * 2 + 1
+          local name = entries[i]
+          local reaped = false
+
+          if name ~= ARGV[1] and name ~= cursorField then
+            local ok, parsed = pcall(cjson.decode, entries[i + 1])
+            if ok and type(parsed) == 'table' and type(parsed.expiresAt) == 'number' and parsed.expiresAt <= now then
+              redis.call('HDEL', KEYS[1], name)
+              reaped = true
+            end
+          end
+
+          if not reaped then kept = kept + 1 end
+        end
+
+        if listpack then
+          nextPosition = position + kept
+        end
+
+        redis.call('HSET', KEYS[1], cursorField, nextPosition)
       end
     end
 

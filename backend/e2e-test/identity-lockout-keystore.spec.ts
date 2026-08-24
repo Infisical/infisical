@@ -26,7 +26,16 @@ const commandCalls = async (command: string) => {
   return line ? Number(/^[^:]+:calls=(\d+),/.exec(line)?.[1] ?? 0) : 0;
 };
 
-const lockoutFor = (identityId: string) => KeyStorePrefixes.IdentityLockoutStateHash(identityId);
+const lockoutFor = (id: string) => KeyStorePrefixes.IdentityLockoutStateHash(id);
+
+// Mirrors HASH_FIELD_REAP_THRESHOLD in the keystore: below this a hash is small enough that the
+// reap skips it entirely, so a handful of expired fields legitimately survive until the key's TTL.
+const REAP_THRESHOLD = 50;
+
+// The reap keeps its resume position in a field of the same hash, so it is excluded here: only
+// fields naming an auth method and slug are lockout state.
+const lockoutFieldCount = async (id: string) =>
+  Object.keys(await testRedis.hgetall(lockoutFor(id))).filter((field) => field.includes(":")).length;
 
 let identityId: string;
 
@@ -97,7 +106,7 @@ describe("identity lockout keystore", () => {
       sprayed[KeyStorePrefixes.IdentityLockoutStateField(IdentityAuthMethod.LDAP_AUTH, `sprayed-${i}`)] = expired;
     }
     await testRedis.hset(lockoutFor(identityId), sprayed);
-    expect(await testRedis.hlen(lockoutFor(identityId))).toBe(60);
+    expect(await lockoutFieldCount(identityId)).toBe(60);
 
     await persistIdentityLockoutState(
       { identityId, authMethod: IdentityAuthMethod.UNIVERSAL_AUTH, slug: "client-a", expiryInSeconds: 300 },
@@ -105,7 +114,7 @@ describe("identity lockout keystore", () => {
       testKeyStore
     );
 
-    expect(await testRedis.hlen(lockoutFor(identityId))).toBe(1);
+    expect(await lockoutFieldCount(identityId)).toBe(1);
     await expect(getIdentityActiveLockoutAuthMethods(identityId, testKeyStore)).resolves.toEqual([]);
   });
 
@@ -138,19 +147,21 @@ describe("identity lockout keystore", () => {
       testKeyStore
     );
 
-    expect(await testRedis.hlen(lockoutFor(identityId))).toBe(4);
+    expect(await lockoutFieldCount(identityId)).toBe(4);
     await expect(getIdentityActiveLockoutAuthMethods(identityId, testKeyStore)).resolves.toEqual(
       expect.arrayContaining([IdentityAuthMethod.LDAP_AUTH, IdentityAuthMethod.TOKEN_AUTH])
     );
   });
 
-  test("the reap walks a bounded slice, so one write cannot be made to cost O(fields)", async () => {
-    // LDAP slugs are caller-supplied usernames, so the field count is attacker-driven. Walking the
-    // whole hash per write would make distributed attempts against one identity scale with the
-    // square of the number of sources, on the single-threaded server this change exists to protect.
+  test.each([
+    // Below hash-max-listpack-entries (512 by default) HSCAN ignores cursor and COUNT and returns
+    // the whole hash; above it, real cursor semantics apply. The reap has to make progress in both.
+    { label: "listpack-encoded", fields: 400 },
+    { label: "hashtable-encoded", fields: 1200 }
+  ])("the reap eventually covers the whole $label hash instead of one fixed segment", async ({ fields }) => {
     const expired = JSON.stringify({ lockedOut: false, failedAttempts: 1, expiresAt: Date.now() - 1_000 });
     const sprayed: Record<string, string> = {};
-    for (let i = 0; i < 400; i += 1) {
+    for (let i = 0; i < fields; i += 1) {
       sprayed[KeyStorePrefixes.IdentityLockoutStateField(IdentityAuthMethod.LDAP_AUTH, `sprayed-${i}`)] = expired;
     }
     await testRedis.hset(lockoutFor(identityId), sprayed);
@@ -162,26 +173,29 @@ describe("identity lockout keystore", () => {
         testKeyStore
       );
 
+    // Counts lockout fields only: the reap keeps its resume position in a field of the same hash.
+    const lockoutFields = async () => lockoutFieldCount(identityId);
+
     await write();
-    const afterOne = await testRedis.hlen(lockoutFor(identityId));
+    const afterOne = await lockoutFields();
 
-    // Bounded: one write cannot have reclaimed all 400. If this ever reaches 1 the reap has gone
-    // back to walking the whole hash and the cost is caller-controlled again.
+    // Bounded: one write must not have walked the whole hash, or the cost is caller-controlled.
     expect(afterOne).toBeGreaterThan(1);
-    expect(afterOne).toBeLessThan(401);
 
-    // ...but it reclaims far more per write than the single field a write adds, so it converges
-    // rather than falling behind.
-    let previous = afterOne;
-    for (let i = 0; i < 12; i += 1) {
+    // ...and it must not stall. Scanning from a fixed start drains one segment and then returns the
+    // same live fields forever, leaving everything else resident until the key's TTL.
+    let remaining = afterOne;
+    for (let i = 0; i < 200 && remaining > REAP_THRESHOLD; i += 1) {
       // eslint-disable-next-line no-await-in-loop
       await write();
       // eslint-disable-next-line no-await-in-loop
-      const current = await testRedis.hlen(lockoutFor(identityId));
-      expect(current).toBeLessThanOrEqual(previous);
-      previous = current;
+      remaining = await lockoutFields();
     }
-    expect(previous).toBeLessThan(afterOne);
+
+    // Down to within the threshold below which the reap deliberately stops walking. What matters is
+    // that the plateau is that constant and not whatever size the caller managed to grow the hash
+    // to -- a fixed scan start plateaus at the latter.
+    expect(remaining).toBeLessThanOrEqual(REAP_THRESHOLD);
   });
 
   test("no lockout path issues a SCAN, whatever the keyspace holds", async () => {
