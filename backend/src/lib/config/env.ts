@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { initializeOpenSSLExtSupport } from "@app/lib/crypto/ed25519/openssl-ext";
 import { initializePqcSupport } from "@app/lib/crypto/pqc";
 import { QueueWorkerProfile } from "@app/lib/types";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
@@ -741,6 +742,7 @@ export const initEnvConfig = async (
     const fipsEnabled = await crypto.initialize(superAdminDAL, hsmService, kmsRootConfigDAL);
 
     await initializePqcSupport();
+    await initializeOpenSSLExtSupport();
 
     if (fipsEnabled) {
       const newEnvCfg = {

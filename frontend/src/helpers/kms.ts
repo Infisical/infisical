@@ -46,5 +46,8 @@ export const getDefaultSigningAlgorithm = (cmek: TCmek): SigningAlgorithm => {
   if (cmek?.algorithm?.startsWith("RSA")) {
     return SigningAlgorithm.RSASSA_PSS_SHA_512;
   }
+  if (cmek?.algorithm === AsymmetricKeyAlgorithm.ECC_NIST_EDWARDS25519) {
+    return SigningAlgorithm.ED25519_SHA_512;
+  }
   return SigningAlgorithm.ECDSA_SHA_256;
 };

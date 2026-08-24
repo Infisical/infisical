@@ -20,6 +20,7 @@ import {
 import { getDefaultSigningAlgorithm } from "@app/helpers/kms";
 import { useTimedReset } from "@app/hooks";
 import { SigningAlgorithm, TCmek, useCmekSign } from "@app/hooks/api/cmeks";
+import { compatibleSigningAlgorithmsForKeyAlgorithm } from "./utils";
 
 const formSchema = z.object({
   data: z.string(),
@@ -72,12 +73,7 @@ const SignForm = ({ cmek }: FormProps) => {
 
     setCopySignature("Copied to Clipboard");
   };
-
-  const allowedSigningAlgorithms = Object.values(SigningAlgorithm).filter((a) => {
-    if (cmek?.algorithm?.startsWith("ML_DSA")) return (a as string) === (cmek.algorithm as string);
-    if (cmek?.algorithm?.startsWith("RSA")) return a.toLowerCase().startsWith("rsa");
-    return a.toLowerCase().startsWith("ecdsa");
-  });
+  const allowedSigningAlgorithms = compatibleSigningAlgorithmsForKeyAlgorithm(cmek?.algorithm);
 
   return (
     <form onSubmit={handleSubmit(handleSignData)}>

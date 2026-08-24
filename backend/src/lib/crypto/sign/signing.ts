@@ -9,6 +9,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { cleanTemporaryDirectory, createTemporaryDirectory, writeToTemporaryFile } from "@app/lib/files";
 import { logger } from "@app/lib/logger";
 
+import { getOpenSSLExtBinPath, isOpenSSLExtAvailable } from "../ed25519/openssl-ext";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm, TAsymmetricSignVerifyFns } from "./types";
 
 export const isPqcKeyAlgorithm = (algo: string): boolean => algo.startsWith("ML_DSA");
@@ -28,6 +29,7 @@ enum SupportedHashAlgorithm {
 }
 
 const COMMAND_TIMEOUT = 15_000;
+const OPENSSL_EXT_BIN_PATH = getOpenSSLExtBinPath();
 
 const SHA256_DIGEST_LENGTH = 32;
 const SHA384_DIGEST_LENGTH = 48;
@@ -84,13 +86,20 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
           hashAlgorithm: SupportedHashAlgorithm.SHA256,
           padding: crypto.nativeCrypto.constants.RSA_PKCS1_PADDING
         };
-
       // ECDSA
       case SigningAlgorithm.ECDSA_SHA_256:
         return { hashAlgorithm: SupportedHashAlgorithm.SHA256 };
       case SigningAlgorithm.ECDSA_SHA_384:
         return { hashAlgorithm: SupportedHashAlgorithm.SHA384 };
       case SigningAlgorithm.ECDSA_SHA_512:
+        return { hashAlgorithm: SupportedHashAlgorithm.SHA512 };
+
+      case SigningAlgorithm.ED25519_SHA_512:
+        // no-op , algorithm defaults to sha512
+        return { hashAlgorithm: SupportedHashAlgorithm.SHA512 };
+
+      case SigningAlgorithm.ED25519_PH_SHA_512:
+        // no-op , algorithm defaults to sha512
         return { hashAlgorithm: SupportedHashAlgorithm.SHA512 };
 
       default:
@@ -114,20 +123,14 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
 
   const $validateAlgorithmWithKeyType = (signingAlgorithm: SigningAlgorithm) => {
     const isRsaKey = algorithm.startsWith("RSA");
-    const isEccKey = algorithm.startsWith("ECC");
+    const isEccKey = algorithm.startsWith("ECC_NIST_P");
     const isPqcKey = isPqcKeyAlgorithm(algorithm);
+    const isED25519Key = algorithm === AsymmetricKeyAlgorithm.ECC_NIST_EDWARDS25519;
 
     const isRsaAlgorithm = signingAlgorithm.startsWith("RSASSA");
     const isEccAlgorithm = signingAlgorithm.startsWith("ECDSA");
     const isPqcAlgorithm = isPqcKeyAlgorithm(signingAlgorithm);
-
-    if (isRsaKey && !isRsaAlgorithm) {
-      throw new BadRequestError({ message: `KMS RSA key cannot be used with ${signingAlgorithm}` });
-    }
-
-    if (isEccKey && !isEccAlgorithm) {
-      throw new BadRequestError({ message: `KMS ECC key cannot be used with ${signingAlgorithm}` });
-    }
+    const isED25519Algorithm = signingAlgorithm.startsWith("ED25519");
 
     if (isPqcKey) {
       if (!isPqcAlgorithm || (signingAlgorithm as string) !== (algorithm as string)) {
@@ -135,6 +138,74 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
           message: `KMS ${algorithm} key can only be used with ${algorithm} signing algorithm`
         });
       }
+    }
+
+    if (!((isED25519Key && isED25519Algorithm) || (isRsaKey && isRsaAlgorithm) || (isEccKey && isEccAlgorithm))) {
+      throw new BadRequestError({ message: `KMS ${algorithm} key cannot be used with ${signingAlgorithm}` });
+    }
+  };
+
+  const $signED25519Digest = async (
+    digest: Buffer,
+    privateKey: Buffer,
+    _: SupportedHashAlgorithm,
+    signingAlgorithm: SigningAlgorithm
+  ) => {
+    if (!isOpenSSLExtAvailable()) {
+      throw new BadRequestError({
+        message: "ED25519_PH_SHA_512 is unavailable because the OpenSSL extension is not installed or unsupported"
+      });
+    }
+    const tempDir = await createTemporaryDirectory("ed25519-sign");
+    const digestPath = path.join(tempDir, "digest.bin");
+    const keyPath = path.join(tempDir, "key.pem");
+    const sigPath = path.join(tempDir, "signature.bin");
+
+    try {
+      if (digest.length !== SHA512_DIGEST_LENGTH) {
+        throw new BadRequestError({
+          message: `${signingAlgorithm} requires a SHA-512 digest`
+        });
+      }
+
+      await writeToTemporaryFile(digestPath, digest);
+      await writeToTemporaryFile(keyPath, privateKey);
+
+      const { stderr } = await execFileAsync(
+        OPENSSL_EXT_BIN_PATH,
+        ["-sign", "-inkey", keyPath, "-in", digestPath, "-out", sigPath, "-pkeyopt", "digest:Ed25519ph"],
+        {
+          maxBuffer: 10 * 1024 * 1024,
+          timeout: COMMAND_TIMEOUT
+        }
+      );
+
+      if (stderr) {
+        logger.error(stderr, "KMS: Failed to sign Ed25519 digest");
+        throw new BadRequestError({
+          message: "Failed to sign Ed25519 digest due to signing error"
+        });
+      }
+
+      const signature = await fs.readFile(sigPath);
+
+      if (signature.length === 0) {
+        throw new BadRequestError({
+          message: "No signature was created. Ensure that the input is a SHA-512 digest."
+        });
+      }
+
+      return signature;
+    } catch (err) {
+      if (err instanceof BadRequestError) {
+        throw err;
+      }
+      logger.error(err, "KMS: Failed to sign Ed25519ph digest");
+      throw new BadRequestError({
+        message: `Failed to sign Ed25519ph digest with ${signingAlgorithm} due to signing error. Ensure that your digest is hashed with SHA-512.`
+      });
+    } finally {
+      await cleanTemporaryDirectory(tempDir);
     }
   };
 
@@ -261,6 +332,62 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     }
   };
 
+  const $verifyED25519Digest = async (
+    digest: Buffer,
+    signature: Buffer,
+    publicKey: Buffer,
+    hashAlgorithm: SupportedHashAlgorithm
+  ): Promise<boolean> => {
+    if (hashAlgorithm !== SupportedHashAlgorithm.SHA512 || digest.length !== SHA512_DIGEST_LENGTH) {
+      throw new BadRequestError({ message: "ED25519_PH_SHA_512 requires a SHA-512 digest" });
+    }
+
+    if (!isOpenSSLExtAvailable()) {
+      throw new BadRequestError({
+        message: "ED25519_PH_SHA_512 is unavailable because the OpenSSL extension is not installed or unsupported"
+      });
+    }
+
+    const tempDir = await createTemporaryDirectory("ed25519-signature-verification");
+    const publicKeyPath = path.join(tempDir, "public-key.der");
+    const signaturePath = path.join(tempDir, "signature.bin");
+    const digestPath = path.join(tempDir, "digest.bin");
+
+    try {
+      await Promise.all([
+        writeToTemporaryFile(publicKeyPath, publicKey),
+        writeToTemporaryFile(signaturePath, signature),
+        writeToTemporaryFile(digestPath, digest)
+      ]);
+
+      await execFileAsync(
+        OPENSSL_EXT_BIN_PATH,
+        [
+          "-verify",
+          "-inkey",
+          publicKeyPath,
+          "-in",
+          digestPath,
+          "-sigfile",
+          signaturePath,
+          "-pkeyopt",
+          "digest:Ed25519ph"
+        ],
+        { maxBuffer: 10 * 1024 * 1024, timeout: COMMAND_TIMEOUT }
+      );
+
+      return true;
+    } catch (error) {
+      const err = error as { stderr?: string };
+      if (!err.stderr?.toLowerCase().includes("signature verification failure")) {
+        logger.error(error, "KMS: Failed to verify Ed25519ph signature");
+      }
+      return false;
+    } finally {
+      await cleanTemporaryDirectory(tempDir);
+    }
+  };
+
   const $verifyEccDigest = async (
     digest: Buffer,
     signature: Buffer,
@@ -371,7 +498,8 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     [AsymmetricKeyAlgorithm.ECC_NIST_P256]: $verifyEccDigest,
     [AsymmetricKeyAlgorithm.ECC_NIST_P384]: $verifyEccDigest,
     [AsymmetricKeyAlgorithm.ECC_NIST_P521]: $verifyEccDigest,
-    [AsymmetricKeyAlgorithm.RSA_4096]: $verifyRsaDigest
+    [AsymmetricKeyAlgorithm.RSA_4096]: $verifyRsaDigest,
+    [AsymmetricKeyAlgorithm.ECC_NIST_EDWARDS25519]: $verifyED25519Digest
   };
 
   const signDigestFunctionsMap: Partial<
@@ -388,7 +516,8 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     [AsymmetricKeyAlgorithm.ECC_NIST_P256]: $signEccDigest,
     [AsymmetricKeyAlgorithm.ECC_NIST_P384]: $signEccDigest,
     [AsymmetricKeyAlgorithm.ECC_NIST_P521]: $signEccDigest,
-    [AsymmetricKeyAlgorithm.RSA_4096]: $signRsaDigest
+    [AsymmetricKeyAlgorithm.RSA_4096]: $signRsaDigest,
+    [AsymmetricKeyAlgorithm.ECC_NIST_EDWARDS25519]: $signED25519Digest
   };
 
   const sign = async (
@@ -408,6 +537,14 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     }
 
     const { hashAlgorithm, padding, saltLength } = $getSigningParams(signingAlgorithm);
+
+    if (signingAlgorithm === SigningAlgorithm.ED25519_PH_SHA_512) {
+      if (!isDigest) {
+        throw new BadRequestError({
+          message: `${signingAlgorithm} requires digested input`
+        });
+      }
+    }
 
     if (isDigest) {
       if (signingAlgorithm.startsWith("RSASSA_PSS")) {
@@ -454,6 +591,10 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
         dsaEncoding: "der"
       });
     }
+    if (signingAlgorithm === SigningAlgorithm.ED25519_SHA_512) {
+      return crypto.nativeCrypto.sign(null, data, privateKeyObject);
+    }
+
     throw new BadRequestError({
       message: `Signing algorithm ${signingAlgorithm} not implemented`
     });
@@ -466,16 +607,23 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     signingAlgorithm: SigningAlgorithm,
     isDigest: boolean
   ): Promise<boolean> => {
-    if (isPqcKeyAlgorithm(algorithm)) {
-      $validateAlgorithmWithKeyType(signingAlgorithm);
-      if (isDigest) {
-        throw new BadRequestError({ message: "ML-DSA does not support digested input" });
-      }
-      return opensslVerify(publicKey, signature, data);
-    }
-
     try {
       $validateAlgorithmWithKeyType(signingAlgorithm);
+
+      if (isPqcKeyAlgorithm(algorithm)) {
+        if (isDigest) {
+          throw new BadRequestError({ message: "ML-DSA does not support digested input" });
+        }
+        return await opensslVerify(publicKey, signature, data);
+      }
+
+      if (signingAlgorithm === SigningAlgorithm.ED25519_PH_SHA_512) {
+        if (!isDigest) {
+          throw new BadRequestError({
+            message: `${signingAlgorithm} requires digested input`
+          });
+        }
+      }
 
       const { hashAlgorithm, padding, saltLength } = $getSigningParams(signingAlgorithm);
 
@@ -531,6 +679,10 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
           signature
         );
       }
+      if (signingAlgorithm === SigningAlgorithm.ED25519_SHA_512) {
+        return crypto.nativeCrypto.verify(null, data, publicKeyObject, signature);
+      }
+
       throw new BadRequestError({
         message: `Verification for algorithm ${signingAlgorithm} not implemented`
       });
@@ -553,42 +705,29 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
     }
 
     const { privateKey } = await new Promise<{ privateKey: string }>((resolve, reject) => {
+      const keyEncoding = {
+        publicKeyEncoding: { type: "spki" as const, format: "pem" as const },
+        privateKeyEncoding: { type: "pkcs8" as const, format: "pem" as const }
+      };
+      const handleKeyPair = (err: Error | null, _: string, privateKeyPem: string) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ privateKey: privateKeyPem });
+        }
+      };
+
       if (algorithm.startsWith("RSA")) {
         crypto.nativeCrypto.generateKeyPair(
           "rsa",
-          {
-            modulusLength: Number(algorithm.split("_")[1]),
-            publicKeyEncoding: { type: "spki", format: "pem" },
-            privateKeyEncoding: { type: "pkcs8", format: "pem" }
-          },
-          (err, _, pk) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve({ privateKey: pk });
-            }
-          }
+          { ...keyEncoding, modulusLength: Number(algorithm.split("_")[1]) },
+          handleKeyPair
         );
+      } else if (algorithm === AsymmetricKeyAlgorithm.ECC_NIST_EDWARDS25519) {
+        crypto.nativeCrypto.generateKeyPair("ed25519", keyEncoding, handleKeyPair);
       } else {
         const { full: namedCurve } = $getEcCurveName(algorithm);
-
-        crypto.nativeCrypto.generateKeyPair(
-          "ec",
-          {
-            namedCurve,
-            publicKeyEncoding: { type: "spki", format: "pem" },
-            privateKeyEncoding: { type: "pkcs8", format: "pem" }
-          },
-          (err, _, pk) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve({
-                privateKey: pk
-              });
-            }
-          }
-        );
+        crypto.nativeCrypto.generateKeyPair("ec", { ...keyEncoding, namedCurve }, handleKeyPair);
       }
     });
 

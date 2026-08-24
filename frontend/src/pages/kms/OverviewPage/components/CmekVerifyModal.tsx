@@ -22,6 +22,7 @@ import { Badge } from "@app/components/v3";
 import { getDefaultSigningAlgorithm } from "@app/helpers/kms";
 import { SigningAlgorithm, TCmek, useCmekVerify } from "@app/hooks/api/cmeks";
 import { isBase64 } from "@app/lib/fn/base64";
+import { compatibleSigningAlgorithmsForKeyAlgorithm } from "./utils";
 
 const formSchema = z.object({
   data: z.string().min(1, { message: "Data cannot be empty" }),
@@ -91,11 +92,7 @@ const VerifyForm = ({ cmek }: FormProps) => {
   const signatureValid = cmekVerify.data?.signatureValid;
   const signingAlgorithm = cmekVerify.data?.signingAlgorithm;
 
-  const allowedSigningAlgorithms = Object.values(SigningAlgorithm).filter((a) => {
-    if (cmek?.algorithm?.startsWith("ML_DSA")) return (a as string) === (cmek.algorithm as string);
-    if (cmek?.algorithm?.startsWith("RSA")) return a.toLowerCase().startsWith("rsa");
-    return a.toLowerCase().startsWith("ecdsa");
-  });
+  const allowedSigningAlgorithms = compatibleSigningAlgorithmsForKeyAlgorithm(cmek?.algorithm);
 
   return (
     <form onSubmit={handleSubmit(handleVerifyData)}>

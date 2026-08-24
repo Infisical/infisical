@@ -92,6 +92,9 @@ RUN mkdir -p /opt/oracle && \
     ldconfig
 
 WORKDIR /openssl-build
+# TODO: Evaluate upgrading the FIPS OpenSSL/provider to 3.5+ when a validated
+# provider supports Ed25519ph. OpenSSL 3.5+ exposes Ed25519ph in its general
+# provider, but that alone does not make the operation FIPS validated.
 RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
     && echo "a0ce69b8b97ea6a35b96875235aa453b966ba3cba8af2de23657d8b6767d6539  openssl-3.1.2.tar.gz" | sha256sum -c - \
     && tar -xf openssl-3.1.2.tar.gz \
@@ -106,6 +109,7 @@ RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 WORKDIR /tmp/openssl-pqc-build
+COPY src/lib/openssl-ext /tmp/openssl-ext
 RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz \
     && echo "deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736  openssl-3.5.6.tar.gz" | sha256sum -c - \
     && tar -xf openssl-3.5.6.tar.gz \
@@ -113,8 +117,18 @@ RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.6/o
     && ./Configure --prefix=/opt/openssl-pqc --openssldir=/opt/openssl-pqc/ssl no-docs \
     && make -j"$(nproc)" \
     && make install_sw \
+    && ${CC:-cc} -O2 -Wall -Wextra -Werror \
+        -I/opt/openssl-pqc/include \
+        -I/tmp/openssl-ext \
+        /tmp/openssl-ext/main.c \
+        /tmp/openssl-ext/ed25519ph.c \
+        -L/opt/openssl-pqc/lib64 -L/opt/openssl-pqc/lib \
+        -Wl,--enable-new-dtags,-rpath,/opt/openssl-pqc/lib64:/opt/openssl-pqc/lib \
+        -lcrypto \
+        -o /opt/openssl-ext \
+    && test -x /opt/openssl-ext \
     && cd / \
-    && rm -rf /tmp/openssl-pqc-build
+    && rm -rf /tmp/openssl-pqc-build /tmp/openssl-ext
 
 WORKDIR /app
 

@@ -661,6 +661,12 @@ export const kmsServiceFactory = ({
               message: `Key material does not match the declared algorithm. Expected an EC P-256 key.`
             });
           }
+        } else if (algorithm === AsymmetricKeyAlgorithm.ECC_NIST_EDWARDS25519) {
+          if (keyType !== "ed25519") {
+            throw new BadRequestError({
+              message: `Key material does not match the declared algorithm. Expected an EC ed25519 key.`
+            });
+          }
         }
       }
     }

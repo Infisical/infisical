@@ -203,20 +203,32 @@ const getKeyAlgorithmFamily = (key: KeyObject): AsymmetricKeyAlgorithm => {
         });
     }
   }
+  if (keyType === "ed25519") {
+    return AsymmetricKeyAlgorithm.ECC_NIST_EDWARDS25519;
+  }
   throw new BadRequestError({ message: `Unsupported key type: ${keyType}` });
 };
 
 const validateSigningAlgorithmForKey = (signingAlgorithm: SigningAlgorithm, keyAlgorithm: AsymmetricKeyAlgorithm) => {
   const isRsaKey = keyAlgorithm.startsWith("RSA");
+  const isECCKey = keyAlgorithm.startsWith("ECC_NIST_P");
+  const isEd25519Key = keyAlgorithm === AsymmetricKeyAlgorithm.ECC_NIST_EDWARDS25519;
+
   const isRsaAlgorithm = signingAlgorithm.startsWith("RSASSA");
   const isEccAlgorithm = signingAlgorithm.startsWith("ECDSA");
+  const isEd25519Algorithm = signingAlgorithm.startsWith("ED25519");
 
   if (isRsaKey && !isRsaAlgorithm) {
     throw new BadRequestError({
       message: `RSA key cannot be used with signing algorithm ${signingAlgorithm}`
     });
   }
-  if (!isRsaKey && !isEccAlgorithm) {
+  if (isEd25519Key && !isEd25519Algorithm) {
+    throw new BadRequestError({
+      message: `ED25519 key cannot be used with signing algorithm ${signingAlgorithm}`
+    });
+  }
+  if (isECCKey && !isEccAlgorithm) {
     throw new BadRequestError({
       message: `ECC key cannot be used with signing algorithm ${signingAlgorithm}`
     });

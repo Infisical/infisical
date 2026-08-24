@@ -296,6 +296,13 @@ export const cmekServiceFactory = ({
       return { signingAlgorithms: [encryptionAlgorithm as unknown as SigningAlgorithm], projectId: key.projectId };
     }
 
+    if (encryptionAlgorithm === AsymmetricKeyAlgorithm.ECC_NIST_EDWARDS25519) {
+      return {
+        signingAlgorithms: Object.values(SigningAlgorithm).filter((a) => a.toLowerCase().startsWith("ed25519")),
+        projectId: key.projectId
+      };
+    }
+
     const algos = [
       {
         keyAlgorithm: "rsa",

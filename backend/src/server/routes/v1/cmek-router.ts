@@ -900,6 +900,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           metadata: {
             keyId: inputKeyId,
             signingAlgorithm,
+            isDigest,
             signature: result.signature
           }
         }
@@ -959,6 +960,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             keyId,
             signatureValid: result.signatureValid,
             signingAlgorithm,
+            isDigest,
             signature
           }
         }
