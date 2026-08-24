@@ -121,9 +121,9 @@ describe("Org membership routes with machine identity auth", () => {
     expect(row?.isActive).toBe(false);
   });
 
-  // Identity and group org memberships live in the same table as user memberships, so the user
-  // membership routes have to reject them rather than delete them under a user's audit event.
-  test("DELETE refuses an identity's org membership", async () => {
+  // An identity's org membership carries metadata keyed by identityId with a null userId. It exists
+  // here so the PATCH assertion below can prove the route no longer clears every such row in the org.
+  const addIdentityMember = async () => {
     const db = getDb();
     const suffix = crypto.randomUUID().slice(0, 8);
     const [identity] = await db(TableName.Identity)
@@ -136,19 +136,54 @@ describe("Org membership routes with machine identity auth", () => {
         scope: AccessScope.Organization
       })
       .returning("*");
+    const [metadata] = await db(TableName.IdentityMetadata)
+      .insert({ identityId: identity.id, orgId: seedData1.organization.id, key: "team", value: "platform" })
+      .returning("*");
+
+    const cleanup = async () => {
+      await db(TableName.IdentityMetadata).where({ identityId: identity.id }).del();
+      await db(TableName.Membership).where({ id: membership.id }).del();
+      await db(TableName.Identity).where({ id: identity.id }).del();
+    };
+
+    return { membershipId: membership.id, metadataId: metadata.id, cleanup };
+  };
+
+  // Identity and group org memberships live in the same table as user memberships, so the user
+  // membership routes have to reject them rather than act on them under a user's audit event.
+  test("DELETE refuses an identity's org membership", async () => {
+    const { membershipId, cleanup } = await addIdentityMember();
 
     try {
       const res = await testServer.inject({
         method: "DELETE",
-        url: `/api/v2/organizations/${seedData1.organization.id}/memberships/${membership.id}`,
+        url: `/api/v2/organizations/${seedData1.organization.id}/memberships/${membershipId}`,
         headers: { authorization: `Bearer ${identityToken}` }
       });
 
       expect(res.statusCode).toBe(404);
-      await expect(membershipExists(membership.id)).resolves.toBe(true);
+      await expect(membershipExists(membershipId)).resolves.toBe(true);
     } finally {
-      await db(TableName.Membership).where({ id: membership.id }).del();
-      await db(TableName.Identity).where({ id: identity.id }).del();
+      await cleanup();
+    }
+  });
+
+  test("PATCH refuses an identity's org membership without clearing identity metadata", async () => {
+    const { membershipId, metadataId, cleanup } = await addIdentityMember();
+
+    try {
+      const res = await testServer.inject({
+        method: "PATCH",
+        url: `/api/v2/organizations/${seedData1.organization.id}/memberships/${membershipId}`,
+        headers: { authorization: `Bearer ${identityToken}` },
+        body: { metadata: [{ key: "team", value: "overwritten" }] }
+      });
+
+      expect(res.statusCode).toBe(404);
+      const metadata = await getDb()(TableName.IdentityMetadata).where({ id: metadataId }).first();
+      expect(metadata?.value).toBe("platform");
+    } finally {
+      await cleanup();
     }
   });
 

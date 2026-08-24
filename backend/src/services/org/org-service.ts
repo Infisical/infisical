@@ -863,8 +863,8 @@ export const orgServiceFactory = ({
       scope: AccessScope.Organization,
       scopeOrgId: actorOrgId
     });
-    if (!foundMembership)
-      throw new NotFoundError({ message: `Organization membership with ID ${membershipId} not found` });
+    if (!foundMembership?.actorUserId)
+      throw new NotFoundError({ message: `Organization membership with ID '${membershipId}' not found` });
     if (foundMembership.scopeOrgId !== orgId)
       throw new UnauthorizedError({ message: "Updated org member doesn't belong to the organization" });
     if (actor === ActorType.USER && foundMembership.actorUserId === actorId)
