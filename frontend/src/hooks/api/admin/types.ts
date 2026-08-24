@@ -93,9 +93,7 @@ export type TServerConfig = {
   // Super admin-only fields (omitted for non-super-admin callers)
   instanceId?: string;
   createdAt?: string;
-  trustSamlEmails?: boolean;
   trustLdapEmails?: boolean;
-  trustOidcEmails?: boolean;
   onboardingCompleted?: boolean;
   isSecretScanningDisabled?: boolean;
   kubernetesAutoFetchServiceAccountToken?: boolean;
