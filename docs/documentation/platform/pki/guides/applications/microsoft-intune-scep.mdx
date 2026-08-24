@@ -1,10 +1,10 @@
 ---
-title: "Issue certificates to Intune-managed devices"
+title: "Microsoft Intune with SCEP"
 sidebarTitle: "Enroll devices with Microsoft Intune"
 description: "Issue certificates to Microsoft Intune-managed devices over SCEP, with Intune validating every request before Infisical signs it."
 ---
 
-[Microsoft Intune](https://learn.microsoft.com/en-us/mem/intune/) decides which of your managed devices should hold a certificate, but it never issues one. It needs a certificate authority behind it. Microsoft's own route is to stand up a Windows Server, join it to a domain, and publish it to the internet. Intune also supports third-party certificate authorities, and this guide uses Infisical as one.
+This guide shows you how to issue certificates to devices managed by [Microsoft Intune](https://learn.microsoft.com/en-us/mem/intune/) using Infisical's [SCEP enrollment](/docs/documentation/platform/pki/applications/enrollment-methods/scep). Intune delivers a certificate profile to each managed device, and Infisical validates every request with Intune before issuing a certificate.
 
 By the end, your Intune-managed devices will hold certificates from a CA you own, ready to point at Wi-Fi, VPN, or RADIUS authentication.
 
@@ -81,6 +81,8 @@ A SCEP request carries no validity period or [extended key usages](/documentatio
 | --- | --- |
 | **Time to Live (TTL) in Days** | Set the certificate lifetime you want. If you leave this field unset, the profile issues 90-day certificates |
 | **Extended Key Usages** | Add **Client Authentication** to allow the certificate to authenticate the device to Wi-Fi, VPN, or RADIUS |
+
+On the [certificate policy](/documentation/platform/pki/settings/policies) behind the profile, enable **Set maximum validity** and set **Duration** to the same lifetime as the profile's TTL. The profile sets how long certificates remain valid, while the policy prevents it from issuing a certificate with a longer lifetime.
 
 ## Step 2: Connect Infisical to Intune
 
@@ -292,23 +294,6 @@ Sync a target device, or wait for its next check-in, then confirm the certificat
 - In Infisical, open your application and confirm the same certificates appear on the **Certificate Inventory** tab with their expiry dates.
 
 ![Certificates report on the SCEP profile listing issued certificates](/images/platform/pki/integrations/microsoft-intune/intune-device-certificate.png)
-
-## Step 6: Tighten the certificate policy
-
-After you verify enrollment, restrict the Infisical [certificate policy](/documentation/platform/pki/settings/policies) to the values configured in your Intune SCEP profile. These restrictions prevent later changes or misconfigurations in Intune from causing Infisical to issue certificates with unexpected identities, usages, or lifetimes.
-
-Open the policy behind your certificate profile and configure these sections:
-
-| Section | Configure |
-| --- | --- |
-| **Restrict subject attributes** | Add a **Common Name** rule set to **Require**, with a pattern matching your device naming. Use `*` to accept any value while still requiring the attribute |
-| **Restrict subject alternative names** | Enable it and add nothing, if your SCEP profile leaves the subject alternative name empty |
-| **Restrict extended key usages** | Allow only the usages you set on the profile in [Step 1](#step-1-prepare-the-certificate-profile) |
-| **Set maximum validity** | Set the **Duration** to the certificate lifetime you settled on |
-
-<Warning>
-  We recommend changing one section at a time and re-enrolling a test device after each. A policy that's too narrow fails only after Intune has already validated the challenge, so Intune records a failed enrollment rather than telling you which attribute it objected to.
-</Warning>
 
 <Check>
   Your devices now hold certificates from a CA you own, and the **Certificate Inventory** tab in your Infisical application lists every certificate issued to your fleet.
