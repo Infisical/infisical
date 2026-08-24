@@ -19,7 +19,8 @@ export const useCreateSecretApprovalPolicy = () => {
       secretPath,
       name,
       enforcementLevel,
-      allowedSelfApprovals
+      allowedSelfApprovals,
+      bypassForMachineIdentities
     }) => {
       const { data } = await apiRequest.post("/api/v2/secret-approvals", {
         environments,
@@ -30,7 +31,8 @@ export const useCreateSecretApprovalPolicy = () => {
         secretPath,
         name,
         enforcementLevel,
-        allowedSelfApprovals
+        allowedSelfApprovals,
+        bypassForMachineIdentities
       });
       return data;
     },
@@ -64,6 +66,7 @@ export const useUpdateSecretApprovalPolicy = () => {
       name,
       enforcementLevel,
       allowedSelfApprovals,
+      bypassForMachineIdentities,
       environments
     }) => {
       const { data } = await apiRequest.patch(`/api/v2/secret-approvals/${id}`, {
@@ -74,6 +77,7 @@ export const useUpdateSecretApprovalPolicy = () => {
         name,
         enforcementLevel,
         allowedSelfApprovals,
+        bypassForMachineIdentities,
         environments
       });
       return data;

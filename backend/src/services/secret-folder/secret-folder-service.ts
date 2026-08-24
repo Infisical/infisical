@@ -10,6 +10,7 @@ import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-
 import { validateSecretMovePermissions } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
@@ -643,9 +644,48 @@ export const secretFolderServiceFactory = ({
     folderTree: Awaited<ReturnType<typeof $getEnvFolderTree>>;
     tx?: Knex;
   }) => {
-    const { folderPaths, childrenMap } = folderTree;
+    let targetFolder = await folderDAL
+      .findOne({
+        envId: env.id,
+        name: idOrName,
+        parentId,
+        isReserved: false
+      })
+      .catch(() => null);
 
-    const targetFolderWithPath = folderPaths.find((f) => f.id === folderId);
+    if (!targetFolder && uuidValidate(idOrName)) {
+      targetFolder = await folderDAL
+        .findOne({
+          envId: env.id,
+          id: idOrName,
+          parentId,
+          isReserved: false
+        })
+        .catch(() => null);
+    }
+
+    if (!targetFolder) {
+      throw new NotFoundError({ message: `Target folder not found` });
+    }
+
+    // get environment root folder (as it's needed to get all folders under it)
+    const rootFolder = await folderDAL.findBySecretPath(projectId, env.slug, "/");
+    if (!rootFolder) throw new NotFoundError({ message: `Root folder not found` });
+    // get all folders under environment root folder
+    const folderPaths = await folderDAL.findByEnvsDeep({ parentIds: [rootFolder.id] });
+
+    // create a map of folders by parent id
+    const normalizeKey = (key: string | null | undefined): string => key ?? "root";
+    const folderMap = new Map<string, (TSecretFolders & { path: string; depth: number; environment: string })[]>();
+    for (const folder of folderPaths) {
+      if (!folderMap.has(normalizeKey(folder.parentId))) {
+        folderMap.set(normalizeKey(folder.parentId), []);
+      }
+      folderMap.get(normalizeKey(folder.parentId))?.push(folder);
+    }
+
+    // Find the target folder in the folderPaths to get its full details
+    const targetFolderWithPath = folderPaths.find((f) => f.id === targetFolder!.id);
     if (!targetFolderWithPath) {
       throw new NotFoundError({ message: `Target folder path not found` });
     }
@@ -676,9 +716,14 @@ export const secretFolderServiceFactory = ({
       tx
     );
 
-    for (const folderPolicyPath of pathsWithSecrets) {
-      const policy = policyByPath.get(folderPolicyPath.path);
-      if (policy) {
+      const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+        projectId,
+        env.slug,
+        folderPolicyPath.path
+      );
+
+      // if there is an enforced policy and there are secrets under the given folder, throw error
+      if (shouldApplyPolicy(policy, actor)) {
         throw new BadRequestError({
           message: `You cannot delete the selected folder because it contains one or more secrets that are protected by the change policy "${policy.name}" at folder path "${folderPolicyPath.path}". Please remove the secrets at folder path "${folderPolicyPath.path}" and try again.`,
           name: "DeleteFolderProtectedByPolicy"

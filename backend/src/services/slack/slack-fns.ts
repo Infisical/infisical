@@ -53,7 +53,10 @@ const buildSlackPayload = (notification: TNotification) => {
   switch (notification.type) {
     case TriggerFeature.SECRET_APPROVAL: {
       const { payload } = notification;
-      const messageBody = `A secret approval request has been opened by ${payload.userEmail}.
+      const author = payload.machineIdentityId
+        ? `machine identity ${payload.machineIdentityId}`
+        : (payload.userEmail ?? "unknown");
+      const messageBody = `A secret approval request has been opened by ${author}.
 *Project*: ${payload.projectName}
 *Environment*: ${payload.environment}
 *Secret path*: ${payload.secretPath || "/"}

@@ -123,11 +123,13 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
     clearErrors();
     const missingConnection = getMissingRequiredFields(
       metadata.connectionFields,
-      values.connectionDetails
+      "connectionDetails",
+      values
     );
     const missingCredentials = getMissingRequiredFields(
       metadata.credentialFields,
-      values.credentials
+      "credentials",
+      values
     );
     if (missingConnection.length || missingCredentials.length) {
       missingConnection.forEach((key) =>
@@ -302,7 +304,7 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
             <CardDescription>Authentication used to connect to this account.</CardDescription>
           </CardHeader>
           <CardContent>
-            <CredentialsForm control={control} />
+            <CredentialsForm control={control} setValue={setValue} />
           </CardContent>
         </Card>
       )}

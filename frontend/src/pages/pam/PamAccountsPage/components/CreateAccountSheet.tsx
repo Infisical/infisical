@@ -193,11 +193,13 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
     clearErrors();
     const missingConnection = getMissingRequiredFields(
       selectedMetadata.connectionFields,
-      values.connectionDetails
+      "connectionDetails",
+      values
     );
     const missingCredentials = getMissingRequiredFields(
       selectedMetadata.credentialFields,
-      values.credentials
+      "credentials",
+      values
     );
     const gatewayMissing = needsGateway && !gateway.gatewayId && !gateway.gatewayPoolId;
     setGatewayError(gatewayMissing);
@@ -548,7 +550,7 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
                   <div className="mt-2">
                     <h3 className="mb-3 text-sm font-medium text-foreground">Credentials</h3>
                     <div className="flex flex-col gap-4">
-                      <CredentialsForm control={control} />
+                      <CredentialsForm control={control} setValue={setValue} />
                       <SshCaSetupCallout
                         accountType={watch("accountType")}
                         authMethod={watch("credentials")?.authMethod as string | undefined}
