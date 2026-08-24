@@ -4,7 +4,7 @@ import { Knex } from "knex";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
-import { ActionProjectType, TProjectEnvironments, TSecretFoldersInsert } from "@app/db/schemas";
+import { ActionProjectType, TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { validateSecretMovePermissions } from "@app/ee/services/permission/permission-fns";
@@ -25,7 +25,6 @@ import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import {
   assertFolderMoveAllowed,
-  buildChildrenMap,
   buildFolderPath,
   canActorReadBlock,
   checkFolderHasRbacPolicies,
@@ -609,40 +608,18 @@ export const secretFolderServiceFactory = ({
     };
   };
 
-  const $findFolderByIdOrName = async (
-    { envId, parentId, idOrName }: { envId: string; parentId: string; idOrName: string },
-    tx?: Knex
-  ) => {
-    const folderByName = await folderDAL
-      .findOne({ envId, name: idOrName, parentId, isReserved: false }, tx)
-      .catch(() => null);
-    if (folderByName || !uuidValidate(idOrName)) return folderByName;
-
-    return folderDAL.findOne({ envId, id: idOrName, parentId, isReserved: false }, tx).catch(() => null);
-  };
-
-  // the whole environment tree is loaded because change policies apply by absolute path,
-  // so every descendant of the deleted folder has to be resolved to one
-  const $getEnvFolderTree = async (projectId: string, env: TProjectEnvironments, tx?: Knex) => {
-    const rootFolder = await folderDAL.findBySecretPath(projectId, env.slug, "/", tx);
-    if (!rootFolder) throw new NotFoundError({ message: `Root folder not found` });
-
-    const folderPaths = await folderDAL.findByEnvsDeep({ parentIds: [rootFolder.id] }, tx);
-    return { folderPaths, childrenMap: buildChildrenMap(folderPaths) };
-  };
-
-  const $validateFolderDeletePolicy = async ({
+  const $checkFolderPolicy = async ({
     projectId,
     env,
-    folderId,
-    folderTree,
-    tx
+    parentId,
+    idOrName,
+    actor
   }: {
     projectId: string;
     env: TProjectEnvironments;
-    folderId: string;
-    folderTree: Awaited<ReturnType<typeof $getEnvFolderTree>>;
-    tx?: Knex;
+    parentId: string;
+    idOrName: string;
+    actor: ActorType;
   }) => {
     let targetFolder = await folderDAL
       .findOne({
@@ -690,31 +667,32 @@ export const secretFolderServiceFactory = ({
       throw new NotFoundError({ message: `Target folder path not found` });
     }
 
-    const collectDescendants = (id: string): typeof folderPaths => {
-      const children = childrenMap[id] || [];
+    // Recursively collect all folders under the target folder (descendants only)
+    const collectDescendants = (
+      id: string
+    ): (TSecretFolders & { path: string; depth: number; environment: string })[] => {
+      const children = folderMap.get(normalizeKey(id)) || [];
       return [...children, ...children.flatMap((child) => collectDescendants(child.id))];
     };
 
-    const folderPolicyPaths = [targetFolderWithPath, ...collectDescendants(folderId)].map((folder) => ({
+    const targetFolderDescendants = collectDescendants(targetFolder.id);
+
+    // Include the target folder itself plus all its descendants
+    const foldersToCheck = [targetFolderWithPath, ...targetFolderDescendants];
+
+    const folderPolicyPaths = foldersToCheck.map((folder) => ({
       path: folder.path,
       id: folder.id
     }));
 
     // get secrets under the given folders
     const secrets = await secretV2BridgeDAL.findByFolderIds({
-      folderIds: folderPolicyPaths.map((p) => p.id),
-      tx
+      folderIds: folderPolicyPaths.map((p) => p.id)
     });
-    const folderIdsWithSecrets = new Set(secrets.map((s) => s.folderId));
-    const pathsWithSecrets = folderPolicyPaths.filter((p) => folderIdsWithSecrets.has(p.id));
-    if (!pathsWithSecrets.length) return;
 
-    const policyByPath = await secretApprovalPolicyService.getSecretApprovalPolicyByPaths(
-      projectId,
-      env.slug,
-      pathsWithSecrets.map((p) => p.path),
-      tx
-    );
+    for await (const folderPolicyPath of folderPolicyPaths) {
+      // eslint-disable-next-line no-continue
+      if (!secrets.some((s) => s.folderId === folderPolicyPath.id)) continue;
 
       const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
         projectId,
@@ -767,20 +745,30 @@ export const secretFolderServiceFactory = ({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
         });
 
-      const folderToDelete = await $findFolderByIdOrName({ envId: env.id, parentId: parentFolder.id, idOrName }, tx);
+      await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor });
+
+      let folderToDelete = await folderDAL
+        .findOne({
+          envId: env.id,
+          name: idOrName,
+          parentId: parentFolder.id,
+          isReserved: false
+        })
+        .catch(() => null);
+
+      if (!folderToDelete && uuidValidate(idOrName)) {
+        folderToDelete = await folderDAL
+          .findOne({
+            envId: env.id,
+            id: idOrName,
+            parentId: parentFolder.id,
+            isReserved: false
+          })
+          .catch(() => null);
+      }
 
       if (!folderToDelete) {
         throw new NotFoundError({ message: `Folder with ID '${idOrName}' not found` });
-      }
-
-      if (actor !== ActorType.IDENTITY) {
-        await $validateFolderDeletePolicy({
-          projectId,
-          env,
-          folderId: folderToDelete.id,
-          folderTree: await $getEnvFolderTree(projectId, env, tx),
-          tx
-        });
       }
 
       // Check if folder contains resources (secrets, dynamic secrets, subfolders)
@@ -1411,7 +1399,6 @@ export const secretFolderServiceFactory = ({
             message: `Environment with slug '${environment}' not found`
           });
         }
-        const folderTree = actor !== ActorType.IDENTITY ? await $getEnvFolderTree(projectId, env, tx) : undefined;
 
         for (const folderSpec of envFolders) {
           const { path: secretPath, idOrName } = folderSpec;
@@ -1423,24 +1410,31 @@ export const secretFolderServiceFactory = ({
             });
           }
 
-          const folderToDelete = await $findFolderByIdOrName(
-            { envId: env.id, parentId: parentFolder.id, idOrName },
-            tx
-          );
+          await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor });
+
+          let folderToDelete = await folderDAL
+            .findOne({
+              envId: env.id,
+              name: idOrName,
+              parentId: parentFolder.id,
+              isReserved: false
+            })
+            .catch(() => null);
+
+          if (!folderToDelete && uuidValidate(idOrName)) {
+            folderToDelete = await folderDAL
+              .findOne({
+                envId: env.id,
+                id: idOrName,
+                parentId: parentFolder.id,
+                isReserved: false
+              })
+              .catch(() => null);
+          }
 
           if (!folderToDelete) {
             throw new NotFoundError({
               message: `Folder with ID/name '${idOrName}' not found`
-            });
-          }
-
-          if (folderTree) {
-            await $validateFolderDeletePolicy({
-              projectId,
-              env,
-              folderId: folderToDelete.id,
-              folderTree,
-              tx
             });
           }
 
@@ -1571,16 +1565,14 @@ export const secretFolderServiceFactory = ({
     );
     const sourcePolicyBlock = await checkFolderMovePolicyBlock(
       { subtree, projectId, environment: sourceEnvironment, rootFolderPath: sourceFolderPath },
-      folderMoveBlockDeps,
-      tx
+      folderMoveBlockDeps
     );
     const sourceBlock = secretTypeBlock ?? sourcePolicyBlock;
 
     const destinationBlock = destination
       ? await checkFolderMovePolicyBlock(
           { subtree, projectId, environment: destination.environment, rootFolderPath: destination.path },
-          folderMoveBlockDeps,
-          tx
+          folderMoveBlockDeps
         )
       : null;
 
@@ -1605,6 +1597,8 @@ export const secretFolderServiceFactory = ({
   }: TGetFolderMoveEligibilityDTO): Promise<TFolderMoveEligibility> => {
     const folder = await getFolderById({ actor, actorId, actorOrgId, actorAuthMethod, id });
 
+    // resolve the actor's ability so subtree disclosure is gated by per-path read permission. this is
+    // request-memoized, so it reuses the lookup getFolderById already performed (no extra DB read).
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -1620,6 +1614,8 @@ export const secretFolderServiceFactory = ({
     };
 
     const destinationParentPath = destinationPath ?? "/";
+    // a move only requires Create at the destination (the enforced move permission below). folder read is
+    // implied-for-all (folder list/get is not gated by a Read permission), so it is not required here.
     const canActorAccessDestination =
       !!destinationEnvironment &&
       permission.can(
@@ -1823,6 +1819,10 @@ export const secretFolderServiceFactory = ({
         secretIdsByFolderId.set(secret.folderId, list);
       }
 
+      // pre-generate a destination id for every source folder so parent links are known up front. this lets us
+      // insert the folders with correct parentIds in dependency order and lets the
+      // secret move resolve each destination path within this tx. relativePath is relative to the moved folder,
+      // where the folder itself is "/".
       const idBySourceFolderId = new Map<string, string>(subtree.map((f) => [f.id, uuidv4()]));
       const plan = subtree
         .slice()
@@ -1832,13 +1832,13 @@ export const secretFolderServiceFactory = ({
           const sourceAbsPath = toSourceAbsPath(f);
           const destinationAbsPath =
             relativePath === "/" ? destinationFolderRoot : `${destinationFolderRoot}${relativePath}`;
+          // the subtree root re-parents onto the destination parent; every other folder onto its mapped new parent.
           const newParentId =
             f.id === sourceFolder.id
               ? destinationParentFolder.id
               : (idBySourceFolderId.get(f.parentId as string) as string);
           return {
             newFolderId: idBySourceFolderId.get(f.id) as string,
-            sourceFolderId: f.id,
             name: f.name,
             description: f.description,
             depth: f.depth,
@@ -1849,12 +1849,19 @@ export const secretFolderServiceFactory = ({
           };
         });
 
+      // pre-authorize folder create/delete across the entire subtree before any write. a move recreates each
+      // folder at its destination parent and removes it from its source parent, so the actor needs Delete at every
+      // source parent path and Create at every destination parent path. paths are deduped because subtree siblings
+      // share a parent. folder permissions are path-scoped (glob conditions can differ per nested path), so the
+      // root-only check performed before the transaction is not sufficient.
       const checkedSourceParents = new Set<string>();
       const checkedDestinationParents = new Set<string>();
       for (const entry of plan) {
         const sourceParent = path.dirname(entry.sourceAbsPath);
         if (!checkedSourceParents.has(sourceParent)) {
           checkedSourceParents.add(sourceParent);
+          // a move only requires Delete at each source parent path. folder read is implied-for-all (folder
+          // list/get is not gated by a Read permission), so it is not required here.
           ForbiddenError.from(permission).throwUnlessCan(
             ProjectPermissionActions.Delete,
             subject(ProjectPermissionSub.SecretFolders, { environment: sourceEnvironment, secretPath: sourceParent })
@@ -1873,6 +1880,9 @@ export const secretFolderServiceFactory = ({
         }
       }
 
+      // pre-authorize the secret moves for the entire subtree before any write, so an unauthorized move fails
+      // before anything is created or moved. each folder that holds secrets is checked once at its own
+      // source/destination path.
       for (const entry of plan) {
         if (!entry.secretIds.length) {
           // eslint-disable-next-line no-continue
@@ -1932,6 +1942,10 @@ export const secretFolderServiceFactory = ({
         );
       }
 
+      // 7. move every folder's secrets inside this same transaction (root first), so the whole subtree move is
+      // atomic. fnSecretMoveInTransaction performs the move only; its snapshots and syncs are dispatched once, per
+      // affected folder, after commit. moves run sequentially because they share this one connection, and each
+      // destination path resolves from the folders just created above.
       const moveResultsList: TFnSecretMoveResult[] = [];
       for (const entry of plan) {
         if (!entry.secretIds.length) {
