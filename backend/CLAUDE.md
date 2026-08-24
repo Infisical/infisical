@@ -244,10 +244,14 @@ derives the status from it (400; 401 for `invalid_client`, 500 for `server_error
 handler renders `{ error, error_description }`. When extending it:
 - The handler's `try`/`catch` is the endpoint's only exit, and every `return` inside it is **awaited**: a
   bare `return promise` would resolve outside the `catch` and escape in the house envelope.
-- `toOauthTokenError` defaults by **error class**, never message text: `UnauthorizedError` takes the
-  rejected-grant code for that grant (`invalid_grant` on the redirect and refresh grants,
-  `invalid_request` on token exchange, per RFC 8693 §2.2.2), `BadRequestError` takes `invalid_request`,
-  and anything else becomes `server_error`, whose response carries no detail and whose original is logged.
+- `toOauthTokenError` defaults by **error class**, never message text: `UnauthorizedError` and
+  `ForbiddenRequestError` take the rejected-grant code for that grant (`invalid_grant` on the redirect and
+  refresh grants, `invalid_request` on token exchange, per RFC 8693 §2.2.2), `BadRequestError` takes
+  `invalid_request`, and anything else becomes `server_error`, whose response carries no detail and whose
+  original is logged. Both refusal classes are listed because the exchange rejects an unusable subject in
+  two vocabularies: `exchangeSubjectToken`'s own membership checks raise `UnauthorizedError`, while
+  `getOrgPermission` raises `ForbiddenRequestError` for the same kind of refusal. A new way to refuse a
+  subject belongs in one of those two classes, or it lands in `server_error` as an unexplained 500.
 - Throw `OauthTokenError` directly where that default is wrong: client authentication
   (`invalid_client`), a grant the client doesn't hold (`unauthorized_client`), a redirect-URI or PKCE
   mismatch (`invalid_grant`), the unsupported `scope` (`invalid_scope`) and `audience`/`resource`

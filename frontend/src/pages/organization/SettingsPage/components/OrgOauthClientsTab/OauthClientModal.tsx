@@ -106,7 +106,10 @@ const oauthClientFormSchema = z
     flow: z.nativeEnum(OauthClientFlow),
     redirectUris: z.string().trim(),
     requirePkce: z.boolean(),
-    accessTokenTtlValue: z.number().int().min(1, "Value must be at least 1"),
+    accessTokenTtlValue: z
+      .number({ invalid_type_error: "A lifetime value is required" })
+      .int()
+      .min(1, "Value must be at least 1"),
     accessTokenTtlUnit: z.enum(["m", "h", "d", "w"], {
       invalid_type_error: "Please select a valid time unit"
     }),

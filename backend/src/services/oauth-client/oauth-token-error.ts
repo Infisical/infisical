@@ -1,4 +1,4 @@
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { OauthGrantType } from "./oauth-client-types";
 
@@ -76,15 +76,19 @@ const REJECTED_GRANT_CODE_BY_GRANT_TYPE: Record<OauthGrantType, OauthTokenErrorC
 // the message text. Sites where the class default is wrong throw `OauthTokenError` directly and pass
 // through untouched.
 //
-// `UnauthorizedError` here always means a grant we will not act on (a bad authorization code, refresh
-// token or subject token, or a subject we cannot resolve to a usable account), so it takes whichever code
-// that grant owes. Client authentication throws `invalid_client` explicitly instead, because there it is
-// the client that failed rather than the token. Anything else is a bug or an outage, so it becomes a
-// generic `server_error`: its message was written for a different envelope and could carry internals.
+// `UnauthorizedError` and `ForbiddenRequestError` both mean a grant we will not act on (a bad
+// authorization code, refresh token or subject token, or a subject we cannot resolve to a usable
+// account), so they take whichever code that grant owes. Both are needed because the exchange refuses an
+// unusable subject in two vocabularies: its own membership checks raise the first, while
+// `getOrgPermission` raises the second for the same kind of refusal, and mapping only one would answer
+// half of them with an unexplained 500. Client authentication throws `invalid_client` explicitly instead,
+// because there it is the client that failed rather than the token. Anything else is a bug or an outage,
+// so it becomes a generic `server_error`: its message was written for a different envelope and could
+// carry internals.
 export const toOauthTokenError = (error: unknown, grantType?: OauthGrantType): OauthTokenError => {
   if (error instanceof OauthTokenError) return error;
 
-  if (error instanceof UnauthorizedError) {
+  if (error instanceof UnauthorizedError || error instanceof ForbiddenRequestError) {
     const code = grantType ? REJECTED_GRANT_CODE_BY_GRANT_TYPE[grantType] : OauthTokenErrorCode.InvalidGrant;
 
     return new OauthTokenError({ code, message: error.message, error });

@@ -1,4 +1,10 @@
-import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ForbiddenRequestError,
+  NotFoundError,
+  PermissionBoundaryError,
+  UnauthorizedError
+} from "@app/lib/errors";
 
 import { OauthGrantType } from "./oauth-client-types";
 import { OauthTokenError, OauthTokenErrorCode, toErrorDescription, toOauthTokenError } from "./oauth-token-error";
@@ -44,6 +50,34 @@ describe("toOauthTokenError", () => {
     expect(mapped.oauthErrorCode).toBe(OauthTokenErrorCode.InvalidRequest);
     expect(mapped.statusCode).toBe(400);
     expect(mapped.message).toBe("The subject token has expired.");
+  });
+
+  // getOrgPermission refuses a subject with ForbiddenRequestError where the exchange's own membership
+  // checks refuse it with UnauthorizedError. Both are the user being unable to act, not an outage.
+  test("maps a forbidden subject the same way as a rejected one", () => {
+    const forbidden = new ForbiddenRequestError({
+      message: "You are not a member of this organization with ID 8f2c."
+    });
+
+    const onExchange = toOauthTokenError(forbidden, OauthGrantType.TokenExchange);
+    expect(onExchange.oauthErrorCode).toBe(OauthTokenErrorCode.InvalidRequest);
+    expect(onExchange.statusCode).toBe(400);
+    expect(onExchange.message).toBe("You are not a member of this organization with ID 8f2c.");
+
+    expect(toOauthTokenError(forbidden, OauthGrantType.AuthorizationCode).oauthErrorCode).toBe(
+      OauthTokenErrorCode.InvalidGrant
+    );
+  });
+
+  // PermissionBoundaryError extends ForbiddenRequestError, so the one instanceof has to cover it.
+  test("maps a permission boundary failure the same way", () => {
+    const mapped = toOauthTokenError(
+      new PermissionBoundaryError({ message: "Insufficient permissions" }),
+      OauthGrantType.TokenExchange
+    );
+
+    expect(mapped.oauthErrorCode).toBe(OauthTokenErrorCode.InvalidRequest);
+    expect(mapped.statusCode).toBe(400);
   });
 
   test("maps a bad request to invalid_request, keeping its message", () => {
