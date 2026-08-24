@@ -41,18 +41,21 @@ import {
 
 import {
   buildDiscoveryConfiguration,
-  buildUnixDiscoveryConfiguration,
+  buildHostRangeDiscoveryConfiguration,
   CredentialAccountField,
+  CredentialAccountsField,
   DISCOVERY_CONFIG_DEFAULTS,
   DiscoveryConfigFields,
   discoveryConfigFormShape,
+  HOST_RANGE_DISCOVERY_CONFIG_DEFAULTS,
+  HOST_RANGE_SOURCES,
+  HostRangeDiscoveryConfigFields,
+  hostRangeDiscoveryConfigFormShape,
+  isHostRangeDiscoveryType,
   ScheduleField,
-  SshCredentialAccountsField,
   TDiscoveryConfigFields,
-  TUnixDiscoveryConfigFields,
-  UNIX_DISCOVERY_CONFIG_DEFAULTS,
-  UnixDiscoveryConfigFields,
-  unixDiscoveryConfigFormShape
+  THostRangeDiscoveryConfigFields,
+  THostRangeDiscoveryType
 } from "./DiscoveryConfigFields";
 
 type FormProps = {
@@ -214,26 +217,32 @@ const ActiveDirectorySourceForm = ({ onBack, onClose, onDirtyChange }: FormProps
   );
 };
 
-const unixSchema = z.object({
+const hostRangeSchema = z.object({
   name: z.string().min(1, "Name is required").max(64),
   schedule: z.nativeEnum(PamDiscoverySchedule),
-  ...unixDiscoveryConfigFormShape
+  ...hostRangeDiscoveryConfigFormShape
 });
 
-const UnixSourceForm = ({ onBack, onClose, onDirtyChange }: FormProps) => {
+const HostRangeSourceForm = ({
+  discoveryType,
+  onBack,
+  onClose,
+  onDirtyChange
+}: FormProps & { discoveryType: THostRangeDiscoveryType }) => {
   const createSource = useCreatePamDiscoverySource();
   const { gateway, setGateway, gatewayError, setGatewayError } = useGatewaySelection();
+  const source = HOST_RANGE_SOURCES[discoveryType];
 
   const {
     handleSubmit,
     control,
     formState: { isDirty }
-  } = useForm<z.infer<typeof unixSchema>>({
-    resolver: zodResolver(unixSchema),
+  } = useForm<z.infer<typeof hostRangeSchema>>({
+    resolver: zodResolver(hostRangeSchema),
     defaultValues: {
       name: "",
       schedule: PamDiscoverySchedule.Manual,
-      ...UNIX_DISCOVERY_CONFIG_DEFAULTS
+      ...HOST_RANGE_DISCOVERY_CONFIG_DEFAULTS
     }
   });
 
@@ -242,18 +251,18 @@ const UnixSourceForm = ({ onBack, onClose, onDirtyChange }: FormProps) => {
     return () => onDirtyChange(false);
   }, [isDirty, onDirtyChange]);
 
-  const onSubmit = (data: z.infer<typeof unixSchema>) => {
+  const onSubmit = (data: z.infer<typeof hostRangeSchema>) => {
     if (!gateway.gatewayId && !gateway.gatewayPoolId) {
       setGatewayError(true);
       return;
     }
     createSource.mutate(
       {
-        discoveryType: PamDiscoveryType.Unix,
+        discoveryType,
         name: data.name,
         credentialAccountId: data.credentialAccountIds[0],
         schedule: data.schedule,
-        configuration: buildUnixDiscoveryConfiguration(data),
+        configuration: buildHostRangeDiscoveryConfiguration(data),
         ...(gateway.gatewayId ? { gatewayId: gateway.gatewayId } : {}),
         ...(gateway.gatewayPoolId ? { gatewayPoolId: gateway.gatewayPoolId } : {})
       },
@@ -281,8 +290,11 @@ const UnixSourceForm = ({ onBack, onClose, onDirtyChange }: FormProps) => {
         }
       >
         <NameField control={control as unknown as Control<{ name: string }>} />
-        <SshCredentialAccountsField
+        <CredentialAccountsField
           control={control as unknown as Control<{ credentialAccountIds: string[] }>}
+          accountType={source.accountType}
+          placeholder={source.placeholder}
+          warning={source.warning}
         />
         <GatewayField
           value={gateway}
@@ -295,8 +307,8 @@ const UnixSourceForm = ({ onBack, onClose, onDirtyChange }: FormProps) => {
         <ScheduleField
           control={control as unknown as Control<{ schedule: PamDiscoverySchedule }>}
         />
-        <UnixDiscoveryConfigFields
-          control={control as unknown as Control<TUnixDiscoveryConfigFields>}
+        <HostRangeDiscoveryConfigFields
+          control={control as unknown as Control<THostRangeDiscoveryConfigFields>}
         />
       </FormShell>
     </form>
@@ -408,8 +420,9 @@ export const AddDiscoverySourceSheet = ({ isOpen, onOpenChange }: Props) => {
             />
           )}
           {step === 2 &&
-            (selectedType === PamDiscoveryType.Unix ? (
-              <UnixSourceForm
+            (isHostRangeDiscoveryType(selectedType) ? (
+              <HostRangeSourceForm
+                discoveryType={selectedType}
                 onBack={() => setStep(1)}
                 onClose={close}
                 onDirtyChange={setIsFormDirty}

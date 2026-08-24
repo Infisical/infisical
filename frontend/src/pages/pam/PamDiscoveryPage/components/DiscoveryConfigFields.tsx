@@ -20,7 +20,12 @@ import {
   Switch,
   TextArea
 } from "@app/components/v3";
-import { PamAccountType, PamDiscoverySchedule, useListPamAccounts } from "@app/hooks/api/pam";
+import {
+  PamAccountType,
+  PamDiscoverySchedule,
+  PamDiscoveryType,
+  useListPamAccounts
+} from "@app/hooks/api/pam";
 
 export const discoveryConfigFormShape = {
   scanLocalAccounts: z.boolean(),
@@ -161,14 +166,38 @@ export const DiscoveryConfigFields = ({
   );
 };
 
-export const unixDiscoveryConfigFormShape = {
+// Sources that scan a host range with a set of credential accounts
+export const HOST_RANGE_SOURCES = {
+  [PamDiscoveryType.Unix]: {
+    accountType: PamAccountType.SSH,
+    placeholder: "Select SSH accounts",
+    warning:
+      "Password accounts send their password to every host scanned in the range, including hosts you don't control. We recommend a key or certificate account for scanning."
+  },
+  [PamDiscoveryType.Postgres]: {
+    accountType: PamAccountType.Postgres,
+    placeholder: "Select PostgreSQL accounts",
+    warning:
+      "The account password is sent to every host scanned in the range, including hosts you don't control. Only scan ranges you trust."
+  }
+} as const;
+
+export type THostRangeDiscoveryType = keyof typeof HOST_RANGE_SOURCES;
+
+export const isHostRangeDiscoveryType = (
+  type: PamDiscoveryType | null | undefined
+): type is THostRangeDiscoveryType => Boolean(type && type in HOST_RANGE_SOURCES);
+
+export const hostRangeDiscoveryConfigFormShape = {
   cidrRanges: z.string().min(1, "At least one target is required"),
   credentialAccountIds: z.array(z.string()).min(1, "Select at least one account")
 };
 
-export type TUnixDiscoveryConfigFields = z.infer<z.ZodObject<typeof unixDiscoveryConfigFormShape>>;
+export type THostRangeDiscoveryConfigFields = z.infer<
+  z.ZodObject<typeof hostRangeDiscoveryConfigFormShape>
+>;
 
-export const UNIX_DISCOVERY_CONFIG_DEFAULTS: TUnixDiscoveryConfigFields = {
+export const HOST_RANGE_DISCOVERY_CONFIG_DEFAULTS: THostRangeDiscoveryConfigFields = {
   cidrRanges: "",
   credentialAccountIds: []
 };
@@ -179,29 +208,35 @@ const parseCidrRanges = (value: string): string[] =>
     .map((v) => v.trim())
     .filter(Boolean);
 
-export const unixDiscoveryConfigFromSource = (
+export const hostRangeDiscoveryConfigFromSource = (
   config: Record<string, unknown>
-): TUnixDiscoveryConfigFields => ({
+): THostRangeDiscoveryConfigFields => ({
   cidrRanges: Array.isArray(config.cidrRanges) ? (config.cidrRanges as string[]).join("\n") : "",
   credentialAccountIds: Array.isArray(config.credentialAccountIds)
     ? (config.credentialAccountIds as string[])
     : []
 });
 
-export const buildUnixDiscoveryConfiguration = (
-  data: TUnixDiscoveryConfigFields
+export const buildHostRangeDiscoveryConfiguration = (
+  data: THostRangeDiscoveryConfigFields
 ): Record<string, unknown> => ({
   cidrRanges: parseCidrRanges(data.cidrRanges),
   credentialAccountIds: data.credentialAccountIds
 });
 
-export const SshCredentialAccountsField = ({
-  control
+export const CredentialAccountsField = ({
+  control,
+  accountType,
+  placeholder,
+  warning
 }: {
   control: Control<{ credentialAccountIds: string[] }>;
+  accountType: PamAccountType;
+  placeholder: string;
+  warning: string;
 }) => {
   const { data: accounts = [] } = useListPamAccounts();
-  const sshAccounts = accounts.filter((a) => a.accountType === PamAccountType.SSH);
+  const matchingAccounts = accounts.filter((a) => a.accountType === accountType);
 
   return (
     <Controller
@@ -213,14 +248,14 @@ export const SshCredentialAccountsField = ({
           <FieldContent>
             <FilterableSelect
               isMulti
-              value={sshAccounts.filter((a) => field.value?.includes(a.id))}
+              value={matchingAccounts.filter((a) => field.value?.includes(a.id))}
               onChange={(val) =>
-                field.onChange(((val as typeof sshAccounts | null) ?? []).map((a) => a.id))
+                field.onChange(((val as typeof matchingAccounts | null) ?? []).map((a) => a.id))
               }
-              options={sshAccounts}
+              options={matchingAccounts}
               getOptionValue={(a) => a.id}
               getOptionLabel={(a) => (a.folderName ? `${a.folderName} / ${a.name}` : a.name)}
-              placeholder="Select SSH accounts"
+              placeholder={placeholder}
             />
             <FieldDescription>
               A target is matched to an account by host, otherwise each account is tried until one
@@ -229,11 +264,7 @@ export const SshCredentialAccountsField = ({
             <FieldError>{fieldState.error?.message}</FieldError>
             <Alert variant="warning" className="mt-1">
               <AlertTriangle />
-              <AlertDescription>
-                Password accounts send their password to every host scanned in the range, including
-                hosts you don&apos;t control. We recommend a key or certificate account for
-                scanning.
-              </AlertDescription>
+              <AlertDescription>{warning}</AlertDescription>
             </Alert>
           </FieldContent>
         </Field>
@@ -242,10 +273,10 @@ export const SshCredentialAccountsField = ({
   );
 };
 
-export const UnixDiscoveryConfigFields = ({
+export const HostRangeDiscoveryConfigFields = ({
   control
 }: {
-  control: Control<TUnixDiscoveryConfigFields>;
+  control: Control<THostRangeDiscoveryConfigFields>;
 }) => (
   <Controller
     control={control}

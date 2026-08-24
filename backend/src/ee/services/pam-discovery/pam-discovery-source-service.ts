@@ -471,9 +471,9 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       const goneAccounts = storedAccounts.filter((a) => {
         if (seenFingerprints.has(a.fingerprint)) return false;
         if (a.accountType === PamAccountType.WindowsAd) return true;
-        if (a.accountType === PamAccountType.Windows) {
-          // local-account fingerprint is `${domain}:${computerObjectGUID}:${username}`; the machine key is the
-          // first two segments, matching what the provider reports as re-checked
+        if (a.accountType === PamAccountType.Windows || a.accountType === PamAccountType.Postgres) {
+          // fingerprints are `${domain}:${computerObjectGUID}:${username}` and `${host}:${port}:${rolname}`; in
+          // both the machine key is the first two segments, matching what the provider reports as re-checked
           const machineKey = a.fingerprint.split(":").slice(0, 2).join(":");
           return scannedMachines.has(machineKey);
         }
