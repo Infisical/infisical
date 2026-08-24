@@ -12,47 +12,47 @@ By the end, your Intune-managed devices will hold certificates from a CA you own
   This guide is for administrators who manage both Microsoft Intune and Infisical Certificate Manager. If your devices are managed by a different MDM tool, see the [Jamf Pro guide](/documentation/platform/pki/guides/applications/jamf-pro-scep), or use a static or dynamic challenge as described in [SCEP enrollment](/documentation/platform/pki/applications/enrollment-methods/scep).
 </Info>
 
-## How it works
+<Accordion title="How it works">
+  Three systems are involved, and each has one job:
 
-Three systems are involved, and each has one job:
+  - **Infisical** is the certificate authority. Of the three, it is the only one that signs certificates.
+  - **Intune** decides which devices should get a certificate and confirms that each request is genuine. It never issues a certificate itself.
+  - **The device** generates a key pair, keeps the private key, and asks Infisical for a certificate covering the public half. The device does the asking. Nothing is pushed onto it.
 
-- **Infisical** is the certificate authority. Of the three, it is the only one that signs certificates.
-- **Intune** decides which devices should get a certificate and confirms that each request is genuine. It never issues a certificate itself.
-- **The device** generates a key pair, keeps the private key, and asks Infisical for a certificate covering the public half. The device does the asking. Nothing is pushed onto it.
+  Two certificates are in play, and they do different things:
 
-Two certificates are in play, and they do different things:
+  | Certificate | Where it comes from | What it does |
+  | --- | --- | --- |
+  | Your CA certificate | Downloaded from Infisical once | Sits in every device's trust store so the device recognizes what your CA signed |
+  | The device certificate | Issued to each device during enrollment | The device's own identity, presented to Wi-Fi, VPN, or RADIUS |
 
-| Certificate | Where it comes from | What it does |
-| --- | --- | --- |
-| Your CA certificate | Downloaded from Infisical once | Sits in every device's trust store so the device recognizes what your CA signed |
-| The device certificate | Issued to each device during enrollment | The device's own identity, presented to Wi-Fi, VPN, or RADIUS |
+  That distinction is why you'll create two Intune profiles later: one to distribute the CA certificate, and one to request the device certificate.
 
-That distinction is why you'll create two Intune profiles later: one to distribute the CA certificate, and one to request the device certificate.
+  [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) is the protocol a device uses to ask. SCEP normally authenticates requests with a shared challenge password that every device carries, but with Intune validation you never distribute one. Intune seals a unique, single-use challenge into each device's request, and Infisical asks Intune to confirm it before signing anything.
 
-[SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) is the protocol a device uses to ask. SCEP normally authenticates requests with a shared challenge password that every device carries, but with Intune validation you never distribute one. Intune seals a unique, single-use challenge into each device's request, and Infisical asks Intune to confirm it before signing anything.
+  ```mermaid
+  sequenceDiagram
+      participant Device as Managed device
+      participant Intune as Microsoft Intune
+      participant Infisical
+      Intune->>Device: Deliver the SCEP profile with a unique challenge
+      Device->>Infisical: Submit the SCEP request with the challenge
+      Infisical->>Intune: Validate the challenge
+      Intune-->>Infisical: Challenge accepted
+      Infisical-->>Device: Return the issued certificate
+      Infisical->>Intune: Report the issuance outcome
+  ```
 
-```mermaid
-sequenceDiagram
-    participant Device as Managed device
-    participant Intune as Microsoft Intune
-    participant Infisical
-    Intune->>Device: Deliver the SCEP profile with a unique challenge
-    Device->>Infisical: Submit the SCEP request with the challenge
-    Infisical->>Intune: Validate the challenge
-    Intune-->>Infisical: Challenge accepted
-    Infisical-->>Device: Return the issued certificate
-    Infisical->>Intune: Report the issuance outcome
-```
+  Because Intune vouches for each individual request, every certificate Infisical issues is recorded against the device that asked for it.
 
-Because Intune vouches for each individual request, every certificate Infisical issues is recorded against the device that asked for it.
-
-All of this happens inside a single request. Intune has no pending state, so anything that stops Infisical from issuing immediately is reported to Intune as a failed enrollment rather than held for a later decision.
+  All of this happens inside a single request. Intune has no pending state, so anything that stops Infisical from issuing immediately is reported to Intune as a failed enrollment rather than held for a later decision.
+</Accordion>
 
 ## Prerequisites
 
 - A Microsoft Entra ID tenant with Microsoft Intune enabled, and permission to grant tenant-wide admin consent
 - One or more devices enrolled in Intune
-- An [Application](/documentation/platform/pki/applications/overview) with a [certificate profile](/documentation/platform/pki/settings/profiles) attached, backed by an [internal CA](/documentation/platform/pki/ca/private-ca)
+- An [Application](/documentation/platform/pki/applications/overview) with a [certificate profile](/documentation/platform/pki/settings/profiles) attached, backed by an [internal root CA](/documentation/platform/pki/ca/private-ca)
 - Permission to configure enrollment on that Application
 - A paid plan, since Microsoft Intune is an enterprise [App Connection](/integrations/app-connections/overview)
 
@@ -60,28 +60,27 @@ All of this happens inside a single request. Intune has no pending state, so any
   If you haven't set up a certificate authority, policy, and profile yet, follow our guide to [issuing your first certificate](/documentation/platform/pki/quick-starts/issue-first-certificate), then come back here.
 </Note>
 
-## Step 1: Prepare the certificate profile
+## Step 1: Prepare the certificate profile in Infisical
 
-The certificate profile attached to your Infisical application must meet four requirements to ensure it's compatible with Intune. Check them before going further, because Infisical rejects the SCEP enrollment in [Step 3](#step-3-turn-on-scep-enrollment) if the first two aren't met.
+The certificate profile attached to your Infisical application must meet certain requirements to ensure it's compatible with Intune. Check them below before going further.
+
+### Ensure certificates can be issued immediately
+
+Intune has no pending state, so the certificate profile must allow Infisical to issue each certificate within a single SCEP exchange. Infisical rejects the SCEP enrollment in [Step 3](#step-3-turn-on-scep-enrollment) if either of these requirements isn't met:
 
 | Requirement | Why |
 | --- | --- |
 | Backed by an [internal CA](/documentation/platform/pki/ca/private-ca) | External CAs issue asynchronously, and Intune has no pending state to wait in, so the request could never complete inside a single SCEP exchange |
-| No [approval policy](/documentation/platform/pki/applications/approvals) applied | A request held for review can't complete either, for the same reason |
-| **Time to Live (TTL) in Days** set | A SCEP request carries no validity period of its own, so the profile decides. Left unset, the profile issues 90-day certificates |
-| **Extended Key Usages** set | Same, and left unset the profile issues certificates that carry none. Device authentication against Wi-Fi, VPN, or RADIUS needs **Client Authentication** |
+| No [approval policy](/documentation/platform/pki/applications/approvals) applied | Approval policies hold requests for human review, and Intune has no pending state to wait in, so the request could never complete inside a single SCEP exchange |
 
-Set the last two on the profile's **Certificate Defaults**.
+### Set the certificate lifetime and usage
 
-<Warning>
-  You'll enter that same validity period and extended key usage again in the Intune SCEP profile later, and **Intune doesn't check either one against the certificate it receives**, so any divergence between the two sides passes silently and only surfaces when something rejects the certificate.
-</Warning>
+A SCEP request carries no validity period or [extended key usages](/documentation/platform/pki/settings/policies#extended-key-usages) of its own. Set both on the certificate profile's **Certificate Defaults**:
 
-Intune also builds the subject name rather than you, so the [certificate policy](/documentation/platform/pki/settings/policies) behind the profile has to permit the format you configure in [Step 4](#create-the-scep-certificate-profile).
-
-<Tip>
-  Leave the policy's subject and subject alternative name sections unconfigured until enrollment works end to end, then tighten them to match what Intune actually sends. A policy restricted before you know what Intune will send is the most common cause of a request that Intune approves and Infisical then refuses.
-</Tip>
+| Setting | Value |
+| --- | --- |
+| **Time to Live (TTL) in Days** | Set the certificate lifetime you want. If you leave this field unset, the profile issues 90-day certificates |
+| **Extended Key Usages** | Add **Client Authentication** to allow the certificate to authenticate the device to Wi-Fi, VPN, or RADIUS |
 
 ## Step 2: Connect Infisical to Intune
 
@@ -89,9 +88,9 @@ When a device sends a certificate request, Infisical has to ask Intune whether t
 
 ### Register an application in Microsoft Entra ID
 
-An app registration in Entra is a service identity. Despite the name, nothing is installed on a device or assigned to a user. You create it, grant it permission to do a couple of things, and hand its credentials to Infisical.
+First, register an application in Microsoft Entra ID. This gives Infisical an identity it can use to authenticate to Microsoft Entra without a user signing in.
 
-Follow [Setup Azure application](/integrations/app-connections/microsoft-intune#setup-azure-application) to register the application, then assign these two application permissions and grant tenant-wide admin consent for both:
+[Set up an Azure application](/integrations/app-connections/microsoft-intune#setup-azure-application). Then, assign these two application permissions and grant tenant-wide admin consent for both:
 
 | Permission | API | Purpose |
 | --- | --- | --- |
@@ -100,7 +99,7 @@ Follow [Setup Azure application](/integrations/app-connections/microsoft-intune#
 
 ![Entra application API permissions with scep_challenge_provider granted](/images/platform/pki/integrations/microsoft-intune/entra-api-permissions.png)
 
-Then collect the **Directory (tenant) ID**, the **Application (client) ID**, and a **Client Secret**.
+Then, collect the **Directory (tenant) ID**, the **Application (client) ID**, and a **Client Secret**.
 
 <Warning>
   Copy the client secret while it's on screen, because Entra won't show it again. Note the expiry you chose as well. When that secret expires, certificate enrollment stops, and the failure your devices report won't obviously point back here.
@@ -108,17 +107,21 @@ Then collect the **Directory (tenant) ID**, the **Application (client) ID**, and
 
 ### Create the Microsoft Intune connection
 
-Follow [Microsoft Intune connection](/integrations/app-connections/microsoft-intune) to create the connection using those three values.
+Next, [create a Microsoft Intune app connection](/integrations/app-connections/microsoft-intune) using the three values you just copied.
 
-Infisical verifies the credentials when you save, so a save that succeeds confirms the permissions and admin consent were granted correctly.
+<Tip>
+Infisical verifies the credentials when you save. If your app connection saves succesfully, that confirms the permissions and admin consent were granted correctly.
+</Tip>
 
-## Step 3: Turn on SCEP enrollment
+## Step 3: Turn on SCEP enrollment in Infisical
 
-An enrollment is what turns a profile into an endpoint that something can talk to.
+Next, enable SCEP enrollment in Infisical. This creates the endpoint URL that your Intune-managed devices use to request certificates from this profile.
 
 <Steps>
   <Step>
     Open your application, go to the **Settings** tab, then open the row menu on your profile and select **Configure Enrollment**.
+
+    ![Application Settings tab with Applications, Settings, and Configure Enrollment highlighted](/images/platform/pki/integrations/microsoft-intune/infisical-configure-enrollment.png)
   </Step>
   <Step>
     Select **Add enrollment method**, then select **SCEP**.
@@ -128,21 +131,23 @@ An enrollment is what turns a profile into an endpoint that something can talk t
   </Step>
   <Step>
     Under **Advanced options**, enable **Sign RA certificate with the CA** and leave **Include CA cert in response** enabled.
+
+    <Warning>
+      The **Sign RA certificate with the CA** option is required for Intune.
+      
+      The registration authority (RA) certificate is Infisical's own identity in the SCEP exchange, and signing it with your CA makes it chain to the CA certificate you distribute in the next step.
+      
+      If you leave this option disabled, Intune rejects Infisical's response before any device submits a request. It can't be changed once SCEP enrollment exists, because changing it regenerates the identity and breaks devices that already trust the current one.
+    </Warning>
   </Step>
   <Step>
     Save the enrollment, then copy the **SCEP endpoint URL** from the **Endpoint** section.
+
+    ![SCEP enrollment configured with Microsoft Intune validation](/images/platform/pki/integrations/microsoft-intune/infisical-scep-enrollment.png)
   </Step>
 </Steps>
 
-![Application Settings tab with Applications, Settings, and Configure Enrollment highlighted](/images/platform/pki/integrations/microsoft-intune/infisical-configure-enrollment.png)
-
-Selecting the connection is all the configuration Intune validation needs. The transaction and the certificate request arrive in the device's own request, and Intune validates the expected subject and subject alternative name.
-
-![SCEP enrollment configured with Microsoft Intune validation](/images/platform/pki/integrations/microsoft-intune/infisical-scep-enrollment.png)
-
-<Warning>
-  **Sign RA certificate with the CA is required for Intune.** It makes Infisical's SCEP identity chain to the CA certificate you distribute in the next step. Left disabled, Intune rejects Infisical's response before any device submits a request, so Infisical requires the option for Intune validation. It can't be changed once SCEP enrollment exists, because changing it regenerates the identity and breaks devices that already trust the current one.
-</Warning>
+When a device requests a certificate, Infisical uses this connection to ask Intune whether the request is authorized. Intune also confirms that the requested subject and subject alternative name match the values it approved for the device.
 
 <Note>
   On a self-hosted instance, your devices talk to the SCEP endpoint URL directly, so it has to be reachable from wherever those devices are.
@@ -154,7 +159,7 @@ Intune needs two profiles per device platform: one that installs your CA certifi
 
 ### Download the CA certificate
 
-Your devices need your CA's certificate before anything else works. This is the first of the two certificates from [How it works](#how-it-works).
+Your devices need your CA's certificate before anything else works. Download it from Infisical:
 
 <Steps>
   <Step>
@@ -171,7 +176,7 @@ Your devices need your CA's certificate before anything else works. This is the 
 ![Downloading the CA certificate from Infisical](/images/platform/pki/integrations/microsoft-intune/infisical-download-ca-cert.png)
 
 <Note>
-  Infisical exports the certificate as `cert.pem`, and Intune's upload field only accepts a `.cer` extension. It's the same file, so changing the extension is enough. If your profile is backed by an intermediate CA, select **Download CA Certificate Chain** instead and create one trusted certificate profile per certificate in the chain.
+  Infisical exports the certificate as `cert.pem`, and Intune's upload field only accepts a `.cer` extension. It's the same file, so changing the extension is enough.
 </Note>
 
 ### Create the trusted certificate profile
@@ -181,41 +186,37 @@ This profile does one job: it installs your CA's certificate onto every device y
 <Steps>
   <Step>
     In the [Microsoft Intune admin center](https://intune.microsoft.com), go to **Devices** > **Configuration**, then select **Create** > **New Policy**.
+
+    ![Devices Configuration page with the Create button highlighted](/images/platform/pki/integrations/microsoft-intune/intune-nav-create-profile.png)
   </Step>
   <Step>
     Select your **Platform**, set **Profile type** to **Templates**, then choose **Trusted certificate**.
+
+    ![Create a profile pane with the Trusted certificate template highlighted](/images/platform/pki/integrations/microsoft-intune/intune-create-trusted-cert.png)
   </Step>
   <Step>
-    Give the profile a name, for example `Infisical Issuing CA`.
+    Give the profile a name. For example: `Infisical Issuing CA`.
   </Step>
   <Step>
-    Set the platform-specific placement field described below.
+    Choose where Intune installs the CA certificate:
+
+    <Tabs>
+      <Tab title="Apple platforms">
+        Set **Deployment Channel** to **Device Channel**, which installs the certificate for every user on the device and places it in the system keychain. Choose **User Channel** only where the certificate must be scoped to a single user.
+
+        You can't change the deployment channel after the profile is deployed, so switching later means building a new profile. Set the SCEP profile to the same channel in the next section.
+      </Tab>
+      <Tab title="Windows">
+        Windows profiles have no deployment channel. Set **Destination Store** to **Computer certificate store - Root**.
+      </Tab>
+    </Tabs>
   </Step>
   <Step>
     Upload the `.cer` file, assign the profile to the device or user groups that should receive certificates, then create it.
+
+    ![Intune Trusted certificate profile with the Infisical CA uploaded](/images/platform/pki/integrations/microsoft-intune/intune-trusted-cert-profile.png)
   </Step>
 </Steps>
-
-![Devices Configuration page with the Create button highlighted](/images/platform/pki/integrations/microsoft-intune/intune-nav-create-profile.png)
-
-![Create a profile pane with the Trusted certificate template highlighted](/images/platform/pki/integrations/microsoft-intune/intune-create-trusted-cert.png)
-
-Where the certificate lands depends on the platform:
-
-<Tabs>
-  <Tab title="Apple platforms">
-    Set **Deployment Channel** to **Device Channel**, which installs the certificate for every user on the device and places it in the system keychain. Choose **User Channel** only where the certificate must be scoped to a single user.
-
-    You can't change the deployment channel after the profile is deployed, so switching later means building a new profile. Set the SCEP profile to the same channel in the next section.
-  </Tab>
-  <Tab title="Windows">
-    Windows profiles have no deployment channel. They offer a **Destination Store** instead: **Computer certificate store - Root**, **Computer certificate store - Intermediate**, or **User certificate store - Intermediate**.
-
-    Choose the Root store for a root CA and an Intermediate store for an intermediate.
-  </Tab>
-</Tabs>
-
-![Intune Trusted certificate profile with the Infisical CA uploaded](/images/platform/pki/integrations/microsoft-intune/intune-trusted-cert-profile.png)
 
 <Note>
   Infisical's SCEP identity needs no profile of its own. Because you signed it with your CA in the previous step, this profile already establishes trust for it.
@@ -231,48 +232,51 @@ This profile gives each device the address of your endpoint and a single-use cha
   </Step>
   <Step>
     Select the same **Platform**, set **Profile type** to **Templates**, then choose **SCEP certificate**.
+
+    ![Create a profile pane with the SCEP certificate template highlighted](/images/platform/pki/integrations/microsoft-intune/intune-create-scep-cert.png)
   </Step>
   <Step>
     On Apple platforms, set **Deployment Channel** to match the trusted certificate profile.
   </Step>
   <Step>
-    Fill in the settings below, then assign the profile to the same groups as the trusted certificate profile and create it.
+    Fill in these settings:
+
+    | Setting | Value |
+    | --- | --- |
+    | **Certificate type** | **Device**, so the certificate identifies the machine rather than a person |
+    | **Subject name format** | `CN={{DeviceName}}` or `CN={{AzureADDeviceId}}`, as described in the next step |
+    | **Subject alternative name** | Leave empty for a device certificate |
+    | **Certificate validity period** | The same value as the profile's TTL from [Step 1](#step-1-prepare-the-certificate-profile) |
+    | **Key usage** | **Digital signature** and **Key encipherment** |
+    | **Key size (bits)** | 2048 |
+    | **Hash algorithm** | SHA-2, where the platform offers the field |
+    | **Root Certificate** | The trusted certificate profile you just created |
+    | **Extended key usage** | **Client Authentication**, matching the certificate profile |
+    | **Renewal threshold (%)** | 20 |
+    | **SCEP Server URLs** | The **SCEP endpoint URL** you copied from Infisical |
+
+    ![Intune SCEP certificate profile settings including the Infisical SCEP Server URL](/images/platform/pki/integrations/microsoft-intune/intune-scep-profile-settings.png)
+
+    **Certificate validity period** and **Extended key usage** are the two you're mirroring from [Step 1](#step-1-prepare-the-certificate-profile). Intune reports the enrollment as successful without comparing either one against the certificate it receives, so a mismatch here is never flagged.
+
+    <Note>
+      **Renewal threshold is a percentage of remaining life, not elapsed life.** A threshold of 20 means the device asks for a new certificate once 80 percent of the lifetime is gone, so roughly ten months into a one-year certificate.
+    </Note>
+  </Step>
+  <Step>
+    The subject name is the identity written into the certificate. You write it as a template with Intune variables in double curly braces, and Intune fills them in per device when it delivers the profile. `CN={{DeviceName}}` is the simplest useful version, and `CN={{AzureADDeviceId}}` keys on the device's Entra ID, which a user can't rename.
+
+    <Warning>
+      **Choose the subject name format to match whatever you'll authenticate against.** That system reads this name to work out which device it's talking to. If your RADIUS server matches on the Entra device ID and your certificate carries the device name instead, the certificate is issued perfectly and then rejected on the network.
+
+    </Warning>
+  </Step>
+  <Step>
+    Assign the profile to the same groups as the trusted certificate profile, then create it.
+
+    ![Assigning the SCEP profile to a device group](/images/platform/pki/integrations/microsoft-intune/intune-profile-assignments.png)
   </Step>
 </Steps>
-
-![Create a profile pane with the SCEP certificate template highlighted](/images/platform/pki/integrations/microsoft-intune/intune-create-scep-cert.png)
-
-| Setting | Value |
-| --- | --- |
-| **Certificate type** | **Device**, so the certificate identifies the machine rather than a person |
-| **Subject name format** | `CN={{DeviceName}}` or `CN={{AzureADDeviceId}}`, as described below |
-| **Subject alternative name** | Leave empty for a device certificate |
-| **Certificate validity period** | The same value as the profile's TTL from [Step 1](#step-1-prepare-the-certificate-profile) |
-| **Key usage** | **Digital signature** and **Key encipherment** |
-| **Key size (bits)** | 2048 |
-| **Hash algorithm** | SHA-2, where the platform offers the field |
-| **Root Certificate** | The trusted certificate profile you just created |
-| **Extended key usage** | The same extended key usages set on the profile, typically **Client Authentication** |
-| **Renewal threshold (%)** | 20 |
-| **SCEP Server URLs** | The **SCEP endpoint URL** you copied from Infisical |
-
-![Intune SCEP certificate profile settings including the Infisical SCEP Server URL](/images/platform/pki/integrations/microsoft-intune/intune-scep-profile-settings.png)
-
-**Certificate validity period** and **Extended key usage** are the two you're mirroring from [Step 1](#step-1-prepare-the-certificate-profile). Intune reports the enrollment as successful without comparing either one against the certificate it receives, so a mismatch here is never flagged.
-
-The subject name is the identity written into the certificate. You write it as a template with Intune variables in double curly braces, and Intune fills them in per device when it delivers the profile. `CN={{DeviceName}}` is the simplest useful version, and `CN={{AzureADDeviceId}}` keys on the device's Entra ID, which a user can't rename.
-
-<Warning>
-  **Choose the subject name format to match whatever you'll authenticate against.** That system reads this name to work out which device it's talking to. If your RADIUS server matches on the Entra device ID and your certificate carries the device name instead, the certificate is issued perfectly and then rejected on the network.
-
-  The [certificate policy](/documentation/platform/pki/settings/policies) in Infisical also has to permit what you ask for here. If you left the subject and subject alternative name sections unconfigured, anything is allowed. If you tightened them, the format you use here has to be on the allowed list, or Intune approves the request and Infisical then refuses it.
-</Warning>
-
-<Note>
-  **Renewal threshold is a percentage of remaining life, not elapsed life.** A threshold of 20 means the device asks for a new certificate once 80 percent of the lifetime is gone, so roughly ten months into a one-year certificate.
-</Note>
-
-![Assigning the SCEP profile to a device group](/images/platform/pki/integrations/microsoft-intune/intune-profile-assignments.png)
 
 <Note>
   Intune configuration profiles are platform-specific, so each platform you support needs its own trusted certificate profile and SCEP certificate profile. Supporting Macs and Windows machines means four profiles. The Infisical side is shared, and all of them point at the same SCEP endpoint URL.
@@ -289,9 +293,27 @@ Sync a target device, or wait for its next check-in, then confirm the certificat
 
 ![Certificates report on the SCEP profile listing issued certificates](/images/platform/pki/integrations/microsoft-intune/intune-device-certificate.png)
 
+## Step 6: Tighten the certificate policy
+
+After you verify enrollment, restrict the Infisical [certificate policy](/documentation/platform/pki/settings/policies) to the values configured in your Intune SCEP profile. These restrictions prevent later changes or misconfigurations in Intune from causing Infisical to issue certificates with unexpected identities, usages, or lifetimes.
+
+Open the policy behind your certificate profile and configure these sections:
+
+| Section | Configure |
+| --- | --- |
+| **Restrict subject attributes** | Add a **Common Name** rule set to **Require**, with a pattern matching your device naming. Use `*` to accept any value while still requiring the attribute |
+| **Restrict subject alternative names** | Enable it and add nothing, if your SCEP profile leaves the subject alternative name empty |
+| **Restrict extended key usages** | Allow only the usages you set on the profile in [Step 1](#step-1-prepare-the-certificate-profile) |
+| **Set maximum validity** | Set the **Duration** to the certificate lifetime you settled on |
+
+<Warning>
+  We recommend changing one section at a time and re-enrolling a test device after each. A policy that's too narrow fails only after Intune has already validated the challenge, so Intune records a failed enrollment rather than telling you which attribute it objected to.
+</Warning>
+
 <Check>
-  Your devices now hold certificates from a CA you own, and the Certificate Inventory tab lists every certificate your fleet holds in one place.
+  Your devices now hold certificates from a CA you own, and the **Certificate Inventory** tab in your Infisical application lists every certificate issued to your fleet.
 </Check>
+
 
 ## How renewal works
 
@@ -317,7 +339,7 @@ Infisical's **Allow cert-based renewal** option stays off for Intune validation,
     Check the **Subject name format** in the Intune profile against what the policy allows. Intune has no pending state, so Infisical reports both cases to Intune as failures rather than leaving the device polling.
   </Accordion>
   <Accordion title="The device receives a certificate but doesn't trust it">
-    The trusted certificate profile didn't reach the device. Confirm it's assigned to the same groups as the SCEP profile, that it holds the certificate of the CA behind your profile, and on Windows that the **Destination Store** matches the CA type: the Root store for a root CA, an Intermediate store for an intermediate.
+    The trusted certificate profile didn't reach the device. Confirm it's assigned to the same groups as the SCEP profile, that it holds the certificate of the CA behind your profile, and on Windows that **Destination Store** is set to **Computer certificate store - Root**.
   </Accordion>
   <Accordion title="The certificate is issued but rejected during network authentication">
     The certificate is valid, but its contents don't match what the authenticating system expects. Compare the **Subject name format** in the SCEP profile against what your RADIUS server or VPN concentrator matches on, and compare **Extended key usage** against what it requires.
