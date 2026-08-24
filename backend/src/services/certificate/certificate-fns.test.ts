@@ -9,8 +9,10 @@ import {
   CertificateThumbprintAlgorithm,
   extractCertificateFields,
   normalizeThumbprint,
-  parseCertificateBody
+  parseCertificateBody,
+  resolveCertificateLifecycleStatus
 } from "./certificate-fns";
+import { CertStatus } from "./certificate-types";
 
 describe("normalizeThumbprint", () => {
   const sha1Hex = "a".repeat(40);
@@ -107,5 +109,55 @@ describe("parseCertificateBody usages", () => {
     expect(fields).not.toHaveProperty("keyUsages");
     expect(fields).not.toHaveProperty("extendedKeyUsages");
     expect(fields.isCA).toBe(false);
+  });
+});
+
+describe("resolveCertificateLifecycleStatus", () => {
+  const future = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+  const past = new Date(Date.now() - 60 * 1000);
+
+  test("reports active when nothing has happened to the certificate", () => {
+    expect(resolveCertificateLifecycleStatus({ status: CertStatus.ACTIVE, notAfter: future })).toBe(CertStatus.ACTIVE);
+  });
+
+  test("reports renewed once a replacement has been issued", () => {
+    expect(
+      resolveCertificateLifecycleStatus({
+        status: CertStatus.ACTIVE,
+        notAfter: future,
+        renewedByCertificateId: "b7c1f4e2-0000-4000-8000-000000000001"
+      })
+    ).toBe(CertStatus.RENEWED);
+  });
+
+  test("prefers expired over renewed", () => {
+    expect(
+      resolveCertificateLifecycleStatus({
+        status: CertStatus.ACTIVE,
+        notAfter: past,
+        renewedByCertificateId: "b7c1f4e2-0000-4000-8000-000000000001"
+      })
+    ).toBe(CertStatus.EXPIRED);
+  });
+
+  test("prefers revoked over both expired and renewed", () => {
+    expect(
+      resolveCertificateLifecycleStatus({
+        status: CertStatus.REVOKED,
+        notAfter: past,
+        renewedByCertificateId: "b7c1f4e2-0000-4000-8000-000000000001"
+      })
+    ).toBe(CertStatus.REVOKED);
+  });
+
+  test("treats the expiry boundary as expired", () => {
+    const now = new Date();
+    expect(resolveCertificateLifecycleStatus({ status: CertStatus.ACTIVE, notAfter: now })).toBe(CertStatus.EXPIRED);
+  });
+
+  test("accepts an ISO string notAfter, as returned over the API", () => {
+    expect(resolveCertificateLifecycleStatus({ status: CertStatus.ACTIVE, notAfter: future.toISOString() })).toBe(
+      CertStatus.ACTIVE
+    );
   });
 });

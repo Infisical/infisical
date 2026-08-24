@@ -1095,6 +1095,8 @@ export const PROJECTS = {
     search: "Search by SAN, CN, certificate ID, or serial number.",
     status:
       "Comma-separated list of certificate statuses to filter by. Supported values are active, renewed, expired and revoked. A certificate that has been renewed reports renewed instead of active until it expires or is revoked.",
+    lifecycleStatus:
+      "The certificate's effective status, derived from whether it is revoked, past its expiry, or has been superseded by a renewal.",
     profileIds: "Filter by certificate profile IDs.",
     fromDate: "Filter certificates created from this date.",
     toDate: "Filter certificates created until this date.",
@@ -2146,7 +2148,9 @@ export const CERTIFICATES = {
   GET: {
     id: "The ID of the certificate to get.",
     serialNumber: "The serial number of the certificate to get.",
-    hasPrivateKey: "Whether Infisical holds the private key for this certificate."
+    hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
+    lifecycleStatus:
+      "The certificate's effective status, derived from whether it is revoked, past its expiry, or has been superseded by a renewal."
   },
   RENEW: {
     id: "The ID of the certificate to renew.",

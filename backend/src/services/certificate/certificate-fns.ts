@@ -13,12 +13,28 @@ import {
   CertKeyAlgorithm,
   CertKeyUsage,
   CertSignatureAlgorithm,
+  CertStatus,
   CrlReason,
   TCertificateFingerprints,
   TCertificateSubject,
   TGetCertificateCredentialsDTO,
   TParsedCertificateBody
 } from "./certificate-types";
+
+export const resolveCertificateLifecycleStatus = ({
+  status,
+  notAfter,
+  renewedByCertificateId
+}: {
+  status?: string | null;
+  notAfter: Date | string;
+  renewedByCertificateId?: string | null;
+}): CertStatus => {
+  if (status === CertStatus.REVOKED) return CertStatus.REVOKED;
+  if (new Date(notAfter) <= new Date()) return CertStatus.EXPIRED;
+  if (renewedByCertificateId) return CertStatus.RENEWED;
+  return CertStatus.ACTIVE;
+};
 
 export const keySizeToAlgorithms = (keySize: number): string[] => {
   const map: Record<number, string[]> = {

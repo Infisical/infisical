@@ -945,6 +945,11 @@ export const certificateDALFactory = (db: TDbClient) => {
         .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
         .where(`${TableName.CertificateAuthority}.projectId`, projectId)
         .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
+        .whereNot((qb) => {
+          void qb
+            .whereNotNull(`${TableName.Certificate}.renewedByCertificateId`)
+            .andWhere(`${TableName.Certificate}.notAfter`, ">", now);
+        })
         .select(
           db.raw(
             `CASE
@@ -965,6 +970,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.Certificate)
         .where(`${TableName.Certificate}.projectId`, projectId)
         .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
+        .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
         .where(`${TableName.Certificate}.notAfter`, ">", now)
         .whereRaw(`"${TableName.Certificate}"."extendedKeyUsages" @> ARRAY[?]::text[]`, ["serverAuth"])
         .select(
