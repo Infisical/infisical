@@ -85,7 +85,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
   keyStore: Pick<
     TKeyStoreFactory,
     | "setItemWithExpiryNX"
-    | "getItem"
+    | "getItemPrimary"
     | "setIndexedItemWithExpiry"
     | "deleteIndexedItems"
     | "sortedSetMembersPrimary"

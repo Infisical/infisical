@@ -15,7 +15,8 @@ const itemKey = (authMethod: string, slug: string) =>
   KeyStorePrefixes.IdentityLockoutState(IDENTITY_ID, authMethod, slug);
 
 const makeKeyStore = () => ({
-  getItem: vi.fn().mockResolvedValue(null),
+  getItemPrimary: vi.fn().mockResolvedValue(null),
+  getItem: vi.fn(),
   setIndexedItemWithExpiry: vi.fn().mockResolvedValue(undefined),
   deleteIndexedItems: vi.fn().mockResolvedValue(undefined),
   sortedSetRangeByScore: vi.fn().mockResolvedValue([]),
@@ -27,17 +28,19 @@ const makeKeyStore = () => ({
 describe("getIdentityLockoutState", () => {
   const selector = { identityId: IDENTITY_ID, authMethod: IdentityAuthMethod.UNIVERSAL_AUTH, slug: "client-a" };
 
-  test("reads the one key it already knows, and never the index", async () => {
+  test("reads the one key it already knows, from the primary, and never the index", async () => {
     const keyStore = makeKeyStore();
-    keyStore.getItem.mockResolvedValue(JSON.stringify({ lockedOut: true, failedAttempts: 3 }));
+    keyStore.getItemPrimary.mockResolvedValue(JSON.stringify({ lockedOut: true, failedAttempts: 3 }));
 
     await expect(getIdentityLockoutState(selector, keyStore)).resolves.toEqual({
       lockedOut: true,
       failedAttempts: 3
     });
-    expect(keyStore.getItem).toHaveBeenCalledWith(itemKey(IdentityAuthMethod.UNIVERSAL_AUTH, "client-a"));
+    expect(keyStore.getItemPrimary).toHaveBeenCalledWith(itemKey(IdentityAuthMethod.UNIVERSAL_AUTH, "client-a"));
     expect(keyStore.sortedSetRangeByScore).not.toHaveBeenCalled();
     expect(keyStore.getKeysByPattern).not.toHaveBeenCalled();
+    // A replica can lag behind the failure this read is about to increment.
+    expect(keyStore.getItem).not.toHaveBeenCalled();
   });
 
   test("treats a missing key as no lockout, since the key's TTL is the expiry", async () => {
@@ -46,7 +49,7 @@ describe("getIdentityLockoutState", () => {
 
   test("treats an unreadable value as no lockout rather than failing the login", async () => {
     const keyStore = makeKeyStore();
-    keyStore.getItem.mockResolvedValue("{{{");
+    keyStore.getItemPrimary.mockResolvedValue("{{{");
 
     await expect(getIdentityLockoutState(selector, keyStore)).resolves.toBeUndefined();
   });

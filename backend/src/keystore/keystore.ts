@@ -164,9 +164,9 @@ export const KeyStorePrefixes = {
   LicenseUsageLastReported: (orgId: string, featureKey: string) =>
     `license-usage-last-reported-${orgId}-${featureKey}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
-    `lockout:identity:${identityId}:${authMethod}:${slug}` as const,
+    `lockout:identity:{${identityId}}:${authMethod}:${slug}` as const,
   // Sorted set of the identity's *locked* auth methods, scored by when each lockout ends.
-  IdentityLockoutIndex: (identityId: string) => `lockout:identity:${identityId}` as const,
+  IdentityLockoutIndex: (identityId: string) => `lockout:identity:{${identityId}}` as const,
   IdentityLockoutMember: (authMethod: string, slug: string) => `${authMethod}:${slug}` as const,
 
   TelemetryAggregatedEventStream: (event: string, bucketId: string) =>
@@ -306,8 +306,6 @@ export type TKeyStoreFactory = {
   // hash operations
   hashSet: (key: string, field: string, value: string) => Promise<number>;
   hashGet: (key: string, field: string) => Promise<string | null>;
-  hashGetAll: (key: string) => Promise<Record<string, string>>;
-  hashGetAllPrimary: (key: string) => Promise<Record<string, string>>;
   // sorted-set indexed items: item key gets native TTL; optional index member is scored by the same
   // deadline and pruned on write.
   setIndexedItemWithExpiry: (arg: {
@@ -547,10 +545,6 @@ export const keyStoreFactory = (
 
   const hashGet = async (key: string, field: string) => primaryRedis.hget(key, field);
 
-  const hashGetAll = async (key: string) => pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).hgetall(key);
-
-  const hashGetAllPrimary = async (key: string) => primaryRedis.hgetall(key);
-
   // KEYS[1] indexKey (ZSET), KEYS[2] itemKey (payload string).
   // ARGV[1] member, ARGV[2] value, ARGV[3] expiryInSeconds, ARGV[4] expiresAt score (ms),
   // ARGV[5] indexed ('1' | '0'), ARGV[6] now (ms, stale-index prune cutoff).
@@ -750,8 +744,6 @@ export const keyStoreFactory = (
     pgIncrementBy,
     hashSet,
     hashGet,
-    hashGetAll,
-    hashGetAllPrimary,
     setIndexedItemWithExpiry,
     deleteIndexedItems,
     sortedSetRangeByScore,

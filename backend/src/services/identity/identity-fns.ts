@@ -16,9 +16,9 @@ export const identityLockoutLockKey = (identityId: string, authMethod: string, s
 
 export const getIdentityLockoutState = async (
   { identityId, authMethod, slug }: { identityId: string; authMethod: string; slug: string },
-  keyStore: Pick<TKeyStoreFactory, "getItem">
+  keyStore: Pick<TKeyStoreFactory, "getItemPrimary">
 ): Promise<TIdentityLockoutState | undefined> => {
-  const raw = await keyStore.getItem(lockoutItemKey(identityId, authMethod, slug));
+  const raw = await keyStore.getItemPrimary(lockoutItemKey(identityId, authMethod, slug));
   if (!raw) return undefined;
 
   try {

@@ -84,12 +84,6 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
     hashGet: async (key, field) => {
       return hashStore[key]?.[field] ?? null;
     },
-    hashGetAll: async (key) => {
-      return { ...(hashStore[key] ?? {}) };
-    },
-    hashGetAllPrimary: async (key) => {
-      return { ...(hashStore[key] ?? {}) };
-    },
     setIndexedItemWithExpiry: async ({ indexKey, member, itemKey, value, expiryInSeconds, indexed }) => {
       store[itemKey] = value;
       if (!sortedSetStore[indexKey]) sortedSetStore[indexKey] = {};
