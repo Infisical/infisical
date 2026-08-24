@@ -213,6 +213,7 @@ export enum EventType {
   UPDATE_IDENTITY = "update-identity",
   DELETE_IDENTITY = "delete-identity",
 
+  UPDATE_USER_ORG_MEMBERSHIP = "update-user-org-membership",
   DELETE_USER_ORG_MEMBERSHIP = "delete-user-org-membership",
 
   CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
@@ -2104,6 +2105,17 @@ interface ClearIdentityLdapAuthLockoutsEvent {
   type: EventType.CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS;
   metadata: {
     identityId: string;
+  };
+}
+
+interface UpdateUserOrgMembershipEvent {
+  type: EventType.UPDATE_USER_ORG_MEMBERSHIP;
+  metadata: {
+    membershipId: string;
+    userId: string;
+    role?: string;
+    isActive?: boolean;
+    metadataKeys?: string[];
   };
 }
 
@@ -7253,6 +7265,7 @@ export type Event =
   | GetIdentityLdapAuthEvent
   | RevokeIdentityLdapAuthEvent
   | ClearIdentityLdapAuthLockoutsEvent
+  | UpdateUserOrgMembershipEvent
   | DeleteUserOrgMembershipEvent
   | CreateIdentityOrgMembershipEvent
   | UpdateIdentityOrgMembershipEvent

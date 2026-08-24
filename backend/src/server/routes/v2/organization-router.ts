@@ -211,6 +211,21 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         ...req.body
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.params.organizationId,
+        event: {
+          type: EventType.UPDATE_USER_ORG_MEMBERSHIP,
+          metadata: {
+            membershipId: membership.id,
+            userId: membership.actorUserId as string,
+            role: req.body.role,
+            isActive: req.body.isActive,
+            metadataKeys: req.body.metadata?.map(({ key }) => key)
+          }
+        }
+      });
+
       if (req.body.role) {
         void server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.OrgMembershipRoleUpdated,
