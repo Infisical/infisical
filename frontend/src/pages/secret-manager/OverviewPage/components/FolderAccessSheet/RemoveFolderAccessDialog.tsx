@@ -29,31 +29,7 @@ export const RemoveFolderAccessDialog = ({
   folderPath,
   environmentName
 }: Props) => {
-  // const { currentProject, projectId } = useProject();
   const isOpen = Boolean(actor);
-
-  // const membershipId = actor?.type === "user" ? actor.membershipId : null;
-  // const membershipAudit = useGetMembershipPermissionAudit(projectId, membershipId ?? "", {
-  //   enabled: isOpen,
-  //   retry: false,
-  //   includeFolderPermissions: false
-  // });
-  // const identityAudit = useGetIdentityPermissionAudit(
-  //   projectId,
-  //   actor?.type === "identity" ? actor.id : "",
-  //   { enabled: isOpen, retry: false, includeFolderPermissions: false }
-  // );
-
-  // const audit = actor?.type === "identity" ? identityAudit : membershipAudit;
-  // const isAuditUnavailable = (actor?.type === "user" && !actor.membershipId) || audit.isError;
-
-  // const resources = useMemo(() => {
-  //   if (!audit.data) return [];
-  //   const descriptors = getAuditSubjects(currentProject.type).filter((descriptor) =>
-  //     FOLDER_SCOPE_SUBJECTS.includes(descriptor.subject)
-  //   );
-  //   return evaluateAllResources(descriptors, resolveSources(audit.data.sources));
-  // }, [audit.data, currentProject.type]);
 
   const tierLabel = actor?.access ? FOLDER_ROLE_TIER_LABELS[actor.access.permission] : null;
 

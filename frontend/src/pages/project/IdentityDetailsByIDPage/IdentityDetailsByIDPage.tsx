@@ -42,7 +42,8 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useOrganization,
-  useProject
+  useProject,
+  useSubscription
 } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
@@ -72,6 +73,7 @@ const Page = () => {
     select: (el) => el.identityId as string
   });
   const { currentProject, projectId } = useProject();
+  const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
 
   const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } =
@@ -372,15 +374,16 @@ const Page = () => {
                   identityMembershipDetails={identityMembershipDetails}
                 />
               )}
-              {currentProject.type === ProjectType.SecretManager && (
-                <FolderAccessSection
-                  actor={{
-                    type: "identity",
-                    id: identityMembershipDetails.identity.id,
-                    name: identityMembershipDetails.identity.name
-                  }}
-                />
-              )}
+              {currentProject.type === ProjectType.SecretManager &&
+                subscription?.secretsFolderRbac && (
+                  <FolderAccessSection
+                    actor={{
+                      type: "identity",
+                      id: identityMembershipDetails.identity.id,
+                      name: identityMembershipDetails.identity.name
+                    }}
+                  />
+                )}
             </div>
           </div>
           <IdentityActionConfirmationDialog

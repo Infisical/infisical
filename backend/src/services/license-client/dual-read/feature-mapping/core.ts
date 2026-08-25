@@ -110,5 +110,10 @@ export const coreMappings: TFeatureMapping[] = [
     v2Key: "cross_project_secret_sharing",
     v1Field: "crossProjectSecretSharing",
     extractV1: (p) => p.crossProjectSecretSharing
+  },
+  {
+    v2Key: "secrets_folder_rbac",
+    v1Field: "secretsFolderRbac",
+    extractV1: (p) => p.secretsFolderRbac
   }
 ];

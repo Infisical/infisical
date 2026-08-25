@@ -42,6 +42,7 @@ import {
   ProjectPermissionSub,
   useOrganization,
   useProject,
+  useSubscription,
   useUser
 } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
@@ -65,6 +66,7 @@ export const Page = () => {
   });
   const { currentOrg } = useOrganization();
   const { currentProject, projectId } = useProject();
+  const { subscription } = useSubscription();
   const {
     user: { id: currentUserId }
   } = useUser();
@@ -284,20 +286,21 @@ export const Page = () => {
               {!isCertManager && currentProject.isLegacyAdditionalPrivilegesEnabled && (
                 <MemberProjectAdditionalPrivilegeSection membershipDetails={membershipDetails} />
               )}
-              {currentProject.type === ProjectType.SecretManager && (
-                <FolderAccessSection
-                  actor={{
-                    type: "user",
-                    id: membershipDetails.user.id,
-                    membershipId: membershipDetails.id,
-                    username: membershipDetails.user.username,
-                    email: membershipDetails.user.email,
-                    firstName: membershipDetails.user.firstName,
-                    lastName: membershipDetails.user.lastName
-                  }}
-                  hideActions={isOwnProjectMembershipDetails}
-                />
-              )}
+              {currentProject.type === ProjectType.SecretManager &&
+                subscription?.secretsFolderRbac && (
+                  <FolderAccessSection
+                    actor={{
+                      type: "user",
+                      id: membershipDetails.user.id,
+                      membershipId: membershipDetails.id,
+                      username: membershipDetails.user.username,
+                      email: membershipDetails.user.email,
+                      firstName: membershipDetails.user.firstName,
+                      lastName: membershipDetails.user.lastName
+                    }}
+                    hideActions={isOwnProjectMembershipDetails}
+                  />
+                )}
             </div>
           </div>
           <DeleteConfirmDialog

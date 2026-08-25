@@ -830,17 +830,6 @@ const OverviewPageContent = () => {
   const canManageCurrentFolderAccess =
     isSingleEnvView && canManageFolderAccessAt(singleEnvSlug, secretPath);
 
-  const handleFolderAccessOpen = useCallback(
-    (folderName: string) => {
-      const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
-      if (!folder) return;
-      setFolderAccessTarget({
-        folderPath: childFolderPath(folderName)
-      });
-    },
-    [getFolderByNameAndEnv, singleEnvSlug, childFolderPath]
-  );
-
   const {
     dynamicSecretNames,
     isDynamicSecretPresentInEnv,
@@ -1052,6 +1041,31 @@ const OverviewPageContent = () => {
     const env = userAvailableEnvs.find((el) => el.slug === envSlug);
     setCommitHistoryEnv({ slug: envSlug, name: env?.name ?? envSlug });
   };
+
+  const ensureFolderRbacPlan = useCallback(() => {
+    if (subscription?.secretsFolderRbac) return true;
+    handlePopUpOpen("upgradePlan", {
+      text: "Folder-level access controls can be unlocked if you upgrade to Infisical Pro plan."
+    });
+    return false;
+  }, [subscription?.secretsFolderRbac, handlePopUpOpen]);
+
+  const handleFolderAccessOpen = useCallback(
+    (folderName: string) => {
+      if (!ensureFolderRbacPlan()) return;
+      const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
+      if (!folder) return;
+      setFolderAccessTarget({
+        folderPath: childFolderPath(folderName)
+      });
+    },
+    [ensureFolderRbacPlan, getFolderByNameAndEnv, singleEnvSlug, childFolderPath]
+  );
+
+  const handleCurrentFolderAccessOpen = useCallback(() => {
+    if (!ensureFolderRbacPlan()) return;
+    setIsCurrentFolderAccessOpen(true);
+  }, [ensureFolderRbacPlan]);
 
   const handleAddSecretImport = () => {
     handlePopUpOpen("addSecretImport");
@@ -2758,7 +2772,7 @@ const OverviewPageContent = () => {
                         variant="outline"
                         size="sm"
                         aria-label="Manage Access"
-                        onClick={() => setIsCurrentFolderAccessOpen(true)}
+                        onClick={handleCurrentFolderAccessOpen}
                       >
                         <UsersIcon />
                       </IconButton>

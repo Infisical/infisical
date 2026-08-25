@@ -1,6 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 
 import { SecretFolderRole } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -40,6 +41,7 @@ type TFolderPermissionServiceFactoryDep = {
     TFolderPermissionDALFactory,
     "findUsersWithFolderAccess" | "findIdentitiesWithFolderAccess" | "hasProjectAccess" | "isProjectAdmin"
   >;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TFolderPermissionServiceFactory = ReturnType<typeof folderPermissionServiceFactory>;
@@ -48,12 +50,23 @@ export const folderPermissionServiceFactory = ({
   additionalPrivilegeDAL,
   secretFolderDAL,
   permissionService,
-  folderPermissionDAL
+  folderPermissionDAL,
+  licenseService
 }: TFolderPermissionServiceFactoryDep) => {
+  const assertFolderRbacLicensed = async (orgId: string) => {
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.secretsFolderRbac) {
+      throw new BadRequestError({
+        message: "Failed to access folder access controls due to plan restriction. Upgrade your Infisical plan."
+      });
+    }
+  };
+
   const createFolderGrant = async (dto: TCreateFolderGrantDTO) => {
     const { projectId, environmentSlug, secretPath, target } = dto;
     assertFullAccessIsPermanent(dto.role, Boolean(dto.type?.isTemporary));
 
+    await assertFolderRbacLicensed(dto.permission.orgId);
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     assertManageFolderAccess(callerPermission, folder);
@@ -98,6 +111,7 @@ export const folderPermissionServiceFactory = ({
 
   const updateFolderGrant = async (dto: TUpdateFolderGrantDTO) => {
     const { projectId, environmentSlug, secretPath, target } = dto;
+    await assertFolderRbacLicensed(dto.permission.orgId);
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     assertManageFolderAccess(callerPermission, folder);
@@ -137,6 +151,7 @@ export const folderPermissionServiceFactory = ({
 
   const deleteFolderGrant = async (dto: TDeleteFolderGrantDTO) => {
     const { projectId, environmentSlug, secretPath, target } = dto;
+    await assertFolderRbacLicensed(dto.permission.orgId);
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     assertManageFolderAccess(callerPermission, folder);
@@ -165,6 +180,7 @@ export const folderPermissionServiceFactory = ({
 
   const listFolderAccessUsers = async (dto: TListFolderAccessActorsDTO) => {
     const { projectId, environmentSlug, secretPath, limit, offset, search } = dto;
+    await assertFolderRbacLicensed(dto.permission.orgId);
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     assertManageFolderAccess(callerPermission, folder);
@@ -189,6 +205,7 @@ export const folderPermissionServiceFactory = ({
 
   const listFolderAccessIdentities = async (dto: TListFolderAccessActorsDTO) => {
     const { projectId, environmentSlug, secretPath, limit, offset, search } = dto;
+    await assertFolderRbacLicensed(dto.permission.orgId);
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     const folder = await resolveFolder(projectId, environmentSlug, secretPath, secretFolderDAL);
     assertManageFolderAccess(callerPermission, folder);
@@ -213,6 +230,7 @@ export const folderPermissionServiceFactory = ({
 
   const listActorFolderGrants = async (dto: TListActorFolderGrantsDTO) => {
     const { projectId, target } = dto;
+    await assertFolderRbacLicensed(dto.permission.orgId);
     const callerPermission = await getFolderAccessPermission(dto.permission, projectId, permissionService);
     assertReadActorGrantsAccess(callerPermission, target);
 
