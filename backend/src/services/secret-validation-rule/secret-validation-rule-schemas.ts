@@ -9,6 +9,7 @@ import {
   DynamicSecretRuleProvider,
   SecretRotationRuleProvider,
   SecretValidationRuleType,
+  TConstraint,
   TSecretValidationRuleInputs
 } from "./secret-validation-rule-types";
 
@@ -24,7 +25,7 @@ const GENERATED_CONSTRAINT_TYPES = [
   ConstraintType.RequiredPrefix,
   ConstraintType.RequiredSuffix
 ] as const;
-const STATIC_CONSTRAINT_TYPES = [
+const STATIC_STRING_CONSTRAINT_TYPES = [
   ...GENERATED_CONSTRAINT_TYPES,
   ConstraintType.PreventValueReuse,
   ConstraintType.PreventDuplicatedValues
@@ -33,30 +34,27 @@ const STATIC_CONSTRAINT_TYPES = [
 /** Embed description + example so Mintlify/OpenAPI curl samples include enum fields. */
 const openApiField = (description: string, example: string) => JSON.stringify({ description, example });
 
-type TConstraintInput = {
-  type: ConstraintType;
-  appliesTo: ConstraintTarget;
-  value: string;
-};
-
 const SECRET_VALUE_ONLY_CONSTRAINTS: ConstraintType[] = [
   ConstraintType.PreventValueReuse,
-  ConstraintType.PreventDuplicatedValues
+  ConstraintType.PreventDuplicatedValues,
+  ConstraintType.UniqueSecretValue
 ];
 
-const valueRequiredRefinement = (c: TConstraintInput) =>
-  SECRET_VALUE_ONLY_CONSTRAINTS.includes(c.type) || c.value.length > 0;
+const valueRequiredRefinement = (c: TConstraint) => {
+  if (c.type === ConstraintType.UniqueSecretValue) return true;
+  return SECRET_VALUE_ONLY_CONSTRAINTS.includes(c.type) || c.value.length > 0;
+};
 
-const preventValueReuseTargetRefinement = (c: TConstraintInput) =>
+const preventValueReuseTargetRefinement = (c: TConstraint) =>
   !SECRET_VALUE_ONLY_CONSTRAINTS.includes(c.type) || c.appliesTo === ConstraintTarget.SecretValue;
 
-const preventValueReuseRangeRefinement = (c: TConstraintInput) => {
+const preventValueReuseRangeRefinement = (c: TConstraint) => {
   if (c.type !== ConstraintType.PreventValueReuse) return true;
   const num = Number(c.value);
   return Number.isInteger(num) && num >= 1 && num <= MAX_PREVENT_VALUE_REUSE_VERSIONS;
 };
 
-const withConstraintRefinements = <T extends z.ZodType<TConstraintInput>>(schema: T) =>
+const withConstraintRefinements = <T extends z.ZodType<TConstraint>>(schema: T) =>
   schema
     .refine(valueRequiredRefinement, { message: "Value is required", path: ["value"] })
     .refine(preventValueReuseTargetRefinement, {
@@ -68,18 +66,33 @@ const withConstraintRefinements = <T extends z.ZodType<TConstraintInput>>(schema
       path: ["value"]
     });
 
+const uniqueSecretValueConstraintSchema = z.object({
+  type: z.literal(ConstraintType.UniqueSecretValue),
+  appliesTo: z
+    .enum(STATIC_RULE_TARGETS)
+    .describe(openApiField(SECRET_VALIDATION_RULES.RULE.appliesToStatic, ConstraintTarget.SecretValue)),
+  value: z.object({
+    secretVersions: z.object({
+      enabled: z.boolean(),
+      versions: z.number().int().min(1).max(MAX_PREVENT_VALUE_REUSE_VERSIONS)
+    })
+  })
+});
+
 const buildConstraintSchemaForRuleType = (ruleType: SecretValidationRuleType) => {
   if (ruleType === SecretValidationRuleType.StaticSecrets) {
+    const stringSchema = z.object({
+      type: z
+        .enum(STATIC_STRING_CONSTRAINT_TYPES)
+        .describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintTypeStatic, ConstraintType.MinLength)),
+      appliesTo: z
+        .enum(STATIC_RULE_TARGETS)
+        .describe(openApiField(SECRET_VALIDATION_RULES.RULE.appliesToStatic, ConstraintTarget.SecretValue)),
+      value: z.string().describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintValue, "8"))
+    });
+
     return withConstraintRefinements(
-      z.object({
-        type: z
-          .enum(STATIC_CONSTRAINT_TYPES)
-          .describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintTypeStatic, ConstraintType.MinLength)),
-        appliesTo: z
-          .enum(STATIC_RULE_TARGETS)
-          .describe(openApiField(SECRET_VALIDATION_RULES.RULE.appliesToStatic, ConstraintTarget.SecretValue)),
-        value: z.string().describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintValue, "8"))
-      })
+      z.union([stringSchema, uniqueSecretValueConstraintSchema]) as z.ZodType<TConstraint>
     );
   }
 
@@ -92,7 +105,7 @@ const buildConstraintSchemaForRuleType = (ruleType: SecretValidationRuleType) =>
         .enum(GENERATED_RULE_TARGETS)
         .describe(openApiField(SECRET_VALIDATION_RULES.RULE.appliesToGenerated, ConstraintTarget.GeneratedPassword)),
       value: z.string().describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintValue, "8"))
-    })
+    }) as z.ZodType<TConstraint>
   );
 };
 

@@ -5,11 +5,15 @@ export {
 } from "./mutations";
 export { useListSecretValidationRules } from "./queries";
 export type {
+  StringConstraintType,
   TConstraint,
   TCreateSecretValidationRuleDTO,
   TDeleteSecretValidationRuleDTO,
   TSecretValidationRule,
   TSecretValidationRuleConfig,
+  TStringConstraint,
+  TUniqueSecretValueBody,
+  TUniqueSecretValueConstraint,
   TUpdateSecretValidationRuleDTO
 } from "./types";
 export {

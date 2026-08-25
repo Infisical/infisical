@@ -18,7 +18,8 @@ export enum ConstraintType {
   RequiredPrefix = "required-prefix",
   RequiredSuffix = "required-suffix",
   PreventValueReuse = "prevent-value-reuse",
-  PreventDuplicatedValues = "prevent-duplicated-values"
+  PreventDuplicatedValues = "prevent-duplicated-values",
+  UniqueSecretValue = "unique-secret-value"
 }
 
 export enum ConstraintTarget {
@@ -90,6 +91,16 @@ export const CONSTRAINT_OPTIONS: {
     placeholder: "",
     icon: CopyXIcon,
     allowedTargets: [ConstraintTarget.SecretValue]
+  },
+  {
+    type: ConstraintType.UniqueSecretValue,
+    label: "Unique Secret Value",
+    description: "Enforce uniqueness of secret values across versions",
+    cardDescription:
+      "When a secret is created or updated, its value is checked for uniqueness against prior versions of the same secret.",
+    placeholder: "",
+    icon: HistoryIcon,
+    allowedTargets: [ConstraintTarget.SecretValue]
   }
 ];
 
@@ -100,7 +111,8 @@ export const CONSTRAINT_VALUE_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RequiredPrefix]: "Text",
   [ConstraintType.RequiredSuffix]: "Text",
   [ConstraintType.PreventValueReuse]: "Previous versions",
-  [ConstraintType.PreventDuplicatedValues]: ""
+  [ConstraintType.PreventDuplicatedValues]: "",
+  [ConstraintType.UniqueSecretValue]: ""
 };
 
 export const CONSTRAINT_TYPE_LABELS: Record<ConstraintType, string> = {
@@ -110,7 +122,8 @@ export const CONSTRAINT_TYPE_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RequiredPrefix]: "Required Prefix",
   [ConstraintType.RequiredSuffix]: "Required Suffix",
   [ConstraintType.PreventValueReuse]: "Prevent Value Repetition",
-  [ConstraintType.PreventDuplicatedValues]: "Prevent Duplicate Values"
+  [ConstraintType.PreventDuplicatedValues]: "Prevent Duplicate Values",
+  [ConstraintType.UniqueSecretValue]: "Unique Secret Value"
 };
 
 export enum RuleType {
@@ -164,18 +177,30 @@ export const SECRET_ROTATION_PROVIDER_OPTIONS: TProviderOption<SecretRotationRul
 // value.
 export const DYNAMIC_SECRET_RULE_DISALLOWED_CONSTRAINTS: ConstraintType[] = [
   ConstraintType.PreventValueReuse,
-  ConstraintType.PreventDuplicatedValues
+  ConstraintType.PreventDuplicatedValues,
+  ConstraintType.UniqueSecretValue
 ];
 export const SECRET_ROTATION_RULE_DISALLOWED_CONSTRAINTS: ConstraintType[] = [
   ConstraintType.PreventValueReuse,
-  ConstraintType.PreventDuplicatedValues
+  ConstraintType.PreventDuplicatedValues,
+  ConstraintType.UniqueSecretValue
 ];
 
 export const MAX_PREVENT_VALUE_REUSE_VERSIONS = 25;
 
-export const constraintSchema = z
+const STRING_CONSTRAINT_TYPES = [
+  ConstraintType.MinLength,
+  ConstraintType.MaxLength,
+  ConstraintType.RegexPattern,
+  ConstraintType.RequiredPrefix,
+  ConstraintType.RequiredSuffix,
+  ConstraintType.PreventValueReuse,
+  ConstraintType.PreventDuplicatedValues
+] as const;
+
+const stringConstraintSchema = z
   .object({
-    type: z.nativeEnum(ConstraintType),
+    type: z.enum(STRING_CONSTRAINT_TYPES),
     appliesTo: z.nativeEnum(ConstraintTarget),
     value: z.string()
   })
@@ -225,6 +250,22 @@ export const constraintSchema = z
       }
     }
   });
+
+const uniqueSecretValueConstraintSchema = z.object({
+  type: z.literal(ConstraintType.UniqueSecretValue),
+  appliesTo: z.nativeEnum(ConstraintTarget),
+  value: z.object({
+    secretVersions: z.object({
+      enabled: z.boolean(),
+      versions: z.number().int().min(1).max(MAX_PREVENT_VALUE_REUSE_VERSIONS)
+    })
+  })
+});
+
+export const constraintSchema = z.union([
+  stringConstraintSchema,
+  uniqueSecretValueConstraintSchema
+]);
 
 const duplicateConstraintRefinement = (
   constraints: { type: ConstraintType; appliesTo: ConstraintTarget }[]

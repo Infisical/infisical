@@ -14,7 +14,8 @@ export enum ConstraintType {
   RequiredPrefix = "required-prefix",
   RequiredSuffix = "required-suffix",
   PreventValueReuse = "prevent-value-reuse",
-  PreventDuplicatedValues = "prevent-duplicated-values"
+  PreventDuplicatedValues = "prevent-duplicated-values",
+  UniqueSecretValue = "unique-secret-value"
 }
 
 export enum ConstraintTarget {
@@ -37,11 +38,28 @@ export enum SecretRotationRuleProvider {
   PostgresCredentials = "postgres-credentials"
 }
 
-export type TConstraint = {
-  type: ConstraintType;
+export type StringConstraintType = Exclude<ConstraintType, ConstraintType.UniqueSecretValue>;
+
+export type TUniqueSecretValueBody = {
+  secretVersions: {
+    enabled: boolean;
+    versions: number;
+  };
+};
+
+export type TStringConstraint = {
+  type: StringConstraintType;
   appliesTo: ConstraintTarget;
   value: string;
 };
+
+export type TUniqueSecretValueConstraint = {
+  type: ConstraintType.UniqueSecretValue;
+  appliesTo: ConstraintTarget;
+  value: TUniqueSecretValueBody;
+};
+
+export type TConstraint = TStringConstraint | TUniqueSecretValueConstraint;
 
 export type TStaticSecretsInputs = {
   constraints: TConstraint[];
