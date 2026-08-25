@@ -112,6 +112,8 @@ export const postgresDiscoveryFactory: TPamDiscoveryFactory = ({
           user: account.username,
           password: account.password,
           connectionTimeoutMillis: QUERY_TIMEOUT_MS,
+          statement_timeout: QUERY_TIMEOUT_MS,
+          query_timeout: QUERY_TIMEOUT_MS,
           ssl: account.sslEnabled
             ? {
                 rejectUnauthorized: account.sslRejectUnauthorized,
