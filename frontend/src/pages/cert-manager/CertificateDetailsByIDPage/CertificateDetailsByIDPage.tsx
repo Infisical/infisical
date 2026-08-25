@@ -41,6 +41,7 @@ import {
 } from "@app/hooks/api/pkiApplications/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 
 import { CertificateCertModal } from "../CertificatesPage/components/CertificateCertModal";
 import {
@@ -121,7 +122,7 @@ const Page = () => {
           projectId,
           applicationName: fromApplication
         },
-        search: { selectedTab: "certificates" }
+        search: { selectedTab: ApplicationTab.Certificates }
       });
     } else {
       navigate({
@@ -275,7 +276,7 @@ const Page = () => {
               projectId,
               applicationName: fromApplication
             }}
-            search={{ selectedTab: "certificates" }}
+            search={{ selectedTab: ApplicationTab.Certificates }}
             className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
             <ChevronLeftIcon size={16} />

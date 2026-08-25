@@ -496,8 +496,10 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         .map((p) => ({ value: p.id, label: p.slug })),
     [profileList, attachedIds]
   );
-  const totalProfileCount = profileList?.certificateProfiles?.length ?? 0;
-  const hasAttachableProfiles = availableProfiles.length > 0;
+  // Project-wide count, not the length of the fetched page. The list is paginated, so a page whose
+  // profiles happen to all be attached says nothing about whether the project has others left.
+  const totalProfileCount = profileList?.totalCount ?? 0;
+  const hasAttachableProfiles = totalProfileCount > profiles.length;
   let attachDisabledReason: ReactNode | null = null;
   if (!hasAttachableProfiles && !canCreateProfile) {
     attachDisabledReason =
@@ -512,14 +514,17 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
     (menuProps: MenuListProps<TProfileOption, true>) => (
       <>
         {canCreateProfile ? (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
+            isFullWidth
+            className="justify-start"
             onClick={() => setIsCreateProfileOpen(true)}
-            className="flex w-full cursor-pointer items-center gap-x-1.5 rounded-sm px-2 py-1.5 text-sm text-muted hover:bg-foreground/5"
           >
-            <PlusIcon className="size-4 shrink-0" />
+            <PlusIcon />
             Add Certificate Profile
-          </button>
+          </Button>
         ) : null}
         <components.MenuList {...menuProps} />
       </>
