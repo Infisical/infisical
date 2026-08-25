@@ -27,13 +27,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { Button } from "@app/components/v3/generic/Button";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldError,
-  FieldLabel
-} from "@app/components/v3/generic/Field";
+import { Field, FieldContent, FieldError, FieldLabel } from "@app/components/v3/generic/Field";
 import { Input } from "@app/components/v3/generic/Input";
 import {
   Select,
@@ -348,11 +342,6 @@ export const CreateAccountSheet = ({
                             </Tooltip>
                           </SelectContent>
                         </Select>
-                        {isFolderLocked && (
-                          <FieldDescription>
-                            The account is added to the folder you&apos;re viewing.
-                          </FieldDescription>
-                        )}
                       </FieldContent>
                     </Field>
                   )}

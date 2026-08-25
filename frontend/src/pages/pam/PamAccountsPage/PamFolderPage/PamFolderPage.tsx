@@ -211,61 +211,64 @@ export const PamFolderPage = () => {
             Accounts
             <DocumentationLinkBadge href={PamDocsUrls.accounts.overview} />
             <AccountsBreadcrumb orgId={orgId} folderName={folder?.name} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  variant="ghost"
+                  size="xs"
+                  aria-label="Folder options"
+                  className="ml-1.5 text-muted"
+                >
+                  <MoreHorizontal className="size-4" />
+                </IconButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" sideOffset={4} className="min-w-48">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <DropdownMenuItem
+                        isDisabled={!configureTab}
+                        onClick={() => configureTab && setFolderSheetTab(configureTab.value)}
+                      >
+                        <Settings />
+                        Configure
+                      </DropdownMenuItem>
+                    </div>
+                  </TooltipTrigger>
+                  {!configureTab && arePermissionsResolved && (
+                    <TooltipContent side="right">
+                      You don&apos;t have permission to configure this folder
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+                <DropdownMenuSeparator />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <DropdownMenuItem
+                        variant="danger"
+                        isDisabled={!canDeleteFolder}
+                        onClick={() => handlePopUpOpen("deleteFolder")}
+                      >
+                        <Trash2 />
+                        Delete Folder
+                      </DropdownMenuItem>
+                    </div>
+                  </TooltipTrigger>
+                  {!canDeleteFolder && arePermissionsResolved && (
+                    <TooltipContent side="right">
+                      You don&apos;t have permission to delete this folder
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </CardTitle>
           <CardDescription>
             Launch sessions for accounts you have access to, or manage account settings.
           </CardDescription>
           <CardAction>
             <div className="flex items-center gap-3">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    <MoreHorizontal />
-                    Options
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" sideOffset={4} className="min-w-48">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <DropdownMenuItem
-                          isDisabled={!configureTab}
-                          onClick={() => configureTab && setFolderSheetTab(configureTab.value)}
-                        >
-                          <Settings />
-                          Configure
-                        </DropdownMenuItem>
-                      </div>
-                    </TooltipTrigger>
-                    {!configureTab && arePermissionsResolved && (
-                      <TooltipContent side="right">
-                        You don&apos;t have permission to configure this folder
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                  <DropdownMenuSeparator />
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <DropdownMenuItem
-                          variant="danger"
-                          isDisabled={!canDeleteFolder}
-                          onClick={() => handlePopUpOpen("deleteFolder")}
-                        >
-                          <Trash2 />
-                          Delete Folder
-                        </DropdownMenuItem>
-                      </div>
-                    </TooltipTrigger>
-                    {!canDeleteFolder && arePermissionsResolved && (
-                      <TooltipContent side="right">
-                        You don&apos;t have permission to delete this folder
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
               <DropdownMenu>
                 <Tooltip>
                   <TooltipTrigger asChild>
