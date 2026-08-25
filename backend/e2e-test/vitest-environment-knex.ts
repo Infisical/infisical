@@ -104,6 +104,8 @@ export default {
       // @ts-expect-error type
       globalThis.testRedis = redis;
       // @ts-expect-error type
+      globalThis.testKeyStore = keyStore;
+      // @ts-expect-error type
       globalThis.testQueue = queue;
       // @ts-expect-error type
       globalThis.testSuperAdminDAL = superAdminDAL;
@@ -142,6 +144,8 @@ export default {
         delete globalThis.testServer;
         // @ts-expect-error type
         delete globalThis.testRedis;
+        // @ts-expect-error type
+        delete globalThis.testKeyStore;
         // @ts-expect-error type
         delete globalThis.testSuperAdminDAL;
         // @ts-expect-error type

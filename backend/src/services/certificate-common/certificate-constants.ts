@@ -320,6 +320,17 @@ export const CERTIFICATE_RENEWAL_CONFIG = {
 
 export const DEFAULT_CRL_VALIDITY_DAYS = 7;
 
+/**
+ * Certificates we mint just-in-time are verified by gateways, relays, and agents on hosts whose
+ * clocks we do not control. A notBefore of "now" makes a fresh certificate look not-yet-valid to a
+ * host running behind us, and a notAfter of "issuance + ttl" makes a short-lived one look already
+ * expired to a host running ahead of us, so widen the window by this tolerance at both ends.
+ *
+ * Lives here rather than next to the getNotBefore/getNotAfter helpers in certificate-authority-fns
+ * so `@app/lib/ssh` can read it without importing that module and closing an import cycle.
+ */
+export const CERT_CLOCK_SKEW_MS = 2 * 60 * 1000;
+
 export const ALGORITHM_FAMILIES = {
   ECDSA: {
     signature: ["SHA256-ECDSA", "SHA384-ECDSA", "SHA512-ECDSA"],

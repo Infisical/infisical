@@ -305,6 +305,9 @@ export enum EventType {
   CREATE_SUB_ORGANIZATION = "create-sub-organization",
   UPDATE_SUB_ORGANIZATION = "update-sub-organization",
 
+  UPDATE_USER_ORG_MEMBERSHIP = "update-user-org-membership",
+  DELETE_USER_ORG_MEMBERSHIP = "delete-user-org-membership",
+
   CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
   UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
   DELETE_IDENTITY_ORG_MEMBERSHIP = "delete-identity-org-membership",

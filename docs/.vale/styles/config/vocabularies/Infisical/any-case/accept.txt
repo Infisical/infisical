@@ -4,7 +4,7 @@
 # legitimately appear in more than one case, so pinning a single canonical form
 # would produce false positives. Comments need a hash AND a space.
 #
-# Terms whose casing IS enforced live in ../enforced/accept.txt.
+# Terms whose casing IS enforced live in ../canonical/accept.txt.
 
 # Product nouns that are Title Case as UI labels and lowercase as common nouns.
 [Gg]ateway
@@ -390,3 +390,7 @@ I
 # Case-insensitive because a canonical entry makes the converter capitalize the
 # common noun "node".
 (?i)Node
+
+# Ordinary technical vocabulary the en_US dictionary does not carry.
+(?i)prefilled
+(?i)unscoped

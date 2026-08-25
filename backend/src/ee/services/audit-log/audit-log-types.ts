@@ -213,6 +213,9 @@ export enum EventType {
   UPDATE_IDENTITY = "update-identity",
   DELETE_IDENTITY = "delete-identity",
 
+  UPDATE_USER_ORG_MEMBERSHIP = "update-user-org-membership",
+  DELETE_USER_ORG_MEMBERSHIP = "delete-user-org-membership",
+
   CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
   UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
   DELETE_IDENTITY_ORG_MEMBERSHIP = "delete-identity-org-membership",
@@ -2104,6 +2107,25 @@ interface ClearIdentityLdapAuthLockoutsEvent {
   type: EventType.CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS;
   metadata: {
     identityId: string;
+  };
+}
+
+interface UpdateUserOrgMembershipEvent {
+  type: EventType.UPDATE_USER_ORG_MEMBERSHIP;
+  metadata: {
+    membershipId: string;
+    userId: string;
+    role?: string;
+    isActive?: boolean;
+    metadataKeys?: string[];
+  };
+}
+
+interface DeleteUserOrgMembershipEvent {
+  type: EventType.DELETE_USER_ORG_MEMBERSHIP;
+  metadata: {
+    membershipId: string;
+    userId: string;
   };
 }
 
@@ -4062,6 +4084,7 @@ interface CreateCmekEvent {
     description?: string;
     encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
     isExportable?: boolean;
+    hasDeleteProtection?: boolean;
   };
 }
 
@@ -4076,8 +4099,10 @@ interface UpdateCmekEvent {
   type: EventType.UPDATE_CMEK;
   metadata: {
     keyId: string;
+    keyName: string;
     name?: string;
     description?: string;
+    hasDeleteProtection?: boolean;
   };
 }
 
@@ -7262,6 +7287,8 @@ export type Event =
   | GetIdentityLdapAuthEvent
   | RevokeIdentityLdapAuthEvent
   | ClearIdentityLdapAuthLockoutsEvent
+  | UpdateUserOrgMembershipEvent
+  | DeleteUserOrgMembershipEvent
   | CreateIdentityOrgMembershipEvent
   | UpdateIdentityOrgMembershipEvent
   | DeleteIdentityOrgMembershipEvent

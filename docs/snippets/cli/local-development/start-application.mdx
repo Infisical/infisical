@@ -1,0 +1,59 @@
+Run your usual start command through `infisical run`, placing it after the `--` separator.
+
+<CodeGroup>
+
+```bash Node.js
+infisical run --env=dev -- npm run dev
+```
+
+```bash Python
+infisical run --env=dev -- flask run
+```
+
+```bash Go
+infisical run --env=dev -- go run main.go
+```
+
+```bash Ruby
+infisical run --env=dev -- bundle exec rails server
+```
+
+```bash Java
+infisical run --env=dev -- ./mvnw spring-boot:run
+```
+
+```bash .NET
+infisical run --env=dev -- dotnet run
+```
+
+</CodeGroup>
+
+The CLI fetches the secrets you have access to and passes them to your application as environment variables. Your application reads them the same way it always has, through `process.env` in Node.js or `os.environ` in Python, so you don't need to change any application code.
+
+<Tip>
+  Add `--watch` while you work to restart your application automatically whenever one of its secrets changes in Infisical.
+</Tip>
+
+<Accordion title="Injecting secrets into a shell function or alias">
+  A start command that is a shell function or an alias can't be called directly after `--`, because it only exists inside your shell. Use the `--command` flag to run it in a shell instead.
+
+  For example, if `custom.sh` defines a `yd` function that runs `yarn dev`:
+
+  ```bash
+  #!/bin/sh
+
+  yd() {
+    yarn dev
+  }
+  ```
+
+  Source the file and call the function in a single command:
+
+  ```bash
+  infisical run --env=dev --command="source custom.sh && yd"
+  ```
+
+  The `--command` flag is also how you chain commands together, as in `--command="npm run migrate && npm run dev"`.
+</Accordion>
+
+For every available option, see the [`infisical run`](/cli/commands/run) reference.
