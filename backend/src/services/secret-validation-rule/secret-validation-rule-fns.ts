@@ -222,10 +222,10 @@ export const evaluateConstraint = (constraint: TConstraint, secret: TSecretToVal
   }
 
   const targetLabel = TARGET_LABELS[constraint.appliesTo];
+  const targetValue = constraint.appliesTo === ConstraintTarget.SecretKey ? secret.key : (secret.value ?? "");
 
   switch (constraint.type) {
     case ConstraintType.MinLength: {
-      const targetValue = constraint.appliesTo === ConstraintTarget.SecretKey ? secret.key : (secret.value ?? "");
       const min = Number(constraint.value);
 
       if (Number.isNaN(min)) {
@@ -238,7 +238,6 @@ export const evaluateConstraint = (constraint: TConstraint, secret: TSecretToVal
       return null;
     }
     case ConstraintType.MaxLength: {
-      const targetValue = constraint.appliesTo === ConstraintTarget.SecretKey ? secret.key : (secret.value ?? "");
       const max = Number(constraint.value);
 
       if (Number.isNaN(max)) {
@@ -251,7 +250,6 @@ export const evaluateConstraint = (constraint: TConstraint, secret: TSecretToVal
       return null;
     }
     case ConstraintType.RegexPattern: {
-      const targetValue = constraint.appliesTo === ConstraintTarget.SecretKey ? secret.key : (secret.value ?? "");
       try {
         const regex = new RE2(constraint.value);
         if (!regex.test(targetValue)) {
@@ -263,14 +261,12 @@ export const evaluateConstraint = (constraint: TConstraint, secret: TSecretToVal
       }
     }
     case ConstraintType.RequiredPrefix: {
-      const targetValue = constraint.appliesTo === ConstraintTarget.SecretKey ? secret.key : (secret.value ?? "");
       if (!targetValue.startsWith(constraint.value)) {
         return `${targetLabel} must start with "${constraint.value}"`;
       }
       return null;
     }
     case ConstraintType.RequiredSuffix: {
-      const targetValue = constraint.appliesTo === ConstraintTarget.SecretKey ? secret.key : (secret.value ?? "");
       if (!targetValue.endsWith(constraint.value)) {
         return `${targetLabel} must end with "${constraint.value}"`;
       }

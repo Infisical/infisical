@@ -80,9 +80,7 @@ const buildConstraintSchemaForRuleType = (ruleType: SecretValidationRuleType) =>
       value: z.string().describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintValue, "8"))
     });
 
-    return withConstraintRefinements(
-      z.union([stringSchema, uniqueSecretValueConstraintSchema]) as z.ZodType<TConstraint>
-    );
+    return withConstraintRefinements(z.union([stringSchema, uniqueSecretValueConstraintSchema]));
   }
 
   return withConstraintRefinements(
@@ -94,7 +92,7 @@ const buildConstraintSchemaForRuleType = (ruleType: SecretValidationRuleType) =>
         .enum(GENERATED_RULE_TARGETS)
         .describe(openApiField(SECRET_VALIDATION_RULES.RULE.appliesToGenerated, ConstraintTarget.GeneratedPassword)),
       value: z.string().describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintValue, "8"))
-    }) as z.ZodType<TConstraint>
+    })
   );
 };
 

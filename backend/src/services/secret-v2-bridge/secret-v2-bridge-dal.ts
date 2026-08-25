@@ -1481,7 +1481,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     try {
       if (!blindIndexes.length) return [];
 
-      let query = (tx || db.replicaNode())(TableName.SecretV2)
+      let query = (tx || db)(TableName.SecretV2)
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where(`${TableName.Environment}.projectId`, projectId)
