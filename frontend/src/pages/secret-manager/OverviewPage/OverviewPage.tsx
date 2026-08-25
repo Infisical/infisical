@@ -3831,10 +3831,8 @@ const OverviewPageContent = () => {
         isOpen={popUp.replicateFolder.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("replicateFolder", isOpen)}
         onParsedEnv={handleParsedEnvMultiFolder}
-        environment={singleVisibleEnv?.slug ?? ""}
         environments={userAvailableEnvs}
         projectId={projectId}
-        secretPath={secretPath}
       />
       <AlertDialog
         open={popUp?.confirmReplicateUpload?.isOpen}
@@ -3848,12 +3846,12 @@ const OverviewPageContent = () => {
               <CopyIcon />
             </AlertDialogMedia>
             <AlertDialogTitle>
-              {isReplicateNonConflicting ? "Copy Secrets" : "Overwrite Existing Secrets"}
+              {isReplicateNonConflicting ? "Replicate Secrets" : "Overwrite Existing Secrets"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {isReplicateNonConflicting
-                ? `Copy ${replicateCreateCount} ${replicateCreateCount === 1 ? "secret" : "secrets"} to ${replicateDestinationEnvironment} at ${secretPath}.`
-                : `${replicateUpdateCount} ${replicateUpdateCount === 1 ? "secret already exists" : "secrets already exist"} in ${replicateDestinationEnvironment}. Copying will replace the values at the destination paths below${replicateCreateCount > 0 ? ` and create ${replicateCreateCount} new ${replicateCreateCount === 1 ? "secret" : "secrets"}` : ""}.`}
+                ? `Replicate ${replicateCreateCount} ${replicateCreateCount === 1 ? "secret" : "secrets"} to ${replicateDestinationEnvironment} at ${secretPath}.`
+                : `${replicateUpdateCount} ${replicateUpdateCount === 1 ? "secret already exists" : "secrets already exist"} in ${replicateDestinationEnvironment}. Replicating will replace the values at the destination paths below${replicateCreateCount > 0 ? ` and create ${replicateCreateCount} new ${replicateCreateCount === 1 ? "secret" : "secrets"}` : ""}.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {!isReplicateNonConflicting && (
@@ -3886,7 +3884,7 @@ const OverviewPageContent = () => {
                 handleConfirmReplicateImport().catch(() => undefined);
               }}
             >
-              {isReplicateNonConflicting ? "Copy secrets" : "Copy and overwrite"}
+              {isReplicateNonConflicting ? "Replicate secrets" : "Replicate and overwrite"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

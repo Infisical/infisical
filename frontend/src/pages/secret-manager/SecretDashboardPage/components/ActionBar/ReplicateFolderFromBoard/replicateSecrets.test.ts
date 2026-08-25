@@ -10,7 +10,7 @@ import {
   reconcileSelectedSecrets
 } from "./replicateSecrets";
 
-describe("copy secrets path mapping", () => {
+describe("replicate secrets path mapping", () => {
   it("normalizes root and trailing slashes", () => {
     assert.equal(normalizeSecretPath(""), "/");
     assert.equal(normalizeSecretPath("folder/"), "/folder");

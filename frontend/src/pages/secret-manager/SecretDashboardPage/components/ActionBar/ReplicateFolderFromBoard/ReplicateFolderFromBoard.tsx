@@ -48,7 +48,7 @@ const formSchema = z.object({
       secretPath: z.string()
     })
     .array()
-    .min(1, "Select one or more secrets to copy")
+    .min(1, "Select one or more secrets to replicate")
 });
 
 type TFormSchema = z.infer<typeof formSchema>;
@@ -61,8 +61,6 @@ type Props = {
   ) => Promise<void> | void;
   environments?: { name: string; slug: string }[];
   projectId: string;
-  environment: string;
-  secretPath: string;
 };
 
 type SecretFolder = {
@@ -84,9 +82,7 @@ export const ReplicateFolderFromBoard = ({
   projectId,
   isOpen,
   onToggle,
-  onParsedEnv,
-  environment,
-  secretPath
+  onParsedEnv
 }: Props) => {
   const [shouldIncludeValues, setShouldIncludeValues] = useState(true);
 
@@ -278,11 +274,9 @@ export const ReplicateFolderFromBoard = ({
     await onParsedEnv(secretsToBePulled);
   };
 
-  const normalizedDestinationPath = normalizeSecretPath(secretPath);
-  const destinationEnvironment = environments.find(({ slug }) => slug === environment);
   const isInvalidSourcePath =
     !isSourceLoading && !isSourceError && Boolean(accessibleSecrets) && !secretsFilteredByPath;
-  const isCopyDisabled =
+  const isReplicateDisabled =
     selectedSecrets.length === 0 ||
     isSourceLoading ||
     isSourceError ||
@@ -301,47 +295,26 @@ export const ReplicateFolderFromBoard = ({
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit(handleFormSubmit)}>
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
-              <span>Copy Secrets</span>
+              <span>Replicate Secrets</span>
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/folder#replicating-folder-contents" />
             </SheetTitle>
             <SheetDescription>
-              Copy selected secrets and folders from another project location into this one.
+              Replicate selected secrets and folders from another project location into this one.
             </SheetDescription>
           </SheetHeader>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
-            <div
-              aria-label="Copy source and destination"
-              className="grid items-center gap-3 rounded-md border border-border bg-container p-3 sm:grid-cols-[1fr_auto_1fr]"
-            >
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-accent">Source</p>
-                <p className="truncate text-sm text-foreground">
-                  {selectedEnvironment?.name ?? "Select an environment"}
-                </p>
-                <p className="truncate font-mono text-xs text-muted">{normalizedSourcePath}</p>
-              </div>
-              <ArrowRightIcon className="size-4 rotate-90 text-muted sm:rotate-0" aria-hidden />
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-accent">Destination</p>
-                <p className="truncate text-sm text-foreground">
-                  {destinationEnvironment?.name ?? environment}
-                </p>
-                <p className="truncate font-mono text-xs text-muted">{normalizedDestinationPath}</p>
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
+          <div className="@container flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
+            <div className="grid items-center gap-4 @md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
               <Controller
                 control={control}
                 name="environment"
                 render={({ field: { value, onChange } }) => (
                   <Field>
-                    <FieldLabel htmlFor="copy-secrets-source-environment">
+                    <FieldLabel htmlFor="replicate-secrets-source-environment">
                       Source environment
                     </FieldLabel>
                     <Combobox
-                      id="copy-secrets-source-environment"
+                      id="replicate-secrets-source-environment"
                       modal
                       value={value}
                       onValueChange={onChange}
@@ -353,27 +326,31 @@ export const ReplicateFolderFromBoard = ({
                       getOptionValue={(option) => option.slug}
                       isDisabled={isSubmitting}
                     />
-                    <FieldDescription>Choose the environment to copy from.</FieldDescription>
+                    <FieldDescription>The environment to copy from.</FieldDescription>
                   </Field>
                 )}
+              />
+              <ArrowRightIcon
+                className="size-4 rotate-90 justify-self-center text-muted @md:rotate-0"
+                aria-hidden
               />
               <Controller
                 control={control}
                 name="secretPath"
                 render={({ field }) => (
                   <Field>
-                    <FieldLabel htmlFor="copy-secrets-source-path">Source root path</FieldLabel>
+                    <FieldLabel htmlFor="replicate-secrets-source-path">
+                      Source root path
+                    </FieldLabel>
                     <SecretPathInput
                       {...field}
-                      id="copy-secrets-source-path"
+                      id="replicate-secrets-source-path"
                       projectId={projectId}
                       placeholder="/"
                       environment={selectedEnvironment?.slug}
                       disabled={isSubmitting}
                     />
-                    <FieldDescription>
-                      Descendant paths are recreated beneath the destination path.
-                    </FieldDescription>
+                    <FieldDescription>Descendants recreated here</FieldDescription>
                   </Field>
                 )}
               />
@@ -385,7 +362,7 @@ export const ReplicateFolderFromBoard = ({
               render={({ field: { value, onChange } }) => (
                 <FieldSet>
                   <FieldLegend>Affected secrets</FieldLegend>
-                  <FieldDescription>Select the secrets and folders to copy.</FieldDescription>
+                  <FieldDescription>Select the secrets and folders to replicate.</FieldDescription>
                   <SecretTreeView
                     data={secretsFilteredByPath}
                     selectedItems={value}
@@ -405,15 +382,15 @@ export const ReplicateFolderFromBoard = ({
 
             <Field orientation="horizontal">
               <FieldContent>
-                <FieldLabel size="sm" htmlFor="copy-secrets-include-values">
+                <FieldLabel size="sm" htmlFor="replicate-secrets-include-values">
                   Include secret values
                 </FieldLabel>
                 <FieldDescription>
-                  Turn this off to copy secret keys without their current values.
+                  Turn this off to replicate secret keys without their current values.
                 </FieldDescription>
               </FieldContent>
               <Switch
-                id="copy-secrets-include-values"
+                id="replicate-secrets-include-values"
                 variant="project"
                 checked={shouldIncludeValues}
                 disabled={isSubmitting}
@@ -433,10 +410,10 @@ export const ReplicateFolderFromBoard = ({
               type="submit"
               variant="project"
               isPending={isSubmitting}
-              isDisabled={isCopyDisabled}
+              isDisabled={isReplicateDisabled}
             >
               <CopyIcon />
-              Check and copy
+              Check and replicate
             </Button>
           </SheetFooter>
         </form>

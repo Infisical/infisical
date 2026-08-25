@@ -230,12 +230,12 @@ export function AddResourceButtons({
                     isDisabled={!isReplicateSecretsAvailable || !isAllowed}
                   >
                     <ClipboardPasteIcon className="text-accent" />
-                    Copy secrets
+                    Replicate secrets
                   </DropdownMenuItem>
                 </TooltipTrigger>
                 <TooltipContent side="left">
                   {!isReplicateSecretsAvailable
-                    ? "Select a single environment to copy secrets"
+                    ? "Select a single environment to replicate secrets"
                     : "Access denied"}
                 </TooltipContent>
               </Tooltip>
