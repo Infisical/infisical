@@ -17,7 +17,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { PamAccountType, PamProductRole, PamSshAuthMethod } from "../pam/pam-enums";
+import { PamAccountType, PamPostgresAuthMethod, PamProductRole, PamSshAuthMethod } from "../pam/pam-enums";
 import { checkAccountAccess, TActorContext, verifyProductMembership } from "../pam/pam-permission";
 import { validateGatewayAttachment } from "../pam/pam-validators";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
@@ -222,12 +222,16 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       throw new BadRequestError({ message: `Credential account must be of type '${expectedType}'` });
     }
 
-    // discovery transmits an SSH password to every scanned host, so a password account may only be used by an actor
-    // allowed to view its secret
-    if (account.accountType === PamAccountType.SSH) {
+    // discovery transmits a password to every scanned host, so a password account may only be used by an actor
+    // allowed to view its secret. PostgreSQL scans are always password-based, so every one of them qualifies.
+    if (account.accountType === PamAccountType.SSH || account.accountType === PamAccountType.Postgres) {
       const { decryptor } = await getProjectCipher(projectId);
       const { authMethod } = decryptToObject(account.encryptedCredentials, decryptor) as { authMethod?: string };
-      if (authMethod === PamSshAuthMethod.Password) {
+      const sendsPassword =
+        account.accountType === PamAccountType.Postgres
+          ? authMethod !== PamPostgresAuthMethod.AwsIam
+          : authMethod === PamSshAuthMethod.Password;
+      if (sendsPassword) {
         await checkAccountAccess(
           permissionService,
           credentialAccountId,

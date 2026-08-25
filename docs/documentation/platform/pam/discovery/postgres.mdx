@@ -15,7 +15,7 @@ A PostgreSQL scan connects entirely through the Gateway:
 1. Each **CIDR range** is expanded into a list of target hosts; individual IPs and hostnames are used as-is (hostnames are resolved by the gateway in the target network).
 2. Each host is probed on the ports of your credential accounts, so unreachable hosts are skipped before any login is attempted.
 3. For each reachable host, discovery picks a credential account: it first tries an account whose stored host matches the target, otherwise it tries each account in turn until one connects.
-4. It reads the cluster's roles from `pg_roles`.
+4. It reads the roles defined on the instance.
 5. Each role that can log in is staged as a **PostgreSQL** account scoped to that instance. `postgres` on two instances becomes two separate staged accounts.
 
 Hosts that no credential can reach or authenticate to are reported on the run and skipped; the rest of the scan still completes.
@@ -29,7 +29,7 @@ Before creating a PostgreSQL discovery source, make sure you have:
 - The **Product Admin** role. See [Access Control](/documentation/platform/pam/concepts/access-control).
 
 <Note>
-The scanning account needs no special grant. `pg_roles` is readable by any role, so a low-privilege login is enough to enumerate an instance.
+The scanning account needs no special grant or elevated privileges. Any role that can log in is enough to enumerate an instance.
 </Note>
 
 <Warning>
@@ -58,7 +58,7 @@ Only password authentication can drive a scan. An AWS IAM account's token is min
 
 ## Account filtering
 
-Discovery surfaces only roles that can be logged into, meaning those with the `LOGIN` attribute. Group roles used purely to hold privileges cannot open a session, so they are not accounts and are dropped. This also excludes the built-in `pg_` roles, none of which can log in.
+Discovery surfaces only roles that can log in. Group roles that exist purely to hold privileges cannot open a session, so they are not accounts and are dropped, as are PostgreSQL's own built-in roles.
 
 Roles are cluster-wide rather than per-database, so the database your credential account connects to does not change which roles are found.
 

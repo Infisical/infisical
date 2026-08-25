@@ -24,7 +24,35 @@ const MAX_SWEEP_TARGETS = 65536;
 const MAX_ACCOUNTS_PER_HOST = 2000;
 const MAX_ACCOUNTS_PER_SCAN = 50000;
 
-const ENUMERATION_QUERY = `SELECT rolname FROM pg_roles WHERE rolcanlogin ORDER BY rolname LIMIT ${MAX_ACCOUNTS_PER_HOST}`;
+// one row past the cap, so a capped instance is detectable and can be excluded from reconciliation
+const ENUMERATION_QUERY = `SELECT rolname FROM pg_roles WHERE rolcanlogin ORDER BY rolname LIMIT ${MAX_ACCOUNTS_PER_HOST + 1}`;
+
+// pg surfaces auth/TLS/connection failures with driver-level detail; map the ones a user can act on and keep the
+// raw error to the log, so the run's machine errors stay stable and free of database internals
+const describeConnectionError = (err: unknown): string => {
+  const code = (err as { code?: string })?.code;
+  switch (code) {
+    case "28P01":
+    case "28000":
+      return "Authentication failed for the credential account";
+    case "3D000":
+      return "The credential account's database does not exist on this instance";
+    case "53300":
+      return "The instance refused the connection because it is out of connection slots";
+    case "ECONNREFUSED":
+      return "Connection refused";
+    case "ETIMEDOUT":
+    case "ENETUNREACH":
+    case "EHOSTUNREACH":
+      return "Timed out connecting to the instance";
+    case "DEPTH_ZERO_SELF_SIGNED_CERT":
+    case "SELF_SIGNED_CERT_IN_CHAIN":
+    case "UNABLE_TO_VERIFY_LEAF_SIGNATURE":
+      return "TLS verification failed. Add the instance's CA certificate to the credential account, or disable certificate verification.";
+    default:
+      return "Could not enumerate roles on this instance";
+  }
+};
 
 const TRAILING_HYPHENS_REGEX = new RE2(/-+$/);
 
@@ -73,13 +101,8 @@ export const postgresDiscoveryFactory: TPamDiscoveryFactory = ({
   const accounts = credentialAccounts.map(toPostgresAccount);
   const config = configuration as { cidrRanges: string[] };
 
-  const orderAccountsForHost = (host: string) => [
-    ...accounts.filter((a) => a.host === host),
-    ...accounts.filter((a) => a.host !== host)
-  ];
-
-  const enumerateHost = (host: string, account: TPostgresAccount) =>
-    executeWithGateway(host, account.port, gatewayId, gatewayV2Service, async (proxyPort) => {
+  const enumerateInstance = (host: string, port: number, account: TPostgresAccount) =>
+    executeWithGateway(host, port, gatewayId, gatewayV2Service, async (proxyPort) => {
       const db = knex({
         client: "pg",
         connection: {
@@ -109,32 +132,56 @@ export const postgresDiscoveryFactory: TPamDiscoveryFactory = ({
       }
     });
 
-  const scanHost = async (
+  // an instance is scanned as a host:port pair, not a host: one machine can run several clusters on different
+  // ports, and collapsing them would enumerate only the first one that answered
+  const scanInstance = async (
     host: string,
-    open: Set<string>,
+    port: number,
     signal: AbortSignal
-  ): Promise<{ accounts: TDiscoveredAccount[]; error?: TDiscoveryMachineError; scannedMachine?: string }> => {
-    if (signal.aborted) return { accounts: [] };
-    const isKnownHost = accounts.some((a) => a.host === host);
-    const candidates = orderAccountsForHost(host).filter(
-      (account) => isUsableAccount(account) && (isKnownHost || open.has(`${host}:${account.port}`))
-    );
+  ): Promise<{
+    accounts: TDiscoveredAccount[];
+    error?: TDiscoveryMachineError;
+    machine: string;
+    complete: boolean;
+  }> => {
+    const machine = `${host}:${port}`;
+    if (signal.aborted) return { accounts: [], machine, complete: false };
 
-    let lastError = "no credential account could authenticate";
+    const candidates = [
+      ...accounts.filter((a) => a.host === host && a.port === port),
+      ...accounts.filter((a) => a.host !== host || a.port !== port)
+    ].filter(isUsableAccount);
+
+    let lastError = "No credential account could authenticate";
     for (const account of candidates) {
       try {
         // eslint-disable-next-line no-await-in-loop
-        const rolnames = await enumerateHost(host, account);
+        const rolnames = await enumerateInstance(host, port, account);
+        const complete = rolnames.length <= MAX_ACCOUNTS_PER_HOST;
+        if (!complete) {
+          logger.warn(
+            `PAM PostgreSQL discovery truncated an instance at the per-instance limit [machine=${machine}] [limit=${MAX_ACCOUNTS_PER_HOST}]`
+          );
+        }
         return {
-          scannedMachine: `${host}:${account.port}`,
-          accounts: rolnames.map((rolname) => ({
+          machine,
+          complete,
+          ...(complete
+            ? {}
+            : {
+                error: {
+                  machine,
+                  error: `Instance has more than ${MAX_ACCOUNTS_PER_HOST} login roles; only the first ${MAX_ACCOUNTS_PER_HOST} were staged`
+                }
+              }),
+          accounts: rolnames.slice(0, MAX_ACCOUNTS_PER_HOST).map((rolname) => ({
             accountType: PamAccountType.Postgres,
             name: slugify(`${host} ${rolname}`, { lowercase: true }).slice(0, 64).replace(TRAILING_HYPHENS_REGEX, ""),
-            fingerprint: `${host}:${account.port}:${rolname}`,
+            fingerprint: `${machine}:${rolname}`,
             details: {
               connectionDetails: {
                 host,
-                port: account.port,
+                port,
                 database: account.database,
                 sslEnabled: account.sslEnabled,
                 sslRejectUnauthorized: account.sslRejectUnauthorized,
@@ -145,15 +192,13 @@ export const postgresDiscoveryFactory: TPamDiscoveryFactory = ({
           }))
         };
       } catch (err) {
-        lastError = err instanceof Error ? err.message : "PostgreSQL enumeration failed";
+        logger.warn({ err }, `PAM PostgreSQL discovery failed to scan instance [machine=${machine}]`);
+        lastError = describeConnectionError(err);
       }
     }
 
-    if (candidates.length) {
-      logger.warn(`PAM PostgreSQL discovery failed to scan host [host=${host}] [error=${lastError}]`);
-      return { accounts: [], error: { machine: host, error: lastError } };
-    }
-    return { accounts: [] };
+    if (candidates.length) return { accounts: [], error: { machine, error: lastError }, machine, complete: false };
+    return { accounts: [], machine, complete: false };
   };
 
   const validateConnection = async () => {
@@ -164,10 +209,9 @@ export const postgresDiscoveryFactory: TPamDiscoveryFactory = ({
           "No credential account has a password. PostgreSQL discovery requires password authentication; AWS IAM accounts cannot be used to scan."
       });
     }
-    await enumerateHost(account.host, account).catch((err) => {
-      throw new BadRequestError({
-        message: `Unable to connect to PostgreSQL: ${err instanceof Error ? err.message : "unknown error"}`
-      });
+    await enumerateInstance(account.host, account.port, account).catch((err: unknown) => {
+      logger.warn({ err }, `PAM PostgreSQL discovery connection test failed [host=${account.host}]`);
+      throw new BadRequestError({ message: `Unable to connect to PostgreSQL: ${describeConnectionError(err)}` });
     });
   };
 
@@ -190,11 +234,12 @@ export const postgresDiscoveryFactory: TPamDiscoveryFactory = ({
     }
     const open = await sweepReachableTargets(sweepTargets, gatewayId, gatewayV2Service, SWEEP_DIAL_TIMEOUT_MS, signal);
 
-    const hostsToScan = targets.filter(
-      (host) => accounts.some((a) => a.host === host) || usablePorts.some((port) => open.has(`${host}:${port}`))
+    // scan every reachable host:port pair, plus any pair a credential account names outright
+    const instancesToScan = sweepTargets.filter(
+      ({ host, port }) => open.has(`${host}:${port}`) || accounts.some((a) => a.host === host && a.port === port)
     );
 
-    if (!hostsToScan.length) {
+    if (!instancesToScan.length) {
       throw new BadRequestError({
         message:
           "No hosts were reachable on the credential ports in the target range. Check the targets, that the gateway can reach them, and that PostgreSQL is listening."
@@ -202,21 +247,33 @@ export const postgresDiscoveryFactory: TPamDiscoveryFactory = ({
     }
 
     const limit = pLimit(SCAN_CONCURRENCY);
-    const results = await Promise.all(hostsToScan.map((host) => limit(() => scanHost(host, open, signal))));
+    const results = await Promise.all(
+      instancesToScan.map(({ host, port }) => limit(() => scanInstance(host, port, signal)))
+    );
 
-    const discovered = results.flatMap((r) => r.accounts);
-    if (discovered.length > MAX_ACCOUNTS_PER_SCAN) {
+    const discovered: TDiscoveredAccount[] = [];
+    const scannedAccountMachines: string[] = [];
+    let droppedInstances = 0;
+    for (const result of results) {
+      if (discovered.length + result.accounts.length > MAX_ACCOUNTS_PER_SCAN) {
+        droppedInstances += 1;
+      } else {
+        discovered.push(...result.accounts);
+        if (result.complete) scannedAccountMachines.push(result.machine);
+      }
+    }
+    if (droppedInstances) {
       logger.warn(
-        `PAM PostgreSQL discovery truncating discovered accounts to the per-scan limit [found=${discovered.length}] [limit=${MAX_ACCOUNTS_PER_SCAN}]`
+        `PAM PostgreSQL discovery dropped instances at the per-scan limit [instances=${droppedInstances}] [limit=${MAX_ACCOUNTS_PER_SCAN}]`
       );
     }
 
     return {
-      accounts: discovered.slice(0, MAX_ACCOUNTS_PER_SCAN),
+      accounts: discovered,
       machineErrors: results.flatMap((r) => (r.error ? [r.error] : [])),
       dependencies: [],
       scannedDependencyMachines: [],
-      scannedAccountMachines: results.flatMap((r) => (r.scannedMachine ? [r.scannedMachine] : []))
+      scannedAccountMachines
     };
   };
 
