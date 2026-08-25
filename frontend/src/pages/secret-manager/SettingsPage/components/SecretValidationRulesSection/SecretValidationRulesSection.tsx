@@ -150,6 +150,8 @@ const RuleFormContent = ({
   isEditing,
   initialIsActive = true,
   environments,
+  projectId,
+  isBlindIndexEnabled,
   onClose,
   onSubmit
 }: {
@@ -157,6 +159,8 @@ const RuleFormContent = ({
   isEditing: boolean;
   initialIsActive?: boolean;
   environments: { slug: string; name: string }[];
+  projectId: string;
+  isBlindIndexEnabled: boolean;
   onClose: () => void;
   onSubmit: (data: TRuleForm, isActive?: boolean) => void;
 }) => {
@@ -474,7 +478,13 @@ const RuleFormContent = ({
 
             <div className="space-y-3">
               {fields.map((field, idx) => (
-                <ConstraintCard key={field.id} index={idx} onRemove={() => remove(idx)} />
+                <ConstraintCard
+                  key={field.id}
+                  index={idx}
+                  projectId={projectId}
+                  isBlindIndexEnabled={isBlindIndexEnabled}
+                  onRemove={() => remove(idx)}
+                />
               ))}
             </div>
 
@@ -838,6 +848,8 @@ export const SecretValidationRulesSection = () => {
               isEditing={isEditing}
               initialIsActive={editingRule?.isActive ?? true}
               environments={currentProject.environments}
+              projectId={currentProject.id}
+              isBlindIndexEnabled={currentProject.secretBlindIndexEnabled}
               onClose={handleClose}
               onSubmit={handleSubmit}
             />

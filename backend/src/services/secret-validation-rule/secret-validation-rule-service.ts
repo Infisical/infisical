@@ -1,10 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 import picomatch from "picomatch";
 
 import { ActionProjectType, TSecretValidationRules } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { NotFoundError } from "@app/lib/errors";
+import { PgSqlLock } from "@app/keystore/keystore";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -33,6 +35,9 @@ import {
   TSecretValidationRuleRecord,
   TUpdateSecretValidationRuleDTO
 } from "./secret-validation-rule-types";
+
+const $requiresBlindIndex = (inputs: TSecretValidationRuleInputs): boolean =>
+  Boolean(inputs.constraints?.some((c) => c.type === ConstraintType.UniqueSecretValue && c.value.otherSecrets.enabled));
 
 // Builds the API-facing rule record: the selected row fields plus the rule's
 // type-specific fields flattened alongside `type`. Selecting explicitly keeps
@@ -146,6 +151,16 @@ export const secretValidationRuleServiceFactory = ({
 
     const parsedInputs = parseSecretValidationRuleInputs(type, inputs);
 
+    if ($requiresBlindIndex(parsedInputs)) {
+      const project = await projectDAL.findById(projectId);
+      if (!project.secretBlindIndexEnabled) {
+        throw new BadRequestError({
+          message:
+            "Blind indexing must be enabled for this project before enabling the 'other secrets in scope' uniqueness check. Enable it under Project Settings or the Insights page."
+        });
+      }
+    }
+
     // For generated-credential rules, do a dry run before storing the rule so
     // infeasible constraints (impossible length window, bad regex, etc.) fail
     // at save time rather than silently breaking lease/rotation creation later.
@@ -252,6 +267,16 @@ export const secretValidationRuleServiceFactory = ({
       rule ?? (JSON.parse(ruleInputsDecryptor({ cipherTextBlob: existingRule.encryptedInputs }).toString()) as unknown)
     );
 
+    if ($requiresBlindIndex(parsedInputs)) {
+      const project = await projectDAL.findById(projectId);
+      if (!project.secretBlindIndexEnabled) {
+        throw new BadRequestError({
+          message:
+            "Blind indexing must be enabled for this project before enabling the 'other secrets in scope' uniqueness check. Enable it under Project Settings or the Insights page."
+        });
+      }
+    }
+
     if (ruleType === SecretValidationRuleType.DynamicSecrets || ruleType === SecretValidationRuleType.SecretRotations) {
       assertConstraintsProduceSafePasswords(
         (parsedInputs as TDynamicSecretsInputs | TSecretRotationsInputs).constraints
@@ -336,7 +361,10 @@ export const secretValidationRuleServiceFactory = ({
 
   /**
    * Fetch all rules for a project and enforce them against the given secrets.
-   * Called by secret write paths before the DB transaction starts.
+   *
+   * When a `tx` is provided the duplicate-value lookup runs inside that
+   * transaction, which lets the caller acquire a serializing lock beforehand
+   * so the check and the subsequent write are atomic.
    *
    * When `expandSecretReferences` is provided, secret values containing
    * interpolation references (e.g. `${env.key}`) will be expanded to their
@@ -348,13 +376,15 @@ export const secretValidationRuleServiceFactory = ({
     environment,
     envId,
     secretPath,
-    secrets
+    secrets,
+    tx
   }: {
     projectId: string;
     environment: string;
     envId: string;
     secretPath: string;
     secrets: { key: string; value?: string; secretId?: string }[];
+    tx?: Knex;
   }) => {
     if (!secrets.length) return;
 
@@ -428,10 +458,18 @@ export const secretValidationRuleServiceFactory = ({
       }
     }
 
-    // Build a map of secret key -> duplicate info for the UniqueSecretValue.otherSecrets constraint.
-    // Uses the blind index to find existing secrets with the same value within the rule's scope.
+    // We build the map of all duplicate secrets (ignoring scope) and afterwards check
+    // if any of those are part of the scope of the rule.
     const duplicateOfMap: Record<string, { key: string; environment: string; path: string }> = {};
     if (duplicateValuesRule) {
+      if (tx) {
+        // If two concurrent requests try to add two secrets with the same value, both will not find
+        // a duplicate secret, so we need to ensure this is an atomic operation so the second request
+        // can detect the first secret already has the same value and block the creation of the duplicated
+        // secret.
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretValueUniqueCheck(projectId)]);
+      }
+
       const project = await projectDAL.findById(projectId);
       if (project.secretBlindIndexEnabled) {
         const { generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
@@ -458,13 +496,14 @@ export const secretValidationRuleServiceFactory = ({
 
         const uniqueBlindIndexes = [...new Set(blindIndexes.filter(Boolean))];
         if (uniqueBlindIndexes.length) {
-          const excludeSecretIds = secrets.filter((s) => s.secretId).map((s) => s.secretId!);
+          const excludeSecretIds = secretsWithValues.filter((s) => s.secretId).map((s) => s.secretId!);
           const ruleEnvId = duplicateValuesRule.envId ?? undefined;
           const existingDuplicates = await secretDAL.findExistingSecretsByBlindIndexes(
             projectId,
             uniqueBlindIndexes,
             excludeSecretIds.length ? excludeSecretIds : undefined,
-            ruleEnvId
+            ruleEnvId,
+            tx
           );
 
           if (existingDuplicates.length) {

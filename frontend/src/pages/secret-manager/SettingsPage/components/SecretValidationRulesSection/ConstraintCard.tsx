@@ -1,8 +1,15 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
+import { useEffect, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { InfoIcon, TrashIcon } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { InfoIcon, Loader2Icon, TrashIcon, TriangleAlertIcon } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
   IconButton,
   Input,
   Select,
@@ -15,6 +22,11 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { projectKeys, useEnableSecretBlindIndex } from "@app/hooks/api/projects";
+import {
+  secretInsightsKeys,
+  useGetSecretBlindIndexStatus
+} from "@app/hooks/api/secretInsights";
 
 import {
   CONSTRAINT_OPTIONS,
@@ -29,11 +41,14 @@ import {
 
 type Props = {
   index: number;
+  projectId: string;
+  isBlindIndexEnabled: boolean;
   onRemove: () => void;
 };
 
-const UniqueSecretValueCard = ({ index, onRemove }: Props) => {
+const UniqueSecretValueCard = ({ index, projectId, isBlindIndexEnabled, onRemove }: Props) => {
   const { control, watch } = useFormContext<TRuleForm>();
+  const queryClient = useQueryClient();
   const constraintType = watch(`enforcement.constraints.${index}.type`);
   const constraintOption = CONSTRAINT_OPTIONS.find((o) => o.type === constraintType);
   const Icon = constraintOption?.icon;
@@ -41,6 +56,54 @@ const UniqueSecretValueCard = ({ index, onRemove }: Props) => {
   const secretVersionsEnabled = watch(
     `enforcement.constraints.${index}.value.secretVersions.enabled` as `enforcement.constraints.${number}.value`
   ) as unknown as boolean;
+
+  const [migrationTriggered, setMigrationTriggered] = useState(false);
+  const enableBlindIndex = useEnableSecretBlindIndex();
+
+  const { data: statusData } = useGetSecretBlindIndexStatus(
+    { projectId },
+    {
+      enabled: migrationTriggered,
+      refetchInterval: (query) => {
+        const status = query.state.data?.status;
+        if (status === "completed" || status === "failed" || status === "not-found") return false;
+        return 2000;
+      }
+    }
+  );
+
+  useEffect(() => {
+    if (statusData?.status === "completed" && migrationTriggered) {
+      setMigrationTriggered(false);
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.getProjectById(projectId)
+      });
+    }
+  }, [statusData?.status, migrationTriggered, projectId, queryClient]);
+
+  const handleEnableBlindIndex = () => {
+    setMigrationTriggered(true);
+    enableBlindIndex.mutate(
+      { projectId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: secretInsightsKeys.blindIndexStatus({ projectId })
+          });
+        },
+        onError: () => {
+          setMigrationTriggered(false);
+          createNotification({
+            text: "Failed to enable blind indexing",
+            type: "error"
+          });
+        }
+      }
+    );
+  };
+
+  const isMigrationRunning =
+    migrationTriggered && statusData?.status !== "failed" && statusData?.status !== "completed";
 
   return (
     <div className="rounded-md border border-border bg-card p-4">
@@ -144,18 +207,53 @@ const UniqueSecretValueCard = ({ index, onRemove }: Props) => {
                 <Switch
                   variant="project"
                   checked={value as unknown as boolean}
-                  onCheckedChange={onChange}
+                  onCheckedChange={(checked) => {
+                    if (checked && !isBlindIndexEnabled) return;
+                    onChange(checked);
+                  }}
+                  disabled={!isBlindIndexEnabled && !(value as unknown as boolean)}
                 />
               )}
             />
           </div>
+
+          {!isBlindIndexEnabled && (
+            <div className="mt-3">
+              <Alert variant="warning" className="py-3">
+                <TriangleAlertIcon className="size-4" />
+                <AlertTitle>Blind indexing required</AlertTitle>
+                <AlertDescription>
+                  <p className="mb-2">
+                    Cross-secret duplicate detection requires blind indexing to be enabled for this
+                    project.
+                  </p>
+                  {isMigrationRunning ? (
+                    <div className="flex items-center gap-2 text-sm text-muted">
+                      <Loader2Icon className="size-4 animate-spin" />
+                      Enabling blind indexing...
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      onClick={handleEnableBlindIndex}
+                      isDisabled={enableBlindIndex.isPending}
+                    >
+                      Enable Blind Indexing
+                    </Button>
+                  )}
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-export const ConstraintCard = ({ index, onRemove }: Props) => {
+export const ConstraintCard = ({ index, projectId, isBlindIndexEnabled, onRemove }: Props) => {
   const { control, watch } = useFormContext<TRuleForm>();
   const constraintType = watch(`enforcement.constraints.${index}.type`);
   const allConstraints = watch("enforcement.constraints");
@@ -164,7 +262,14 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
     ruleType === RuleType.DynamicSecrets || ruleType === RuleType.SecretRotations;
 
   if (constraintType === ConstraintType.UniqueSecretValue) {
-    return <UniqueSecretValueCard index={index} onRemove={onRemove} />;
+    return (
+      <UniqueSecretValueCard
+        index={index}
+        projectId={projectId}
+        isBlindIndexEnabled={isBlindIndexEnabled}
+        onRemove={onRemove}
+      />
+    );
   }
 
   const constraintOption = CONSTRAINT_OPTIONS.find((o) => o.type === constraintType);
