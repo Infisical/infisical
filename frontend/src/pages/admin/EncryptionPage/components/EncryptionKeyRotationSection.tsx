@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
   Label,
+  Pagination,
   Table,
   TableBody,
   TableCell,
@@ -31,34 +32,35 @@ import {
   TableRow
 } from "@app/components/v3";
 import {
-  useCompleteEncryptionKeyRotation,
   useCreateEncryptionKeyRotation,
-  useDiscardEncryptionKeyRotation,
-  useGetEncryptionStatus
+  useDeleteExpiringEncryptionKey,
+  useDeleteStagedEncryptionKey,
+  useGetEncryptionKeyRotations,
+  useGetEncryptionRootKey
 } from "@app/hooks/api";
 import {
-  EncryptionRotationBlocker,
+  RootKeyEncryptionStrategy,
   TCreatedEncryptionKeyRotation
 } from "@app/hooks/api/admin/types";
 
-const BLOCKER_COPY: Record<EncryptionRotationBlocker, string> = {
-  [EncryptionRotationBlocker.HsmStrategy]:
-    "This instance wraps its root key with an HSM, so there is no environment variable to rotate. Rotate the key on the HSM itself.",
-  [EncryptionRotationBlocker.RotationPending]:
-    "A key has already been generated and is waiting to be applied. Apply it, discard it, or generate a replacement."
-};
-
 export const EncryptionKeyRotationSection = () => {
-  const { data: status, isPending, isError } = useGetEncryptionStatus();
+  const { data: rootKey, isPending, isError } = useGetEncryptionRootKey();
   const { mutateAsync: createRotation, isPending: isCreating } = useCreateEncryptionKeyRotation();
-  const { mutateAsync: discardRotation } = useDiscardEncryptionKeyRotation();
-  const { mutateAsync: completeRotation, isPending: isCompleting } =
-    useCompleteEncryptionKeyRotation();
+  const { mutateAsync: deleteStagedKey } = useDeleteStagedEncryptionKey();
+  const { mutateAsync: deleteExpiringKey, isPending: isRemoving } =
+    useDeleteExpiringEncryptionKey();
 
   const [generatedKey, setGeneratedKey] = useState<TCreatedEncryptionKeyRotation | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
+  const [overrideStraggler, setOverrideStraggler] = useState(false);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(20);
+  const { data: rotationsPage } = useGetEncryptionKeyRotations({
+    offset: (page - 1) * perPage,
+    limit: perPage
+  });
 
-  if (isError || (!isPending && !status)) {
+  if (isError || (!isPending && !rootKey)) {
     return (
       <Card className="mt-6">
         <CardHeader>
@@ -78,28 +80,29 @@ export const EncryptionKeyRotationSection = () => {
     );
   }
 
-  if (isPending || !status) return null;
+  if (isPending || !rootKey) return null;
 
-  const rotateBlockers = status.blockers.filter(
-    (blocker) => blocker !== EncryptionRotationBlocker.RotationPending
-  );
-  const canRotate = rotateBlockers.length === 0;
+  const isHsmManaged = rootKey.encryptionStrategy === RootKeyEncryptionStrategy.HSM;
 
   const handleGenerate = async () => {
-    const rotation = await createRotation({ replacePending: Boolean(status.pendingRotation) });
+    const rotation = await createRotation({ replaceStaged: Boolean(rootKey.staged) });
     setGeneratedKey(rotation);
   };
 
   const handleDiscard = async () => {
-    if (!status.pendingRotation) return;
-    await discardRotation(status.pendingRotation.id);
+    if (!rootKey.staged?.label) return;
+    await deleteStagedKey({ label: rootKey.staged.label });
     createNotification({ type: "success", text: "Generated encryption key discarded." });
   };
 
-  const handleComplete = async () => {
-    if (!status.retainedKey) return;
-    await completeRotation({ rotationId: status.retainedKey.id, acknowledged });
+  const handleRemoveExpiring = async () => {
+    if (!rootKey.expiring?.label) return;
+    await deleteExpiringKey({
+      label: rootKey.expiring.label,
+      force: overrideStraggler
+    });
     setAcknowledged(false);
+    setOverrideStraggler(false);
     createNotification({ type: "success", text: "Previous encryption key removed." });
   };
 
@@ -119,43 +122,36 @@ export const EncryptionKeyRotationSection = () => {
             <KeyRoundIcon className="size-4 text-foreground/60" />
             <span className="text-foreground/70">Active key</span>
             <Badge variant="neutral" className="font-mono">
-              {status.activeLabel ?? "managed by HSM"}
+              {rootKey.active.label ?? "managed by HSM"}
             </Badge>
+            <span className="text-xs text-foreground/60">
+              in use since {new Date(rootKey.active.activatedAt).toLocaleString()}
+            </span>
           </div>
 
-          {status.pendingRotation?.label && (
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-foreground/70">Generated key awaiting deployment</span>
-              <Badge variant="info" className="font-mono">
-                {status.pendingRotation.label}
-              </Badge>
-            </div>
-          )}
-
-          {status.blockers.map((blocker) => (
-            <Alert
-              key={blocker}
-              variant={blocker === EncryptionRotationBlocker.RotationPending ? "info" : "warning"}
-            >
+          {isHsmManaged ? (
+            <Alert variant="warning">
               <AlertTriangleIcon />
-              <AlertDescription>{BLOCKER_COPY[blocker]}</AlertDescription>
+              <AlertDescription>
+                This instance wraps its root key with an HSM, so there is no environment variable to
+                rotate. Rotate the key on the HSM itself, or switch the encryption strategy to
+                software first.
+              </AlertDescription>
             </Alert>
-          ))}
-
-          {canRotate && (
+          ) : (
             <div className="flex flex-wrap gap-3">
               <Button onClick={handleGenerate} isPending={isCreating}>
-                {status.pendingRotation ? "Generate a replacement key" : "Generate new key"}
+                {rootKey.staged ? "Generate a replacement key" : "Generate new key"}
               </Button>
-              {status.pendingRotation && (
-                <Button variant="danger" onClick={handleDiscard}>
+              {rootKey.staged && (
+                <Button variant="danger" isDisabled={!rootKey.staged.label} onClick={handleDiscard}>
                   Discard generated key
                 </Button>
               )}
             </div>
           )}
 
-          {status.retainedKey && (
+          {rootKey.expiring && (
             <Alert variant="warning">
               <ShieldAlertIcon />
               <AlertTitle>The previous key still works</AlertTitle>
@@ -166,13 +162,26 @@ export const EncryptionKeyRotationSection = () => {
                   the new key can still start.
                 </p>
                 <p className="mt-2">
-                  {status.retainedKey.lastResolvedAt
+                  {rootKey.expiring.lastResolvedAt
                     ? `An instance last started on it ${new Date(
-                        status.retainedKey.lastResolvedAt
+                        rootKey.expiring.lastResolvedAt
                       ).toLocaleString()}. Roll that instance onto the new key first.`
                     : "No instance has started on it since the rotation. Instances that have not restarted yet will not have reported."}
                 </p>
                 <div className="mt-3 flex flex-col gap-2">
+                  {rootKey.expiring.lastResolvedAt && (
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        id="override-straggler"
+                        isChecked={overrideStraggler}
+                        onCheckedChange={(value) => setOverrideStraggler(value === true)}
+                      />
+                      <Label htmlFor="override-straggler" className="text-xs font-normal">
+                        Remove it even though an instance reported starting on it. That instance
+                        will fail its next restart until it is given the new key.
+                      </Label>
+                    </div>
+                  )}
                   <div className="flex items-start gap-2">
                     <Checkbox
                       id="ack-remove-old-key"
@@ -188,9 +197,9 @@ export const EncryptionKeyRotationSection = () => {
                   <Button
                     className="self-start"
                     variant="danger"
-                    isDisabled={!acknowledged}
-                    isPending={isCompleting}
-                    onClick={handleComplete}
+                    isDisabled={!acknowledged || !rootKey.expiring.label}
+                    isPending={isRemoving}
+                    onClick={handleRemoveExpiring}
                   >
                     Remove previous key
                   </Button>
@@ -199,7 +208,7 @@ export const EncryptionKeyRotationSection = () => {
             </Alert>
           )}
 
-          {status.history.length > 0 && (
+          {(rootKey.staged || (rotationsPage?.rotations.length ?? 0) > 0) && (
             <div>
               <p className="mb-2 text-sm font-medium">Key history</p>
               <p className="mb-2 text-xs text-foreground/60">
@@ -215,14 +224,29 @@ export const EncryptionKeyRotationSection = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {status.history.map((entry) => (
+                  {/* Pinned rather than a row of the list: a staged key has never encrypted anything,
+                      so it is deliberately absent from the history the recovery path reads. */}
+                  {rootKey.staged && page === 1 && (
+                    <TableRow key="staged">
+                      <TableCell className="font-mono text-xs">
+                        {rootKey.staged.label ?? "unlabelled"}
+                      </TableCell>
+                      <TableCell className="text-foreground/50">
+                        generated {new Date(rootKey.staged.createdAt).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="info">Staged, not applied</Badge>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {rotationsPage?.rotations.map((entry) => (
                     <TableRow key={entry.label + entry.activatedAt}>
                       <TableCell className="font-mono text-xs">{entry.label}</TableCell>
                       <TableCell>{new Date(entry.activatedAt).toLocaleString()}</TableCell>
                       <TableCell>
                         {!entry.supersededAt && <Badge variant="success">Active</Badge>}
                         {entry.supersededAt && !entry.retiredAt && (
-                          <Badge variant="neutral">Superseded</Badge>
+                          <Badge variant="neutral">Expiring</Badge>
                         )}
                         {entry.retiredAt && <Badge variant="neutral">Removed</Badge>}
                       </TableCell>
@@ -230,6 +254,18 @@ export const EncryptionKeyRotationSection = () => {
                   ))}
                 </TableBody>
               </Table>
+              {(rotationsPage?.totalCount ?? 0) > perPage && (
+                <Pagination
+                  count={rotationsPage?.totalCount ?? 0}
+                  page={page}
+                  perPage={perPage}
+                  onChangePage={setPage}
+                  onChangePerPage={(rows) => {
+                    setPerPage(rows);
+                    setPage(1);
+                  }}
+                />
+              )}
             </div>
           )}
         </CardContent>
@@ -265,7 +301,7 @@ export const EncryptionKeyRotationSection = () => {
               </p>
             </div>
 
-            {generatedKey?.removesRetainedKey && (
+            {generatedKey?.removesExpiringKey && (
               <Alert variant="warning">
                 <AlertTriangleIcon />
                 <AlertTitle>This will remove your previous key</AlertTitle>
@@ -274,10 +310,10 @@ export const EncryptionKeyRotationSection = () => {
                     The key from your last rotation has not been removed yet. Applying this new key
                     removes it immediately, and any instance still running it will fail to restart.
                   </p>
-                  {generatedKey.removesRetainedKey.lastResolvedAt && (
+                  {generatedKey.removesExpiringKey.lastResolvedAt && (
                     <p className="mt-2">
                       An instance started on it{" "}
-                      {new Date(generatedKey.removesRetainedKey.lastResolvedAt).toLocaleString()}.
+                      {new Date(generatedKey.removesExpiringKey.lastResolvedAt).toLocaleString()}.
                     </p>
                   )}
                 </AlertDescription>

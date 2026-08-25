@@ -8,7 +8,8 @@ import {
   AdminGetOrganizationsFilters,
   AdminGetUsersFilters,
   AdminIntegrationsConfig,
-  TEncryptionStatus,
+  TEncryptionKeyRotationsPage,
+  TEncryptionRootKey,
   TGetEmailDomainsResponse,
   TGetEnvOverrides,
   TGetIdentitiesResponse,
@@ -35,7 +36,9 @@ export const adminQueryKeys = {
     [adminStandaloneKeys.getIdentities, { filters }] as const,
   getAdminSlackConfig: () => ["admin-slack-config"] as const,
   getServerEncryptionStrategies: () => ["server-encryption-strategies"] as const,
-  getEncryptionStatus: () => ["server-encryption-status"] as const,
+  getEncryptionRootKey: () => ["server-encryption-root-key"] as const,
+  getEncryptionKeyRotations: (filters: { offset: number; limit: number }) =>
+    ["server-encryption-key-rotations", filters] as const,
   getInvalidateCache: () => ["admin-invalidate-cache"] as const,
   getAdminIntegrationsConfig: () => ["admin-integrations-config"] as const,
   getEnvOverrides: () => ["env-overrides"] as const,
@@ -149,15 +152,35 @@ export const useGetServerRootKmsEncryptionDetails = () => {
   });
 };
 
-export const useGetEncryptionStatus = () => {
+export const useGetEncryptionRootKey = () => {
   return useQuery({
-    queryKey: adminQueryKeys.getEncryptionStatus(),
+    queryKey: adminQueryKeys.getEncryptionRootKey(),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ status: TEncryptionStatus }>(
-        "/api/v1/admin/encryption/status"
+      const { data } = await apiRequest.get<{ rootKey: TEncryptionRootKey }>(
+        "/api/v1/admin/encryption/root-key"
       );
 
-      return data.status;
+      return data.rootKey;
+    }
+  });
+};
+
+export const useGetEncryptionKeyRotations = ({
+  offset,
+  limit
+}: {
+  offset: number;
+  limit: number;
+}) => {
+  return useQuery({
+    queryKey: adminQueryKeys.getEncryptionKeyRotations({ offset, limit }),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TEncryptionKeyRotationsPage>(
+        "/api/v1/admin/encryption/root-key/rotations",
+        { params: { offset, limit } }
+      );
+
+      return data;
     }
   });
 };

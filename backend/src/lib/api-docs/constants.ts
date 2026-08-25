@@ -3950,41 +3950,64 @@ export const SECRET_VALIDATION_RULES = {
 } as const;
 
 export const ENCRYPTION_KEY_ROTATION = {
-  STATUS: {
+  ROOT_KEY: {
     description:
-      "Report the state of the instance encryption key: which key is active, whether a rotation is staged or awaiting completion, and what is blocking one.",
-    activeLabel:
-      "A non-reversible label derived from the key this instance is currently running with. Recompute it from an archived key to confirm which one a database backup needs.",
-    pendingRotation:
-      "A generated key that has not been applied yet. Staging a rotation changes nothing until an instance starts with the new key.",
-    pendingLabel:
-      "Label of the generated key, so you can confirm the value you are about to deploy is the one you copied.",
-    lastResolvedAt:
-      "When an instance last started using the previous key. Recent means one is probably still running and would fail to restart if the key were removed. Null only means none has started since the rotation, not that none exists.",
-    history:
-      "Every key this instance has used, oldest last. Retained after a key is removed, so a restored backup can be matched to an archived key."
+      "Report the state of the instance encryption key: which key is active, whether a replacement is staged, and whether the key it replaced is still accepted.",
+    encryptionStrategy: "How the root key is wrapped. A key wrapped by an HSM has no environment variable to rotate.",
+    active: {
+      label:
+        "Non-reversible label of the key this instance is running with. Record it next to the archived key so a backup can be matched later.",
+      activatedAt: "When this key took effect, which is the first time an instance started with it."
+    },
+    staged: {
+      description:
+        "A generated key that has not been applied yet. Null until you generate one. Nothing changes until an instance starts with it.",
+      label: "Label of the staged key, so you can confirm the value you are about to deploy is the one you copied.",
+      createdAt: "When this key was generated."
+    },
+    expiring: {
+      description:
+        "The key this instance used before the current one. Null if none is still accepted. It still starts an instance so a fleet can finish rolling over, and is removed automatically once the retention window passes.",
+      label: "Label of the previous key. Pass it when you remove that key.",
+      supersededAt: "When the current key took effect.",
+      lastResolvedAt:
+        "When an instance last started using the previous key. Recent means one is probably still running and would fail to restart if the key were removed. Null only means none has started since the rotation, not that none exists."
+    }
+  },
+  ROTATIONS: {
+    description:
+      "List the rotations that have taken effect, newest first. A staged key appears here only once an instance has started with it. Kept after a key is removed, so a restored backup can be matched to an archived key.",
+    offset: "How many rotations to skip before the first returned.",
+    limit: "How many rotations to return.",
+    label: "A non-reversible label derived from the key. Match it to the label you stored with an archived key.",
+    activatedAt: "When this key took effect.",
+    supersededAt: "When the next key took effect. Null on the key currently in use.",
+    retiredAt: "When this key stopped being accepted and was removed. Null while it still starts an instance.",
+    totalCount: "How many rotations this instance has recorded in total."
   },
   CREATE: {
     description:
       "Generate a new value for ENCRYPTION_KEY. The key is returned once and never stored, and nothing changes until an instance starts with it.",
-    replacePending:
+    replaceStaged:
       "Replace an already-generated key that has not been applied yet. The replaced key stops working immediately.",
     label:
       "A non-reversible label derived from the new key. Record it alongside the key so a backup can be matched to it later.",
     key: "The new value for ENCRYPTION_KEY. Shown only in this response and never recoverable. Store it before closing.",
-    removesRetainedKey:
+    removesExpiringKey:
       "Present when the previous rotation's key has not been removed yet. Applying this key removes it immediately, so any instance still running it will fail to restart."
   },
-  DISCARD: {
+  DELETE_STAGED: {
     description:
       "Discard a generated key that has not been applied. Use this immediately if the key may have been exposed.",
-    rotationId: "ID of the staged rotation to discard."
+    label:
+      "Label of the staged key, which must match the key currently staged. It is a precondition, not an identifier: it fails the request rather than discarding a key another administrator staged after you loaded this page."
   },
-  COMPLETE: {
+  DELETE_EXPIRING: {
     description:
       "Remove the previous encryption key now that every instance is using the new one. This cannot be undone: after it, losing the new key means losing access to all stored secrets.",
-    rotationId: "ID of the previous key to remove.",
-    acknowledged:
-      "Remove the key even though an instance started on it recently. Any instance still using that key will fail its next restart until it is given the new one."
+    label:
+      "Label of the previous key, which must match the key currently held. It is a precondition, not an identifier: it fails the request rather than removing a key you have not seen.",
+    force:
+      "Remove the key even though an instance started on it recently. This overrides only that check: a label that does not match the key currently held still fails. Any instance still using that key will fail its next restart until it is given the new one."
   }
 };

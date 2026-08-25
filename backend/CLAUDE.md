@@ -457,16 +457,16 @@ rotatable, and three invariants hold that up.
 **The sentinel row always holds the active key.** `kms_root_config` can hold up to three rows, but
 `KMS_ROOT_CONFIG_UUID` is always the current one. That id is no longer "the config row", it is a
 compatibility handle: an app version predating rotation looks the row up by id and knows nothing about
-pending rotations or retained copies, so keeping the active key there is what lets such a version boot. New
-code never looks rows up by id — it **trial-decrypts** in a fixed order (sentinel, pending, retained), so
+staged keys or retained copies, so keeping the active key there is what lets such a version boot. New
+code never looks rows up by id — it **trial-decrypts** in a fixed order (sentinel, staged, retained), so
 `kekLabel` is never a lookup key. It exists on both tables purely as a human label, derived from the key so
 an operator can recompute it and match an archived key to a backup; nothing resolves a row by it.
 
-**A rotation is inert until a pod boots with the new key.** `POST /admin/encryption/rotations` writes a
-*pending* row and does not touch the sentinel, so generating a key changes nothing and discarding it is a row
+**A rotation is inert until a pod boots with the new key.** `POST /admin/encryption/root-key/rotations` writes
+a *staged* row and does not touch the sentinel, so generating a key changes nothing and discarding it is a row
 delete. `$resolveRootKey` promotes it on the first boot that decrypts it: the sentinel takes the new
-ciphertext, the old one moves to a retained copy, and **every** pending row is dropped (an abandoned pending
-row is a live working key, so a replaced pending key left in someone's clipboard must not be able to promote
+ciphertext, the old one moves to a retained copy, and **every** staged row is dropped (an abandoned staged
+row is a live working key, so a replaced staged key left in someone's clipboard must not be able to promote
 itself later). There is no rollback after promotion, only the retention window during which the old key still
 boots.
 
@@ -487,7 +487,7 @@ Consequences worth knowing:
   explaining why they are safe.
 - **Exactly one retained key survives a promotion, enforced at promotion, not by the GC.** A second
   rotation before the first was completed would otherwise leave an older wrapper of the root key that
-  `getStatus` never reports (it returns only the newest), so an operator removing "the previous key" is
+  `getRootKey` never reports (it returns only the newest), so an operator removing "the previous key" is
   told the rotation is finished while a leaked older `ENCRYPTION_KEY` still opens the database. The cost is that an
   instance two rotations behind cannot restart; staging a key warns about that and deliberately does not
   block, since an operator responding to a leak has to be able to rotate again immediately.
@@ -495,8 +495,8 @@ Consequences worth knowing:
   enforced, since a pod with the old env key would still trial-decrypt a retained software copy and boot
   without touching the device.
 - **`lastResolvedAt` can prove presence, never absence.** An instance stamps it at boot only when it resolves a
-  *superseded* row, which is positive evidence a straggler still holds that key and makes both `complete` and
-  the GC decline. An instance that never restarts never stamps, so the retention window is what covers it.
+  *superseded* row, which is positive evidence a straggler still holds that key and makes both the
+  expiring-key delete and the GC decline. An instance that never restarts never stamps, so the retention window is what covers it.
   That is the deliberate limit: getting it wrong costs an instance that fails its next restart with an error
   naming the key it needs, not lost data.
 

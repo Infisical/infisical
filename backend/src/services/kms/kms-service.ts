@@ -81,13 +81,16 @@ type TKmsServiceFactoryDep = {
     | "updateById"
     | "transaction"
     | "findAll"
-    | "findPending"
+    | "findStaged"
     | "findRetained"
-    | "deleteAllPending"
+    | "deleteAllStaged"
     | "deleteById"
   >;
   kmsLegacyEncryptionKeyDAL: Pick<TKmsLegacyEncryptionKeyDALFactory, "findById" | "create" | "transaction">;
-  kmsKekHistoryDAL: Pick<TKmsKekHistoryDALFactory, "create" | "updateById" | "findHistory" | "findCurrent">;
+  kmsKekHistoryDAL: Pick<
+    TKmsKekHistoryDALFactory,
+    "create" | "updateById" | "findHistoryPage" | "findActiveByLabel" | "findCurrent"
+  >;
   internalKmsDAL: Pick<TInternalKmsDALFactory, "create" | "findByKmsKeyIdForUpdate" | "updateById">;
   internalKmsKeyVersionDAL: Pick<TInternalKmsKeyVersionDALFactory, "create" | "find">;
   hsmService: THsmServiceFactory;
@@ -1507,13 +1510,13 @@ export const kmsServiceFactory = ({
    * The moment a rotation takes effect. Driven by a booting pod rather than the rotate endpoint, so
    * that generating a key is inert and an operator who never deploys it has changed nothing.
    */
-  const $promoteRotation = async (pendingId: string, label: string | null) => {
+  const $promoteRotation = async (stagedId: string, label: string | null) => {
     return kmsRootConfigDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
 
-      const pending = await kmsRootConfigDAL.findById(pendingId, tx);
+      const staged = await kmsRootConfigDAL.findById(stagedId, tx);
       // Another pod promoted first, writing what we were about to write.
-      if (!pending || pending.activatedAt) return false;
+      if (!staged || staged.activatedAt) return false;
 
       const sentinel = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID, tx);
       if (!sentinel) {
@@ -1539,18 +1542,18 @@ export const kmsServiceFactory = ({
       await kmsRootConfigDAL.updateById(
         KMS_ROOT_CONFIG_UUID,
         {
-          encryptedRootKey: pending.encryptedRootKey,
-          encryptionStrategy: pending.encryptionStrategy,
-          kekLabel: pending.kekLabel ?? label,
+          encryptedRootKey: staged.encryptedRootKey,
+          encryptionStrategy: staged.encryptionStrategy,
+          kekLabel: staged.kekLabel ?? label,
           activatedAt: now,
           supersededAt: null
         },
         tx
       );
 
-      await kmsRootConfigDAL.deleteAllPending(tx);
+      await kmsRootConfigDAL.deleteAllStaged(tx);
 
-      const promotedLabel = pending.kekLabel ?? label;
+      const promotedLabel = staged.kekLabel ?? label;
       const previous = await kmsKekHistoryDAL.findCurrent(tx);
       if (previous) await kmsKekHistoryDAL.updateById(previous.id, { supersededAt: now }, tx);
       if (promotedLabel) {
@@ -1558,11 +1561,11 @@ export const kmsServiceFactory = ({
       }
 
       // Exactly one retained key survives a promotion.
-      const history = await kmsKekHistoryDAL.findHistory(tx);
       for (const stale of olderRetained) {
         // eslint-disable-next-line no-await-in-loop -- at most a couple of rows
         await kmsRootConfigDAL.deleteById(stale.id, tx);
-        const entry = stale.kekLabel ? history.find((e) => e.kekLabel === stale.kekLabel && !e.retiredAt) : undefined;
+        // eslint-disable-next-line no-await-in-loop
+        const entry = stale.kekLabel ? await kmsKekHistoryDAL.findActiveByLabel(stale.kekLabel, tx) : undefined;
         // eslint-disable-next-line no-await-in-loop
         if (entry) await kmsKekHistoryDAL.updateById(entry.id, { retiredAt: now }, tx);
         logger.info(
@@ -1639,7 +1642,7 @@ export const kmsServiceFactory = ({
           const promoted = await $promoteRotation(row.id, label);
           if (promoted) {
             logger.info(
-              `KMS: Promoted pending encryption key rotation [label=${label ?? "hsm"}] [rotationId=${row.id}]`
+              `KMS: Promoted staged encryption key rotation [label=${label ?? "hsm"}] [rotationId=${row.id}]`
             );
           }
         }
@@ -1677,7 +1680,7 @@ export const kmsServiceFactory = ({
     }
 
     const label = $currentKekLabel();
-    const history = await kmsKekHistoryDAL.findHistory().catch(() => []);
+    const history = await kmsKekHistoryDAL.findHistoryPage({ offset: 0, limit: 5 }).catch(() => []);
     const known = history.map((entry) => entry.kekLabel).join(", ");
     logger.error({ err: errors[0] }, "KMS: No stored root key could be decrypted with the configured encryption key");
     throw new InternalServerError({
@@ -1803,8 +1806,8 @@ export const kmsServiceFactory = ({
   const updateEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
     // A fleet-wide cutover. Unguarded, a switch to HSM would not take effect while a retained software
     // copy exists: a pod with the old env key would resolve that copy and boot without the device.
-    const [pending, retained] = await Promise.all([kmsRootConfigDAL.findPending(), kmsRootConfigDAL.findRetained()]);
-    if (pending.length || retained.length) {
+    const [staged, retained] = await Promise.all([kmsRootConfigDAL.findStaged(), kmsRootConfigDAL.findRetained()]);
+    if (staged.length || retained.length) {
       throw new BadRequestError({
         message:
           "An encryption key rotation is still in progress. Complete or discard it before changing the root key encryption strategy."
@@ -1850,12 +1853,12 @@ export const kmsServiceFactory = ({
     await kmsRootConfigDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
 
-      const [pendingNow, retainedNow, sentinelNow] = await Promise.all([
-        kmsRootConfigDAL.findPending(tx),
+      const [stagedNow, retainedNow, sentinelNow] = await Promise.all([
+        kmsRootConfigDAL.findStaged(tx),
         kmsRootConfigDAL.findRetained(tx),
         kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID, tx)
       ]);
-      if (pendingNow.length || retainedNow.length) {
+      if (stagedNow.length || retainedNow.length) {
         throw new BadRequestError({
           message:
             "An encryption key rotation is still in progress. Complete or discard it before changing the root key encryption strategy."

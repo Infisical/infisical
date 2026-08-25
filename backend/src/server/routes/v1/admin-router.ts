@@ -23,7 +23,6 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { RotationBlocker } from "@app/services/encryption-key-rotation/encryption-key-rotation-types";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -641,44 +640,36 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/encryption/status",
+    url: "/encryption/root-key",
     config: {
       rateLimit: readLimit
     },
     schema: {
-      operationId: "getAdminEncryptionStatus",
-      description: ENCRYPTION_KEY_ROTATION.STATUS.description,
+      operationId: "getAdminEncryptionRootKey",
+      description: ENCRYPTION_KEY_ROTATION.ROOT_KEY.description,
       response: {
         200: z.object({
-          status: z.object({
-            activeLabel: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.STATUS.activeLabel),
-            encryptionStrategy: z.string().nullable(),
-            pendingRotation: z
+          rootKey: z.object({
+            encryptionStrategy: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.encryptionStrategy),
+            active: z.object({
+              label: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.active.label),
+              activatedAt: z.date().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.active.activatedAt)
+            }),
+            staged: z
               .object({
-                id: z.string().uuid(),
-                createdAt: z.date(),
-                label: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.STATUS.pendingLabel)
+                label: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.staged.label),
+                createdAt: z.date().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.staged.createdAt)
               })
               .nullable()
-              .describe(ENCRYPTION_KEY_ROTATION.STATUS.pendingRotation),
-            retainedKey: z
+              .describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.staged.description),
+            expiring: z
               .object({
-                id: z.string().uuid(),
-                supersededAt: z.date(),
-                lastResolvedAt: z.date().nullable().describe(ENCRYPTION_KEY_ROTATION.STATUS.lastResolvedAt),
-                label: z.string().nullable()
+                label: z.string().nullable().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.expiring.label),
+                supersededAt: z.date().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.expiring.supersededAt),
+                lastResolvedAt: z.date().nullable().describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.expiring.lastResolvedAt)
               })
-              .nullable(),
-            history: z
-              .object({
-                label: z.string(),
-                activatedAt: z.date(),
-                supersededAt: z.date().nullish(),
-                retiredAt: z.date().nullish()
-              })
-              .array()
-              .describe(ENCRYPTION_KEY_ROTATION.STATUS.history),
-            blockers: z.nativeEnum(RotationBlocker).array()
+              .nullable()
+              .describe(ENCRYPTION_KEY_ROTATION.ROOT_KEY.expiring.description)
           })
         })
       }
@@ -689,34 +680,73 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async () => {
-      const status = await server.services.encryptionKeyRotation.getStatus();
+      const rootKey = await server.services.encryptionKeyRotation.getRootKey();
 
-      return { status };
+      return { rootKey };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/encryption/root-key/rotations",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listAdminEncryptionKeyRotations",
+      description: ENCRYPTION_KEY_ROTATION.ROTATIONS.description,
+      querystring: z.object({
+        offset: z.coerce.number().int().min(0).default(0).describe(ENCRYPTION_KEY_ROTATION.ROTATIONS.offset),
+        limit: z.coerce.number().int().min(1).max(100).default(20).describe(ENCRYPTION_KEY_ROTATION.ROTATIONS.limit)
+      }),
+      response: {
+        200: z.object({
+          rotations: z
+            .object({
+              label: z.string().describe(ENCRYPTION_KEY_ROTATION.ROTATIONS.label),
+              activatedAt: z.date().describe(ENCRYPTION_KEY_ROTATION.ROTATIONS.activatedAt),
+              supersededAt: z.date().nullable().describe(ENCRYPTION_KEY_ROTATION.ROTATIONS.supersededAt),
+              retiredAt: z.date().nullable().describe(ENCRYPTION_KEY_ROTATION.ROTATIONS.retiredAt)
+            })
+            .array(),
+          totalCount: z.number().describe(ENCRYPTION_KEY_ROTATION.ROTATIONS.totalCount)
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      return server.services.encryptionKeyRotation.listRotations({
+        offset: req.query.offset,
+        limit: req.query.limit
+      });
     }
   });
 
   server.route({
     method: "POST",
-    url: "/encryption/rotations",
+    url: "/encryption/root-key/rotations",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       operationId: "createAdminEncryptionKeyRotation",
       description: ENCRYPTION_KEY_ROTATION.CREATE.description,
-      querystring: z.object({
-        replacePending: booleanSchema.default(false).describe(ENCRYPTION_KEY_ROTATION.CREATE.replacePending)
+      body: z.object({
+        replaceStaged: z.boolean().default(false).describe(ENCRYPTION_KEY_ROTATION.CREATE.replaceStaged)
       }),
       response: {
         201: z.object({
           rotation: z.object({
-            id: z.string().uuid(),
             label: z.string().describe(ENCRYPTION_KEY_ROTATION.CREATE.label),
             key: z.string().describe(ENCRYPTION_KEY_ROTATION.CREATE.key),
-            removesRetainedKey: z
+            removesExpiringKey: z
               .object({ label: z.string().nullable(), lastResolvedAt: z.date().nullable() })
               .optional()
-              .describe(ENCRYPTION_KEY_ROTATION.CREATE.removesRetainedKey)
+              .describe(ENCRYPTION_KEY_ROTATION.CREATE.removesExpiringKey)
           })
         })
       }
@@ -728,7 +758,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const rotation = await server.services.encryptionKeyRotation.createRotation({
-        replacePending: req.query.replacePending
+        replaceStaged: req.body.replaceStaged
       });
 
       // The key appears here and nowhere else, so it must not be cached along the way.
@@ -740,15 +770,15 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "DELETE",
-    url: "/encryption/rotations/:rotationId",
+    url: "/encryption/root-key/staged",
     config: {
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "deleteAdminEncryptionKeyRotation",
-      description: ENCRYPTION_KEY_ROTATION.DISCARD.description,
-      params: z.object({
-        rotationId: z.string().uuid().describe(ENCRYPTION_KEY_ROTATION.DISCARD.rotationId)
+      operationId: "deleteAdminStagedEncryptionKey",
+      description: ENCRYPTION_KEY_ROTATION.DELETE_STAGED.description,
+      querystring: z.object({
+        label: z.string().trim().min(1).max(64).describe(ENCRYPTION_KEY_ROTATION.DELETE_STAGED.label)
       })
     },
     onRequest: (req, res, done) => {
@@ -757,32 +787,25 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req, res) => {
-      await server.services.encryptionKeyRotation.discardRotation(req.params.rotationId);
+      await server.services.encryptionKeyRotation.deleteStagedKey({ label: req.query.label });
 
       void res.status(204);
     }
   });
 
-  // RPC-shaped on purpose: the operator is finishing a rotation, not deleting a key they may not know
-  // exists, and "instances still use this" reads as a precondition on an action, oddly on a DELETE.
   server.route({
-    method: "POST",
-    url: "/encryption/rotations/:rotationId/complete",
+    method: "DELETE",
+    url: "/encryption/root-key/expiring",
     config: {
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "completeAdminEncryptionKeyRotation",
-      description: ENCRYPTION_KEY_ROTATION.COMPLETE.description,
-      params: z.object({
-        rotationId: z.string().uuid().describe(ENCRYPTION_KEY_ROTATION.COMPLETE.rotationId)
-      }),
-      // Defaults to absent, so a scripted caller that says nothing still gets the guard.
-      body: z
-        .object({
-          acknowledged: z.boolean().optional().describe(ENCRYPTION_KEY_ROTATION.COMPLETE.acknowledged)
-        })
-        .nullish()
+      operationId: "deleteAdminExpiringEncryptionKey",
+      description: ENCRYPTION_KEY_ROTATION.DELETE_EXPIRING.description,
+      querystring: z.object({
+        label: z.string().trim().min(1).max(64).describe(ENCRYPTION_KEY_ROTATION.DELETE_EXPIRING.label),
+        force: booleanSchema.default(false).describe(ENCRYPTION_KEY_ROTATION.DELETE_EXPIRING.force)
+      })
     },
     onRequest: (req, res, done) => {
       verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
@@ -790,9 +813,9 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req, res) => {
-      await server.services.encryptionKeyRotation.completeRotation({
-        rotationId: req.params.rotationId,
-        acknowledged: req.body?.acknowledged
+      await server.services.encryptionKeyRotation.deleteExpiringKey({
+        label: req.query.label,
+        force: req.query.force
       });
 
       void res.status(204);

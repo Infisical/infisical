@@ -1,38 +1,36 @@
-export enum RotationBlocker {
-  HsmStrategy = "hsm-strategy",
-  RotationPending = "rotation-pending"
-}
-
-export type TEncryptionStatus = {
-  activeLabel: string | null;
+export type TRootKeyStatus = {
   encryptionStrategy: string | null;
-  pendingRotation: { id: string; createdAt: Date; label: string | null } | null;
-  retainedKey: {
-    id: string;
-    supersededAt: Date;
-    lastResolvedAt: Date | null;
-    label: string | null;
-  } | null;
-  history: {
-    label: string;
-    activatedAt: Date;
-    supersededAt?: Date | null;
-    retiredAt?: Date | null;
-  }[];
-  blockers: RotationBlocker[];
+  active: { label: string | null; activatedAt: Date };
+  staged: { label: string | null; createdAt: Date } | null;
+  expiring: { label: string | null; supersededAt: Date; lastResolvedAt: Date | null } | null;
 };
 
 export type TCreateRotationDTO = {
-  replacePending?: boolean;
+  replaceStaged?: boolean;
 };
 
-export type TCompleteRotationDTO = {
-  rotationId: string;
-  acknowledged?: boolean;
+export type TListRotationsDTO = {
+  offset: number;
+  limit: number;
+};
+
+export type TRotationHistoryEntry = {
+  label: string;
+  activatedAt: Date;
+  supersededAt: Date | null;
+  retiredAt: Date | null;
+};
+
+export type TDeleteStagedKeyDTO = {
+  label: string;
+};
+
+export type TDeleteExpiringKeyDTO = {
+  label: string;
+  force?: boolean;
 };
 
 export type TCreatedRotation = {
-  id: string;
   label: string;
   /** Returned exactly once. Never stored, never logged. */
   key: string;
@@ -40,5 +38,5 @@ export type TCreatedRotation = {
    * Set when the previous rotation's key has not been removed yet. Applying this key removes it
    * immediately, so an instance still running it will fail to restart.
    */
-  removesRetainedKey?: { label: string | null; lastResolvedAt: Date | null };
+  removesExpiringKey?: { label: string | null; lastResolvedAt: Date | null };
 };

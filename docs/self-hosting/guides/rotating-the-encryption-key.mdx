@@ -3,24 +3,28 @@ title: "Rotating the Encryption Key"
 description: "Replace the ENCRYPTION_KEY protecting your Infisical instance without downtime"
 ---
 
+<Info>
+  This guide is for instances that use `ENCRYPTION_KEY`. If you use an
+  [HSM](/self-hosting/guides/hsm-integration), rotate the key on the HSM instead.
+</Info>
+
 [`ENCRYPTION_KEY`](/self-hosting/configuration/envars#param-encryption-key) protects every secret in your
 instance. Rotating it periodically limits how much a leaked key is worth, and some compliance programs
 require it on a fixed schedule.
 
-Rotating is a two-part process by design: Infisical generates a key, and **the rotation only takes effect
-when an instance first starts with the new value**. Generating a key changes nothing, so you can generate
-one, think about it, and discard it with no consequences.
+Infisical generates a new key first. **The rotation only takes effect when an instance
+first starts with the new value**, so you can generate a key and discard it before you
+deploy without affecting the running instance.
 
 <Note>
-  Your secrets are never re-encrypted. Only a small internal wrapper changes, so a rotation is instant
-  regardless of how many secrets you store, and there is no read-only window.
+  Your secrets stay encrypted. Rotation changes which `ENCRYPTION_KEY` can decrypt them
+  rather than rewriting every secret, so it is instant regardless of how many secrets you
+  store, and there is no read-only window.
 </Note>
 
 ## Before you start
 
 - You need **server admin** access.
-- If your instance uses an [HSM](/self-hosting/guides/hsm-integration), there is no environment variable
-  to rotate. Rotate the key on the HSM instead.
 - Decide where you will keep the **old** key. See [After the rotation](#after-the-rotation).
 
 ## Rotate
@@ -65,11 +69,8 @@ one, think about it, and discard it with no consequences.
     </Note>
 
     <Note>
-      Infisical can only see instances that have *started* on the previous key. If one did so recently, it
-      asks you to confirm before removing the key, since you are the only one who can tell whether that
-      instance has since moved onto the new key. It cannot see an instance that has been running since
-      before the rotation and has not restarted. If such an instance restarts after the key is gone, it
-      fails to start with an error naming the key it needs; setting that key again brings it back.
+      Infisical only sees instances that have restarted. Confirm every instance is on the new
+      key before you remove the previous one.
     </Note>
   </Step>
 </Steps>

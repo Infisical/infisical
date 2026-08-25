@@ -241,38 +241,36 @@ export type TResendOrgInviteDTO = {
   membershipId: string;
 };
 
-export enum EncryptionRotationBlocker {
-  HsmStrategy = "hsm-strategy",
-  RotationPending = "rotation-pending"
-}
-
-export type TEncryptionStatus = {
-  activeLabel: string | null;
+export type TEncryptionRootKey = {
   encryptionStrategy: string | null;
-  pendingRotation: { id: string; createdAt: string; label: string | null } | null;
-  retainedKey: {
-    id: string;
-    supersededAt: string;
-    lastResolvedAt: string | null;
-    label: string | null;
-  } | null;
-  history: {
-    label: string;
-    activatedAt: string;
-    supersededAt?: string | null;
-    retiredAt?: string | null;
-  }[];
-  blockers: EncryptionRotationBlocker[];
+  active: { label: string | null; activatedAt: string };
+  staged: { label: string | null; createdAt: string } | null;
+  expiring: { label: string | null; supersededAt: string; lastResolvedAt: string | null } | null;
+};
+
+export type TEncryptionKeyRotation = {
+  label: string;
+  activatedAt: string;
+  supersededAt: string | null;
+  retiredAt: string | null;
+};
+
+export type TEncryptionKeyRotationsPage = {
+  rotations: TEncryptionKeyRotation[];
+  totalCount: number;
 };
 
 export type TCreatedEncryptionKeyRotation = {
-  id: string;
   label: string;
   key: string;
-  removesRetainedKey?: { label: string | null; lastResolvedAt: string | null };
+  removesExpiringKey?: { label: string | null; lastResolvedAt: string | null };
 };
 
-export type TCompleteEncryptionKeyRotationDTO = {
-  rotationId: string;
-  acknowledged: boolean;
+export type TDeleteStagedEncryptionKeyDTO = {
+  label: string;
+};
+
+export type TDeleteExpiringEncryptionKeyDTO = {
+  label: string;
+  force?: boolean;
 };

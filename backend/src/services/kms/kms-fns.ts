@@ -13,7 +13,7 @@ export const MAX_HMAC_IMPORT_KEY_BYTE_LENGTH = 1024;
  * The row holding the *currently active* wrapped root key.
  *
  * Not "the config row" any more: it is a compatibility handle. An app version predating rotation looks
- * this id up and knows nothing about pending or retained rows, so keeping the active key here is what
+ * this id up and knows nothing about staged or retained rows, so keeping the active key here is what
  * lets it boot. New code finds rows by trial decryption.
  */
 export const KMS_ROOT_CONFIG_UUID = "00000000-0000-0000-0000-000000000000";

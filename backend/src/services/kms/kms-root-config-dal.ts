@@ -33,14 +33,14 @@ export const kmsRootConfigDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findPending = async (tx?: Knex) => {
+  const findStaged = async (tx?: Knex) => {
     try {
       return await (tx || db)(TableName.KmsServerRootConfig)
         .whereNull("activatedAt")
         .whereNot("id", KMS_ROOT_CONFIG_UUID)
         .select("*");
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find pending kms root configs" });
+      throw new DatabaseError({ error, name: "Find staged kms root configs" });
     }
   };
 
@@ -56,18 +56,18 @@ export const kmsRootConfigDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Every pending row, not just the promoted one: an abandoned one is a live working key that would
+  // Every staged row, not just the promoted one: an abandoned one is a live working key that would
   // otherwise promote itself if it ever reached a deployment.
-  const deleteAllPending = async (tx?: Knex) => {
+  const deleteAllStaged = async (tx?: Knex) => {
     try {
       return await (tx || db)(TableName.KmsServerRootConfig)
         .whereNull("activatedAt")
         .whereNot("id", KMS_ROOT_CONFIG_UUID)
         .delete();
     } catch (error) {
-      throw new DatabaseError({ error, name: "Delete pending kms root configs" });
+      throw new DatabaseError({ error, name: "Delete staged kms root configs" });
     }
   };
 
-  return { ...kmsOrm, findById, findAll, findPending, findRetained, deleteAllPending };
+  return { ...kmsOrm, findById, findAll, findStaged, findRetained, deleteAllStaged };
 };

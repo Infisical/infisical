@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
+import { ConflictError } from "@app/lib/errors";
 import { initLogger } from "@app/lib/logger";
 
 import { encryptionKeyRotationServiceFactory } from "./encryption-key-rotation-service";
@@ -23,12 +24,12 @@ const buildService = (snapshot: ReturnType<typeof retainedRow>, underLock: unkno
   const deleteById = vi.fn().mockResolvedValue({ id: snapshot.id });
   const kmsRootConfigDAL = {
     findRetained: vi.fn().mockResolvedValue([snapshot]),
-    findPending: vi.fn().mockResolvedValue([]),
+    findStaged: vi.fn().mockResolvedValue([]),
     findById: vi.fn().mockResolvedValue(underLock),
     deleteById,
     findAll: vi.fn(),
     create: vi.fn(),
-    deleteAllPending: vi.fn(),
+    deleteAllStaged: vi.fn(),
     transaction: vi
       .fn()
       .mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) =>
@@ -36,9 +37,11 @@ const buildService = (snapshot: ReturnType<typeof retainedRow>, underLock: unkno
       )
   };
   const kmsKekHistoryDAL = {
-    findHistory: vi.fn().mockResolvedValue([]),
+    findHistoryPage: vi.fn().mockResolvedValue([]),
+    findActiveByLabel: vi.fn().mockResolvedValue(undefined),
     findCurrent: vi.fn(),
-    updateById: vi.fn()
+    updateById: vi.fn(),
+    countDocuments: vi.fn().mockResolvedValue(0)
   };
   const service = encryptionKeyRotationServiceFactory({
     kmsService: { encryptRootKeyForKek: vi.fn(), getCurrentKekLabel: vi.fn() },
@@ -92,5 +95,50 @@ describe("encryption key rotation garbage collection", () => {
     await service.runGarbageCollection();
 
     expect(deleteById).not.toHaveBeenCalled();
+  });
+});
+
+describe("removing the expiring encryption key", () => {
+  beforeAll(() => {
+    initLogger();
+  });
+
+  it("refuses a label that is not the key currently held, even with force", async () => {
+    // force overrides the straggler check only. Left overridable, an admin acting on a stale view would
+    // destroy a key a second admin rotated in after that view was read, which is not recoverable.
+    const row = retainedRow({ lastResolvedAt: new Date() });
+    const { service, deleteById } = buildService(row, row);
+
+    await expect(service.deleteExpiringKey({ label: "b".repeat(32), force: true })).rejects.toBeInstanceOf(
+      ConflictError
+    );
+    expect(deleteById).not.toHaveBeenCalled();
+  });
+
+  it("refuses an unlabelled key rather than removing one nothing can name", async () => {
+    // Only reachable if the boot backfill's label write failed. Removing it is irreversible and the
+    // caller cannot have confirmed which key it is, so the refusal points at the restart that fixes it.
+    const row = retainedRow({ kekLabel: null });
+    const { service, deleteById } = buildService(row, row);
+
+    await expect(service.deleteExpiringKey({ label: "a".repeat(32) })).rejects.toThrow(/Restart the instance/);
+    expect(deleteById).not.toHaveBeenCalled();
+  });
+
+  it("asks for force while there is fresh evidence of a straggler", async () => {
+    const row = retainedRow({ lastResolvedAt: new Date() });
+    const { service, deleteById } = buildService(row, row);
+
+    await expect(service.deleteExpiringKey({ label: row.kekLabel })).rejects.toThrow(/force=true/);
+    expect(deleteById).not.toHaveBeenCalled();
+  });
+
+  it("removes the key with force despite fresh evidence of a straggler", async () => {
+    const row = retainedRow({ lastResolvedAt: new Date() });
+    const { service, deleteById } = buildService(row, row);
+
+    await service.deleteExpiringKey({ label: row.kekLabel, force: true });
+
+    expect(deleteById).toHaveBeenCalledWith(row.id, expect.anything());
   });
 });

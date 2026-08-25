@@ -5,7 +5,7 @@ import { PgSqlLock } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { getKekLabel, KMS_ROOT_CONFIG_UUID } from "@app/services/kms/kms-fns";
 import { TKmsKekHistoryDALFactory } from "@app/services/kms/kms-kek-history-dal";
@@ -15,34 +15,32 @@ import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 
 import { generateRootEncryptionKey, resolveKekBuffer } from "./encryption-key-rotation-fns";
 import {
-  RotationBlocker,
-  TCompleteRotationDTO,
   TCreatedRotation,
   TCreateRotationDTO,
-  TEncryptionStatus
+  TDeleteExpiringKeyDTO,
+  TDeleteStagedKeyDTO,
+  TListRotationsDTO,
+  TRootKeyStatus,
+  TRotationHistoryEntry
 } from "./encryption-key-rotation-types";
 
 const ABANDONED_ROTATION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-// How recent a superseded-key boot has to be for `complete` to treat it as a live straggler and ask the
-// operator to confirm. Shorter than the GC's window on purpose: the GC is unattended and has nobody to
-// make that judgement, whereas an operator calling `complete` can look at their fleet.
+// How recent a superseded-key boot has to be for the expiring-key delete to treat it as a live straggler
+// and ask the operator to confirm. Shorter than the GC's window on purpose: the GC is unattended and has
+// nobody to make that judgement, whereas an operator removing the key can look at their fleet.
 const STRAGGLER_EVIDENCE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 type TEncryptionKeyRotationServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "encryptRootKeyForKek" | "getCurrentKekLabel">;
   kmsRootConfigDAL: Pick<
     TKmsRootConfigDALFactory,
-    | "findById"
-    | "findAll"
-    | "findPending"
-    | "findRetained"
-    | "create"
-    | "deleteById"
-    | "deleteAllPending"
-    | "transaction"
+    "findById" | "findAll" | "findStaged" | "findRetained" | "create" | "deleteById" | "deleteAllStaged" | "transaction"
   >;
-  kmsKekHistoryDAL: Pick<TKmsKekHistoryDALFactory, "findHistory" | "findCurrent" | "updateById">;
+  kmsKekHistoryDAL: Pick<
+    TKmsKekHistoryDALFactory,
+    "findHistoryPage" | "findActiveByLabel" | "findCurrent" | "updateById" | "countDocuments"
+  >;
   envConfig: Pick<TEnvConfig, "KMS_ROOT_KEY_RETENTION_DAYS">;
   cronJob: TCronJobFactory;
 };
@@ -56,53 +54,60 @@ export const encryptionKeyRotationServiceFactory = ({
   envConfig,
   cronJob
 }: TEncryptionKeyRotationServiceFactoryDep) => {
-  const getStatus = async (): Promise<TEncryptionStatus> => {
-    const [sentinel, pendingRows, retainedRows, history] = await Promise.all([
+  const getRootKey = async (): Promise<TRootKeyStatus> => {
+    const [sentinel, stagedRows, retainedRows] = await Promise.all([
       kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID),
-      kmsRootConfigDAL.findPending(),
-      kmsRootConfigDAL.findRetained(),
-      kmsKekHistoryDAL.findHistory()
+      kmsRootConfigDAL.findStaged(),
+      kmsRootConfigDAL.findRetained()
     ]);
 
-    // No both-variables-set blocker: a rotation always targets ENCRYPTION_KEY, which
-    // $getBasicEncryptionKey always resolves in preference to anything else, so it takes effect
-    // regardless of what else the environment holds.
-    const blockers: RotationBlocker[] = [];
-    if (sentinel?.encryptionStrategy === RootKeyEncryptionStrategy.HSM) blockers.push(RotationBlocker.HsmStrategy);
-    if (pendingRows.length) blockers.push(RotationBlocker.RotationPending);
+    if (!sentinel) throw new NotFoundError({ message: "KMS root config not found" });
 
+    const [staged] = stagedRows;
     const [retained] = retainedRows;
 
     return {
-      activeLabel: kmsService.getCurrentKekLabel(),
-      encryptionStrategy: sentinel?.encryptionStrategy ?? null,
-      pendingRotation: pendingRows[0]
+      encryptionStrategy: sentinel.encryptionStrategy ?? null,
+      active: {
+        // The sentinel is the instance-wide answer. During a rolling restart the pod serving this
+        // request may still be on the older key, and reporting that would describe the pod, not the
+        // instance. The in-memory label is the fallback for a row the boot backfill has not labelled.
+        label: sentinel.kekLabel ?? kmsService.getCurrentKekLabel(),
+        activatedAt: sentinel.activatedAt ?? sentinel.createdAt
+      },
+      staged: staged ? { label: staged.kekLabel ?? null, createdAt: staged.createdAt } : null,
+      expiring: retained
         ? {
-            id: pendingRows[0].id,
-            createdAt: pendingRows[0].createdAt,
-            label: pendingRows[0].kekLabel ?? null
-          }
-        : null,
-      retainedKey: retained
-        ? {
-            id: retained.id,
+            label: retained.kekLabel ?? null,
             supersededAt: retained.supersededAt as Date,
-            lastResolvedAt: retained.lastResolvedAt ?? null,
-            label: retained.kekLabel ?? null
+            lastResolvedAt: retained.lastResolvedAt ?? null
           }
-        : null,
-      history: history.map(({ kekLabel, activatedAt, supersededAt, retiredAt }) => ({
+        : null
+    };
+  };
+
+  const listRotations = async ({
+    offset,
+    limit
+  }: TListRotationsDTO): Promise<{ rotations: TRotationHistoryEntry[]; totalCount: number }> => {
+    const [rows, totalCount] = await Promise.all([
+      kmsKekHistoryDAL.findHistoryPage({ offset, limit }),
+      kmsKekHistoryDAL.countDocuments()
+    ]);
+
+    return {
+      rotations: rows.map(({ kekLabel, activatedAt, supersededAt, retiredAt }) => ({
         label: kekLabel,
         activatedAt,
-        supersededAt,
-        retiredAt
+        supersededAt: supersededAt ?? null,
+        retiredAt: retiredAt ?? null
       })),
-      blockers
+      totalCount
     };
   };
 
   /** Inert by design: the active key is untouched until a pod boots with the new value. */
-  const createRotation = async ({ replacePending }: TCreateRotationDTO): Promise<TCreatedRotation> => {
+  const createRotation = async ({ replaceStaged }: TCreateRotationDTO): Promise<TCreatedRotation> => {
     const sentinel = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
     if (!sentinel) throw new NotFoundError({ message: "KMS root config not found" });
 
@@ -113,35 +118,34 @@ export const encryptionKeyRotationServiceFactory = ({
       });
     }
 
-    const existingPending = await kmsRootConfigDAL.findPending();
-    if (existingPending.length && !replacePending) {
+    const existingStaged = await kmsRootConfigDAL.findStaged();
+    if (existingStaged.length && !replaceStaged) {
       throw new BadRequestError({
-        message:
-          "A rotation is already pending. Deploy that key, discard it, or retry with replacePending=true to replace it."
+        message: "A key is already staged. Deploy that key, discard it, or retry with replaceStaged=true to replace it."
       });
     }
 
-    const staged = await kmsRootConfigDAL.transaction(async (tx) => {
+    const result = await kmsRootConfigDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
 
       // Read under the lock so the warning describes the key that will actually be removed on promotion.
       const [retained] = await kmsRootConfigDAL.findRetained(tx);
 
-      const stillPending = await kmsRootConfigDAL.findPending(tx);
-      if (stillPending.length) {
-        if (!replacePending) {
+      const stillStaged = await kmsRootConfigDAL.findStaged(tx);
+      if (stillStaged.length) {
+        if (!replaceStaged) {
           throw new BadRequestError({
             message:
-              "A rotation is already pending. Deploy that key, discard it, or retry with replacePending=true to replace it."
+              "A key is already staged. Deploy that key, discard it, or retry with replaceStaged=true to replace it."
           });
         }
-        await kmsRootConfigDAL.deleteAllPending(tx);
-      } else if (existingPending.length) {
+        await kmsRootConfigDAL.deleteAllStaged(tx);
+      } else if (existingStaged.length) {
         // We set out to replace a staged key and it is no longer staged, so an instance applied it while
         // this request was in flight. Reporting it replaced would tell the operator a live key was retired.
-        throw new BadRequestError({
+        throw new ConflictError({
           message:
-            "The pending key was applied by a running instance while this request was in flight, so it cannot be replaced. There is no rollback once a rotation takes effect."
+            "The staged key was applied by a running instance while this request was in flight, so it cannot be replaced. There is no rollback once a rotation takes effect."
         });
       }
 
@@ -162,19 +166,17 @@ export const encryptionKeyRotationServiceFactory = ({
 
       return { row, retained, key, label };
     });
-    const pending = staged.row;
 
-    logger.info(`Encryption key rotation staged [rotationId=${pending.id}] [label=${staged.label}]`);
+    logger.info(`Encryption key rotation staged [rotationId=${result.row.id}] [label=${result.label}]`);
 
     return {
-      id: pending.id,
-      label: staged.label,
-      key: staged.key,
-      ...(staged.retained
+      label: result.label,
+      key: result.key,
+      ...(result.retained
         ? {
-            removesRetainedKey: {
-              label: staged.retained.kekLabel ?? null,
-              lastResolvedAt: staged.retained.lastResolvedAt ?? null
+            removesExpiringKey: {
+              label: result.retained.kekLabel ?? null,
+              lastResolvedAt: result.retained.lastResolvedAt ?? null
             }
           }
         : {})
@@ -183,7 +185,7 @@ export const encryptionKeyRotationServiceFactory = ({
 
   /**
    * Removes a retained key and records it as retired, inside a transaction the caller has already locked.
-   * Returns false when the row was already gone, so a concurrent completion or GC pass cannot report a
+   * Returns false when the row was already gone, so a concurrent removal or GC pass cannot report a
    * deletion that did not happen.
    */
   const $retireRetainedKey = async (tx: Knex, row: TKmsRootConfig) => {
@@ -191,88 +193,101 @@ export const encryptionKeyRotationServiceFactory = ({
     if (!deleted) return false;
 
     if (row.kekLabel) {
-      const history = await kmsKekHistoryDAL.findHistory(tx);
-      const entry = history.find((e) => e.kekLabel === row.kekLabel && !e.retiredAt);
+      const entry = await kmsKekHistoryDAL.findActiveByLabel(row.kekLabel, tx);
       if (entry) await kmsKekHistoryDAL.updateById(entry.id, { retiredAt: new Date() }, tx);
     }
 
     return true;
   };
 
-  const discardRotation = async (rotationId: string) => {
+  const deleteStagedKey = async ({ label }: TDeleteStagedKeyDTO) => {
     return kmsRootConfigDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
 
-      const row = await kmsRootConfigDAL.findById(rotationId, tx);
-      if (!row || row.id === KMS_ROOT_CONFIG_UUID) {
-        throw new NotFoundError({ message: `Pending encryption key rotation with ID '${rotationId}' not found` });
-      }
-      if (row.activatedAt) {
-        throw new BadRequestError({
-          message:
-            "That rotation has already been applied by a running instance and cannot be discarded. There is no rollback once a rotation takes effect."
+      const [staged] = await kmsRootConfigDAL.findStaged(tx);
+      if (!staged) {
+        throw new NotFoundError({
+          message: "There is no staged encryption key to discard."
         });
       }
 
-      const deleted = await kmsRootConfigDAL.deleteById(rotationId, tx);
+      if (staged.kekLabel !== label) {
+        throw new ConflictError({
+          message: staged.kekLabel
+            ? `The staged encryption key is '${staged.kekLabel}', not '${label}'. Someone else staged a key after you loaded this page. Re-read the current state before discarding.`
+            : "The staged encryption key carries no label to match against, so it cannot be named. Restart the instance to record one, then retry."
+        });
+      }
+
+      const deleted = await kmsRootConfigDAL.deleteById(staged.id, tx);
       if (!deleted) {
-        throw new BadRequestError({
+        throw new ConflictError({
           message:
             "The key was applied by a running instance while this request was in flight, so it could not be discarded. There is no rollback once a rotation takes effect."
         });
       }
 
-      logger.info(`Encryption key rotation discarded [rotationId=${rotationId}] [label=${row.kekLabel ?? "unknown"}]`);
+      logger.info(
+        `Encryption key rotation discarded [rotationId=${staged.id}] [label=${staged.kekLabel ?? "unknown"}]`
+      );
     });
   };
 
-  const completeRotation = async ({ rotationId, acknowledged }: TCompleteRotationDTO) => {
+  const deleteExpiringKey = async ({ label, force }: TDeleteExpiringKeyDTO) => {
     return kmsRootConfigDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
 
-      const row = await kmsRootConfigDAL.findById(rotationId, tx);
-      if (!row || row.id === KMS_ROOT_CONFIG_UUID || !row.supersededAt) {
-        throw new NotFoundError({ message: `Retained encryption key with ID '${rotationId}' not found` });
+      const [retained] = await kmsRootConfigDAL.findRetained(tx);
+      if (!retained) {
+        throw new NotFoundError({ message: "There is no previous encryption key to remove." });
+      }
+
+      if (retained.kekLabel !== label) {
+        throw new ConflictError({
+          message: retained.kekLabel
+            ? `The previous encryption key is '${retained.kekLabel}', not '${label}'. Another rotation has taken effect since you loaded this page. Re-read the current state before removing it.`
+            : "The previous encryption key carries no label to match against, so it cannot be named. Restart the instance to record one, then retry."
+        });
       }
 
       // An instance that started on this key within the hour is very likely still running, and removing
       // the key would break its next restart. Nothing reports whether it has since rolled forward, so
       // this asks the operator rather than refusing outright.
-      const lastResolvedAt = row.lastResolvedAt ? new Date(row.lastResolvedAt).getTime() : null;
+      const lastResolvedAt = retained.lastResolvedAt ? new Date(retained.lastResolvedAt).getTime() : null;
       if (lastResolvedAt && Date.now() - lastResolvedAt < STRAGGLER_EVIDENCE_WINDOW_MS) {
-        if (!acknowledged) {
+        if (!force) {
           throw new BadRequestError({
             message: `An instance started on the previous encryption key at ${new Date(
               lastResolvedAt
-            ).toISOString()} and may still be running. It would fail to restart if the key were removed now. Roll that instance onto the current key first, or acknowledge this to remove the key anyway.`
+            ).toISOString()} and may still be running. It would fail to restart if the key were removed now. Roll that instance onto the current key first, or retry with force=true to remove the key anyway.`
           });
         }
 
         logger.warn(
           `Removing an encryption key an instance started on at ${new Date(
             lastResolvedAt
-          ).toISOString()}, acknowledged by the caller [retainedKeyId=${rotationId}]`
+          ).toISOString()}, forced by the caller [retainedKeyId=${retained.id}]`
         );
       }
 
-      if (!(await $retireRetainedKey(tx, row))) {
-        throw new BadRequestError({
+      if (!(await $retireRetainedKey(tx, retained))) {
+        throw new ConflictError({
           message: "The previous encryption key was already removed while this request was in flight."
         });
       }
 
       logger.info(
-        `Encryption key rotation completed, previous key removed [retainedKeyId=${rotationId}] [label=${row.kekLabel ?? "unknown"}]`
+        `Encryption key rotation completed, previous key removed [retainedKeyId=${retained.id}] [label=${retained.kekLabel ?? "unknown"}]`
       );
     });
   };
 
   const runGarbageCollection = async () => {
-    const [retained, pending] = await Promise.all([kmsRootConfigDAL.findRetained(), kmsRootConfigDAL.findPending()]);
+    const [retained, staged] = await Promise.all([kmsRootConfigDAL.findRetained(), kmsRootConfigDAL.findStaged()]);
 
-    // replacePending caps pending at one, so this is for the admin who generated a key and walked away.
+    // replaceStaged caps staged keys at one, so this is for the admin who generated a key and walked away.
     const now = Date.now();
-    const abandoned = pending.filter((row) => now - new Date(row.createdAt).getTime() >= ABANDONED_ROTATION_MAX_AGE_MS);
+    const abandoned = staged.filter((row) => now - new Date(row.createdAt).getTime() >= ABANDONED_ROTATION_MAX_AGE_MS);
     for (const row of abandoned) {
       // eslint-disable-next-line no-await-in-loop -- at most one row in practice
       const removed = await kmsRootConfigDAL.transaction(async (tx) => {
@@ -339,5 +354,13 @@ export const encryptionKeyRotationServiceFactory = ({
     });
   };
 
-  return { init, getStatus, createRotation, discardRotation, completeRotation, runGarbageCollection };
+  return {
+    init,
+    getRootKey,
+    listRotations,
+    createRotation,
+    deleteStagedKey,
+    deleteExpiringKey,
+    runGarbageCollection
+  };
 };

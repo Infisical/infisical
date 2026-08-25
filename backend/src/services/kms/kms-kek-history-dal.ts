@@ -11,12 +11,24 @@ export const kmsKekHistoryDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.KmsKekHistory);
 
   // Outlives the ciphertext it describes and is never pruned: it is how a restored dump is matched to
-  // an archived key.
-  const findHistory = async (tx?: Knex) => {
+  // an archived key. Nothing may read it unbounded for that reason.
+  const findHistoryPage = async ({ offset, limit }: { offset: number; limit: number }, tx?: Knex) => {
     try {
-      return await (tx || db.replicaNode())(TableName.KmsKekHistory).select("*").orderBy("activatedAt", "desc");
+      return await (tx || db.replicaNode())(TableName.KmsKekHistory)
+        .select("*")
+        .orderBy("activatedAt", "desc")
+        .offset(offset)
+        .limit(limit);
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find kek history" });
+      throw new DatabaseError({ error, name: "Find kek history page" });
+    }
+  };
+
+  const findActiveByLabel = async (kekLabel: string, tx?: Knex) => {
+    try {
+      return await (tx || db)(TableName.KmsKekHistory).where({ kekLabel }).whereNull("retiredAt").first("*");
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find active kek history by label" });
     }
   };
 
@@ -31,5 +43,5 @@ export const kmsKekHistoryDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findHistory, findCurrent };
+  return { ...orm, findHistoryPage, findActiveByLabel, findCurrent };
 };
