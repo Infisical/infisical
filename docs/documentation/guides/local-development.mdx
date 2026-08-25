@@ -100,7 +100,7 @@ The hook stops the commit when it finds something that looks like a secret. Chec
     The CLI is pointed at the wrong instance. It uses Infisical Cloud US by default, so an EU or self-hosted account needs the address set through the `INFISICAL_DOMAIN` environment variable, the `--domain` flag, or the `domain` field in [`.infisical.json`](/cli/project-config).
   </Accordion>
   <Accordion title="It works in your terminal but not in your editor">
-    Your editor's run configuration starts the application on its own, outside the `infisical run` process, so the injected variables never reach it. Either start your editor from a terminal, or change the run configuration to call `infisical run --env=dev -- <your-start-command>`.
+    Your editor's run configuration starts your application on its own, outside the `infisical run` process, and the injected variables exist only inside that process and the commands it starts. Change the run configuration to call `infisical run --env=dev -- <your-start-command>`. If your editor doesn't allow that, quit and relaunch it through the CLI with `infisical run --env=dev -- <your-editor-command>`, so that everything it starts inherits the secrets.
   </Accordion>
 </AccordionGroup>
 
