@@ -49,7 +49,7 @@ type TIdentityServiceFactoryDep = {
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
-  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
+  keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;

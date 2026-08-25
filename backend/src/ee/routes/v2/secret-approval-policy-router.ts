@@ -56,7 +56,8 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             .optional(),
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-          allowedSelfApprovals: z.boolean().default(true)
+          allowedSelfApprovals: z.boolean().default(true),
+          bypassForMachineIdentities: z.boolean().default(false)
         })
         .refine((data) => data.environment || data.environments, "At least one environment should be provided"),
       response: {
@@ -136,6 +137,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .transform((val) => (val ? removeTrailingSlash(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
         allowedSelfApprovals: z.boolean().default(true),
+        bypassForMachineIdentities: z.boolean().optional(),
         environments: z.array(z.string()).optional()
       }),
       response: {

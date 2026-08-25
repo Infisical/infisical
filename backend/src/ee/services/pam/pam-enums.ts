@@ -53,6 +53,11 @@ export enum PamSshAuthMethod {
   Certificate = "certificate"
 }
 
+export enum PamPostgresAuthMethod {
+  Password = "password",
+  AwsIam = "aws-iam"
+}
+
 // The caller's just-in-time approval state for an account gated behind an access request flow
 export enum PamAccessStatus {
   None = "none",

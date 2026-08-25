@@ -1,300 +1,504 @@
 ---
-title: "GitHub Actions"
-description: "How to inject secrets from Infisical into GitHub Actions workflows using OIDC authentication"
+title: "Inject secrets into GitHub Actions workflows"
+sidebarTitle: "GitHub Actions"
+description: "Fetch secrets from Infisical at runtime in a GitHub Actions workflow with the Infisical Secrets Action."
 ---
 
-<Note>
-  For syncing secrets **from Infisical to GitHub** (one-way sync to GitHub Secrets), use our 
-  [GitHub Secret Syncs](../secret-syncs/github) instead.
-</Note>
-
-## Concept
-
-The [Infisical Secrets Action](https://github.com/Infisical/secrets-action) enables GitHub Actions workflows to fetch secrets from Infisical at runtime using [OpenID Connect (OIDC)](/documentation/platform/identities/oidc-auth/github) authentication with [machine identities](/documentation/platform/identities/machine-identities).
-
-Instead of storing long-lived credentials in GitHub Secrets, workflows authenticate to Infisical using short-lived OIDC tokens issued by GitHub. This eliminates the need for static API keys or tokens while providing fine-grained access control based on repository, workflow, and execution context.
-
-Secrets are fetched dynamically during workflow execution and exposed as environment variables, existing only for the lifetime of the job. This approach centralizes secret management in Infisical while maintaining security through identity-based authentication.
-
-The short video below provides a guided overview of using Infisical with GitHub Actions and OIDC authentication, helping you build the right mental model before diving into the diagram and setup steps.
-
-<div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", maxWidth: "100%" }}>
-  <iframe src="https://www.youtube.com/embed/9PQmd_aoRWA" title="YouTube video player" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen />
-</div>
-
-
-## Diagram
-
-The following sequence diagram illustrates the OIDC authentication workflow. The authentication flow is the same for all OIDC providers; for GitHub Actions, the client is a GitHub workflow and the identity provider is GitHub's OIDC service.
-
-```mermaid
-sequenceDiagram
-  participant Client as GitHub Workflow
-  participant Idp as GitHub OIDC Provider
-  participant Infis as Infisical
-
-  Client->>Idp: Step 1: Request identity token
-  Idp-->>Client: Return JWT with verifiable claims
-
-  Note over Client,Infis: Step 2: Login Operation
-  Client->>Infis: Send signed JWT to /api/v1/auth/oidc-auth/login
-
-  Note over Infis,Idp: Step 3: Query verification
-  Infis->>Idp: Request JWT public key using OIDC Discovery
-  Idp-->>Infis: Return public key
-
-  Note over Infis: Step 4: JWT validation
-  Infis->>Client: Return short-lived access token
-
-  Note over Client,Infis: Step 5: Access Infisical API with Token
-  Client->>Infis: Make authenticated requests using the short-lived access token
-```
+This guide walks you through fetching secrets from Infisical inside a GitHub Actions workflow. The [Infisical Secrets Action](https://github.com/Infisical/secrets-action) authenticates as a [machine identity](/documentation/platform/identities/machine-identities), fetches the secrets that identity is allowed to read, and injects them into your job as environment variables. The values exist only for the lifetime of the job, so you don't have to copy secrets into GitHub Secrets or keep them in sync there.
 
 <Note>
-  In GitHub Actions, the [Infisical Secrets Action](https://github.com/Infisical/secrets-action) handles steps 1-2 and 5, automatically fetching secrets after authentication and injecting them as environment variables into your workflow.
+  To push secrets from Infisical into GitHub Secrets instead, use [GitHub Secret Syncs](/integrations/secret-syncs/github). Secret Syncs write secrets *to* GitHub, while this guide fetches them *from* Infisical at runtime.
 </Note>
 
-## Workflow
-
-A typical workflow for using Infisical with GitHub Actions consists of the following steps:
-
-1. Create a [machine identity](/documentation/platform/identities/machine-identities) in Infisical with OIDC authentication configured for your GitHub repository and workflow context.
-2. Add the machine identity to your Infisical project with appropriate permissions to access the required secrets.
-3. Configure your GitHub Actions workflow to use the [Infisical Secrets Action](https://github.com/Infisical/secrets-action) with OIDC authentication.
-4. The workflow authenticates using GitHub's OIDC token, fetches secrets from Infisical, and exposes them as environment variables for the duration of the job.
-
-## How it works
-
-GitHub Actions uses [OpenID Connect (OIDC)](/documentation/platform/identities/oidc-auth/github) to authenticate workflows without storing long-lived credentials.
-
-At a high level, the flow looks like this:
-
-1. **GitHub Issues an [OIDC Token](https://docs.github.com/en/actions/concepts/security/openid-connect)**  
-   When a workflow starts, GitHub issues a short-lived OIDC token containing identity claims about the repository, workflow, and execution context.
-
-2. **Workflow Presents Its Identity**  
-   The [Infisical Secrets Action](https://github.com/Infisical/secrets-action) sends this token to Infisical as proof of the workflow’s identity.
-
-3. **Infisical Verifies Trust**  
-   Infisical validates the token signature using GitHub’s OIDC provider and checks the token’s subject, audience, and claims against the configured [machine identity](/documentation/platform/identities/machine-identities).
-
-4. **Secrets Are Issued at Runtime**  
-   If the identity matches, Infisical issues a short-lived access token. The action then uses this token to fetch only the secrets the identity is authorized to access for the requested project and environment.
-
-Secrets are exposed to the workflow as environment variables and exist only for the lifetime of the job.
+<Tip>
+  Visual learner? Watch an [overview of using Infisical with GitHub Actions](https://www.youtube.com/watch?v=9PQmd_aoRWA).
+</Tip>
 
 ## Prerequisites
 
-Before you begin, ensure you have:
-
-- An [Infisical project](/documentation/platform/project) ([Infisical Cloud](https://app.infisical.com) or [self-hosted instance](/self-hosting/overview))
-- Secrets stored in your Infisical project
+- An Infisical account on [Infisical Cloud](https://app.infisical.com) or a [self-hosted instance](/self-hosting/overview)
+- A [project with secrets configured](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret)
+- Permission to create machine identities in your Infisical organization
 - A GitHub repository with Actions enabled
 
-## Guide
+## Setup
 
-In the following steps, we explore how to configure GitHub Actions to authenticate with Infisical using OIDC and fetch secrets at runtime.
+Choose how your workflow should authenticate with Infisical:
 
-<Steps>
-  <Step title="Configure secrets in Infisical">
-    Ensure the secrets your workflow needs are stored in your Infisical project and environment (e.g., `dev`, `staging`, `prod`).
+<Tabs>
+  <Tab title="OIDC (Recommended)">
+    With [OIDC Auth](/documentation/platform/identities/oidc-auth/github), no Infisical credentials are stored in GitHub. The workflow proves its identity with a token that GitHub issues at runtime.
 
-    For example, a pipeline that builds and pushes a Docker image might require:
+    <Accordion title="How OIDC authentication works">
+      GitHub can vouch for a workflow's identity, which means the workflow doesn't need a stored credential to prove who it is.
 
-    - `DOCKER_USERNAME`
-    - `DOCKER_PASSWORD`
+      When a job starts, GitHub issues a short-lived [OIDC token](https://docs.github.com/en/actions/concepts/security/openid-connect) describing the repository, workflow, and context it came from. The action presents that token to Infisical, Infisical verifies its signature and checks its claims against your machine identity, and then returns a short-lived access token the action uses to fetch secrets.
+
+      ```mermaid
+      sequenceDiagram
+        participant Workflow as GitHub Actions workflow
+        participant GitHub as GitHub OIDC provider
+        participant Infisical
+
+        Workflow->>GitHub: Request an identity token
+        GitHub-->>Workflow: Return a signed token describing the repository and context
+        Workflow->>Infisical: Present the token
+        Infisical->>GitHub: Fetch the public key to verify the signature
+        GitHub-->>Infisical: Return the public key
+        Infisical-->>Workflow: Return a short-lived access token
+        Workflow->>Infisical: Fetch the secrets the identity can read
+      ```
+
+      Because the trust relationship is defined by repository and context rather than by a shared credential, only the workflows you name can authenticate. Use OIDC unless your setup rules it out.
+    </Accordion>
+
+    ### Step 1: Create a machine identity
+
+    Create a [machine identity](/documentation/platform/identities/machine-identities) for your workflow:
+
+    <Steps>
+      <Step>
+        In your organization, select **Access Control** > **Machine Identities**.
+      </Step>
+      <Step>
+        Select **+ Create**.
+      </Step>
+      <Step>
+        Enter a **Name** (e.g., `orders-service-ci`), select a **Role**, and select **Create**.
+      </Step>
+    </Steps>
+
+    Infisical creates the identity with [Universal Auth](/documentation/platform/identities/universal-auth) configured and opens its details page.
+
+    ### Step 2: Add OIDC authentication
+
+    <Steps>
+      <Step>
+        In the identity's **Authentication** section, select **+ Add Auth Method**.
+      </Step>
+      <Step>
+        Select **OIDC Auth**.
+      </Step>
+      <Step>
+        On the **Configuration** tab, fill in the fields below, then select **Add**.
+      </Step>
+    </Steps>
+
+    | Field | Value |
+    | --- | --- |
+    | **OIDC Discovery URL** | `https://token.actions.githubusercontent.com` |
+    | **Issuer** | `https://token.actions.githubusercontent.com` |
+    | **Subject** | The exact GitHub workflow identity allowed to authenticate. The format depends on whether the repository uses legacy or immutable subject claims, as described below. |
+    | **Audiences** | The intended recipient of the token. Unless you set `oidc-audience` in your workflow, GitHub issues tokens for the repository owner's URL (e.g., `https://github.com/octo-org`) |
+    | **Claims** | Optional token claims that must match, entered as property and value pairs |
 
     <Note>
-      Secrets are scoped to an environment. Ensure they exist in the environment your workflow will access.
-    </Note>
-  </Step>
-  <Step title="Create a machine identity with OIDC authentication">
-    A [machine identity](/documentation/platform/identities/machine-identities) represents a non-human workload (such as a CI/CD pipeline, server, or automated job) and defines what that workload is authorized to access without being tied to a user account.
-
-    To create a machine identity with OIDC authentication:
-
-    1. Navigate to your project in Infisical
-    2. Go to your project > **Access Control** > **Machine Identities**
-    3. Click **Add Machine Identity to Project**
-    4. Provide a name for the identity (e.g., `github-actions-workflow`)
-    5. Select an organization-level role that defines what the identity can access
-    6. Click **Create**
-
-    By default, the identity will be configured with [Universal Auth](/documentation/platform/identities/universal-auth). For CI/CD workflows, we want to avoid long-lived credentials, so we'll switch to OIDC authentication.
-  </Step>
-  <Step title="Configure OIDC authentication">
-    1. Click on your machine identity 
-    2. Remove the default Universal Auth configuration
-    3. Click **Add auth method** and select **OIDC Auth**
-
-    Configure the following fields:
-
-    - **OIDC Discovery URL**: `https://token.actions.githubusercontent.com`
-    - **Issuer**: `https://token.actions.githubusercontent.com`
-    - **CA Certificate**: Leave blank for GitHub Actions
-    - **Subject**: The expected principal that is the subject of the JWT. The format is:
-      ```
-      repo:<owner>/<repo>:<context>
-      ```
+      GitHub.com repositories created after July 15, 2026 use immutable subject claims. For these repositories, use `repo:<owner>@<owner-id>/<repo>@<repo-id>:<context>`. Configure the exact subject present in your workflow's token.
       
-      For example:
-      - `repo:octocat/example-repo:ref:refs/heads/main` (specific branch)
-      - `repo:octocat/example-repo:environment:production` (specific environment)
-      - `repo:octocat/example-repo:*` (any context in the repository)
+      If authentication returns a `403`, see the [troubleshooting section](#troubleshooting).
+    </Note>
 
-      <Note>
-        On GitHub.com, repositories created after July 15, 2026 use an immutable subject format where the owner and repository names are suffixed with their permanent numeric IDs using `@` as the delimiter:
+    The context in the **Subject** field determines how narrowly the identity is scoped. These examples use the legacy subject prefix; for an immutable subject, append the same context to `repo:<owner>@<owner-id>/<repo>@<repo-id>`:
 
-        ```
-        repo:<owner>@<owner-id>/<repo>@<repo-id>:<context>
-        ```
-
-        Renaming or transferring a repository after that date also switches it to this format, and existing repositories can opt in at the organization or repository level through GitHub's OIDC settings or REST API. GitHub Enterprise Server is unaffected.
-
-        For repositories using this format, the examples above apply with the `@<id>` suffixes inserted — for example, `repo:octocat@583231/example-repo@1296269:ref:refs/heads/main`. If the subject you configure doesn't include these IDs, authentication fails with a `403` error. To get the exact prefix your repository's tokens carry, run `gh api repos/<owner>/<repo>/actions/oidc/customization/sub` and copy the `sub_claim_prefix` value into your subject. A glob pattern such as `repo:octocat@*/example-repo@*:ref:refs/heads/main` can serve as a temporary workaround during migration, but it also matches recycled owner and repository names with different IDs, so hardcode the IDs whenever possible.
-      </Note>
-
-      <Tip>
-        If you're unsure about the exact subject format, you can use [github/actions-oidc-debugger](https://github.com/github/actions-oidc-debugger) to inspect the OIDC token claims from your workflow.
-      </Tip>
-
-    - **Audiences**: A list of intended recipients. Set this to your GitHub organization URL, for example: `https://github.com/octo-org`
-    - **Claims**: (Optional) Additional attributes that should be present in the JWT. Refer to GitHub's [OIDC token documentation](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#understanding-the-oidc-token) for supported claims.
+    - `repo:octocat/orders-service:ref:refs/heads/main` allows only workflows running on the `main` branch
+    - `repo:octocat/orders-service:environment:production` allows only workflows running in the `production` environment
+    - `repo:octocat/orders-service:*` allows any workflow in the repository
 
     <Warning>
-      Restrict access by configuring the Subject, Audiences, and Claims fields carefully. The Subject, Audiences, and Claims fields support glob pattern matching, but we highly recommend using hardcoded values whenever possible for better security.
+      - **Subject**, **Audiences**, and **Claims** are each optional, but they won't be checked at all if left blank. We recommend setting the subject and audience at minimum.
+      - All three of these fields support glob patterns, but any workflow matching the pattern can authenticate to Infisical. For this reason, we recommend using exact values and scoping to a branch or environment rather than the whole repository.
     </Warning>
 
-    <Info>
-      Together, the Subject and Audience settings make the trust relationship explicit. Only workflows that match the repository, context, and audience you've defined will be able to authenticate and fetch secrets.
-    </Info>
-  </Step>
+    <Tip>
+      If you're not sure what your workflow's token contains, run [github/actions-oidc-debugger](https://github.com/github/actions-oidc-debugger) in the repository to print its claims, then copy the exact subject into Infisical. Refer to GitHub's [OIDC token reference](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#understanding-the-oidc-token) for the full list of claims.
+    </Tip>
 
-  <Step title="Copy the identity ID">
-    After configuring OIDC authentication, Infisical provides an **Identity ID**. This is what you'll reference in your GitHub Actions workflow.
+    ### Step 3: Remove Universal Auth
 
-    Copy this value — you'll need it in the next step.
+    An identity can hold several auth methods, and any of them can authenticate it. Remove Universal Auth to make sure this identity can only authenticate through GitHub:
+
+    <Steps>
+      <Step>
+        In the identity's **Authentication** section, open the <Icon icon="ellipsis"/> menu on the **Universal Auth** row.
+      </Step>
+      <Step>
+        Select **Remove Auth Method**.
+      </Step>
+      <Step>
+        Enter `confirm`, then select **Remove**.
+      </Step>
+    </Steps>
+
+    ### Step 4: Add the identity to your project
+
+    <Steps>
+      <Step>
+        On the identity's page, find the **Projects** section and select **+ Add to Project**.
+      </Step>
+      <Step>
+        Select the **Project** containing the secrets your workflow needs, select a **Role** that can read those secrets, and select **Add**.
+      </Step>
+    </Steps>
+
+    ### Step 5: Copy the identity ID and project slug
+
+    Copy the values you'll use to configure the action and store them somewhere:
+
+    <Steps>
+      <Step>
+        At the top of the identity's page, select **Options** > **Copy Machine Identity ID**.
+      </Step>
+      <Step>
+        In the **Projects** section, select the project you added. In the project sidebar, select **Settings** > **General**, then select **Copy Project Slug** in the **Project Overview** section.
+      </Step>
+    </Steps>
 
     <Note>
-      The Identity ID is **not a secret**. It's a public identifier that's safe to commit directly into your workflow YAML files.
+      The machine identity ID isn't a secret. It's a public identifier, so you can commit it directly to your workflow file.
     </Note>
-  </Step>
-</Steps>
 
-## Configure GitHub Actions workflow
+    ### Step 6: Add the action to your workflow
 
-Now let's configure your GitHub Actions workflow to fetch secrets from Infisical.
+    Add the Infisical Secrets Action to a workflow file in `.github/workflows/`, before the steps that need secrets:
 
-### Basic workflow example
+    ```yaml expandable
+    name: Build and push image
 
-Create or update a workflow file in `.github/workflows/` (e.g., `.github/workflows/infisical-demo.yml`):
+    on:
+      workflow_dispatch:
 
-```yaml
-name: Build and Push Docker Image
+    permissions:
+      id-token: write # Required for GitHub to issue an OIDC token
+      contents: read
 
-on:
-  workflow_dispatch:  # Manual trigger for testing
+    jobs:
+      build:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Checkout code
+            uses: actions/checkout@v4
 
-permissions:
-  id-token: write  # Required for OIDC authentication
-  contents: read   # Required for checking out code
+          - name: Fetch secrets from Infisical
+            uses: Infisical/secrets-action@v1.0.16
+            with:
+              method: "oidc"
+              identity-id: "<machine-identity-id>"
+              project-slug: "<project-slug>"
+              env-slug: "dev"
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+          - name: Log in to the registry
+            run: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    ```
 
-      - name: Fetch secrets from Infisical
-        uses: Infisical/secrets-action@v1.0.9
-        with:
-          method: "oidc"
-          identity-id: "your-identity-id-here"  # From Step 4
-          project-slug: "your-project-slug"      # Your Infisical project slug
-          env-slug: "dev"                        # Your environment slug
+    Replace `<machine-identity-id>` and `<project-slug>` with the values you copied, and set `env-slug` to the environment you want to read from (e.g., `dev`, `staging`, `prod`).
 
-      - name: Login to Docker Registry
-        run: |
-          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    <Warning>
+      The `id-token: write` permission is required. Without it, GitHub won't issue an OIDC token and the step fails before it reaches Infisical.
+    </Warning>
 
-      - name: Build and push Docker image
-        run: |
-          docker build -t my-image:latest .
-          docker push my-image:latest
-```
+    <Check>
+      Every step after the action can now read your secrets as environment variables, and no Infisical credentials are stored in GitHub.
+    </Check>
+  </Tab>
 
-### Key configuration points
+  <Tab title="Universal Auth">
+    Use [Universal Auth](/documentation/platform/identities/universal-auth) when OIDC isn't an option, such as on a runner that can't request an identity token. The workflow authenticates with a client ID and client secret stored in GitHub Secrets.
 
-**Permissions Block**: The `id-token: write` permission is **required** for OIDC authentication. Without it, GitHub won't issue an OIDC token for the workflow run.
+    <Accordion title="How Universal Auth works">
+      The Infisical Secrets Action reads the client ID and client secret from GitHub Secrets and sends them to Infisical. After Infisical verifies the credentials, it returns a short-lived access token that the action uses to fetch secrets.
 
-**Infisical Secrets Action**: The [Infisical Secrets Action](https://github.com/Infisical/secrets-action) step handles:
-- Requesting the OIDC token from GitHub
-- Authenticating with Infisical using OIDC
-- Fetching secrets for the specified project and environment
-- Injecting secrets as environment variables
+      ```mermaid
+      sequenceDiagram
+        participant Workflow as GitHub Actions workflow
+        participant Infisical
 
-**Action Parameters**:
-- `method: "oidc"` - Specifies OIDC authentication
-- `identity-id` - The machine identity ID from Infisical (safe to commit)
-- `project-slug` - Your Infisical project slug (found in project settings)
-- `env-slug` - The environment to fetch secrets from (e.g., `dev`, `staging`, `prod`)
+        Workflow->>Infisical: Send the client ID and client secret
+        Infisical-->>Workflow: Return a short-lived access token
+        Workflow->>Infisical: Fetch the secrets the identity can read
+      ```
+
+      Unlike OIDC, Universal Auth requires a stored client secret. Protect this credential in GitHub Secrets and rotate it periodically.
+    </Accordion>
+
+    ### Step 1: Create a machine identity
+
+    Create a [machine identity](/documentation/platform/identities/machine-identities) for your workflow:
+
+    <Steps>
+      <Step>
+        Open the project containing the secrets your workflow needs, then select **Access Control** > **Machine Identities**.
+      </Step>
+      <Step>
+        Select **+ Add Machine Identity to Project**.
+      </Step>
+      <Step>
+        Enter a **Name** (e.g., `orders-service-ci`), select a **Role** that can read the secrets your workflow needs, and select **Create**.
+      </Step>
+    </Steps>
+
+    Infisical creates the identity with Universal Auth configured and opens its details page.
+
+    ### Step 2: Create a client secret
+
+    <Steps>
+      <Step>
+        In the identity's **Authentication** section, select the **Universal Auth** row.
+      </Step>
+      <Step>
+        In the **Client Secrets** section, select **+ Add Client Secret**.
+      </Step>
+      <Step>
+        Enter a **Description** (e.g., `github-actions`). Optionally, set the **TTL** and **Max Number of Uses**, then select **Create**.
+      </Step>
+      <Step>
+        Copy the client secret, then select **Close**. Infisical shows the secret only once.
+      </Step>
+    </Steps>
+
+    ### Step 3: Copy the client ID and project slug
+
+    Copy the remaining values you'll use to configure the action:
+
+    <Steps>
+      <Step>
+        In the **Universal Auth** panel, select the <Icon icon="copy"/> button beside the **Client ID**, then close the panel.
+      </Step>
+      <Step>
+        In the project sidebar, select **Settings** > **General**, then select **Copy Project Slug** in the **Project Overview** section.
+      </Step>
+    </Steps>
+
+    ### Step 4: Store the credentials in GitHub
+
+    <Steps>
+      <Step>
+        In your GitHub repository, select **Settings** > **Secrets and variables** > **Actions**.
+      </Step>
+      <Step>
+        Select **New repository secret**, enter `INFISICAL_CLIENT_ID` as the name and the client ID you copied as the secret, then select **Add secret**.
+      </Step>
+      <Step>
+        Add another repository secret named `INFISICAL_CLIENT_SECRET` with the client secret you copied.
+      </Step>
+    </Steps>
+
+    <Warning>
+      Don't put the client ID or client secret in your workflow file. Unlike a machine identity ID, these are credentials that grant access to your project's secrets.
+    </Warning>
+
+    ### Step 5: Add the action to your workflow
+
+    ```yaml
+    name: Build and push image
+
+    on:
+      workflow_dispatch:
+
+    jobs:
+      build:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Checkout code
+            uses: actions/checkout@v4
+
+          - name: Fetch secrets from Infisical
+            uses: Infisical/secrets-action@v1.0.16
+            with:
+              client-id: ${{ secrets.INFISICAL_CLIENT_ID }}
+              client-secret: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+              project-slug: "<project-slug>"
+              env-slug: "dev"
+
+          - name: Log in to the registry
+            run: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    ```
+
+    Replace `<project-slug>` with the slug you copied, and set `env-slug` to the environment you want to read from (e.g., `dev`, `staging`, `prod`). Universal Auth is the action's default method, so you don't need to set `method`.
+
+    <Check>
+      Every step after the action can now read your secrets as environment variables.
+    </Check>
+
+    <Tip>
+      Rotate the client secret periodically, and create a separate identity for each workflow so you can revoke one without affecting the others.
+    </Tip>
+  </Tab>
+</Tabs>
 
 <Note>
-This workflow uses OIDC authentication with short-lived tokens. The `identity-id` is a public identifier that can be safely committed to your repository. 
-Authentication occurs at runtime using GitHub's OIDC token, eliminating the need to store long-lived credentials.
+  If your workflow runs on a self-hosted runner in AWS, the action can also authenticate with [AWS Auth](/documentation/platform/identities/aws-auth) by setting `method: "aws-iam"` and `identity-id`. The runner needs AWS credentials it can use and network access to the AWS STS endpoints.
 </Note>
 
+## Configure the action
 
-### Using secrets in workflows
+### Reference secrets in later steps
 
-After the Infisical Secrets Action completes, secrets are available as environment variables for subsequent steps in the job. Reference them using standard environment variable syntax:
+Fetched secrets are available as environment variables to every later step in the same job. Reference them with standard environment variable syntax:
 
 ```yaml
-- name: Run tests with database connection
-  run: |
-    npm run test -- --database-url="$DATABASE_URL"
+- name: Run tests
+  run: npm run test -- --database-url="$DATABASE_URL"
 ```
 
 <Warning>
-  Never print full secret values in workflow logs. GitHub Actions will mask secrets automatically, but avoid using `echo $SECRET` or similar commands that expose values.
+  The action registers each fetched value as a masked secret, so GitHub redacts it from logs. Masking is a safety net rather than a guarantee: transformed values, such as a secret that a tool base64-encodes or embeds in a URL, can still appear in output. Don't print secrets.
 </Warning>
 
+### Fetch from a specific folder
+
+By default the action fetches secrets from the root of the environment. Set `secret-path` to read from a folder, and `recursive` to include its subfolders:
+
+```yaml
+- name: Fetch secrets from Infisical
+  uses: Infisical/secrets-action@v1.0.16
+  with:
+    method: "oidc"
+    identity-id: "<machine-identity-id>"
+    project-slug: "<project-slug>"
+    env-slug: "prod"
+    secret-path: "/backend"
+    recursive: true
+```
+
+### Write secrets to a file
+
+If your application reads a `.env` file instead of environment variables, set `export-type` to `file`. The path is relative to the workspace, so check out the repository first:
+
+```yaml
+- name: Checkout code
+  uses: actions/checkout@v4
+
+- name: Fetch secrets from Infisical
+  uses: Infisical/secrets-action@v1.0.16
+  with:
+    method: "oidc"
+    identity-id: "<machine-identity-id>"
+    project-slug: "<project-slug>"
+    env-slug: "prod"
+    export-type: "file"
+    file-output-path: "/.env"
+```
+
+<Warning>
+  Values written to a file aren't masked in logs, and the file stays in the workspace for the rest of the job. Don't commit it or upload it as a build artifact.
+</Warning>
+
+{/* vale Infisical.SentenceCaseHeadings = NO */}
+
+### EU Cloud and self-hosted instances
+
+{/* vale Infisical.SentenceCaseHeadings = YES */}
+
+The action targets Infisical Cloud US by default. Set `domain` to point it elsewhere:
+
+```yaml
+- name: Fetch secrets from Infisical
+  uses: Infisical/secrets-action@v1.0.16
+  with:
+    method: "oidc"
+    identity-id: "<machine-identity-id>"
+    project-slug: "<project-slug>"
+    env-slug: "prod"
+    domain: "https://eu.infisical.com" # Or your self-hosted instance URL
+```
+
+If your instance uses a certificate from an internal certificate authority, commit the CA certificate to your repository and point the job at it:
+
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      NODE_EXTRA_CA_CERTS: ./ca-certificate.pem
+```
+
+<Note>
+  If your instance sits behind a header-based firewall, pass the required headers with `extra-headers`, one `Header-Name: value` pair per line.
+</Note>
+
+### Action inputs
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `method` | `universal` | Authentication method: `universal`, `oidc`, or `aws-iam` |
+| `project-slug` | Required | Slug of the project to fetch secrets from |
+| `env-slug` | Required | Slug of the environment to fetch secrets from |
+| `identity-id` | | Machine identity ID, required for `oidc` and `aws-iam` |
+| `client-id` | | Machine identity client ID, required for `universal` |
+| `client-secret` | | Machine identity client secret, required for `universal` |
+| `oidc-audience` | | Custom audience claim for the token GitHub issues |
+| `secret-path` | `/` | Folder to fetch secrets from |
+| `recursive` | `false` | Also fetch secrets from subfolders of `secret-path` |
+| `include-imports` | `true` | Include secrets imported into the path |
+| `export-type` | `env` | Inject secrets as environment variables (`env`) or write them to a file (`file`) |
+| `file-output-path` | `/.env` | File to write when `export-type` is `file` |
+| `domain` | `https://app.infisical.com` | URL of your Infisical instance |
+| `extra-headers` | | Additional request headers, for instances behind a firewall |
+
+<Tip>
+  Pin the action to a specific release rather than a branch so your workflows stay reproducible. Check the [releases page](https://github.com/Infisical/secrets-action/releases) for the current version.
+</Tip>
 
 ## Troubleshooting
 
-### Authentication failures
+<AccordionGroup>
+  <Accordion title="Authentication fails with an access denied error">
+    Work through these in order:
 
-If authentication fails, check:
+    1. Confirm the workflow sets `permissions: id-token: write`. Without it, GitHub never issues a token.
+    2. Confirm the **Subject** on the machine identity matches the repository and context the workflow actually runs in. A workflow triggered on a pull request or a tag has a different subject than one on `main`.
+    3. Confirm the **Audiences** value matches the audience in the token, which is the repository owner's URL unless you set `oidc-audience`.
+    4. Confirm the identity was added to the project, not just created in the organization.
+    5. Confirm `method` and the matching credential inputs are set. Without `method: "oidc"`, the action defaults to Universal Auth and fails on missing credentials.
+  </Accordion>
+  <Accordion title="OIDC authentication fails with a 403 for a new or renamed repository">
+    GitHub.com repositories created after July 15, 2026 use immutable subject claims. The repository owner and name are suffixed with their permanent numeric IDs, so a subject configured with the previous format won't match and Infisical returns a `403` error.
 
-1. **Permissions**: Ensure `id-token: write` is set in the workflow permissions
-2. **Subject Match**: Verify the Subject in your machine identity matches the repository and context
-3. **Audience Match**: Confirm the Audience matches your GitHub organization
-4. **Identity Scope**: Ensure the identity has access to the project and environment you're requesting
-5. **Project Slug**: Verify the `project-slug` matches your Infisical project slug exactly. You can find this in your project settings.
-6. **Environment Slug**: Confirm the `env-slug` matches the exact environment name in Infisical (e.g., `dev`, `staging`, `prod`). Environment slugs are case-sensitive and must match exactly.
+    For example, the subject changed from:
 
-### Debugging OIDC tokens
+    ```text
+    repo:octocat/orders-service:ref:refs/heads/main
+    ```
 
-To inspect OIDC token claims from your workflow, use GitHub's [actions-oidc-debugger](https://github.com/github/actions-oidc-debugger) tool. This tool helps you verify that the token claims match your machine identity configuration.
+    To:
 
-<Info>
-  For more detailed OIDC configuration options and troubleshooting, see [OIDC Auth for GitHub Actions](/documentation/platform/identities/oidc-auth/github).
-</Info>
+    ```text
+    repo:octocat@583231/orders-service@1296269:ref:refs/heads/main
+    ```
 
-## Alternative approaches
+    Renaming or transferring a repository after that date also switches it to the immutable format. Existing repositories can opt in through GitHub's OIDC settings or REST API. GitHub Enterprise Server is unaffected. See [GitHub's immutable subject claims announcement](https://github.blog/changelog/2026-04-23-immutable-subject-claims-for-github-actions-oidc-tokens/) for details.
 
-### GitHub secret syncs
+    Run `gh api repos/<owner>/<repo>/actions/oidc/customization/sub` and copy the `sub_claim_prefix` value into the machine identity's **Subject** field. A glob pattern such as `repo:octocat@*/orders-service@*:ref:refs/heads/main` can serve as a temporary workaround during migration, but it can also match recycled owner and repository names with different IDs. Use the exact IDs whenever possible.
+  </Accordion>
+  <Accordion title="The action succeeds but my secrets are missing">
+    The action only injects what the identity can read from the path you requested. Check that:
 
-If you prefer to **push secrets from Infisical to GitHub** (one-way sync), use [GitHub Secret Syncs](../secret-syncs/github). This approach syncs secrets to GitHub at the organization-level, repository-level, or repository environment-level, making them available as GitHub Secrets.
+    - `project-slug` matches the slug from **Copy Project Slug**, not the project name
+    - `env-slug` matches the environment's slug rather than its display name. Slugs are lowercase, typically `dev`, `staging`, and `prod`
+    - `secret-path` points at the folder holding the secrets, with `recursive: true` if they live in subfolders
+    - The identity's project role grants read access to that environment and path
+  </Accordion>
+  <Accordion title="How do I see what claims GitHub is sending?">
+    Run [github/actions-oidc-debugger](https://github.com/github/actions-oidc-debugger) in the repository to print the token's claims, then compare them against the subject, audience, and claims configured on your machine identity. This is the fastest way to resolve a subject mismatch.
+  </Accordion>
+  <Accordion title="Can one job pull secrets from several environments or folders?">
+    Yes. Add the action once for each source. When two sources define the same key, the later step's value wins, so order the steps accordingly. If you export to files, give each step a different `file-output-path`.
+  </Accordion>
+</AccordionGroup>
 
-<Note>
-  Secret Syncs push secrets **to** GitHub, while this guide shows how to fetch secrets **from** Infisical at runtime. Choose the approach that best fits your security and operational requirements.
-</Note>
+## Next steps
 
-## Related documentation
-
-- [OIDC Auth for GitHub Actions](/documentation/platform/identities/oidc-auth/github) - Detailed OIDC configuration guide
-- [Machine Identities Overview](/documentation/platform/identities/machine-identities) - Understanding machine identities
-- [GitHub Secret Syncs](../secret-syncs/github) - Syncing secrets to GitHub
-- [Infisical Secrets Action](https://github.com/Infisical/secrets-action) - Official GitHub Action repository
+<CardGroup cols={2}>
+  <Card title="OIDC Auth" icon="key" href="/documentation/platform/identities/oidc-auth/github">
+    Review the full set of OIDC configuration options for GitHub.
+  </Card>
+  <Card title="Machine Identities" icon="robot" href="/documentation/platform/identities/machine-identities">
+    Understand how identities authenticate and what they can access.
+  </Card>
+  <Card title="GitHub Secret Syncs" icon="arrows-rotate" href="/integrations/secret-syncs/github">
+    Push secrets from Infisical into GitHub Secrets instead.
+  </Card>
+  <Card title="Secrets Delivery" icon="truck-fast" href="/documentation/platform/secrets-mgmt/concepts/secrets-delivery">
+    Compare delivery methods across CI/CD, Kubernetes, and applications.
+  </Card>
+</CardGroup>

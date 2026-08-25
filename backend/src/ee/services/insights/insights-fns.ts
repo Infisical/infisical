@@ -19,6 +19,17 @@ export const VALUE_EVENT_TYPES = [
 
 export const toUtcDateString = (date: Date) => date.toISOString().slice(0, 10);
 
+export const reviveDates = <T>(rows: T[], ...keys: (keyof T)[]) => {
+  for (const row of rows) {
+    for (const key of keys) {
+      const serialized = row[key] as Date | string | null;
+      if (typeof serialized === "string") {
+        row[key] = new Date(serialized) as T[typeof key];
+      }
+    }
+  }
+};
+
 const startOfUtcDay = (date: Date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 
 const startOfUtcWeek = (date: Date) => {

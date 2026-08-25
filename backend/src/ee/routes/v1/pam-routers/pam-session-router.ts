@@ -149,7 +149,11 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const result = await server.services.pamSession.getSessionCredentials(req.params.sessionId, req.permission.id);
+      const result = await server.services.pamSession.getSessionCredentials(
+        req.params.sessionId,
+        req.permission.id,
+        req.permission.orgId
+      );
 
       if (result.sessionStarted) {
         await server.services.auditLog.createAuditLog({

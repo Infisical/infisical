@@ -143,6 +143,8 @@ export enum PamFieldWidget {
   Password = "password"
 }
 
+export type TPamFieldCondition = { field: string; equals: string | boolean };
+
 export type TPamFieldDescriptor = {
   key: string;
   label: string;
@@ -150,9 +152,10 @@ export type TPamFieldDescriptor = {
   required: boolean;
   secret: boolean;
   optional?: boolean;
-  options?: { label: string; value: string }[];
+  options?: { label: string; value: string; docsUrl?: string }[];
   defaultValue?: string | number | boolean;
-  showWhen?: { field: string; equals: string | boolean };
+  showWhen?: TPamFieldCondition;
+  forceWhen?: { when: TPamFieldCondition; value: string | number | boolean; reason: string }[];
   tooltip?: string;
 };
 

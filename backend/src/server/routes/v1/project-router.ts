@@ -1263,7 +1263,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe("Retrieve only certificates available for PKI sync"),
         search: z.string().trim().optional().describe("Search by SAN, CN, certificate ID, or serial number"),
-        status: z.string().optional().describe("Filter by certificate status"),
+        status: z.string().optional().describe(PROJECTS.SEARCH_CERTIFICATES.status),
         profileIds: z
           .union([z.string().uuid(), z.array(z.string().uuid())])
           .transform((val) => (Array.isArray(val) ? val : [val]))
@@ -1417,6 +1417,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           totals: z.object({
             total: z.number(),
             active: z.number(),
+            renewed: z.number(),
             expiringSoon: z.number(),
             expired: z.number(),
             revoked: z.number()

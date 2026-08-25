@@ -34,6 +34,7 @@ import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/
 import { ActorType } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
   TAWSAuthDetails,
@@ -212,6 +213,9 @@ export enum EventType {
   CREATE_IDENTITY = "create-identity",
   UPDATE_IDENTITY = "update-identity",
   DELETE_IDENTITY = "delete-identity",
+
+  UPDATE_USER_ORG_MEMBERSHIP = "update-user-org-membership",
+  DELETE_USER_ORG_MEMBERSHIP = "delete-user-org-membership",
 
   CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
   UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
@@ -2107,6 +2111,25 @@ interface ClearIdentityLdapAuthLockoutsEvent {
   };
 }
 
+interface UpdateUserOrgMembershipEvent {
+  type: EventType.UPDATE_USER_ORG_MEMBERSHIP;
+  metadata: {
+    membershipId: string;
+    userId: string;
+    role?: string;
+    isActive?: boolean;
+    metadataKeys?: string[];
+  };
+}
+
+interface DeleteUserOrgMembershipEvent {
+  type: EventType.DELETE_USER_ORG_MEMBERSHIP;
+  metadata: {
+    membershipId: string;
+    userId: string;
+  };
+}
+
 interface CreateIdentityOrgMembershipEvent {
   type: EventType.CREATE_IDENTITY_ORG_MEMBERSHIP;
   metadata: {
@@ -3979,6 +4002,8 @@ interface RenewCertificate {
     newCertificateId: string;
     profileName: string;
     commonName: string;
+    renewalKeySource: CertificateRenewalKeySource;
+    changedAttributes: TRenewalAuditChange[];
   };
 }
 
@@ -4060,6 +4085,7 @@ interface CreateCmekEvent {
     description?: string;
     encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
     isExportable?: boolean;
+    hasDeleteProtection?: boolean;
   };
 }
 
@@ -4074,8 +4100,10 @@ interface UpdateCmekEvent {
   type: EventType.UPDATE_CMEK;
   metadata: {
     keyId: string;
+    keyName: string;
     name?: string;
     description?: string;
+    hasDeleteProtection?: boolean;
   };
 }
 
@@ -7265,6 +7293,8 @@ export type Event =
   | GetIdentityLdapAuthEvent
   | RevokeIdentityLdapAuthEvent
   | ClearIdentityLdapAuthLockoutsEvent
+  | UpdateUserOrgMembershipEvent
+  | DeleteUserOrgMembershipEvent
   | CreateIdentityOrgMembershipEvent
   | UpdateIdentityOrgMembershipEvent
   | DeleteIdentityOrgMembershipEvent

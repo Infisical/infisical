@@ -1,26 +1,4 @@
-import {
-  CertExtendedKeyUsage,
-  CertKeyAlgorithm,
-  CertKeyUsage,
-  CertStatus,
-  CrlReason
-} from "./enums";
-
-export const certStatusToNameMap: { [K in CertStatus]: string } = {
-  [CertStatus.ACTIVE]: "Active",
-  [CertStatus.REVOKED]: "Revoked"
-};
-
-export const getCertStatusBadgeVariant = (status: CertStatus) => {
-  switch (status) {
-    case CertStatus.ACTIVE:
-      return "success";
-    case CertStatus.REVOKED:
-      return "danger";
-    default:
-      return "primary";
-  }
-};
+import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage, CrlReason } from "./enums";
 
 export const certKeyAlgorithmToNameMap: { [K in CertKeyAlgorithm]: string } = {
   [CertKeyAlgorithm.RSA_2048]: "RSA 2048",

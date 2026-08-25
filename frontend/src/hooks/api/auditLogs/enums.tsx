@@ -126,6 +126,7 @@ export enum EventType {
   GET_CERT_BODY = "get-cert-body",
   GET_CERT_PRIVATE_KEY = "get-cert-private-key",
   GET_CERT_BUNDLE = "get-cert-bundle",
+  EXPORT_CERT_PKCS12 = "export-cert-pkcs12",
   CREATE_PKI_ALERT = "create-pki-alert",
   GET_PKI_ALERT = "get-pki-alert",
   UPDATE_PKI_ALERT = "update-pki-alert",
@@ -305,6 +306,9 @@ export enum EventType {
 
   CREATE_SUB_ORGANIZATION = "create-sub-organization",
   UPDATE_SUB_ORGANIZATION = "update-sub-organization",
+
+  UPDATE_USER_ORG_MEMBERSHIP = "update-user-org-membership",
+  DELETE_USER_ORG_MEMBERSHIP = "delete-user-org-membership",
 
   CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
   UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",

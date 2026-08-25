@@ -144,6 +144,7 @@ const formSchema = z
     policyType: z.nativeEnum(PolicyType),
     enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
     allowedSelfApprovals: z.boolean().default(true),
+    bypassForMachineIdentities: z.boolean().optional().default(false),
     sequenceApprovers: z
       .object({
         user: z
@@ -231,6 +232,7 @@ const Form = ({
               .map(({ id, type }) => ({ id, type: type as BypasserType.Group })) || [],
           approvals: editValues?.approvals,
           allowedSelfApprovals: editValues?.allowedSelfApprovals,
+          bypassForMachineIdentities: editValues?.bypassForMachineIdentities ?? true,
           maxTimePeriod: editValues?.maxTimePeriod,
           requestExpirationTime: editValues?.requestExpirationTime,
           sequenceApprovers: editValues.approvers?.reduce(
@@ -905,6 +907,28 @@ const Form = ({
             </Field>
           )}
         />
+        {!isAccessPolicyType && (
+          <Controller
+            control={control}
+            name="bypassForMachineIdentities"
+            render={({ field: { value, onChange } }) => (
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <FieldTitle>Bypass approval for machine identities</FieldTitle>
+                  <FieldDescription>
+                    When enabled, machine identities can modify secrets without requiring approval
+                  </FieldDescription>
+                </FieldContent>
+                <Switch
+                  id="bypass-machine-identities"
+                  variant="project"
+                  checked={value}
+                  onCheckedChange={onChange}
+                />
+              </Field>
+            )}
+          />
+        )}
         <Controller
           control={control}
           name="enforcementLevel"
