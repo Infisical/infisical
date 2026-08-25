@@ -46,7 +46,6 @@ export type TCertificate = {
   renewedBy?: string;
   renewedFromCertificateId?: string;
   renewedByCertificateId?: string;
-  lifecycleStatus?: CertStatus;
   renewalError?: string;
   hasPrivateKey?: boolean;
   keyAlgorithm?: string | null;

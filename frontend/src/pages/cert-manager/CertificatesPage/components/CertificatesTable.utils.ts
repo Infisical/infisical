@@ -15,34 +15,26 @@ export const getCertSourceLabel = (source: TCertificateSource): string => {
   }
 };
 
-const CERT_STATUS_PRESENTATION: Record<
-  CertStatus,
-  { label: string; variant: "success" | "danger" | "neutral" }
-> = {
-  [CertStatus.ACTIVE]: { label: "Active", variant: "success" },
-  [CertStatus.RENEWED]: { label: "Renewed", variant: "neutral" },
-  [CertStatus.EXPIRED]: { label: "Expired", variant: "danger" },
-  [CertStatus.REVOKED]: { label: "Revoked", variant: "danger" }
-};
-
 type TCertificateStatusSource = {
-  lifecycleStatus?: CertStatus;
   status?: string | null;
   notAfter: string;
   renewedByCertificateId?: string | null;
 };
 
-const resolveLifecycleStatus = (certificate: TCertificateStatusSource): CertStatus => {
-  if (certificate.lifecycleStatus) return certificate.lifecycleStatus;
-  if (certificate.status === CertStatus.REVOKED) return CertStatus.REVOKED;
-  if (new Date(certificate.notAfter) < new Date()) return CertStatus.EXPIRED;
-  if (certificate.renewedByCertificateId) return CertStatus.RENEWED;
-  return CertStatus.ACTIVE;
-};
-
 export const getCertificateDisplayStatus = (certificate: TCertificateStatusSource) => {
-  const status = resolveLifecycleStatus(certificate);
-  return { status, ...CERT_STATUS_PRESENTATION[status] };
+  if (certificate.status === CertStatus.REVOKED) {
+    return { status: CertStatus.REVOKED, label: "Revoked", variant: "danger" as const };
+  }
+
+  if (new Date(certificate.notAfter) < new Date()) {
+    return { status: CertStatus.EXPIRED, label: "Expired", variant: "danger" as const };
+  }
+
+  if (certificate.renewedByCertificateId) {
+    return { status: CertStatus.RENEWED, label: "Renewed", variant: "neutral" as const };
+  }
+
+  return { status: CertStatus.ACTIVE, label: "Active", variant: "success" as const };
 };
 
 export const isExpiringWithinOneDay = (notAfter: string): boolean => {

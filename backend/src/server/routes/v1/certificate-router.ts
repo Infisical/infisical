@@ -13,13 +13,7 @@ import { openApiHidden } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { resolveCertificateLifecycleStatus } from "@app/services/certificate/certificate-fns";
-import {
-  CertKeyAlgorithm,
-  CertSignatureAlgorithm,
-  CertStatus,
-  CrlReason
-} from "@app/services/certificate/certificate-types";
+import { CertKeyAlgorithm, CertSignatureAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
@@ -1384,7 +1378,6 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             profileName: z.string().nullable().optional(),
             applicationName: z.string().nullable().optional(),
             hasPrivateKey: z.boolean().describe(CERTIFICATES.GET.hasPrivateKey),
-            lifecycleStatus: z.nativeEnum(CertStatus).describe(CERTIFICATES.GET.lifecycleStatus),
             metadata: z.array(z.object({ key: z.string(), value: z.string() })).optional()
           })
         })
@@ -1413,7 +1406,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       });
 
       return {
-        certificate: { ...cert, lifecycleStatus: resolveCertificateLifecycleStatus(cert) }
+        certificate: cert
       };
     }
   });

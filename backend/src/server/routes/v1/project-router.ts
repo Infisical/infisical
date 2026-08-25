@@ -26,8 +26,6 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
-import { resolveCertificateLifecycleStatus } from "@app/services/certificate/certificate-fns";
-import { CertStatus } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
@@ -1369,7 +1367,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           certificates: z.array(
             CertificatesSchema.extend({
               hasPrivateKey: z.boolean(),
-              lifecycleStatus: z.nativeEnum(CertStatus).describe(PROJECTS.SEARCH_CERTIFICATES.lifecycleStatus),
               caName: z.string().nullable().optional(),
               profileName: z.string().nullable().optional(),
               enrollmentType: z.string().nullable().optional(),
@@ -1397,13 +1394,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         sortBy,
         sortOrder
       });
-      return {
-        certificates: certificates.map((certificate) => ({
-          ...certificate,
-          lifecycleStatus: resolveCertificateLifecycleStatus(certificate)
-        })),
-        totalCount
-      };
+      return { certificates, totalCount };
     }
   });
 

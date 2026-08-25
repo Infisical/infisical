@@ -18,12 +18,6 @@ export enum CertStatus {
   RENEWED = "renewed"
 }
 
-export const parseCertificateStatusFilter = (value: string) =>
-  value
-    .split(",")
-    .map((status) => status.trim())
-    .filter(Boolean);
-
 export enum CertKeyAlgorithm {
   RSA_2048 = "RSA_2048",
   RSA_3072 = "RSA_3072",

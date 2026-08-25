@@ -945,10 +945,10 @@ export const certificateDALFactory = (db: TDbClient) => {
         .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
         .where(`${TableName.CertificateAuthority}.projectId`, projectId)
         .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
-        .whereNot((qb) => {
+        .where((qb) => {
           void qb
-            .whereNotNull(`${TableName.Certificate}.renewedByCertificateId`)
-            .andWhere(`${TableName.Certificate}.notAfter`, ">", now);
+            .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
+            .orWhere(`${TableName.Certificate}.notAfter`, "<=", now);
         })
         .select(
           db.raw(

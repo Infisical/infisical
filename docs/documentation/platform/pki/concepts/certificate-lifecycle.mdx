@@ -33,19 +33,7 @@ Install issued certificates on the systems that need them — web servers, load 
 
 Replace a certificate before it expires to maintain trust and availability. Renewal can reuse the same key pair or rotate to a new one. In Infisical, renewal can be **server-driven** (Infisical auto-renews and syncs to external systems) or **client-driven** (an agent or workload initiates renewal when key material needs to stay under client control).
 
-### What happens to the original certificate
-
-Renewal issues a new certificate with a new serial number instead of changing the existing one, because the certificate already installed on your systems has to keep working until the replacement is deployed. Infisical links the two so the relationship is visible from either side:
-
-- The original reports a status of **Renewed** and links to its replacement under **Renewed by**.
-- The replacement reports **Active** and links back under **Renewed from**.
-
-A renewed certificate no longer counts as active in the inventory or on the dashboard and is left out of expiry alerts, and any Certificate Sync attached to it moves to the replacement, so the replacement is what gets pushed to your destinations. It stays cryptographically valid until it expires, which is what gives you a window to roll the replacement out. If the original needs to stop being trusted before then, revoke it.
-
-<Note>
-  Renewal never revokes the original certificate. Any client still holding it continues to trust it
-  until it expires or you revoke it.
-</Note>
+[Learn more about Certificate Renewal →](/documentation/platform/pki/applications/certificate-renewal)
 
 ## Revocation
 
