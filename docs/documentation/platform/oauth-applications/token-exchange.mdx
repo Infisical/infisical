@@ -199,6 +199,7 @@ Exchanging per request makes your identity provider a hard dependency of every I
 - Refresh slightly early, say 60 seconds before `expires_in` elapses, so an in-flight request never carries a token that expires mid-call.
 - Exchange again when it is gone. No refresh token is issued.
 - Drop the entry when the user's session at your identity provider ends, so their Infisical access does not outlive it.
+- Exchange again on any 4xx from `GET /api/v1/oauth/validate` or from an API call made with the cached token. A cached token can die before its expiry, most often because the application was deleted, and retrying with it never succeeds.
 
 <Note>
   On Infisical Cloud the token endpoint is rate limited per source IP, so every instance of your middleware behind one egress address shares a budget. Caching correctly means roughly one exchange per user per token lifetime, which stays well inside it. A self-hosted instance applies no limit of its own, so set one at your ingress.

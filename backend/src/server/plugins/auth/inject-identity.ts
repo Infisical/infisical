@@ -7,7 +7,7 @@ import { TServiceTokens, TUsers } from "@app/db/schemas";
 import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import {
   ActorType,
@@ -311,8 +311,17 @@ export const injectIdentity = fp(
           break;
         }
         case AuthMode.OAUTH: {
-          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
-            await server.services.authToken.fnValidateJwtIdentity(token);
+          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } = await server.services.authToken
+            .fnValidateJwtIdentity(token)
+            .catch((err) => {
+              if (err instanceof NotFoundError) {
+                throw new UnauthorizedError({
+                  name: "InvalidToken",
+                  message: "Access token is no longer valid. Obtain a new one."
+                });
+              }
+              throw err;
+            });
           requestContext.set(RequestContextKey.OrgId, orgId);
           requestContext.set(RequestContextKey.OrgName, orgName);
           if (token.delegation !== OauthDelegationMode.Full) {
