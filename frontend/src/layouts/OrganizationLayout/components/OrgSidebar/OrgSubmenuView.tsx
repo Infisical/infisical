@@ -6,8 +6,7 @@ import {
   LayoutTemplate,
   Lock,
   Network,
-  ShieldUser,
-  SlidersHorizontal
+  ShieldUser
 } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -70,12 +69,6 @@ export const OrgSettingsSubmenuView = ({ onBack }: { onBack: () => void }) => {
       icon: LayoutTemplate,
       pathSuffix: "settings",
       search: { selectedTab: "project-templates" }
-    },
-    {
-      label: "Product Settings",
-      icon: SlidersHorizontal,
-      pathSuffix: "settings",
-      search: { selectedTab: "product-settings" }
     },
     {
       label: "Sub Organizations",

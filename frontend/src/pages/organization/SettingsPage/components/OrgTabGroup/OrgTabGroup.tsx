@@ -10,7 +10,6 @@ import { useOrganization, useSubscription } from "@app/context";
 
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
-import { OrgProductSettingsTab } from "../OrgProductSettingsTab";
 import { OrgSecurityTab } from "../OrgSecurityTab";
 import { OrgSubOrgsTab } from "../OrgSubOrgsTab";
 import { ProjectTemplatesTab } from "../ProjectTemplatesTab";
@@ -54,14 +53,6 @@ export const OrgTabGroup = () => {
       component: ProjectTemplatesTab,
       description:
         "Create reusable templates that standardize roles and environments for new projects."
-    },
-    {
-      name: "Product Settings",
-      key: "product-settings",
-      component: OrgProductSettingsTab,
-      description: `Configure product-specific defaults and features across your ${
-        isSubOrganization ? "sub-" : ""
-      }organization.`
     },
     {
       name: "Sub Organizations",

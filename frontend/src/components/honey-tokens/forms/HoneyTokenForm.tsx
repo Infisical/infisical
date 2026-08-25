@@ -6,7 +6,6 @@ import { Link } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v3";
-import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { HONEY_TOKEN_DEFAULT_SECRET_NAMES, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { useCreateHoneyToken, useUpdateHoneyToken } from "@app/hooks/api/honeyTokens";
@@ -109,9 +108,8 @@ export const HoneyTokenForm = ({
           callToAction: (
             <Link
               className="inline-flex h-7 items-center rounded border border-mineshaft-500 px-2 text-xs text-primary transition-colors hover:bg-mineshaft-700 hover:text-primary"
-              to={ROUTE_PATHS.Organization.SettingsPage.path}
+              to="/organizations/$orgId/projects/secret-management/product-settings"
               params={{ orgId: currentOrg.id }}
-              search={{ selectedTab: "product-settings" }}
             >
               Go to settings
             </Link>
