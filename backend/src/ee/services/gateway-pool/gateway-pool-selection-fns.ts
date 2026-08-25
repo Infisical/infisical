@@ -11,13 +11,9 @@ export const pickRandomGateway = <T extends TSelectableGateway>(
 };
 
 /**
- * Load-aware selection only runs when every member reports its own connection count.
- *
  * A gateway new enough to report sends its real count, including PAM sessions the platform never
- * sees. A gateway too old to report can only be scored on the connections the platform itself
- * opened, which is always lower and misses whatever it is really carrying. There is no way to line
- * those two numbers up, and no reason to trust the second one on its own, so any pool that is not
- * fully upgraded picks at random instead.
+ * sees. One too old to report can only be scored on what the platform opened itself, which is always
+ * lower. Rather than trust that, a pool that is not fully upgraded picks at random.
  */
 export const everyMemberReportsLoad = <T extends TSelectableGateway>(
   candidates: T[],

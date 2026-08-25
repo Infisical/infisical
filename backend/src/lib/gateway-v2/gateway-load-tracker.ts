@@ -2,24 +2,17 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 
 import { logger } from "../logger";
 
-// A reservation bridges the gap between choosing a gateway and its channel actually opening, so two
-// concurrent selections cannot both read a stale zero and stampede the same member. It only has to
-// span a relay dial plus two TLS handshakes, and it is released explicitly: left to expire on its
-// own the counter would behave like "selections in the last N seconds", which is request-count
-// round-robin rather than the occupancy signal this is supposed to be.
+// A reservation marks a gateway as chosen until its channel opens, so concurrent selections do not
+// all read the same stale count and stampede one member.
 const RESERVATION_TTL_SECONDS = 240;
-// Backstop only, for a selection whose channel never opens. The relay dial allows 100s and the
-// gateway handshake 120s, so releasing sooner would reopen the window the reservation covers.
+// Must outlast a relay dial (100s) plus a gateway handshake (120s), or the window reopens.
 const RESERVATION_HOLD_MS = 230_000;
 const SUSPECT_TTL_SECONDS = 60;
 
 export type TGatewayScore = {
-  /**
-   * Occupancy without reservations. The claim script reads the reservation keys itself, so adding
-   * them here as well would mean fetching them twice for the same decision.
-   */
+  /** Occupancy without reservations; the claim script reads those keys itself. */
   base: number;
-  /** False when this member is too old to report its own count, which disables load-aware selection. */
+  /** False when this member is too old to report, which disables load-aware selection. */
   reported: boolean;
 };
 
@@ -45,8 +38,7 @@ const reservationKey = KeyStorePrefixes.GatewayLoadReservation;
 const suspectKey = KeyStorePrefixes.GatewaySuspect;
 
 export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoadTracker => {
-  // Open timestamps rather than a bare count, so a channel opened since a gateway's last report can
-  // be added on top of that report instead of being invisible until the next one lands.
+  // Timestamps rather than a count, so channels opened since a gateway's last report can be added on top.
   const openChannels = new Map<string, number[]>();
   const reservationTimers = new Set<NodeJS.Timeout>();
   const pendingReservations = new Map<string, NodeJS.Timeout[]>();
@@ -59,8 +51,6 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
     }
   };
 
-  // The key TTL is only a backstop for a pod that dies holding reservations; the channel handoff or
-  // this timer is what normally releases them.
   function trackReservationRelease(gatewayId: string) {
     const timer = setTimeout(() => {
       reservationTimers.delete(timer);
@@ -88,8 +78,7 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
     const open = openChannels.get(gatewayId);
     if (open) open.push(Date.now());
     else openChannels.set(gatewayId, [Date.now()]);
-    // The channel now carries the load the reservation was standing in for. Holding both would
-    // double count the member for the rest of the backstop window.
+    // The channel now carries the load the reservation stood in for; holding both double counts.
     const pending = pendingReservations.get(gatewayId);
     const timer = pending?.shift();
     if (timer) {
@@ -101,16 +90,14 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
 
   const channelClosed = (gatewayId: string) => {
     const open = openChannels.get(gatewayId);
-    // Drops the oldest: only the count and the open times matter, not which socket this was.
     open?.shift();
     if (!open?.length) openChannels.delete(gatewayId);
   };
 
   const reserve = async (gatewayId: string) => {
     try {
-      // Routed through the same claim path as a pool selection so the expiry is set only on the
-      // first increment. incrementByWithExpiry refreshes it on every call, which on a busy gateway
-      // means the key never elapses and a crashed pod's reservations stay counted forever.
+      // Same claim path as a selection, so the expiry is set only on the first increment. Refreshing
+      // it every call means a busy key never elapses and a dead pod's reservations persist.
       await keyStore.claimLeastLoaded([reservationKey(gatewayId)], [0], RESERVATION_TTL_SECONDS);
     } catch (err) {
       logger.debug({ err, gatewayId }, `Failed to reserve gateway capacity [gatewayId=${gatewayId}]`);
@@ -119,10 +106,7 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
     trackReservationRelease(gatewayId);
   };
 
-  /**
-   * Picks and claims in one round trip. Ties fall to the caller's ordering, so the caller shuffles
-   * first to keep the random tie-break that stops every pod choosing the same idle member.
-   */
+  /** Ties fall to the caller's ordering, so callers shuffle first for a random tie-break. */
   const claimLeastLoaded = async (candidates: { id: string; base: number }[]) => {
     if (candidates.length === 0) return undefined;
     const idx = await keyStore.claimLeastLoaded(
@@ -169,14 +153,11 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
     gatewayIds.forEach((gatewayId, idx) => {
       const report = parseStamped(reported[idx]);
 
-      // A gateway that cannot report is left at zero on purpose. Selection refuses to compare a pool
-      // containing one, so the number is never used, and inventing a platform-side count here would
-      // only look like a real occupancy to whoever reads it next.
+      // Left at zero on purpose: selection refuses to compare a pool containing one, so a
+      // platform-side count here would only look like a real occupancy without being one.
       let occupancy = 0;
       if (report) {
-        // The report is a snapshot up to its own timestamp. Anything this pod opened since then is
-        // not in it yet, and without this every selection inside one report interval reads the same
-        // stale number and piles onto the same member.
+        // Without this every selection inside one report interval reads the same stale count.
         const openedSinceReport = (openChannels.get(gatewayId) ?? []).filter((openedAt) => openedAt > report.at).length;
         occupancy = report.count + openedSinceReport;
       }
@@ -197,8 +178,7 @@ export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoad
     return suspect;
   };
 
-  // Nothing here writes to Redis. Reservations this pod still holds are left to their TTL, which is
-  // the backstop that exists precisely for a pod that goes away without releasing them.
+  // Reservations still held are left to their TTL, which exists for exactly this case.
   const shutdown = () => {
     tracker = undefined;
     for (const timer of reservationTimers) clearTimeout(timer);

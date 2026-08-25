@@ -13,12 +13,8 @@ const tracker = vi.hoisted(() => ({
   markSuspect: vi.fn()
 }));
 
-// The fake relay listens on an ephemeral loopback port, so the harness has to carry that port in
-// relayHost, which the implementation forwards as the TLS servername. A real relayHost is a
-// hostname with no port (a gateway is always reached on 8443), so this shape only exists here, and
-// Node rejects a servername containing a colon outright rather than matching it against a SAN.
-// Dropping it leaves verification to run against the connected host, which the cert covers, and
-// keeps the rest of the real TLS stack in the test.
+// A real relayHost carries no port, but the fake relay needs an ephemeral one, and Node rejects a
+// servername containing a colon. Dropping it verifies against the connected host instead.
 vi.mock("node:tls", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:tls")>();
   const connect = (options: tls.ConnectionOptions, callback?: () => void) =>

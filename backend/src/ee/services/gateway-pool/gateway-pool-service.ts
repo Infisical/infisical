@@ -285,24 +285,21 @@ export const gatewayPoolServiceFactory = ({
     const loadTracker = getGatewayLoadTracker();
     let selected: (typeof eligible)[number] | undefined;
     let claimedAtomically = false;
-    // Outlives the try: if anything in the load path fails we still want the suspect filter, or the
-    // fallback would happily hand back the member whose transport just failed.
+    // Outlives the try so the fallback keeps the suspect filter.
     let pool = eligible;
 
     if (loadTracker) {
       try {
         const ids = eligible.map((gateway) => gateway.id);
         const suspect = await loadTracker.getSuspect(ids);
-        // A pool where every member recently failed is still worth attempting: refusing to route is a
-        // guaranteed outage, whereas the suspect marks may simply have aged badly.
+        // All-suspect is still worth attempting: refusing to route is a guaranteed outage.
         const candidates = eligible.filter((gateway) => !suspect.has(gateway.id));
         pool = candidates.length > 0 ? candidates : eligible;
 
         const scores = await loadTracker.getScores(pool.map((gateway) => gateway.id));
 
         if (everyMemberReportsLoad(pool, scores)) {
-          // Choose and claim atomically. Reading the minimum and then writing the reservation as two
-          // calls lets every concurrent selection observe the same minimum and pile onto it.
+          // Two calls would let every concurrent selection read the same minimum and pile onto it.
           const claimed = await loadTracker.claimLeastLoaded(
             shuffleForTieBreak(pool, Math.random).map((gateway) => ({
               id: gateway.id,
@@ -312,8 +309,7 @@ export const gatewayPoolServiceFactory = ({
           selected = pool.find((gateway) => gateway.id === claimed);
           if (selected) claimedAtomically = true;
         } else {
-          // At least one member is too old to report its load, so there is no sound comparison to
-          // make and nothing to claim against.
+          // A member too old to report leaves nothing sound to compare or claim against.
           selected = pickRandomGateway(pool);
         }
       } catch (err) {
@@ -325,8 +321,7 @@ export const gatewayPoolServiceFactory = ({
     if (!selected)
       throw new BadRequestError({ message: unavailableMessage ?? "Gateway pool has no healthy gateways." });
 
-    // Bookkeeping must never be able to fail a selection, whatever the tracker does internally.
-    // The atomic path has already claimed its member.
+    // Bookkeeping must never fail a selection. The atomic path already claimed its member.
     if (!claimedAtomically) {
       try {
         await loadTracker?.reserve(selected.id);
@@ -344,11 +339,7 @@ export const gatewayPoolServiceFactory = ({
 
   const pickHealthyGateway = async (poolId: string) => selectGatewayFromPool({ poolId });
 
-  /**
-   * Runs an operation against a pool, retrying on another member when the tunnel could not be
-   * established. Only GatewayTransportError retries, because it is the one failure that guarantees
-   * nothing reached the target.
-   */
+  /** Retries on another member only for a failed tunnel, the one case that cannot have reached the target. */
   const runWithPoolFailover = async <T>(
     {
       poolId,
@@ -376,8 +367,7 @@ export const gatewayPoolServiceFactory = ({
       try {
         selected = await selectGatewayFromPool({ poolId, exclude: tried, filter, unavailableMessage });
       } catch (err) {
-        // Running out of untried members is only interesting on the first attempt. After that the
-        // transport failure that got us here is the useful error, not "pool has no healthy gateways".
+        // After the first attempt the transport failure is the useful error, not "no healthy gateways".
         if (!lastError) throw err;
         break;
       }

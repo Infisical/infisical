@@ -168,11 +168,9 @@ export const setupRelayServer = async ({
   httpsAgent?: https.Agent;
   longLived?: boolean;
   /**
-   * Opens the tunnel during setup and hands it to the first client instead of dialing lazily.
-   * Callers that give the port to a long-lived session need this: otherwise setup succeeds against
-   * a dead gateway and the failure only surfaces once a user is attached, far too late to pick
-   * another pool member. The connection is kept and reused rather than probed and dropped, so the
-   * gateway sees one channel that becomes the session, not a session that opens and immediately dies.
+   * Opens the tunnel during setup and hands it to the first client, so an unreachable gateway fails
+   * here rather than once a user is already attached. Reused rather than probed and dropped, so the
+   * gateway sees one channel that becomes the session.
    */
   eager?: boolean;
 }): Promise<IGatewayRelayServer> => {
@@ -204,9 +202,8 @@ export const setupRelayServer = async ({
       throw err;
     }
 
-    // Marked as soon as both handshakes complete: the gateway dials the target the moment it
-    // accepts the channel, so the target may already have been reached even if we abandon this
-    // connection now. Treating the attempt as replayable after that point is what this prevents.
+    // The gateway dials the target the moment it accepts the channel, so from here the attempt is
+    // no longer safe to replay even if we abandon this connection.
     establishedChannel = true;
     markAttemptTunnelEstablished();
 
@@ -243,9 +240,8 @@ export const setupRelayServer = async ({
       }
     }
 
-    // Counted per channel rather than per caller operation: one operation can open many channels
-    // (a pooled SQL client, an HTTP client without keepalive, a discovery sweep), and it is the
-    // channel that costs the gateway a goroutine.
+    // Per channel, not per operation: one operation can open many, and the channel is what costs
+    // the gateway a goroutine.
     loadTracker?.channelOpened(gatewayId);
     let released = false;
 
@@ -285,8 +281,7 @@ export const setupRelayServer = async ({
           pendingUpstream = null;
           const { relayConn, gatewayConn, releaseChannel } = claimed ?? (await openUpstream());
 
-          // The caller may have given up while the handshakes were in flight. Its "close" event has
-          // already fired by now, so attaching the teardown listeners below would never run and the
+          // Its "close" already fired, so the teardown listeners below would never run and the
           // channel would stay counted for the life of the pod.
           if (clientConn.destroyed) {
             releaseChannel();
@@ -359,8 +354,8 @@ export const setupRelayServer = async ({
           const upstream = await openUpstream();
           pendingUpstream = upstream;
 
-          // If the gateway or relay drops the tunnel before anyone claims it, fall back to dialing
-          // on demand rather than handing the session a socket that is already dead.
+          // Dropped before anyone claims it, so the next client dials fresh rather than inheriting
+          // a dead socket.
           const dropIfUnclaimed = () => {
             if (pendingUpstream === upstream) discardPendingUpstream();
           };
