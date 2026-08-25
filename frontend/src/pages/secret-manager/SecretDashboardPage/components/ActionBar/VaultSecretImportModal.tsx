@@ -1,5 +1,5 @@
 import { useReducer, useRef } from "react";
-import { InfoIcon, TriangleAlertIcon } from "lucide-react";
+import { TriangleAlertIcon } from "lucide-react";
 
 import {
   VaultConnectionAndNamespaceFields,
@@ -17,16 +17,15 @@ import {
   Badge,
   Button,
   Combobox,
-  Dialog,
-  DialogBody,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Field,
   FieldDescription,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -38,16 +37,12 @@ import { useGetVaultMounts, useGetVaultSecretPaths } from "@app/hooks/api/migrat
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  environment: string;
-  secretPath: string;
   appConnections: TAvailableAppConnection[];
   onImport: (vaultPaths: string[], namespace: string, connectionId: string) => void;
 };
 
 type ContentProps = {
   onClose: () => void;
-  environment: string;
-  secretPath: string;
   appConnections: TAvailableAppConnection[];
   onImport: (vaultPaths: string[], namespace: string, connectionId: string) => void;
 };
@@ -81,7 +76,7 @@ const renderWildcardPath = (path: string) => {
   );
 };
 
-const Content = ({ onClose, environment, secretPath, appConnections, onImport }: ContentProps) => {
+const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
   const hasAppConnections = appConnections.length > 0;
   const [state, dispatch] = useReducer(
     vaultImportSelectionReducer<string[]>,
@@ -153,19 +148,7 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
 
   return (
     <>
-      <DialogBody className="space-y-5">
-        <Alert variant="project">
-          <InfoIcon />
-          <AlertTitle>Import Secrets from HashiCorp Vault</AlertTitle>
-          <AlertDescription>
-            <p>
-              Select a Vault namespace and one or more secret paths to import secrets into the
-              current Infisical environment (<code className="text-xs">{environment}</code>) at path{" "}
-              <code className="text-xs">{secretPath}</code>.
-            </p>
-          </AlertDescription>
-        </Alert>
-
+      <div className="flex min-h-0 flex-1 flex-col space-y-5 overflow-y-auto p-4">
         <VaultConnectionAndNamespaceFields
           appConnections={appConnections}
           connectionId={connectionId}
@@ -301,12 +284,12 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
             </AlertDescription>
           </Alert>
         )}
-      </DialogBody>
+      </div>
 
-      <DialogFooter>
-        <DialogClose asChild>
-          <Button>Cancel</Button>
-        </DialogClose>
+      <SheetFooter className="border-t">
+        <SheetClose asChild>
+          <Button variant="ghost">Cancel</Button>
+        </SheetClose>
         <Button
           variant="project"
           onClick={handleImport}
@@ -316,7 +299,7 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
         >
           Import Secrets
         </Button>
-      </DialogFooter>
+      </SheetFooter>
     </>
   );
 };
@@ -324,29 +307,30 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
 export const VaultSecretImportModal = ({
   isOpen,
   onOpenChange,
-  environment,
-  secretPath,
   appConnections,
   onImport
 }: Props) => (
-  <Dialog open={isOpen} onOpenChange={onOpenChange}>
+  <Sheet open={isOpen} onOpenChange={onOpenChange}>
     {isOpen && (
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Import from HashiCorp Vault</DialogTitle>
-          <DialogDescription>
+      <SheetContent className="sm:max-w-2xl" onOpenAutoFocus={(event) => event.preventDefault()}>
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <div className="flex size-5 items-center justify-center rounded-full bg-foreground/75">
+              <img src="/images/integrations/Vault.png" alt="" className="mt-0.5 size-4" />
+            </div>
+            Import from HashiCorp Vault
+          </SheetTitle>
+          <SheetDescription>
             Select a Vault namespace and one or more secret paths to import secrets into the current
             environment and folder.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         <Content
           onClose={() => onOpenChange(false)}
-          environment={environment}
-          secretPath={secretPath}
           appConnections={appConnections}
           onImport={onImport}
         />
-      </DialogContent>
+      </SheetContent>
     )}
-  </Dialog>
+  </Sheet>
 );

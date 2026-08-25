@@ -3892,8 +3892,6 @@ const OverviewPageContent = () => {
       <VaultSecretImportModal
         isOpen={popUp.importFromVault.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}
-        environment={singleEnvSlug}
-        secretPath={secretPath}
         appConnections={vaultAppConnections}
         onImport={handleVaultImport}
       />
