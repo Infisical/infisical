@@ -64,6 +64,18 @@ export const useCertManagerLegacyInstances = () => {
   });
 };
 
+/**
+ * Whether the organization sees the legacy Certificate Manager project picker, which only renders
+ * when there is more than one Certificate Manager project to pick between. Reuses the shared
+ * legacy instances query, so callers share a single request. Reports `false` while that query is
+ * loading so entry points into the picker do not flash in and then disappear.
+ */
+export const useHasCertManagerLegacyProjectPicker = () => {
+  const { data, isPending } = useCertManagerLegacyInstances();
+
+  return !isPending && (data?.instances.length ?? 0) > 1;
+};
+
 export const useSetCertManagerActiveProject = () => {
   const qc = useQueryClient();
   return useMutation({

@@ -7,9 +7,11 @@ import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
 import { AlertDescription, AlertTitle, DismissableAlert } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useSubscription } from "@app/context";
+import { useHasCertManagerLegacyProjectPicker } from "@app/hooks/api/certManagerInstance";
 
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
+import { OrgProductSettingsTab } from "../OrgProductSettingsTab";
 import { OrgSecurityTab } from "../OrgSecurityTab";
 import { OrgSubOrgsTab } from "../OrgSubOrgsTab";
 import { ProjectTemplatesTab } from "../ProjectTemplatesTab";
@@ -21,6 +23,7 @@ export const OrgTabGroup = () => {
   });
   const { currentOrg, isSubOrganization } = useOrganization();
   const { subscription } = useSubscription();
+  const hasCertManagerProjectPicker = useHasCertManagerLegacyProjectPicker();
 
   const tabs = [
     {
@@ -53,6 +56,15 @@ export const OrgTabGroup = () => {
       component: ProjectTemplatesTab,
       description:
         "Create reusable templates that standardize roles and environments for new projects."
+    },
+    {
+      name: "Product Settings",
+      key: "product-settings",
+      component: OrgProductSettingsTab,
+      description: `Configure product-specific defaults and features across your ${
+        isSubOrganization ? "sub-" : ""
+      }organization.`,
+      isHidden: !hasCertManagerProjectPicker
     },
     {
       name: "Sub Organizations",
