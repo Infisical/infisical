@@ -1,37 +1,43 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faClone } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ArrowRightIcon, CopyIcon } from "lucide-react";
 import { z } from "zod";
 
 import {
   Button,
-  FilterableSelect,
-  FormControl,
-  Modal,
-  ModalContent,
+  Combobox,
+  DocumentationLinkBadge,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+  SecretPathInput,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   Switch
-} from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
-import { DocumentationLinkBadge } from "@app/components/v3";
+} from "@app/components/v3";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce } from "@app/hooks";
 import { useGetAccessibleSecrets } from "@app/hooks/api/dashboard";
 import { SecretV3Raw } from "@app/hooks/api/types";
 
+import { getRelativeSecretPath, normalizeSecretPath } from "./replicateSecrets";
 import { SecretTreeView } from "./SecretTreeView";
 
 const formSchema = z.object({
   environment: z.object({ name: z.string(), slug: z.string() }),
-  secretPath: z
-    .string()
-    .trim()
-    .transform((val) =>
-      typeof val === "string" && val.at(-1) === "/" && val.length > 1 ? val.slice(0, -1) : val
-    ),
+  secretPath: z.string().trim(),
   secrets: z
     .object({
+      id: z.string(),
       secretKey: z.string(),
       secretValue: z.string().optional(),
       secretPath: z.string()
@@ -47,7 +53,7 @@ type Props = {
   onToggle: (isOpen: boolean) => void;
   onParsedEnv: (
     env: Record<string, Record<string, { value: string; comments: string[]; secretPath?: string }>>
-  ) => void;
+  ) => Promise<void> | void;
   environments?: { name: string; slug: string }[];
   projectId: string;
   environment: string;
@@ -55,7 +61,7 @@ type Props = {
 };
 
 type SecretFolder = {
-  items: Partial<SecretV3Raw>[];
+  items: SecretV3Raw[];
   subFolders: Record<string, SecretFolder>;
 };
 
@@ -68,261 +74,303 @@ export const ReplicateFolderFromBoard = ({
   projectId,
   isOpen,
   onToggle,
-  onParsedEnv
+  onParsedEnv,
+  environment,
+  secretPath
 }: Props) => {
   const [shouldIncludeValues, setShouldIncludeValues] = useState(true);
 
-  const { handleSubmit, control, watch, reset, setValue } = useForm<TFormSchema>({
+  const {
+    handleSubmit,
+    control,
+    watch,
+    reset,
+    setValue,
+    formState: { errors, isSubmitting }
+  } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
-    defaultValues: { secretPath: "/", environment: environments?.[0], secrets: [] }
+    defaultValues: { secretPath: "/", environment: environments[0], secrets: [] }
   });
 
   const envCopySecPath = watch("secretPath");
-  const selectedEnvSlug = watch("environment");
+  const selectedEnvironment = watch("environment");
   const selectedSecrets = watch("secrets");
   const [debouncedEnvCopySecretPath] = useDebounce(envCopySecPath);
 
-  const { data: accessibleSecrets } = useGetAccessibleSecrets({
+  const {
+    data: accessibleSecrets,
+    isPending: isSourceLoading,
+    isFetching: isSourceFetching,
+    isError: isSourceError,
+    refetch: retrySourceFetch
+  } = useGetAccessibleSecrets({
     projectId,
     secretPath: "/",
-    environment: selectedEnvSlug?.slug,
+    environment: selectedEnvironment?.slug,
     recursive: true,
     filterByAction: shouldIncludeValues
       ? ProjectPermissionSecretActions.ReadValue
       : ProjectPermissionSecretActions.DescribeSecret,
-    options: { enabled: Boolean(projectId) && Boolean(selectedEnvSlug) && isOpen }
+    options: { enabled: Boolean(projectId) && Boolean(selectedEnvironment) && isOpen }
   });
 
   const restructureSecrets = useMemo(() => {
     if (!accessibleSecrets) return {};
 
-    const result: SecretStructure = {};
-    result["/"] = {
-      items: [],
-      subFolders: {}
+    const result: SecretStructure = {
+      "/": {
+        items: [],
+        subFolders: {}
+      }
     };
 
     accessibleSecrets.forEach((secret) => {
-      const path = secret.secretPath || "/";
+      const path = normalizeSecretPath(secret.secretPath || "/");
 
       if (path === "/") {
-        result["/"]?.items.push(secret);
+        result["/"].items.push(secret);
         return;
       }
 
-      const normalizedPath = path.startsWith("/") ? path.substring(1) : path;
-      const pathParts = normalizedPath.split("/");
-
+      const pathParts = path.substring(1).split("/");
       let currentFolder = result["/"];
 
-      for (let i = 0; i < pathParts.length; i += 1) {
-        const part = pathParts[i];
-
-        // eslint-disable-next-line no-continue
-        if (!part) continue;
-
-        if (i === pathParts.length - 1) {
-          if (!currentFolder.subFolders[part]) {
-            currentFolder.subFolders[part] = {
-              items: [],
-              subFolders: {}
-            };
-          }
-          currentFolder.subFolders[part].items.push(secret);
-        } else {
-          if (!currentFolder.subFolders[part]) {
-            currentFolder.subFolders[part] = {
-              items: [],
-              subFolders: {}
-            };
-          }
-          currentFolder = currentFolder.subFolders[part];
+      pathParts.forEach((part) => {
+        if (!currentFolder.subFolders[part]) {
+          currentFolder.subFolders[part] = {
+            items: [],
+            subFolders: {}
+          };
         }
-      }
+        currentFolder = currentFolder.subFolders[part];
+      });
+
+      currentFolder.items.push(secret);
     });
 
     return result;
-  }, [accessibleSecrets, selectedEnvSlug]);
+  }, [accessibleSecrets]);
 
   const secretsFilteredByPath = useMemo(() => {
-    let normalizedPath = debouncedEnvCopySecretPath;
-    normalizedPath = debouncedEnvCopySecretPath.startsWith("/")
-      ? debouncedEnvCopySecretPath
-      : `/${debouncedEnvCopySecretPath}`;
-    if (normalizedPath.length > 1 && normalizedPath.endsWith("/")) {
-      normalizedPath = debouncedEnvCopySecretPath.slice(0, -1);
-    }
+    const normalizedPath = normalizeSecretPath(debouncedEnvCopySecretPath);
+    const currentLevel = restructureSecrets["/"];
 
-    if (normalizedPath === "/") {
-      return restructureSecrets["/"];
-    }
+    if (!currentLevel) return null;
+    if (normalizedPath === "/") return currentLevel;
 
-    const segments = normalizedPath.split("/").filter((segment) => segment !== "");
-
-    let currentLevel = restructureSecrets["/"];
-    let result = null;
-    let currentPath = "";
-
-    if (!currentLevel) {
-      setValue("secretPath", "/");
-      return null;
-    }
-
-    for (let i = 0; i < segments.length; i += 1) {
-      const segment = segments[i];
-      currentPath += `/${segment}`;
-
-      if (currentLevel?.subFolders?.[segment]) {
-        currentLevel = currentLevel.subFolders[segment];
-
-        if (currentPath === normalizedPath) {
-          result = currentLevel;
-          break;
-        }
-      } else {
-        return null;
-      }
-    }
-
-    return result;
+    return normalizedPath
+      .split("/")
+      .filter(Boolean)
+      .reduce<SecretFolder | null>(
+        (folder, segment) => folder?.subFolders[segment] ?? null,
+        currentLevel
+      );
   }, [restructureSecrets, debouncedEnvCopySecretPath]);
 
   useEffect(() => {
+    if (isOpen && !selectedEnvironment && environments[0]) {
+      setValue("environment", environments[0]);
+    }
+  }, [environments, isOpen, selectedEnvironment, setValue]);
+
+  useEffect(() => {
     setValue("secrets", []);
-  }, [debouncedEnvCopySecretPath, selectedEnvSlug]);
+  }, [debouncedEnvCopySecretPath, selectedEnvironment, setValue]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      reset({ secretPath: "/", environment: environments[0], secrets: [] });
+      setShouldIncludeValues(true);
+    }
+  }, [environments, isOpen, reset]);
 
   const handleFormSubmit = async (data: TFormSchema) => {
+    const sourceRootPath = normalizeSecretPath(data.secretPath);
     const secretsToBePulled: Record<
       string,
       Record<string, { value: string; comments: string[]; secretPath: string }>
     > = {};
-    data.secrets.forEach(({ secretKey, secretValue, secretPath: secretPathToRecreate }) => {
-      const normalizedPath = secretPathToRecreate.startsWith(envCopySecPath)
-        ? secretPathToRecreate.slice(envCopySecPath.length)
-        : secretPathToRecreate;
 
-      if (!secretsToBePulled[normalizedPath]) {
-        secretsToBePulled[normalizedPath] = {};
+    data.secrets.forEach(({ secretKey, secretValue, secretPath: secretPathToRecreate }) => {
+      const relativePath = getRelativeSecretPath(secretPathToRecreate, sourceRootPath);
+
+      if (!secretsToBePulled[relativePath]) {
+        secretsToBePulled[relativePath] = {};
       }
 
-      secretsToBePulled[normalizedPath][secretKey] = {
+      secretsToBePulled[relativePath][secretKey] = {
         value: (shouldIncludeValues && secretValue) || "",
         comments: [""],
-        secretPath: normalizedPath
+        secretPath: relativePath
       };
     });
-    onParsedEnv(secretsToBePulled);
-    onToggle(false);
-    reset();
+
+    await onParsedEnv(secretsToBePulled);
+  };
+
+  const normalizedSourcePath = normalizeSecretPath(envCopySecPath);
+  const normalizedDestinationPath = normalizeSecretPath(secretPath);
+  const destinationEnvironment = environments.find(({ slug }) => slug === environment);
+  const isInvalidSourcePath =
+    !isSourceLoading && !isSourceError && Boolean(accessibleSecrets) && !secretsFilteredByPath;
+  const isCopyDisabled =
+    selectedSecrets.length === 0 ||
+    isSourceLoading ||
+    isSourceError ||
+    isInvalidSourcePath ||
+    isSourceFetching;
+
+  const handleOpenChange = (open: boolean) => {
+    if (isSubmitting) return;
+    onToggle(open);
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onOpenChange={(state) => {
-        onToggle(state);
-        reset();
-      }}
-    >
-      <ModalContent
-        bodyClassName="overflow-visible"
-        className="max-w-2xl"
-        title={
-          <div className="flex items-center gap-x-2 text-mineshaft-300">
-            <span>Replicate Secrets</span>
-            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/folder#replicating-folder-contents" />
-          </div>
-        }
-        subTitle="Copy folder contents from other locations into this context"
-      >
-        <form onSubmit={handleSubmit(handleFormSubmit)}>
-          <div className="flex items-center space-x-2">
+    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
+      <SheetContent className="sm:max-w-2xl">
+        <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit(handleFormSubmit)}>
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <span>Copy Secrets</span>
+              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/folder#replicating-folder-contents" />
+            </SheetTitle>
+            <SheetDescription>
+              Copy selected secrets and folders from another project location into this one.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
+            <div
+              aria-label="Copy source and destination"
+              className="grid items-center gap-3 rounded-md border border-border bg-container p-3 sm:grid-cols-[1fr_auto_1fr]"
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-accent">Source</p>
+                <p className="truncate text-sm text-foreground">
+                  {selectedEnvironment?.name ?? "Select an environment"}
+                </p>
+                <p className="truncate font-mono text-xs text-muted">{normalizedSourcePath}</p>
+              </div>
+              <ArrowRightIcon className="size-4 rotate-90 text-muted sm:rotate-0" aria-hidden />
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-accent">Destination</p>
+                <p className="truncate text-sm text-foreground">
+                  {destinationEnvironment?.name ?? environment}
+                </p>
+                <p className="truncate font-mono text-xs text-muted">{normalizedDestinationPath}</p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Controller
+                control={control}
+                name="environment"
+                render={({ field: { value, onChange } }) => (
+                  <Field>
+                    <FieldLabel htmlFor="copy-secrets-source-environment">
+                      Source environment
+                    </FieldLabel>
+                    <Combobox
+                      id="copy-secrets-source-environment"
+                      modal
+                      value={value}
+                      onValueChange={onChange}
+                      options={environments}
+                      placeholder="Select environment..."
+                      searchPlaceholder="Search environments..."
+                      searchAriaLabel="Search source environments"
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.slug}
+                      isDisabled={isSubmitting}
+                    />
+                    <FieldDescription>Choose the environment to copy from.</FieldDescription>
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                name="secretPath"
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel htmlFor="copy-secrets-source-path">Source root path</FieldLabel>
+                    <SecretPathInput
+                      {...field}
+                      id="copy-secrets-source-path"
+                      projectId={projectId}
+                      placeholder="/"
+                      environment={selectedEnvironment?.slug}
+                      disabled={isSubmitting}
+                    />
+                    <FieldDescription>
+                      Descendant paths are recreated beneath the destination path.
+                    </FieldDescription>
+                  </Field>
+                )}
+              />
+            </div>
+
             <Controller
               control={control}
-              name="environment"
+              name="secrets"
               render={({ field: { value, onChange } }) => (
-                <FormControl
-                  tooltipText="The environment to replicate secrets from"
-                  label="Source Environment"
-                  isRequired
-                  className="w-1/3"
-                >
-                  <FilterableSelect
-                    value={value}
+                <FieldSet>
+                  <FieldLegend>Affected secrets</FieldLegend>
+                  <FieldDescription>Select the secrets and folders to copy.</FieldDescription>
+                  <SecretTreeView
+                    data={secretsFilteredByPath}
+                    selectedItems={value}
+                    basePath={normalizeSecretPath(debouncedEnvCopySecretPath)}
                     onChange={onChange}
-                    options={environments}
-                    placeholder="Select environment..."
-                    getOptionLabel={(option) => option.name}
-                    getOptionValue={(option) => option.slug}
+                    isDisabled={isSubmitting}
+                    isLoading={isSourceLoading}
+                    isFetching={isSourceFetching}
+                    isError={isSourceError}
+                    isInvalidPath={isInvalidSourcePath}
+                    onRetry={() => retrySourceFetch()}
                   />
-                </FormControl>
+                  <FieldError>{errors.secrets?.message}</FieldError>
+                </FieldSet>
               )}
             />
-            <Controller
-              control={control}
-              name="secretPath"
-              render={({ field }) => (
-                <FormControl
-                  tooltipText="The folder to use as a root for replication. Using /foo as a root for /foo/bar will result in /bar being copied to this context."
-                  label="Source Root Path"
-                  className="grow"
-                  isRequired
-                >
-                  <SecretPathInput
-                    {...field}
-                    placeholder="Provide a path, default is /"
-                    environment={selectedEnvSlug?.slug}
-                  />
-                </FormControl>
-              )}
-            />
+
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldLabel size="sm" htmlFor="copy-secrets-include-values">
+                  Include secret values
+                </FieldLabel>
+                <FieldDescription>
+                  Turn this off to copy secret keys without their current values.
+                </FieldDescription>
+              </FieldContent>
+              <Switch
+                id="copy-secrets-include-values"
+                variant="project"
+                checked={shouldIncludeValues}
+                disabled={isSubmitting}
+                onCheckedChange={(isChecked) => {
+                  setValue("secrets", []);
+                  setShouldIncludeValues(isChecked);
+                }}
+              />
+            </Field>
           </div>
-          <Controller
-            control={control}
-            name="secrets"
-            render={({ field: { onChange } }) => (
-              <FormControl
-                tooltipText="The folders and secrets to replicate into this context"
-                className="grow"
-                label="Affected Subjects"
-                isRequired
-              >
-                <SecretTreeView
-                  data={secretsFilteredByPath}
-                  basePath={debouncedEnvCopySecretPath}
-                  onChange={onChange}
-                />
-              </FormControl>
-            )}
-          />
-          <div className="my-6 ml-2">
-            <Switch
-              id="populate-include-value"
-              isChecked={shouldIncludeValues}
-              onCheckedChange={(isChecked) => {
-                setValue("secrets", []);
-                setShouldIncludeValues(isChecked as boolean);
-              }}
-            >
-              Include secret values
-            </Switch>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Button
-              leftIcon={<FontAwesomeIcon icon={faClone} />}
-              type="submit"
-              variant="outline_bg"
-              colorSchema="secondary"
-              isDisabled={!selectedSecrets || selectedSecrets.length === 0}
-            >
-              Replicate Secrets
-            </Button>
-            <Button variant="plain" colorSchema="secondary" onClick={() => onToggle(false)}>
+
+          <SheetFooter className="border-t">
+            <Button variant="ghost" isDisabled={isSubmitting} onClick={() => onToggle(false)}>
               Cancel
             </Button>
-          </div>
+            <Button
+              type="submit"
+              variant="project"
+              isPending={isSubmitting}
+              isDisabled={isCopyDisabled}
+            >
+              <CopyIcon />
+              Check and copy
+            </Button>
+          </SheetFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </SheetContent>
+    </Sheet>
   );
 };
