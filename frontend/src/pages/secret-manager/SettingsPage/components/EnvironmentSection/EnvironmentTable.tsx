@@ -39,17 +39,17 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { useRestoreEnvironment, useUpdateWsEnvironment } from "@app/hooks/api";
+import { useUpdateWsEnvironment } from "@app/hooks/api";
 import { ProjectDeletedEnvActor } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-type PopUpKeys = "updateEnv" | "deleteEnv" | "hardDeleteEnv" | "upgradePlan";
+type PopUpKeys = "updateEnv" | "deleteEnv" | "restoreEnv" | "hardDeleteEnv" | "upgradePlan";
 
 type EnvPayload = { name: string; slug: string; id: string; deleteAfter?: string };
 
 type Props = {
   handlePopUpOpen: (popUpName: keyof UsePopUpState<[PopUpKeys]>, env: EnvPayload) => void;
-  isDeletePending: boolean;
+  isExternalMutationPending: boolean;
   onMutationPendingChange: (isPending: boolean) => void;
 };
 
@@ -81,34 +81,26 @@ const formatRemainingDuration = (target: Date): string | null => {
 
 export const EnvironmentTable = ({
   handlePopUpOpen,
-  isDeletePending,
+  isExternalMutationPending,
   onMutationPendingChange
 }: Props) => {
   const { currentProject } = useProject();
   const { subscription } = useSubscription();
 
   const updateEnvironment = useUpdateWsEnvironment();
-  const restoreEnvironment = useRestoreEnvironment();
   const [pendingAction, setPendingAction] = useState<
-    | { type: "reorder"; id: string; direction: "up" | "down" }
-    | { type: "restore"; id: string }
-    | undefined
+    { id: string; direction: "up" | "down" } | undefined
   >();
 
   const activeEnvironments = currentProject.environments ?? [];
   const deletedEnvironments = currentProject.deletedEnvironments ?? [];
 
   const handleReorderEnv = async (id: string, position: number, direction: "up" | "down") => {
-    if (
-      !currentProject?.id ||
-      isDeletePending ||
-      updateEnvironment.isPending ||
-      restoreEnvironment.isPending
-    ) {
+    if (!currentProject?.id || isExternalMutationPending || updateEnvironment.isPending) {
       return;
     }
 
-    setPendingAction({ type: "reorder", id, direction });
+    setPendingAction({ id, direction });
     onMutationPendingChange(true);
 
     try {
@@ -128,43 +120,7 @@ export const EnvironmentTable = ({
     }
   };
 
-  const handleRestoreEnv = async (id: string) => {
-    if (
-      !currentProject?.id ||
-      isDeletePending ||
-      updateEnvironment.isPending ||
-      restoreEnvironment.isPending
-    ) {
-      return;
-    }
-
-    setPendingAction({ type: "restore", id });
-    onMutationPendingChange(true);
-
-    try {
-      await restoreEnvironment.mutateAsync({
-        projectId: currentProject.id,
-        id
-      });
-
-      createNotification({
-        text: "Successfully restored environment",
-        type: "success"
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to restore environment";
-      createNotification({
-        text: message,
-        type: "error"
-      });
-    } finally {
-      setPendingAction(undefined);
-      onMutationPendingChange(false);
-    }
-  };
-
-  const isMutationPending =
-    isDeletePending || updateEnvironment.isPending || restoreEnvironment.isPending;
+  const isMutationPending = isExternalMutationPending || updateEnvironment.isPending;
 
   const isMoreEnvironmentsAllowed =
     subscription?.environmentLimit && activeEnvironments
@@ -215,11 +171,7 @@ export const EnvironmentTable = ({
                       onClick={() =>
                         handleReorderEnv(id, Math.min(activeEnvironments.length, pos + 2), "down")
                       }
-                      isPending={
-                        pendingAction?.type === "reorder" &&
-                        pendingAction.id === id &&
-                        pendingAction.direction === "down"
-                      }
+                      isPending={pendingAction?.id === id && pendingAction.direction === "down"}
                       isDisabled={
                         pos === activeEnvironments.length - 1 || !isAllowed || isMutationPending
                       }
@@ -237,11 +189,7 @@ export const EnvironmentTable = ({
                       aria-label="Move up"
                       variant="ghost-muted"
                       onClick={() => handleReorderEnv(id, Math.max(1, pos), "up")}
-                      isPending={
-                        pendingAction?.type === "reorder" &&
-                        pendingAction.id === id &&
-                        pendingAction.direction === "up"
-                      }
+                      isPending={pendingAction?.id === id && pendingAction.direction === "up"}
                       isDisabled={pos === 0 || !isAllowed || isMutationPending}
                     >
                       <ArrowUpIcon />
@@ -312,8 +260,8 @@ export const EnvironmentTable = ({
 
           return (
             <TableRow key={id} className="bg-warning/[0.025]">
-              <TableCell className="text-muted line-through">{name}</TableCell>
-              <TableCell className="text-muted">{slug}</TableCell>
+              <TableCell className="text-warning/80 line-through">{name}</TableCell>
+              <TableCell className="text-warning/80 line-through">{slug}</TableCell>
               <TableCell>
                 <div className="flex items-center justify-end gap-2">
                   <Tooltip>
@@ -360,7 +308,9 @@ export const EnvironmentTable = ({
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
                             isDisabled={isMutationPending}
-                            onClick={() => handleRestoreEnv(id)}
+                            onClick={() =>
+                              handlePopUpOpen("restoreEnv", { name, slug, id, deleteAfter })
+                            }
                           >
                             <RotateCcwIcon />
                             Restore environment
@@ -373,7 +323,7 @@ export const EnvironmentTable = ({
                             }
                           >
                             <Trash2Icon />
-                            Delete permanently
+                            Delete Now
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

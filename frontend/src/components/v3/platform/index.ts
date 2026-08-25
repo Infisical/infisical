@@ -4,6 +4,7 @@ export * from "./DeleteConfirmDialog";
 export * from "./DocumentationLinkBadge";
 export * from "./GatewayPicker";
 export * from "./IdentityRoleBadges";
+export * from "./LookingForOrgPageLink";
 export * from "./OverflowBadgeList";
 export * from "./PageHeader";
 export * from "./PageLoader";
