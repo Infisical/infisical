@@ -698,8 +698,6 @@ export const secretV2BridgeServiceFactory = ({
 
     // Validate against secret validation rules (key rename and/or value change)
     const finalKey = inputSecret.newSecretName || secretName;
-    const needsValidation = !!(secretValue || inputSecret.newSecretName);
-
     if (secretValue) {
       const { nestedReferences, localReferences } = getAllSecretReferences(secretValue);
       const allSecretReferences = nestedReferences.concat(
@@ -734,7 +732,7 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     const updatedSecret = await secretDAL.transaction(async (tx) => {
-      if (needsValidation) {
+      if (secretValue || inputSecret.newSecretName) {
         await secretValidationRuleService.validateSecrets({
           projectId,
           environment,

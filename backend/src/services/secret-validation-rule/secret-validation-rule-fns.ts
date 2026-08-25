@@ -221,8 +221,8 @@ export const evaluateConstraint = (constraint: TConstraint, secret: TSecretToVal
     return null;
   }
 
-  const targetLabel = TARGET_LABELS[constraint.appliesTo];
   const targetValue = constraint.appliesTo === ConstraintTarget.SecretKey ? secret.key : (secret.value ?? "");
+  const targetLabel = TARGET_LABELS[constraint.appliesTo];
 
   switch (constraint.type) {
     case ConstraintType.MinLength: {
@@ -257,6 +257,7 @@ export const evaluateConstraint = (constraint: TConstraint, secret: TSecretToVal
         }
         return null;
       } catch {
+        // re2 throws an error if the pattern is invalid
         return `${targetLabel} must match pattern ${constraint.value}`;
       }
     }
