@@ -15,7 +15,7 @@ export const pickRandomGateway = <T extends TSelectableGateway>(
  * sees. One too old to report can only be scored on what the platform opened itself, which is always
  * lower. Rather than trust that, a pool that is not fully upgraded picks at random.
  */
-export const everyMemberReportsLoad = <T extends TSelectableGateway>(
+export const canLoadBalance = <T extends TSelectableGateway>(
   candidates: T[],
   scores: Map<string, TGatewayScore>
 ): boolean => candidates.length > 0 && candidates.every((candidate) => scores.get(candidate.id)?.reported);

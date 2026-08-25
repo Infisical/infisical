@@ -1,6 +1,6 @@
 import { TGatewayScore } from "@app/lib/gateway-v2/gateway-load-tracker";
 
-import { everyMemberReportsLoad, pickRandomGateway, shuffleForTieBreak } from "./gateway-pool-selection-fns";
+import { canLoadBalance, pickRandomGateway, shuffleForTieBreak } from "./gateway-pool-selection-fns";
 
 // Every member reports unless a test says otherwise; a mixed pool is covered separately.
 const reported = (entries: Record<string, number>): Map<string, TGatewayScore> =>
@@ -8,14 +8,14 @@ const reported = (entries: Record<string, number>): Map<string, TGatewayScore> =
 
 const gateways = [{ id: "a" }, { id: "b" }, { id: "c" }];
 
-describe("everyMemberReportsLoad", () => {
+describe("canLoadBalance", () => {
   test("true when every member reports", () => {
-    expect(everyMemberReportsLoad(gateways, reported({ a: 1, b: 2, c: 3 }))).toBe(true);
+    expect(canLoadBalance(gateways, reported({ a: 1, b: 2, c: 3 }))).toBe(true);
   });
 
   test("false when no member reports, because a platform-side count is not the same measurement", () => {
     const legacy = new Map(["a", "b", "c"].map((id) => [id, { score: 1, base: 1, reported: false }]));
-    expect(everyMemberReportsLoad(gateways, legacy)).toBe(false);
+    expect(canLoadBalance(gateways, legacy)).toBe(false);
   });
 
   test("false when the pool is mid-rollout", () => {
@@ -24,15 +24,15 @@ describe("everyMemberReportsLoad", () => {
       ["b", { score: 0, base: 0, reported: false }],
       ["c", { score: 41, base: 41, reported: true }]
     ]);
-    expect(everyMemberReportsLoad(gateways, mixed)).toBe(false);
+    expect(canLoadBalance(gateways, mixed)).toBe(false);
   });
 
   test("false when a member has no data at all", () => {
-    expect(everyMemberReportsLoad(gateways, reported({ a: 5, b: 5 }))).toBe(false);
+    expect(canLoadBalance(gateways, reported({ a: 5, b: 5 }))).toBe(false);
   });
 
   test("false for an empty pool, so the caller never claims against nothing", () => {
-    expect(everyMemberReportsLoad([], reported({}))).toBe(false);
+    expect(canLoadBalance([], reported({}))).toBe(false);
   });
 });
 

@@ -21,7 +21,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
 import { TGatewayPoolDALFactory } from "./gateway-pool-dal";
 import { TGatewayPoolMembershipDALFactory } from "./gateway-pool-membership-dal";
-import { everyMemberReportsLoad, pickRandomGateway, shuffleForTieBreak } from "./gateway-pool-selection-fns";
+import { canLoadBalance, pickRandomGateway, shuffleForTieBreak } from "./gateway-pool-selection-fns";
 import {
   DEFAULT_POOL_FAILOVER_ATTEMPTS,
   TAddGatewayToPoolDTO,
@@ -298,7 +298,7 @@ export const gatewayPoolServiceFactory = ({
 
         const scores = await loadTracker.getScores(pool.map((gateway) => gateway.id));
 
-        if (everyMemberReportsLoad(pool, scores)) {
+        if (canLoadBalance(pool, scores)) {
           // Two calls would let every concurrent selection read the same minimum and pile onto it.
           const claimed = await loadTracker.claimLeastLoaded(
             shuffleForTieBreak(pool, Math.random).map((gateway) => ({
