@@ -3,85 +3,17 @@ title: "Quickstart"
 description: "Manage secrets with Infisical CLI"
 ---
 
+import InjectSecretsLocally from "/snippets/cli/inject-secrets-locally.mdx";
+
 The CLI is designed for a variety of secret management applications ranging from local development to CI/CD and production scenarios.
 
 <Tabs>
   <Tab title="Local development">
-    In the following steps, we explore how to use the Infisical CLI to fetch back environment variables from Infisical
-    and inject them into your local development process.
-    
-    <Note>
-    If you prefer learning by watching, you can follow along our step-by-step video tutorial [here](https://www.youtube.com/watch?v=zYCeELjcgQ4).
-    </Note>
+    The steps below authenticate the CLI with your own account, link a codebase to an Infisical project, and inject the secrets you have access to into your local development process as environment variables.
 
-    <Steps>
-      <Step title="Log in with the CLI">
-        Start by running the `infisical login` command to authenticate with Infisical.
+    <InjectSecretsLocally />
 
-        ```bash
-        infisical login
-        ```
-        <Note>
-          If you are in a containerized environment such as WSL 2 or Codespaces, run `infisical login -i` to avoid browser based login
-        </Note>
-      </Step>
-      <Step title="Initialize Infisical for your project">
-        Next, navigate to your project and initialize Infisical.
-
-        ```bash
-        # navigate to your project
-        cd /path/to/project
-
-        # initialize infisical
-        infisical init
-        ```
-
-        The `infisical init` command creates a `.infisical.json` file, containing [local project settings](./project-config), at the location where the command is executed.
-
-        <Note>
-          The `.infisical.json` file does not contain any sensitive data, so you may commit it to your git repository.
-        </Note>
-      </Step>
-      <Step title="Inject environment variables">
-        Finally, pass environment variables from Infisical into your application.
-
-        <Tabs>
-          <Tab title="Feed secrets to your application">
-            ```bash
-            infisical run --env=dev --path=/apps/firefly -- [your application start command] # e.g. npm run dev
-
-            # example with node (nodemon)
-            infisical run --env=staging --path=/apps/spotify -- nodemon index.js
-
-            # example with flask
-            infisical run --env=prod --path=/apps/backend -- flask run
-
-            # example with spring boot - maven
-            infisical run --env=dev --path=/apps/ -- ./mvnw spring-boot:run --quiet
-            ```
-
-          </Tab>
-          <Tab title="Feed secrets via custom aliases (advanced)">
-            Custom aliases can utilize secrets from Infisical. Suppose there is a custom alias `yd` in `custom.sh` that runs `yarn dev` and needs the secrets provided by Infisical.
-            ```bash
-            #!/bin/sh
-
-            yd() {
-              yarn dev
-            }
-            ```
-
-            To make the secrets available from Infisical to `yd`, you can run the following command:
-
-            ```bash
-            infisical run --env=prod --path=/apps/reddit --command="source custom.sh && yd"
-            ```
-          </Tab>
-        </Tabs>
-
-        View all available options for `run` command [here](./commands/run)
-      </Step>
-    </Steps>
+    For installation instructions, troubleshooting, and related local workflows such as personal overrides and secret scanning, see the [local development guide](/documentation/guides/local-development).
 
   </Tab>
 
