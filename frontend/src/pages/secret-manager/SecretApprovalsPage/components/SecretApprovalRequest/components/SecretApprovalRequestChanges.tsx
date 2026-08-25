@@ -511,7 +511,7 @@ export const SecretApprovalRequestChanges = ({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex h-full w-full flex-col gap-0 overflow-hidden sm:max-w-8xl">
+      <SheetContent className="@container flex h-full w-full flex-col gap-0 overflow-hidden sm:max-w-8xl">
         <SheetHeader className="border-b">
           <SheetTitle className="flex items-center gap-2 pr-8">
             Change Request
@@ -559,8 +559,8 @@ export const SecretApprovalRequestChanges = ({
             </Empty>
           </div>
         ) : (
-          <div className="flex min-h-0 flex-1 overflow-hidden">
-            <div className="flex w-96 shrink-0 flex-col gap-6 overflow-hidden border-r border-border p-4">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto @4xl:flex-row @4xl:overflow-hidden">
+            <div className="flex w-full shrink-0 flex-col gap-6 border-b border-border p-4 @4xl:w-96 @4xl:overflow-hidden @4xl:border-r @4xl:border-b-0">
               <DetailGroup className="shrink-0">
                 <Detail>
                   <DetailLabel>Status</DetailLabel>

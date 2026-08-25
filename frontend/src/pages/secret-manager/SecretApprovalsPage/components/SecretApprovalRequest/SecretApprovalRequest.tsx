@@ -5,7 +5,6 @@ import { format, formatDistance } from "date-fns";
 import {
   BanIcon,
   CheckIcon,
-  ChevronsUpDownIcon,
   ClipboardCheckIcon,
   EllipsisIcon,
   EyeIcon,
@@ -18,19 +17,12 @@ import {
 
 import {
   Badge,
-  Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
+  Combobox,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -45,9 +37,6 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   Skeleton,
   Table,
   TableBody,
@@ -62,7 +51,6 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { cn } from "@app/components/v3/utils";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionMemberActions,
@@ -89,103 +77,6 @@ import {
   generateCommitText,
   SecretApprovalRequestChanges
 } from "./components/SecretApprovalRequestChanges";
-
-type FilterMenuProps = {
-  className?: string;
-  searchPlaceholder: string;
-  allLabel: string;
-  options: { value: string; label: string }[];
-  value?: string;
-  onChange: (value?: string) => void;
-};
-
-const FilterMenu = ({
-  className,
-  searchPlaceholder,
-  allLabel,
-  options,
-  value,
-  onChange
-}: FilterMenuProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState("");
-
-  const selectedOption = options.find((option) => option.value === value);
-
-  return (
-    <Popover
-      open={isOpen}
-      onOpenChange={(open) => {
-        setIsOpen(open);
-        if (!open) setInputValue("");
-      }}
-    >
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={isOpen}
-          className={cn("justify-between", className)}
-        >
-          <span className="truncate">{selectedOption ? selectedOption.label : allLabel}</span>
-          <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[220px] p-0">
-        <Command>
-          <CommandInput
-            aria-label={searchPlaceholder}
-            value={inputValue}
-            onValueChange={setInputValue}
-            placeholder={searchPlaceholder}
-          />
-          <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
-            {!inputValue && (
-              <>
-                <CommandGroup>
-                  <CommandItem
-                    forceMount
-                    keywords={[]}
-                    onSelect={() => {
-                      onChange(undefined);
-                      setIsOpen(false);
-                    }}
-                  >
-                    <CheckIcon className={cn("size-4", !value ? "opacity-100" : "opacity-0")} />
-                    {allLabel}
-                  </CommandItem>
-                </CommandGroup>
-                <CommandSeparator />
-              </>
-            )}
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.value}
-                  keywords={[option.label]}
-                  onSelect={() => {
-                    onChange(value === option.value ? undefined : option.value);
-                    setIsOpen(false);
-                  }}
-                >
-                  <CheckIcon
-                    className={cn(
-                      "size-4 shrink-0",
-                      value === option.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  <span className="truncate">{option.label}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-};
 
 export const SecretApprovalRequest = () => {
   const { currentProject, projectId } = useProject();
@@ -262,6 +153,14 @@ export const SecretApprovalRequest = () => {
   const environmentNamesBySlug = (currentProject?.environments ?? []).reduce<
     Record<string, string>
   >((prev, curr) => ({ ...prev, [curr.slug]: curr.name }), {});
+  const environmentOptions = (currentProject?.environments ?? []).map((environment) => ({
+    value: environment.slug,
+    label: environment.name
+  }));
+  const authorOptions = (members ?? []).map(({ user }) => ({
+    value: user.id,
+    label: user.username
+  }));
 
   return (
     <>
@@ -273,8 +172,8 @@ export const SecretApprovalRequest = () => {
           </CardTitle>
           <CardDescription>Review pending and closed change requests</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col">
-          <div className="mb-4 flex flex-wrap items-center gap-2 2xl:flex-nowrap">
+        <CardContent className="@container flex flex-col">
+          <div className="mb-4 flex flex-wrap items-center gap-2 @6xl:flex-nowrap">
             <Tabs
               value={statusFilter}
               onValueChange={(value) => {
@@ -304,8 +203,8 @@ export const SecretApprovalRequest = () => {
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-            <div className="flex flex-wrap items-center gap-2 2xl:mr-auto 2xl:flex-nowrap">
-              <InputGroup className="xl:w-[26rem]">
+            <div className="flex flex-wrap items-center gap-2 @6xl:mr-auto @6xl:flex-nowrap">
+              <InputGroup className="@6xl:w-[26rem]">
                 <InputGroupAddon>
                   <SearchIcon />
                 </InputGroupAddon>
@@ -316,28 +215,34 @@ export const SecretApprovalRequest = () => {
                 />
               </InputGroup>
             </div>
-            <FilterMenu
+            <Combobox
+              aria-label="Filter environments"
               className="w-[200px]"
+              options={environmentOptions}
+              value={environmentOptions.find((option) => option.value === envFilter) ?? null}
+              onValueChange={(option) => setEnvFilter(option.value)}
+              onClear={() => setEnvFilter(undefined)}
+              getOptionValue={(option) => option.value}
+              getOptionLabel={(option) => option.label}
+              clearAriaLabel="Clear environment filter"
               searchPlaceholder="Filter environments"
-              allLabel="All Environments"
-              value={envFilter}
-              onChange={setEnvFilter}
-              options={(currentProject?.environments ?? []).map((env) => ({
-                value: env.slug,
-                label: env.name
-              }))}
+              searchAriaLabel="Filter environments"
+              placeholder="All Environments"
             />
             {permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) && (
-              <FilterMenu
+              <Combobox
+                aria-label="Filter authors"
                 className="w-[220px]"
+                options={authorOptions}
+                value={authorOptions.find((option) => option.value === committerFilter) ?? null}
+                onValueChange={(option) => setCommitterFilter(option.value)}
+                onClear={() => setCommitterFilter(undefined)}
+                getOptionValue={(option) => option.value}
+                getOptionLabel={(option) => option.label}
+                clearAriaLabel="Clear author filter"
                 searchPlaceholder="Filter authors"
-                allLabel="All Authors"
-                value={committerFilter}
-                onChange={setCommitterFilter}
-                options={(members ?? []).map(({ user }) => ({
-                  value: user.id,
-                  label: user.username
-                }))}
+                searchAriaLabel="Filter authors"
+                placeholder="All Authors"
               />
             )}
           </div>
