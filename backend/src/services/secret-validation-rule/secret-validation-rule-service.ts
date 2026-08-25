@@ -393,13 +393,17 @@ export const secretValidationRuleServiceFactory = ({
 
     const hasPreventValueReuseConstraint = matchingRules.some((r) =>
       r.inputs.constraints?.some(
-        (c) => c.type === ConstraintType.PreventValueReuse && c.appliesTo === ConstraintTarget.SecretValue
+        (c) =>
+          (c.type === ConstraintType.PreventValueReuse && c.appliesTo === ConstraintTarget.SecretValue) ||
+          (c.type === ConstraintType.UniqueSecretValue && c.value.secretVersions.enabled)
       )
     );
 
     const duplicateValuesRule = matchingRules.find((r) =>
       r.inputs.constraints?.some(
-        (c) => c.type === ConstraintType.PreventDuplicatedValues && c.appliesTo === ConstraintTarget.SecretValue
+        (c) =>
+          (c.type === ConstraintType.PreventDuplicatedValues && c.appliesTo === ConstraintTarget.SecretValue) ||
+          (c.type === ConstraintType.UniqueSecretValue && c.value.otherSecrets.enabled)
       )
     );
 

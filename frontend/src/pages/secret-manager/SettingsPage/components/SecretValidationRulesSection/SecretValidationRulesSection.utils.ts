@@ -94,10 +94,9 @@ export const CONSTRAINT_OPTIONS: {
   },
   {
     type: ConstraintType.UniqueSecretValue,
-    label: "Unique Secret Value",
-    description: "Enforce uniqueness of secret values across versions",
-    cardDescription:
-      "When a secret is created or updated, its value is checked for uniqueness against prior versions of the same secret.",
+    label: "Value Uniqueness",
+    description: "Rejects an update when the new value matches a value already in use",
+    cardDescription: "Rejects an update when the new value matches a value already in use.",
     placeholder: "",
     icon: HistoryIcon,
     allowedTargets: [ConstraintTarget.SecretValue]
@@ -112,7 +111,7 @@ export const CONSTRAINT_VALUE_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RequiredSuffix]: "Text",
   [ConstraintType.PreventValueReuse]: "Previous versions",
   [ConstraintType.PreventDuplicatedValues]: "",
-  [ConstraintType.UniqueSecretValue]: ""
+  [ConstraintType.UniqueSecretValue]: "Versions to check"
 };
 
 export const CONSTRAINT_TYPE_LABELS: Record<ConstraintType, string> = {
@@ -123,7 +122,7 @@ export const CONSTRAINT_TYPE_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RequiredSuffix]: "Required Suffix",
   [ConstraintType.PreventValueReuse]: "Prevent Value Repetition",
   [ConstraintType.PreventDuplicatedValues]: "Prevent Duplicate Values",
-  [ConstraintType.UniqueSecretValue]: "Unique Secret Value"
+  [ConstraintType.UniqueSecretValue]: "Value Uniqueness"
 };
 
 export enum RuleType {
@@ -258,6 +257,9 @@ const uniqueSecretValueConstraintSchema = z.object({
     secretVersions: z.object({
       enabled: z.boolean(),
       versions: z.number().int().min(1).max(MAX_PREVENT_VALUE_REUSE_VERSIONS)
+    }),
+    otherSecrets: z.object({
+      enabled: z.boolean()
     })
   })
 });

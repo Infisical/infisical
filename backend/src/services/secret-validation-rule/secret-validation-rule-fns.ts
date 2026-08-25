@@ -212,7 +212,7 @@ export const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.PreventDuplicatedValues]:
     "When a secret is created or updated, its value is checked against all other secrets in the selected scope to prevent duplicates.",
   [ConstraintType.UniqueSecretValue]:
-    "When a secret is created or updated, its value is checked for uniqueness against prior versions of the same secret."
+    "Rejects an update when the new value matches a value already in use."
 };
 
 const TARGET_LABELS: Record<ConstraintTarget, string> = {
@@ -300,17 +300,19 @@ export const evaluateConstraint = (constraint: TConstraint, secret: TSecretToVal
       return `${targetLabel} is already used by secret "${secret.duplicateOf.key}" in environment "${secret.duplicateOf.environment}" at path "${secret.duplicateOf.path}"`;
     }
     case ConstraintType.UniqueSecretValue: {
-      const { secretVersions } = constraint.value;
-      if (!secretVersions.enabled) return null;
+      const { secretVersions, otherSecrets } = constraint.value;
 
-      if (secret.value === undefined || !secret.previousValues?.length) {
-        return null;
+      if (secretVersions.enabled && secret.value !== undefined && secret.previousValues?.length) {
+        const valuesToCheck = secret.previousValues.slice(0, secretVersions.versions);
+        if (valuesToCheck.includes(secret.value)) {
+          return `${targetLabel} cannot reuse any of the last ${secretVersions.versions} values`;
+        }
       }
 
-      const valuesToCheck = secret.previousValues.slice(0, secretVersions.versions);
-      if (valuesToCheck.includes(secret.value)) {
-        return `${targetLabel} cannot reuse any of the last ${secretVersions.versions} values`;
+      if (otherSecrets.enabled && secret.value !== undefined && secret.duplicateOf) {
+        return `${targetLabel} is already used by secret "${secret.duplicateOf.key}" in environment "${secret.duplicateOf.environment}" at path "${secret.duplicateOf.path}"`;
       }
+
       return null;
     }
     default:

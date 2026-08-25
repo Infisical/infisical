@@ -45,6 +45,9 @@ export type TUniqueSecretValueBody = {
     enabled: boolean;
     versions: number;
   };
+  otherSecrets: {
+    enabled: boolean;
+  };
 };
 
 export type TStringConstraint = {

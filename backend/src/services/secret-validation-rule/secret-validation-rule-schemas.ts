@@ -75,6 +75,9 @@ const uniqueSecretValueConstraintSchema = z.object({
     secretVersions: z.object({
       enabled: z.boolean(),
       versions: z.number().int().min(1).max(MAX_PREVENT_VALUE_REUSE_VERSIONS)
+    }),
+    otherSecrets: z.object({
+      enabled: z.boolean()
     })
   })
 });

@@ -96,6 +96,7 @@ import {
   SECRET_ROTATION_PROVIDER_OPTIONS,
   SECRET_ROTATION_RULE_DISALLOWED_CONSTRAINTS,
   SecretRotationRuleProvider,
+  TConstraint,
   TProviderOption,
   TRuleForm
 } from "./SecretValidationRulesSection.utils";
@@ -426,16 +427,27 @@ const RuleFormContent = ({
                       return (
                         <DropdownMenuItem
                           key={opt.type}
-                          onClick={() =>
-                            append({
-                              type: opt.type,
-                              appliesTo: defaultTarget,
-                              value:
-                                opt.type === ConstraintType.PreventValueReuse
-                                  ? String(opt.placeholder || 10)
-                                  : ""
-                            })
-                          }
+                          onClick={() => {
+                            if (opt.type === ConstraintType.UniqueSecretValue) {
+                              append({
+                                type: opt.type,
+                                appliesTo: defaultTarget,
+                                value: {
+                                  secretVersions: { enabled: true, versions: 10 },
+                                  otherSecrets: { enabled: false }
+                                }
+                              } as TConstraint);
+                            } else {
+                              append({
+                                type: opt.type,
+                                appliesTo: defaultTarget,
+                                value:
+                                  opt.type === ConstraintType.PreventValueReuse
+                                    ? String(opt.placeholder || 10)
+                                    : ""
+                              });
+                            }
+                          }}
                         >
                           <opt.icon className="mr-2 size-4" />
                           <div>

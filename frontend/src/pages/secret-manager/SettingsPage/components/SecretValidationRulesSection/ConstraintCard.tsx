@@ -10,6 +10,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Switch,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -31,18 +32,143 @@ type Props = {
   onRemove: () => void;
 };
 
+const UniqueSecretValueCard = ({ index, onRemove }: Props) => {
+  const { control, watch } = useFormContext<TRuleForm>();
+  const constraintType = watch(`enforcement.constraints.${index}.type`);
+  const constraintOption = CONSTRAINT_OPTIONS.find((o) => o.type === constraintType);
+  const Icon = constraintOption?.icon;
+
+  const secretVersionsEnabled = watch(
+    `enforcement.constraints.${index}.value.secretVersions.enabled` as `enforcement.constraints.${number}.value`
+  ) as unknown as boolean;
+
+  return (
+    <div className="rounded-md border border-border bg-card p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {Icon && <Icon className="size-4 text-muted" />}
+          <span className="text-sm font-medium text-foreground">
+            {CONSTRAINT_TYPE_LABELS[constraintType]}
+          </span>
+        </div>
+        <IconButton aria-label="Remove constraint" variant="danger" size="xs" onClick={onRemove}>
+          <TrashIcon className="size-3.5" />
+        </IconButton>
+      </div>
+
+      {constraintOption?.cardDescription && (
+        <p className="mt-1.5 text-xs text-muted">{constraintOption.cardDescription}</p>
+      )}
+
+      <div className="mt-3 flex flex-col gap-3">
+        <div className="rounded-md border border-border p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                This secret&apos;s previous versions
+              </p>
+              <p className="text-xs text-muted">Reject values this secret held before</p>
+            </div>
+            <Controller
+              control={control}
+              name={
+                `enforcement.constraints.${index}.value.secretVersions.enabled` as `enforcement.constraints.${number}.value`
+              }
+              render={({ field: { value, onChange } }) => (
+                <Switch
+                  variant="project"
+                  checked={value as unknown as boolean}
+                  onCheckedChange={onChange}
+                />
+              )}
+            />
+          </div>
+
+          {secretVersionsEnabled && (
+            <div className="mt-4 flex items-center justify-between">
+              <label className="flex items-center gap-1 text-xs text-muted">
+                Versions to check
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon className="size-3.5 text-muted" />
+                  </TooltipTrigger>
+                  <TooltipContent side="left" align="start" className="max-w-xs">
+                    <p className="text-sm">
+                      When a secret is updated, its new value is validated against the specified
+                      number of prior versions.
+                    </p>
+                    <p className="mt-2 text-xs text-muted">
+                      Maximum: {MAX_PREVENT_VALUE_REUSE_VERSIONS} versions
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </label>
+              <Controller
+                control={control}
+                name={
+                  `enforcement.constraints.${index}.value.secretVersions.versions` as `enforcement.constraints.${number}.value`
+                }
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <div>
+                    <Input
+                      value={value as unknown as number}
+                      onChange={(e) => onChange(Number(e.target.value))}
+                      type="number"
+                      min={1}
+                      max={MAX_PREVENT_VALUE_REUSE_VERSIONS}
+                      className="w-24"
+                      isError={Boolean(error)}
+                    />
+                    {error?.message && <p className="mt-1 text-xs text-danger">{error.message}</p>}
+                  </div>
+                )}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-md border border-border p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">Other secrets in scope</p>
+              <p className="text-xs text-muted">
+                Reject values currently used by other secrets in this rule&apos;s scope
+              </p>
+            </div>
+            <Controller
+              control={control}
+              name={
+                `enforcement.constraints.${index}.value.otherSecrets.enabled` as `enforcement.constraints.${number}.value`
+              }
+              render={({ field: { value, onChange } }) => (
+                <Switch
+                  variant="project"
+                  checked={value as unknown as boolean}
+                  onCheckedChange={onChange}
+                />
+              )}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const ConstraintCard = ({ index, onRemove }: Props) => {
   const { control, watch } = useFormContext<TRuleForm>();
   const constraintType = watch(`enforcement.constraints.${index}.type`);
   const allConstraints = watch("enforcement.constraints");
   const ruleType = watch("enforcement.type");
-  // Generated-credential rules currently only target the generated password.
   const isGeneratedCredentialRule =
     ruleType === RuleType.DynamicSecrets || ruleType === RuleType.SecretRotations;
 
+  if (constraintType === ConstraintType.UniqueSecretValue) {
+    return <UniqueSecretValueCard index={index} onRemove={onRemove} />;
+  }
+
   const constraintOption = CONSTRAINT_OPTIONS.find((o) => o.type === constraintType);
 
-  // Determine which targets are already used by other constraints of the same type
   const otherTargets = new Set(
     allConstraints
       ?.filter((c, i) => i !== index && c.type === constraintType)
