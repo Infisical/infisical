@@ -10,6 +10,7 @@ import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-
 import { validateSecretMovePermissions } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
@@ -614,10 +615,6 @@ export const secretFolderServiceFactory = ({
     idOrName: string;
     actor: ActorType;
   }) => {
-    if (actor === ActorType.IDENTITY) {
-      return;
-    }
-
     let targetFolder = await folderDAL
       .findOne({
         envId: env.id,
@@ -697,8 +694,8 @@ export const secretFolderServiceFactory = ({
         folderPolicyPath.path
       );
 
-      // if there is a policy and there are secrets under the given folder, throw error
-      if (policy) {
+      // if there is an enforced policy and there are secrets under the given folder, throw error
+      if (shouldApplyPolicy(policy, actor)) {
         throw new BadRequestError({
           message: `You cannot delete the selected folder because it contains one or more secrets that are protected by the change policy "${policy.name}" at folder path "${folderPolicyPath.path}". Please remove the secrets at folder path "${folderPolicyPath.path}" and try again.`,
           name: "DeleteFolderProtectedByPolicy"

@@ -49,8 +49,10 @@ import { terminatePamSessions } from "../pam-session/pam-session-fns";
 import { buildGatewayConnectionTest, CLOUD_CONNECTION_VALIDATORS } from "./pam-account-connection-test";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
+  applyForcedFields,
   getAccountAccessibilityIssues,
   isCredentialConfigured,
+  normalizeCredentialAuthMethod,
   PamAccountAccessibilityIssue,
   parseInternalMetadata,
   sanitizeCredentials,
@@ -349,7 +351,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       return;
     }
 
-    const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials);
+    const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials, orgId);
     if (!test) return;
 
     const effectiveGatewayId = gateway.gatewayId ?? gateway.templateGatewayId;
@@ -458,8 +460,12 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ctx
     );
 
-    const validatedConnectionDetails = validateConnectionDetails(accountType, connectionDetails);
-    const validatedCredentials = validateCredentials(accountType, credentials);
+    const forced = applyForcedFields(accountType, {
+      connectionDetails,
+      credentials: normalizeCredentialAuthMethod(accountType, credentials)
+    });
+    const validatedConnectionDetails = validateConnectionDetails(accountType, forced.connectionDetails);
+    const validatedCredentials = validateCredentials(accountType, forced.credentials);
     assertPasswordMeetsRequirements(validatedCredentials, template.settings);
 
     // discovery import creates accounts in bulk from a scan that already reached them, so it skips the test
@@ -637,37 +643,58 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     if (recordingConnectionId !== undefined) updateData.recordingConnectionId = recordingConnectionId;
     if (settingsOverrides !== undefined) updateData.settingsOverrides = settingsOverrides;
 
-    if (connectionDetails) {
-      const validated = validateConnectionDetails(accountType, connectionDetails);
-      updateData.encryptedConnectionDetails = await encrypt(projectId, validated);
-    }
-
+    // Forced fields cross the two groups, so a change to either side is resolved against the merged
+    // view and both are rewritten
     let principalChanged = false;
-    if (credentials) {
+    let authMethodChanged = false;
+    let connectionTargetChanged = false;
+    let effectiveConnectionDetails: Record<string, unknown> | null = null;
+    let effectiveCredentials: Record<string, unknown> | null = null;
+
+    if (connectionDetails || credentials) {
+      const existingConnectionDetails = await decrypt(projectId, existing.encryptedConnectionDetails);
       const existingCredentials = await decrypt(projectId, existing.encryptedCredentials);
-      const validated = validateCredentials(accountType, { ...existingCredentials, ...credentials });
-      const templateSettings = templateId
-        ? (await pamAccountTemplateDAL.findById(templateId))?.settings
-        : existing.templateSettings;
-      assertPasswordMeetsRequirements(validated, templateSettings);
-      updateData.encryptedCredentials = await encrypt(projectId, validated);
-      updateData.credentialConfigured = isCredentialConfigured(accountType, validated);
+
+      const forced = applyForcedFields(accountType, {
+        connectionDetails: connectionDetails ?? existingConnectionDetails,
+        credentials: normalizeCredentialAuthMethod(accountType, { ...existingCredentials, ...(credentials ?? {}) })
+      });
+
+      effectiveConnectionDetails = validateConnectionDetails(accountType, forced.connectionDetails);
+      effectiveCredentials = validateCredentials(accountType, forced.credentials);
+
+      if (credentials) {
+        const templateSettings = templateId
+          ? (await pamAccountTemplateDAL.findById(templateId))?.settings
+          : existing.templateSettings;
+        assertPasswordMeetsRequirements(effectiveCredentials, templateSettings);
+      }
+
+      updateData.encryptedConnectionDetails = await encrypt(projectId, effectiveConnectionDetails);
+      updateData.encryptedCredentials = await encrypt(projectId, effectiveCredentials);
+      updateData.credentialConfigured = isCredentialConfigured(accountType, effectiveCredentials);
+
+      const oldConn = validateConnectionDetails(accountType, existingConnectionDetails) as {
+        host?: string;
+        port?: number;
+      };
+      const newConn = effectiveConnectionDetails as { host?: string; port?: number };
+      if (oldConn.host !== newConn.host || oldConn.port !== newConn.port) connectionTargetChanged = true;
+
       const oldUsername = (existingCredentials as { username?: string }).username;
-      const newUsername = (validated as { username?: string }).username;
+      const newUsername = (effectiveCredentials as { username?: string }).username;
       if (oldUsername !== newUsername) principalChanged = true;
+
+      // Normalized on both sides so an older account without a stored auth method doesn't read as a change
+      const oldAuthMethod = normalizeCredentialAuthMethod(accountType, existingCredentials).authMethod;
+      if (oldAuthMethod !== (effectiveCredentials as { authMethod?: string }).authMethod) authMethodChanged = true;
     }
 
-    let routingChanged =
+    const routingChanged =
+      connectionTargetChanged ||
+      authMethodChanged ||
       (gatewayId !== undefined && gatewayId !== existing.gatewayId) ||
       (gatewayPoolId !== undefined && gatewayPoolId !== existing.gatewayPoolId);
-    if (connectionDetails) {
-      const oldConn = validateConnectionDetails(
-        accountType,
-        await decrypt(projectId, existing.encryptedConnectionDetails)
-      ) as { host?: string; port?: number };
-      const newConn = validateConnectionDetails(accountType, connectionDetails) as { host?: string; port?: number };
-      if (oldConn.host !== newConn.host || oldConn.port !== newConn.port) routingChanged = true;
-    }
     if ((routingChanged || principalChanged) && existing.rotationAccountId) {
       updateData.rotationAccountId = null;
     }
@@ -680,9 +707,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       gatewayPoolId !== undefined ||
       templateId !== undefined
     ) {
-      const effectiveConnectionDetails = connectionDetails
-        ? validateConnectionDetails(accountType, connectionDetails)
-        : validateConnectionDetails(accountType, await decrypt(projectId, existing.encryptedConnectionDetails));
+      const testConnectionDetails =
+        effectiveConnectionDetails ??
+        validateConnectionDetails(accountType, await decrypt(projectId, existing.encryptedConnectionDetails));
 
       // only test with credentials supplied in this request to prevent exfiltration
       let testCredentials = credentials ? validateCredentials(accountType, credentials) : null;
@@ -691,7 +718,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       }
       await assertConnectionOk(
         accountType,
-        effectiveConnectionDetails,
+        testConnectionDetails,
         testCredentials,
         {
           gatewayId: gatewayId !== undefined ? gatewayId : existing.gatewayId,

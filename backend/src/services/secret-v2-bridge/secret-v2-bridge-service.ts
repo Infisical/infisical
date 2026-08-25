@@ -1519,6 +1519,9 @@ export const secretV2BridgeServiceFactory = ({
             secretTags: secret.tags.map((i) => i.slug)
           });
 
+        const isValueMasked = secretValueHidden && !isPersonalSecret;
+        const isValueDiscarded = isValueMasked && secret.type !== SecretType.Personal;
+
         return reshapeBridgeSecret(
           projectId,
           environment,
@@ -1532,14 +1535,17 @@ export const secretV2BridgeServiceFactory = ({
                 ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
                 : el.value || ""
             })),
-            value: secret.encryptedValue
-              ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-              : "",
+            // reshapeBridgeSecret still surfaces the real plaintext for Personal secrets even when
+            // masking, so the decrypt is only skippable when the value is certain to be discarded.
+            value:
+              !isValueDiscarded && secret.encryptedValue
+                ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
+                : "",
             comment: secret.encryptedComment
               ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
               : ""
           },
-          secretValueHidden && !isPersonalSecret
+          isValueMasked
         );
       });
 

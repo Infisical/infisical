@@ -72,36 +72,90 @@ export type TemplateConstraints = {
   maxPathLength?: number;
 };
 
-export const useCertificatePolicy = (
-  templateData: any,
-  selectedProfile: any,
-  isModalOpen: boolean,
-  setValue: UseFormSetValue<any>,
-  watch: UseFormWatch<any>
-) => {
-  const [constraints, setConstraints] = useState<TemplateConstraints>({
-    allowedKeyUsages: [],
-    allowedExtendedKeyUsages: [],
-    requiredKeyUsages: [],
-    requiredExtendedKeyUsages: [],
-    restrictKeyUsages: false,
-    restrictExtendedKeyUsages: false,
-    allowedSignatureAlgorithms: [],
-    allowedKeyAlgorithms: [],
-    allowedSanTypes: [
-      CertSubjectAlternativeNameType.DNS_NAME,
-      CertSubjectAlternativeNameType.IP_ADDRESS,
-      CertSubjectAlternativeNameType.EMAIL,
-      CertSubjectAlternativeNameType.URI
-    ],
-    allowedSubjectAttributeTypes: [CertSubjectAttributeType.COMMON_NAME],
-    shouldShowSanSection: true,
-    shouldShowSubjectSection: true,
-    templateAllowsCA: false,
-    templateRequiresCA: false,
-    maxPathLength: undefined
-  });
+export const DEFAULT_TEMPLATE_CONSTRAINTS: TemplateConstraints = {
+  allowedKeyUsages: [],
+  allowedExtendedKeyUsages: [],
+  requiredKeyUsages: [],
+  requiredExtendedKeyUsages: [],
+  restrictKeyUsages: false,
+  restrictExtendedKeyUsages: false,
+  allowedSignatureAlgorithms: [],
+  allowedKeyAlgorithms: [],
+  allowedSanTypes: [
+    CertSubjectAlternativeNameType.DNS_NAME,
+    CertSubjectAlternativeNameType.IP_ADDRESS,
+    CertSubjectAlternativeNameType.EMAIL,
+    CertSubjectAlternativeNameType.URI
+  ],
+  allowedSubjectAttributeTypes: [CertSubjectAttributeType.COMMON_NAME],
+  shouldShowSanSection: true,
+  shouldShowSubjectSection: true,
+  templateAllowsCA: false,
+  templateRequiresCA: false,
+  maxPathLength: undefined
+};
 
+export const deriveTemplateConstraints = (templateData: any): TemplateConstraints => {
+  const isCaPolicy =
+    (templateData.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
+  const templateAllowsCA =
+    isCaPolicy === CertPolicyState.ALLOWED || isCaPolicy === CertPolicyState.REQUIRED;
+
+  const sanTypes: CertSubjectAlternativeNameType[] = templateData.sans
+    ? Array.from(
+        new Set<CertSubjectAlternativeNameType>(
+          templateData.sans.map(
+            (sanPolicy: any) => sanPolicy.type as CertSubjectAlternativeNameType
+          )
+        )
+      )
+    : [...DEFAULT_TEMPLATE_CONSTRAINTS.allowedSanTypes];
+  const subjectAttributeTypes: CertSubjectAttributeType[] = templateData.subject
+    ? Array.from(
+        new Set<CertSubjectAttributeType>(
+          templateData.subject.map(
+            (subjectPolicy: any) => subjectPolicy.type as CertSubjectAttributeType
+          )
+        )
+      )
+    : [
+        CertSubjectAttributeType.COMMON_NAME,
+        CertSubjectAttributeType.ORGANIZATION,
+        CertSubjectAttributeType.ORGANIZATIONAL_UNIT,
+        CertSubjectAttributeType.COUNTRY,
+        CertSubjectAttributeType.STATE,
+        CertSubjectAttributeType.LOCALITY,
+        CertSubjectAttributeType.DOMAIN_COMPONENT
+      ];
+
+  const constraints: TemplateConstraints = {
+    allowedSignatureAlgorithms: templateData.algorithms?.signature || [],
+    allowedKeyAlgorithms: templateData.algorithms?.keyAlgorithm || [],
+    allowedKeyUsages: [
+      ...(templateData.keyUsages?.required || []),
+      ...(templateData.keyUsages?.allowed || [])
+    ],
+    allowedExtendedKeyUsages: [
+      ...(templateData.extendedKeyUsages?.required || []),
+      ...(templateData.extendedKeyUsages?.allowed || [])
+    ],
+    requiredKeyUsages: templateData.keyUsages?.required || [],
+    requiredExtendedKeyUsages: templateData.extendedKeyUsages?.required || [],
+    restrictKeyUsages: Boolean(templateData.keyUsages),
+    restrictExtendedKeyUsages: Boolean(templateData.extendedKeyUsages),
+    allowedSanTypes: sanTypes,
+    allowedSubjectAttributeTypes: subjectAttributeTypes,
+    shouldShowSanSection: sanTypes.length > 0,
+    shouldShowSubjectSection: subjectAttributeTypes.length > 0,
+    templateAllowsCA,
+    templateRequiresCA: isCaPolicy === CertPolicyState.REQUIRED,
+    maxPathLength: templateData.basicConstraints?.maxPathLength
+  };
+
+  return constraints;
+};
+
+export const useCertificatePolicyOptions = (constraints: TemplateConstraints) => {
   const filteredKeyUsages = useMemo(() => {
     if (!constraints.restrictKeyUsages) return [...KEY_USAGES_OPTIONS];
     return KEY_USAGES_OPTIONS.filter(({ value }) => constraints.allowedKeyUsages.includes(value));
@@ -140,29 +194,32 @@ export const useCertificatePolicy = (
       .map((opt) => ({ value: opt.value as string, label: opt.label }));
   }, [constraints.allowedKeyAlgorithms]);
 
+  return {
+    filteredKeyUsages,
+    filteredExtendedKeyUsages,
+    availableSignatureAlgorithms,
+    availableKeyAlgorithms
+  };
+};
+
+export const useCertificatePolicy = (
+  templateData: any,
+  selectedProfile: any,
+  isModalOpen: boolean,
+  setValue: UseFormSetValue<any>,
+  watch: UseFormWatch<any>
+) => {
+  const [constraints, setConstraints] = useState<TemplateConstraints>(DEFAULT_TEMPLATE_CONSTRAINTS);
+
+  const {
+    filteredKeyUsages,
+    filteredExtendedKeyUsages,
+    availableSignatureAlgorithms,
+    availableKeyAlgorithms
+  } = useCertificatePolicyOptions(constraints);
+
   const resetConstraints = () => {
-    setConstraints({
-      allowedKeyUsages: [],
-      allowedExtendedKeyUsages: [],
-      requiredKeyUsages: [],
-      requiredExtendedKeyUsages: [],
-      restrictKeyUsages: false,
-      restrictExtendedKeyUsages: false,
-      allowedSignatureAlgorithms: [],
-      allowedKeyAlgorithms: [],
-      allowedSanTypes: [
-        CertSubjectAlternativeNameType.DNS_NAME,
-        CertSubjectAlternativeNameType.IP_ADDRESS,
-        CertSubjectAlternativeNameType.EMAIL,
-        CertSubjectAlternativeNameType.URI
-      ],
-      allowedSubjectAttributeTypes: [CertSubjectAttributeType.COMMON_NAME],
-      shouldShowSanSection: true,
-      shouldShowSubjectSection: true,
-      templateAllowsCA: false,
-      templateRequiresCA: false,
-      maxPathLength: undefined
-    });
+    setConstraints(DEFAULT_TEMPLATE_CONSTRAINTS);
   };
 
   const prevProfileIdRef = useRef<string | undefined>(undefined);
@@ -172,37 +229,8 @@ export const useCertificatePolicy = (
       const profileChanged = prevProfileIdRef.current !== selectedProfile.id;
       prevProfileIdRef.current = selectedProfile.id;
 
-      // CA issuance is a privilege boundary: an undefined basicConstraints policy denies CA by default
-      const isCaPolicy =
-        (templateData.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
-      const templateAllowsCA =
-        isCaPolicy === CertPolicyState.ALLOWED || isCaPolicy === CertPolicyState.REQUIRED;
-      const templateRequiresCA = isCaPolicy === CertPolicyState.REQUIRED;
-      const maxPathLength = templateData.basicConstraints?.maxPathLength;
-
-      const newConstraints: TemplateConstraints = {
-        allowedSignatureAlgorithms: templateData.algorithms?.signature || [],
-        allowedKeyAlgorithms: templateData.algorithms?.keyAlgorithm || [],
-        allowedKeyUsages: [
-          ...(templateData.keyUsages?.required || []),
-          ...(templateData.keyUsages?.allowed || [])
-        ],
-        allowedExtendedKeyUsages: [
-          ...(templateData.extendedKeyUsages?.required || []),
-          ...(templateData.extendedKeyUsages?.allowed || [])
-        ],
-        requiredKeyUsages: templateData.keyUsages?.required || [],
-        requiredExtendedKeyUsages: templateData.extendedKeyUsages?.required || [],
-        restrictKeyUsages: Boolean(templateData.keyUsages),
-        restrictExtendedKeyUsages: Boolean(templateData.extendedKeyUsages),
-        allowedSanTypes: [],
-        allowedSubjectAttributeTypes: [],
-        shouldShowSanSection: true,
-        shouldShowSubjectSection: true,
-        templateAllowsCA,
-        templateRequiresCA,
-        maxPathLength
-      };
+      const newConstraints = deriveTemplateConstraints(templateData);
+      const { templateRequiresCA } = newConstraints;
 
       // Pre-populate from profile defaults
       const defaults = selectedProfile?.defaults;
@@ -227,53 +255,6 @@ export const useCertificatePolicy = (
         if (defaults.basicConstraints.pathLength !== undefined) {
           setValue("basicConstraints.pathLength", defaults.basicConstraints.pathLength);
         }
-      }
-
-      // Handle SAN types. An undefined SAN policy allows every SAN type (allow all).
-      // A defined SAN policy constrains to exactly its listed types — an empty
-      // array means no SAN is allowed. Only an undefined policy allows all SAN types.
-      if (templateData.sans) {
-        const sanTypes: CertSubjectAlternativeNameType[] = [];
-        templateData.sans.forEach((sanPolicy: any) => {
-          if (!sanTypes.includes(sanPolicy.type)) {
-            sanTypes.push(sanPolicy.type);
-          }
-        });
-        newConstraints.allowedSanTypes = sanTypes;
-        newConstraints.shouldShowSanSection = sanTypes.length > 0;
-      } else {
-        newConstraints.allowedSanTypes = [
-          CertSubjectAlternativeNameType.DNS_NAME,
-          CertSubjectAlternativeNameType.IP_ADDRESS,
-          CertSubjectAlternativeNameType.EMAIL,
-          CertSubjectAlternativeNameType.URI
-        ];
-        newConstraints.shouldShowSanSection = true;
-      }
-
-      // A defined subject policy constrains to exactly its listed types — an
-      // empty array means no subject attribute is allowed. Only an undefined policy allows all.
-      if (templateData.subject) {
-        const subjectTypes: CertSubjectAttributeType[] = [];
-        templateData.subject.forEach((subjectPolicy: any) => {
-          if (!subjectTypes.includes(subjectPolicy.type)) {
-            subjectTypes.push(subjectPolicy.type as CertSubjectAttributeType);
-          }
-        });
-        newConstraints.allowedSubjectAttributeTypes = subjectTypes;
-        newConstraints.shouldShowSubjectSection = subjectTypes.length > 0;
-      } else {
-        newConstraints.shouldShowSubjectSection = true;
-        // No subject policy allows every subject attribute type (allow all)
-        newConstraints.allowedSubjectAttributeTypes = [
-          CertSubjectAttributeType.COMMON_NAME,
-          CertSubjectAttributeType.ORGANIZATION,
-          CertSubjectAttributeType.ORGANIZATIONAL_UNIT,
-          CertSubjectAttributeType.COUNTRY,
-          CertSubjectAttributeType.STATE,
-          CertSubjectAttributeType.LOCALITY,
-          CertSubjectAttributeType.DOMAIN_COMPONENT
-        ];
       }
 
       // Pre-populate subject attributes from profile defaults
