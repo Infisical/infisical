@@ -97,7 +97,9 @@ import {
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
-  isExpiringWithinOneDay
+  isExpiringWithinOneDay,
+  isManagedCertificate,
+  RENEWAL_UNAVAILABLE_NO_PROFILE
 } from "./CertificatesTable.utils";
 import { ColumnVisibilityToggle, getDefaultVisibleColumns } from "./ColumnVisibilityToggle";
 import { certificatesToCSV, downloadCSV } from "./csvExport";
@@ -1204,18 +1206,21 @@ export const CertificatesTable = ({
                                 );
                               })()}
                               {(() => {
-                                const canRenew =
+                                const isRenewable =
                                   !isInventoryView &&
-                                  (certificate.profileId || certificate.caId) &&
                                   !certificate.renewedByCertificateId &&
                                   !isRevoked &&
                                   !isExpired;
 
-                                if (!canRenew) return null;
+                                if (!isRenewable) return null;
 
-                                return (
+                                const profileMissing = !certificate.profileId;
+                                if (profileMissing && !isManagedCertificate(certificate))
+                                  return null;
+
+                                const item = (
                                   <DropdownMenuItem
-                                    isDisabled={!canEditCertificate}
+                                    isDisabled={!canEditCertificate || profileMissing}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handlePopUpOpen("renewCertificate", {
@@ -1227,6 +1232,23 @@ export const CertificatesTable = ({
                                     <RefreshCwIcon />
                                     Renew Now
                                   </DropdownMenuItem>
+                                );
+
+                                if (!profileMissing) return item;
+
+                                return (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div>{item}</div>
+                                    </TooltipTrigger>
+                                    <TooltipContent
+                                      side="left"
+                                      sideOffset={20}
+                                      className="max-w-72"
+                                    >
+                                      {RENEWAL_UNAVAILABLE_NO_PROFILE}
+                                    </TooltipContent>
+                                  </Tooltip>
                                 );
                               })()}
                               {!isInventoryView &&

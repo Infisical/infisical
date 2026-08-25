@@ -15,6 +15,17 @@ export const getCertSourceLabel = (source: TCertificateSource): string => {
   }
 };
 
+export const RENEWAL_UNAVAILABLE_NO_PROFILE =
+  "Renewal is unavailable because the certificate profile this certificate was issued from no longer exists.";
+
+type TCertificateRenewalSource = {
+  profileId?: string | null;
+  source?: string | null;
+};
+
+export const isManagedCertificate = (certificate: TCertificateRenewalSource) =>
+  (certificate.source ?? CertSource.Issued) === CertSource.Issued;
+
 type TCertificateStatusSource = {
   status?: string | null;
   notAfter: string;

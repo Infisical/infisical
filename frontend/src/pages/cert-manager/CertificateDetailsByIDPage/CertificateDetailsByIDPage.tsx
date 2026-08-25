@@ -13,7 +13,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  PageLoader
+  PageLoader,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -51,7 +54,11 @@ import { CertificateManagePkiSyncsModal } from "../CertificatesPage/components/C
 import { CertificateManageRenewalModal } from "../CertificatesPage/components/CertificateManageRenewalModal";
 import { CertificateRenewalModal } from "../CertificatesPage/components/CertificateRenewalModal";
 import { CertificateRevocationModal } from "../CertificatesPage/components/CertificateRevocationModal";
-import { isExpiringWithinOneDay } from "../CertificatesPage/components/CertificatesTable.utils";
+import {
+  isExpiringWithinOneDay,
+  isManagedCertificate,
+  RENEWAL_UNAVAILABLE_NO_PROFILE
+} from "../CertificatesPage/components/CertificatesTable.utils";
 import {
   CertificateDetailsSection,
   CertificateInstallationsSection,
@@ -386,13 +393,21 @@ const Page = () => {
                     Disable Auto-Renewal
                   </DropdownMenuItem>
                 )}
-              {!isInventoryView &&
-                (certificate.profileId || certificate.caId) &&
-                !certificate.renewedByCertificateId &&
-                !isRevoked &&
-                !isExpired && (
+              {(() => {
+                const isRenewable =
+                  !isInventoryView &&
+                  !certificate.renewedByCertificateId &&
+                  !isRevoked &&
+                  !isExpired;
+
+                if (!isRenewable) return null;
+
+                const profileMissing = !certificate.profileId;
+                if (profileMissing && !isManagedCertificate(certificate)) return null;
+
+                const item = (
                   <DropdownMenuItem
-                    isDisabled={!canEditCertificate}
+                    isDisabled={!canEditCertificate || profileMissing}
                     onClick={() =>
                       handlePopUpOpen("renewCertificate", {
                         certificateId: certificate.id,
@@ -402,7 +417,21 @@ const Page = () => {
                   >
                     Renew Now
                   </DropdownMenuItem>
-                )}
+                );
+
+                if (!profileMissing) return item;
+
+                return (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>{item}</div>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" sideOffset={20} className="max-w-72">
+                      {RENEWAL_UNAVAILABLE_NO_PROFILE}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })()}
               {!isInventoryView &&
                 certificate.status === CertStatus.ACTIVE &&
                 !certificate.renewedByCertificateId &&
