@@ -1,3 +1,5 @@
+import jwt from "jsonwebtoken";
+
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { OauthGrantType } from "./oauth-client-types";
@@ -92,6 +94,15 @@ export const toOauthTokenError = (error: unknown, grantType?: OauthGrantType): O
     const code = grantType ? REJECTED_GRANT_CODE_BY_GRANT_TYPE[grantType] : OauthTokenErrorCode.InvalidGrant;
 
     return new OauthTokenError({ code, message: error.message, error });
+  }
+
+  if (error instanceof jwt.JsonWebTokenError) {
+    const code = grantType ? REJECTED_GRANT_CODE_BY_GRANT_TYPE[grantType] : OauthTokenErrorCode.InvalidGrant;
+    return new OauthTokenError({
+      code,
+      message: "The token presented with this grant is expired or invalid. Obtain a new one.",
+      error
+    });
   }
 
   if (error instanceof BadRequestError) {

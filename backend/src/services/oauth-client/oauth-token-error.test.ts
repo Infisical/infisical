@@ -1,3 +1,5 @@
+import jwt from "jsonwebtoken";
+
 import {
   BadRequestError,
   ForbiddenRequestError,
@@ -78,6 +80,40 @@ describe("toOauthTokenError", () => {
 
     expect(mapped.oauthErrorCode).toBe(OauthTokenErrorCode.InvalidRequest);
     expect(mapped.statusCode).toBe(400);
+  });
+
+  // jsonwebtoken raises these out of validateRefreshToken. An expired or malformed refresh token is the
+  // client presenting a token we will not act on, not an outage, so it must not fall through to a 500.
+  test("maps an expired or malformed refresh token to invalid_grant", () => {
+    const expired = new jwt.TokenExpiredError("jwt expired", new Date(0));
+    const onRefresh = toOauthTokenError(expired, OauthGrantType.RefreshToken);
+
+    expect(onRefresh.oauthErrorCode).toBe(OauthTokenErrorCode.InvalidGrant);
+    expect(onRefresh.statusCode).toBe(400);
+    expect(onRefresh.error).toBe(expired);
+
+    expect(
+      toOauthTokenError(new jwt.JsonWebTokenError("invalid signature"), OauthGrantType.RefreshToken).statusCode
+    ).toBe(400);
+    expect(
+      toOauthTokenError(new jwt.NotBeforeError("jwt not active", new Date(0)), OauthGrantType.RefreshToken).statusCode
+    ).toBe(400);
+  });
+
+  // The library's wording describes our internals rather than what the client should do.
+  test("does not pass jsonwebtoken's own wording on to the client", () => {
+    const mapped = toOauthTokenError(new jwt.JsonWebTokenError("invalid signature"), OauthGrantType.RefreshToken);
+
+    expect(mapped.message).not.toContain("jwt");
+    expect(mapped.message).not.toContain("signature");
+  });
+
+  // RFC 8693 section 2.2.2 again: the exchange owes invalid_request where the other grants owe
+  // invalid_grant, so the jsonwebtoken mapping has to key off the grant like the others.
+  test("maps a jsonwebtoken failure to invalid_request on the exchange grant", () => {
+    expect(
+      toOauthTokenError(new jwt.JsonWebTokenError("jwt malformed"), OauthGrantType.TokenExchange).oauthErrorCode
+    ).toBe(OauthTokenErrorCode.InvalidRequest);
   });
 
   test("maps a bad request to invalid_request, keeping its message", () => {
