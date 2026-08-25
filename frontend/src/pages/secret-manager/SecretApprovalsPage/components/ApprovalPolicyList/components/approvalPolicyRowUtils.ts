@@ -7,8 +7,11 @@ export type TApprovalSequence = {
   approvals: number;
 };
 
-export const groupApproversBySequence = (approvers: Approver[] = [], fallbackApprovals: number) =>
-  [...approvers]
+export const groupApproversBySequence = (
+  approvers: Approver[] | undefined,
+  fallbackApprovals: number
+) =>
+  [...(approvers ?? [])]
     .sort((a, b) => (a.sequence ?? 1) - (b.sequence ?? 1))
     .reduce<TApprovalSequence[]>((steps, approver) => {
       const sequence = approver.sequence ?? 1;

@@ -194,11 +194,13 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
   );
   const isApproverOptionsError = isMembersError || isGroupsError;
   const isApproverOptionsRetrying = isMembersFetching || isGroupsFetching;
-  const addPolicyDisabledReason = !canCreatePolicies
-    ? "Access restricted"
-    : isApproverOptionsError
-      ? "Approver options are unavailable"
-      : undefined;
+  let addPolicyDisabledReason: string | undefined;
+
+  if (!canCreatePolicies) {
+    addPolicyDisabledReason = "Access restricted";
+  } else if (isApproverOptionsError) {
+    addPolicyDisabledReason = "Approver options are unavailable";
+  }
 
   const [filters, setFilters] = useState<PolicyFilters>({
     type: null,
@@ -372,7 +374,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                     </IconButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
-                    className="thin-scrollbar max-h-[70vh] overflow-y-auto"
+                    className="max-h-[70vh] thin-scrollbar overflow-y-auto"
                     align="end"
                   >
                     <DropdownMenuLabel>Policy type</DropdownMenuLabel>

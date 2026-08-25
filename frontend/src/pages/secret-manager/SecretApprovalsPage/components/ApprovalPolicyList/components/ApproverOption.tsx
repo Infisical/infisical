@@ -14,9 +14,9 @@ export type ApproverOptionData = {
 
 const TypeIcon = ({ type }: { type: ApproverType | BypasserType }) =>
   type === ApproverType.Group ? (
-    <UsersIcon className="text-muted size-3.5 shrink-0" />
+    <UsersIcon className="size-3.5 shrink-0 text-muted" />
   ) : (
-    <UserIcon className="text-muted size-3.5 shrink-0" />
+    <UserIcon className="size-3.5 shrink-0 text-muted" />
   );
 
 export const ApproverOption = ({

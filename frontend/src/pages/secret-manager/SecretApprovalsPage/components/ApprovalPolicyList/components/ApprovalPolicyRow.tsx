@@ -125,15 +125,15 @@ export const ApprovalPolicyRow = ({
             </HoverCardTrigger>
             <HoverCardContent
               align="end"
-              className="thin-scrollbar max-h-96 w-80 overflow-y-auto p-4"
+              className="max-h-96 thin-scrollbar w-80 overflow-y-auto p-4"
             >
-              <div className="text-foreground mb-3 text-sm font-medium">Approvers</div>
+              <div className="mb-3 text-sm font-medium text-foreground">Approvers</div>
               {labels && labels.length > 0 ? (
                 <div className="flex flex-col gap-4">
                   {labels.map((el) => (
                     <div
                       key={`approval-list-${el.sequence}`}
-                      className="border-border flex flex-col gap-2.5 border-b pb-4 last:border-0 last:pb-0"
+                      className="flex flex-col gap-2.5 border-b border-border pb-4 last:border-0 last:pb-0"
                     >
                       {labels.length > 1 && (
                         <Badge variant="neutral" className="w-fit">
@@ -225,7 +225,7 @@ export const ApprovalPolicyRow = ({
                   ))}
                 </div>
               ) : (
-                <span className="text-muted text-sm">No approvers configured.</span>
+                <span className="text-sm text-muted">No approvers configured.</span>
               )}
             </HoverCardContent>
           </HoverCard>

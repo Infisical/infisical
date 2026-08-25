@@ -70,9 +70,9 @@ import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
-import { ApproverMultiValueLabel, ApproverOption, ApproverOptionData } from "./ApproverOption";
 import { approvalPolicyFormSchema, TApprovalPolicyFormSchema } from "./approvalPolicyFormSchema";
 import { groupApproversBySequence } from "./approvalPolicyRowUtils";
+import { ApproverMultiValueLabel, ApproverOption, ApproverOptionData } from "./ApproverOption";
 
 type Props = {
   isOpen?: boolean;
@@ -488,7 +488,7 @@ const Form = ({
       onSubmit={handleSubmit(handleFormSubmit)}
       className="flex flex-1 flex-col gap-4 overflow-hidden"
     >
-      <div className="thin-scrollbar flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+      <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
         {hasApproverOptionsError && (
           <Alert variant="danger">
             <CircleAlertIcon />
@@ -709,8 +709,8 @@ const Form = ({
           />
         )}
         <div>
-          <p className="text-foreground text-sm font-medium">Approvers</p>
-          <p className="text-muted text-xs">
+          <p className="text-sm font-medium text-foreground">Approvers</p>
+          <p className="text-xs text-muted">
             Select members or groups that are allowed to approve requests from this policy.
           </p>
         </div>
@@ -736,7 +736,7 @@ const Form = ({
                 </Field>
               </div>
             ) : (
-              <ItemGroup className="thin-scrollbar border-border bg-container max-h-[12rem] shrink-0 gap-0 overflow-y-auto rounded-lg border">
+              <ItemGroup className="max-h-[12rem] thin-scrollbar shrink-0 gap-0 overflow-y-auto rounded-lg border border-border bg-container">
                 {sequenceApproversFieldArray.fields.map((el, index) => (
                   <Fragment key={el.id}>
                     {index > 0 && <ItemSeparator className="m-0" />}
@@ -781,7 +781,7 @@ const Form = ({
                       </ItemContent>
                       <ItemActions>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-muted text-xs">Min</span>
+                          <span className="text-xs text-muted">Min</span>
                           {renderMinApprovals(index, "h-8 w-14")}
                         </div>
                         <Tooltip>
