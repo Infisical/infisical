@@ -460,6 +460,7 @@ export const fnTriggerWebhook = async ({
       } as TWebhookPayloads;
       const payload = getWebhookPayload(formattedEvent);
       if (!payload) return;
+      logger.info({ hookId: hook.id }, "Triggering webhook");
       return triggerWebhookRequest(hook, secretManagerDecryptor, payload);
     })
   );
