@@ -927,37 +927,4 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       return crls;
     }
   });
-
-  // TODO: implement this endpoint in the future
-  // server.route({
-  //   method: "GET",
-  //   url: "/:caId/crl/rotate",
-  //   config: {
-  //     rateLimit: writeLimit
-  //   },
-  //   onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-  //   schema: {
-  //     description: "Rotate CRLs of the CA",
-  //     params: z.object({
-  //       caId: z.string().trim()
-  //     }),
-  //     response: {
-  //       200: z.object({
-  //         message: z.string()
-  //       })
-  //     }
-  //   },
-  //   handler: async (req) => {
-  //     await server.services.certificateAuthority.rotateCaCrl({
-  //       caId: req.params.caId,
-  //       actor: req.permission.type,
-  //       actorId: req.permission.id,
-  //       actorAuthMethod: req.permission.authMethod,
-  //       actorOrgId: req.permission.orgId
-  //     });
-  //     return {
-  //       message: "Successfully rotated CA CRL"
-  //     };
-  //   }
-  // });
 };
