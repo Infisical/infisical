@@ -290,62 +290,63 @@ export const CreateAccountSheet = ({
           {step === 1 ? (
             <>
               <div className="flex min-h-0 flex-1 flex-col gap-5 p-4">
-                <Controller
-                  control={control}
-                  name="folderId"
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel>
-                        Folder<span className="text-product-pam">*</span>
-                      </FieldLabel>
-                      <FieldContent>
-                        <Select
-                          value={field.value}
-                          disabled={isFolderLocked}
-                          onValueChange={(val) => {
-                            if (val === CREATE_FOLDER_VALUE) {
-                              setCreateFolderOpen(true);
-                              return;
-                            }
-                            field.onChange(val);
-                          }}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select folder" />
-                          </SelectTrigger>
-                          <SelectContent position="popper">
-                            {folders.map((folder) => (
-                              <SelectItem key={folder.id} value={folder.id}>
-                                {folder.name}
-                              </SelectItem>
-                            ))}
-                            {folders.length > 0 && <SelectSeparator />}
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div>
-                                  <SelectItem
-                                    value={CREATE_FOLDER_VALUE}
-                                    disabled={!isProductAdmin}
-                                  >
-                                    <span className="flex items-center gap-1.5 text-muted">
-                                      <Plus className="size-4" />
-                                      Create folder
-                                    </span>
-                                  </SelectItem>
-                                </div>
-                              </TooltipTrigger>
-                              {!isProductAdmin && (
-                                <TooltipContent side="left">
-                                  Only product admins can create folders
-                                </TooltipContent>
-                              )}
-                            </Tooltip>
-                          </SelectContent>
-                        </Select>
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
+                {!isFolderLocked && (
+                  <Controller
+                    control={control}
+                    name="folderId"
+                    render={({ field }) => (
+                      <Field>
+                        <FieldLabel>
+                          Folder<span className="text-product-pam">*</span>
+                        </FieldLabel>
+                        <FieldContent>
+                          <Select
+                            value={field.value}
+                            onValueChange={(val) => {
+                              if (val === CREATE_FOLDER_VALUE) {
+                                setCreateFolderOpen(true);
+                                return;
+                              }
+                              field.onChange(val);
+                            }}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select folder" />
+                            </SelectTrigger>
+                            <SelectContent position="popper">
+                              {folders.map((folder) => (
+                                <SelectItem key={folder.id} value={folder.id}>
+                                  {folder.name}
+                                </SelectItem>
+                              ))}
+                              {folders.length > 0 && <SelectSeparator />}
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div>
+                                    <SelectItem
+                                      value={CREATE_FOLDER_VALUE}
+                                      disabled={!isProductAdmin}
+                                    >
+                                      <span className="flex items-center gap-1.5 text-muted">
+                                        <Plus className="size-4" />
+                                        Create folder
+                                      </span>
+                                    </SelectItem>
+                                  </div>
+                                </TooltipTrigger>
+                                {!isProductAdmin && (
+                                  <TooltipContent side="left">
+                                    Only product admins can create folders
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                            </SelectContent>
+                          </Select>
+                        </FieldContent>
+                      </Field>
+                    )}
+                  />
+                )}
 
                 <Controller
                   control={control}
