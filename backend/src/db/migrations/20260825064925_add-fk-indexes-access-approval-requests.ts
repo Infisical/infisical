@@ -14,12 +14,12 @@ import { TableName } from "../schemas";
 // - requestedByUserId (CASCADE/SET NULL, notNullable): every row participates → full index.
 // - approvedByUserId (SET NULL, nullable): populated only after approval → partial index.
 // - revokedByUserId (SET NULL, nullable): populated only after revocation → partial index.
+// - editedByUserId (SET NULL, nullable): populated only when a reviewer edits a request → partial index.
 // - requestId (CASCADE, notNullable): every reviewer row participates → full index.
 // - reviewerUserId (SET NULL, notNullable): every reviewer row participates → full index.
 //
-// Built CONCURRENTLY so the deploy doesn't take a write-blocking lock — mirrors the pattern from
-// 20260721093822_add-fk-indexes-pki-signer-issuance-jobs.ts, including the invalid-index rebuild
-// guard for interrupted concurrent builds.
+// Built CONCURRENTLY so the deploy doesn't take a write-blocking lock, including an invalid-index
+// rebuild guard for interrupted concurrent builds.
 const FK_INDEXES = [
   {
     table: TableName.AccessApprovalRequest,
@@ -49,6 +49,12 @@ const FK_INDEXES = [
     table: TableName.AccessApprovalRequest,
     column: "revokedByUserId",
     name: "access_approval_requests_revoked_by_user_id_idx",
+    partial: true
+  },
+  {
+    table: TableName.AccessApprovalRequest,
+    column: "editedByUserId",
+    name: "access_approval_requests_edited_by_user_id_idx",
     partial: true
   },
   {
