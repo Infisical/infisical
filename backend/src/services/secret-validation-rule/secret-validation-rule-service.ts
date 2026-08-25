@@ -390,7 +390,7 @@ export const secretValidationRuleServiceFactory = ({
   }) => {
     if (!secrets.length) return;
 
-    const rules = await secretValidationRuleDAL.find({ projectId, isActive: true }, undefined, tx);
+    const rules = await secretValidationRuleDAL.find({ projectId, isActive: true }, { tx });
     if (!rules.length) return;
 
     // Secret values and rule inputs share the SecretManager data key, so one
@@ -439,8 +439,7 @@ export const secretValidationRuleServiceFactory = ({
           secretIdsToCheck.map((sId) =>
             secretVersionV2BridgeDAL.find(
               { secretId: sId },
-              { sort: [["version", "desc"]], limit: MAX_PREVENT_VALUE_REUSE_VERSIONS },
-              tx
+              { sort: [["version", "desc"]], limit: MAX_PREVENT_VALUE_REUSE_VERSIONS, tx }
             )
           )
         );
