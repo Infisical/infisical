@@ -57,7 +57,7 @@ services:
 
   redis-commander:
     container_name: infisical-dev-redis-commander
-    image: rediscommander/redis-commander
+    image: ghcr.io/joeferner/redis-commander:0.9.0
     restart: always
     depends_on:
       - redis
@@ -222,7 +222,7 @@ services:
 
   smtp-server:
     container_name: infisical-dev-smtp-server
-    image: lytrax/mailhog:latest # https://github.com/mailhog/MailHog/issues/353#issuecomment-821137362
+    image: jcalonso/mailhog:v1.0.1 # multi-arch fork; upstream mailhog/mailhog is amd64-only
     restart: always
     logging:
       driver: "none" # disable saving logs
