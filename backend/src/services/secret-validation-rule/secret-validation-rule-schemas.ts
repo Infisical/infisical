@@ -53,15 +53,19 @@ const uniqueSecretValueConstraintSchema = z.object({
   appliesTo: z
     .enum(STATIC_RULE_TARGETS)
     .describe(openApiField(SECRET_VALIDATION_RULES.RULE.appliesToStatic, ConstraintTarget.SecretValue)),
-  value: z.object({
-    secretVersions: z.object({
-      enabled: z.boolean(),
-      versions: z.number().int().min(1).max(MAX_PREVENT_VALUE_REUSE_VERSIONS)
-    }),
-    otherSecrets: z.object({
-      enabled: z.boolean()
+  value: z
+    .object({
+      secretVersions: z.object({
+        enabled: z.boolean(),
+        versions: z.number().int().min(1).max(MAX_PREVENT_VALUE_REUSE_VERSIONS)
+      }),
+      otherSecrets: z.object({
+        enabled: z.boolean()
+      })
     })
-  })
+    .refine((v) => v.secretVersions.enabled || v.otherSecrets.enabled, {
+      message: "At least one uniqueness check must be enabled (version history or other secrets)"
+    })
 });
 
 const buildConstraintSchemaForRuleType = (ruleType: SecretValidationRuleType) => {

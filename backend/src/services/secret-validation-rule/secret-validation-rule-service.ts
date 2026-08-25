@@ -13,7 +13,7 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { expandSecretReferencesFactory } from "../secret-v2-bridge/secret-reference-fns";
+import { containsSecretReference, expandSecretReferencesFactory } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretValidationRuleDALFactory } from "./secret-validation-rule-dal";
@@ -460,7 +460,7 @@ export const secretValidationRuleServiceFactory = ({
 
     // We build the map of all duplicate secrets (ignoring scope) and afterwards check
     // if any of those are part of the scope of the rule.
-    const duplicateOfMap: Record<string, { key: string; environment: string; path: string }> = {};
+    const duplicateOfMap: Record<string, { key: string; environment: string; path: string }> = Object.create(null);
     if (duplicateValuesRule) {
       if (tx) {
         // If two concurrent requests try to add two secrets with the same value, both will not find
@@ -477,7 +477,7 @@ export const secretValidationRuleServiceFactory = ({
           projectId
         });
 
-        const secretsWithValues = secrets.filter((s) => s.value !== undefined);
+        const secretsWithValues = secrets.filter((s) => s.value !== undefined && !containsSecretReference(s.value));
         const blindIndexes = await Promise.all(
           secretsWithValues.map((s) => generateSecretBlindIndex(Buffer.from(s.value!)))
         );

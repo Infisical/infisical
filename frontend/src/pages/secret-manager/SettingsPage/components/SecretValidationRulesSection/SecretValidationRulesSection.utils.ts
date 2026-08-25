@@ -201,15 +201,19 @@ const stringConstraintSchema = z
 const uniqueSecretValueConstraintSchema = z.object({
   type: z.literal(ConstraintType.UniqueSecretValue),
   appliesTo: z.nativeEnum(ConstraintTarget),
-  value: z.object({
-    secretVersions: z.object({
-      enabled: z.boolean(),
-      versions: z.number().int().min(1).max(MAX_PREVENT_VALUE_REUSE_VERSIONS)
-    }),
-    otherSecrets: z.object({
-      enabled: z.boolean()
+  value: z
+    .object({
+      secretVersions: z.object({
+        enabled: z.boolean(),
+        versions: z.number().int().min(1).max(MAX_PREVENT_VALUE_REUSE_VERSIONS)
+      }),
+      otherSecrets: z.object({
+        enabled: z.boolean()
+      })
     })
-  })
+    .refine((v) => v.secretVersions.enabled || v.otherSecrets.enabled, {
+      message: "At least one uniqueness check must be enabled"
+    })
 });
 
 export const constraintSchema = z.union([
