@@ -1894,7 +1894,8 @@ export const registerRoutes = async (
     pamSessionDAL,
     projectDAL,
     telemetryService,
-    userDAL
+    userDAL,
+    gatewayV2Service
   });
 
   const pamAccessRequestService = pamAccessRequestServiceFactory({
