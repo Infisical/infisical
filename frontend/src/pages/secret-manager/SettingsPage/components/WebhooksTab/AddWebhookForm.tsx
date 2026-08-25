@@ -275,7 +275,7 @@ export const AddWebhookForm = ({
                     />
                     <FieldError>{error?.message}</FieldError>
                     <FieldDescription>
-                      Enter `/` to match all secret paths in the selected environment.
+                      Enter `/**` to match all secret paths in the selected environment.
                     </FieldDescription>
                   </Field>
                 )}
