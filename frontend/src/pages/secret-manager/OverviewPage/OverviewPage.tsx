@@ -3842,9 +3842,6 @@ const OverviewPageContent = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogMedia>
-              <CopyIcon />
-            </AlertDialogMedia>
             <AlertDialogTitle>
               {isReplicateNonConflicting ? "Replicate Secrets" : "Overwrite Existing Secrets"}
             </AlertDialogTitle>
