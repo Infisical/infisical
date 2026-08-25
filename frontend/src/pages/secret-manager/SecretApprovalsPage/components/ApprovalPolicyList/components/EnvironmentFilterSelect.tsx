@@ -32,7 +32,7 @@ export const EnvironmentFilterSelect = ({
   const [inputValue, setInputValue] = useState("");
 
   const label =
-    environments.find((env) => env.id === selectedEnvironmentIds[0])?.name ?? "All environments";
+    environments.find((env) => env.id === selectedEnvironmentIds[0])?.name ?? "All Environments";
 
   const handleSelectAll = () => onChange([]);
 
@@ -73,7 +73,7 @@ export const EnvironmentFilterSelect = ({
                         selectedEnvironmentIds.length ? "opacity-0" : "opacity-100"
                       )}
                     />
-                    All environments
+                    All Environments
                   </CommandItem>
                 </CommandGroup>
                 <CommandSeparator />

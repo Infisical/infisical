@@ -100,8 +100,8 @@ export const ApprovalPolicyRow = ({
 
   return (
     <TableRow>
-      <TableCell isTruncatable className="w-1/3" title={policy.name || "Unnamed policy"}>
-        {policy.name || <span className="text-muted">Unnamed policy</span>}
+      <TableCell isTruncatable className="w-1/3" title={policy.name || "Unnamed Policy"}>
+        {policy.name || <span className="text-muted">Unnamed Policy</span>}
       </TableCell>
       <TableCell isTruncatable className="w-1/3" title={environmentNames}>
         {environmentNames}
@@ -217,7 +217,7 @@ export const ApprovalPolicyRow = ({
                       <Detail>
                         <DetailLabel className="flex items-center gap-1.5">
                           <ClipboardCheckIcon className="size-3" />
-                          Approvals required
+                          Approvals Required
                         </DetailLabel>
                         <DetailValue>{el.approvals}</DetailValue>
                       </Detail>
@@ -242,7 +242,7 @@ export const ApprovalPolicyRow = ({
                 title={canEdit ? undefined : (editDisabledReason ?? "Access restricted")}
               >
                 <PencilIcon />
-                Edit policy
+                Edit Policy
               </DropdownMenuItem>
               <DropdownMenuItem
                 variant="danger"
@@ -251,7 +251,7 @@ export const ApprovalPolicyRow = ({
                 title={canDelete ? undefined : "Access restricted"}
               >
                 <Trash2Icon />
-                Delete policy
+                Delete Policy
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

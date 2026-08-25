@@ -516,7 +516,7 @@ const Form = ({
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
               <FieldLabel>
-                Policy type
+                Policy Type
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <InfoIcon />
@@ -558,12 +558,12 @@ const Form = ({
           name="name"
           render={({ field, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Policy name</FieldLabel>
+              <FieldLabel>Policy Name</FieldLabel>
               <FieldContent>
                 <Input
                   {...field}
                   value={field.value || ""}
-                  placeholder="e.g. Production approvals"
+                  placeholder="e.g. Production Approvals"
                   isError={Boolean(error)}
                 />
                 <FieldError errors={[error]} />
@@ -578,7 +578,7 @@ const Form = ({
           render={({ field, fieldState: { error } }) => (
             <Field>
               <FieldLabel>
-                Secret path
+                Secret Path
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <InfoIcon />
@@ -693,7 +693,7 @@ const Form = ({
             defaultValue={1}
             render={({ field, fieldState: { error } }) => (
               <Field>
-                <FieldLabel>Min. approvals required</FieldLabel>
+                <FieldLabel>Min. Approvals Required</FieldLabel>
                 <FieldContent>
                   <Input
                     {...field}
@@ -731,7 +731,7 @@ const Form = ({
                   </FieldContent>
                 </Field>
                 <Field className="w-28">
-                  <FieldLabel>Min. approvals</FieldLabel>
+                  <FieldLabel>Min. Approvals</FieldLabel>
                   <FieldContent>{renderMinApprovals(0, "h-9 w-full")}</FieldContent>
                 </Field>
               </div>
@@ -796,7 +796,7 @@ const Form = ({
                               <Trash2Icon />
                             </IconButton>
                           </TooltipTrigger>
-                          <TooltipContent>Remove step</TooltipContent>
+                          <TooltipContent>Remove Step</TooltipContent>
                         </Tooltip>
                       </ItemActions>
                     </Item>
@@ -818,7 +818,7 @@ const Form = ({
                 }
               >
                 <PlusIcon />
-                Add step
+                Add Step
               </Button>
             </div>
           </>
@@ -860,7 +860,7 @@ const Form = ({
           render={({ field: { value, onChange } }) => (
             <Field orientation="horizontal">
               <FieldContent>
-                <FieldTitle>Self approvals</FieldTitle>
+                <FieldTitle>Self Approvals</FieldTitle>
                 <FieldDescription>Allow approvers to review their own requests</FieldDescription>
               </FieldContent>
               <Switch
@@ -880,7 +880,7 @@ const Form = ({
             render={({ field: { value, onChange } }) => (
               <Field orientation="horizontal">
                 <FieldContent>
-                  <FieldTitle>Bypass approval for machine identities</FieldTitle>
+                  <FieldTitle>Bypass Approval for Machine Identities</FieldTitle>
                   <FieldDescription>
                     When enabled, machine identities can modify secrets without requiring approval
                   </FieldDescription>
@@ -903,7 +903,7 @@ const Form = ({
           render={({ field: { value, onChange } }) => (
             <Field orientation="horizontal">
               <FieldContent>
-                <FieldTitle>Bypass approvals</FieldTitle>
+                <FieldTitle>Bypass Approvals</FieldTitle>
                 <FieldDescription>
                   Allow certain users to bypass policy in break-glass situations
                 </FieldDescription>
@@ -968,7 +968,7 @@ const Form = ({
           isPending={isSubmitting}
           isDisabled={isSubmitting || hasApproverOptionsError}
         >
-          {isEditMode ? "Update policy" : "Add policy"}
+          {isEditMode ? "Update Policy" : "Add Policy"}
         </Button>
         <Button onClick={onRequestClose} variant="outline" type="button" isDisabled={isSubmitting}>
           Close
@@ -1006,7 +1006,7 @@ export const AccessPolicyForm = ({ isOpen, onToggle, editValues, ...props }: Pro
       <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
         <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-xl">
           <SheetHeader className="border-b">
-            <SheetTitle>{isEditMode ? "Edit policy" : "Add policy"}</SheetTitle>
+            <SheetTitle>{isEditMode ? "Edit Policy" : "Add Policy"}</SheetTitle>
           </SheetHeader>
           <Form
             {...props}
@@ -1023,7 +1023,7 @@ export const AccessPolicyForm = ({ isOpen, onToggle, editValues, ...props }: Pro
         open={isDiscardDialogOpen}
         onOpenChange={setIsDiscardDialogOpen}
         onDiscard={confirmDiscard}
-        title="Discard policy changes?"
+        title="Discard Policy Changes?"
         description="Your unsaved policy changes will be lost."
       />
     </>

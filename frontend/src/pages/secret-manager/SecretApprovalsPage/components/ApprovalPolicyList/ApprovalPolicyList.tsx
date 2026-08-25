@@ -158,12 +158,14 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
     data: members,
     isError: isMembersError,
     isFetching: isMembersFetching,
+    isPending: isMembersPending,
     refetch: refetchMembers
   } = useGetWorkspaceUsers(projectId, true);
   const {
     data: groups,
     isError: isGroupsError,
     isFetching: isGroupsFetching,
+    isPending: isGroupsPending,
     refetch: refetchGroups
   } = useListWorkspaceGroups(currentProject?.id || "");
 
@@ -193,14 +195,19 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
     ProjectPermissionSub.SecretApproval
   );
   const isApproverOptionsError = isMembersError || isGroupsError;
+  const isApproverOptionsLoading = isMembersPending || isGroupsPending;
   const isApproverOptionsRetrying = isMembersFetching || isGroupsFetching;
-  let addPolicyDisabledReason: string | undefined;
+  let approverOptionsDisabledReason: string | undefined;
 
-  if (!canCreatePolicies) {
-    addPolicyDisabledReason = "Access restricted";
+  if (isApproverOptionsLoading) {
+    approverOptionsDisabledReason = "Approver options are loading";
   } else if (isApproverOptionsError) {
-    addPolicyDisabledReason = "Approver options are unavailable";
+    approverOptionsDisabledReason = "Approver options are unavailable";
   }
+
+  const addPolicyDisabledReason = canCreatePolicies
+    ? approverOptionsDisabledReason
+    : "Access restricted";
 
   const [filters, setFilters] = useState<PolicyFilters>({
     type: null,
@@ -334,7 +341,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                     isDisabled={Boolean(addPolicyDisabledReason)}
                   >
                     <PlusIcon />
-                    Add policy
+                    Add Policy
                   </Button>
                 </span>
               </TooltipTrigger>
@@ -344,7 +351,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {!canReadPolicies ? (
-            <AccessRestrictedNotice title="Access restricted" />
+            <AccessRestrictedNotice title="Access Restricted" />
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-2">
@@ -377,7 +384,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                     className="max-h-[70vh] thin-scrollbar overflow-y-auto"
                     align="end"
                   >
-                    <DropdownMenuLabel>Policy type</DropdownMenuLabel>
+                    <DropdownMenuLabel>Policy Type</DropdownMenuLabel>
                     <DropdownMenuRadioGroup
                       value={filters.type ?? "all"}
                       onValueChange={(value) =>
@@ -387,12 +394,12 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                         }))
                       }
                     >
-                      <DropdownMenuRadioItem value="all">All policies</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="all">All Policies</DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value={PolicyType.AccessPolicy}>
-                        Access policy
+                        Access Policy
                       </DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value={PolicyType.ChangePolicy}>
-                        Change policy
+                        Change Policy
                       </DropdownMenuRadioItem>
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
@@ -476,7 +483,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                       </TableHead>
                       <TableHead>
                         <div className="flex items-center">
-                          Secret path
+                          Secret Path
                           <IconButton
                             variant="ghost-muted"
                             size="xs"
@@ -537,13 +544,13 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                             key={policy.id}
                             members={members}
                             groups={groups}
-                            canEdit={canEditPolicies && !isApproverOptionsError}
-                            canDelete={canDeletePolicies}
-                            editDisabledReason={
-                              isApproverOptionsError
-                                ? "Approver options are unavailable"
-                                : undefined
+                            canEdit={
+                              canEditPolicies &&
+                              !isApproverOptionsLoading &&
+                              !isApproverOptionsError
                             }
+                            canDelete={canDeletePolicies}
+                            editDisabledReason={approverOptionsDisabledReason}
                             onEdit={() => handlePopUpOpen("policyForm", policy)}
                             onDelete={() => handlePopUpOpen("deletePolicy", policy)}
                           />
@@ -554,7 +561,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
               {!isPoliciesLoading && !isPoliciesError && !policies?.length && (
                 <Empty className="border">
                   <EmptyHeader>
-                    <EmptyTitle>No policies found</EmptyTitle>
+                    <EmptyTitle>No Policies Found</EmptyTitle>
                     <EmptyDescription>
                       Create a policy to require approval for secret changes and access requests.
                     </EmptyDescription>
@@ -569,7 +576,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
               ) && (
                 <Empty className="border">
                   <EmptyHeader>
-                    <EmptyTitle>No policies match search</EmptyTitle>
+                    <EmptyTitle>No Policies Match Search</EmptyTitle>
                     <EmptyDescription>Try adjusting your search or filters.</EmptyDescription>
                   </EmptyHeader>
                 </Empty>
