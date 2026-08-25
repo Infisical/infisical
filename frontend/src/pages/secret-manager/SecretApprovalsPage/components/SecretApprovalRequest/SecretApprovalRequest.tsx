@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
@@ -140,7 +140,7 @@ export const SecretApprovalRequest = () => {
   });
 
   const { permission } = useProjectPermission();
-  const { data: members } = useGetWorkspaceUsers(projectId, true);
+  const { data: members, isPending: areMembersPending } = useGetWorkspaceUsers(projectId, true);
   const { requestId } = search;
   const handleCloseRequestDetail = () => {
     navigate({ search: (prev) => ({ ...prev, requestId: "" }) });
@@ -161,6 +161,27 @@ export const SecretApprovalRequest = () => {
     value: user.id,
     label: user.username
   }));
+
+  useEffect(() => {
+    if (
+      envFilter &&
+      currentProject?.environments &&
+      !currentProject.environments.some(({ slug }) => slug === envFilter)
+    ) {
+      setEnvFilter(undefined);
+    }
+  }, [currentProject?.environments, envFilter]);
+
+  useEffect(() => {
+    if (
+      committerFilter &&
+      !areMembersPending &&
+      members &&
+      !members.some(({ user }) => user.id === committerFilter)
+    ) {
+      setCommitterFilter(undefined);
+    }
+  }, [areMembersPending, committerFilter, members]);
 
   return (
     <>

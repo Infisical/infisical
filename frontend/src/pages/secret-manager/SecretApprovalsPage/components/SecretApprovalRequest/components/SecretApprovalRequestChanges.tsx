@@ -692,7 +692,7 @@ export const SecretApprovalRequestChanges = ({
               {reviewControls}
             </div>
 
-            <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+            <div className="flex thin-scrollbar flex-none flex-col gap-4 overflow-visible p-4 @4xl:min-h-0 @4xl:flex-1 @4xl:overflow-y-auto">
               <Alert variant={changesStatusAlert.variant}>
                 {changesStatusAlert.icon}
                 <AlertTitle>{changesStatusAlert.title}</AlertTitle>
