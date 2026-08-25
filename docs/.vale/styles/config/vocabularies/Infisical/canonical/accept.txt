@@ -584,6 +584,7 @@ lastName
 firstName
 givenName
 stripPrefix
+trimSuffix
 demo_mount
 db_owner
 data_writer

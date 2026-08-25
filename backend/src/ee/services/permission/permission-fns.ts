@@ -1,6 +1,7 @@
 /* eslint-disable no-nested-ternary */
 import { ForbiddenError, MongoAbility, PureAbility, RawRuleOf, subject } from "@casl/ability";
 import handlebars from "handlebars";
+import picomatch from "picomatch";
 import { z } from "zod";
 
 import { TOrganizations } from "@app/db/schemas";
@@ -423,6 +424,8 @@ const expandLegacyForbidActions = <T extends RawRuleOf<MongoAbility<ProjectPermi
   });
 };
 
+const HBS_TRIM_SUFFIX_MAX_GLOB_INPUT_LENGTH = 256;
+
 const hbsStripPrefix = (text: string, prefix: string) => {
   const textStr = String(text || "");
   if (!textStr) return textStr;
@@ -430,10 +433,35 @@ const hbsStripPrefix = (text: string, prefix: string) => {
   return textStr.startsWith(prefix) ? textStr.substring(prefix.length) : textStr;
 };
 
+const hbsTrimSuffix = (text: string, suffix: string) => {
+  const textStr = String(text || "");
+  if (!textStr) return textStr;
+
+  if (!picomatch.scan(suffix).isGlob) {
+    return textStr.endsWith(suffix) ? textStr.slice(0, -suffix.length) : textStr;
+  }
+
+  if (textStr.length > HBS_TRIM_SUFFIX_MAX_GLOB_INPUT_LENGTH) return textStr;
+
+  let isSuffixMatch: (input: string) => boolean;
+  try {
+    isSuffixMatch = picomatch(suffix, { dot: true });
+  } catch {
+    return textStr;
+  }
+
+  for (let i = textStr.length; i >= 0; i -= 1) {
+    if (isSuffixMatch(textStr.slice(i))) return textStr.slice(0, i);
+  }
+
+  return textStr;
+};
+
 const handlebarsClient = (() => {
   const hbs = handlebars.create();
 
   hbs.registerHelper("stripPrefix", hbsStripPrefix);
+  hbs.registerHelper("trimSuffix", hbsTrimSuffix);
 
   return hbs;
 })();
