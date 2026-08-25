@@ -2230,7 +2230,8 @@ const OverviewPageContent = () => {
         search: (prev) => ({
           ...prev,
           filterBy: serializeOverviewResourceFilter(nextFilter, Object.values(RowType))
-        })
+        }),
+        replace: true
       });
     },
     [filter, navigate]
@@ -2254,7 +2255,8 @@ const OverviewPageContent = () => {
               ...Object.values(RowType).filter((type) => filter[type]),
               RowType.Secret
             ].join(",")
-          })
+          }),
+          replace: true
         });
       }
     },
