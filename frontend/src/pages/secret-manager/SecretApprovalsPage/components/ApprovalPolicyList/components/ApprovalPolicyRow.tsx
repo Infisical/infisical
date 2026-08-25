@@ -10,7 +10,6 @@ import {
   UsersIcon
 } from "lucide-react";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
   Detail,
@@ -30,16 +29,15 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ProjectPermissionSub } from "@app/context";
-import { ProjectPermissionActions } from "@app/context/ProjectPermissionContext/types";
 import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
 import { Approver } from "@app/hooks/api/accessApproval/types";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
-import { ApproverType } from "@app/hooks/api/secretApproval/types";
 import { ProjectEnv } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
+
+import { groupApproversBySequence } from "./approvalPolicyRowUtils";
 
 interface IPolicy {
   id: string;
@@ -58,6 +56,9 @@ type Props = {
   policy: IPolicy;
   members?: TWorkspaceUser[];
   groups?: TGroupMembership[];
+  canEdit: boolean;
+  canDelete: boolean;
+  editDisabledReason?: string;
   onEdit: () => void;
   onDelete: () => void;
 };
@@ -66,31 +67,18 @@ export const ApprovalPolicyRow = ({
   policy,
   members = [],
   groups = [],
+  canEdit,
+  canDelete,
+  editDisabledReason,
   onEdit,
   onDelete
 }: Props) => {
   const labels = useMemo(() => {
-    const sortedSteps = policy.approvers?.sort((a, b) => (a?.sequence || 0) - (b?.sequence || 0));
-    const entityInSameSequence = sortedSteps?.reduce(
-      (acc, curr) => {
-        if (acc.length && acc[acc.length - 1].sequence === (curr.sequence || 1)) {
-          acc[acc.length - 1][curr.type]?.push(curr);
-          return acc;
-        }
-        const approvals = curr.approvalsRequired || policy.approvals;
-        acc.push(
-          curr.type === ApproverType.User
-            ? { user: [curr], group: [], sequence: 1, approvals }
-            : { group: [curr], user: [], sequence: 1, approvals }
-        );
-        return acc;
-      },
-      [] as { user: Approver[]; group: Approver[]; sequence?: number; approvals: number }[]
-    );
+    const entityInSameSequence = groupApproversBySequence(policy.approvers, policy.approvals);
 
-    return entityInSameSequence?.map((el) => {
+    return entityInSameSequence.map((el) => {
       return {
-        sequence: el.sequence || policy.approvals,
+        sequence: el.sequence ?? 1,
 
         users: el.user.map((approver) => {
           const member = members.find((m) => m.user.id === approver.id);
@@ -112,8 +100,8 @@ export const ApprovalPolicyRow = ({
 
   return (
     <TableRow>
-      <TableCell isTruncatable className="w-1/3" title={policy.name || "Unnamed Policy"}>
-        {policy.name || <span className="text-muted">Unnamed Policy</span>}
+      <TableCell isTruncatable className="w-1/3" title={policy.name || "Unnamed policy"}>
+        {policy.name || <span className="text-muted">Unnamed policy</span>}
       </TableCell>
       <TableCell isTruncatable className="w-1/3" title={environmentNames}>
         {environmentNames}
@@ -137,19 +125,19 @@ export const ApprovalPolicyRow = ({
             </HoverCardTrigger>
             <HoverCardContent
               align="end"
-              className="max-h-96 thin-scrollbar w-80 overflow-y-auto p-4"
+              className="thin-scrollbar max-h-96 w-80 overflow-y-auto p-4"
             >
-              <div className="mb-3 text-sm font-medium text-foreground">Approvers</div>
+              <div className="text-foreground mb-3 text-sm font-medium">Approvers</div>
               {labels && labels.length > 0 ? (
                 <div className="flex flex-col gap-4">
-                  {labels.map((el, index) => (
+                  {labels.map((el) => (
                     <div
-                      key={`approval-list-${index + 1}`}
-                      className="flex flex-col gap-2.5 border-b border-border pb-4 last:border-0 last:pb-0"
+                      key={`approval-list-${el.sequence}`}
+                      className="border-border flex flex-col gap-2.5 border-b pb-4 last:border-0 last:pb-0"
                     >
                       {labels.length > 1 && (
                         <Badge variant="neutral" className="w-fit">
-                          Step {index + 1}
+                          Step {el.sequence}
                         </Badge>
                       )}
                       <Detail>
@@ -229,7 +217,7 @@ export const ApprovalPolicyRow = ({
                       <Detail>
                         <DetailLabel className="flex items-center gap-1.5">
                           <ClipboardCheckIcon className="size-3" />
-                          Approvals Required
+                          Approvals required
                         </DetailLabel>
                         <DetailValue>{el.approvals}</DetailValue>
                       </Detail>
@@ -237,7 +225,7 @@ export const ApprovalPolicyRow = ({
                   ))}
                 </div>
               ) : (
-                <span className="text-sm text-muted">No approvers configured.</span>
+                <span className="text-muted text-sm">No approvers configured.</span>
               )}
             </HoverCardContent>
           </HoverCard>
@@ -248,28 +236,23 @@ export const ApprovalPolicyRow = ({
               </IconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent sideOffset={2} align="end" className="min-w-48 p-1">
-              <ProjectPermissionCan
-                I={ProjectPermissionActions.Edit}
-                a={ProjectPermissionSub.SecretApproval}
+              <DropdownMenuItem
+                onClick={onEdit}
+                isDisabled={!canEdit}
+                title={canEdit ? undefined : (editDisabledReason ?? "Access restricted")}
               >
-                {(isAllowed) => (
-                  <DropdownMenuItem onClick={onEdit} isDisabled={!isAllowed}>
-                    <PencilIcon />
-                    Edit Policy
-                  </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
-              <ProjectPermissionCan
-                I={ProjectPermissionActions.Delete}
-                a={ProjectPermissionSub.SecretApproval}
+                <PencilIcon />
+                Edit policy
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="danger"
+                onClick={onDelete}
+                isDisabled={!canDelete}
+                title={canDelete ? undefined : "Access restricted"}
               >
-                {(isAllowed) => (
-                  <DropdownMenuItem variant="danger" onClick={onDelete} isDisabled={!isAllowed}>
-                    <Trash2Icon />
-                    Delete Policy
-                  </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
+                <Trash2Icon />
+                Delete policy
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

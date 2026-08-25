@@ -14,9 +14,9 @@ export type ApproverOptionData = {
 
 const TypeIcon = ({ type }: { type: ApproverType | BypasserType }) =>
   type === ApproverType.Group ? (
-    <UsersIcon className="size-3.5 shrink-0 text-muted" />
+    <UsersIcon className="text-muted size-3.5 shrink-0" />
   ) : (
-    <UserIcon className="size-3.5 shrink-0 text-muted" />
+    <UserIcon className="text-muted size-3.5 shrink-0" />
   );
 
 export const ApproverOption = ({
@@ -32,9 +32,7 @@ export const ApproverOption = ({
       <div className="flex flex-row items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <TypeIcon type={type} />
-          <span className={twMerge("truncate", isInactive && "text-mineshaft-400")}>
-            {children}
-          </span>
+          <span className={twMerge("truncate", isInactive && "text-muted")}>{children}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {isInactive && (

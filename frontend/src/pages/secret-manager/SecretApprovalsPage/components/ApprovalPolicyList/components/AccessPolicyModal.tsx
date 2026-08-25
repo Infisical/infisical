@@ -1,17 +1,25 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { GripVerticalIcon, InfoIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
-import ms from "ms";
+import {
+  CircleAlertIcon,
+  GripVerticalIcon,
+  InfoIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  Trash2Icon,
+  TriangleAlertIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Alert,
   AlertDescription,
+  AlertTitle,
   Badge,
   Button,
+  DiscardChangesAlertDialog,
   Field,
   FieldContent,
   FieldDescription,
@@ -46,11 +54,8 @@ import {
 import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
-import {
-  useCreateSecretApprovalPolicy,
-  useListWorkspaceGroups,
-  useUpdateSecretApprovalPolicy
-} from "@app/hooks/api";
+import { useDiscardChangesGuard } from "@app/hooks";
+import { useCreateSecretApprovalPolicy, useUpdateSecretApprovalPolicy } from "@app/hooks/api";
 import {
   useCreateAccessApprovalPolicy,
   useUpdateAccessApprovalPolicy
@@ -61,203 +66,95 @@ import {
   BypasserType,
   TAccessApprovalPolicy
 } from "@app/hooks/api/accessApproval/types";
+import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
 import { ApproverMultiValueLabel, ApproverOption, ApproverOptionData } from "./ApproverOption";
+import { approvalPolicyFormSchema, TApprovalPolicyFormSchema } from "./approvalPolicyFormSchema";
+import { groupApproversBySequence } from "./approvalPolicyRowUtils";
 
 type Props = {
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
   members?: TWorkspaceUser[];
+  groups?: TGroupMembership[];
   projectId: string;
   projectSlug: string;
   editValues?: TAccessApprovalPolicy;
+  hasApproverOptionsError: boolean;
+  isRetryingApproverOptions: boolean;
+  onRetryApproverOptions: () => void;
 };
-
-const MIN_EXPIRATION_MS = 60 * 1000; // 1 minute
-const MAX_EXPIRATION_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
-
-const durationSchema = z
-  .string()
-  .trim()
-  .nullish()
-  .superRefine((val, ctx) => {
-    if (!val || val === "never") return;
-    const parsed = ms(val);
-
-    if (typeof parsed !== "number" || parsed <= 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Invalid duration format. Use formats like '1h', '3d', '72h'."
-      });
-      return;
-    }
-
-    if (parsed < MIN_EXPIRATION_MS) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Duration must be at least 1 minute."
-      });
-      return;
-    }
-
-    if (parsed > MAX_EXPIRATION_MS) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Duration cannot exceed 1 year."
-      });
-    }
-  });
-
-const formSchema = z
-  .object({
-    environments: z.array(z.object({ slug: z.string(), name: z.string() })).min(1),
-    name: z.string().optional(),
-    secretPath: z.string().trim().min(1),
-    approvals: z.number().min(1).default(1),
-    userApprovers: z
-      .object({
-        type: z.literal(ApproverType.User),
-        id: z.string(),
-        name: z.string().optional(),
-        isOrgMembershipActive: z.boolean().optional()
-      })
-      .array()
-      .default([]),
-    groupApprovers: z
-      .object({ type: z.literal(ApproverType.Group), id: z.string() })
-      .array()
-      .default([]),
-    userBypassers: z
-      .object({
-        type: z.literal(BypasserType.User),
-        id: z.string(),
-        isOrgMembershipActive: z.boolean().optional()
-      })
-      .array()
-      .default([]),
-    groupBypassers: z
-      .object({ type: z.literal(BypasserType.Group), id: z.string() })
-      .array()
-      .default([]),
-    policyType: z.nativeEnum(PolicyType),
-    enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-    allowedSelfApprovals: z.boolean().default(true),
-    bypassForMachineIdentities: z.boolean().optional().default(false),
-    sequenceApprovers: z
-      .object({
-        user: z
-          .object({
-            type: z.literal(ApproverType.User),
-            id: z.string(),
-            name: z.string().optional(),
-            isOrgMembershipActive: z.boolean().optional()
-          })
-          .array()
-          .default([]),
-        group: z
-          .object({ type: z.literal(ApproverType.Group), id: z.string() })
-          .array()
-          .default([]),
-        approvals: z.number().min(1).default(1)
-      })
-      .array()
-      .default([])
-      .optional(),
-    maxTimePeriod: durationSchema,
-    requestExpirationTime: durationSchema
-  })
-  .superRefine((data, ctx) => {
-    if (data.policyType === PolicyType.ChangePolicy) {
-      if (!(data.groupApprovers.length || data.userApprovers.length)) {
-        ctx.addIssue({
-          path: ["userApprovers"],
-          code: z.ZodIssueCode.custom,
-          message: "At least one approver should be provided"
-        });
-        ctx.addIssue({
-          path: ["groupApprovers"],
-          code: z.ZodIssueCode.custom,
-          message: "At least one approver should be provided"
-        });
-      }
-    }
-  });
-
-type TFormSchema = z.infer<typeof formSchema>;
 
 const Form = ({
   onToggle,
   members = [],
+  groups = [],
   projectId,
   projectSlug,
   editValues,
-  isEditMode
-}: Props & { isEditMode: boolean }) => {
+  isEditMode,
+  onDirtyChange,
+  onSubmittingChange,
+  onRequestClose,
+  hasApproverOptionsError,
+  isRetryingApproverOptions,
+  onRetryApproverOptions
+}: Props & {
+  isEditMode: boolean;
+  onDirtyChange: (isDirty: boolean) => void;
+  onSubmittingChange: (isSubmitting: boolean) => void;
+  onRequestClose: () => void;
+}) => {
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
+  const editFormValues = useMemo<TApprovalPolicyFormSchema | undefined>(
+    () =>
+      editValues
+        ? ({
+            ...editValues,
+            environments: editValues.environments,
+            userApprovers:
+              editValues.approvers
+                ?.filter((approver) => approver.type === ApproverType.User)
+                .map(({ id, type, isOrgMembershipActive }) => ({
+                  id,
+                  type: type as ApproverType.User,
+                  isOrgMembershipActive
+                })) || [],
+            groupApprovers:
+              editValues.approvers
+                ?.filter((approver) => approver.type === ApproverType.Group)
+                .map(({ id, type }) => ({ id, type: type as ApproverType.Group })) || [],
+            userBypassers:
+              editValues.bypassers
+                ?.filter((bypasser) => bypasser.type === BypasserType.User)
+                .map(({ id, type }) => ({ id, type: type as BypasserType.User })) || [],
+            groupBypassers:
+              editValues.bypassers
+                ?.filter((bypasser) => bypasser.type === BypasserType.Group)
+                .map(({ id, type }) => ({ id, type: type as BypasserType.Group })) || [],
+            approvals: editValues.approvals,
+            allowedSelfApprovals: editValues.allowedSelfApprovals,
+            bypassForMachineIdentities: editValues.bypassForMachineIdentities ?? true,
+            maxTimePeriod: editValues.maxTimePeriod,
+            requestExpirationTime: editValues.requestExpirationTime,
+            sequenceApprovers: groupApproversBySequence(editValues.approvers, editValues.approvals)
+          } as TApprovalPolicyFormSchema)
+        : undefined,
+    [editValues]
+  );
   const {
     control,
     handleSubmit,
     watch,
     resetField,
     setValue,
-    formState: { isSubmitting, errors }
-  } = useForm<TFormSchema>({
-    resolver: zodResolver(formSchema),
-    values: editValues
-      ? ({
-          ...editValues,
-          environments: editValues.environments,
-          userApprovers:
-            editValues?.approvers
-              ?.filter((approver) => approver.type === ApproverType.User)
-              .map(({ id, type, isOrgMembershipActive }) => ({
-                id,
-                type: type as ApproverType.User,
-                isOrgMembershipActive
-              })) || [],
-          groupApprovers:
-            editValues?.approvers
-              ?.filter((approver) => approver.type === ApproverType.Group)
-              .map(({ id, type }) => ({ id, type: type as ApproverType.Group })) || [],
-          userBypassers:
-            editValues?.bypassers
-              ?.filter((bypasser) => bypasser.type === BypasserType.User)
-              .map(({ id, type }) => ({ id, type: type as BypasserType.User })) || [],
-          groupBypassers:
-            editValues?.bypassers
-              ?.filter((bypasser) => bypasser.type === BypasserType.Group)
-              .map(({ id, type }) => ({ id, type: type as BypasserType.Group })) || [],
-          approvals: editValues?.approvals,
-          allowedSelfApprovals: editValues?.allowedSelfApprovals,
-          bypassForMachineIdentities: editValues?.bypassForMachineIdentities ?? true,
-          maxTimePeriod: editValues?.maxTimePeriod,
-          requestExpirationTime: editValues?.requestExpirationTime,
-          sequenceApprovers: editValues.approvers?.reduce(
-            (acc, curr) => {
-              if (acc.length && acc[acc.length - 1].sequence === curr.sequence) {
-                acc[acc.length - 1][curr.type]?.push(curr);
-                return acc;
-              }
-              const approvals = curr.approvalsRequired || editValues.approvals;
-              acc.push(
-                curr.type === ApproverType.User
-                  ? {
-                      user: [curr],
-                      group: [],
-                      sequence: curr.sequence,
-                      approvals
-                    }
-                  : { group: [curr], user: [], sequence: curr.sequence, approvals }
-              );
-              return acc;
-            },
-            [] as { user: Approver[]; group: Approver[]; sequence?: number; approvals: number }[]
-          )
-        } as TFormSchema)
-      : undefined,
+    formState: { isDirty, isSubmitting, errors }
+  } = useForm<TApprovalPolicyFormSchema>({
+    resolver: zodResolver(approvalPolicyFormSchema),
+    values: editFormValues,
     defaultValues: !editValues
       ? {
           secretPath: "/",
@@ -265,13 +162,16 @@ const Form = ({
         }
       : undefined
   });
+
+  useEffect(() => onDirtyChange(isDirty), [isDirty, onDirtyChange]);
+  useEffect(() => onSubmittingChange(isSubmitting), [isSubmitting, onSubmittingChange]);
+
   const sequenceApproversFieldArray = useFieldArray({
     control,
     name: "sequenceApprovers"
   });
 
   const { currentProject } = useProject();
-  const { data: groups } = useListWorkspaceGroups(projectId);
 
   const availableEnvironments = currentProject?.environments || [];
   const isAccessPolicyType = watch("policyType") === PolicyType.AccessPolicy;
@@ -299,7 +199,7 @@ const Form = ({
     userBypassers,
     sequenceApprovers,
     ...data
-  }: TFormSchema) => {
+  }: TApprovalPolicyFormSchema) => {
     if (!projectId) return;
 
     const bypassers = [...userBypassers, ...groupBypassers];
@@ -346,7 +246,7 @@ const Form = ({
     groupBypassers,
     sequenceApprovers,
     ...data
-  }: TFormSchema) => {
+  }: TApprovalPolicyFormSchema) => {
     if (!projectId || !projectSlug) return;
     if (!editValues?.id) return;
 
@@ -388,7 +288,7 @@ const Form = ({
     onToggle(false);
   };
 
-  const handleFormSubmit = async (data: TFormSchema) => {
+  const handleFormSubmit = async (data: TApprovalPolicyFormSchema) => {
     if (isEditMode) {
       await handleUpdatePolicy(data);
     } else {
@@ -519,6 +419,18 @@ const Form = ({
     setDragOverItem(null);
   };
 
+  const handleReorderKeyDown = (event: React.KeyboardEvent, index: number) => {
+    if (event.key === "ArrowUp" && index > 0) {
+      event.preventDefault();
+      sequenceApproversFieldArray.move(index, index - 1);
+    }
+
+    if (event.key === "ArrowDown" && index < sequenceApproversFieldArray.fields.length - 1) {
+      event.preventDefault();
+      sequenceApproversFieldArray.move(index, index + 1);
+    }
+  };
+
   const renderApproverSelect = (index: number) => (
     <FilterableSelect
       menuPosition="fixed"
@@ -539,9 +451,18 @@ const Form = ({
         const { users, groups: selectedGroups } = splitSelectedApprovers(
           newValue as ApproverOptionData[]
         );
-        setValue(`sequenceApprovers.${index}.user`, users, { shouldValidate: true });
-        setValue(`sequenceApprovers.${index}.group`, selectedGroups, { shouldValidate: true });
+        setValue(`sequenceApprovers.${index}.user`, users, {
+          shouldDirty: true,
+          shouldValidate: true
+        });
+        setValue(`sequenceApprovers.${index}.group`, selectedGroups, {
+          shouldDirty: true,
+          shouldValidate: true
+        });
       }}
+      isError={Boolean(
+        errors.sequenceApprovers?.[index]?.user || errors.sequenceApprovers?.[index]?.group
+      )}
     />
   );
 
@@ -567,7 +488,27 @@ const Form = ({
       onSubmit={handleSubmit(handleFormSubmit)}
       className="flex flex-1 flex-col gap-4 overflow-hidden"
     >
-      <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+      <div className="thin-scrollbar flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+        {hasApproverOptionsError && (
+          <Alert variant="danger">
+            <CircleAlertIcon />
+            <AlertTitle>Could not load approver options</AlertTitle>
+            <AlertDescription>
+              <span>Retry before saving this approval policy.</span>
+              <Button
+                size="xs"
+                variant="danger"
+                type="button"
+                isPending={isRetryingApproverOptions}
+                isDisabled={isRetryingApproverOptions}
+                onClick={onRetryApproverOptions}
+              >
+                <RefreshCwIcon />
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
         <Controller
           control={control}
           name="policyType"
@@ -575,15 +516,15 @@ const Form = ({
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
               <FieldLabel>
-                Policy Type
+                Policy type
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <InfoIcon />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm">
                     Change policies govern secret changes within a given environment and secret
-                    path. Access policies allow underprivileged user to request access to
-                    environment/secret path.
+                    path. Access policies allow underprivileged users to request access to an
+                    environment and secret path.
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
@@ -617,12 +558,12 @@ const Form = ({
           name="name"
           render={({ field, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Policy Name</FieldLabel>
+              <FieldLabel>Policy name</FieldLabel>
               <FieldContent>
                 <Input
                   {...field}
                   value={field.value || ""}
-                  placeholder="e.g. Production Approvals"
+                  placeholder="e.g. Production approvals"
                   isError={Boolean(error)}
                 />
                 <FieldError errors={[error]} />
@@ -637,7 +578,7 @@ const Form = ({
           render={({ field, fieldState: { error } }) => (
             <Field>
               <FieldLabel>
-                Secret Path
+                Secret path
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <InfoIcon />
@@ -686,14 +627,14 @@ const Form = ({
           )}
         />
         {isAccessPolicyType && (
-          <div className="flex items-start gap-x-3">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(12rem,100%),1fr))] items-start gap-3">
             <Controller
               control={control}
               name="maxTimePeriod"
               render={({ field, fieldState: { error } }) => (
                 <Field className="flex-1">
                   <FieldLabel>
-                    Max. Time Period
+                    Max. time period
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <InfoIcon />
@@ -721,7 +662,7 @@ const Form = ({
               render={({ field, fieldState: { error } }) => (
                 <Field className="flex-1">
                   <FieldLabel>
-                    Request Expiration
+                    Request expiration
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <InfoIcon />
@@ -752,7 +693,7 @@ const Form = ({
             defaultValue={1}
             render={({ field, fieldState: { error } }) => (
               <Field>
-                <FieldLabel>Min. Approvals Required</FieldLabel>
+                <FieldLabel>Min. approvals required</FieldLabel>
                 <FieldContent>
                   <Input
                     {...field}
@@ -768,8 +709,8 @@ const Form = ({
           />
         )}
         <div>
-          <p className="text-sm font-medium text-foreground">Approvers</p>
-          <p className="text-xs text-muted">
+          <p className="text-foreground text-sm font-medium">Approvers</p>
+          <p className="text-muted text-xs">
             Select members or groups that are allowed to approve requests from this policy.
           </p>
         </div>
@@ -779,15 +720,23 @@ const Form = ({
               <div className="flex items-start gap-3">
                 <Field className="min-w-0 flex-1">
                   <FieldLabel>Approvers</FieldLabel>
-                  <FieldContent>{renderApproverSelect(0)}</FieldContent>
+                  <FieldContent>
+                    {renderApproverSelect(0)}
+                    <FieldError
+                      errors={[
+                        errors.sequenceApprovers?.[0]?.user,
+                        errors.sequenceApprovers?.[0]?.group
+                      ]}
+                    />
+                  </FieldContent>
                 </Field>
                 <Field className="w-28">
-                  <FieldLabel>Min. Approvals</FieldLabel>
+                  <FieldLabel>Min. approvals</FieldLabel>
                   <FieldContent>{renderMinApprovals(0, "h-9 w-full")}</FieldContent>
                 </Field>
               </div>
             ) : (
-              <ItemGroup className="max-h-[12rem] thin-scrollbar shrink-0 gap-0 overflow-y-auto rounded-lg border border-border bg-container">
+              <ItemGroup className="thin-scrollbar border-border bg-container max-h-[12rem] shrink-0 gap-0 overflow-y-auto rounded-lg border">
                 {sequenceApproversFieldArray.fields.map((el, index) => (
                   <Fragment key={el.id}>
                     {index > 0 && <ItemSeparator className="m-0" />}
@@ -803,23 +752,36 @@ const Form = ({
                       <ItemMedia>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div
+                            <IconButton
+                              type="button"
                               draggable
+                              aria-label={`Reorder step ${index + 1}`}
+                              variant="ghost-muted"
+                              size="xs"
                               onDragStart={(e) => handleDragStart(e, index)}
                               onDragEnd={handleDragEnd}
-                              className="cursor-move text-muted hover:text-foreground"
+                              onKeyDown={(event) => handleReorderKeyDown(event, index)}
+                              className="cursor-move"
                             >
-                              <GripVerticalIcon className="size-4" />
-                            </div>
+                              <GripVerticalIcon />
+                            </IconButton>
                           </TooltipTrigger>
-                          <TooltipContent>Drag to reorder</TooltipContent>
+                          <TooltipContent>Drag or use arrow keys to reorder</TooltipContent>
                         </Tooltip>
                         <Badge variant="neutral">Step {index + 1}</Badge>
                       </ItemMedia>
-                      <ItemContent className="min-w-0">{renderApproverSelect(index)}</ItemContent>
+                      <ItemContent className="min-w-0">
+                        {renderApproverSelect(index)}
+                        <FieldError
+                          errors={[
+                            errors.sequenceApprovers?.[index]?.user,
+                            errors.sequenceApprovers?.[index]?.group
+                          ]}
+                        />
+                      </ItemContent>
                       <ItemActions>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-muted">Min</span>
+                          <span className="text-muted text-xs">Min</span>
                           {renderMinApprovals(index, "h-8 w-14")}
                         </div>
                         <Tooltip>
@@ -856,7 +818,7 @@ const Form = ({
                 }
               >
                 <PlusIcon />
-                Add Step
+                Add step
               </Button>
             </div>
           </>
@@ -879,8 +841,11 @@ const Form = ({
                   const { users, groups: selectedGroups } = splitSelectedApprovers(
                     newValue as ApproverOptionData[]
                   );
-                  setValue("userApprovers", users, { shouldValidate: true });
-                  setValue("groupApprovers", selectedGroups, { shouldValidate: true });
+                  setValue("userApprovers", users, { shouldDirty: true, shouldValidate: true });
+                  setValue("groupApprovers", selectedGroups, {
+                    shouldDirty: true,
+                    shouldValidate: true
+                  });
                 }}
                 isError={Boolean(errors.userApprovers || errors.groupApprovers)}
               />
@@ -895,11 +860,12 @@ const Form = ({
           render={({ field: { value, onChange } }) => (
             <Field orientation="horizontal">
               <FieldContent>
-                <FieldTitle>Self Approvals</FieldTitle>
+                <FieldTitle>Self approvals</FieldTitle>
                 <FieldDescription>Allow approvers to review their own requests</FieldDescription>
               </FieldContent>
               <Switch
                 id="self-approvals"
+                aria-label="Allow self approvals"
                 variant="project"
                 checked={value}
                 onCheckedChange={onChange}
@@ -921,6 +887,7 @@ const Form = ({
                 </FieldContent>
                 <Switch
                   id="bypass-machine-identities"
+                  aria-label="Bypass approval for machine identities"
                   variant="project"
                   checked={value}
                   onCheckedChange={onChange}
@@ -936,13 +903,14 @@ const Form = ({
           render={({ field: { value, onChange } }) => (
             <Field orientation="horizontal">
               <FieldContent>
-                <FieldTitle>Bypass Approvals</FieldTitle>
+                <FieldTitle>Bypass approvals</FieldTitle>
                 <FieldDescription>
                   Allow certain users to bypass policy in break-glass situations
                 </FieldDescription>
               </FieldContent>
               <Switch
                 id="bypass-approvals"
+                aria-label="Allow approval bypass"
                 variant="project"
                 checked={value === EnforcementLevel.Soft}
                 onCheckedChange={(v) => onChange(v ? EnforcementLevel.Soft : EnforcementLevel.Hard)}
@@ -970,8 +938,11 @@ const Form = ({
                     const { users, groups: selectedGroups } = splitSelectedBypassers(
                       newValue as ApproverOptionData[]
                     );
-                    setValue("userBypassers", users, { shouldValidate: true });
-                    setValue("groupBypassers", selectedGroups, { shouldValidate: true });
+                    setValue("userBypassers", users, { shouldDirty: true, shouldValidate: true });
+                    setValue("groupBypassers", selectedGroups, {
+                      shouldDirty: true,
+                      shouldValidate: true
+                    });
                   }}
                   isError={Boolean(errors.userBypassers || errors.groupBypassers)}
                 />
@@ -991,10 +962,15 @@ const Form = ({
         )}
       </div>
       <SheetFooter className="border-t">
-        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
-          {isEditMode ? "Update Policy" : "Add Policy"}
+        <Button
+          type="submit"
+          variant="project"
+          isPending={isSubmitting}
+          isDisabled={isSubmitting || hasApproverOptionsError}
+        >
+          {isEditMode ? "Update policy" : "Add policy"}
         </Button>
-        <Button onClick={() => onToggle(false)} variant="outline" type="button">
+        <Button onClick={onRequestClose} variant="outline" type="button" isDisabled={isSubmitting}>
           Close
         </Button>
       </SheetFooter>
@@ -1004,15 +980,52 @@ const Form = ({
 
 export const AccessPolicyForm = ({ isOpen, onToggle, editValues, ...props }: Props) => {
   const isEditMode = Boolean(editValues);
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const closeSheet = useCallback(() => {
+    setIsDirty(false);
+    setIsSubmitting(false);
+    onToggle(false);
+  }, [onToggle]);
+
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: closeSheet });
+
+  const handleSheetOpenChange = (open: boolean) => {
+    if (!open) {
+      if (!isSubmitting) requestDiscard();
+      return;
+    }
+
+    onToggle(true);
+  };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onToggle}>
-      <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-xl">
-        <SheetHeader className="border-b">
-          <SheetTitle>{isEditMode ? "Edit Policy" : "Add Policy"}</SheetTitle>
-        </SheetHeader>
-        <Form {...props} onToggle={onToggle} editValues={editValues} isEditMode={isEditMode} />
-      </SheetContent>
-    </Sheet>
+    <>
+      <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
+        <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-xl">
+          <SheetHeader className="border-b">
+            <SheetTitle>{isEditMode ? "Edit policy" : "Add policy"}</SheetTitle>
+          </SheetHeader>
+          <Form
+            {...props}
+            onToggle={closeSheet}
+            editValues={editValues}
+            isEditMode={isEditMode}
+            onDirtyChange={setIsDirty}
+            onSubmittingChange={setIsSubmitting}
+            onRequestClose={requestDiscard}
+          />
+        </SheetContent>
+      </Sheet>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard policy changes?"
+        description="Your unsaved policy changes will be lost."
+      />
+    </>
   );
 };

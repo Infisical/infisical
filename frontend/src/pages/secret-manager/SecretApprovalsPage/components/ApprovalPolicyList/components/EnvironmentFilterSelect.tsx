@@ -32,7 +32,7 @@ export const EnvironmentFilterSelect = ({
   const [inputValue, setInputValue] = useState("");
 
   const label =
-    environments.find((env) => env.id === selectedEnvironmentIds[0])?.name ?? "All Environments";
+    environments.find((env) => env.id === selectedEnvironmentIds[0])?.name ?? "All environments";
 
   const handleSelectAll = () => onChange([]);
 
@@ -47,13 +47,13 @@ export const EnvironmentFilterSelect = ({
           variant="outline"
           role="combobox"
           aria-expanded={isOpen}
-          className="w-[200px] shrink-0 justify-between"
+          className="w-full max-w-[200px] shrink-0 justify-between"
         >
           <span className="truncate">{label}</span>
           <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[240px] p-0">
+      <PopoverContent align="start" className="w-60 max-w-[calc(100vw-1rem)] p-0">
         <Command>
           <CommandInput
             aria-label="Filter environments"
@@ -73,7 +73,7 @@ export const EnvironmentFilterSelect = ({
                         selectedEnvironmentIds.length ? "opacity-0" : "opacity-100"
                       )}
                     />
-                    All Environments
+                    All environments
                   </CommandItem>
                 </CommandGroup>
                 <CommandSeparator />
