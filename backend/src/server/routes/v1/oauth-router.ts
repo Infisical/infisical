@@ -22,6 +22,11 @@ const SanitizedOauthClientSchema = OauthClientsSchema.omit({ clientSecretHash: t
 
 const SUPPORTED_GRANT_TYPES = Object.values(OauthGrantType).join(", ");
 
+const isBodyParserError = (error: unknown) => {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === "string" && code.startsWith("FST_ERR_CTP_");
+};
+
 const redirectUriSchema = z
   .string()
   .url()
@@ -442,6 +447,17 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     attachValidation: true,
+    errorHandler: (error) => {
+      if (isBodyParserError(error)) {
+        throw new OauthTokenError({
+          code: OauthTokenErrorCode.InvalidRequest,
+          message:
+            "The request body could not be read. Send the parameters as 'application/x-www-form-urlencoded' or 'application/json'.",
+          error
+        });
+      }
+      throw error;
+    },
     schema: {
       body: z.object({
         grant_type: z.nativeEnum(OauthGrantType),

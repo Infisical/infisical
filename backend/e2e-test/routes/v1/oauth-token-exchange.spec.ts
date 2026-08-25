@@ -282,6 +282,28 @@ describe("POST /api/v1/oauth/token, token exchange grant", async () => {
     expectOauthError(await postToken(exchangeBody({ grant_type: "" })), 400, "invalid_request", "Missing 'grant_type'");
   });
 
+  // The content-type parser runs before the handler, so these reach neither its try/catch nor
+  // attachValidation. They still have to answer in the RFC shape rather than the house envelope.
+  const postRawToken = async (payload: string, contentType: string) =>
+    testServer.inject({
+      method: "POST",
+      url: "/api/v1/oauth/token",
+      headers: { "content-type": contentType },
+      payload
+    });
+
+  test("rejects a body the parser cannot read in the RFC shape", async () => {
+    expectOauthError(await postRawToken("{not json", "application/json"), 400, "invalid_request", "could not be read");
+  });
+
+  test("rejects an empty json body in the RFC shape", async () => {
+    expectOauthError(await postRawToken("", "application/json"), 400, "invalid_request", "could not be read");
+  });
+
+  test("rejects an unsupported content type in the RFC shape", async () => {
+    expectOauthError(await postRawToken("<a/>", "application/xml"), 400, "invalid_request", "could not be read");
+  });
+
   test("requires a subject token", async () => {
     const body = exchangeBody();
     delete (body as Record<string, string>).subject_token;
