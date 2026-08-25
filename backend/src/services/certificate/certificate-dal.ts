@@ -163,7 +163,15 @@ export const certificateDALFactory = (db: TDbClient) => {
             void qb[whereMethod]((innerQb: Knex.QueryBuilder) => {
               void innerQb
                 .where(`${TableName.Certificate}.notAfter`, ">", now)
-                .andWhere(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED);
+                .andWhere(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
+                .whereNull(`${TableName.Certificate}.renewedByCertificateId`);
+            });
+          } else if (statusValue === CertStatus.RENEWED) {
+            void qb[whereMethod]((innerQb: Knex.QueryBuilder) => {
+              void innerQb
+                .where(`${TableName.Certificate}.notAfter`, ">", now)
+                .andWhere(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
+                .whereNotNull(`${TableName.Certificate}.renewedByCertificateId`);
             });
           } else if (statusValue === CertStatus.EXPIRED) {
             void qb[whereMethod]((innerQb: Knex.QueryBuilder) => {
@@ -811,6 +819,7 @@ export const certificateDALFactory = (db: TDbClient) => {
       interface TotalsRow {
         total: number;
         active: number;
+        renewed: number;
         expiringSoon: number;
         expired: number;
         revoked: number;
@@ -839,11 +848,15 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(
           db.raw("COUNT(*)::int as total"),
           db.raw(
-            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" > ? AND "${TableName.Certificate}"."status" != ?)::int as active`,
+            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" > ? AND "${TableName.Certificate}"."status" != ? AND "${TableName.Certificate}"."renewedByCertificateId" IS NULL)::int as active`,
             [now, CertStatus.REVOKED]
           ),
           db.raw(
-            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" > ? AND "${TableName.Certificate}"."notAfter" <= ? AND "${TableName.Certificate}"."status" != ?)::int as "expiringSoon"`,
+            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" > ? AND "${TableName.Certificate}"."status" != ? AND "${TableName.Certificate}"."renewedByCertificateId" IS NOT NULL)::int as renewed`,
+            [now, CertStatus.REVOKED]
+          ),
+          db.raw(
+            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" > ? AND "${TableName.Certificate}"."notAfter" <= ? AND "${TableName.Certificate}"."status" != ? AND "${TableName.Certificate}"."renewedByCertificateId" IS NULL)::int as "expiringSoon"`,
             [now, thirtyDaysFromNow, CertStatus.REVOKED]
           ),
           db.raw(
@@ -854,7 +867,7 @@ export const certificateDALFactory = (db: TDbClient) => {
             CertStatus.REVOKED
           ]),
           db.raw(
-            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" > ? AND "${TableName.Certificate}"."notAfter" <= ? AND "${TableName.Certificate}"."status" != ? AND "${TableName.Certificate}"."renewBeforeDays" IS NULL)::int as "expiringSoonNoAutoRenewal"`,
+            `COUNT(*) FILTER (WHERE "${TableName.Certificate}"."notAfter" > ? AND "${TableName.Certificate}"."notAfter" <= ? AND "${TableName.Certificate}"."status" != ? AND "${TableName.Certificate}"."renewedByCertificateId" IS NULL AND "${TableName.Certificate}"."renewBeforeDays" IS NULL)::int as "expiringSoonNoAutoRenewal"`,
             [now, thirtyDaysFromNow, CertStatus.REVOKED]
           ),
           db.raw(
@@ -884,6 +897,7 @@ export const certificateDALFactory = (db: TDbClient) => {
 
       const byStatus = [
         { label: "Active", count: totals.active },
+        { label: "Renewed", count: totals.renewed },
         { label: "Expired", count: totals.expired },
         { label: "Revoked", count: totals.revoked }
       ];
@@ -931,6 +945,11 @@ export const certificateDALFactory = (db: TDbClient) => {
         .join(TableName.CertificateAuthority, `${TableName.Certificate}.caId`, `${TableName.CertificateAuthority}.id`)
         .where(`${TableName.CertificateAuthority}.projectId`, projectId)
         .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
+        .where((qb) => {
+          void qb
+            .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
+            .orWhere(`${TableName.Certificate}.notAfter`, "<=", now);
+        })
         .select(
           db.raw(
             `CASE
@@ -951,6 +970,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.Certificate)
         .where(`${TableName.Certificate}.projectId`, projectId)
         .where(`${TableName.Certificate}.status`, "!=", CertStatus.REVOKED)
+        .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
         .where(`${TableName.Certificate}.notAfter`, ">", now)
         .whereRaw(`"${TableName.Certificate}"."extendedKeyUsages" @> ARRAY[?]::text[]`, ["serverAuth"])
         .select(
@@ -970,6 +990,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         totals: {
           total: totals.total,
           active: totals.active,
+          renewed: totals.renewed,
           expiringSoon: totals.expiringSoon,
           expired: totals.expired,
           revoked: totals.revoked
