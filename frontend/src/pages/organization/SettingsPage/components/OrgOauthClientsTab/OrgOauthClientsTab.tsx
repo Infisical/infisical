@@ -22,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
   CopyButton,
+  DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -76,12 +77,13 @@ export const OrgOauthClientsTab = () => {
   const { mutateAsync: deleteOauthClient } = useDeleteOauthClient();
   const { mutateAsync: rotateOauthClientSecret } = useRotateOauthClientSecret();
 
+  const clientPendingDeletion = popUp?.deleteClient?.data as TOauthClient | undefined;
+
   const onDeleteClient = async () => {
-    const client = popUp?.deleteClient?.data as TOauthClient | undefined;
-    if (!client) return;
+    if (!clientPendingDeletion) return;
 
     try {
-      await deleteOauthClient({ clientDbId: client.id });
+      await deleteOauthClient({ clientDbId: clientPendingDeletion.id });
       createNotification({
         text: "Successfully deleted OAuth application",
         type: "success"
@@ -317,31 +319,15 @@ export const OrgOauthClientsTab = () => {
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <AlertDialog
-        open={popUp.deleteClient.isOpen}
+      <DeleteConfirmDialog
+        isOpen={popUp.deleteClient.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteClient", isOpen)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia>
-              <Trash2 />
-            </AlertDialogMedia>
-            <AlertDialogTitle>
-              Delete &quot;{(popUp?.deleteClient?.data as TOauthClient | undefined)?.name}&quot;?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              External platforms using this application will no longer be able to access Infisical
-              on a user&apos;s behalf, and existing tokens will be revoked.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" onClick={onDeleteClient}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={`Delete "${clientPendingDeletion?.name ?? ""}"?`}
+        description="External platforms using this application will no longer be able to access Infisical on a user's behalf, and existing tokens will be revoked."
+        confirmKey={clientPendingDeletion?.name ?? ""}
+        confirmLabel="Delete Application"
+        onConfirm={onDeleteClient}
+      />
       <AlertDialog
         open={popUp.rotateSecret.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("rotateSecret", isOpen)}
