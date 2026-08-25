@@ -279,7 +279,7 @@ const VaultRoleImportModal = <TRole extends VaultRole>({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       {isOpen && (
-        <DialogContent className="max-w-2xl overflow-hidden">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{config.title}</DialogTitle>
             <DialogDescription>{config.description}</DialogDescription>

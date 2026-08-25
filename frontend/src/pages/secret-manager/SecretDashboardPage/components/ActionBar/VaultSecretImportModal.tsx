@@ -331,7 +331,7 @@ export const VaultSecretImportModal = ({
 }: Props) => (
   <Dialog open={isOpen} onOpenChange={onOpenChange}>
     {isOpen && (
-      <DialogContent className="max-w-2xl overflow-hidden">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Import from HashiCorp Vault</DialogTitle>
           <DialogDescription>
