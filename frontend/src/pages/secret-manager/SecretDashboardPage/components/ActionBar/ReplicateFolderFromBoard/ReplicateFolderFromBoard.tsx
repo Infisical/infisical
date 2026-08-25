@@ -29,7 +29,12 @@ import { useDebounce } from "@app/hooks";
 import { useGetAccessibleSecrets } from "@app/hooks/api/dashboard";
 import { SecretV3Raw } from "@app/hooks/api/types";
 
-import { getRelativeSecretPath, normalizeSecretPath } from "./replicateSecrets";
+import {
+  getRelativeSecretPath,
+  isSecretPathSettled,
+  normalizeSecretPath,
+  reconcileSelectedSecrets
+} from "./replicateSecrets";
 import { SecretTreeView } from "./SecretTreeView";
 
 const formSchema = z.object({
@@ -69,6 +74,11 @@ type SecretStructure = {
   [rootPath: string]: SecretFolder;
 };
 
+const getAllSecretsInFolder = (folder: SecretFolder): SecretV3Raw[] => [
+  ...folder.items,
+  ...Object.values(folder.subFolders).flatMap(getAllSecretsInFolder)
+];
+
 export const ReplicateFolderFromBoard = ({
   environments = [],
   projectId,
@@ -85,6 +95,7 @@ export const ReplicateFolderFromBoard = ({
     control,
     watch,
     reset,
+    setError,
     setValue,
     formState: { errors, isSubmitting }
   } = useForm<TFormSchema>({
@@ -96,6 +107,12 @@ export const ReplicateFolderFromBoard = ({
   const selectedEnvironment = watch("environment");
   const selectedSecrets = watch("secrets");
   const [debouncedEnvCopySecretPath] = useDebounce(envCopySecPath);
+  const normalizedSourcePath = normalizeSecretPath(envCopySecPath);
+  const normalizedDebouncedSourcePath = normalizeSecretPath(debouncedEnvCopySecretPath);
+  const isSourcePathSettled = isSecretPathSettled(
+    normalizedSourcePath,
+    normalizedDebouncedSourcePath
+  );
 
   const {
     data: accessibleSecrets,
@@ -152,20 +169,29 @@ export const ReplicateFolderFromBoard = ({
   }, [accessibleSecrets]);
 
   const secretsFilteredByPath = useMemo(() => {
-    const normalizedPath = normalizeSecretPath(debouncedEnvCopySecretPath);
     const currentLevel = restructureSecrets["/"];
 
     if (!currentLevel) return null;
-    if (normalizedPath === "/") return currentLevel;
+    if (normalizedDebouncedSourcePath === "/") return currentLevel;
 
-    return normalizedPath
+    return normalizedDebouncedSourcePath
       .split("/")
       .filter(Boolean)
       .reduce<SecretFolder | null>(
         (folder, segment) => folder?.subFolders[segment] ?? null,
         currentLevel
       );
-  }, [restructureSecrets, debouncedEnvCopySecretPath]);
+  }, [restructureSecrets, normalizedDebouncedSourcePath]);
+
+  const availableSecretsForPath = useMemo(
+    () => (secretsFilteredByPath ? getAllSecretsInFolder(secretsFilteredByPath) : []),
+    [secretsFilteredByPath]
+  );
+
+  const reconciledSelectedSecrets = useMemo(
+    () => reconcileSelectedSecrets(selectedSecrets, availableSecretsForPath),
+    [availableSecretsForPath, selectedSecrets]
+  );
 
   useEffect(() => {
     if (isOpen && !selectedEnvironment && environments[0]) {
@@ -175,7 +201,26 @@ export const ReplicateFolderFromBoard = ({
 
   useEffect(() => {
     setValue("secrets", []);
-  }, [debouncedEnvCopySecretPath, selectedEnvironment, setValue]);
+  }, [normalizedSourcePath, selectedEnvironment?.slug, setValue]);
+
+  useEffect(() => {
+    const hasStaleSelection =
+      selectedSecrets.length !== reconciledSelectedSecrets.length ||
+      reconciledSelectedSecrets.some((secret, index) => {
+        const selectedSecret = selectedSecrets[index];
+
+        return (
+          secret.id !== selectedSecret.id ||
+          secret.secretKey !== selectedSecret.secretKey ||
+          secret.secretValue !== selectedSecret.secretValue ||
+          secret.secretPath !== selectedSecret.secretPath
+        );
+      });
+
+    if (hasStaleSelection) {
+      setValue("secrets", reconciledSelectedSecrets, { shouldValidate: true });
+    }
+  }, [reconciledSelectedSecrets, selectedSecrets, setValue]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -185,30 +230,54 @@ export const ReplicateFolderFromBoard = ({
   }, [environments, isOpen, reset]);
 
   const handleFormSubmit = async (data: TFormSchema) => {
-    const sourceRootPath = normalizeSecretPath(data.secretPath);
+    if (
+      !isSecretPathSettled(data.secretPath, normalizedDebouncedSourcePath) ||
+      isSourceLoading ||
+      isSourceFetching ||
+      isSourceError ||
+      !secretsFilteredByPath
+    ) {
+      return;
+    }
+
+    const currentSelectedSecrets = reconcileSelectedSecrets(data.secrets, availableSecretsForPath);
+
+    if (currentSelectedSecrets.length !== data.secrets.length) {
+      setValue("secrets", currentSelectedSecrets, { shouldValidate: true });
+      setError("secrets", {
+        type: "validate",
+        message: "Source secrets changed. Review your selection and try again."
+      });
+      return;
+    }
+
     const secretsToBePulled: Record<
       string,
       Record<string, { value: string; comments: string[]; secretPath: string }>
     > = {};
 
-    data.secrets.forEach(({ secretKey, secretValue, secretPath: secretPathToRecreate }) => {
-      const relativePath = getRelativeSecretPath(secretPathToRecreate, sourceRootPath);
+    currentSelectedSecrets.forEach(
+      ({ secretKey, secretValue, secretPath: secretPathToRecreate }) => {
+        const relativePath = getRelativeSecretPath(
+          secretPathToRecreate,
+          normalizedDebouncedSourcePath
+        );
 
-      if (!secretsToBePulled[relativePath]) {
-        secretsToBePulled[relativePath] = {};
+        if (!secretsToBePulled[relativePath]) {
+          secretsToBePulled[relativePath] = {};
+        }
+
+        secretsToBePulled[relativePath][secretKey] = {
+          value: (shouldIncludeValues && secretValue) || "",
+          comments: [""],
+          secretPath: relativePath
+        };
       }
-
-      secretsToBePulled[relativePath][secretKey] = {
-        value: (shouldIncludeValues && secretValue) || "",
-        comments: [""],
-        secretPath: relativePath
-      };
-    });
+    );
 
     await onParsedEnv(secretsToBePulled);
   };
 
-  const normalizedSourcePath = normalizeSecretPath(envCopySecPath);
   const normalizedDestinationPath = normalizeSecretPath(secretPath);
   const destinationEnvironment = environments.find(({ slug }) => slug === environment);
   const isInvalidSourcePath =
@@ -218,7 +287,8 @@ export const ReplicateFolderFromBoard = ({
     isSourceLoading ||
     isSourceError ||
     isInvalidSourcePath ||
-    isSourceFetching;
+    isSourceFetching ||
+    !isSourcePathSettled;
 
   const handleOpenChange = (open: boolean) => {
     if (isSubmitting) return;
@@ -319,7 +389,7 @@ export const ReplicateFolderFromBoard = ({
                   <SecretTreeView
                     data={secretsFilteredByPath}
                     selectedItems={value}
-                    basePath={normalizeSecretPath(debouncedEnvCopySecretPath)}
+                    basePath={normalizedDebouncedSourcePath}
                     onChange={onChange}
                     isDisabled={isSubmitting}
                     isLoading={isSourceLoading}

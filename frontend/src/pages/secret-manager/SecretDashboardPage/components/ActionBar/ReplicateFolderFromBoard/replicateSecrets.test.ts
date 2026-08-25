@@ -5,7 +5,9 @@ import {
   getDestinationSecretPath,
   getRelativeSecretPath,
   getSecretLocation,
-  normalizeSecretPath
+  isSecretPathSettled,
+  normalizeSecretPath,
+  reconcileSelectedSecrets
 } from "./replicateSecrets";
 
 describe("copy secrets path mapping", () => {
@@ -19,6 +21,26 @@ describe("copy secrets path mapping", () => {
     assert.equal(getRelativeSecretPath("/source", "/source"), "/");
     assert.equal(getRelativeSecretPath("/source/nested", "/source"), "/nested");
     assert.equal(getRelativeSecretPath("/nested", "/"), "/nested");
+  });
+
+  it("waits for the displayed source path to match the latest form path", () => {
+    assert.equal(isSecretPathSettled("/source/new", "/source"), false);
+    assert.equal(isSecretPathSettled("source/", "/source"), true);
+  });
+
+  it("reconciles selections with the latest accessible secret objects", () => {
+    const selectedSecrets = [
+      { id: "selected", secretValue: "old-value" },
+      { id: "removed", secretValue: "removed-value" }
+    ];
+    const accessibleSecrets = [
+      { id: "selected", secretValue: "new-value" },
+      { id: "unselected", secretValue: "other-value" }
+    ];
+
+    assert.deepEqual(reconcileSelectedSecrets(selectedSecrets, accessibleSecrets), [
+      accessibleSecrets[0]
+    ]);
   });
 
   it("maps relative paths onto the selected destination root", () => {

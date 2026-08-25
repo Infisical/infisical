@@ -9,6 +9,24 @@ export const normalizeSecretPath = (path: string) => {
   return normalizedPath || "/";
 };
 
+export const isSecretPathSettled = (sourcePath: string, displayedSourcePath: string) =>
+  normalizeSecretPath(sourcePath) === normalizeSecretPath(displayedSourcePath);
+
+export const reconcileSelectedSecrets = <T extends { id: string }>(
+  selectedSecrets: ReadonlyArray<{ id: string }>,
+  availableSecrets: readonly T[]
+) => {
+  const availableSecretsById = new Map(
+    availableSecrets.map((secret) => [secret.id, secret] as const)
+  );
+
+  return selectedSecrets.flatMap(({ id }) => {
+    const availableSecret = availableSecretsById.get(id);
+
+    return availableSecret ? [availableSecret] : [];
+  });
+};
+
 export const getRelativeSecretPath = (secretPath: string, sourceRootPath: string) => {
   const normalizedSecretPath = normalizeSecretPath(secretPath);
   const normalizedSourceRootPath = normalizeSecretPath(sourceRootPath);
