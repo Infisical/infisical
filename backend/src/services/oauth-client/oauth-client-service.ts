@@ -466,12 +466,13 @@ export const oauthClientServiceFactory = ({
     return { client: sanitizeOauthClient(updatedClient), clientSecret };
   };
 
-  const assertGrantEnabled = (client: TOauthClients, grantType: OauthGrantType) => {
+  const assertGrantEnabled = (
+    client: TOauthClients,
+    grantType: OauthGrantType,
+    buildError: (message: string) => Error
+  ) => {
     if (!getGrantTypes(client).includes(grantType)) {
-      throw new OauthTokenError({
-        code: OauthTokenErrorCode.UnauthorizedClient,
-        message: `This application is not registered for the '${grantType}' grant type.`
-      });
+      throw buildError(`This application is not registered for the '${grantType}' grant type.`);
     }
   };
 
@@ -479,7 +480,7 @@ export const oauthClientServiceFactory = ({
     const client = await oauthClientDAL.findOne({ clientId });
     if (!client) throw new UnauthorizedError({ message: "OAuth client not found" });
 
-    assertGrantEnabled(client, OauthGrantType.AuthorizationCode);
+    assertGrantEnabled(client, OauthGrantType.AuthorizationCode, (message) => new BadRequestError({ message }));
 
     if (!isRegisteredRedirectUri(client.redirectUris, redirectUri)) {
       throw new BadRequestError({ message: "Redirect URI is not registered for this OAuth client" });
@@ -505,7 +506,7 @@ export const oauthClientServiceFactory = ({
     const client = await oauthClientDAL.findOne({ clientId: dto.clientId });
     if (!client) throw new UnauthorizedError({ message: "OAuth client not found" });
 
-    assertGrantEnabled(client, OauthGrantType.AuthorizationCode);
+    assertGrantEnabled(client, OauthGrantType.AuthorizationCode, (message) => new BadRequestError({ message }));
 
     if (!isRegisteredRedirectUri(client.redirectUris, dto.redirectUri)) {
       throw new BadRequestError({ message: "Redirect URI is not registered for this OAuth client" });
@@ -806,7 +807,11 @@ export const oauthClientServiceFactory = ({
 
   const exchangeToken = async (dto: TOauthTokenExchangeDTO) => {
     const client = await authenticateClient(dto.clientId, dto.clientSecret);
-    assertGrantEnabled(client, dto.grantType);
+    assertGrantEnabled(
+      client,
+      dto.grantType,
+      (message) => new OauthTokenError({ code: OauthTokenErrorCode.UnauthorizedClient, message })
+    );
 
     if (dto.grantType === OauthGrantType.TokenExchange) {
       return exchangeSubjectToken(client, dto);
