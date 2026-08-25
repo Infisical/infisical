@@ -216,7 +216,7 @@ export const registerSecretScanningEndpoints = <
         200: z.object({ dataSource: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const dataSource = (await server.services.secretScanningV2.createSecretScanningDataSource(
         { ...req.body, type },
@@ -272,7 +272,7 @@ export const registerSecretScanningEndpoints = <
         200: z.object({ dataSource: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { dataSourceId } = req.params;
 
@@ -316,7 +316,7 @@ export const registerSecretScanningEndpoints = <
         200: z.object({ dataSource: responseSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { dataSourceId } = req.params;
 

@@ -1612,7 +1612,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { projectId } = req.body;
       const message = await server.services.secret.backfillSecretReferences({

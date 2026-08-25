@@ -138,7 +138,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { policies, projectId } = await server.services.approvalPolicy.list(
         policyType,
@@ -182,7 +182,7 @@ export const registerApprovalPolicyEndpoints = ({
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { policy } = await server.services.approvalPolicy.getById(req.params.policyId, req.permission);
 

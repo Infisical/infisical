@@ -49,7 +49,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { data, lease, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.create({
@@ -222,7 +222,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { lease, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.renewLease({

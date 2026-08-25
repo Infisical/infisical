@@ -50,7 +50,7 @@ export const registerKubernetesDynamicSecretLeaseRouter = async (server: Fastify
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { data, lease, dynamicSecret } = await server.services.dynamicSecretLease.create({
         actor: req.permission.type,

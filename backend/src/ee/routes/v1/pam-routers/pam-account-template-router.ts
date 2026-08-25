@@ -243,7 +243,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const template = await server.services.pamAccountTemplate.deleteTemplate({
         templateId: req.params.templateId,

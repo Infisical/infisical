@@ -234,7 +234,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { projectId, policyId, isBypass, ...review } =
         await server.services.accessApprovalRequest.reviewAccessRequest({
@@ -353,7 +353,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { request, projectId } = await server.services.accessApprovalRequest.updateAccessApprovalRequest({
         actor: req.permission.type,

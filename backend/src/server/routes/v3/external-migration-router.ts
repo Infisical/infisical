@@ -283,7 +283,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const result = await server.services.migration.importVaultSecrets({
         actor: req.permission,
@@ -661,7 +661,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         200: z.object({ status: z.string(), imported: z.number() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const result = await server.services.migration.importDopplerSecrets({
         ...req.body,

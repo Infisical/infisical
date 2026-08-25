@@ -147,7 +147,7 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.revealAcmeEabSecret({
         actor: req.permission.type,
@@ -182,7 +182,7 @@ export const registerPkiApplicationAcmeEnrollmentRouter = async (server: Fastify
       params: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }),
       response: { 200: z.object({ applicationId: z.string().uuid(), profileId: z.string().uuid() }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.rotateAcmeEabSecret({
         actor: req.permission.type,

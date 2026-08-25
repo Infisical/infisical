@@ -178,7 +178,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const secretRequest = await req.server.services.secretSharing.revealSecretRequestValue({
         id: req.params.id,
@@ -215,7 +215,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const secretRequest = await req.server.services.secretSharing.deleteSharedSecretById({
         actorOrgId: req.permission.orgId,
@@ -260,7 +260,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { secrets, totalCount } = await req.server.services.secretSharing.getSharedSecrets({
         actor: req.permission.type,
@@ -325,7 +325,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const shareRequest = await req.server.services.secretSharing.createSecretRequest({
         actor: req.permission.type,

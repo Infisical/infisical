@@ -210,7 +210,7 @@ const registerPerTypeEndpoints = (
       response: { 200: z.object({ source: SourceSchema }) }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const source = await server.services.pamDiscovery.deleteSource({
         sourceId: req.params.sourceId,
@@ -256,7 +256,7 @@ const registerPerTypeEndpoints = (
       response: { 200: z.object({ message: z.string() }) }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.pamDiscovery.triggerScan({
         sourceId: req.params.sourceId,

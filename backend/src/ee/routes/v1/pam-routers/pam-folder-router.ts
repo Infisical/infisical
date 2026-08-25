@@ -157,7 +157,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const folder = await server.services.pamFolder.create({
         ...req.body,

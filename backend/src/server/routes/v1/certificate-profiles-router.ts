@@ -895,7 +895,7 @@ export const registerCertificateProfilesRouter = async (
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { eabKid, eabSecret } = await server.services.certificateProfile.revealAcmeEabSecret({
         actor: req.permission.type,

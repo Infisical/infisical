@@ -28,7 +28,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       if (!canUseSecretScanning(req.auth.orgId)) {
         throw new BadRequestError({
@@ -63,7 +63,7 @@ export const registerSecretScanningRouter = async (server: FastifyZodProvider) =
         200: GitAppOrgSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { installatedApp } = await server.services.secretScanning.linkInstallationToOrg({
         actor: req.permission.type,

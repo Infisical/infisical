@@ -53,7 +53,7 @@ export const registerCertManagerExportRouter = async (server: FastifyZodProvider
         200: ExportResultSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.certManagerExport.exportCertManagerProject({
         sourceProjectId: req.body.sourceProjectId,

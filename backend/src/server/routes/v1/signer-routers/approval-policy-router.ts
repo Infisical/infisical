@@ -56,7 +56,7 @@ export const registerSignerApprovalPolicyRouter = async (server: FastifyZodProvi
       params: SignerIdParamsSchema,
       body: ApprovalPolicyBodySchema
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const policy = await server.services.signerPolicy.updatePolicy({
         signerId: req.params.signerId,

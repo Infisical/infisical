@@ -59,7 +59,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { secrets, totalCount } = await req.server.services.secretSharing.getSharedSecrets({
         actor: req.permission.type,
@@ -347,7 +347,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { authorizedEmails, ...restBody } = req.body;
       const sharedSecret = await req.server.services.secretSharing.createSharedSecret({
@@ -410,7 +410,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         200: SanitizedSecretSharingSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { id } = req.params;
       const deletedSharedSecret = await req.server.services.secretSharing.deleteSharedSecretById({
@@ -493,7 +493,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { assetType } = req.params;
       const file = await req.file();
@@ -555,7 +555,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { assetType } = req.params;
 
@@ -628,7 +628,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         assetType: z.enum(["brand-logo", "brand-favicon"])
       })
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req, res) => {
       const { assetType } = req.params;
 
