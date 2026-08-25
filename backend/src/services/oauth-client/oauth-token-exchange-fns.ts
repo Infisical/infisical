@@ -65,7 +65,8 @@ const MAX_CACHED_PROVIDER_URLS = 512;
 const DISCOVERY_METADATA_TTL_MS = 10 * 60 * 1000;
 const JWKS_CLIENT_TTL_MS = 10 * 60 * 1000;
 
-// A middleware may exchange on every request, and without this cache that makes the identity provider a
+// Clients are expected to cache the issued access token and exchange roughly once per user per token
+// lifetime. This cache is here so a client that gets that wrong does not turn the identity provider into a
 // synchronous dependency of every Infisical call it serves. Only the fetch is cached, never the resolved
 // trust anchor: the algorithm and preferred issuer come from the org's SSO config, so an admin's edit
 // takes effect on the next request.
