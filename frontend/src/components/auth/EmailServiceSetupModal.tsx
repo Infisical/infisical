@@ -21,7 +21,10 @@ export const EmailServiceSetupModal = ({ isOpen, onOpenChange }: Props) => (
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           Email Service Not Configured
-          <DocumentationLinkBadge href="https://infisical.com/docs/self-hosting/configuration/envars#email-service" />
+          <DocumentationLinkBadge
+            variant="minified"
+            href="https://infisical.com/docs/self-hosting/configuration/envars#email-service"
+          />
         </DialogTitle>
         <DialogDescription>
           An instance administrator must configure an email service provider before this action can
